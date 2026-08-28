@@ -37,7 +37,7 @@ export default function Footer() {
         <div className={styles.column}>
           <h3>Explorar</h3>
 
-          <Link href="/juegos?equipo=requirements">
+          <Link href="/requisitos">
             Por requisitos
           </Link>
           <Link href="/juegos?orden=rating">

@@ -29,8 +29,8 @@ export default function GameFinderSection() {
           </h2>
 
           <p>
-            Explora los títulos que ya tienen requisitos cargados
-            y compara memoria, gráficos y sistema antes de elegir.
+            Elige un perfil de hardware y descubre qué juegos
+            podrían funcionar mejor con una comparación orientativa.
           </p>
 
           <div className={styles.features}>
@@ -53,10 +53,10 @@ export default function GameFinderSection() {
       </div>
 
       <Link
-        href="/juegos?equipo=requirements"
+        href="/requisitos"
         className={styles.button}
       >
-        Ver juegos con requisitos
+        Descubrir qué puedo jugar
 
         <ChevronRight size={21} />
       </Link>

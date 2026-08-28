@@ -24,7 +24,7 @@ const catalogOptions = [
   {
     title: "Con requisitos cargados",
     subtitle: "Compara memoria, gráficos y sistema",
-    href: "/juegos?equipo=requirements",
+    href: "/requisitos",
     icon: Monitor,
   },
   {
@@ -61,8 +61,8 @@ export default function GamesForYourPC() {
           </p>
         </div>
 
-        <Link href="/juegos?equipo=requirements">
-          Ver requisitos
+        <Link href="/requisitos">
+          Probar recomendador
           <ChevronRight size={18} />
         </Link>
       </div>
