@@ -104,13 +104,10 @@ export function useResolvedHardwareProfile() {
 
   useEffect(() => {
     if (storedProfile) {
-      setDetectionStatus("ready");
       return;
     }
 
     let active = true;
-
-    setDetectionStatus("loading");
 
     void detectBrowserProfile()
       .then((profile) => {
