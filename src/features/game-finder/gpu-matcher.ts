@@ -31,6 +31,14 @@ const familyTokens = new Set([
   "iris",
 ]);
 
+const variantTokens = new Set([
+  "ti",
+  "super",
+  "xt",
+  "xtx",
+  "gre",
+]);
+
 function normalizeRenderer(value: string) {
   return value
     .toLowerCase()
@@ -67,6 +75,22 @@ function tokenMatch(
   if (
     gpuFamilyTokens.length > 0 &&
     !gpuFamilyTokens.some((token) => rendererTokens.has(token))
+  ) {
+    return null;
+  }
+
+  // No convertimos una variante distinta en la más parecida del catálogo.
+  // Ej.: una 1660 Ti no debe transformarse en 1660 SUPER, ni una RX base en XT.
+  const requiredVariantTokens = tokens.filter(
+    (token) =>
+      variantTokens.has(token) ||
+      /^\d+gb$/.test(token)
+  );
+
+  if (
+    requiredVariantTokens.some(
+      (token) => !rendererTokens.has(token)
+    )
   ) {
     return null;
   }
