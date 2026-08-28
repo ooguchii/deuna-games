@@ -1,14 +1,23 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import {
+  ArrowLeft,
+  ChevronRight,
   Download,
   ExternalLink,
+  FileArchive,
+  HardDrive,
+  House,
+  Info,
+  Monitor,
   ShieldCheck,
 } from "lucide-react";
 
 import Footer from "@/components/layout/Footer";
 import Header from "@/components/layout/Header";
+import GameMedia from "@/components/ui/GameMedia";
 import {
   games,
   getGameBySlug,
@@ -64,7 +73,7 @@ export async function generateMetadata({
   return {
     title: `Descargar ${game.title}`,
     description:
-      `Acceso a la versión disponible de ${game.title} en DeUna Games.`,
+      `Fuentes de descarga configuradas para ${game.title} en DeUna Games.`,
     alternates: {
       canonical: `/juegos/${game.slug}`,
     },
@@ -91,6 +100,21 @@ export default async function DownloadPage({
     redirect(`/juegos/${game.slug}`);
   }
 
+  const genres =
+    game.genres?.length
+      ? game.genres
+      : [game.category];
+  const platform =
+    download.platform ??
+    game.platforms?.[0] ??
+    "PC";
+  const storage =
+    download.sizeGb
+      ? `${download.sizeGb} GB`
+      : game.requirements?.minimum?.storage ??
+        game.requirements?.storage ??
+        "Sin dato";
+
   return (
     <>
       <Header />
@@ -99,48 +123,178 @@ export default async function DownloadPage({
         id="main-content"
         className={styles.main}
       >
+        <nav
+          className={styles.breadcrumb}
+          aria-label="Migas de pan"
+        >
+          <Link href="/">
+            <House size={14} aria-hidden="true" />
+            Inicio
+          </Link>
+          <ChevronRight size={14} aria-hidden="true" />
+          <Link href="/juegos">Juegos</Link>
+          <ChevronRight size={14} aria-hidden="true" />
+          <Link href={`/juegos/${game.slug}`}>
+            {game.title}
+          </Link>
+          <ChevronRight size={14} aria-hidden="true" />
+          <span aria-current="page">Descargar</span>
+        </nav>
+
         <section
-          className={styles.card}
+          className={styles.gameSummary}
           aria-labelledby="download-title"
         >
-          <span className={styles.icon}>
-            <Download size={28} aria-hidden="true" />
-          </span>
-
-          <span className={styles.eyebrow}>
-            DESCARGA DISPONIBLE
-          </span>
-
-          <h1 id="download-title">
-            {game.title}
-          </h1>
-
-          <p>
-            Esta página centraliza el acceso a la versión
-            actualmente configurada para el juego.
-          </p>
-
-          <div className={styles.notice}>
-            <ShieldCheck size={18} aria-hidden="true" />
-            <span>
-              El destino se obtiene únicamente de la configuración
-              del juego, no de la entrada de actualización.
-            </span>
+          <div className={styles.cover}>
+            <GameMedia
+              src={game.coverImage}
+              alt={game.imageAlt}
+              sizes="(max-width: 680px) 42vw, 210px"
+              priority
+            />
           </div>
 
-          <a
-            href={download.href}
-            className={styles.primary}
-            rel={download.external ? "noopener noreferrer" : undefined}
-          >
-            {download.label}
-            {download.external ? (
-              <ExternalLink size={17} aria-hidden="true" />
-            ) : (
-              <Download size={17} aria-hidden="true" />
-            )}
+          <div className={styles.gameCopy}>
+            <div className={styles.titleRow}>
+              <h1 id="download-title">{game.title}</h1>
+              <span>PC</span>
+            </div>
+
+            <div className={styles.tags}>
+              {genres.slice(0, 4).map((genre) => (
+                <span key={genre}>{genre}</span>
+              ))}
+            </div>
+
+            <p>{game.description}</p>
+          </div>
+
+          <div className={styles.summaryFacts}>
+            <article>
+              <HardDrive size={24} aria-hidden="true" />
+              <div>
+                <span>Tamaño total</span>
+                <strong>{storage}</strong>
+              </div>
+            </article>
+
+            <article>
+              <FileArchive size={24} aria-hidden="true" />
+              <div>
+                <span>Archivos</span>
+                <strong>
+                  {download.fileCount
+                    ? `${download.fileCount} ${download.fileCount === 1 ? "archivo" : "archivos"}`
+                    : "Según la fuente"}
+                </strong>
+              </div>
+            </article>
+
+            <article>
+              <Monitor size={24} aria-hidden="true" />
+              <div>
+                <span>Plataforma</span>
+                <strong>{platform}</strong>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section
+          className={styles.sourcesPanel}
+          aria-labelledby="sources-title"
+        >
+          <div className={styles.sourcesHeading}>
+            <span>DESCARGA</span>
+            <h2 id="sources-title">
+              Elegí una fuente para continuar
+            </h2>
+            <p>
+              Sólo mostramos destinos configurados para este juego y validados por la aplicación antes de renderizarlos.
+            </p>
+          </div>
+
+          <div className={styles.sourceList}>
+            {download.sources.map((source) => (
+              <article
+                key={`${source.id}:${source.href}`}
+                className={styles.sourceCard}
+              >
+                <span
+                  className={styles.sourceMark}
+                  aria-hidden="true"
+                >
+                  {source.name
+                    .trim()
+                    .charAt(0)
+                    .toUpperCase()}
+                </span>
+
+                <div className={styles.sourceCopy}>
+                  <strong>{source.name}</strong>
+                  <span>
+                    {source.external
+                      ? "Destino externo HTTPS"
+                      : "Destino interno"}
+                  </span>
+                </div>
+
+                <span className={styles.sourceStatus}>
+                  <ShieldCheck size={15} aria-hidden="true" />
+                  Configurado
+                </span>
+
+                <a
+                  href={source.href}
+                  className={styles.sourceAction}
+                  target={source.external ? "_blank" : undefined}
+                  rel={source.external ? "noopener noreferrer" : undefined}
+                >
+                  {source.label}
+                  {source.external ? (
+                    <ExternalLink size={17} aria-hidden="true" />
+                  ) : (
+                    <Download size={17} aria-hidden="true" />
+                  )}
+                </a>
+              </article>
+            ))}
+          </div>
+
+          <div className={styles.securityNote}>
+            <ShieldCheck size={18} aria-hidden="true" />
+            <span>
+              DeUna Games no genera enlaces desde parámetros del navegador: las fuentes salen de la configuración del juego.
+            </span>
+          </div>
+        </section>
+
+        <section
+          id="como-funciona"
+          className={styles.howItWorks}
+          aria-labelledby="how-title"
+        >
+          <span className={styles.infoIcon}>
+            <Info size={23} aria-hidden="true" />
+          </span>
+          <div>
+            <h2 id="how-title">¿Cómo funciona?</h2>
+            <p>
+              Elegí una fuente y se abrirá el destino correspondiente. Si es externo, se abre en una pestaña nueva para que puedas volver al juego sin perder esta página.
+            </p>
+          </div>
+          <a href="#sources-title" className={styles.guideAction}>
+            Ver fuentes
           </a>
         </section>
+
+        <Link
+          href={`/juegos/${game.slug}`}
+          className={styles.backLink}
+        >
+          <ArrowLeft size={16} aria-hidden="true" />
+          Volver al juego
+        </Link>
       </main>
 
       <Footer />
