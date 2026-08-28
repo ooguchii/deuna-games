@@ -265,7 +265,7 @@ export default function GamePerformanceEstimate({
 
         <div className={styles.footer}>
           <p>
-            El navegador no siempre puede revelar CPU, GPU o RAM con precisión. Podés completar esos datos manualmente para obtener una estimación útil.
+            El navegador no siempre puede revelar CPU, GPU o RAM con precisión. Puedes completar esos datos manualmente para obtener una estimación útil.
           </p>
 
           <Link href="/requisitos">
