@@ -452,19 +452,23 @@ export default function GameFinderClient({ games }: GameFinderClientProps) {
   }, []);
 
   useEffect(() => {
-    const saved = readStoredProfile();
-    setFavorites(readStoredFavorites());
-    setFavoritesHydrated(true);
+    const timer = window.setTimeout(() => {
+      const saved = readStoredProfile();
+      setFavorites(readStoredFavorites());
+      setFavoritesHydrated(true);
 
-    if (saved) {
-      setHardware(saved);
-      setManualDraft(profileToManualDraft(saved));
-      setDetectionState(saved.cpu && saved.gpu && saved.ramGb ? "ready" : "partial");
-      setDetectionMessage("Cargamos el perfil guardado en este navegador. Puedes detectarlo otra vez cuando quieras.");
-      return;
-    }
+      if (saved) {
+        setHardware(saved);
+        setManualDraft(profileToManualDraft(saved));
+        setDetectionState(saved.cpu && saved.gpu && saved.ramGb ? "ready" : "partial");
+        setDetectionMessage("Cargamos el perfil guardado en este navegador. Puedes detectarlo otra vez cuando quieras.");
+        return;
+      }
 
-    void runDetection();
+      void runDetection();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [runDetection]);
 
   useEffect(() => {
@@ -548,16 +552,12 @@ export default function GameFinderClient({ games }: GameFinderClientProps) {
     });
   }, [estimates, games, genre, sortMode, tierFilter]);
 
-  const selectedGame = games.find((game) => game.slug === selectedSlug) ?? visibleGames[0] ?? games[0];
+  const selectedGame =
+    visibleGames.find((game) => game.slug === selectedSlug) ??
+    visibleGames[0] ??
+    games[0];
   const selectedEstimate = selectedGame ? estimates.get(selectedGame.slug) ?? null : null;
   const selectedProfile = selectedGame ? getPerformanceProfile(selectedGame.slug) : null;
-
-  useEffect(() => {
-    if (!visibleGames.length) return;
-    if (!visibleGames.some((game) => game.slug === selectedSlug)) {
-      setSelectedSlug(visibleGames[0].slug);
-    }
-  }, [selectedSlug, visibleGames]);
 
   function toggleFavorite(slug: string) {
     setFavorites((current) => {
