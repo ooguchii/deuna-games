@@ -24,6 +24,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.9,
     },
     {
+      url: absoluteUrl("/requisitos"),
+      changeFrequency: "weekly",
+      priority: 0.85,
+    },
+    {
       url: absoluteUrl("/actualizaciones"),
       changeFrequency: "daily",
       priority: 0.85,

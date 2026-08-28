@@ -1,0 +1,203 @@
+import {
+  getPerformanceProfile,
+  performanceModelReference,
+} from "./performance-data";
+import {
+  findCpuById,
+  findGpuById,
+} from "./hardware-catalog";
+import type {
+  ConfidenceLevel,
+  EstimateSettings,
+  GameEstimate,
+  HardwarePart,
+  HardwareProfile,
+  PerformanceTier,
+  QualityPreset,
+  RamKnowledge,
+  ResolutionPreset,
+} from "./types";
+
+function requireReferenceScore(
+  part: HardwarePart | null,
+  label: string
+) {
+  if (!part) {
+    throw new Error(
+      `${label} de referencia del modelo no existe en el catálogo.`
+    );
+  }
+
+  return part.score;
+}
+
+const referenceCpuScore = requireReferenceScore(
+  findCpuById(performanceModelReference.cpuId),
+  "La CPU"
+);
+const referenceGpuScore = requireReferenceScore(
+  findGpuById(performanceModelReference.gpuId),
+  "La GPU"
+);
+
+const resolutionFactor: Record<ResolutionPreset, number> = {
+  "720p": 1.45,
+  "1080p": 1,
+  "1440p": 0.72,
+  "2160p": 0.42,
+};
+
+const qualityFactor: Record<QualityPreset, number> = {
+  low: 1.28,
+  medium: 1,
+  high: 0.82,
+  ultra: 0.68,
+};
+
+const estimateSpread: Record<ConfidenceLevel, number> = {
+  high: 0.18,
+  medium: 0.25,
+  low: 0.34,
+};
+
+export function getPerformanceTier(fps: number): PerformanceTier {
+  if (fps >= 60) return "excellent";
+  if (fps >= 40) return "good";
+  if (fps >= 28) return "acceptable";
+  return "basic";
+}
+
+function roundFps(value: number) {
+  if (value >= 120) return Math.round(value / 5) * 5;
+  return Math.round(value);
+}
+
+function ramPenaltyFromRatio(ratio: number) {
+  return ratio >= 1
+    ? 1
+    : Math.max(0.52, 0.58 + ratio * 0.42);
+}
+
+function ramUncertainty(
+  ramRatio: number,
+  knowledge: RamKnowledge
+) {
+  const observedPenalty = ramPenaltyFromRatio(ramRatio);
+
+  if (knowledge !== "lower-bound") {
+    return {
+      centerPenalty: observedPenalty,
+      lowRangeFactor: 1,
+      highRangeFactor: 1,
+    };
+  }
+
+  // deviceMemory=8 puede significar 8 GB o más. En ese caso no elegimos
+  // arbitrariamente uno de los extremos: centramos la estimación entre el
+  // escenario observado y uno sin penalización por RAM, y ensanchamos el
+  // rango para cubrir ambos.
+  const bestCasePenalty = 1;
+  const centerPenalty = (observedPenalty + bestCasePenalty) / 2;
+
+  return {
+    centerPenalty,
+    lowRangeFactor: observedPenalty / centerPenalty,
+    highRangeFactor: bestCasePenalty / centerPenalty,
+  };
+}
+
+export function estimateGamePerformance(
+  slug: string,
+  hardware: HardwareProfile,
+  settings: EstimateSettings
+): GameEstimate {
+  const profile = getPerformanceProfile(slug);
+
+  if (!hardware.cpu || !hardware.gpu || !hardware.ramGb) {
+    return {
+      slug,
+      fps: 0,
+      minFps: 0,
+      maxFps: 0,
+      tier: "basic",
+      confidence: "low",
+      bottleneck: "balanced",
+      canEstimate: false,
+      reason: "Faltan CPU, GPU o RAM para calcular una estimación útil.",
+    };
+  }
+
+  const cpuRatio = hardware.cpu.score / referenceCpuScore;
+  let gpuRatio = hardware.gpu.score / referenceGpuScore;
+  const ramRatio = hardware.ramGb / profile.ramGb;
+
+  if (hardware.gpu.integrated) {
+    if (hardware.memoryMode === "single") gpuRatio *= 0.75;
+    if (hardware.memoryMode === "unknown") gpuRatio *= 0.87;
+    if (hardware.memoryMode === "dual") gpuRatio *= 1;
+  }
+
+  const cpuWeight = profile.cpuWeight ?? 0.3;
+  const gpuWeight = profile.gpuWeight ?? 0.7;
+
+  const weightedCore =
+    Math.pow(Math.max(cpuRatio, 0.15), cpuWeight) *
+    Math.pow(Math.max(gpuRatio, 0.1), gpuWeight);
+
+  const limitingRatio = Math.min(
+    cpuRatio * 1.08,
+    gpuRatio * 1.16,
+    1.45
+  );
+  const bottleneckCorrection =
+    0.74 + 0.26 * Math.min(1, Math.max(0.3, limitingRatio));
+  const ramModel = ramUncertainty(ramRatio, hardware.ramKnowledge);
+
+  let fps =
+    profile.referenceFps *
+    weightedCore *
+    bottleneckCorrection *
+    ramModel.centerPenalty *
+    resolutionFactor[settings.resolution] *
+    qualityFactor[settings.quality] *
+    (profile.optimization ?? 1);
+
+  if (profile.fpsCap) fps = Math.min(fps, profile.fpsCap);
+
+  fps = Math.max(8, fps);
+
+  const spread = estimateSpread[hardware.confidence];
+  const minFps = Math.max(
+    5,
+    fps * (1 - spread) * ramModel.lowRangeFactor
+  );
+  const uncappedMaxFps =
+    fps * (1 + spread) * ramModel.highRangeFactor;
+  const maxFps = profile.fpsCap
+    ? Math.min(profile.fpsCap, uncappedMaxFps)
+    : uncappedMaxFps;
+
+  const roundedFps = roundFps(fps);
+  const roundedMinFps = roundFps(minFps);
+  const roundedMaxFps = roundFps(maxFps);
+
+  const bottleneck =
+    hardware.ramKnowledge === "confirmed" && ramRatio < 0.8
+      ? "ram"
+      : cpuRatio + 0.1 < gpuRatio
+        ? "cpu"
+        : gpuRatio + 0.1 < cpuRatio
+          ? "gpu"
+          : "balanced";
+
+  return {
+    slug,
+    fps: roundedFps,
+    minFps: roundedMinFps,
+    maxFps: roundedMaxFps,
+    tier: getPerformanceTier(roundedMinFps),
+    confidence: hardware.confidence,
+    bottleneck,
+    canEstimate: true,
+  };
+}

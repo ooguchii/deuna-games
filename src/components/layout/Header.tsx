@@ -68,7 +68,7 @@ export default function Header() {
             </form>
 
             <Link
-              href="/juegos?equipo=requirements"
+              href="/requisitos"
               className={styles.gameFinder}
             >
               <Gamepad2
@@ -161,7 +161,7 @@ export default function Header() {
           <HeaderNavigation variant="mobile" />
 
           <Link
-            href="/juegos?equipo=requirements"
+            href="/requisitos"
             className={styles.mobileFinder}
           >
             <Gamepad2 size={19} aria-hidden="true" />

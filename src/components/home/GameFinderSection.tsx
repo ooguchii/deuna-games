@@ -29,34 +29,35 @@ export default function GameFinderSection() {
           </h2>
 
           <p>
-            Explora los títulos que ya tienen requisitos cargados
-            y compara memoria, gráficos y sistema antes de elegir.
+            Detectamos lo que tu navegador permita identificar y,
+            si falta algún dato, completas CPU, GPU y RAM para obtener
+            FPS orientativos según resolución y calidad.
           </p>
 
           <div className={styles.features}>
             <span>
               <Cpu size={16} />
-              Requisitos visibles
+              Detección local
             </span>
 
             <span>
               <Monitor size={16} />
-              Compatibilidad
+              FPS orientativos
             </span>
 
             <span>
               <Gamepad2 size={16} />
-              Catálogo filtrable
+              Configuración manual
             </span>
           </div>
         </div>
       </div>
 
       <Link
-        href="/juegos?equipo=requirements"
+        href="/requisitos"
         className={styles.button}
       >
-        Ver juegos con requisitos
+        Descubrir qué puedo jugar
 
         <ChevronRight size={21} />
       </Link>
