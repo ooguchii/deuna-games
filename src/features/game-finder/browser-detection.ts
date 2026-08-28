@@ -26,10 +26,10 @@ type NavigatorWithDeviceMemory = Navigator & {
 function detectOs(platform: string | null, userAgent: string) {
   const text = `${platform ?? ""} ${userAgent}`.toLowerCase();
 
-  if (text.includes("windows")) return "Windows";
-  if (text.includes("mac")) return "macOS";
   if (text.includes("android")) return "Android";
   if (text.includes("iphone") || text.includes("ipad") || text.includes("ios")) return "iOS";
+  if (text.includes("windows")) return "Windows";
+  if (text.includes("mac")) return "macOS";
   if (text.includes("linux")) return "Linux";
 
   return "Sistema sin confirmar";
@@ -120,22 +120,33 @@ export async function detectBrowserHardware(): Promise<BrowserHardwareSnapshot> 
   let gpuSource: BrowserHardwareSnapshot["gpuSource"] = "none";
 
   const webGpu = await detectWebGpu(nav);
-  if (webGpu) {
+  const webGpuRecognized = webGpu ? findGpuByRenderer(webGpu.renderer) : null;
+
+  if (webGpu && webGpuRecognized) {
     gpuRenderer = webGpu.renderer;
     gpuVendor = webGpu.vendor;
     gpuSource = "webgpu";
   } else {
     const webGl = detectWebGl();
+
     if (webGl) {
       gpuRenderer = webGl.renderer;
       gpuVendor = webGl.vendor;
       gpuSource = "webgl";
+    } else if (webGpu) {
+      gpuRenderer = webGpu.renderer;
+      gpuVendor = webGpu.vendor;
+      gpuSource = "webgpu";
     }
   }
 
   if (!logicalProcessors) warnings.push("El navegador no informó procesadores lógicos.");
   if (!approximateMemoryGb) warnings.push("El navegador no expuso una estimación de RAM.");
-  if (!gpuRenderer) warnings.push("La GPU quedó protegida por el navegador o no pudo identificarse.");
+  if (!gpuRenderer) {
+    warnings.push("La GPU quedó protegida por el navegador o no pudo identificarse.");
+  } else if (!findGpuByRenderer(gpuRenderer)) {
+    warnings.push("El navegador expuso la GPU, pero el modelo todavía no está en el catálogo de equivalencias.");
+  }
 
   return {
     logicalProcessors,
