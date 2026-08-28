@@ -317,7 +317,6 @@ function GameResultCard({
         <div className={styles.gameCardContent}>
           <div className={styles.gameTitleRow}>
             <h3>{game.title}</h3>
-
             {selected && (
               <span className={styles.selectedMark}>
                 <Check size={13} aria-hidden="true" />
@@ -510,7 +509,12 @@ export default function GameFinderClient({ games }: GameFinderClientProps) {
       if (genre !== "all" && game.category !== genre) return false;
 
       const estimate = estimates.get(game.slug);
-      if (tierFilter !== "all" && estimate?.tier !== tierFilter) return false;
+      if (
+        tierFilter !== "all" &&
+        (!estimate?.canEstimate || estimate.tier !== tierFilter)
+      ) {
+        return false;
+      }
 
       return true;
     });
@@ -536,7 +540,7 @@ export default function GameFinderClient({ games }: GameFinderClientProps) {
     manualDraft.cpuId &&
     manualDraft.gpuId &&
     Number.isFinite(manualRamGb) &&
-    manualRamGb >= 4 &&
+    manualRamGb >= 1 &&
     manualRamGb <= 256
   );
 
@@ -554,7 +558,7 @@ export default function GameFinderClient({ games }: GameFinderClientProps) {
     const gpu = findGpuById(manualDraft.gpuId);
     const ramGb = Number(manualDraft.ramGb);
 
-    if (!cpu || !gpu || !Number.isFinite(ramGb) || ramGb < 4 || ramGb > 256) return;
+    if (!cpu || !gpu || !Number.isFinite(ramGb) || ramGb < 1 || ramGb > 256) return;
 
     const manualProfile: HardwareProfile = {
       cpu,
@@ -811,7 +815,7 @@ export default function GameFinderClient({ games }: GameFinderClientProps) {
               <span>Memoria RAM física</span>
               <select value={manualDraft.ramGb} onChange={(event: ChangeEvent<HTMLSelectElement>) => setManualDraft((current) => ({ ...current, ramGb: event.target.value }))}>
                 <option value="">Selecciona tu RAM</option>
-                {[4, 6, 8, 10, 12, 16, 20, 24, 32, 48, 64, 96, 128, 192, 256].map((ram) => (
+                {[1, 2, 3, 4, 6, 8, 10, 12, 16, 20, 24, 32, 48, 64, 96, 128, 192, 256].map((ram) => (
                   <option key={ram} value={ram}>{ram} GB</option>
                 ))}
               </select>
