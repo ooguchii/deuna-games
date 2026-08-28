@@ -29,24 +29,25 @@ export default function GameFinderSection() {
           </h2>
 
           <p>
-            Elige un perfil de hardware y descubre qué juegos
-            podrían funcionar mejor con una comparación orientativa.
+            Detectamos lo que tu navegador permita identificar y,
+            si falta algún dato, completas CPU, GPU y RAM para obtener
+            FPS orientativos según resolución y calidad.
           </p>
 
           <div className={styles.features}>
             <span>
               <Cpu size={16} />
-              Requisitos visibles
+              Detección local
             </span>
 
             <span>
               <Monitor size={16} />
-              Compatibilidad
+              FPS orientativos
             </span>
 
             <span>
               <Gamepad2 size={16} />
-              Catálogo filtrable
+              Configuración manual
             </span>
           </div>
         </div>
