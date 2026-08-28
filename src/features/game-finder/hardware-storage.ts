@@ -1,3 +1,5 @@
+import "./hardware-catalog-expansion";
+
 import {
   findCpuById,
   findGpuById,
