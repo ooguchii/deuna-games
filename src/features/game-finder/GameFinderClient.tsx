@@ -614,7 +614,11 @@ export default function GameFinderClient({ games }: GameFinderClientProps) {
         ? document.activeElement
         : null;
 
-    setManualDraft(profileToManualDraft(hardware));
+    const sourceProfile = hardware?.source === "example"
+      ? readStoredHardwareProfile()
+      : hardware;
+
+    setManualDraft(profileToManualDraft(sourceProfile));
     setSettingsOpen(true);
   }
 
@@ -677,7 +681,46 @@ export default function GameFinderClient({ games }: GameFinderClientProps) {
     setSettingsOpen(false);
   }
 
+  function scrollToResults() {
+    window.requestAnimationFrame(() => {
+      document.getElementById("results-title")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+  }
+
   function useExampleProfile() {
+    resetFilters();
+
+    const firstAnalyzableGame =
+      games.find((game) => Boolean(getPerformanceProfile(game.slug))) ?? games[0];
+
+    if (firstAnalyzableGame) {
+      setSelectedSlug(firstAnalyzableGame.slug);
+    }
+
+    const hasUsableRealProfile = Boolean(
+      hardware?.source !== "example" &&
+      hardware?.cpu &&
+      hardware?.gpu &&
+      hardware?.ramGb
+    );
+
+    if (hasUsableRealProfile) {
+      scrollToResults();
+      return;
+    }
+
+    const saved = readStoredHardwareProfile();
+    if (saved) {
+      setHardware(saved);
+      setManualDraft(profileToManualDraft(saved));
+      setDetectionState("ready");
+      scrollToResults();
+      return;
+    }
+
     const cpu = findCpuById("ryzen-5-5600g");
     const gpu = findGpuById("radeon-vega-7");
     if (!cpu || !gpu) return;
@@ -695,8 +738,8 @@ export default function GameFinderClient({ games }: GameFinderClientProps) {
     };
 
     setHardware(example);
-    setManualDraft(profileToManualDraft(example));
     setDetectionState("ready");
+    scrollToResults();
   }
 
   function resetFilters() {
@@ -706,6 +749,7 @@ export default function GameFinderClient({ games }: GameFinderClientProps) {
   }
 
   const canEstimate = Boolean(activeHardware.cpu && activeHardware.gpu && activeHardware.ramGb);
+  const hasRealAnalysis = Boolean(canEstimate && hardware?.source !== "example");
 
   return (
     <div className={styles.finderRoot}>
@@ -728,7 +772,7 @@ export default function GameFinderClient({ games }: GameFinderClientProps) {
           <div className={styles.heroActions}>
             <button type="button" className={styles.primaryAction} onClick={useExampleProfile}>
               <Target size={18} aria-hidden="true" />
-              Ver análisis de ejemplo
+              {hasRealAnalysis ? "Ver análisis con mi PC" : "Ver análisis de ejemplo"}
               <ArrowRight size={17} aria-hidden="true" />
             </button>
 
@@ -754,7 +798,8 @@ export default function GameFinderClient({ games }: GameFinderClientProps) {
               <div
                 key={game.slug}
                 className={styles.heroCover}
-                style={{ "--cover-index": index } as CSSProperties}
+                style={{ "--cover-index": index } as CSSProperties
+              }
               >
                 {game.coverImage && (
                   <Image
