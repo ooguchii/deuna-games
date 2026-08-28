@@ -19,6 +19,12 @@ import { safeJsonLd } from "@/lib/safe-json-ld";
 
 import styles from "./page.module.css";
 
+type RequirementsPageProps = {
+  searchParams: Promise<{
+    juego?: string;
+  }>;
+};
+
 export const metadata: Metadata = {
   title: "¿Qué puedo jugar con mi PC?",
   description:
@@ -41,7 +47,26 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RequirementsPage() {
+export default async function RequirementsPage({
+  searchParams,
+}: RequirementsPageProps) {
+  const { juego } = await searchParams;
+  const requestedIndex =
+    typeof juego === "string"
+      ? games.findIndex(
+          (game) => game.slug === juego
+        )
+      : -1;
+
+  const orderedGames =
+    requestedIndex > 0
+      ? [
+          games[requestedIndex],
+          ...games.slice(0, requestedIndex),
+          ...games.slice(requestedIndex + 1),
+        ]
+      : games;
+
   const breadcrumbJsonLd = {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
@@ -101,7 +126,7 @@ export default function RequirementsPage() {
           <span aria-current="page">¿Qué puedo jugar?</span>
         </nav>
 
-        <GameFinderClient games={games} />
+        <GameFinderClient games={orderedGames} />
       </main>
 
       <Footer />
