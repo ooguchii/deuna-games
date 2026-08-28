@@ -72,6 +72,7 @@ const EMPTY_PROFILE: HardwareProfile = {
   cpu: null,
   gpu: null,
   ramGb: null,
+  ramKnowledge: "unknown",
   os: "Sistema sin confirmar",
   memoryMode: "unknown",
   source: "browser",
@@ -172,6 +173,7 @@ function readStoredProfile(): HardwareProfile | null {
       cpu,
       gpu,
       ramGb,
+      ramKnowledge: "confirmed",
       os: typeof value.os === "string" && value.os.trim()
         ? value.os
         : "Sistema sin confirmar",
@@ -211,8 +213,14 @@ function profileToManualDraft(profile: HardwareProfile | null): ManualDraft {
   return {
     cpuId,
     gpuId,
-    ramGb: profile?.ramGb ? String(profile.ramGb) : "16",
-    os: profile?.os && profile.os !== "Sistema sin confirmar" ? profile.os : "Windows 11 64-bit",
+    // Una cifra de RAM expuesta por el navegador no se precarga como si
+    // estuviera confirmada. El usuario debe elegir la cantidad física real.
+    ramGb: profile?.ramKnowledge === "confirmed" && profile.ramGb
+      ? String(profile.ramGb)
+      : "",
+    os: profile?.os && profile.os !== "Sistema sin confirmar"
+      ? profile.os
+      : "Windows 11 64-bit",
     memoryMode: profile?.memoryMode ?? "unknown",
   };
 }
@@ -222,7 +230,20 @@ function profileLabel(profile: HardwareProfile | null) {
   if (profile.source === "example") return "Perfil de demostración";
   if (profile.source === "manual") return "Perfil confirmado";
   if (profile.source === "saved") return "Perfil guardado";
-  return profile.confidence === "medium" ? "Detección parcial" : "Detección orientativa";
+  return "Detección orientativa";
+}
+
+function profileRamLabel(profile: HardwareProfile) {
+  if (!profile.ramGb) return "No disponible";
+  if (profile.ramKnowledge === "lower-bound") return `${profile.ramGb} GB o más`;
+  if (profile.ramKnowledge === "approximate") return `≈ ${profile.ramGb} GB`;
+  return `${profile.ramGb} GB`;
+}
+
+function snapshotRamLabel(snapshot: BrowserHardwareSnapshot | null) {
+  if (!snapshot?.approximateMemoryGb) return "Protegida";
+  if (snapshot.memoryKind === "lower-bound") return `${snapshot.approximateMemoryGb} GB o más`;
+  return `≈ ${snapshot.approximateMemoryGb} GB`;
 }
 
 function confidenceLabel(estimate: GameEstimate | null) {
@@ -355,10 +376,7 @@ function GameResultCard({
                 <Bolt size={14} aria-hidden="true" />
                 {tier.label}
               </span>
-
-              <strong>
-                {estimate.minFps}–{estimate.maxFps} FPS
-              </strong>
+              <strong>{estimate.minFps}–{estimate.maxFps} FPS</strong>
             </div>
           ) : (
             <div className={`${styles.performanceBar} ${styles.performancePending}`}>
@@ -366,7 +384,6 @@ function GameResultCard({
                 <Info size={14} aria-hidden="true" />
                 Falta configurar
               </span>
-
               <strong>— FPS</strong>
             </div>
           )}
@@ -376,7 +393,6 @@ function GameResultCard({
               <Gamepad2 size={13} aria-hidden="true" />
               {game.category}
             </span>
-
             <span>
               <Monitor size={13} aria-hidden="true" />
               PC
@@ -419,17 +435,9 @@ export default function GameFinderClient({ games }: GameFinderClientProps) {
   const [favorites, setFavorites] = useState<Set<string>>(() => new Set());
   const [favoritesHydrated, setFavoritesHydrated] = useState(false);
 
-  const runDetection = useCallback(async (replaceSaved = false) => {
+  const runDetection = useCallback(async () => {
     setDetectionState("detecting");
-    setDetectionMessage("Leyendo la información que el navegador permite exponer...");
-
-    if (replaceSaved) {
-      try {
-        window.localStorage.removeItem(PROFILE_STORAGE_KEY);
-      } catch {
-        // La detección puede continuar aunque localStorage esté bloqueado.
-      }
-    }
+    setDetectionMessage("Leyendo únicamente la información que el navegador permite exponer...");
 
     try {
       const detected = await detectBrowserHardware();
@@ -443,8 +451,8 @@ export default function GameFinderClient({ games }: GameFinderClientProps) {
       setDetectionState(complete ? "ready" : "partial");
       setDetectionMessage(
         complete
-          ? "Se obtuvo un perfil orientativo. Puedes confirmarlo manualmente para mejorar la estimación."
-          : "El navegador protegió parte del hardware. Completa los datos faltantes manualmente."
+          ? "Obtuvimos una base automática, pero CPU y RAM siguen limitadas por privacidad. Confirma los modelos para mejorar la precisión."
+          : "El navegador protegió parte del hardware. Conservamos lo detectado y puedes completar solo lo que falte."
       );
     } catch {
       setDetectionState("error");
@@ -461,8 +469,8 @@ export default function GameFinderClient({ games }: GameFinderClientProps) {
       if (saved) {
         setHardware(saved);
         setManualDraft(profileToManualDraft(saved));
-        setDetectionState(saved.cpu && saved.gpu && saved.ramGb ? "ready" : "partial");
-        setDetectionMessage("Cargamos el perfil guardado en este navegador. Puedes detectarlo otra vez cuando quieras.");
+        setDetectionState("ready");
+        setDetectionMessage("Cargamos tu perfil confirmado de este navegador. Puedes volver a detectar sin perderlo.");
         return;
       }
 
@@ -566,6 +574,15 @@ export default function GameFinderClient({ games }: GameFinderClientProps) {
     games[0];
   const selectedEstimate = selectedGame ? estimates.get(selectedGame.slug) ?? null : null;
   const selectedProfile = selectedGame ? getPerformanceProfile(selectedGame.slug) : null;
+  const selectedManualGpu = findGpuById(manualDraft.gpuId);
+  const manualRamGb = Number(manualDraft.ramGb);
+  const manualProfileReady = Boolean(
+    manualDraft.cpuId &&
+    manualDraft.gpuId &&
+    Number.isFinite(manualRamGb) &&
+    manualRamGb >= 4 &&
+    manualRamGb <= 256
+  );
 
   function toggleFavorite(slug: string) {
     setFavorites((current) => {
@@ -581,14 +598,15 @@ export default function GameFinderClient({ games }: GameFinderClientProps) {
     const gpu = findGpuById(manualDraft.gpuId);
     const ramGb = Number(manualDraft.ramGb);
 
-    if (!cpu || !gpu || !Number.isFinite(ramGb) || ramGb <= 0) return;
+    if (!cpu || !gpu || !Number.isFinite(ramGb) || ramGb < 4 || ramGb > 256) return;
 
     const manualProfile: HardwareProfile = {
       cpu,
       gpu,
       ramGb,
+      ramKnowledge: "confirmed",
       os: manualDraft.os || "Sistema sin confirmar",
-      memoryMode: manualDraft.memoryMode,
+      memoryMode: gpu.integrated ? manualDraft.memoryMode : "unknown",
       source: "manual",
       confidence: "high",
       updatedAt: nowIso(),
@@ -596,7 +614,7 @@ export default function GameFinderClient({ games }: GameFinderClientProps) {
 
     setHardware(manualProfile);
     setDetectionState("ready");
-    setDetectionMessage("Perfil confirmado manualmente. Las estimaciones usan estos componentes.");
+    setDetectionMessage("Perfil confirmado manualmente. Guardamos estos componentes solo en este navegador.");
     setSettingsOpen(false);
   }
 
@@ -609,6 +627,7 @@ export default function GameFinderClient({ games }: GameFinderClientProps) {
       cpu,
       gpu,
       ramGb: 16,
+      ramKnowledge: "confirmed",
       os: "Windows 11 64-bit",
       memoryMode: "dual",
       source: "example",
@@ -726,7 +745,7 @@ export default function GameFinderClient({ games }: GameFinderClientProps) {
               </div>
               <div>
                 <dt>RAM</dt>
-                <dd>{activeHardware.ramGb ? `${activeHardware.ramGb} GB${activeHardware.source === "browser" ? " aprox." : ""}` : "No disponible"}</dd>
+                <dd>{profileRamLabel(activeHardware)}</dd>
               </div>
               <div>
                 <dt>Sistema</dt>
@@ -763,12 +782,12 @@ export default function GameFinderClient({ games }: GameFinderClientProps) {
 
         <div className={styles.detectionFacts}>
           <div>
-            <span>CPU lógica</span>
-            <strong>{snapshot?.logicalProcessors ? `${snapshot.logicalProcessors} hilos visibles` : hardware?.cpu?.name ?? "Sin confirmar"}</strong>
+            <span>CPU visible</span>
+            <strong>{snapshot?.logicalProcessors ? `${snapshot.logicalProcessors} hilos · modelo protegido` : hardware?.cpu?.name ?? "Sin confirmar"}</strong>
           </div>
           <div>
-            <span>RAM del navegador</span>
-            <strong>{snapshot?.approximateMemoryGb ? `≈ ${snapshot.approximateMemoryGb} GB` : hardware?.ramGb ? `${hardware.ramGb} GB` : "Protegida"}</strong>
+            <span>RAM visible</span>
+            <strong>{snapshot ? snapshotRamLabel(snapshot) : profileRamLabel(activeHardware)}</strong>
           </div>
           <div>
             <span>GPU / API</span>
@@ -778,7 +797,7 @@ export default function GameFinderClient({ games }: GameFinderClientProps) {
         </div>
 
         <div className={styles.detectionActions}>
-          <button type="button" className={styles.detectAgainButton} onClick={() => void runDetection(true)} disabled={detectionState === "detecting"}>
+          <button type="button" className={styles.detectAgainButton} onClick={() => void runDetection()} disabled={detectionState === "detecting"}>
             <RefreshCw size={16} aria-hidden="true" />
             Detectar otra vez
           </button>
@@ -803,7 +822,7 @@ export default function GameFinderClient({ games }: GameFinderClientProps) {
             <div>
               <span className={styles.sectionKicker}>PERFIL MANUAL</span>
               <h2 id="config-title">Confirma los componentes de tu PC</h2>
-              <p>Elegir el modelo exacto mejora mucho más la estimación que cualquier lectura parcial del navegador.</p>
+              <p>Los datos automáticos sirven como ayuda. Para estimaciones más útiles, confirma el modelo exacto de CPU, GPU y la RAM física.</p>
             </div>
 
             <button type="button" className={styles.closeConfig} onClick={() => setSettingsOpen(false)} aria-label="Cerrar configuración">
@@ -833,9 +852,10 @@ export default function GameFinderClient({ games }: GameFinderClientProps) {
             </label>
 
             <label>
-              <span>Memoria RAM</span>
+              <span>Memoria RAM física</span>
               <select value={manualDraft.ramGb} onChange={(event: ChangeEvent<HTMLSelectElement>) => setManualDraft((current) => ({ ...current, ramGb: event.target.value }))}>
-                {[4, 8, 12, 16, 24, 32, 48, 64, 96, 128].map((ram) => (
+                <option value="">Selecciona tu RAM</option>
+                {[4, 6, 8, 10, 12, 16, 20, 24, 32, 48, 64, 96, 128, 192, 256].map((ram) => (
                   <option key={ram} value={ram}>{ram} GB</option>
                 ))}
               </select>
@@ -851,27 +871,31 @@ export default function GameFinderClient({ games }: GameFinderClientProps) {
               </select>
             </label>
 
-            <label>
-              <span>RAM para gráfica integrada</span>
-              <select value={manualDraft.memoryMode} onChange={(event: ChangeEvent<HTMLSelectElement>) => setManualDraft((current) => ({ ...current, memoryMode: event.target.value as MemoryMode }))}>
-                <option value="unknown">No lo sé</option>
-                <option value="single">Single-channel / un módulo</option>
-                <option value="dual">Dual-channel / dos módulos</option>
-              </select>
-            </label>
+            {selectedManualGpu?.integrated && (
+              <label>
+                <span>Canales de memoria</span>
+                <select value={manualDraft.memoryMode} onChange={(event: ChangeEvent<HTMLSelectElement>) => setManualDraft((current) => ({ ...current, memoryMode: event.target.value as MemoryMode }))}>
+                  <option value="unknown">No lo sé</option>
+                  <option value="single">Single-channel / un módulo</option>
+                  <option value="dual">Dual-channel / dos módulos</option>
+                </select>
+              </label>
+            )}
           </div>
 
           <div className={styles.configFooter}>
             <p>
               <Info size={15} aria-hidden="true" />
-              En gráficas integradas, dual-channel puede cambiar bastante el rendimiento. Por eso lo incluimos en el cálculo.
+              {selectedManualGpu?.integrated
+                ? "En gráficas integradas, single/dual-channel puede cambiar bastante el rendimiento y por eso entra en el cálculo."
+                : "La CPU exacta no puede leerse desde una web estándar. Si el navegador no la identifica, elegirla aquí es la opción más fiable."}
             </p>
 
             <button
               type="button"
               className={styles.saveProfileButton}
               onClick={applyManualProfile}
-              disabled={!manualDraft.cpuId || !manualDraft.gpuId || !manualDraft.ramGb}
+              disabled={!manualProfileReady}
             >
               Guardar y recalcular
               <ArrowRight size={16} aria-hidden="true" />
@@ -1016,7 +1040,7 @@ export default function GameFinderClient({ games }: GameFinderClientProps) {
               <ShieldCheck size={18} aria-hidden="true" />
               <div>
                 <strong>Tu privacidad primero</strong>
-                <p>El perfil se guarda solo en este navegador. No necesitamos leer archivos de tu PC.</p>
+                <p>El perfil confirmado se guarda solo en este navegador. Una nueva detección automática no borra ese perfil.</p>
               </div>
             </div>
           </aside>
@@ -1127,7 +1151,7 @@ export default function GameFinderClient({ games }: GameFinderClientProps) {
         <div>
           <strong>Los FPS son un rango, no una promesa.</strong>
           <p>
-            Drivers, temperatura, procesos en segundo plano, versión del juego y memoria pueden cambiar el resultado. El modelo toma 1080p/Medio como referencia y no simula ray tracing, frame generation ni escalado. El objetivo es orientarte, no fingir un benchmark que no ejecutamos.
+            Drivers, temperatura, procesos en segundo plano, versión del juego y memoria pueden cambiar el resultado. La RAM expuesta por el navegador se trata como aproximada —8 GB puede significar 8 GB o más— y ensancha el rango en lugar de asumirse como exacta. El modelo toma 1080p/Medio como referencia y no simula ray tracing, frame generation ni escalado.
           </p>
         </div>
       </section>
