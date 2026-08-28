@@ -1,0 +1,422 @@
+.main {
+  width:
+    min(
+      calc(100% - var(--page-inline-space)),
+      var(--content-width)
+    );
+
+  margin:
+    0 auto;
+
+  padding:
+    0 0 78px;
+}
+
+
+/* ==================================================
+   HERO
+================================================== */
+
+.hero {
+  position: relative;
+
+  min-height: 330px;
+
+  overflow: hidden;
+
+  border-right:
+    1px solid
+    color-mix(in srgb, var(--text-soft) 8%, transparent);
+
+  border-bottom:
+    1px solid
+    color-mix(in srgb, var(--text-soft) 11%, transparent);
+
+  border-left:
+    1px solid
+    color-mix(in srgb, var(--text-soft) 8%, transparent);
+
+  background:
+    var(--background);
+
+  isolation: isolate;
+}
+
+.heroImage {
+  position: absolute;
+
+  z-index: 0;
+
+  inset: 0;
+
+  background-image:
+    url(
+      "/images/catalog/juegos-reference-hero-v2.webp"
+    );
+
+  background-size:
+    cover;
+
+  background-position:
+    center right;
+
+  filter:
+    brightness(0.84)
+    saturate(1.09)
+    contrast(1.045);
+
+  transform:
+    scale(1.012);
+}
+
+.heroShade {
+  position: absolute;
+
+  z-index: 1;
+
+  inset: 0;
+
+  background:
+    linear-gradient(
+      90deg,
+      rgba(
+        4,
+        7,
+        11,
+        0.995
+      ) 0%,
+      rgba(
+        4,
+        7,
+        11,
+        0.97
+      ) 21%,
+      rgba(
+        4,
+        7,
+        11,
+        0.82
+      ) 37%,
+      rgba(
+        4,
+        7,
+        11,
+        0.44
+      ) 54%,
+      rgba(
+        4,
+        7,
+        11,
+        0.09
+      ) 73%,
+      rgba(
+        4,
+        7,
+        11,
+        0.02
+      ) 100%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(
+        4,
+        7,
+        11,
+        0.08
+      ),
+      rgba(
+        4,
+        7,
+        11,
+        0.11
+      ) 55%,
+      rgba(
+        4,
+        7,
+        11,
+        0.48
+      ) 100%
+    );
+}
+
+.heroGlow {
+  position: absolute;
+
+  z-index: 2;
+
+  right: 7%;
+  bottom: -46%;
+
+  width: 46%;
+  aspect-ratio:
+    1 / 1;
+
+  border-radius: 50%;
+
+  background:
+    radial-gradient(
+      circle,
+      color-mix(in srgb, var(--brand) 11%, transparent),
+      transparent 68%
+    );
+
+  filter:
+    blur(24px);
+
+  pointer-events:
+    none;
+}
+
+.breadcrumb {
+  position: relative;
+
+  z-index: 4;
+
+  min-height: 58px;
+
+  display: flex;
+  align-items: center;
+
+  gap: 7px;
+
+  padding:
+    0 28px;
+
+  color:
+    #727e8a;
+
+  font-size: var(--font-xs);
+  font-weight: 650;
+}
+
+.breadcrumb a {
+  display:
+    inline-flex;
+
+  align-items: center;
+
+  gap: 6px;
+
+  color:
+    #9ba4af;
+
+  transition:
+    color 160ms ease;
+}
+
+.breadcrumb a:hover {
+  color: #ffffff;
+}
+
+.heroContent {
+  position: relative;
+
+  z-index: 4;
+
+  width:
+    min(
+      50%,
+      690px
+    );
+
+  padding:
+    47px 0 78px 28px;
+}
+
+.eyebrow {
+  display: inline-block;
+
+  color:
+    var(--brand);
+
+  font-size: var(--font-micro);
+  font-weight: 850;
+
+  letter-spacing:
+    0.14em;
+}
+
+.hero h1 {
+  margin-top:
+    10px;
+
+  color:
+    #f8f9fb;
+
+  font-size:
+    clamp(
+      48px,
+      4.9vw,
+      74px
+    );
+
+  line-height:
+    0.98;
+
+  font-weight:
+    900;
+
+  letter-spacing:
+    -0.055em;
+}
+
+.heroContent p {
+  max-width:
+    560px;
+
+  margin-top:
+    17px;
+
+  color:
+    #afb7c1;
+
+  font-size:
+    14px;
+
+  line-height:
+    1.62;
+
+  text-wrap:
+    pretty;
+}
+
+.heroMeta {
+  margin-top:
+    17px;
+
+  display: flex;
+  align-items: center;
+
+  gap: 8px;
+
+  color:
+    #77828f;
+
+  font-size: var(--font-xs);
+}
+
+.heroMeta strong {
+  color:
+    #dfe4e9;
+
+  font-weight:
+    780;
+}
+
+@media (
+  max-width: 900px
+) {
+  .heroContent {
+    width: 60%;
+  }
+
+  .heroImage {
+    background-position:
+      60% center;
+  }
+}
+
+@media (
+  max-width: 650px
+) {
+  .main {
+    width:
+      calc(100% - var(--page-inline-space));
+
+    padding-bottom:
+      48px;
+  }
+
+  .hero {
+    min-height:
+      340px;
+  }
+
+  .heroImage {
+    background-size:
+      auto 100%;
+
+    background-position:
+      64% center;
+
+    opacity: 0.84;
+
+    transform:
+      scale(1.08);
+  }
+
+  .heroShade {
+    background:
+      linear-gradient(
+        90deg,
+        rgba(
+          4,
+          7,
+          11,
+          0.99
+        ) 0%,
+        rgba(
+          4,
+          7,
+          11,
+          0.91
+        ) 55%,
+        rgba(
+          4,
+          7,
+          11,
+          0.48
+        ) 100%
+      ),
+      linear-gradient(
+        180deg,
+        rgba(
+          4,
+          7,
+          11,
+          0.12
+        ),
+        rgba(
+          4,
+          7,
+          11,
+          0.80
+        ) 100%
+      );
+  }
+
+  .breadcrumb {
+    min-height:
+      50px;
+
+    padding:
+      0 18px;
+  }
+
+  .heroContent {
+    width: 100%;
+
+    padding:
+      58px 18px 78px;
+  }
+
+  .hero h1 {
+    font-size:
+      clamp(
+        44px,
+        13vw,
+        58px
+      );
+  }
+
+  .heroContent p {
+    max-width: 84%;
+
+    font-size: var(--font-sm);
+  }
+}
+
+/* THEME V2 — JUEGOS HERO */
+.hero { background: var(--background); }
+.heroGlow { background: radial-gradient(circle, color-mix(in srgb, var(--accent-violet) 15%, transparent), color-mix(in srgb, var(--brand) 7%, transparent) 44%, transparent 70%); }
+.heroMeta strong { color: var(--accent-gold); }

@@ -1,0 +1,188 @@
+.section {
+  margin-top: 24px;
+
+  display: grid;
+
+  grid-template-columns:
+    repeat(4, minmax(0, 1fr));
+
+  gap: 1px;
+
+  overflow: hidden;
+
+  border: 1px solid #17202b;
+  border-radius: 14px;
+
+  background: #17202b;
+}
+
+.item {
+  min-height: 120px;
+
+  display: flex;
+  align-items: center;
+
+  gap: 14px;
+
+  padding: 21px;
+
+  background:
+    linear-gradient(
+      145deg,
+      #0c1119,
+      var(--surface-control)
+    );
+}
+
+.icon {
+  width: 47px;
+  height: 47px;
+
+  display: grid;
+  place-items: center;
+
+  flex-shrink: 0;
+
+  color: var(--brand);
+
+  border: 1px solid color-mix(in srgb, var(--brand) 25%, transparent);
+  border-radius: 11px;
+
+  background: color-mix(in srgb, var(--brand) 4.5%, transparent);
+}
+
+.item h3 {
+  color: var(--text);
+
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.item p {
+  margin-top: 4px;
+
+  color: #737e8d;
+
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+@media (max-width: 1000px) {
+  .section {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 560px) {
+  .section {
+    grid-template-columns: 1fr;
+  }
+}
+/* ==================================================
+   ACABADO VISUAL — CONFIANZA
+================================================== */
+
+@media (max-width: 560px) {
+  .item {
+    min-height: 102px;
+    gap: 13px;
+    padding: 17px 18px;
+  }
+
+  .icon {
+    width: 44px;
+    height: 44px;
+  }
+
+  .item p {
+    max-width: 245px;
+  }
+}
+
+/* ==================================================
+   FINAL VISUAL POLISH — TRUST
+================================================== */
+
+.section {
+  margin-top: 28px;
+
+  border-color:
+    color-mix(in srgb, var(--text-soft) 15%, transparent);
+
+  background:
+    color-mix(in srgb, var(--text-soft) 12%, transparent);
+
+  box-shadow:
+    0 18px 52px
+    rgba(0, 0, 0, 0.1);
+}
+
+.item {
+  position: relative;
+
+  background:
+    linear-gradient(
+      145deg,
+      #0c131c,
+      var(--surface-control)
+    );
+
+  transition:
+    background 200ms ease;
+}
+
+.icon {
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--brand) 7.5%, transparent),
+      color-mix(in srgb, var(--brand) 2.5%, transparent)
+    );
+
+  box-shadow:
+    inset 0 1px 0
+      rgba(255, 255, 255, 0.02);
+
+  transition:
+    transform 220ms var(--ease-premium),
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .item:hover {
+    background:
+      linear-gradient(
+        145deg,
+        #0f1721,
+        #090f16
+      );
+  }
+
+  .item:hover
+  .icon {
+    transform:
+      translateY(-2px)
+      scale(1.055);
+
+    border-color:
+      color-mix(in srgb, var(--brand) 45%, transparent);
+
+    box-shadow:
+      0 8px 24px
+      color-mix(in srgb, var(--brand) 7%, transparent);
+  }
+}
+
+@media (max-width: 560px) {
+  .section {
+    margin-top: 22px;
+  }
+
+  .item {
+    min-height: 96px;
+  }
+}
+
+/* THEME V2 — PANEL */
+.section { background: var(--gradient-panel); border-color: var(--panel-border); box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 1.8%, transparent), 0 18px 44px rgba(0,0,0,.11); }

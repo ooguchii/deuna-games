@@ -1,0 +1,70 @@
+# EJEMPLO - NO copiar sin adaptar dominio/certificados.
+#
+# El proceso Next debe escuchar sólo en 127.0.0.1:3000.
+#
+# Política privacy-first:
+# - no se reenvía la IP real del visitante a la aplicación;
+# - access_log queda desactivado;
+# - sólo se conservan errores críticos de infraestructura;
+# - el rate limiting puede seguir usando $binary_remote_addr en Nginx
+#   sin entregar ese dato a Next.
+#
+# En nginx.conf, dentro de http {}, se puede definir:
+#
+# limit_req_zone $binary_remote_addr zone=deuna_general:10m rate=20r/s;
+
+server {
+    listen 80;
+    listen [::]:80;
+
+    server_name example.com www.example.com;
+
+    access_log off;
+    error_log /var/log/nginx/deuna-games-error.log crit;
+
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+
+    server_name example.com www.example.com;
+
+    server_tokens off;
+
+    access_log off;
+    error_log /var/log/nginx/deuna-games-error.log crit;
+
+    ssl_certificate     /RUTA/CERTIFICADO/fullchain.pem;
+    ssl_certificate_key /RUTA/CERTIFICADO/privkey.pem;
+
+    client_max_body_size 1m;
+
+    # Activar HSTS SOLAMENTE cuando HTTPS ya esté probado y sea permanente.
+    # add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+
+    location / {
+        # Si configuraste limit_req_zone en http{}:
+        # limit_req zone=deuna_general burst=40 nodelay;
+
+        proxy_pass http://127.0.0.1:3000;
+
+        proxy_http_version 1.1;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # No reenviar X-Real-IP / X-Forwarded-For: la aplicación
+        # no necesita conocer la dirección real del visitante.
+
+        proxy_hide_header X-Powered-By;
+        proxy_hide_header X-Nextjs-Cache;
+        proxy_hide_header X-Nextjs-Prerender;
+        proxy_hide_header X-Nextjs-Stale-Time;
+
+        proxy_connect_timeout 10s;
+        proxy_send_timeout 30s;
+        proxy_read_timeout 30s;
+    }
+}

@@ -1,0 +1,16 @@
+.image {
+  object-position: center;
+}
+
+.coverImage,
+.heroImage {
+  object-fit: cover;
+}
+
+.fallback {
+  position: absolute;
+  inset: 0;
+
+  background-position: center;
+  background-size: cover;
+}

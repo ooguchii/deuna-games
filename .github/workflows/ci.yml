@@ -1,0 +1,101 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      NEXT_PUBLIC_SITE_URL: https://example.invalid
+      NEXT_TELEMETRY_DISABLED: 1
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Repository hygiene
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          forbidden='(^|/)(DEUNA_ANALISIS_COMPLETO|legacy-archive|theme-recovery-backup-[^/]*|payload)(/|$)|(^|/)(PROJECT_CONTEXT|PROJECT_REVIEW|PROJECT_AUDIT|PROJECT_COLOR_AUDIT|PROJECT_VISUAL_AUDIT|DEBUG_REPORT).*\.md$|(^|/)(APLICAR-|REPARAR-|RECUPERAR-|LIMPIEZA-SEGURA-|PREPARAR-DEUNA-|FIX-|FORZAR-|LIMPIAR-).*\.ps1$|^src/theme/palette\.ts$'
+
+          if git ls-files | grep -E "$forbidden"; then
+            echo "::error::El repositorio contiene archivos históricos, generados o de reparación que deben permanecer fuera del código activo."
+            exit 1
+          fi
+
+          sensitive='(^|/)\.env($|\.)|\.(pem|key|p12|pfx|kdbx|crt|cer)$'
+          sensitive_matches="$(git ls-files | grep -E "$sensitive" | grep -v '^\.env\.example$' || true)"
+
+          if [ -n "$sensitive_matches" ]; then
+            printf '%s\n' "$sensitive_matches"
+            echo "::error::Se detectaron archivos sensibles trackeados por Git."
+            exit 1
+          fi
+
+      - name: Setup Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Source hygiene
+        run: npm run check:source
+
+      - name: Public privacy
+        run: npm run check:privacy
+
+      - name: Text encoding
+        run: npm run check:encoding
+
+      - name: Data integrity
+        run: npm run check:data
+
+      - name: Asset integrity
+        run: npm run check:assets
+
+      - name: Route integrity
+        run: npm run check:routes
+
+      - name: CSS variable integrity
+        run: npm run check:css-vars
+
+      - name: CSS Modules integrity
+        run: npm run check:css-modules
+
+      - name: Security scan
+        run: npm run security:scan -- --skip-npm-audit
+
+      - name: Build
+        run: npm run build
+
+      - name: Runtime smoke
+        run: npm run smoke
+
+      - name: Dependency audit
+        run: npm run audit:deps
