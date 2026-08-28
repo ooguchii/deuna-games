@@ -111,6 +111,10 @@ export function estimateGamePerformance(
     ? Math.min(profile.fpsCap, fps * (1 + spread))
     : fps * (1 + spread);
 
+  const roundedFps = roundFps(fps);
+  const roundedMinFps = roundFps(minFps);
+  const roundedMaxFps = roundFps(maxFps);
+
   const bottleneck =
     ramRatio < 0.8
       ? "ram"
@@ -122,10 +126,10 @@ export function estimateGamePerformance(
 
   return {
     slug,
-    fps: roundFps(fps),
-    minFps: roundFps(minFps),
-    maxFps: roundFps(maxFps),
-    tier: getPerformanceTier(fps),
+    fps: roundedFps,
+    minFps: roundedMinFps,
+    maxFps: roundedMaxFps,
+    tier: getPerformanceTier(roundedMinFps),
     confidence: hardware.confidence,
     bottleneck,
     canEstimate: true,
