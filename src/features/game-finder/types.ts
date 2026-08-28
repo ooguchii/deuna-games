@@ -4,6 +4,8 @@ export type ConfidenceLevel = "low" | "medium" | "high";
 
 export type MemoryMode = "unknown" | "single" | "dual";
 
+export type RamKnowledge = "confirmed" | "approximate" | "lower-bound";
+
 export type ResolutionPreset = "720p" | "1080p" | "1440p" | "2160p";
 
 export type QualityPreset = "low" | "medium" | "high" | "ultra";
@@ -19,6 +21,7 @@ export type HardwareProfile = {
   cpu: HardwarePart | null;
   gpu: HardwarePart | null;
   ramGb: number | null;
+  ramKnowledge: RamKnowledge;
   os: string;
   memoryMode: MemoryMode;
   source: HardwareSource;
@@ -29,6 +32,7 @@ export type HardwareProfile = {
 export type BrowserHardwareSnapshot = {
   logicalProcessors: number | null;
   approximateMemoryGb: number | null;
+  memoryKind: "unknown" | "approximate" | "lower-bound";
   gpuRenderer: string | null;
   gpuVendor: string | null;
   gpuSource: "webgpu" | "webgl" | "none";
