@@ -27,14 +27,25 @@ export type GamePlatform =
   | "Xbox"
   | "Nintendo Switch";
 
-export type GameDownload = {
-  /*
-   * La disponibilidad se deriva de una descarga concreta.
-   * No usar booleanos separados para declarar una descarga
-   * que todavía no tiene destino real.
-   */
+export type GameDownloadSource = {
+  id: string;
+  name: string;
   href: string;
   label?: string;
+};
+
+export type GameDownload = {
+  /*
+   * href se conserva para compatibilidad con juegos ya configurados.
+   * sources permite ofrecer varias fuentes sin acoplar el modelo a
+   * proveedores concretos como MEGA, Drive o MediaFire.
+   */
+  href?: string;
+  label?: string;
+  sources?: GameDownloadSource[];
+  sizeGb?: number;
+  fileCount?: number;
+  platform?: string;
 };
 
 export type Game = {
