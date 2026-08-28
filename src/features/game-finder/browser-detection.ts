@@ -192,7 +192,7 @@ export function profileFromBrowserSnapshot(snapshot: BrowserHardwareSnapshot): H
     cpu,
     gpu,
     ramGb: snapshot.approximateMemoryGb,
-    ramKnowledge: snapshot.memoryKind === "unknown" ? "approximate" : snapshot.memoryKind,
+    ramKnowledge: snapshot.memoryKind,
     os: detectOs(snapshot.platform, navigator.userAgent),
     memoryMode: "unknown",
     source: "browser",
