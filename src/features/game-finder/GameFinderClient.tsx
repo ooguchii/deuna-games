@@ -8,22 +8,16 @@ import {
   Bolt,
   Check,
   CheckCircle2,
-  ChevronRight,
-  Cpu,
   Gamepad2,
   Grid2X2,
   Heart,
   Info,
   List,
-  LoaderCircle,
   MemoryStick,
   Monitor,
-  RefreshCw,
   RotateCcw,
   ShieldCheck,
   SlidersHorizontal,
-  Sparkles,
-  Target,
   X,
 } from "lucide-react";
 
@@ -777,155 +771,6 @@ export default function GameFinderClient({ games }: GameFinderClientProps) {
         onViewAll={scrollToResults}
       />
 
-      <section className={styles.hero} aria-labelledby="finder-title" hidden>
-        <div className={styles.heroGlow} aria-hidden="true" />
-        <div className={styles.heroGrid} aria-hidden="true" />
-
-        <div className={styles.heroCopy}>
-          <span className={styles.eyebrow}>COMPATIBILIDAD ORIENTATIVA</span>
-
-          <h1 id="finder-title">
-            Descubre los juegos que
-            <strong> tu PC puede correr</strong>
-          </h1>
-
-          <p>
-            Detectamos lo que el navegador permite, completas lo que falte y calculamos un rango de FPS según resolución y calidad.
-          </p>
-
-          <div className={styles.heroActions}>
-            <button type="button" className={styles.primaryAction} onClick={useExampleProfile}>
-              <Target size={18} aria-hidden="true" />
-              {hasRealAnalysis ? "Ver análisis con mi PC" : "Ver análisis de ejemplo"}
-              <ArrowRight size={17} aria-hidden="true" />
-            </button>
-
-            <button
-              type="button"
-              className={styles.secondaryAction}
-              onClick={openSettings}
-            >
-              <SlidersHorizontal size={18} aria-hidden="true" />
-              Configurar perfil
-            </button>
-          </div>
-
-          <div className={styles.heroTrust}>
-            <ShieldCheck size={15} aria-hidden="true" />
-            La detección y el cálculo se procesan en tu navegador. No leemos tus archivos ni instalamos nada.
-          </div>
-        </div>
-
-        <div className={styles.heroVisual}>
-          <div className={styles.heroCovers}>
-            {games.slice(0, 4).map((game, index) => (
-              <div
-                key={game.slug}
-                className={styles.heroCover}
-                style={{ "--cover-index": index } as CSSProperties}
-              >
-                {game.coverImage && (
-                  <Image
-                    src={game.coverImage}
-                    alt=""
-                    fill
-                    sizes="180px"
-                    className={styles.heroCoverImage}
-                    priority={index < 2}
-                  />
-                )}
-              </div>
-            ))}
-
-            <span className={styles.heroRecommendationBadge}>
-              <Gamepad2 size={14} aria-hidden="true" />
-              Recomendaciones para tu equipo
-            </span>
-          </div>
-
-          <div className={styles.profileCard}>
-            <div className={styles.profileCardHeader}>
-              <div>
-                <span>PERFIL ACTUAL</span>
-                <strong>{profileLabel(hardware)}</strong>
-              </div>
-
-              {detectionState === "detecting" ? (
-                <LoaderCircle className={styles.spin} size={22} aria-hidden="true" />
-              ) : (
-                <CheckCircle2 size={22} aria-hidden="true" />
-              )}
-            </div>
-
-            <dl className={styles.profileSpecs}>
-              <div>
-                <dt>CPU</dt>
-                <dd>{activeHardware.cpu?.name ?? "No identificado"}</dd>
-              </div>
-              <div>
-                <dt>GPU</dt>
-                <dd>{activeHardware.gpu?.name ?? "No identificada"}</dd>
-              </div>
-              <div>
-                <dt>RAM</dt>
-                <dd>{profileRamLabel(activeHardware)}</dd>
-              </div>
-              <div>
-                <dt>Sistema</dt>
-                <dd>{activeHardware.os}</dd>
-              </div>
-            </dl>
-
-            <div className={overlayStyles.profileStatus}>
-              <div className={overlayStyles.profileStatusTopline}>
-                <span
-                  className={overlayStyles.profileStatusLabel}
-                  data-state={detectionState}
-                >
-                  {detectionState === "detecting" ? (
-                    <LoaderCircle size={13} aria-hidden="true" />
-                  ) : detectionState === "partial" || detectionState === "error" ? (
-                    <Info size={13} aria-hidden="true" />
-                  ) : (
-                    <CheckCircle2 size={13} aria-hidden="true" />
-                  )}
-                  {detectionLabel(detectionState, hardware)}
-                </span>
-
-                <small className={overlayStyles.profileSource}>
-                  {detectionSource(hardware, snapshot)}
-                </small>
-              </div>
-
-              <p className={overlayStyles.profileHint}>
-                {detectionHint(detectionState, hardware)}
-              </p>
-            </div>
-
-            <div className={overlayStyles.profileActions}>
-              <button
-                type="button"
-                className={overlayStyles.profileAction}
-                onClick={() => void runDetection()}
-                disabled={detectionState === "detecting"}
-              >
-                <RefreshCw size={14} aria-hidden="true" />
-                Detectar otra vez
-              </button>
-
-              <button
-                type="button"
-                className={overlayStyles.profileActionPrimary}
-                onClick={openSettings}
-              >
-                <SlidersHorizontal size={14} aria-hidden="true" />
-                Cambiar configuración
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {settingsOpen && (
         <div
           className={overlayStyles.backdrop}
@@ -1040,36 +885,6 @@ export default function GameFinderClient({ games }: GameFinderClientProps) {
           </div>
         </div>
       )}
-
-      <section className={styles.processStrip} aria-labelledby="process-title" hidden>
-        <div className={styles.processHeading}>
-          <span>PROCESO SIMPLE</span>
-          <h2 id="process-title">¿Cómo funciona?</h2>
-        </div>
-
-        {[
-          [Cpu, "Eliges tu PC", "Detectamos lo posible y confirmas lo que falte."],
-          [Sparkles, "Comparamos", "Relacionamos CPU, GPU y RAM con la exigencia de cada juego."],
-          [Target, "Ves un rango", "Calculamos FPS orientativos para tu resolución y calidad."],
-          [Gamepad2, "Eliges y exploras", "Abres la ficha del juego antes de decidir."],
-        ].map(([Icon, title, text], index) => {
-          const StepIcon = Icon as typeof Cpu;
-
-          return (
-            <div key={String(title)} className={styles.processStep}>
-              <div className={styles.processIcon}>
-                <StepIcon size={20} aria-hidden="true" />
-                <span>{index + 1}</span>
-              </div>
-              <div>
-                <strong>{String(title)}</strong>
-                <p>{String(text)}</p>
-              </div>
-              {index < 3 && <ChevronRight className={styles.processArrow} size={18} aria-hidden="true" />}
-            </div>
-          );
-        })}
-      </section>
 
       <section className={styles.resultsSection} aria-labelledby="results-title">
         <div className={styles.resultsHeader}>
