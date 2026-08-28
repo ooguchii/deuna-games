@@ -219,6 +219,7 @@ function profileToManualDraft(profile: HardwareProfile | null): ManualDraft {
 
 function profileLabel(profile: HardwareProfile | null) {
   if (!profile) return "Sin configurar";
+  if (profile.source === "example") return "Perfil de demostración";
   if (profile.source === "manual") return "Perfil confirmado";
   if (profile.source === "saved") return "Perfil guardado";
   return profile.confidence === "medium" ? "Detección parcial" : "Detección orientativa";
@@ -472,7 +473,14 @@ export default function GameFinderClient({ games }: GameFinderClientProps) {
   }, [runDetection]);
 
   useEffect(() => {
-    if (!hardware || hardware.source === "browser" || !hardware.cpu || !hardware.gpu || !hardware.ramGb) {
+    if (
+      !hardware ||
+      hardware.source === "browser" ||
+      hardware.source === "example" ||
+      !hardware.cpu ||
+      !hardware.gpu ||
+      !hardware.ramGb
+    ) {
       return;
     }
 
@@ -603,7 +611,7 @@ export default function GameFinderClient({ games }: GameFinderClientProps) {
       ramGb: 16,
       os: "Windows 11 64-bit",
       memoryMode: "dual",
-      source: "manual",
+      source: "example",
       confidence: "high",
       updatedAt: nowIso(),
     };
