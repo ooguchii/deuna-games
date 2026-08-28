@@ -14,20 +14,24 @@ function nowIso() {
   return new Date().toISOString();
 }
 
-export function readStoredHardwareProfile(): HardwareProfile | null {
+export function getStoredHardwareSnapshot() {
   if (typeof window === "undefined") {
     return null;
   }
 
+  return window.localStorage.getItem(
+    PROFILE_STORAGE_KEY
+  );
+}
+
+export function parseStoredHardwareProfile(
+  raw: string | null
+): HardwareProfile | null {
+  if (!raw) {
+    return null;
+  }
+
   try {
-    const raw = window.localStorage.getItem(
-      PROFILE_STORAGE_KEY
-    );
-
-    if (!raw) {
-      return null;
-    }
-
     const value = JSON.parse(raw) as {
       cpuId?: unknown;
       gpuId?: unknown;
@@ -90,4 +94,10 @@ export function readStoredHardwareProfile(): HardwareProfile | null {
   } catch {
     return null;
   }
+}
+
+export function readStoredHardwareProfile() {
+  return parseStoredHardwareProfile(
+    getStoredHardwareSnapshot()
+  );
 }
