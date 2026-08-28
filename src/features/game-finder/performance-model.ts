@@ -1,4 +1,11 @@
-import { getPerformanceProfile } from "./performance-data";
+import {
+  getPerformanceProfile,
+  performanceModelReference,
+} from "./performance-data";
+import {
+  findCpuById,
+  findGpuById,
+} from "./hardware-catalog";
 import type {
   ConfidenceLevel,
   EstimateSettings,
@@ -9,8 +16,18 @@ import type {
   ResolutionPreset,
 } from "./types";
 
-const REFERENCE_CPU_SCORE = 65;
-const REFERENCE_GPU_SCORE = 76;
+const referenceCpu = findCpuById(
+  performanceModelReference.cpuId
+);
+const referenceGpu = findGpuById(
+  performanceModelReference.gpuId
+);
+
+if (!referenceCpu || !referenceGpu) {
+  throw new Error(
+    "El hardware de referencia del modelo no existe en el catálogo."
+  );
+}
 
 const resolutionFactor: Record<ResolutionPreset, number> = {
   "720p": 1.45,
@@ -65,8 +82,8 @@ export function estimateGamePerformance(
     };
   }
 
-  const cpuRatio = hardware.cpu.score / REFERENCE_CPU_SCORE;
-  let gpuRatio = hardware.gpu.score / REFERENCE_GPU_SCORE;
+  const cpuRatio = hardware.cpu.score / referenceCpu.score;
+  let gpuRatio = hardware.gpu.score / referenceGpu.score;
   const ramRatio = hardware.ramGb / profile.ramGb;
 
   if (hardware.gpu.integrated) {
