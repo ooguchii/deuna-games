@@ -1,0 +1,258 @@
+"use client";
+
+import Image from "next/image";
+
+import {
+  ArrowRight,
+  CheckCircle2,
+  ChevronRight,
+  Gamepad2,
+  Info,
+  LoaderCircle,
+  RefreshCw,
+  ShieldCheck,
+  SlidersHorizontal,
+  Sparkles,
+  Target,
+} from "lucide-react";
+
+import type { Game } from "@/types/game";
+
+import type {
+  GameEstimate,
+  HardwareProfile,
+  PerformanceTier,
+} from "./types";
+
+import styles from "./GameFinderUnifiedHero.module.css";
+
+type DetectionState = "idle" | "detecting" | "ready" | "partial" | "error";
+
+type Recommendation = {
+  game: Game;
+  estimate: GameEstimate | null;
+};
+
+type GameFinderUnifiedHeroProps = {
+  recommendations: Recommendation[];
+  hardware: HardwareProfile;
+  profileTitle: string;
+  ramLabel: string;
+  detectionState: DetectionState;
+  detectionStatus: string;
+  detectionHint: string;
+  detectionSource: string;
+  hasRealAnalysis: boolean;
+  onAnalyze: () => void;
+  onConfigure: () => void;
+  onDetect: () => void;
+  onSelectGame: (slug: string) => void;
+  onViewAll: () => void;
+};
+
+const tierLabel: Record<PerformanceTier, string> = {
+  excellent: "Excelente",
+  good: "Bueno",
+  acceptable: "Aceptable",
+  basic: "Básico",
+};
+
+export default function GameFinderUnifiedHero({
+  recommendations,
+  hardware,
+  profileTitle,
+  ramLabel,
+  detectionState,
+  detectionStatus,
+  detectionHint,
+  detectionSource,
+  hasRealAnalysis,
+  onAnalyze,
+  onConfigure,
+  onDetect,
+  onSelectGame,
+  onViewAll,
+}: GameFinderUnifiedHeroProps) {
+  const isDetecting = detectionState === "detecting";
+  const isWarning = detectionState === "partial" || detectionState === "error";
+
+  return (
+    <section className={styles.hero} aria-labelledby="finder-unified-title">
+      <div className={styles.heroGlow} aria-hidden="true" />
+
+      <div className={styles.copy}>
+        <span className={styles.eyebrow}>COMPATIBILIDAD ORIENTATIVA</span>
+
+        <h1 id="finder-unified-title">
+          Descubre los juegos que
+          <strong> tu PC puede correr</strong>
+        </h1>
+
+        <p>
+          Detectamos lo que el navegador permite, comparamos CPU, GPU y RAM con cada juego y calculamos FPS orientativos según resolución y calidad.
+        </p>
+
+        <div className={styles.actions}>
+          <button type="button" className={styles.primaryAction} onClick={onAnalyze}>
+            <Target size={18} aria-hidden="true" />
+            {hasRealAnalysis ? "Ver análisis con mi PC" : "Ver análisis de ejemplo"}
+            <ArrowRight size={17} aria-hidden="true" />
+          </button>
+
+          <button type="button" className={styles.secondaryAction} onClick={onConfigure}>
+            <SlidersHorizontal size={18} aria-hidden="true" />
+            Configurar perfil
+          </button>
+        </div>
+
+        <div className={styles.microFlow} aria-label="Resumen del proceso">
+          <span>Detectamos</span>
+          <i aria-hidden="true" />
+          <span>Comparamos</span>
+          <i aria-hidden="true" />
+          <span>Estimamos FPS</span>
+        </div>
+
+        <div className={styles.trust}>
+          <ShieldCheck size={15} aria-hidden="true" />
+          Todo se procesa en tu navegador. No leemos archivos ni instalamos nada.
+        </div>
+      </div>
+
+      <div className={styles.workspace}>
+        <article className={styles.profileCard}>
+          <div className={styles.profileHeader}>
+            <div>
+              <span>TU PERFIL ACTUAL</span>
+              <strong>{profileTitle}</strong>
+            </div>
+
+            {isDetecting ? (
+              <LoaderCircle className={styles.spin} size={21} aria-hidden="true" />
+            ) : (
+              <CheckCircle2 size={21} aria-hidden="true" />
+            )}
+          </div>
+
+          <dl className={styles.profileSpecs}>
+            <div>
+              <dt>CPU</dt>
+              <dd>{hardware.cpu?.name ?? "No identificado"}</dd>
+            </div>
+            <div>
+              <dt>GPU</dt>
+              <dd>{hardware.gpu?.name ?? "No identificada"}</dd>
+            </div>
+            <div>
+              <dt>RAM</dt>
+              <dd>{ramLabel}</dd>
+            </div>
+            <div>
+              <dt>Sistema</dt>
+              <dd>{hardware.os}</dd>
+            </div>
+          </dl>
+
+          <div className={styles.profileStatus}>
+            <div className={styles.statusTopline}>
+              <span className={styles.statusLabel} data-state={detectionState}>
+                {isDetecting ? (
+                  <LoaderCircle size={13} aria-hidden="true" />
+                ) : isWarning ? (
+                  <Info size={13} aria-hidden="true" />
+                ) : (
+                  <CheckCircle2 size={13} aria-hidden="true" />
+                )}
+                {detectionStatus}
+              </span>
+              <small>{detectionSource}</small>
+            </div>
+            <p>{detectionHint}</p>
+          </div>
+
+          <div className={styles.profileActions}>
+            <button type="button" onClick={onDetect} disabled={isDetecting}>
+              <RefreshCw size={14} aria-hidden="true" />
+              Detectar otra vez
+            </button>
+            <button type="button" className={styles.profileActionPrimary} onClick={onConfigure}>
+              <SlidersHorizontal size={14} aria-hidden="true" />
+              Cambiar configuración
+            </button>
+          </div>
+        </article>
+
+        <article className={styles.recommendationsPanel}>
+          <div className={styles.recommendationsHeader}>
+            <span>
+              <Sparkles size={14} aria-hidden="true" />
+              RECOMENDACIONES PARA TI
+            </span>
+            <button type="button" onClick={onViewAll}>
+              Ver todas
+              <ChevronRight size={15} aria-hidden="true" />
+            </button>
+          </div>
+
+          <div className={styles.recommendationsGrid}>
+            {recommendations.map(({ game, estimate }, index) => {
+              const canEstimate = Boolean(estimate?.canEstimate);
+              const tier = canEstimate ? estimate!.tier : null;
+
+              return (
+                <button
+                  key={game.slug}
+                  type="button"
+                  className={styles.recommendationCard}
+                  onClick={() => onSelectGame(game.slug)}
+                  aria-label={`Ver análisis de ${game.title}`}
+                >
+                  <div className={styles.recommendationMedia}>
+                    {game.coverImage ? (
+                      <Image
+                        src={game.coverImage}
+                        alt={game.imageAlt}
+                        fill
+                        sizes="(max-width: 760px) 150px, (max-width: 1260px) 180px, 160px"
+                        className={styles.recommendationImage}
+                        priority={index < 2}
+                      />
+                    ) : (
+                      <div className={styles.recommendationFallback} aria-hidden="true" />
+                    )}
+                    <div className={styles.recommendationShade} aria-hidden="true" />
+                  </div>
+
+                  <div className={styles.recommendationMeta}>
+                    <strong data-tier={tier ?? "pending"}>
+                      {tier ? tierLabel[tier] : "Configura tu PC"}
+                    </strong>
+                    <span>
+                      {canEstimate
+                        ? `${estimate!.minFps}–${estimate!.maxFps} FPS`
+                        : "FPS pendientes"}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className={styles.recommendationFooter}>
+            <span>
+              <Gamepad2 size={13} aria-hidden="true" />
+              Según tu perfil actual
+            </span>
+            <div className={styles.dots} aria-hidden="true">
+              <i className={styles.dotActive} />
+              <i />
+              <i />
+              <i />
+              <i />
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+  );
+}
