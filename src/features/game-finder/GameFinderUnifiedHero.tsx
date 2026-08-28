@@ -24,6 +24,7 @@ import type {
   PerformanceTier,
 } from "./types";
 
+import "./GameFinderLegacyCleanup.module.css";
 import styles from "./GameFinderUnifiedHero.module.css";
 
 type DetectionState = "idle" | "detecting" | "ready" | "partial" | "error";
