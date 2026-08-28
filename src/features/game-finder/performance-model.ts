@@ -14,6 +14,7 @@ import type {
   HardwareProfile,
   PerformanceTier,
   QualityPreset,
+  RamKnowledge,
   ResolutionPreset,
 } from "./types";
 
@@ -71,6 +72,40 @@ function roundFps(value: number) {
   return Math.round(value);
 }
 
+function ramPenaltyFromRatio(ratio: number) {
+  return ratio >= 1
+    ? 1
+    : Math.max(0.52, 0.58 + ratio * 0.42);
+}
+
+function ramUncertainty(
+  ramRatio: number,
+  knowledge: RamKnowledge
+) {
+  const observedPenalty = ramPenaltyFromRatio(ramRatio);
+
+  if (knowledge !== "lower-bound") {
+    return {
+      centerPenalty: observedPenalty,
+      lowRangeFactor: 1,
+      highRangeFactor: 1,
+    };
+  }
+
+  // deviceMemory=8 puede significar 8 GB o más. En ese caso no elegimos
+  // arbitrariamente uno de los extremos: centramos la estimación entre el
+  // escenario observado y uno sin penalización por RAM, y ensanchamos el
+  // rango para cubrir ambos.
+  const bestCasePenalty = 1;
+  const centerPenalty = (observedPenalty + bestCasePenalty) / 2;
+
+  return {
+    centerPenalty,
+    lowRangeFactor: observedPenalty / centerPenalty,
+    highRangeFactor: bestCasePenalty / centerPenalty,
+  };
+}
+
 export function estimateGamePerformance(
   slug: string,
   hardware: HardwareProfile,
@@ -116,14 +151,13 @@ export function estimateGamePerformance(
   );
   const bottleneckCorrection =
     0.74 + 0.26 * Math.min(1, Math.max(0.3, limitingRatio));
-  const ramPenalty =
-    ramRatio >= 1 ? 1 : Math.max(0.52, 0.58 + ramRatio * 0.42);
+  const ramModel = ramUncertainty(ramRatio, hardware.ramKnowledge);
 
   let fps =
     profile.referenceFps *
     weightedCore *
     bottleneckCorrection *
-    ramPenalty *
+    ramModel.centerPenalty *
     resolutionFactor[settings.resolution] *
     qualityFactor[settings.quality] *
     (profile.optimization ?? 1);
@@ -133,17 +167,22 @@ export function estimateGamePerformance(
   fps = Math.max(8, fps);
 
   const spread = estimateSpread[hardware.confidence];
-  const minFps = Math.max(5, fps * (1 - spread));
+  const minFps = Math.max(
+    5,
+    fps * (1 - spread) * ramModel.lowRangeFactor
+  );
+  const uncappedMaxFps =
+    fps * (1 + spread) * ramModel.highRangeFactor;
   const maxFps = profile.fpsCap
-    ? Math.min(profile.fpsCap, fps * (1 + spread))
-    : fps * (1 + spread);
+    ? Math.min(profile.fpsCap, uncappedMaxFps)
+    : uncappedMaxFps;
 
   const roundedFps = roundFps(fps);
   const roundedMinFps = roundFps(minFps);
   const roundedMaxFps = roundFps(maxFps);
 
   const bottleneck =
-    ramRatio < 0.8
+    hardware.ramKnowledge === "confirmed" && ramRatio < 0.8
       ? "ram"
       : cpuRatio + 0.1 < gpuRatio
         ? "cpu"
