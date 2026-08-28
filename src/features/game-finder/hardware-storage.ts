@@ -71,7 +71,7 @@ export function parseStoredHardwareProfile(
       !cpu ||
       !gpu ||
       !Number.isFinite(ramGb) ||
-      ramGb < 4 ||
+      ramGb < 1 ||
       ramGb > 256
     ) {
       return null;
