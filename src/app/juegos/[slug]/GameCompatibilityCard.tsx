@@ -9,22 +9,18 @@ import {
   Settings2,
   ShieldCheck,
 } from "lucide-react";
-import {
-  useMemo,
-  useSyncExternalStore,
-} from "react";
+import { useMemo } from "react";
 
-import {
-  getStoredHardwareSnapshot,
-  parseStoredHardwareProfile,
-  PROFILE_STORAGE_KEY,
-} from "@/features/game-finder/hardware-storage";
 import {
   estimateGamePerformance,
 } from "@/features/game-finder/performance-model";
 import type {
+  HardwareProfile,
   PerformanceTier,
 } from "@/features/game-finder/types";
+import {
+  useResolvedHardwareProfile,
+} from "@/features/game-finder/useResolvedHardwareProfile";
 
 import styles from "./page.module.css";
 
@@ -55,52 +51,36 @@ const bottleneckLabels = {
   balanced: "Equilibrado",
 } as const;
 
-function subscribe(
-  onStoreChange: () => void
-) {
-  function handleStorage(
-    event: StorageEvent
-  ) {
-    if (
-      event.key === null ||
-      event.key === PROFILE_STORAGE_KEY
-    ) {
-      onStoreChange();
-    }
+function ramLabel(profile: HardwareProfile) {
+  if (!profile.ramGb) return "Sin detectar";
+  if (profile.ramKnowledge === "lower-bound") {
+    return `${profile.ramGb} GB o más`;
   }
-
-  window.addEventListener(
-    "storage",
-    handleStorage
-  );
-
-  return () =>
-    window.removeEventListener(
-      "storage",
-      handleStorage
-    );
+  if (profile.ramKnowledge === "approximate") {
+    return `≈ ${profile.ramGb} GB`;
+  }
+  return `${profile.ramGb} GB`;
 }
 
-function getServerSnapshot() {
-  return null;
+function profileStatusLabel(profile: HardwareProfile) {
+  if (profile.source === "saved") {
+    return "Perfil guardado";
+  }
+
+  if (profile.source === "browser") {
+    return "Detección local";
+  }
+
+  return "Perfil local";
 }
 
 export default function GameCompatibilityCard({
   slug,
 }: GameCompatibilityCardProps) {
-  const rawProfile = useSyncExternalStore(
-    subscribe,
-    getStoredHardwareSnapshot,
-    getServerSnapshot
-  );
-
-  const profile = useMemo(
-    () =>
-      parseStoredHardwareProfile(
-        rawProfile
-      ),
-    [rawProfile]
-  );
+  const {
+    profile,
+    status,
+  } = useResolvedHardwareProfile();
 
   const estimate = useMemo(
     () =>
@@ -117,11 +97,26 @@ export default function GameCompatibilityCard({
     [profile, slug]
   );
 
-  if (!profile || !estimate?.canEstimate) {
+  if (
+    status !== "ready" ||
+    !profile ||
+    !estimate?.canEstimate
+  ) {
+    const statusLabel =
+      status === "loading"
+        ? "Detectando"
+        : "Datos incompletos";
+
+    const description =
+      status === "loading"
+        ? "Estamos comprobando primero el perfil guardado y después los datos que el navegador pueda identificar."
+        : "La detección automática no obtuvo CPU, GPU y RAM suficientes para calcular un rango fiable.";
+
     return (
       <aside
         className={styles.compatibilityCard}
         aria-labelledby="compatibility-title"
+        aria-live="polite"
       >
         <div className={styles.compatibilityTopline}>
           <div className={styles.compatibilityHeading}>
@@ -140,17 +135,17 @@ export default function GameCompatibilityCard({
           </div>
 
           <span className={styles.compatibilityStatus}>
-            Sin perfil
+            {statusLabel}
           </span>
         </div>
 
         <p className={styles.compatibilityEmpty}>
-          Detecta lo que el navegador pueda identificar y completa manualmente los datos protegidos para obtener un rango de FPS.
+          {description}
         </p>
 
         <ol className={styles.compatibilitySteps}>
-          <li>Detectamos datos disponibles</li>
-          <li>Confirmas CPU, GPU y RAM</li>
+          <li>Detectamos los datos disponibles</li>
+          <li>Confirmas CPU, GPU y RAM si falta información</li>
           <li>Calculamos rendimiento orientativo</li>
         </ol>
 
@@ -192,7 +187,7 @@ export default function GameCompatibilityCard({
           className={`${styles.compatibilityStatus} ${styles.compatibilityStatusReady}`}
         >
           <ShieldCheck size={13} aria-hidden="true" />
-          Perfil local
+          {profileStatusLabel(profile)}
         </span>
       </div>
 
@@ -216,7 +211,7 @@ export default function GameCompatibilityCard({
             <MemoryStick size={15} aria-hidden="true" />
             Memoria RAM
           </dt>
-          <dd>{profile.ramGb} GB</dd>
+          <dd>{ramLabel(profile)}</dd>
         </div>
       </dl>
 
@@ -247,7 +242,8 @@ export default function GameCompatibilityCard({
       </dl>
 
       <p className={styles.compatibilityNote}>
-        Estimación orientativa; no sustituye un benchmark ejecutado en tu equipo.
+        Estimación orientativa; no sustituye un benchmark ejecutado en tu
+        equipo.
       </p>
 
       <Link
