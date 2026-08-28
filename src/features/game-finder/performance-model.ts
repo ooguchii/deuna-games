@@ -26,17 +26,17 @@ const qualityFactor: Record<QualityPreset, number> = {
   ultra: 0.68,
 };
 
+const estimateSpread: Record<ConfidenceLevel, number> = {
+  high: 0.18,
+  medium: 0.25,
+  low: 0.34,
+};
+
 export function getPerformanceTier(fps: number): PerformanceTier {
   if (fps >= 60) return "excellent";
   if (fps >= 40) return "good";
   if (fps >= 28) return "acceptable";
   return "basic";
-}
-
-function confidenceSpread(confidence: ConfidenceLevel) {
-  if (confidence === "high") return 0.12;
-  if (confidence === "medium") return 0.2;
-  return 0.3;
 }
 
 function roundFps(value: number) {
@@ -105,7 +105,7 @@ export function estimateGamePerformance(
 
   fps = Math.max(8, fps);
 
-  const spread = confidenceSpread(hardware.confidence);
+  const spread = estimateSpread[hardware.confidence];
   const minFps = Math.max(5, fps * (1 - spread));
   const maxFps = profile.fpsCap
     ? Math.min(profile.fpsCap, fps * (1 + spread))
