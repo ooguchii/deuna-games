@@ -1,9 +1,18 @@
 import type { GamePerformanceProfile } from "./types";
 
+export const performanceModelReference = {
+  version: "2026.08.1",
+  resolution: "1080p",
+  quality: "medium",
+  cpuId: "ryzen-5-5600x",
+  gpuId: "rtx-3060",
+  ramGb: 16,
+} as const;
+
 /*
- * Los FPS de referencia modelan 1080p / calidad media / rasterización,
- * sin ray tracing, frame generation ni escalado. La referencia de hardware
- * del modelo es Ryzen 5 5600X + RTX 3060 + 16 GB.
+ * Los FPS de referencia modelan el escenario declarado en
+ * performanceModelReference: 1080p / calidad media / rasterización,
+ * sin ray tracing, frame generation ni escalado.
  *
  * Esto no pretende sustituir un benchmark ejecutado en la PC del usuario.
  * El motor usa estos anclajes para producir una estimación consistente y
