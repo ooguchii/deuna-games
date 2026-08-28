@@ -19,6 +19,7 @@ import {
   games,
   getGameBySlug,
 } from "@/data/games";
+import GamePerformanceEstimate from "@/features/game-finder/GamePerformanceEstimate";
 import {
   absoluteUrl,
   siteConfig,
@@ -228,6 +229,8 @@ export default async function GameDetailPage({
                   </span>
                 )}
               </div>
+
+              <GamePerformanceEstimate slug={game.slug} />
 
               <div className={styles.actions}>
                 <Link
