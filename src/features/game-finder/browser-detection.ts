@@ -35,6 +35,16 @@ function detectOs(platform: string | null, userAgent: string) {
   return "Sistema sin confirmar";
 }
 
+function memoryDisclosureKind(value: number | null): BrowserHardwareSnapshot["memoryKind"] {
+  if (value === null) return "unknown";
+
+  // deviceMemory está deliberadamente cuantizado y limitado por privacidad.
+  // En Chromium, 8 GB puede representar 8 GB o una cantidad física mayor.
+  if (value >= 8) return "lower-bound";
+
+  return "approximate";
+}
+
 async function detectWebGpu(nav: NavigatorWithDeviceMemory) {
   if (!nav.gpu?.requestAdapter) return null;
 
@@ -97,6 +107,7 @@ export async function detectBrowserHardware(): Promise<BrowserHardwareSnapshot> 
   const approximateMemoryGb = typeof nav.deviceMemory === "number"
     ? nav.deviceMemory
     : null;
+  const memoryKind = memoryDisclosureKind(approximateMemoryGb);
 
   let platform: string | null = nav.userAgentData?.platform ?? nav.platform ?? null;
   let architecture: string | null = null;
@@ -140,8 +151,20 @@ export async function detectBrowserHardware(): Promise<BrowserHardwareSnapshot> 
     }
   }
 
-  if (!logicalProcessors) warnings.push("El navegador no informó procesadores lógicos.");
-  if (!approximateMemoryGb) warnings.push("El navegador no expuso una estimación de RAM.");
+  if (!logicalProcessors) {
+    warnings.push("El navegador no informó procesadores lógicos.");
+  } else {
+    warnings.push("El navegador informa hilos lógicos, no el modelo exacto de CPU.");
+  }
+
+  if (!approximateMemoryGb) {
+    warnings.push("El navegador no expuso una estimación de RAM.");
+  } else if (memoryKind === "lower-bound") {
+    warnings.push("La RAM visible es un límite de privacidad: 8 GB puede significar 8 GB o más.");
+  } else {
+    warnings.push("La RAM del navegador es una aproximación redondeada, no una lectura física exacta.");
+  }
+
   if (!gpuRenderer) {
     warnings.push("La GPU quedó protegida por el navegador o no pudo identificarse.");
   } else if (!findGpuByRenderer(gpuRenderer)) {
@@ -151,6 +174,7 @@ export async function detectBrowserHardware(): Promise<BrowserHardwareSnapshot> 
   return {
     logicalProcessors,
     approximateMemoryGb,
+    memoryKind,
     gpuRenderer,
     gpuVendor,
     gpuSource,
@@ -164,17 +188,18 @@ export function profileFromBrowserSnapshot(snapshot: BrowserHardwareSnapshot): H
   const cpu = estimateCpuFromLogicalProcessors(snapshot.logicalProcessors);
   const gpu = findGpuByRenderer(snapshot.gpuRenderer);
 
-  const knownPieces = [cpu, gpu, snapshot.approximateMemoryGb].filter(Boolean).length;
-  const confidence = gpu && knownPieces === 3 ? "medium" : "low";
-
   return {
     cpu,
     gpu,
     ramGb: snapshot.approximateMemoryGb,
+    ramKnowledge: snapshot.memoryKind === "unknown" ? "approximate" : snapshot.memoryKind,
     os: detectOs(snapshot.platform, navigator.userAgent),
     memoryMode: "unknown",
     source: "browser",
-    confidence,
+    // Ningún navegador web estándar expone el modelo exacto de CPU y la RAM
+    // está cuantizada. Por eso un perfil puramente automático permanece en
+    // confianza baja aunque la GPU sí se reconozca.
+    confidence: "low",
     updatedAt: new Date().toISOString(),
   };
 }
