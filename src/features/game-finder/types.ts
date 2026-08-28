@@ -1,4 +1,4 @@
-export type HardwareSource = "browser" | "manual" | "saved";
+export type HardwareSource = "browser" | "manual" | "saved" | "example";
 
 export type ConfidenceLevel = "low" | "medium" | "high";
 
