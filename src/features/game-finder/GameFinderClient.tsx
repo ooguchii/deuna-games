@@ -45,6 +45,7 @@ import {
   detectBrowserHardware,
   profileFromBrowserSnapshot,
 } from "./browser-detection";
+import GameFinderUnifiedHero from "./GameFinderUnifiedHero";
 import {
   cpuCatalog,
   findCpuById,
@@ -753,7 +754,30 @@ export default function GameFinderClient({ games }: GameFinderClientProps) {
 
   return (
     <div className={styles.finderRoot}>
-      <section className={styles.hero} aria-labelledby="finder-title">
+      <GameFinderUnifiedHero
+        recommendations={games.slice(0, 4).map((game) => ({
+          game,
+          estimate: estimates.get(game.slug) ?? null,
+        }))}
+        hardware={activeHardware}
+        profileTitle={profileLabel(hardware)}
+        ramLabel={profileRamLabel(activeHardware)}
+        detectionState={detectionState}
+        detectionStatus={detectionLabel(detectionState, hardware)}
+        detectionHint={detectionHint(detectionState, hardware)}
+        detectionSource={detectionSource(hardware, snapshot)}
+        hasRealAnalysis={hasRealAnalysis}
+        onAnalyze={useExampleProfile}
+        onConfigure={openSettings}
+        onDetect={() => void runDetection()}
+        onSelectGame={(slug) => {
+          setSelectedSlug(slug);
+          scrollToResults();
+        }}
+        onViewAll={scrollToResults}
+      />
+
+      <section className={styles.hero} aria-labelledby="finder-title" hidden>
         <div className={styles.heroGlow} aria-hidden="true" />
         <div className={styles.heroGrid} aria-hidden="true" />
 
@@ -798,8 +822,7 @@ export default function GameFinderClient({ games }: GameFinderClientProps) {
               <div
                 key={game.slug}
                 className={styles.heroCover}
-                style={{ "--cover-index": index } as CSSProperties
-              }
+                style={{ "--cover-index": index } as CSSProperties}
               >
                 {game.coverImage && (
                   <Image
@@ -1018,7 +1041,7 @@ export default function GameFinderClient({ games }: GameFinderClientProps) {
         </div>
       )}
 
-      <section className={styles.processStrip} aria-labelledby="process-title">
+      <section className={styles.processStrip} aria-labelledby="process-title" hidden>
         <div className={styles.processHeading}>
           <span>PROCESO SIMPLE</span>
           <h2 id="process-title">¿Cómo funciona?</h2>
