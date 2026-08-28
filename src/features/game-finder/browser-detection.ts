@@ -19,8 +19,10 @@ type NavigatorWithDeviceMemory = Navigator & {
     platform?: string;
     getHighEntropyValues?: (hints: string[]) => Promise<{
       architecture?: string;
+      bitness?: string;
       platform?: string;
       platformVersion?: string;
+      wow64?: boolean;
     }>;
   };
   gpu?: {
@@ -42,16 +44,60 @@ type GpuReading = RawGpuReading & {
   match: GpuRendererMatch | null;
 };
 
-function detectOs(platform: string | null, userAgent: string) {
-  const text = `${platform ?? ""} ${userAgent}`.toLowerCase();
+function bitnessSuffix(snapshot: BrowserHardwareSnapshot, userAgent: string) {
+  if (snapshot.bitness === "64") return " 64-bit";
+  if (snapshot.bitness === "32") return " 32-bit";
+
+  const text = userAgent.toLowerCase();
+  if (text.includes("win64") || text.includes("x64") || text.includes("wow64")) {
+    return " 64-bit";
+  }
+
+  return "";
+}
+
+function detectWindowsVersion(platformVersion: string | null) {
+  if (!platformVersion) return null;
+
+  const major = Number.parseInt(platformVersion.split(".")[0] ?? "", 10);
+  if (!Number.isFinite(major)) return null;
+
+  // Chromium/Edge exponen Windows 11 como platformVersion 13+ y Windows 10
+  // dentro del rango legado <= 10. La UA tradicional ya no diferencia ambos.
+  if (major >= 13) return "Windows 11";
+  if (major >= 1 && major <= 10) return "Windows 10";
+
+  return null;
+}
+
+function detectOs(snapshot: BrowserHardwareSnapshot, userAgent: string) {
+  const platform = snapshot.platform?.toLowerCase() ?? "";
+  const text = `${snapshot.platform ?? ""} ${userAgent}`.toLowerCase();
+  const suffix = bitnessSuffix(snapshot, userAgent);
 
   if (text.includes("android")) return "Android";
   if (text.includes("iphone") || text.includes("ipad") || text.includes("ios")) return "iOS";
-  if (text.includes("windows")) return "Windows";
+
+  if (platform.includes("windows") || text.includes("windows")) {
+    const version = detectWindowsVersion(snapshot.platformVersion);
+    if (version) return `${version}${suffix}`;
+
+    // Desde la reducción de User-Agent, Windows 10 y 11 comparten a menudo
+    // "Windows NT 10.0". Sin UA-CH no afirmamos una versión incorrecta.
+    if (text.includes("windows nt 6.3")) return `Windows 8.1${suffix}`;
+    if (text.includes("windows nt 6.2")) return `Windows 8${suffix}`;
+    if (text.includes("windows nt 6.1")) return `Windows 7${suffix}`;
+    return `Windows 10/11${suffix}`;
+  }
+
   if (text.includes("mac")) return "macOS";
-  if (text.includes("linux")) return "Linux";
+  if (text.includes("linux")) return `Linux${suffix}`;
 
   return "Sistema sin confirmar";
+}
+
+function isSpecificDetectedOs(os: string) {
+  return os !== "Sistema sin confirmar" && !os.startsWith("Windows 10/11");
 }
 
 function memoryDisclosureKind(value: number | null): BrowserHardwareSnapshot["memoryKind"] {
@@ -68,9 +114,6 @@ async function detectWebGpu(nav: NavigatorWithDeviceMemory): Promise<RawGpuReadi
   if (!nav.gpu?.requestAdapter) return null;
 
   try {
-    // En equipos híbridos Chromium puede devolver la iGPU por defecto. La
-    // preferencia de alto rendimiento no es una garantía, pero permite que el
-    // navegador elija la dedicada cuando la plataforma lo admite.
     const adapter =
       (await nav.gpu.requestAdapter({
         powerPreference: "high-performance",
@@ -155,8 +198,6 @@ function compareGpuReadings(a: GpuReading, b: GpuReading) {
     const aDiscrete = !aMatch.gpu.integrated;
     const bDiscrete = !bMatch.gpu.integrated;
 
-    // Si una API ve la dedicada y la otra sólo ve la integrada, la dedicada
-    // es la candidata útil para estimar juegos.
     if (aDiscrete !== bDiscrete) {
       return aDiscrete ? -1 : 1;
     }
@@ -172,8 +213,6 @@ function compareGpuReadings(a: GpuReading, b: GpuReading) {
     return aMatch ? -1 : 1;
   }
 
-  // En empate preferimos WebGL: en ANGLE suele conservar un nombre comercial
-  // más útil que los campos genéricos de adapter.info.
   if (a.source !== b.source) {
     return a.source === "webgl" ? -1 : 1;
   }
@@ -207,25 +246,28 @@ export async function detectBrowserHardware(): Promise<BrowserHardwareSnapshot> 
   const memoryKind = memoryDisclosureKind(approximateMemoryGb);
 
   let platform: string | null = nav.userAgentData?.platform ?? nav.platform ?? null;
+  let platformVersion: string | null = null;
   let architecture: string | null = null;
+  let bitness: string | null = null;
 
   if (nav.userAgentData?.getHighEntropyValues) {
     try {
       const values = await nav.userAgentData.getHighEntropyValues([
         "architecture",
+        "bitness",
         "platform",
         "platformVersion",
+        "wow64",
       ]);
       architecture = values.architecture ?? null;
+      bitness = values.bitness ?? null;
       platform = values.platform ?? platform;
+      platformVersion = values.platformVersion ?? null;
     } catch {
-      // La detección de alto nivel es opcional.
+      // Los valores de alta entropía son opcionales y dependen del navegador.
     }
   }
 
-  // Consultamos las dos APIs. Antes se aceptaba WebGPU apenas reconocía algo,
-  // lo que en PCs híbridas podía fijar la integrada sin llegar a comparar la
-  // dedicada expuesta por WebGL.
   const [webGpu, webGl] = await Promise.all([
     detectWebGpu(nav),
     Promise.resolve(detectWebGl()),
@@ -271,6 +313,13 @@ export async function detectBrowserHardware(): Promise<BrowserHardwareSnapshot> 
     warnings.push("El navegador expuso la GPU, pero el modelo todavía no está en el catálogo de equivalencias.");
   }
 
+  if (
+    (platform?.toLowerCase().includes("windows") ?? false) &&
+    !platformVersion
+  ) {
+    warnings.push("El navegador no expuso la versión de Windows; no se diferencia Windows 10 de 11.");
+  }
+
   return {
     logicalProcessors,
     approximateMemoryGb,
@@ -279,18 +328,25 @@ export async function detectBrowserHardware(): Promise<BrowserHardwareSnapshot> 
     gpuVendor,
     gpuSource,
     platform,
+    platformVersion,
     architecture,
+    bitness,
     warnings,
   };
 }
 
 export function profileFromBrowserSnapshot(snapshot: BrowserHardwareSnapshot): HardwareProfile {
-  // Un perfil confirmado manualmente es más fiable que una relectura del
-  // navegador. "Detectar otra vez" refresca el snapshot, pero no debe borrar
-  // CPU/RAM/GPU confirmadas por el usuario.
+  const detectedOs = detectOs(snapshot, navigator.userAgent);
+
+  // Un perfil confirmado manualmente sigue siendo más fiable para CPU/GPU/RAM,
+  // pero una relectura puede corregir el sistema operativo si UA-CH expone una
+  // versión inequívoca (por ejemplo Windows 10 frente a Windows 11).
   const storedProfile = readStoredHardwareProfile();
   if (storedProfile) {
-    return storedProfile;
+    return {
+      ...storedProfile,
+      os: isSpecificDetectedOs(detectedOs) ? detectedOs : storedProfile.os,
+    };
   }
 
   const cpu = estimateCpuFromLogicalProcessors(snapshot.logicalProcessors);
@@ -301,12 +357,9 @@ export function profileFromBrowserSnapshot(snapshot: BrowserHardwareSnapshot): H
     gpu,
     ramGb: snapshot.approximateMemoryGb,
     ramKnowledge: snapshot.memoryKind,
-    os: detectOs(snapshot.platform, navigator.userAgent),
+    os: detectedOs,
     memoryMode: "unknown",
     source: "browser",
-    // Ningún navegador web estándar expone el modelo exacto de CPU y la RAM
-    // está cuantizada. Por eso un perfil puramente automático permanece en
-    // confianza baja aunque la GPU sí se reconozca.
     confidence: "low",
     updatedAt: new Date().toISOString(),
   };
