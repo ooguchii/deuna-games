@@ -37,7 +37,9 @@ export type BrowserHardwareSnapshot = {
   gpuVendor: string | null;
   gpuSource: "webgpu" | "webgl" | "none";
   platform: string | null;
+  platformVersion: string | null;
   architecture: string | null;
+  bitness: string | null;
   warnings: string[];
 };
 
