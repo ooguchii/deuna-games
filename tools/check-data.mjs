@@ -8,6 +8,20 @@ const root = process.cwd();
 const files = {
   games: path.join(root, "src", "data", "games.ts"),
   updates: path.join(root, "src", "data", "updates.ts"),
+  performance: path.join(
+    root,
+    "src",
+    "features",
+    "game-finder",
+    "performance-data.ts"
+  ),
+  hardware: path.join(
+    root,
+    "src",
+    "features",
+    "game-finder",
+    "hardware-catalog.ts"
+  ),
 };
 
 const allowedUpdateTypes = new Set([
@@ -30,7 +44,7 @@ function fail(errors) {
   }
 
   console.error(
-    "\nCorregí el catálogo o las actualizaciones antes de integrar el cambio.\n"
+    "\nCorregí el catálogo, las actualizaciones o los datos del recomendador antes de integrar el cambio.\n"
   );
 
   process.exit(1);
@@ -173,6 +187,14 @@ function isNonEmptyString(value) {
   return (
     typeof value === "string" &&
     value.trim().length > 0
+  );
+}
+
+function isPositiveNumber(value) {
+  return (
+    typeof value === "number" &&
+    Number.isFinite(value) &&
+    value > 0
   );
 }
 
@@ -321,9 +343,56 @@ function validateRequirementObject(
   }
 }
 
-const [games, updates] = await Promise.all([
+function validateHardwareCatalog(
+  entries,
+  label,
+  errors
+) {
+  const ids = new Set();
+
+  for (const [index, item] of entries.entries()) {
+    const itemLabel =
+      isNonEmptyString(item.id)
+        ? `${label}.${item.id}`
+        : `${label}[${index}]`;
+
+    if (!isNonEmptyString(item.id)) {
+      errors.push(`${itemLabel}: id es obligatorio.`);
+    } else if (ids.has(item.id)) {
+      errors.push(`${itemLabel}: id duplicado.`);
+    } else {
+      ids.add(item.id);
+    }
+
+    if (!isNonEmptyString(item.name)) {
+      errors.push(`${itemLabel}: name es obligatorio.`);
+    }
+
+    if (!isPositiveNumber(item.score)) {
+      errors.push(`${itemLabel}: score debe ser un número positivo.`);
+    }
+
+    if (
+      item.integrated !== undefined &&
+      typeof item.integrated !== "boolean"
+    ) {
+      errors.push(`${itemLabel}: integrated debe ser booleano.`);
+    }
+  }
+}
+
+const [
+  games,
+  updates,
+  performanceProfiles,
+  cpuCatalog,
+  gpuCatalog,
+] = await Promise.all([
   readArray(files.games, "games"),
   readArray(files.updates, "gameUpdates"),
+  readArray(files.performance, "profiles"),
+  readArray(files.hardware, "cpuCatalog"),
+  readArray(files.hardware, "gpuCatalog"),
 ]);
 
 const errors = [];
@@ -473,6 +542,111 @@ for (const [index, game] of games.entries()) {
   validateDownload(game, errors);
 }
 
+const performanceSlugs = new Set();
+
+for (const [index, profile] of performanceProfiles.entries()) {
+  const label =
+    isNonEmptyString(profile.slug)
+      ? `performance.${profile.slug}`
+      : `performance[${index}]`;
+
+  if (!isNonEmptyString(profile.slug)) {
+    errors.push(`${label}: slug es obligatorio.`);
+    continue;
+  }
+
+  if (performanceSlugs.has(profile.slug)) {
+    errors.push(`${label}: perfil de rendimiento duplicado.`);
+  }
+  performanceSlugs.add(profile.slug);
+
+  if (!gameSlugs.has(profile.slug)) {
+    errors.push(`${label}: referencia un juego inexistente.`);
+  }
+
+  if (!isPositiveNumber(profile.referenceFps)) {
+    errors.push(`${label}: referenceFps debe ser positivo.`);
+  }
+
+  if (!isPositiveNumber(profile.ramGb)) {
+    errors.push(`${label}: ramGb debe ser positivo.`);
+  }
+
+  if (
+    profile.storageGb !== undefined &&
+    !isPositiveNumber(profile.storageGb)
+  ) {
+    errors.push(`${label}: storageGb debe ser positivo.`);
+  }
+
+  if (
+    profile.fpsCap !== undefined &&
+    !isPositiveNumber(profile.fpsCap)
+  ) {
+    errors.push(`${label}: fpsCap debe ser positivo.`);
+  }
+
+  const cpuWeight = profile.cpuWeight;
+  const gpuWeight = profile.gpuWeight;
+
+  if (
+    typeof cpuWeight !== "number" ||
+    !Number.isFinite(cpuWeight) ||
+    cpuWeight < 0 ||
+    cpuWeight > 1
+  ) {
+    errors.push(`${label}: cpuWeight debe estar entre 0 y 1.`);
+  }
+
+  if (
+    typeof gpuWeight !== "number" ||
+    !Number.isFinite(gpuWeight) ||
+    gpuWeight < 0 ||
+    gpuWeight > 1
+  ) {
+    errors.push(`${label}: gpuWeight debe estar entre 0 y 1.`);
+  }
+
+  if (
+    typeof cpuWeight === "number" &&
+    typeof gpuWeight === "number" &&
+    Math.abs(cpuWeight + gpuWeight - 1) > 0.001
+  ) {
+    errors.push(`${label}: cpuWeight + gpuWeight debe sumar 1.`);
+  }
+
+  if (
+    profile.optimization !== undefined &&
+    (
+      typeof profile.optimization !== "number" ||
+      !Number.isFinite(profile.optimization) ||
+      profile.optimization < 0.5 ||
+      profile.optimization > 1.5
+    )
+  ) {
+    errors.push(`${label}: optimization debe estar entre 0.5 y 1.5.`);
+  }
+}
+
+for (const slug of gameSlugs) {
+  if (!performanceSlugs.has(slug)) {
+    errors.push(
+      `${slug}: falta un perfil de rendimiento en performance-data.ts.`
+    );
+  }
+}
+
+validateHardwareCatalog(
+  cpuCatalog,
+  "cpuCatalog",
+  errors
+);
+validateHardwareCatalog(
+  gpuCatalog,
+  "gpuCatalog",
+  errors
+);
+
 const updateIds = new Set();
 const updateVersions = new Set();
 const updatesByGame = new Map();
@@ -599,5 +773,5 @@ if (errors.length > 0) {
 }
 
 console.log(
-  `Datos: OK (${games.length} juegos, ${updates.length} actualizaciones, IDs/slugs/versiones consistentes).`
+  `Datos: OK (${games.length} juegos, ${updates.length} actualizaciones, ${performanceProfiles.length} perfiles de rendimiento, ${cpuCatalog.length} CPU y ${gpuCatalog.length} GPU consistentes).`
 );
