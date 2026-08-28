@@ -4,7 +4,7 @@ export type ConfidenceLevel = "low" | "medium" | "high";
 
 export type MemoryMode = "unknown" | "single" | "dual";
 
-export type RamKnowledge = "confirmed" | "approximate" | "lower-bound";
+export type RamKnowledge = "unknown" | "confirmed" | "approximate" | "lower-bound";
 
 export type ResolutionPreset = "720p" | "1080p" | "1440p" | "2160p";
 
