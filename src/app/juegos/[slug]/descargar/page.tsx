@@ -134,7 +134,10 @@ export default async function DownloadPage({
           <ChevronRight size={14} aria-hidden="true" />
           <Link href="/juegos">Juegos</Link>
           <ChevronRight size={14} aria-hidden="true" />
-          <Link href={`/juegos/${game.slug}`}>
+          <Link
+            href={`/juegos/${game.slug}`}
+            className={styles.gameCrumb}
+          >
             {game.title}
           </Link>
           <ChevronRight size={14} aria-hidden="true" />

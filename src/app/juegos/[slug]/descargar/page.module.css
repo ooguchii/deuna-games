@@ -10,6 +10,7 @@
   align-items: center;
   gap: 8px;
   margin-bottom: 18px;
+  overflow: hidden;
   color: var(--text-muted);
   font-size: var(--font-sm);
 }
@@ -18,6 +19,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  flex: 0 0 auto;
   color: var(--text-soft);
   transition: color var(--ease-fast);
 }
@@ -26,8 +28,21 @@
   color: var(--text);
 }
 
+.breadcrumb > svg {
+  flex: 0 0 auto;
+}
+
 .breadcrumb span {
   min-width: 0;
+  flex: 0 0 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.breadcrumb .gameCrumb {
+  min-width: 0;
+  flex: 1 1 auto;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

@@ -344,13 +344,22 @@ export default async function GameDetailPage({
 
               <div className={styles.actions}>
                 {download ? (
-                  <Link
-                    href={`/juegos/${game.slug}/descargar`}
-                    className={styles.primaryAction}
-                  >
-                    <Download size={18} aria-hidden="true" />
-                    Descargar
-                  </Link>
+                  <>
+                    <Link
+                      href={`/juegos/${game.slug}/descargar`}
+                      className={styles.primaryAction}
+                    >
+                      <Download size={18} aria-hidden="true" />
+                      Descargar
+                    </Link>
+                    <Link
+                      href="#compatibility"
+                      className={styles.secondaryAction}
+                    >
+                      <Monitor size={18} aria-hidden="true" />
+                      Ver compatibilidad
+                    </Link>
+                  </>
                 ) : (
                   <Link
                     href="#compatibility"
@@ -360,14 +369,6 @@ export default async function GameDetailPage({
                     ¿Me funciona?
                   </Link>
                 )}
-
-                <Link
-                  href="#compatibility"
-                  className={styles.secondaryAction}
-                >
-                  <Monitor size={18} aria-hidden="true" />
-                  Ver compatibilidad
-                </Link>
               </div>
             </div>
 
@@ -449,7 +450,10 @@ export default async function GameDetailPage({
             </dl>
           </article>
 
-          <div id="compatibility">
+          <div
+            id="compatibility"
+            className={styles.compatibilityAnchor}
+          >
             <GameCompatibilityCard slug={game.slug} />
           </div>
         </section>
@@ -478,8 +482,12 @@ export default async function GameDetailPage({
                   {requirementRows.map((row) => (
                     <tr key={row.label}>
                       <th scope="row">{row.label}</th>
-                      <td>{row.minimum ?? "Sin dato"}</td>
-                      <td>{row.recommended ?? "Sin dato"}</td>
+                      <td data-label="Mínimos">
+                        {row.minimum ?? "Sin dato"}
+                      </td>
+                      <td data-label="Recomendados">
+                        {row.recommended ?? "Sin dato"}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

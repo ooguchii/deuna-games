@@ -10,6 +10,7 @@
   align-items: center;
   gap: 8px;
   margin-bottom: 18px;
+  overflow: hidden;
   color: var(--text-muted);
   font-size: var(--font-sm);
 }
@@ -18,6 +19,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  flex: 0 0 auto;
   color: var(--text-soft);
   transition: color var(--ease-fast);
 }
@@ -26,8 +28,13 @@
   color: var(--text);
 }
 
+.breadcrumb > svg {
+  flex: 0 0 auto;
+}
+
 .breadcrumb span {
   min-width: 0;
+  flex: 1 1 auto;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -241,6 +248,7 @@
   margin-top: 18px;
   padding: 8px;
   overflow-x: auto;
+  overscroll-behavior-inline: contain;
   border: 1px solid color-mix(in srgb, var(--text-soft) 12%, transparent);
   border-radius: var(--radius-large);
   background: color-mix(in srgb, var(--background) 88%, transparent);
@@ -258,6 +266,7 @@
   align-items: center;
   gap: 7px;
   flex: 0 0 auto;
+  scroll-snap-align: start;
   padding: 0 13px;
   color: var(--text-soft);
   border-radius: 9px;
@@ -278,6 +287,11 @@
   grid-template-columns: minmax(0, 1fr) 340px;
   gap: 18px;
   margin-top: 20px;
+  scroll-margin-top: 140px;
+}
+
+.compatibilityAnchor {
+  min-width: 0;
   scroll-margin-top: 140px;
 }
 
@@ -801,8 +815,84 @@
   }
 
   .sectionNav {
-    top: 66px;
+    top: 70px;
     margin-inline: -2px;
+    scroll-snap-type: x proximity;
+    touch-action: pan-x;
+  }
+
+  .requirementsTableWrap {
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .requirementsTable {
+    min-width: 0;
+    display: block;
+    background: transparent;
+  }
+
+  .requirementsTable thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .requirementsTable tbody,
+  .requirementsTable tr,
+  .requirementsTable th,
+  .requirementsTable td {
+    display: block;
+    width: 100%;
+  }
+
+  .requirementsTable tbody {
+    display: grid;
+    gap: 10px;
+  }
+
+  .requirementsTable tr {
+    overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--text-soft) 11%, transparent);
+    border-radius: 13px;
+    background: color-mix(in srgb, var(--surface-2) 72%, transparent);
+  }
+
+  .requirementsTable tbody th,
+  .requirementsTable td {
+    border-right: 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--text-soft) 9%, transparent);
+  }
+
+  .requirementsTable tbody th {
+    padding: 12px 14px;
+    color: var(--text);
+    background: color-mix(in srgb, var(--surface) 88%, transparent);
+  }
+
+  .requirementsTable td {
+    display: grid;
+    grid-template-columns: minmax(92px, 0.38fr) minmax(0, 1fr);
+    gap: 12px;
+    padding: 12px 14px;
+  }
+
+  .requirementsTable td::before {
+    content: attr(data-label);
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+
+  .requirementsTable tr > :last-child {
+    border-bottom: 0;
   }
 
   .informationPanel,

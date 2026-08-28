@@ -19,9 +19,13 @@ export function getStoredHardwareSnapshot() {
     return null;
   }
 
-  return window.localStorage.getItem(
-    PROFILE_STORAGE_KEY
-  );
+  try {
+    return window.localStorage.getItem(
+      PROFILE_STORAGE_KEY
+    );
+  } catch {
+    return null;
+  }
 }
 
 export function parseStoredHardwareProfile(
