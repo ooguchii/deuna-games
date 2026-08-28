@@ -529,7 +529,7 @@ export default async function GameDetailPage({
               <span>INSTALACIÓN</span>
               <h2 id="installation-title">Descarga desde una fuente configurada</h2>
               <p>
-                Elegí una fuente disponible, abrí el destino correspondiente y seguí las instrucciones publicadas junto con tu juego.
+                Elige una fuente disponible, abre el destino correspondiente y sigue las instrucciones publicadas junto con tu juego.
               </p>
             </div>
             <Link
