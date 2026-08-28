@@ -207,7 +207,7 @@ export default async function DownloadPage({
           <div className={styles.sourcesHeading}>
             <span>DESCARGA</span>
             <h2 id="sources-title">
-              Elegí una fuente para continuar
+              Elige una fuente para continuar
             </h2>
             <p>
               Sólo mostramos destinos configurados para este juego y validados por la aplicación antes de renderizarlos.
@@ -280,7 +280,7 @@ export default async function DownloadPage({
           <div>
             <h2 id="how-title">¿Cómo funciona?</h2>
             <p>
-              Elegí una fuente y se abrirá el destino correspondiente. Si es externo, se abre en una pestaña nueva para que puedas volver al juego sin perder esta página.
+              Elige una fuente y se abrirá el destino correspondiente. Si es externo, se abre en una pestaña nueva para que puedas volver al juego sin perder esta página.
             </p>
           </div>
           <a href="#sources-title" className={styles.guideAction}>
