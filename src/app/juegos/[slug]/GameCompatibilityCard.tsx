@@ -122,7 +122,7 @@ export default function GameCompatibilityCard({
         </div>
 
         <p className={styles.compatibilityEmpty}>
-          Configurá tu equipo una vez y después podrás ver una estimación de rendimiento en cada juego.
+          Configura tu equipo una vez y después podrás ver una estimación de rendimiento en cada juego.
         </p>
 
         <Link
