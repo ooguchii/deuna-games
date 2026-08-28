@@ -49,10 +49,32 @@ export const games: Game[] = [
     description:
       "Explora las Tierras Intermedias en un enorme RPG de acción y fantasía.",
     category: "RPG",
+    genres: ["RPG", "Acción"],
+    tags: ["Mundo abierto", "Fantasía oscura", "Un jugador"],
+    platforms: ["PC"],
     badge: "POPULAR",
     rating: 4.9,
     reviews: "9.1K",
     version: "v1.10.1",
+    releaseDate: "25/02/2022",
+    developer: "FromSoftware",
+    publisher: "Bandai Namco Entertainment",
+    requirements: {
+      minimum: {
+        system: "Windows 10 de 64 bits",
+        processor: "Intel Core i5-8400 o AMD Ryzen 3 3300X",
+        ram: "12 GB",
+        graphics: "GeForce GTX 1060 3 GB o Radeon RX 580 4 GB",
+        storage: "60 GB",
+      },
+      recommended: {
+        system: "Windows 10/11 de 64 bits",
+        processor: "Intel Core i7-8700K o AMD Ryzen 5 3600X",
+        ram: "16 GB",
+        graphics: "GeForce GTX 1070 8 GB o Radeon RX Vega 56 8 GB",
+        storage: "60 GB",
+      },
+    },
     imageAlt: "Elden Ring",
   },
   {

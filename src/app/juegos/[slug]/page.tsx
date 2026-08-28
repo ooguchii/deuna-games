@@ -8,12 +8,14 @@ import {
   ChevronRight,
   Download,
   Gamepad2,
+  Gauge,
   HardDrive,
   House,
   Info,
   Monitor,
   RefreshCcw,
   ShieldCheck,
+  Star,
 } from "lucide-react";
 
 import Footer from "@/components/layout/Footer";
@@ -27,6 +29,7 @@ import {
 import {
   resolvedGameUpdates,
 } from "@/data/updates";
+import { getPerformanceProfile } from "@/features/game-finder/performance-data";
 import {
   resolveGameDownload,
 } from "@/lib/games/download";
@@ -160,6 +163,9 @@ export default async function GameDetailPage({
   }
 
   const download = resolveGameDownload(game);
+  const performanceProfile = getPerformanceProfile(
+    game.slug
+  );
   const requirements = game.requirements;
   const minimum = requirements
     ? requirements.minimum ??
@@ -191,7 +197,6 @@ export default async function GameDetailPage({
       [
         ...(game.screenshots ?? []),
         game.heroImage,
-        game.coverImage,
       ].filter(
         (item): item is string =>
           typeof item === "string" &&
@@ -208,6 +213,23 @@ export default async function GameDetailPage({
     game.genres?.length
       ? game.genres
       : [game.category];
+
+  const visibleTags = Array.from(
+    new Set([
+      ...genres,
+      ...(game.tags ?? []),
+    ])
+  )
+    .filter((tag) => tag !== game.category)
+    .slice(0, 5);
+
+  const sizeLabel = download?.sizeGb
+    ? `${download.sizeGb} GB`
+    : performanceProfile.storageGb
+      ? `${performanceProfile.storageGb} GB aprox.`
+      : minimum?.storage ??
+        recommended?.storage ??
+        "A confirmar";
 
   const breadcrumbJsonLd = {
     "@context": "https://schema.org",
@@ -314,6 +336,10 @@ export default async function GameDetailPage({
             </div>
 
             <div className={styles.heroContent}>
+              <span className={styles.heroEyebrow}>
+                FICHA DEL JUEGO
+              </span>
+
               <div className={styles.heroBadges}>
                 <span className={styles.category}>
                   {game.category}
@@ -330,17 +356,34 @@ export default async function GameDetailPage({
 
               <h1 id="game-title">{game.title}</h1>
 
-              <div className={styles.tagList}>
-                {[...genres, ...(game.tags ?? [])]
-                  .slice(0, 5)
-                  .map((tag) => (
+              {visibleTags.length > 0 && (
+                <div className={styles.tagList}>
+                  {visibleTags.map((tag) => (
                     <span key={tag}>{tag}</span>
                   ))}
-              </div>
+                </div>
+              )}
 
               <p className={styles.description}>
                 {game.description}
               </p>
+
+              {(game.rating || game.reviews) && (
+                <div
+                  className={styles.heroRating}
+                  aria-label="Valoración de demostración"
+                >
+                  <Star
+                    size={18}
+                    fill="currentColor"
+                    aria-hidden="true"
+                  />
+                  {game.rating && <strong>{game.rating}</strong>}
+                  {game.reviews && (
+                    <span>{game.reviews} valoraciones</span>
+                  )}
+                </div>
+              )}
 
               <div className={styles.actions}>
                 {download ? (
@@ -371,34 +414,58 @@ export default async function GameDetailPage({
                 )}
               </div>
             </div>
-
-            <aside
-              className={styles.heroFacts}
-              aria-label="Información rápida"
-            >
-              <div>
-                <RefreshCcw size={17} aria-hidden="true" />
-                <span>Versión</span>
-                <strong>{game.version ?? "Sin publicar"}</strong>
-              </div>
-              <div>
-                <HardDrive size={17} aria-hidden="true" />
-                <span>Tamaño</span>
-                <strong>
-                  {download?.sizeGb
-                    ? `${download.sizeGb} GB`
-                    : minimum?.storage ??
-                      recommended?.storage ??
-                      "Sin dato"}
-                </strong>
-              </div>
-              <div>
-                <Gamepad2 size={17} aria-hidden="true" />
-                <span>Plataforma</span>
-                <strong>{platforms.join(", ")}</strong>
-              </div>
-            </aside>
           </div>
+        </section>
+
+        <section
+          className={styles.overviewBar}
+          aria-labelledby="overview-title"
+        >
+          <div className={styles.overviewHeading}>
+            <span>INFORMACIÓN DEL JUEGO</span>
+            <h2 id="overview-title">
+              Lo esencial, en un solo lugar
+            </h2>
+          </div>
+
+          <dl className={styles.overviewFacts}>
+            <div>
+              <span className={styles.overviewIcon}>
+                <Gamepad2 size={18} aria-hidden="true" />
+              </span>
+              <div>
+                <dt>Género</dt>
+                <dd>{genres.slice(0, 2).join(", ")}</dd>
+              </div>
+            </div>
+            <div>
+              <span className={styles.overviewIcon}>
+                <Monitor size={18} aria-hidden="true" />
+              </span>
+              <div>
+                <dt>Plataforma</dt>
+                <dd>{platforms.join(", ")}</dd>
+              </div>
+            </div>
+            <div>
+              <span className={styles.overviewIcon}>
+                <RefreshCcw size={18} aria-hidden="true" />
+              </span>
+              <div>
+                <dt>Versión</dt>
+                <dd>{game.version ?? "A confirmar"}</dd>
+              </div>
+            </div>
+            <div>
+              <span className={styles.overviewIcon}>
+                <HardDrive size={18} aria-hidden="true" />
+              </span>
+              <div>
+                <dt>Espacio estimado</dt>
+                <dd>{sizeLabel}</dd>
+              </div>
+            </div>
+          </dl>
         </section>
 
         <nav
@@ -406,6 +473,7 @@ export default async function GameDetailPage({
           aria-label="Secciones del juego"
         >
           <a href="#information"><Info size={16} aria-hidden="true" />Información</a>
+          <a href="#compatibility"><Gauge size={16} aria-hidden="true" />Compatibilidad</a>
           {requirementRows.length > 0 && (
             <a href="#requirements"><Monitor size={16} aria-hidden="true" />Requisitos</a>
           )}
@@ -428,11 +496,15 @@ export default async function GameDetailPage({
           <article className={styles.informationPanel}>
             <div className={styles.sectionHeading}>
               <span>INFORMACIÓN</span>
-              <h2 id="game-info-title">Acerca del juego</h2>
+              <h2 id="game-info-title">Una mirada completa</h2>
             </div>
 
             <p className={styles.longDescription}>
               {game.description}
+            </p>
+
+            <p className={styles.informationNote}>
+              Consulta los datos principales, revisa la compatibilidad de tu equipo y accede a las versiones publicadas desde una sola ficha.
             </p>
 
             <dl className={styles.detailList}>
@@ -467,6 +539,9 @@ export default async function GameDetailPage({
             <div className={styles.sectionHeading}>
               <span>REQUISITOS</span>
               <h2 id="requirements-title">Requisitos del sistema</h2>
+              <p className={styles.sectionDescription}>
+                Compara los valores mínimos y recomendados antes de instalar el juego.
+              </p>
             </div>
 
             <div className={styles.requirementsTableWrap}>
@@ -504,7 +579,11 @@ export default async function GameDetailPage({
           >
             <div className={styles.sectionHeading}>
               <span>GALERÍA</span>
-              <h2 id="gallery-title">Capturas e imágenes</h2>
+              <h2 id="gallery-title">
+                {gallery.length > 1
+                  ? "Capturas e imágenes"
+                  : "Imagen destacada"}
+              </h2>
             </div>
 
             <div className={styles.galleryGrid}>
