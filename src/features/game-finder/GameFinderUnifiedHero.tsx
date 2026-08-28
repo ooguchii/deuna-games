@@ -6,9 +6,12 @@ import {
   ArrowRight,
   CheckCircle2,
   ChevronRight,
+  Cpu,
   Gamepad2,
   Info,
   LoaderCircle,
+  MemoryStick,
+  Monitor,
   RefreshCw,
   ShieldCheck,
   SlidersHorizontal,
@@ -92,6 +95,14 @@ export default function GameFinderUnifiedHero({
           Detectamos lo que el navegador permite, comparamos CPU, GPU y RAM con cada juego y calculamos FPS orientativos según resolución y calidad.
         </p>
 
+        <div className={styles.microFlow} aria-label="Resumen del proceso">
+          <span>Detectamos</span>
+          <i aria-hidden="true" />
+          <span>Comparamos</span>
+          <i aria-hidden="true" />
+          <span>Estimamos FPS</span>
+        </div>
+
         <div className={styles.actions}>
           <button type="button" className={styles.primaryAction} onClick={onAnalyze}>
             <Target size={18} aria-hidden="true" />
@@ -105,14 +116,6 @@ export default function GameFinderUnifiedHero({
           </button>
         </div>
 
-        <div className={styles.microFlow} aria-label="Resumen del proceso">
-          <span>Detectamos</span>
-          <i aria-hidden="true" />
-          <span>Comparamos</span>
-          <i aria-hidden="true" />
-          <span>Estimamos FPS</span>
-        </div>
-
         <div className={styles.trust}>
           <ShieldCheck size={15} aria-hidden="true" />
           Todo se procesa en tu navegador. No leemos archivos ni instalamos nada.
@@ -120,55 +123,74 @@ export default function GameFinderUnifiedHero({
       </div>
 
       <div className={styles.workspace}>
-        <article className={styles.profileCard}>
-          <div className={styles.profileHeader}>
-            <div>
+        <article className={styles.profileCard} aria-label="Perfil actual del equipo">
+          <div className={styles.profileIdentity}>
+            <div className={styles.profileIdentityTop}>
               <span>TU PERFIL ACTUAL</span>
+              {isDetecting ? (
+                <LoaderCircle className={styles.spin} size={19} aria-hidden="true" />
+              ) : (
+                <CheckCircle2 size={19} aria-hidden="true" />
+              )}
+            </div>
+
+            <div className={styles.profileTitleLine}>
               <strong>{profileTitle}</strong>
+              <small>{detectionSource}</small>
             </div>
 
-            {isDetecting ? (
-              <LoaderCircle className={styles.spin} size={21} aria-hidden="true" />
-            ) : (
-              <CheckCircle2 size={21} aria-hidden="true" />
-            )}
-          </div>
-
-          <dl className={styles.profileSpecs}>
-            <div>
-              <dt>CPU</dt>
-              <dd>{hardware.cpu?.name ?? "No identificado"}</dd>
-            </div>
-            <div>
-              <dt>GPU</dt>
-              <dd>{hardware.gpu?.name ?? "No identificada"}</dd>
-            </div>
-            <div>
-              <dt>RAM</dt>
-              <dd>{ramLabel}</dd>
-            </div>
-            <div>
-              <dt>Sistema</dt>
-              <dd>{hardware.os}</dd>
-            </div>
-          </dl>
-
-          <div className={styles.profileStatus}>
-            <div className={styles.statusTopline}>
-              <span className={styles.statusLabel} data-state={detectionState}>
+            <div className={styles.profileState}>
+              <span className={styles.profileStateLabel} data-state={detectionState}>
                 {isDetecting ? (
-                  <LoaderCircle size={13} aria-hidden="true" />
+                  <LoaderCircle size={12} aria-hidden="true" />
                 ) : isWarning ? (
-                  <Info size={13} aria-hidden="true" />
+                  <Info size={12} aria-hidden="true" />
                 ) : (
-                  <CheckCircle2 size={13} aria-hidden="true" />
+                  <CheckCircle2 size={12} aria-hidden="true" />
                 )}
                 {detectionStatus}
               </span>
-              <small>{detectionSource}</small>
+              <p className={styles.profileHint}>{detectionHint}</p>
             </div>
-            <p>{detectionHint}</p>
           </div>
+
+          <dl className={styles.profileSpecs}>
+            <div className={styles.specItem}>
+              <dt className={styles.specLabel}>
+                <Cpu size={15} aria-hidden="true" />
+                CPU
+              </dt>
+              <dd title={hardware.cpu?.name ?? "No identificado"}>
+                {hardware.cpu?.name ?? "No identificado"}
+              </dd>
+            </div>
+
+            <div className={styles.specItem}>
+              <dt className={styles.specLabel}>
+                <Gamepad2 size={15} aria-hidden="true" />
+                GPU
+              </dt>
+              <dd title={hardware.gpu?.name ?? "No identificada"}>
+                {hardware.gpu?.name ?? "No identificada"}
+              </dd>
+            </div>
+
+            <div className={styles.specItem}>
+              <dt className={styles.specLabel}>
+                <MemoryStick size={15} aria-hidden="true" />
+                RAM
+              </dt>
+              <dd>{ramLabel}</dd>
+            </div>
+
+            <div className={styles.specItem}>
+              <dt className={styles.specLabel}>
+                <Monitor size={15} aria-hidden="true" />
+                Sistema
+              </dt>
+              <dd title={hardware.os}>{hardware.os}</dd>
+            </div>
+          </dl>
 
           <div className={styles.profileActions}>
             <button type="button" onClick={onDetect} disabled={isDetecting}>
@@ -213,7 +235,7 @@ export default function GameFinderUnifiedHero({
                         src={game.coverImage}
                         alt={game.imageAlt}
                         fill
-                        sizes="(max-width: 760px) 150px, (max-width: 1260px) 180px, 160px"
+                        sizes="(max-width: 640px) 150px, (max-width: 1260px) 22vw, 180px"
                         className={styles.recommendationImage}
                         priority={index < 2}
                       />
