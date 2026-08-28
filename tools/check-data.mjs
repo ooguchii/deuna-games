@@ -240,6 +240,57 @@ function isValidPublishedAt(value) {
   );
 }
 
+function validateDownloadHref(
+  href,
+  label,
+  errors
+) {
+  if (!isNonEmptyString(href)) {
+    errors.push(
+      `${label} debe ser un string no vacío.`
+    );
+    return false;
+  }
+
+  const trimmed = href.trim();
+
+  if (trimmed.startsWith("/")) {
+    if (
+      trimmed.startsWith("//") ||
+      trimmed.includes("\\")
+    ) {
+      errors.push(
+        `${label} interno no puede usar // ni barras invertidas.`
+      );
+      return false;
+    }
+
+    return true;
+  }
+
+  try {
+    const url = new URL(trimmed);
+
+    if (
+      url.protocol !== "https:" ||
+      url.username ||
+      url.password
+    ) {
+      errors.push(
+        `${label} externo debe ser HTTPS y no contener credenciales.`
+      );
+      return false;
+    }
+
+    return true;
+  } catch {
+    errors.push(
+      `${label} no es una URL válida.`
+    );
+    return false;
+  }
+}
+
 function validateDownload(
   game,
   errors
@@ -258,52 +309,124 @@ function validateDownload(
     return;
   }
 
-  const href = game.download.href;
+  const download = game.download;
+  const hasLegacyHref =
+    download.href !== undefined;
+  const hasSources =
+    download.sources !== undefined;
 
-  if (!isNonEmptyString(href)) {
+  if (!hasLegacyHref && !hasSources) {
     errors.push(
-      `${game.slug}: download.href debe ser un string no vacío.`
+      `${game.slug}: download debe declarar href o sources.`
     );
-    return;
   }
 
-  const trimmed = href.trim();
+  if (hasLegacyHref) {
+    validateDownloadHref(
+      download.href,
+      `${game.slug}: download.href`,
+      errors
+    );
+  }
 
-  if (trimmed.startsWith("/")) {
-    if (
-      trimmed.startsWith("//") ||
-      trimmed.includes("\\")
-    ) {
+  if (
+    download.label !== undefined &&
+    !isNonEmptyString(download.label)
+  ) {
+    errors.push(
+      `${game.slug}: download.label, si existe, debe ser un string no vacío.`
+    );
+  }
+
+  if (hasSources) {
+    if (!Array.isArray(download.sources)) {
       errors.push(
-        `${game.slug}: download.href interno no puede usar // ni barras invertidas.`
+        `${game.slug}: download.sources debe ser un array.`
       );
-    }
-  } else {
-    try {
-      const url = new URL(trimmed);
+    } else if (download.sources.length === 0 && !hasLegacyHref) {
+      errors.push(
+        `${game.slug}: download.sources no puede estar vacío si no existe download.href.`
+      );
+    } else {
+      const sourceIds = new Set();
 
-      if (
-        url.protocol !== "https:" ||
-        url.username ||
-        url.password
-      ) {
-        errors.push(
-          `${game.slug}: download.href externo debe ser HTTPS y no contener credenciales.`
+      for (const [index, source] of download.sources.entries()) {
+        const sourceLabel =
+          `${game.slug}: download.sources[${index}]`;
+
+        if (
+          !source ||
+          typeof source !== "object"
+        ) {
+          errors.push(
+            `${sourceLabel} debe ser un objeto.`
+          );
+          continue;
+        }
+
+        if (!isNonEmptyString(source.id)) {
+          errors.push(
+            `${sourceLabel}.id debe ser un string no vacío.`
+          );
+        } else if (sourceIds.has(source.id)) {
+          errors.push(
+            `${sourceLabel}.id está duplicado.`
+          );
+        } else {
+          sourceIds.add(source.id);
+        }
+
+        if (!isNonEmptyString(source.name)) {
+          errors.push(
+            `${sourceLabel}.name debe ser un string no vacío.`
+          );
+        }
+
+        validateDownloadHref(
+          source.href,
+          `${sourceLabel}.href`,
+          errors
         );
+
+        if (
+          source.label !== undefined &&
+          !isNonEmptyString(source.label)
+        ) {
+          errors.push(
+            `${sourceLabel}.label, si existe, debe ser un string no vacío.`
+          );
+        }
       }
-    } catch {
-      errors.push(
-        `${game.slug}: download.href no es una URL válida.`
-      );
     }
   }
 
   if (
-    game.download.label !== undefined &&
-    !isNonEmptyString(game.download.label)
+    download.sizeGb !== undefined &&
+    !isPositiveNumber(download.sizeGb)
   ) {
     errors.push(
-      `${game.slug}: download.label, si existe, debe ser un string no vacío.`
+      `${game.slug}: download.sizeGb debe ser un número positivo.`
+    );
+  }
+
+  if (
+    download.fileCount !== undefined &&
+    (
+      !Number.isInteger(download.fileCount) ||
+      download.fileCount <= 0
+    )
+  ) {
+    errors.push(
+      `${game.slug}: download.fileCount debe ser un entero positivo.`
+    );
+  }
+
+  if (
+    download.platform !== undefined &&
+    !isNonEmptyString(download.platform)
+  ) {
+    errors.push(
+      `${game.slug}: download.platform, si existe, debe ser un string no vacío.`
     );
   }
 }
