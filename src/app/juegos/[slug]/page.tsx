@@ -26,6 +26,7 @@ import {
   games,
   getGameBySlug,
 } from "@/data/games";
+import GamePerformanceEstimate from "@/features/game-finder/GamePerformanceEstimate";
 import {
   resolvedGameUpdates,
 } from "@/data/updates";
@@ -384,6 +385,8 @@ export default async function GameDetailPage({
                   )}
                 </div>
               )}
+
+              <GamePerformanceEstimate slug={game.slug} />
 
               <div className={styles.actions}>
                 {download ? (

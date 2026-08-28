@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 
 import {
@@ -8,10 +10,16 @@ import {
   Star,
 } from "lucide-react";
 
+import type {
+  CSSProperties,
+  PointerEvent as ReactPointerEvent,
+} from "react";
+
 import GameMedia from "@/components/ui/GameMedia";
 import type { Game } from "@/types/game";
 
 import styles from "./UniversalGameCard.module.css";
+import tiltStyles from "./UniversalGameCardTilt.module.css";
 
 export type UniversalGameCardVariant =
   | "standard"
@@ -69,6 +77,70 @@ function getMediaBadge(
   }
 
   return null;
+}
+
+function stopTilt(
+  event: ReactPointerEvent<HTMLElement>
+) {
+  const node = event.currentTarget;
+
+  node.style.setProperty("--tilt-x", "0deg");
+  node.style.setProperty("--tilt-y", "0deg");
+  node.style.setProperty("--pointer-x", "50%");
+  node.style.setProperty("--pointer-y", "50%");
+  node.style.setProperty("--image-x", "0px");
+  node.style.setProperty("--image-y", "0px");
+}
+
+function updateTilt(
+  event: ReactPointerEvent<HTMLElement>
+) {
+  if (event.pointerType === "touch") return;
+
+  const node = event.currentTarget;
+  const rect = node.getBoundingClientRect();
+  const x = Math.min(
+    Math.max(
+      (event.clientX - rect.left) / rect.width,
+      0
+    ),
+    1
+  );
+  const y = Math.min(
+    Math.max(
+      (event.clientY - rect.top) / rect.height,
+      0
+    ),
+    1
+  );
+
+  const rotateY = (x - 0.5) * 8;
+  const rotateX = (0.5 - y) * 7;
+
+  node.style.setProperty(
+    "--tilt-x",
+    `${rotateX.toFixed(2)}deg`
+  );
+  node.style.setProperty(
+    "--tilt-y",
+    `${rotateY.toFixed(2)}deg`
+  );
+  node.style.setProperty(
+    "--pointer-x",
+    `${(x * 100).toFixed(1)}%`
+  );
+  node.style.setProperty(
+    "--pointer-y",
+    `${(y * 100).toFixed(1)}%`
+  );
+  node.style.setProperty(
+    "--image-x",
+    `${((x - 0.5) * -8).toFixed(2)}px`
+  );
+  node.style.setProperty(
+    "--image-y",
+    `${((y - 0.5) * -6).toFixed(2)}px`
+  );
 }
 
 function Rating({
@@ -203,24 +275,38 @@ export default function UniversalGameCard({
   const isLowSpec =
     variant === "lowSpec";
 
+  const variantClass =
+    styles[
+      `variant${variant[0]
+        .toUpperCase()}${variant.slice(
+        1
+      )}`
+    ];
+
   return (
     <article
-      className={`${styles.card} ${
-        styles[
-          `variant${variant[0]
-            .toUpperCase()}${variant.slice(
-            1
-          )}`
-        ]
-      }`}
+      className={`${styles.card} ${tiltStyles.tiltCard} ${variantClass}`}
+      onPointerMove={updateTilt}
+      onPointerLeave={stopTilt}
+      onPointerCancel={stopTilt}
+      style={
+        {
+          "--tilt-x": "0deg",
+          "--tilt-y": "0deg",
+          "--pointer-x": "50%",
+          "--pointer-y": "50%",
+          "--image-x": "0px",
+          "--image-y": "0px",
+        } as CSSProperties
+      }
     >
       <Link
         href={`/juegos/${game.slug}`}
-        className={styles.link}
+        className={`${styles.link} ${tiltStyles.tiltClip}`}
         aria-label={`Ver ${game.title}`}
       >
         <div
-          className={styles.media}
+          className={`${styles.media} ${tiltStyles.tiltMedia}`}
         >
           <GameMedia
             src={game.coverImage}
@@ -238,6 +324,13 @@ export default function UniversalGameCard({
           <div
             className={
               styles.mediaOverlay
+            }
+            aria-hidden="true"
+          />
+
+          <div
+            className={
+              tiltStyles.spotlight
             }
             aria-hidden="true"
           />

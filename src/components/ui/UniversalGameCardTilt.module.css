@@ -1,0 +1,139 @@
+.tiltCard {
+  --tilt-x: 0deg;
+  --tilt-y: 0deg;
+  --pointer-x: 50%;
+  --pointer-y: 50%;
+  --image-x: 0px;
+  --image-y: 0px;
+
+  position: relative;
+  overflow: visible;
+
+  transform:
+    perspective(900px)
+    rotateX(var(--tilt-x))
+    rotateY(var(--tilt-y))
+    translateZ(0);
+
+  transform-style: preserve-3d;
+
+  transition:
+    transform 150ms ease-out,
+    border-color 180ms ease,
+    box-shadow 220ms ease,
+    background 180ms ease;
+}
+
+.tiltCard::before {
+  content: "";
+
+  position: absolute;
+  inset: -1px;
+  z-index: -1;
+
+  border-radius: inherit;
+
+  background:
+    radial-gradient(
+      320px circle at var(--pointer-x) var(--pointer-y),
+      color-mix(in srgb, var(--brand) 22%, transparent),
+      transparent 58%
+    );
+
+  opacity: 0;
+  filter: blur(8px);
+
+  transition: opacity 180ms ease;
+  pointer-events: none;
+}
+
+.tiltClip {
+  overflow: hidden;
+  border-radius: inherit;
+}
+
+.tiltMedia {
+  transform: translateZ(14px);
+}
+
+.tiltCard .tiltMedia > img {
+  transform:
+    translate3d(var(--image-x), var(--image-y), 0)
+    scale(1.015);
+
+  transition:
+    transform 210ms ease-out,
+    filter 220ms ease;
+}
+
+.spotlight {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+
+  background:
+    radial-gradient(
+      190px circle at var(--pointer-x) var(--pointer-y),
+      rgba(255, 255, 255, 0.17),
+      transparent 60%
+    );
+
+  opacity: 0;
+  mix-blend-mode: screen;
+
+  transition: opacity 180ms ease;
+  pointer-events: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .tiltCard:hover::before {
+    opacity: 1;
+  }
+
+  .tiltCard:hover .tiltMedia > img {
+    transform:
+      translate3d(var(--image-x), var(--image-y), 0)
+      scale(1.075);
+
+    filter:
+      brightness(1.035)
+      saturate(1.07)
+      contrast(1.015);
+  }
+
+  .tiltCard:hover .spotlight {
+    opacity: 0.64;
+  }
+}
+
+@media (hover: none), (pointer: coarse) {
+  .tiltCard {
+    transform: none;
+  }
+
+  .tiltCard::before,
+  .spotlight {
+    display: none;
+  }
+
+  .tiltCard .tiltMedia > img {
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tiltCard {
+    transform: none;
+    transition: none;
+  }
+
+  .tiltCard::before,
+  .spotlight {
+    display: none;
+  }
+
+  .tiltCard .tiltMedia > img {
+    transform: none;
+    transition: none;
+  }
+}
