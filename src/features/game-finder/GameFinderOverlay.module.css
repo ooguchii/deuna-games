@@ -121,7 +121,7 @@
 
 .profileActions {
   display: grid;
-  grid-template-columns: 1fr 1.16fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.16fr);
   gap: 8px;
 
   margin-top: 12px;
@@ -129,6 +129,8 @@
 
 .profileAction,
 .profileActionPrimary {
+  width: 100%;
+  min-width: 0;
   min-height: 39px;
 
   display: inline-flex;
@@ -139,6 +141,7 @@
   padding: 0 10px;
 
   border-radius: 8px;
+  box-sizing: border-box;
 
   cursor: pointer;
 
@@ -151,6 +154,11 @@
     border-color var(--ease-fast),
     background var(--ease-fast),
     transform var(--ease-fast);
+}
+
+.profileAction svg,
+.profileActionPrimary svg {
+  flex: 0 0 auto;
 }
 
 .profileAction {
@@ -204,6 +212,26 @@
 @keyframes statusSpin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 1480px) and (min-width: 761px) {
+  .profileActions {
+    grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+    gap: 6px;
+  }
+
+  .profileAction,
+  .profileActionPrimary {
+    gap: 5px;
+    padding: 0 6px;
+    font-size: 9px;
+  }
+
+  .profileAction svg,
+  .profileActionPrimary svg {
+    width: 12px;
+    height: 12px;
   }
 }
 
