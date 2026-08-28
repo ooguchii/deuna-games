@@ -12,12 +12,14 @@ export type GpuRendererMatch = {
 };
 
 const genericIdTokens = new Set([
+  "extra",
   "amd",
   "nvidia",
   "intel",
   "radeon",
   "geforce",
   "graphics",
+  "gpu",
 ]);
 
 const familyTokens = new Set([
@@ -29,6 +31,10 @@ const familyTokens = new Set([
   "vega",
   "uhd",
   "iris",
+  "r9",
+  "r7",
+  "r5",
+  "quadro",
 ]);
 
 const variantTokens = new Set([
