@@ -19,33 +19,56 @@ import { safeJsonLd } from "@/lib/safe-json-ld";
 
 import styles from "./page.module.css";
 
-type RequirementsPageProps = {
-  searchParams: Promise<{
-    juego?: string;
-  }>;
+type RequirementsSearchParams = {
+  juego?: string;
 };
 
-export const metadata: Metadata = {
-  title: "¿Qué puedo jugar con mi PC?",
-  description:
-    "Detecta el hardware que el navegador pueda identificar o configúralo manualmente para obtener estimaciones orientativas de FPS por juego, resolución y calidad gráfica.",
-  alternates: {
-    canonical: "/requisitos",
-  },
-  openGraph: {
-    title: `¿Qué puedo jugar con mi PC? | ${siteConfig.name}`,
-    description:
-      "Descubre juegos para tu PC con detección local, configuración manual y estimaciones orientativas de rendimiento.",
-    url: "/requisitos",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: `¿Qué puedo jugar con mi PC? | ${siteConfig.name}`,
-    description:
-      "Descubre juegos para tu PC con detección local, configuración manual y estimaciones orientativas de rendimiento.",
-  },
+type RequirementsPageProps = {
+  searchParams: Promise<RequirementsSearchParams>;
 };
+
+const title = "¿Qué puedo jugar con mi PC?";
+const description =
+  "Detecta el hardware que el navegador pueda identificar o configúralo manualmente para obtener estimaciones orientativas de FPS por juego, resolución y calidad gráfica.";
+
+export async function generateMetadata({
+  searchParams,
+}: RequirementsPageProps): Promise<Metadata> {
+  const params = await searchParams;
+  const hasFocusedGame =
+    typeof params.juego === "string" &&
+    params.juego.length > 0;
+
+  return {
+    title,
+    description,
+    alternates: {
+      canonical: "/requisitos",
+    },
+    robots: hasFocusedGame
+      ? {
+          index: false,
+          follow: true,
+        }
+      : {
+          index: true,
+          follow: true,
+        },
+    openGraph: {
+      title: `${title} | ${siteConfig.name}`,
+      description:
+        "Descubre juegos para tu PC con detección local, configuración manual y estimaciones orientativas de rendimiento.",
+      url: "/requisitos",
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${title} | ${siteConfig.name}`,
+      description:
+        "Descubre juegos para tu PC con detección local, configuración manual y estimaciones orientativas de rendimiento.",
+    },
+  };
+}
 
 export default async function RequirementsPage({
   searchParams,
@@ -89,7 +112,7 @@ export default async function RequirementsPage({
   const pageJsonLd = {
     "@context": "https://schema.org",
     "@type": "WebPage",
-    name: "¿Qué puedo jugar con mi PC?",
+    name: title,
     url: absoluteUrl("/requisitos"),
     description:
       "Herramienta orientativa para comparar un perfil de hardware con juegos del catálogo de DeUna Games.",
