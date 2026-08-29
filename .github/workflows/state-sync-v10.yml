@@ -1,0 +1,53 @@
+name: State Sync V10
+
+on:
+  push:
+    branches:
+      - feature/game-detail-download-v2
+    paths:
+      - .github/workflows/state-sync-v10.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/game-detail-download-v2
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Apply profile state sync
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const file = 'src/features/game-finder/GameFinderClient.tsx';
+          let text = fs.readFileSync(file, 'utf8');
+          const anchor = `  useEffect(() => {\n    if (\n      !hardware ||\n      hardware.source === \"browser\" ||`;
+          const addition = `  useEffect(() => {\n    function handleStorage(event: StorageEvent) {\n      if (\n        event.storageArea !== window.localStorage ||\n        event.key !== PROFILE_STORAGE_KEY\n      ) {\n        return;\n      }\n\n      const saved = readStoredHardwareProfile();\n      if (!saved) return;\n\n      setSnapshot(null);\n      setHardware(saved);\n      setManualDraft(profileToManualDraft(saved));\n      setDetectionState(\"ready\");\n    }\n\n    window.addEventListener(\"storage\", handleStorage);\n    return () => window.removeEventListener(\"storage\", handleStorage);\n  }, []);\n\n`;
+          if (!text.includes(anchor)) throw new Error('effect anchor not found');
+          text = text.replace(anchor, addition + anchor);
+          fs.writeFileSync(file, text);
+          NODE
+      - name: Validate
+        run: |
+          npm run lint
+          npm run typecheck
+          npm run check:architecture
+          npm run check:source
+      - name: Commit
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/state-sync-v10.yml
+          git add src/features/game-finder/GameFinderClient.tsx
+          git commit -m "fix: sincronizar perfil entre pestañas"
+          git push origin HEAD:feature/game-detail-download-v2
