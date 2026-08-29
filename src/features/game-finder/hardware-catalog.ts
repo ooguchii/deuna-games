@@ -1,423 +1,70 @@
+import {
+  cpuCatalog as baseCpuCatalog,
+  estimateCpuFromLogicalProcessors,
+  findCpuById as findBaseCpuById,
+  findGpuById as findBaseGpuById,
+  findGpuByRenderer,
+  gpuCatalog as baseGpuCatalog,
+} from "./hardware-catalog-base";
+import {
+  cpuCatalogExpansion,
+  gpuCatalogExpansion,
+} from "./hardware-catalog-expansion";
 import type { HardwarePart } from "./types";
 
-/*
- * Los scores son una escala interna de equivalencia usada por el modelo de
- * FPS. No son puntos de PassMark/3DMark ni deben mostrarse al usuario como
- * un benchmark real. Se mantienen centralizados para poder recalibrarlos sin
- * cambiar la interfaz ni el formato de los perfiles guardados.
- */
-export const cpuCatalog: HardwarePart[] = [
-  { id: "fx-8350", name: "AMD FX-8350", score: 14 },
-  { id: "i3-6100", name: "Intel Core i3-6100", score: 16 },
-  { id: "athlon-3000g", name: "AMD Athlon 3000G", score: 18 },
-  { id: "ryzen-3-1200", name: "AMD Ryzen 3 1200", score: 19 },
-  { id: "i7-4790", name: "Intel Core i7-4790", score: 22 },
-  { id: "ryzen-3-2200g", name: "AMD Ryzen 3 2200G", score: 22 },
-  { id: "i5-6500", name: "Intel Core i5-6500", score: 24 },
-  { id: "ryzen-3-1300x", name: "AMD Ryzen 3 1300X", score: 24 },
-  { id: "ryzen-3-3200g", name: "AMD Ryzen 3 3200G", score: 26 },
-  { id: "ryzen-5-1400", name: "AMD Ryzen 5 1400", score: 27 },
-  { id: "i5-7400", name: "Intel Core i5-7400", score: 30 },
-  { id: "i5-7500", name: "Intel Core i5-7500", score: 31 },
-  { id: "ryzen-5-1500x", name: "AMD Ryzen 5 1500X", score: 31 },
-  { id: "ryzen-5-1600", name: "AMD Ryzen 5 1600", score: 32 },
-  { id: "ryzen-5-1600af", name: "AMD Ryzen 5 1600 AF", score: 35 },
-  { id: "i7-7700", name: "Intel Core i7-7700", score: 35 },
-  { id: "i3-8100", name: "Intel Core i3-8100", score: 35 },
-  { id: "ryzen-3-3100", name: "AMD Ryzen 3 3100", score: 37 },
-  { id: "i5-8400", name: "Intel Core i5-8400", score: 38 },
-  { id: "ryzen-5-2600", name: "AMD Ryzen 5 2600", score: 40 },
-  { id: "i5-9400f", name: "Intel Core i5-9400F", score: 41 },
-  { id: "ryzen-3-3300x", name: "AMD Ryzen 3 3300X", score: 43 },
-  { id: "i3-10100", name: "Intel Core i3-10100", score: 44 },
-  { id: "i3-10100f", name: "Intel Core i3-10100F", score: 44 },
-  { id: "ryzen-5-3400g", name: "AMD Ryzen 5 3400G", score: 44 },
-  { id: "i5-10400", name: "Intel Core i5-10400", score: 46 },
-  { id: "i5-10400f", name: "Intel Core i5-10400F", score: 46 },
-  { id: "ryzen-3-4100", name: "AMD Ryzen 3 4100", score: 46 },
-  { id: "ryzen-5-4500", name: "AMD Ryzen 5 4500", score: 47 },
-  { id: "i7-8700", name: "Intel Core i7-8700", score: 48 },
-  { id: "ryzen-3-4300g", name: "AMD Ryzen 3 4300G", score: 48 },
-  { id: "ryzen-5-2600x", name: "AMD Ryzen 5 2600X", score: 49 },
-  { id: "ryzen-5-3500x", name: "AMD Ryzen 5 3500X", score: 50 },
-  { id: "ryzen-5-3600", name: "AMD Ryzen 5 3600", score: 52 },
-  { id: "ryzen-5-5500", name: "AMD Ryzen 5 5500", score: 53 },
-  { id: "i7-9700k", name: "Intel Core i7-9700K", score: 54 },
-  { id: "i5-11400", name: "Intel Core i5-11400", score: 55 },
-  { id: "i5-11400f", name: "Intel Core i5-11400F", score: 55 },
-  { id: "ryzen-5-3600x", name: "AMD Ryzen 5 3600X", score: 55 },
-  { id: "i5-10600k", name: "Intel Core i5-10600K", score: 57 },
-  { id: "ryzen-5-4600g", name: "AMD Ryzen 5 4600G", score: 57 },
-  { id: "ryzen-5-5600g", name: "AMD Ryzen 5 5600G", score: 58 },
-  { id: "ryzen-5-3600xt", name: "AMD Ryzen 5 3600XT", score: 59 },
-  { id: "i3-12100", name: "Intel Core i3-12100", score: 60 },
-  { id: "i3-12100f", name: "Intel Core i3-12100F", score: 60 },
-  { id: "ryzen-3-5300g", name: "AMD Ryzen 3 5300G", score: 60 },
-  { id: "i9-9900k", name: "Intel Core i9-9900K", score: 62 },
-  { id: "ryzen-5-5600", name: "AMD Ryzen 5 5600", score: 63 },
-  { id: "i3-13100f", name: "Intel Core i3-13100F", score: 64 },
-  { id: "ryzen-7-2700x", name: "AMD Ryzen 7 2700X", score: 64 },
-  { id: "ryzen-7-5700g", name: "AMD Ryzen 7 5700G", score: 64 },
-  { id: "ryzen-5-5600x", name: "AMD Ryzen 5 5600X", score: 65 },
-  { id: "i7-10700k", name: "Intel Core i7-10700K", score: 66 },
-  { id: "i3-14100f", name: "Intel Core i3-14100F", score: 67 },
-  { id: "i5-12400", name: "Intel Core i5-12400", score: 67 },
-  { id: "i5-12400f", name: "Intel Core i5-12400F", score: 67 },
-  { id: "ryzen-7-3700x", name: "AMD Ryzen 7 3700X", score: 68 },
-  { id: "i5-12500", name: "Intel Core i5-12500", score: 70 },
-  { id: "ryzen-7-4700g", name: "AMD Ryzen 7 4700G", score: 70 },
-  { id: "i9-10900k", name: "Intel Core i9-10900K", score: 72 },
-  { id: "ryzen-7-5700x", name: "AMD Ryzen 7 5700X", score: 72 },
-  { id: "i5-12600", name: "Intel Core i5-12600", score: 73 },
-  { id: "ryzen-7-3800x", name: "AMD Ryzen 7 3800X", score: 74 },
-  { id: "i7-11700k", name: "Intel Core i7-11700K", score: 75 },
-  { id: "i5-12600k", name: "Intel Core i5-12600K", score: 76 },
-  { id: "i9-11900k", name: "Intel Core i9-11900K", score: 78 },
-  { id: "i5-13400", name: "Intel Core i5-13400", score: 78 },
-  { id: "i5-13400f", name: "Intel Core i5-13400F", score: 78 },
-  { id: "ryzen-7-5800x", name: "AMD Ryzen 7 5800X", score: 80 },
-  { id: "i5-14400", name: "Intel Core i5-14400", score: 82 },
-  { id: "i5-14400f", name: "Intel Core i5-14400F", score: 82 },
-  { id: "ryzen-5-7500f", name: "AMD Ryzen 5 7500F", score: 82 },
-  { id: "ryzen-5-5600gt", name: "AMD Ryzen 5 5600GT", score: 82 },
-  { id: "ryzen-5-7600", name: "AMD Ryzen 5 7600", score: 85 },
-  { id: "i7-12700", name: "Intel Core i7-12700", score: 86 },
-  { id: "i5-13500", name: "Intel Core i5-13500", score: 87 },
-  { id: "ryzen-5-7600x", name: "AMD Ryzen 5 7600X", score: 88 },
-  { id: "i7-12700k", name: "Intel Core i7-12700K", score: 88 },
-  { id: "ryzen-7-5700x3d", name: "AMD Ryzen 7 5700X3D", score: 92 },
-  { id: "ryzen-7-7700", name: "AMD Ryzen 7 7700", score: 92 },
-  { id: "ryzen-5-8500g", name: "AMD Ryzen 5 8500G", score: 93 },
-  { id: "ryzen-7-5800x3d", name: "AMD Ryzen 7 5800X3D", score: 96 },
-  { id: "ryzen-5-8600g", name: "AMD Ryzen 5 8600G", score: 97 },
-  { id: "ryzen-9-3900x", name: "AMD Ryzen 9 3900X", score: 98 },
-  { id: "i5-13600k", name: "Intel Core i5-13600K", score: 100 },
-  { id: "ryzen-7-7700x", name: "AMD Ryzen 7 7700X", score: 102 },
-  { id: "i9-12900k", name: "Intel Core i9-12900K", score: 105 },
-  { id: "ryzen-7-8700g", name: "AMD Ryzen 7 8700G", score: 105 },
-  { id: "i5-14600k", name: "Intel Core i5-14600K", score: 108 },
-  { id: "ryzen-5-9600x", name: "AMD Ryzen 5 9600X", score: 108 },
-  { id: "ryzen-7-9700x", name: "AMD Ryzen 7 9700X", score: 110 },
-  { id: "i7-13700", name: "Intel Core i7-13700", score: 110 },
-  { id: "i7-13700k", name: "Intel Core i7-13700K", score: 112 },
-  { id: "ryzen-9-5900x", name: "AMD Ryzen 9 5900X", score: 114 },
-  { id: "i7-14700", name: "Intel Core i7-14700", score: 118 },
-  { id: "i7-14700k", name: "Intel Core i7-14700K", score: 120 },
-  { id: "ryzen-9-3950x", name: "AMD Ryzen 9 3950X", score: 120 },
-  { id: "ryzen-7-7800x3d", name: "AMD Ryzen 7 7800X3D", score: 125 },
-  { id: "ryzen-9-7900", name: "AMD Ryzen 9 7900", score: 126 },
-  { id: "ryzen-9-7900x", name: "AMD Ryzen 9 7900X", score: 128 },
-  { id: "i9-13900k", name: "Intel Core i9-13900K", score: 130 },
-  { id: "ryzen-9-5950x", name: "AMD Ryzen 9 5950X", score: 132 },
-  { id: "i9-14900k", name: "Intel Core i9-14900K", score: 135 },
-  { id: "ryzen-9-7900x3d", name: "AMD Ryzen 9 7900X3D", score: 136 },
-  { id: "ryzen-9-7950x", name: "AMD Ryzen 9 7950X", score: 137 },
-  { id: "ryzen-9-7950x3d", name: "AMD Ryzen 9 7950X3D", score: 138 },
-  { id: "core-ultra-5-225f", name: "Intel Core Ultra 5 225F", score: 140 },
-  { id: "ryzen-9-9900x", name: "AMD Ryzen 9 9900X", score: 142 },
-  { id: "ryzen-7-9800x3d", name: "AMD Ryzen 7 9800X3D", score: 145 },
-  { id: "core-ultra-7-265k", name: "Intel Core Ultra 7 265K", score: 148 },
-  { id: "ryzen-9-9950x", name: "AMD Ryzen 9 9950X", score: 150 },
-  { id: "ryzen-9-9900x3d", name: "AMD Ryzen 9 9900X3D", score: 154 },
-  { id: "core-ultra-9-285k", name: "Intel Core Ultra 9 285K", score: 158 },
-  { id: "ryzen-9-9950x3d", name: "AMD Ryzen 9 9950X3D", score: 162 },
-];
+function mergeHardwareCatalog(
+  base: readonly HardwarePart[],
+  expansion: readonly HardwarePart[]
+): HardwarePart[] {
+  const merged = [...base];
+  const ids = new Set(merged.map((part) => part.id));
+  const names = new Set(
+    merged.map((part) => part.name.toLowerCase())
+  );
 
-export const gpuCatalog: HardwarePart[] = [
-  { id: "intel-hd-530", name: "Intel HD Graphics 530", score: 5, integrated: true },
-  { id: "intel-uhd-610", name: "Intel UHD Graphics 610", score: 6, integrated: true },
-  { id: "intel-uhd-620", name: "Intel UHD Graphics 620", score: 7, integrated: true },
-  { id: "intel-uhd-630", name: "Intel UHD Graphics 630", score: 8, integrated: true },
-  { id: "gt-730", name: "NVIDIA GeForce GT 730", score: 8 },
-  { id: "radeon-vega-3", name: "AMD Radeon Vega 3", score: 9, integrated: true },
-  { id: "gt-1030", name: "NVIDIA GeForce GT 1030", score: 10 },
-  { id: "gtx-750-ti", name: "NVIDIA GeForce GTX 750 Ti", score: 12 },
-  { id: "radeon-vega-6", name: "AMD Radeon Vega 6", score: 14, integrated: true },
-  { id: "gtx-950", name: "NVIDIA GeForce GTX 950", score: 15 },
-  { id: "rx-460", name: "AMD Radeon RX 460", score: 15 },
-  { id: "radeon-vega-8", name: "AMD Radeon Vega 8", score: 17, integrated: true },
-  { id: "gtx-960", name: "NVIDIA GeForce GTX 960", score: 18 },
-  { id: "rx-560", name: "AMD Radeon RX 560", score: 18 },
-  { id: "radeon-vega-7", name: "AMD Radeon Vega 7", score: 20, integrated: true },
-  { id: "gtx-1050", name: "NVIDIA GeForce GTX 1050", score: 21 },
-  { id: "intel-iris-xe", name: "Intel Iris Xe Graphics", score: 22, integrated: true },
-  { id: "rx-470", name: "AMD Radeon RX 470", score: 23 },
-  { id: "gtx-970", name: "NVIDIA GeForce GTX 970", score: 24 },
-  { id: "rx-480", name: "AMD Radeon RX 480", score: 25 },
-  { id: "radeon-610m", name: "AMD Radeon 610M", score: 25, integrated: true },
-  { id: "intel-uhd-730", name: "Intel UHD Graphics 730", score: 26, integrated: true },
-  { id: "radeon-660m", name: "AMD Radeon 660M", score: 27, integrated: true },
-  { id: "radeon-680m", name: "AMD Radeon 680M", score: 28, integrated: true },
-  { id: "gtx-1050-ti", name: "NVIDIA GeForce GTX 1050 Ti", score: 28 },
-  { id: "gtx-980", name: "NVIDIA GeForce GTX 980", score: 29 },
-  { id: "rx-570", name: "AMD Radeon RX 570", score: 34 },
-  { id: "gtx-1060-3gb", name: "NVIDIA GeForce GTX 1060 3GB", score: 32 },
-  { id: "gtx-1060-6gb", name: "NVIDIA GeForce GTX 1060 6GB", score: 35 },
-  { id: "gtx-1650", name: "NVIDIA GeForce GTX 1650", score: 36 },
-  { id: "radeon-780m", name: "AMD Radeon 780M", score: 36, integrated: true },
-  { id: "intel-uhd-770", name: "Intel UHD Graphics 770", score: 36, integrated: true },
-  { id: "radeon-740m", name: "AMD Radeon 740M", score: 37, integrated: true },
-  { id: "rx-6500-xt", name: "AMD Radeon RX 6500 XT", score: 38 },
-  { id: "gtx-980-ti", name: "NVIDIA GeForce GTX 980 Ti", score: 39 },
-  { id: "rx-580", name: "AMD Radeon RX 580", score: 40 },
-  { id: "rx-590", name: "AMD Radeon RX 590", score: 42 },
-  { id: "rx-5500-xt", name: "AMD Radeon RX 5500 XT", score: 42 },
-  { id: "gtx-1650-super", name: "NVIDIA GeForce GTX 1650 SUPER", score: 43 },
-  { id: "radeon-760m", name: "AMD Radeon 760M", score: 43, integrated: true },
-  { id: "gtx-1070", name: "NVIDIA GeForce GTX 1070", score: 45 },
-  { id: "gtx-1660", name: "NVIDIA GeForce GTX 1660", score: 46 },
-  { id: "radeon-vega-56", name: "AMD Radeon RX Vega 56", score: 47 },
-  { id: "rtx-3050", name: "NVIDIA GeForce RTX 3050", score: 48 },
-  { id: "gtx-1070-ti", name: "NVIDIA GeForce GTX 1070 Ti", score: 49 },
-  { id: "gtx-1660-ti", name: "NVIDIA GeForce GTX 1660 Ti", score: 50 },
-  { id: "gtx-1660-super", name: "NVIDIA GeForce GTX 1660 SUPER", score: 52 },
-  { id: "gtx-1080", name: "NVIDIA GeForce GTX 1080", score: 52 },
-  { id: "radeon-vega-64", name: "AMD Radeon RX Vega 64", score: 53 },
-  { id: "rx-5600-xt", name: "AMD Radeon RX 5600 XT", score: 54 },
-  { id: "rx-5500", name: "AMD Radeon RX 5500", score: 55 },
-  { id: "rtx-2060", name: "NVIDIA GeForce RTX 2060", score: 58 },
-  { id: "rx-5700", name: "AMD Radeon RX 5700", score: 60 },
-  { id: "rtx-2060-super", name: "NVIDIA GeForce RTX 2060 SUPER", score: 62 },
-  { id: "gtx-1080-ti", name: "NVIDIA GeForce GTX 1080 Ti", score: 62 },
-  { id: "rtx-2070", name: "NVIDIA GeForce RTX 2070", score: 64 },
-  { id: "rx-5700-xt", name: "AMD Radeon RX 5700 XT", score: 65 },
-  { id: "rtx-2070-super", name: "NVIDIA GeForce RTX 2070 SUPER", score: 68 },
-  { id: "rtx-2080", name: "NVIDIA GeForce RTX 2080", score: 70 },
-  { id: "rx-6600", name: "AMD Radeon RX 6600", score: 72 },
-  { id: "arc-a750", name: "Intel Arc A750", score: 72 },
-  { id: "rtx-2080-super", name: "NVIDIA GeForce RTX 2080 SUPER", score: 74 },
-  { id: "rtx-3060", name: "NVIDIA GeForce RTX 3060", score: 76 },
-  { id: "rx-6600-xt", name: "AMD Radeon RX 6600 XT", score: 77 },
-  { id: "rx-6650-xt", name: "AMD Radeon RX 6650 XT", score: 78 },
-  { id: "arc-a580", name: "Intel Arc A580", score: 79 },
-  { id: "arc-a770", name: "Intel Arc A770", score: 82 },
-  { id: "rx-6700", name: "AMD Radeon RX 6700", score: 82 },
-  { id: "radeon-880m", name: "AMD Radeon 880M", score: 83, integrated: true },
-  { id: "rx-7600", name: "AMD Radeon RX 7600", score: 86 },
-  { id: "arc-b580", name: "Intel Arc B580", score: 88 },
-  { id: "rtx-3060-ti", name: "NVIDIA GeForce RTX 3060 Ti", score: 88 },
-  { id: "rtx-4060", name: "NVIDIA GeForce RTX 4060", score: 90 },
-  { id: "rtx-2080-ti", name: "NVIDIA GeForce RTX 2080 Ti", score: 90 },
-  { id: "radeon-890m", name: "AMD Radeon 890M", score: 91, integrated: true },
-  { id: "arc-b570", name: "Intel Arc B570", score: 92 },
-  { id: "rx-7600-xt", name: "AMD Radeon RX 7600 XT", score: 95 },
-  { id: "rtx-3070", name: "NVIDIA GeForce RTX 3070", score: 100 },
-  { id: "rtx-3070-ti", name: "NVIDIA GeForce RTX 3070 Ti", score: 103 },
-  { id: "rtx-4060-ti", name: "NVIDIA GeForce RTX 4060 Ti", score: 105 },
-  { id: "rx-6700-xt", name: "AMD Radeon RX 6700 XT", score: 105 },
-  { id: "rx-6750-xt", name: "AMD Radeon RX 6750 XT", score: 112 },
-  { id: "rtx-3080", name: "NVIDIA GeForce RTX 3080", score: 115 },
-  { id: "rx-6800", name: "AMD Radeon RX 6800", score: 118 },
-  { id: "rtx-3080-ti", name: "NVIDIA GeForce RTX 3080 Ti", score: 120 },
-  { id: "rx-7700-xt", name: "AMD Radeon RX 7700 XT", score: 122 },
-  { id: "rtx-3090", name: "NVIDIA GeForce RTX 3090", score: 125 },
-  { id: "rtx-4070", name: "NVIDIA GeForce RTX 4070", score: 128 },
-  { id: "rx-6800-xt", name: "AMD Radeon RX 6800 XT", score: 135 },
-  { id: "rx-6950-xt", name: "AMD Radeon RX 6950 XT", score: 138 },
-  { id: "rx-7800-xt", name: "AMD Radeon RX 7800 XT", score: 140 },
-  { id: "rtx-4070-super", name: "NVIDIA GeForce RTX 4070 SUPER", score: 145 },
-  { id: "rx-6900-xt", name: "AMD Radeon RX 6900 XT", score: 145 },
-  { id: "rx-7900-gre", name: "AMD Radeon RX 7900 GRE", score: 145 },
-  { id: "rtx-4070-ti", name: "NVIDIA GeForce RTX 4070 Ti", score: 150 },
-  { id: "rtx-5060", name: "NVIDIA GeForce RTX 5060", score: 152 },
-  { id: "rtx-4070-ti-super", name: "NVIDIA GeForce RTX 4070 Ti SUPER", score: 165 },
-  { id: "rx-7900-xt", name: "AMD Radeon RX 7900 XT", score: 165 },
-  { id: "rtx-5070", name: "NVIDIA GeForce RTX 5070", score: 165 },
-  { id: "rx-9070", name: "AMD Radeon RX 9070", score: 170 },
-  { id: "rtx-5060-ti", name: "NVIDIA GeForce RTX 5060 Ti", score: 172 },
-  { id: "rtx-4080", name: "NVIDIA GeForce RTX 4080", score: 175 },
-  { id: "rx-9060-xt", name: "AMD Radeon RX 9060 XT", score: 178 },
-  { id: "rtx-4080-super", name: "NVIDIA GeForce RTX 4080 SUPER", score: 185 },
-  { id: "rx-7900-xtx", name: "AMD Radeon RX 7900 XTX", score: 185 },
-  { id: "rtx-5070-ti", name: "NVIDIA GeForce RTX 5070 Ti", score: 195 },
-  { id: "rx-9070-xt", name: "AMD Radeon RX 9070 XT", score: 195 },
-  { id: "rtx-4090", name: "NVIDIA GeForce RTX 4090", score: 210 },
-  { id: "rtx-5080", name: "NVIDIA GeForce RTX 5080", score: 235 },
-  { id: "rtx-5090", name: "NVIDIA GeForce RTX 5090", score: 320 },
+  for (const part of expansion) {
+    const normalizedName = part.name.toLowerCase();
 
-  // GPUs móviles comunes. El token "laptop" permite que el matcher prefiera
-  // estas variantes cuando ANGLE/WebGL expone el nombre completo.
-  { id: "rtx-3050-laptop", name: "NVIDIA GeForce RTX 3050 Laptop GPU", score: 40 },
-  { id: "rtx-3050-ti-laptop", name: "NVIDIA GeForce RTX 3050 Ti Laptop GPU", score: 44 },
-  { id: "rtx-3060-laptop", name: "NVIDIA GeForce RTX 3060 Laptop GPU", score: 58 },
-  { id: "rtx-3070-laptop", name: "NVIDIA GeForce RTX 3070 Laptop GPU", score: 72 },
-  { id: "rtx-3070-ti-laptop", name: "NVIDIA GeForce RTX 3070 Ti Laptop GPU", score: 82 },
-  { id: "rtx-3080-laptop", name: "NVIDIA GeForce RTX 3080 Laptop GPU", score: 88 },
-  { id: "rtx-4050-laptop", name: "NVIDIA GeForce RTX 4050 Laptop GPU", score: 68 },
-  { id: "rtx-4060-laptop", name: "NVIDIA GeForce RTX 4060 Laptop GPU", score: 82 },
-  { id: "rtx-4070-laptop", name: "NVIDIA GeForce RTX 4070 Laptop GPU", score: 98 },
-  { id: "rtx-4080-laptop", name: "NVIDIA GeForce RTX 4080 Laptop GPU", score: 135 },
-  { id: "rtx-4090-laptop", name: "NVIDIA GeForce RTX 4090 Laptop GPU", score: 160 },
-];
+    if (ids.has(part.id) || names.has(normalizedName)) {
+      continue;
+    }
 
-const gpuAliases: Array<{ pattern: RegExp; id: string }> = [
-  { pattern: /hd\s*(graphics\s*)?530/i, id: "intel-hd-530" },
-  { pattern: /uhd\s*(graphics\s*)?610/i, id: "intel-uhd-610" },
-  { pattern: /uhd\s*(graphics\s*)?620/i, id: "intel-uhd-620" },
-  { pattern: /uhd\s*(graphics\s*)?630/i, id: "intel-uhd-630" },
-  { pattern: /uhd\s*(graphics\s*)?730/i, id: "intel-uhd-730" },
-  { pattern: /uhd\s*(graphics\s*)?770/i, id: "intel-uhd-770" },
-  { pattern: /iris\s*xe/i, id: "intel-iris-xe" },
-  { pattern: /radeon\s*890m/i, id: "radeon-890m" },
-  { pattern: /radeon\s*880m/i, id: "radeon-880m" },
-  { pattern: /radeon\s*780m/i, id: "radeon-780m" },
-  { pattern: /radeon\s*760m/i, id: "radeon-760m" },
-  { pattern: /radeon\s*740m/i, id: "radeon-740m" },
-  { pattern: /radeon\s*680m/i, id: "radeon-680m" },
-  { pattern: /radeon\s*660m/i, id: "radeon-660m" },
-  { pattern: /radeon\s*610m/i, id: "radeon-610m" },
-  { pattern: /vega\s*8/i, id: "radeon-vega-8" },
-  { pattern: /vega\s*7/i, id: "radeon-vega-7" },
-  { pattern: /vega\s*6/i, id: "radeon-vega-6" },
-  { pattern: /vega\s*3/i, id: "radeon-vega-3" },
+    merged.push(part);
+    ids.add(part.id);
+    names.add(normalizedName);
+  }
 
-  { pattern: /rtx\s*4090[^\n]*laptop/i, id: "rtx-4090-laptop" },
-  { pattern: /rtx\s*4080[^\n]*laptop/i, id: "rtx-4080-laptop" },
-  { pattern: /rtx\s*4070[^\n]*laptop/i, id: "rtx-4070-laptop" },
-  { pattern: /rtx\s*4060[^\n]*laptop/i, id: "rtx-4060-laptop" },
-  { pattern: /rtx\s*4050[^\n]*laptop/i, id: "rtx-4050-laptop" },
-  { pattern: /3070\s*ti[^\n]*laptop/i, id: "rtx-3070-ti-laptop" },
-  { pattern: /rtx\s*3070[^\n]*laptop/i, id: "rtx-3070-laptop" },
-  { pattern: /rtx\s*3060[^\n]*laptop/i, id: "rtx-3060-laptop" },
-  { pattern: /3050\s*ti[^\n]*laptop/i, id: "rtx-3050-ti-laptop" },
-  { pattern: /rtx\s*3050[^\n]*laptop/i, id: "rtx-3050-laptop" },
-
-  { pattern: /gt\s*730/i, id: "gt-730" },
-  { pattern: /gt\s*1030/i, id: "gt-1030" },
-  { pattern: /750\s*ti/i, id: "gtx-750-ti" },
-  { pattern: /gtx\s*950/i, id: "gtx-950" },
-  { pattern: /gtx\s*960/i, id: "gtx-960" },
-  { pattern: /gtx\s*970/i, id: "gtx-970" },
-  { pattern: /980\s*ti/i, id: "gtx-980-ti" },
-  { pattern: /gtx\s*980/i, id: "gtx-980" },
-  { pattern: /1050\s*ti/i, id: "gtx-1050-ti" },
-  { pattern: /gtx\s*1050/i, id: "gtx-1050" },
-  { pattern: /1060[^\d]*(3\s*gb|3072)/i, id: "gtx-1060-3gb" },
-  { pattern: /1060[^\d]*(6\s*gb|6144)/i, id: "gtx-1060-6gb" },
-  { pattern: /1070\s*ti/i, id: "gtx-1070-ti" },
-  { pattern: /gtx\s*1070/i, id: "gtx-1070" },
-  { pattern: /1080\s*ti/i, id: "gtx-1080-ti" },
-  { pattern: /gtx\s*1080/i, id: "gtx-1080" },
-  { pattern: /1650\s*super/i, id: "gtx-1650-super" },
-  { pattern: /gtx\s*1650/i, id: "gtx-1650" },
-  { pattern: /1660\s*super/i, id: "gtx-1660-super" },
-  { pattern: /1660\s*ti/i, id: "gtx-1660-ti" },
-  { pattern: /gtx\s*1660/i, id: "gtx-1660" },
-  { pattern: /2060\s*super/i, id: "rtx-2060-super" },
-  { pattern: /rtx\s*2060/i, id: "rtx-2060" },
-  { pattern: /2070\s*super/i, id: "rtx-2070-super" },
-  { pattern: /rtx\s*2070/i, id: "rtx-2070" },
-  { pattern: /2080\s*super/i, id: "rtx-2080-super" },
-  { pattern: /2080\s*ti/i, id: "rtx-2080-ti" },
-  { pattern: /rtx\s*2080/i, id: "rtx-2080" },
-  { pattern: /3050\s*ti/i, id: "rtx-3050" },
-  { pattern: /rtx\s*3050/i, id: "rtx-3050" },
-  { pattern: /3060\s*ti/i, id: "rtx-3060-ti" },
-  { pattern: /rtx\s*3060/i, id: "rtx-3060" },
-  { pattern: /3070\s*ti/i, id: "rtx-3070-ti" },
-  { pattern: /rtx\s*3070/i, id: "rtx-3070" },
-  { pattern: /3080\s*ti/i, id: "rtx-3080-ti" },
-  { pattern: /rtx\s*3080/i, id: "rtx-3080" },
-  { pattern: /rtx\s*3090/i, id: "rtx-3090" },
-  { pattern: /4060\s*ti/i, id: "rtx-4060-ti" },
-  { pattern: /rtx\s*4060/i, id: "rtx-4060" },
-  { pattern: /4070\s*ti\s*super/i, id: "rtx-4070-ti-super" },
-  { pattern: /4070\s*super/i, id: "rtx-4070-super" },
-  { pattern: /4070\s*ti/i, id: "rtx-4070-ti" },
-  { pattern: /rtx\s*4070/i, id: "rtx-4070" },
-  { pattern: /4080\s*super/i, id: "rtx-4080-super" },
-  { pattern: /rtx\s*4080/i, id: "rtx-4080" },
-  { pattern: /rtx\s*4090/i, id: "rtx-4090" },
-  { pattern: /5060\s*ti/i, id: "rtx-5060-ti" },
-  { pattern: /rtx\s*5060/i, id: "rtx-5060" },
-  { pattern: /5070\s*ti/i, id: "rtx-5070-ti" },
-  { pattern: /rtx\s*5070/i, id: "rtx-5070" },
-  { pattern: /rtx\s*5080/i, id: "rtx-5080" },
-  { pattern: /rtx\s*5090/i, id: "rtx-5090" },
-
-  { pattern: /rx\s*460\b/i, id: "rx-460" },
-  { pattern: /rx\s*470\b/i, id: "rx-470" },
-  { pattern: /rx\s*480\b/i, id: "rx-480" },
-  { pattern: /rx\s*560\b/i, id: "rx-560" },
-  { pattern: /rx\s*570\b/i, id: "rx-570" },
-  { pattern: /rx\s*580\b/i, id: "rx-580" },
-  { pattern: /rx\s*590\b/i, id: "rx-590" },
-  { pattern: /vega\s*56/i, id: "radeon-vega-56" },
-  { pattern: /vega\s*64/i, id: "radeon-vega-64" },
-  { pattern: /rx\s*5500\s*xt/i, id: "rx-5500-xt" },
-  { pattern: /rx\s*5500\b/i, id: "rx-5500" },
-  { pattern: /rx\s*5600\s*xt/i, id: "rx-5600-xt" },
-  { pattern: /rx\s*5700\s*xt/i, id: "rx-5700-xt" },
-  { pattern: /rx\s*5700\b/i, id: "rx-5700" },
-  { pattern: /rx\s*6500\s*xt/i, id: "rx-6500-xt" },
-  { pattern: /rx\s*6650\s*xt/i, id: "rx-6650-xt" },
-  { pattern: /rx\s*6600\s*xt/i, id: "rx-6600-xt" },
-  { pattern: /rx\s*6600\b/i, id: "rx-6600" },
-  { pattern: /rx\s*6750\s*xt/i, id: "rx-6750-xt" },
-  { pattern: /rx\s*6700\s*xt/i, id: "rx-6700-xt" },
-  { pattern: /rx\s*6700\b/i, id: "rx-6700" },
-  { pattern: /rx\s*6800\s*xt/i, id: "rx-6800-xt" },
-  { pattern: /rx\s*6800\b/i, id: "rx-6800" },
-  { pattern: /rx\s*6950\s*xt/i, id: "rx-6950-xt" },
-  { pattern: /rx\s*6900\s*xt/i, id: "rx-6900-xt" },
-  { pattern: /rx\s*7600\s*xt/i, id: "rx-7600-xt" },
-  { pattern: /rx\s*7600\b/i, id: "rx-7600" },
-  { pattern: /rx\s*7700\s*xt/i, id: "rx-7700-xt" },
-  { pattern: /rx\s*7800\s*xt/i, id: "rx-7800-xt" },
-  { pattern: /rx\s*7900\s*gre/i, id: "rx-7900-gre" },
-  { pattern: /rx\s*7900\s*xtx/i, id: "rx-7900-xtx" },
-  { pattern: /rx\s*7900\s*xt/i, id: "rx-7900-xt" },
-  { pattern: /rx\s*9060\s*xt/i, id: "rx-9060-xt" },
-  { pattern: /rx\s*9070\s*xt/i, id: "rx-9070-xt" },
-  { pattern: /rx\s*9070\b/i, id: "rx-9070" },
-
-  { pattern: /arc\s*a580/i, id: "arc-a580" },
-  { pattern: /arc\s*a750/i, id: "arc-a750" },
-  { pattern: /arc\s*a770/i, id: "arc-a770" },
-  { pattern: /arc\s*b570/i, id: "arc-b570" },
-  { pattern: /arc\s*b580/i, id: "arc-b580" },
-];
-
-export function findGpuByRenderer(renderer: string | null) {
-  if (!renderer) return null;
-
-  const alias = gpuAliases.find((item) => item.pattern.test(renderer));
-  if (!alias) return null;
-
-  return gpuCatalog.find((gpu) => gpu.id === alias.id) ?? null;
+  return merged.sort((a, b) =>
+    a.name.localeCompare(b.name, "en", {
+      numeric: true,
+    })
+  );
 }
 
+export const cpuCatalog = mergeHardwareCatalog(
+  baseCpuCatalog,
+  cpuCatalogExpansion
+);
+
+export const gpuCatalog = mergeHardwareCatalog(
+  baseGpuCatalog,
+  gpuCatalogExpansion
+);
+
+export { estimateCpuFromLogicalProcessors, findGpuByRenderer };
+
 export function findCpuById(id: string) {
-  return cpuCatalog.find((cpu) => cpu.id === id) ?? null;
+  return (
+    findBaseCpuById(id) ??
+    cpuCatalog.find((cpu) => cpu.id === id) ??
+    null
+  );
 }
 
 export function findGpuById(id: string) {
-  return gpuCatalog.find((gpu) => gpu.id === id) ?? null;
-}
-
-export function estimateCpuFromLogicalProcessors(logicalProcessors: number | null): HardwarePart | null {
-  if (!logicalProcessors || logicalProcessors < 1) return null;
-
-  // Este score es deliberadamente conservador: la cantidad de hilos no
-  // identifica la generación ni el IPC de una CPU y algunos navegadores la
-  // reducen por privacidad. Sirve solo como proxy automático de baja confianza.
-  let score = 20;
-
-  if (logicalProcessors >= 4) score = 26;
-  if (logicalProcessors >= 6) score = 32;
-  if (logicalProcessors >= 8) score = 40;
-  if (logicalProcessors >= 12) score = 50;
-  if (logicalProcessors >= 16) score = 60;
-  if (logicalProcessors >= 20) score = 67;
-  if (logicalProcessors >= 24) score = 74;
-  if (logicalProcessors >= 32) score = 86;
-  if (logicalProcessors >= 40) score = 98;
-  if (logicalProcessors >= 48) score = 108;
-  if (logicalProcessors >= 64) score = 120;
-
-  return {
-    id: "browser-logical-cpu",
-    name: `${logicalProcessors} hilos lógicos (modelo no visible)`,
-    score,
-  };
+  return (
+    findBaseGpuById(id) ??
+    gpuCatalog.find((gpu) => gpu.id === id) ??
+    null
+  );
 }

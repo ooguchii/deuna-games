@@ -1,10 +1,9 @@
-import { cpuCatalog, gpuCatalog } from "./hardware-catalog";
 import type { HardwarePart } from "./types";
 
 type CpuSpec = readonly [name: string, score: number];
 type GpuSpec = readonly [name: string, score: number, integrated?: boolean];
 
-const cpuSpecs: CpuSpec[] = [
+const cpuSpecs: readonly CpuSpec[] = [
   ["AMD A10-7850K", 10],
   ["AMD A8-7600", 8],
   ["AMD FX-6300", 10],
@@ -224,7 +223,7 @@ const cpuSpecs: CpuSpec[] = [
   ["Intel Core Ultra 9 285H", 112],
 ];
 
-const gpuSpecs: GpuSpec[] = [
+const gpuSpecs: readonly GpuSpec[] = [
   ["AMD Radeon 530", 6],
   ["AMD Radeon 535", 7],
   ["AMD Radeon 540", 8],
@@ -428,31 +427,19 @@ function makeId(name: string) {
     .replace(/^-+|-+$/g, "")}`;
 }
 
-function register(target: HardwarePart[], additions: HardwarePart[]) {
-  const ids = new Set(target.map((part) => part.id));
-  const names = new Set(target.map((part) => part.name.toLowerCase()));
-
-  for (const part of additions) {
-    if (ids.has(part.id) || names.has(part.name.toLowerCase())) continue;
-    target.push(part);
-    ids.add(part.id);
-    names.add(part.name.toLowerCase());
-  }
-
-  target.sort((a, b) => a.name.localeCompare(b.name, "en", { numeric: true }));
-}
-
-register(
-  cpuCatalog,
-  cpuSpecs.map(([name, score]) => ({ id: makeId(name), name, score }))
+export const cpuCatalogExpansion: readonly HardwarePart[] = cpuSpecs.map(
+  ([name, score]) => ({
+    id: makeId(name),
+    name,
+    score,
+  })
 );
 
-register(
-  gpuCatalog,
-  gpuSpecs.map(([name, score, integrated]) => ({
+export const gpuCatalogExpansion: readonly HardwarePart[] = gpuSpecs.map(
+  ([name, score, integrated]) => ({
     id: makeId(name),
     name,
     score,
     ...(integrated ? { integrated: true } : {}),
-  }))
+  })
 );
