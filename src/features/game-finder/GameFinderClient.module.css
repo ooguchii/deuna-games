@@ -73,12 +73,13 @@
 
 .configGrid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
   margin-top: 22px;
 }
 
 .configGrid label,
+.configField,
 .filterField,
 .sortControl {
   min-width: 0;
@@ -87,6 +88,7 @@
 }
 
 .configGrid label > span,
+.configField > label,
 .filterField > span,
 .sortControl > span {
   color: var(--text-muted);
@@ -115,6 +117,60 @@
 .sortControl select:focus-visible {
   border-color: rgba(255, 8, 71, 0.48);
   box-shadow: 0 0 0 3px rgba(255, 8, 71, 0.05);
+}
+
+.configSearch {
+  position: relative;
+  min-width: 0;
+}
+
+.configSearch > svg {
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  z-index: 1;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.configSearch input {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  padding: 0 52px 0 34px;
+  color: var(--text-soft);
+  border: 1px solid var(--finder-line);
+  border-radius: 8px;
+  outline: 0;
+  background: rgba(5, 9, 14, 0.78);
+  font-size: var(--font-xs);
+}
+
+.configSearch input::placeholder {
+  color: #778393;
+}
+
+.configSearch input:focus-visible {
+  border-color: rgba(255, 8, 71, 0.48);
+  box-shadow: 0 0 0 3px rgba(255, 8, 71, 0.05);
+}
+
+.configSearch > span {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--brand-light);
+  font-size: 9px;
+  font-weight: 800;
+  pointer-events: none;
+}
+
+.configMatchCount {
+  color: #7f8b9b;
+  font-size: 9px;
+  line-height: 1.2;
 }
 
 .configFooter {
@@ -998,7 +1054,7 @@
   }
 
   .configGrid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

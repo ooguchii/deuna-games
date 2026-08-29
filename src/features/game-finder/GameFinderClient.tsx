@@ -16,6 +16,7 @@ import {
   MemoryStick,
   Monitor,
   RotateCcw,
+  Search,
   ShieldCheck,
   SlidersHorizontal,
   X,
@@ -142,6 +143,151 @@ type ManualDraft = {
   memoryMode: MemoryMode;
 };
 
+type ManualSearchState = {
+  cpu: string;
+  gpu: string;
+  ram: string;
+  os: string;
+};
+
+type ManualSelectOption = {
+  value: string;
+  label: string;
+};
+
+const RAM_MANUAL_OPTIONS: ManualSelectOption[] = [
+  1, 2, 3, 4, 6, 8, 10, 12, 16, 20, 24, 32, 48, 64, 96, 128, 192, 256,
+].map((ram) => ({ value: String(ram), label: `${ram} GB` }));
+
+const OS_MANUAL_OPTIONS: ManualSelectOption[] = [
+  "Windows 10/11 64-bit",
+  "Windows 10/11",
+  "Windows 11 64-bit",
+  "Windows 10 64-bit",
+  "Linux 64-bit",
+  UNCONFIRMED_OS_OPTION,
+].map((os) => ({ value: os, label: os }));
+
+const CPU_MANUAL_OPTIONS: ManualSelectOption[] = cpuCatalog.map((cpu) => ({
+  value: cpu.id,
+  label: cpu.name,
+}));
+
+const GPU_MANUAL_OPTIONS: ManualSelectOption[] = gpuCatalog.map((gpu) => ({
+  value: gpu.id,
+  label: gpu.name,
+}));
+
+function emptyManualSearch(): ManualSearchState {
+  return { cpu: "", gpu: "", ram: "", os: "" };
+}
+
+function normalizeManualSearch(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("es")
+    .trim();
+}
+
+function filterManualOptions(
+  options: ManualSelectOption[],
+  query: string,
+  selectedValue: string
+) {
+  const normalizedQuery = normalizeManualSearch(query);
+  const terms = normalizedQuery.split(/\s+/).filter(Boolean);
+  const matches = terms.length
+    ? options.filter((option) => {
+        const searchable = normalizeManualSearch(`${option.label} ${option.value}`);
+        return terms.every((term) => searchable.includes(term));
+      })
+    : options;
+
+  const selected = selectedValue
+    ? options.find((option) => option.value === selectedValue)
+    : undefined;
+
+  if (selected && !matches.some((option) => option.value === selected.value)) {
+    return [selected, ...matches];
+  }
+
+  return matches;
+}
+
+function SearchableManualSelect({
+  fieldId,
+  label,
+  searchPlaceholder,
+  emptyLabel,
+  options,
+  value,
+  searchValue,
+  onValueChange,
+  onSearchChange,
+}: {
+  fieldId: string;
+  label: string;
+  searchPlaceholder: string;
+  emptyLabel: string;
+  options: ManualSelectOption[];
+  value: string;
+  searchValue: string;
+  onValueChange: (value: string) => void;
+  onSearchChange: (value: string) => void;
+}) {
+  const visibleOptions = useMemo(
+    () => filterManualOptions(options, searchValue, value),
+    [options, searchValue, value]
+  );
+  const normalizedQuery = normalizeManualSearch(searchValue);
+  const matchCount = normalizedQuery
+    ? visibleOptions.filter((option) => option.value !== value).length +
+      (visibleOptions.some((option) => option.value === value && normalizeManualSearch(`${option.label} ${option.value}`).includes(normalizedQuery)) ? 1 : 0)
+    : options.length;
+
+  return (
+    <div className={styles.configField}>
+      <label htmlFor={`${fieldId}-search`}>{label}</label>
+      <div className={styles.configSearch}>
+        <Search size={15} aria-hidden="true" />
+        <input
+          id={`${fieldId}-search`}
+          type="search"
+          value={searchValue}
+          placeholder={searchPlaceholder}
+          autoComplete="off"
+          spellCheck={false}
+          aria-controls={fieldId}
+          onChange={(event) => onSearchChange(event.target.value)}
+        />
+        <span aria-live="polite">{matchCount}</span>
+      </div>
+      <select
+        id={fieldId}
+        value={value}
+        aria-label={`Seleccionar ${label.toLocaleLowerCase("es")}`}
+        onChange={(event) => {
+          onValueChange(event.target.value);
+          onSearchChange("");
+        }}
+      >
+        <option value="">{emptyLabel}</option>
+        {visibleOptions.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+      <small className={styles.configMatchCount}>
+        {searchValue.trim()
+          ? `${matchCount} coincidencia${matchCount === 1 ? "" : "s"}`
+          : `${options.length} opciones disponibles`}
+      </small>
+    </div>
+  );
+}
+
 function nowIso() {
   return new Date().toISOString();
 }
@@ -248,6 +394,9 @@ function detectionHint(
   // realmente una detección web. Si el usuario ya confirmó los componentes,
   // ese perfil es la fuente del cálculo y no debe heredar avisos antiguos.
   if (profile?.source === "manual" || profile?.source === "saved") {
+    if (snapshot) {
+      return "Volvimos a consultar el navegador. CPU, GPU y RAM confirmadas se conservan porque son más fiables; la lectura automática sólo completa o mejora datos que la web puede identificar con certeza.";
+    }
     return "Este perfil local se usa para calcular los rangos de FPS del catálogo.";
   }
   if (profile?.source === "example") {
@@ -433,6 +582,7 @@ export default function GameFinderClient({
   const [detectionState, setDetectionState] = useState<DetectionState>("idle");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [manualDraft, setManualDraft] = useState<ManualDraft>(() => profileToManualDraft(null));
+  const [manualSearch, setManualSearch] = useState<ManualSearchState>(() => emptyManualSearch());
 
   const settingsDialogRef = useRef<HTMLDivElement | null>(null);
   const settingsReturnFocusRef = useRef<HTMLElement | null>(null);
@@ -701,6 +851,7 @@ export default function GameFinderClient({
       : hardware;
 
     setManualDraft(profileToManualDraft(sourceProfile));
+    setManualSearch(emptyManualSearch());
     setSettingsOpen(true);
   }
 
@@ -774,7 +925,9 @@ export default function GameFinderClient({
       updatedAt: nowIso(),
     };
 
+    setSnapshot(null);
     setHardware(manualProfile);
+    setManualSearch(emptyManualSearch());
     setDetectionState("ready");
     setSettingsOpen(false);
   }
@@ -913,47 +1066,53 @@ export default function GameFinderClient({
               </div>
 
               <div className={styles.configGrid}>
-                <label>
-                  <span>Procesador</span>
-                  <select value={manualDraft.cpuId} onChange={(event: ChangeEvent<HTMLSelectElement>) => setManualDraft((current) => ({ ...current, cpuId: event.target.value }))}>
-                    <option value="">Selecciona tu CPU</option>
-                    {cpuCatalog.map((cpu) => (
-                      <option key={cpu.id} value={cpu.id}>{cpu.name}</option>
-                    ))}
-                  </select>
-                </label>
+                <SearchableManualSelect
+                  fieldId="manual-cpu"
+                  label="Procesador"
+                  searchPlaceholder="Buscar CPU: Ryzen 5 5600G, i5-12400..."
+                  emptyLabel="Selecciona tu CPU"
+                  options={CPU_MANUAL_OPTIONS}
+                  value={manualDraft.cpuId}
+                  searchValue={manualSearch.cpu}
+                  onSearchChange={(value) => setManualSearch((current) => ({ ...current, cpu: value }))}
+                  onValueChange={(value) => setManualDraft((current) => ({ ...current, cpuId: value }))}
+                />
 
-                <label>
-                  <span>Tarjeta gráfica</span>
-                  <select value={manualDraft.gpuId} onChange={(event: ChangeEvent<HTMLSelectElement>) => setManualDraft((current) => ({ ...current, gpuId: event.target.value }))}>
-                    <option value="">Selecciona tu GPU</option>
-                    {gpuCatalog.map((gpu) => (
-                      <option key={gpu.id} value={gpu.id}>{gpu.name}</option>
-                    ))}
-                  </select>
-                </label>
+                <SearchableManualSelect
+                  fieldId="manual-gpu"
+                  label="Tarjeta gráfica"
+                  searchPlaceholder="Buscar GPU: GTX 1660 SUPER, RX 6600..."
+                  emptyLabel="Selecciona tu GPU"
+                  options={GPU_MANUAL_OPTIONS}
+                  value={manualDraft.gpuId}
+                  searchValue={manualSearch.gpu}
+                  onSearchChange={(value) => setManualSearch((current) => ({ ...current, gpu: value }))}
+                  onValueChange={(value) => setManualDraft((current) => ({ ...current, gpuId: value }))}
+                />
 
-                <label>
-                  <span>Memoria RAM física</span>
-                  <select value={manualDraft.ramGb} onChange={(event: ChangeEvent<HTMLSelectElement>) => setManualDraft((current) => ({ ...current, ramGb: event.target.value }))}>
-                    <option value="">Selecciona tu RAM</option>
-                    {[1, 2, 3, 4, 6, 8, 10, 12, 16, 20, 24, 32, 48, 64, 96, 128, 192, 256].map((ram) => (
-                      <option key={ram} value={ram}>{ram} GB</option>
-                    ))}
-                  </select>
-                </label>
+                <SearchableManualSelect
+                  fieldId="manual-ram"
+                  label="Memoria RAM física"
+                  searchPlaceholder="Buscar cantidad: 16 GB, 32 GB..."
+                  emptyLabel="Selecciona tu RAM"
+                  options={RAM_MANUAL_OPTIONS}
+                  value={manualDraft.ramGb}
+                  searchValue={manualSearch.ram}
+                  onSearchChange={(value) => setManualSearch((current) => ({ ...current, ram: value }))}
+                  onValueChange={(value) => setManualDraft((current) => ({ ...current, ramGb: value }))}
+                />
 
-                <label>
-                  <span>Sistema operativo</span>
-                  <select value={manualDraft.os} onChange={(event: ChangeEvent<HTMLSelectElement>) => setManualDraft((current) => ({ ...current, os: event.target.value }))}>
-                    <option>Windows 10/11 64-bit</option>
-                    <option>Windows 10/11</option>
-                    <option>Windows 11 64-bit</option>
-                    <option>Windows 10 64-bit</option>
-                    <option>Linux 64-bit</option>
-                    <option>{UNCONFIRMED_OS_OPTION}</option>
-                  </select>
-                </label>
+                <SearchableManualSelect
+                  fieldId="manual-os"
+                  label="Sistema operativo"
+                  searchPlaceholder="Buscar Windows, Linux..."
+                  emptyLabel="Selecciona tu sistema"
+                  options={OS_MANUAL_OPTIONS}
+                  value={manualDraft.os}
+                  searchValue={manualSearch.os}
+                  onSearchChange={(value) => setManualSearch((current) => ({ ...current, os: value }))}
+                  onValueChange={(value) => setManualDraft((current) => ({ ...current, os: value }))}
+                />
 
                 {selectedManualGpu?.integrated && (
                   <label>

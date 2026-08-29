@@ -347,44 +347,55 @@ export function profileFromBrowserSnapshot(
   preferredProfile: HardwareProfile | null = null
 ): HardwareProfile {
   const detectedOs = detectOs(snapshot, navigator.userAgent);
+  const detectedCpu = estimateCpuFromLogicalProcessors(snapshot.logicalProcessors);
+  const detectedGpu = matchGpuRenderer(snapshot.gpuRenderer)?.gpu ?? null;
+  const detectedIsSpecific = isSpecificDetectedOs(detectedOs);
 
-  // CPU/GPU/RAM confirmados manualmente siguen siendo más fiables que una
-  // lectura web. Una nueva detección sólo puede corregir el SO si UA-CH expone
-  // una versión inequívoca; perfiles automáticos anteriores sí se recalculan.
+  const browserProfile: HardwareProfile = {
+    cpu: detectedCpu,
+    gpu: detectedGpu,
+    ramGb: snapshot.approximateMemoryGb,
+    ramKnowledge: snapshot.memoryKind,
+    os: detectedOs,
+    osConfirmed: detectedIsSpecific,
+    memoryMode: "unknown",
+    source: "browser",
+    confidence: "low",
+    updatedAt: new Date().toISOString(),
+  };
+
+  // La redetección siempre ejecuta una lectura real del navegador. Después se
+  // fusiona con el perfil confirmado: una lectura aproximada o protegida nunca
+  // debe degradar CPU/GPU/RAM que el usuario identificó manualmente.
   const confirmedProfile =
     preferredProfile?.source === "manual" ||
     preferredProfile?.source === "saved"
       ? preferredProfile
       : null;
 
-  if (confirmedProfile) {
-    const detectedIsSpecific = isSpecificDetectedOs(detectedOs);
-    const useDetectedOs =
-      detectedIsSpecific ||
-      confirmedProfile.osConfirmed !== true;
+  if (!confirmedProfile) return browserProfile;
 
-    return {
-      ...confirmedProfile,
-      os: useDetectedOs ? detectedOs : confirmedProfile.os,
-      osConfirmed: useDetectedOs
-        ? detectedIsSpecific
-        : confirmedProfile.osConfirmed,
-    };
-  }
-
-  const cpu = estimateCpuFromLogicalProcessors(snapshot.logicalProcessors);
-  const gpu = matchGpuRenderer(snapshot.gpuRenderer)?.gpu ?? null;
+  const useDetectedOs =
+    detectedIsSpecific ||
+    confirmedProfile.osConfirmed !== true;
 
   return {
-    cpu,
-    gpu,
-    ramGb: snapshot.approximateMemoryGb,
-    ramKnowledge: snapshot.memoryKind,
-    os: detectedOs,
-    osConfirmed: isSpecificDetectedOs(detectedOs),
-    memoryMode: "unknown",
-    source: "browser",
-    confidence: "low",
+    ...browserProfile,
+    cpu: confirmedProfile.cpu ?? detectedCpu,
+    gpu: confirmedProfile.gpu ?? detectedGpu,
+    ramGb: confirmedProfile.ramGb ?? snapshot.approximateMemoryGb,
+    ramKnowledge: confirmedProfile.ramGb
+      ? confirmedProfile.ramKnowledge
+      : snapshot.memoryKind,
+    os: useDetectedOs ? detectedOs : confirmedProfile.os,
+    osConfirmed: useDetectedOs
+      ? detectedIsSpecific
+      : confirmedProfile.osConfirmed,
+    memoryMode: confirmedProfile.gpu
+      ? confirmedProfile.memoryMode
+      : "unknown",
+    source: confirmedProfile.source,
+    confidence: confirmedProfile.confidence,
     updatedAt: new Date().toISOString(),
   };
 }
