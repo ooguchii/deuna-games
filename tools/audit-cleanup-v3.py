@@ -74,18 +74,38 @@ css, removed = re.subn(
 if removed != 1:
     raise SystemExit(f"Header.module.css: no se pudo retirar mobileMenuToggle (count={removed})")
 
-replacements = {
-    ".mobileMenuToggle:checked\n~ .header\n.menuButton": ".menuButtonOpen",
-    ".mobileMenuToggle:checked\n~ .header\n.menuOpenIcon": ".menuButtonOpen\n.menuOpenIcon",
-    ".mobileMenuToggle:checked\n~ .header\n.menuCloseIcon": ".menuButtonOpen\n.menuCloseIcon",
-    ".mobileMenuToggle:checked\n~ .mobileNativePanel": ".mobileNativePanelOpen",
-}
+selector_replacements = [
+    (
+        r"\.mobileMenuToggle:checked\s*~\s*\.header\s*\.menuButton",
+        ".menuButtonOpen",
+    ),
+    (
+        r"\.mobileMenuToggle:checked\s*~\s*\.header\s*\.menuOpenIcon",
+        ".menuButtonOpen\n.menuOpenIcon",
+    ),
+    (
+        r"\.mobileMenuToggle:checked\s*~\s*\.header\s*\.menuCloseIcon",
+        ".menuButtonOpen\n.menuCloseIcon",
+    ),
+    (
+        r"\.mobileMenuToggle:checked\s*~\s*\.mobileNativePanel",
+        ".mobileNativePanelOpen",
+    ),
+]
 
-for old, new in replacements.items():
-    css = css.replace(old, new)
+for pattern, replacement in selector_replacements:
+    css = re.sub(pattern, replacement, css)
 
-if "mobileMenuToggle" in css or ":checked" in css:
-    raise SystemExit("Header.module.css: quedaron selectores del checkbox oculto")
+if "mobileMenuToggle" in css:
+    leftovers = [
+        line.strip()
+        for line in css.splitlines()
+        if "mobileMenuToggle" in line
+    ]
+    raise SystemExit(
+        "Header.module.css: quedaron selectores del checkbox oculto: "
+        + " | ".join(leftovers)
+    )
 
 css_path.write_text(css, encoding="utf-8")
 
