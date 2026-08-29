@@ -7,6 +7,35 @@ const port = Number(process.env.PORT || 3000);
 const virtualInterfacePattern =
   /(?:vEthernet|WSL|Docker|Hyper-V|VirtualBox|VMware|Tailscale|ZeroTier|Hamachi|Loopback|Npcap|Bluetooth)/i;
 
+function runPowerShell(script, timeout = 7000) {
+  if (process.platform !== "win32") return null;
+
+  const result = spawnSync(
+    "powershell.exe",
+    ["-NoProfile", "-NonInteractive", "-Command", script],
+    {
+      encoding: "utf8",
+      windowsHide: true,
+      timeout,
+    }
+  );
+
+  if (result.status !== 0 || !result.stdout.trim()) return null;
+  return result.stdout.trim();
+}
+
+function parsePowerShellJson(script) {
+  const output = runPowerShell(script);
+  if (!output) return [];
+
+  try {
+    const parsed = JSON.parse(output);
+    return Array.isArray(parsed) ? parsed : [parsed];
+  } catch {
+    return [];
+  }
+}
+
 function isPrivateIpv4(address) {
   const octets = address.split(".").map(Number);
   if (octets.length !== 4 || octets.some((value) => !Number.isInteger(value))) {
@@ -46,9 +75,7 @@ function getNodeInterfaces() {
 }
 
 function getWindowsInterfaces() {
-  if (process.platform !== "win32") return [];
-
-  const script = String.raw`
+  return parsePowerShellJson(String.raw`
 $items = Get-NetIPConfiguration | Where-Object {
   $_.NetAdapter.Status -eq 'Up' -and $_.IPv4Address
 } | ForEach-Object {
@@ -65,28 +92,27 @@ $items = Get-NetIPConfiguration | Where-Object {
   }
 }
 @($items) | ConvertTo-Json -Compress
-`;
+`);
+}
 
-  const result = spawnSync(
-    "powershell.exe",
-    ["-NoProfile", "-NonInteractive", "-Command", script],
-    {
-      encoding: "utf8",
-      windowsHide: true,
-      timeout: 5000,
-    }
-  );
+function getWindowsListeners() {
+  if (process.platform !== "win32") return [];
 
-  if (result.status !== 0 || !result.stdout.trim()) {
-    return [];
-  }
-
+  return parsePowerShellJson(String.raw`
+$items = Get-NetTCPConnection -State Listen -LocalPort ${port} -ErrorAction SilentlyContinue | ForEach-Object {
+  $processName = $null
   try {
-    const parsed = JSON.parse(result.stdout.trim());
-    return Array.isArray(parsed) ? parsed : [parsed];
-  } catch {
-    return [];
+    $processName = (Get-Process -Id $_.OwningProcess -ErrorAction Stop).ProcessName
+  } catch {}
+  [PSCustomObject]@{
+    localAddress = $_.LocalAddress
+    localPort = $_.LocalPort
+    pid = $_.OwningProcess
+    processName = $processName
   }
+}
+@($items) | ConvertTo-Json -Compress
+`);
 }
 
 function mergeInterfaces(primary, fallback) {
@@ -120,9 +146,13 @@ function scoreInterface(item) {
   return score;
 }
 
-function checkTcp(host, timeoutMs = 700) {
+function checkTcp(host, timeoutMs = 2500) {
   return new Promise((resolve) => {
-    const socket = net.createConnection({ host, port });
+    const socket = net.createConnection({
+      host,
+      port,
+      family: 4,
+    });
     let settled = false;
 
     const finish = (value) => {
@@ -154,6 +184,19 @@ const candidates = interfaces.filter(
 );
 
 const recommended = candidates[0] ?? interfaces[0] ?? null;
+const listeners = getWindowsListeners();
+const hasSystemListener = listeners.length > 0;
+const wildcardListener = listeners.some(
+  (item) => item.localAddress === "0.0.0.0" || item.localAddress === "::"
+);
+const loopbackOnly =
+  hasSystemListener &&
+  listeners.every(
+    (item) =>
+      item.localAddress === "127.0.0.1" ||
+      item.localAddress === "::1"
+  );
+
 const localhostListening = await checkTcp("127.0.0.1");
 const lanListening = recommended
   ? await checkTcp(recommended.address)
@@ -176,16 +219,44 @@ console.log(`- Gateway: ${recommended.gateway ?? "no detectado"}`);
 console.log(`- Perfil de Windows: ${recommended.category ?? "no detectado"}`);
 console.log(`- URL para OTRA PC: http://${recommended.address}:${port}\n`);
 
-console.log("Estado del servidor:");
-console.log(`- localhost:${port}: ${localhostListening ? "RESPONDE" : "NO RESPONDE"}`);
+if (process.platform === "win32") {
+  console.log("Puerto en Windows:");
+  if (!listeners.length) {
+    console.log(`- Windows no registra ningún proceso escuchando TCP/${port}.`);
+  } else {
+    for (const listener of listeners) {
+      const processLabel = listener.processName
+        ? `${listener.processName} (PID ${listener.pid})`
+        : `PID ${listener.pid}`;
+      console.log(`- ${listener.localAddress}:${listener.localPort} -> ${processLabel}`);
+    }
+  }
+  console.log("");
+}
+
+console.log("Prueba TCP desde esta PC:");
+console.log(`- 127.0.0.1:${port}: ${localhostListening ? "RESPONDE" : "NO RESPONDE"}`);
 console.log(`- ${recommended.address}:${port}: ${lanListening ? "RESPONDE" : "NO RESPONDE"}\n`);
 
-if (!localhostListening) {
-  console.log("El servidor no parece estar iniciado. En otra PowerShell ejecutá:");
+if (!hasSystemListener && process.platform === "win32") {
+  console.log("DIAGNÓSTICO: el servidor no está escuchando el puerto 3000 en Windows.");
+  console.log("Dejá abierta otra PowerShell con:");
   console.log("  npm.cmd run lan\n");
-} else if (!lanListening) {
-  console.log("El servidor responde sólo localmente o el firewall está interfiriendo.");
-  console.log("Confirmá que lo arrancaste con npm.cmd run lan.\n");
+} else if (loopbackOnly) {
+  console.log("DIAGNÓSTICO: el proceso está enlazado sólo a loopback.");
+  console.log("Detenelo y arrancalo con:");
+  console.log("  npm.cmd run lan\n");
+} else if (wildcardListener && localhostListening && lanListening) {
+  console.log("DIAGNÓSTICO: el servidor está correctamente publicado en esta PC y en la LAN.\n");
+} else if (wildcardListener && localhostListening && !lanListening) {
+  console.log("DIAGNÓSTICO: Next escucha en todas las interfaces, pero la IP LAN no acepta la conexión.");
+  console.log("Esto apunta a firewall/antivirus o a una política de red local.\n");
+} else if (hasSystemListener && !localhostListening && !lanListening) {
+  console.log("DIAGNÓSTICO: Windows ve un proceso escuchando el puerto, pero las pruebas TCP locales fallan.");
+  console.log("Revisá software de seguridad/filtrado; no culpes al repetidor todavía.\n");
+} else if (localhostListening && !lanListening) {
+  console.log("DIAGNÓSTICO: el servidor responde localmente, pero no por la IPv4 de la LAN.");
+  console.log("Revisá el binding y Windows Firewall.\n");
 }
 
 if (recommended.category === "Public") {
