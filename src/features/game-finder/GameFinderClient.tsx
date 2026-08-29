@@ -8,6 +8,7 @@ import {
   Bolt,
   Check,
   CheckCircle2,
+  ChevronDown,
   Gamepad2,
   Grid2X2,
   Heart,
@@ -143,13 +144,6 @@ type ManualDraft = {
   memoryMode: MemoryMode;
 };
 
-type ManualSearchState = {
-  cpu: string;
-  gpu: string;
-  ram: string;
-  os: string;
-};
-
 type ManualSelectOption = {
   value: string;
   label: string;
@@ -177,10 +171,6 @@ const GPU_MANUAL_OPTIONS: ManualSelectOption[] = gpuCatalog.map((gpu) => ({
   value: gpu.id,
   label: gpu.name,
 }));
-
-function emptyManualSearch(): ManualSearchState {
-  return { cpu: "", gpu: "", ram: "", os: "" };
-}
 
 function normalizeManualSearch(value: string) {
   return value
@@ -225,9 +215,7 @@ function SearchableManualSelect({
   emptyLabel,
   options,
   value,
-  searchValue,
   onValueChange,
-  onSearchChange,
 }: {
   fieldId: string;
   label: string;
@@ -235,10 +223,18 @@ function SearchableManualSelect({
   emptyLabel: string;
   options: ManualSelectOption[];
   value: string;
-  searchValue: string;
   onValueChange: (value: string) => void;
-  onSearchChange: (value: string) => void;
 }) {
+  const [open, setOpen] = useState(false);
+  const [searchValue, setSearchValue] = useState("");
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+
+  const selectedOption = useMemo(
+    () => options.find((option) => option.value === value) ?? null,
+    [options, value]
+  );
   const visibleOptions = useMemo(
     () => filterManualOptions(options, searchValue, value),
     [options, searchValue, value]
@@ -247,44 +243,197 @@ function SearchableManualSelect({
     ? options.filter((option) => manualOptionMatches(option, searchValue)).length
     : options.length;
 
+  useEffect(() => {
+    if (!open) return;
+
+    const frame = window.requestAnimationFrame(() => {
+      searchInputRef.current?.focus();
+    });
+
+    function handleOutsidePointer(event: PointerEvent) {
+      if (!(event.target instanceof Node)) return;
+      if (!rootRef.current?.contains(event.target)) {
+        setOpen(false);
+        setSearchValue("");
+      }
+    }
+
+    window.addEventListener("pointerdown", handleOutsidePointer);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener("pointerdown", handleOutsidePointer);
+    };
+  }, [open]);
+
+  function closePicker(returnFocus = false) {
+    setOpen(false);
+    setSearchValue("");
+    if (returnFocus) {
+      window.requestAnimationFrame(() => triggerRef.current?.focus());
+    }
+  }
+
+  function selectOption(nextValue: string) {
+    onValueChange(nextValue);
+    closePicker(true);
+  }
+
+  function focusOption(current: HTMLElement, direction: 1 | -1) {
+    const optionNodes = Array.from(
+      rootRef.current?.querySelectorAll<HTMLButtonElement>("[data-manual-option]") ?? []
+    );
+    const index = optionNodes.indexOf(current as HTMLButtonElement);
+    if (index < 0 || optionNodes.length === 0) return;
+    const nextIndex = (index + direction + optionNodes.length) % optionNodes.length;
+    optionNodes[nextIndex]?.focus();
+  }
+
   return (
-    <div className={styles.configField}>
-      <label htmlFor={`${fieldId}-search`}>{label}</label>
-      <div className={styles.configSearch}>
-        <Search size={15} aria-hidden="true" />
-        <input
-          id={`${fieldId}-search`}
-          type="search"
-          value={searchValue}
-          placeholder={searchPlaceholder}
-          autoComplete="off"
-          spellCheck={false}
-          aria-controls={fieldId}
-          onChange={(event) => onSearchChange(event.target.value)}
-        />
-        <span aria-live="polite">{matchCount}</span>
-      </div>
-      <select
+    <div ref={rootRef} className={styles.configField}>
+      <span id={`${fieldId}-label`} className={styles.configFieldLabel}>{label}</span>
+
+      <button
+        ref={triggerRef}
         id={fieldId}
-        value={value}
-        aria-label={`Seleccionar ${label.toLocaleLowerCase("es")}`}
-        onChange={(event) => {
-          onValueChange(event.target.value);
-          onSearchChange("");
+        type="button"
+        className={`${styles.configPickerTrigger} ${open ? styles.configPickerTriggerOpen : ""}`}
+        aria-labelledby={`${fieldId}-label ${fieldId}-value`}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-controls={`${fieldId}-listbox`}
+        onClick={() => setOpen((current) => !current)}
+        onKeyDown={(event) => {
+          if (event.key === "ArrowDown" || event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            setOpen(true);
+          }
         }}
       >
-        <option value="">{emptyLabel}</option>
-        {visibleOptions.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-      <small className={styles.configMatchCount}>
-        {searchValue.trim()
-          ? `${matchCount} coincidencia${matchCount === 1 ? "" : "s"}`
-          : `${options.length} opciones disponibles`}
-      </small>
+        <span
+          id={`${fieldId}-value`}
+          className={selectedOption ? styles.configPickerValue : styles.configPickerPlaceholder}
+        >
+          {selectedOption?.label ?? emptyLabel}
+        </span>
+        <ChevronDown size={16} aria-hidden="true" />
+      </button>
+
+      {open && (
+        <div className={styles.configPickerMenu}>
+          <div className={styles.configPickerSearch}>
+            <Search size={15} aria-hidden="true" />
+            <input
+              ref={searchInputRef}
+              type="search"
+              role="combobox"
+              value={searchValue}
+              placeholder={searchPlaceholder}
+              autoComplete="off"
+              spellCheck={false}
+              aria-label={`Buscar ${label.toLocaleLowerCase("es")}`}
+              aria-controls={`${fieldId}-listbox`}
+              aria-expanded="true"
+              aria-autocomplete="list"
+              onChange={(event) => setSearchValue(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Escape") {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  closePicker(true);
+                  return;
+                }
+                if (event.key === "ArrowDown") {
+                  event.preventDefault();
+                  rootRef.current
+                    ?.querySelector<HTMLButtonElement>("[data-manual-option]")
+                    ?.focus();
+                  return;
+                }
+                if (event.key === "Enter" && matchCount === 1) {
+                  const onlyMatch = options.find((option) => manualOptionMatches(option, searchValue));
+                  if (onlyMatch) {
+                    event.preventDefault();
+                    selectOption(onlyMatch.value);
+                  }
+                }
+              }}
+            />
+            <span aria-live="polite">{matchCount}</span>
+          </div>
+
+          <div
+            id={`${fieldId}-listbox`}
+            className={styles.configPickerList}
+            role="listbox"
+            aria-labelledby={`${fieldId}-label`}
+          >
+            <button
+              type="button"
+              role="option"
+              aria-selected={value === ""}
+              data-manual-option
+              className={styles.configPickerOption}
+              onClick={() => selectOption("")}
+              onKeyDown={(event) => {
+                if (event.key === "Escape") {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  closePicker(true);
+                } else if (event.key === "ArrowDown") {
+                  event.preventDefault();
+                  focusOption(event.currentTarget, 1);
+                } else if (event.key === "ArrowUp") {
+                  event.preventDefault();
+                  focusOption(event.currentTarget, -1);
+                }
+              }}
+            >
+              <span>{emptyLabel}</span>
+              {value === "" && <Check size={14} aria-hidden="true" />}
+            </button>
+
+            {visibleOptions.length ? (
+              visibleOptions.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  role="option"
+                  aria-selected={option.value === value}
+                  data-manual-option
+                  className={`${styles.configPickerOption} ${option.value === value ? styles.configPickerOptionSelected : ""}`}
+                  onClick={() => selectOption(option.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape") {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      closePicker(true);
+                    } else if (event.key === "ArrowDown") {
+                      event.preventDefault();
+                      focusOption(event.currentTarget, 1);
+                    } else if (event.key === "ArrowUp") {
+                      event.preventDefault();
+                      focusOption(event.currentTarget, -1);
+                    }
+                  }}
+                >
+                  <span>{option.label}</span>
+                  {option.value === value && <Check size={14} aria-hidden="true" />}
+                </button>
+              ))
+            ) : (
+              <div className={styles.configPickerEmpty} role="status">
+                No encontramos coincidencias. Prueba con otro término.
+              </div>
+            )}
+          </div>
+
+          <div className={styles.configPickerFooter}>
+            {searchValue.trim()
+              ? `${matchCount} coincidencia${matchCount === 1 ? "" : "s"}`
+              : `${options.length} opciones disponibles`}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -587,7 +736,6 @@ export default function GameFinderClient({
   const [detectionState, setDetectionState] = useState<DetectionState>("idle");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [manualDraft, setManualDraft] = useState<ManualDraft>(() => profileToManualDraft(null));
-  const [manualSearch, setManualSearch] = useState<ManualSearchState>(() => emptyManualSearch());
 
   const settingsDialogRef = useRef<HTMLDivElement | null>(null);
   const settingsReturnFocusRef = useRef<HTMLElement | null>(null);
@@ -856,7 +1004,6 @@ export default function GameFinderClient({
       : hardware;
 
     setManualDraft(profileToManualDraft(sourceProfile));
-    setManualSearch(emptyManualSearch());
     setSettingsOpen(true);
   }
 
@@ -932,7 +1079,6 @@ export default function GameFinderClient({
 
     setSnapshot(null);
     setHardware(manualProfile);
-    setManualSearch(emptyManualSearch());
     setDetectionState("ready");
     setSettingsOpen(false);
   }
@@ -1078,8 +1224,6 @@ export default function GameFinderClient({
                   emptyLabel="Selecciona tu CPU"
                   options={CPU_MANUAL_OPTIONS}
                   value={manualDraft.cpuId}
-                  searchValue={manualSearch.cpu}
-                  onSearchChange={(value) => setManualSearch((current) => ({ ...current, cpu: value }))}
                   onValueChange={(value) => setManualDraft((current) => ({ ...current, cpuId: value }))}
                 />
 
@@ -1090,8 +1234,6 @@ export default function GameFinderClient({
                   emptyLabel="Selecciona tu GPU"
                   options={GPU_MANUAL_OPTIONS}
                   value={manualDraft.gpuId}
-                  searchValue={manualSearch.gpu}
-                  onSearchChange={(value) => setManualSearch((current) => ({ ...current, gpu: value }))}
                   onValueChange={(value) => setManualDraft((current) => ({ ...current, gpuId: value }))}
                 />
 
@@ -1102,8 +1244,6 @@ export default function GameFinderClient({
                   emptyLabel="Selecciona tu RAM"
                   options={RAM_MANUAL_OPTIONS}
                   value={manualDraft.ramGb}
-                  searchValue={manualSearch.ram}
-                  onSearchChange={(value) => setManualSearch((current) => ({ ...current, ram: value }))}
                   onValueChange={(value) => setManualDraft((current) => ({ ...current, ramGb: value }))}
                 />
 
@@ -1114,8 +1254,6 @@ export default function GameFinderClient({
                   emptyLabel="Selecciona tu sistema"
                   options={OS_MANUAL_OPTIONS}
                   value={manualDraft.os}
-                  searchValue={manualSearch.os}
-                  onSearchChange={(value) => setManualSearch((current) => ({ ...current, os: value }))}
                   onValueChange={(value) => setManualDraft((current) => ({ ...current, os: value }))}
                 />
 
