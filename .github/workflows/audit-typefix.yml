@@ -1,0 +1,70 @@
+name: Audit Type Fix
+
+on:
+  push:
+    branches:
+      - feature/game-detail-download-v2
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: true
+
+      - name: Setup Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Fix wrapper residues
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("src/components/games/GameCatalogClient.tsx")
+          text = path.read_text(encoding="utf-8")
+          old_import = 'import GameCard from "@/components/home/GameCard";'
+          old_card = '              <GameCard\n                key={\n                  game.slug\n                }\n                game={game}\n              />'
+          new_import = 'import UniversalGameCard from "@/components/ui/UniversalGameCard";'
+          new_card = '              <UniversalGameCard\n                key={\n                  game.slug\n                }\n                game={game}\n                variant="standard"\n              />'
+          if text.count(old_import) != 1 or text.count(old_card) != 1:
+              raise SystemExit("GameCatalogClient: expected wrapper references not found exactly once")
+          path.write_text(text.replace(old_import, new_import).replace(old_card, new_card), encoding="utf-8")
+
+          path = Path("src/components/home/GamesForYourPC.tsx")
+          text = path.read_text(encoding="utf-8")
+          if text.count('variant="low-spec"') != 1:
+              raise SystemExit("GamesForYourPC: low-spec residue not found exactly once")
+          path.write_text(text.replace('variant="low-spec"', 'variant="lowSpec"'), encoding="utf-8")
+          PY
+
+      - name: Validate focused audit checks
+        run: |
+          npm run typecheck
+          npm run check:architecture
+          npm run check:privacy
+
+      - name: Commit fixes
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/components/games/GameCatalogClient.tsx src/components/home/GamesForYourPC.tsx
+          git commit -m "fix: completar eliminación de wrappers de tarjetas"
+          git push origin HEAD:feature/game-detail-download-v2
