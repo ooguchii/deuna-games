@@ -41,6 +41,7 @@ export function parseStoredHardwareProfile(
       gpuId?: unknown;
       ramGb?: unknown;
       os?: unknown;
+      osConfirmed?: unknown;
       memoryMode?: unknown;
       updatedAt?: unknown;
     };
@@ -83,10 +84,12 @@ export function parseStoredHardwareProfile(
       ramGb,
       ramKnowledge: "confirmed",
       os:
+        value.osConfirmed === true &&
         typeof value.os === "string" &&
         value.os.trim()
           ? value.os
           : "Sistema sin confirmar",
+      osConfirmed: value.osConfirmed === true,
       memoryMode,
       source: "saved",
       confidence: "high",

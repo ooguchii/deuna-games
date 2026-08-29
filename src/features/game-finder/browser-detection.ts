@@ -343,9 +343,17 @@ export function profileFromBrowserSnapshot(snapshot: BrowserHardwareSnapshot): H
   // versión inequívoca (por ejemplo Windows 10 frente a Windows 11).
   const storedProfile = readStoredHardwareProfile();
   if (storedProfile) {
+    const detectedIsSpecific = isSpecificDetectedOs(detectedOs);
+    const useDetectedOs =
+      detectedIsSpecific ||
+      storedProfile.osConfirmed !== true;
+
     return {
       ...storedProfile,
-      os: isSpecificDetectedOs(detectedOs) ? detectedOs : storedProfile.os,
+      os: useDetectedOs ? detectedOs : storedProfile.os,
+      osConfirmed: useDetectedOs
+        ? detectedIsSpecific
+        : storedProfile.osConfirmed,
     };
   }
 
@@ -358,6 +366,7 @@ export function profileFromBrowserSnapshot(snapshot: BrowserHardwareSnapshot): H
     ramGb: snapshot.approximateMemoryGb,
     ramKnowledge: snapshot.memoryKind,
     os: detectedOs,
+    osConfirmed: isSpecificDetectedOs(detectedOs),
     memoryMode: "unknown",
     source: "browser",
     confidence: "low",

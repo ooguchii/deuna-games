@@ -137,6 +137,48 @@ function fail(message) {
   process.exit(1);
 }
 
+function containsPath(parent, child) {
+  const relative = path.relative(
+    parent,
+    child
+  );
+
+  return (
+    relative === "" ||
+    (
+      relative !== ".." &&
+      !relative.startsWith(`..${path.sep}`) &&
+      !path.isAbsolute(relative)
+    )
+  );
+}
+
+function validateStageLocation() {
+  const filesystemRoot =
+    path.parse(stageBase).root;
+
+  if (stageBase === filesystemRoot) {
+    fail(
+      "DEUNA_SECURE_STAGE_DIR no puede apuntar a la raíz del sistema de archivos."
+    );
+  }
+
+  if (containsPath(stageBase, root)) {
+    fail(
+      "DEUNA_SECURE_STAGE_DIR no puede ser el repositorio ni una carpeta que lo contenga."
+    );
+  }
+
+  if (
+    containsPath(stageBase, deployRoot) ||
+    containsPath(deployRoot, stageBase)
+  ) {
+    fail(
+      "DEUNA_SECURE_STAGE_DIR no puede solaparse con deploy/."
+    );
+  }
+}
+
 async function exists(target) {
   try {
     await access(target);
@@ -523,6 +565,7 @@ console.log("");
 
 const productionOrigin =
   validateProductionSiteUrl();
+validateStageLocation();
 
 console.log(
   `[OK] URL pública: ${productionOrigin}`

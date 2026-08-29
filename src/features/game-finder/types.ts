@@ -23,6 +23,7 @@ export type HardwareProfile = {
   ramGb: number | null;
   ramKnowledge: RamKnowledge;
   os: string;
+  osConfirmed?: boolean;
   memoryMode: MemoryMode;
   source: HardwareSource;
   confidence: ConfidenceLevel;

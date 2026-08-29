@@ -557,6 +557,51 @@ function validateHardwareCatalog(
   }
 }
 
+function validateCrossCatalogDuplicates(
+  base,
+  expansion,
+  label,
+  errors
+) {
+  const baseIds = new Set(
+    base
+      .filter((item) => isNonEmptyString(item?.id))
+      .map((item) => item.id)
+  );
+  const baseNames = new Set(
+    base
+      .filter((item) => isNonEmptyString(item?.name))
+      .map((item) => item.name.trim().toLowerCase())
+  );
+
+  for (const [index, item] of expansion.entries()) {
+    const itemLabel =
+      isNonEmptyString(item?.id)
+        ? `${label}.${item.id}`
+        : `${label}[${index}]`;
+
+    if (
+      isNonEmptyString(item?.id) &&
+      baseIds.has(item.id)
+    ) {
+      errors.push(
+        `${itemLabel}: id duplicado entre catálogo base y expansión.`
+      );
+    }
+
+    if (isNonEmptyString(item?.name)) {
+      const normalizedName =
+        item.name.trim().toLowerCase();
+
+      if (baseNames.has(normalizedName)) {
+        errors.push(
+          `${itemLabel}: nombre duplicado entre catálogo base y expansión.`
+        );
+      }
+    }
+  }
+}
+
 function makeExpansionId(name) {
   return `extra-${name
     .toLowerCase()
@@ -984,6 +1029,18 @@ validateHardwareCatalog(
   errors
 );
 validateHardwareCatalog(
+  gpuCatalogExpansion,
+  "gpuCatalogExpansion",
+  errors
+);
+validateCrossCatalogDuplicates(
+  baseCpuCatalog,
+  cpuCatalogExpansion,
+  "cpuCatalogExpansion",
+  errors
+);
+validateCrossCatalogDuplicates(
+  baseGpuCatalog,
   gpuCatalogExpansion,
   "gpuCatalogExpansion",
   errors

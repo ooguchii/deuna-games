@@ -488,6 +488,7 @@ export default function GameFinderClient({ games }: GameFinderClientProps) {
           gpuId: hardware.gpu.id,
           ramGb: hardware.ramGb,
           os: hardware.os,
+          osConfirmed: hardware.osConfirmed === true,
           memoryMode: hardware.memoryMode,
           updatedAt: hardware.updatedAt,
         })
@@ -665,6 +666,7 @@ export default function GameFinderClient({ games }: GameFinderClientProps) {
       ramGb,
       ramKnowledge: "confirmed",
       os: manualDraft.os || "Sistema sin confirmar",
+      osConfirmed: Boolean(manualDraft.os),
       memoryMode: gpu.integrated ? manualDraft.memoryMode : "unknown",
       source: "manual",
       confidence: "high",

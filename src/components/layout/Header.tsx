@@ -43,6 +43,31 @@ export default function Header() {
       if (event.key === "Escape") {
         event.preventDefault();
         closeMobileMenu(true);
+        return;
+      }
+
+      if (event.key !== "Tab") return;
+
+      const focusable =
+        mobilePanelRef.current?.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+
+      if (!focusable?.length) {
+        event.preventDefault();
+        return;
+      }
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement;
+
+      if (event.shiftKey && active === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first.focus();
       }
     };
 
@@ -55,13 +80,14 @@ export default function Header() {
     document.addEventListener("keydown", handleKeyDown);
     desktopMedia.addEventListener("change", handleDesktop);
 
-    window.requestAnimationFrame(() => {
+    const focusFrame = window.requestAnimationFrame(() => {
       mobilePanelRef.current
         ?.querySelector<HTMLInputElement>('input[type="search"]')
         ?.focus();
     });
 
     return () => {
+      window.cancelAnimationFrame(focusFrame);
       document.body.style.overflow = previousOverflow;
       document.removeEventListener("keydown", handleKeyDown);
       desktopMedia.removeEventListener("change", handleDesktop);
