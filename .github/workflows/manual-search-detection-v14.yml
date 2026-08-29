@@ -1,0 +1,106 @@
+name: Manual Search Detection V14
+
+on:
+  push:
+    branches:
+      - feature/game-detail-download-v2
+    paths:
+      - .github/workflows/manual-search-detection-v14.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/game-detail-download-v2
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Apply manual search and detection fixes
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          client_path = Path('src/features/game-finder/GameFinderClient.tsx')
+          text = client_path.read_text()
+
+          old = '''  RotateCcw,\n  ShieldCheck,'''
+          new = '''  RotateCcw,\n  Search,\n  ShieldCheck,'''
+          assert text.count(old) == 1
+          text = text.replace(old, new, 1)
+
+          anchor = '''type ManualDraft = {\n  cpuId: string;\n  gpuId: string;\n  ramGb: string;\n  os: string;\n  memoryMode: MemoryMode;\n};\n'''
+          insert = '''type ManualDraft = {\n  cpuId: string;\n  gpuId: string;\n  ramGb: string;\n  os: string;\n  memoryMode: MemoryMode;\n};\n\ntype ManualSearchState = {\n  cpu: string;\n  gpu: string;\n  ram: string;\n  os: string;\n};\n\ntype ManualSelectOption = {\n  value: string;\n  label: string;\n};\n\nconst RAM_MANUAL_OPTIONS: ManualSelectOption[] = [\n  1, 2, 3, 4, 6, 8, 10, 12, 16, 20, 24, 32, 48, 64, 96, 128, 192, 256,\n].map((ram) => ({ value: String(ram), label: `${ram} GB` }));\n\nconst OS_MANUAL_OPTIONS: ManualSelectOption[] = [\n  \"Windows 10/11 64-bit\",\n  \"Windows 10/11\",\n  \"Windows 11 64-bit\",\n  \"Windows 10 64-bit\",\n  \"Linux 64-bit\",\n  UNCONFIRMED_OS_OPTION,\n].map((os) => ({ value: os, label: os }));\n\nconst CPU_MANUAL_OPTIONS: ManualSelectOption[] = cpuCatalog.map((cpu) => ({\n  value: cpu.id,\n  label: cpu.name,\n}));\n\nconst GPU_MANUAL_OPTIONS: ManualSelectOption[] = gpuCatalog.map((gpu) => ({\n  value: gpu.id,\n  label: gpu.name,\n}));\n\nfunction emptyManualSearch(): ManualSearchState {\n  return { cpu: \"\", gpu: \"\", ram: \"\", os: \"\" };\n}\n\nfunction normalizeManualSearch(value: string) {\n  return value\n    .normalize(\"NFD\")\n    .replace(/[\\u0300-\\u036f]/g, \"\")\n    .toLocaleLowerCase(\"es\")\n    .trim();\n}\n\nfunction filterManualOptions(\n  options: ManualSelectOption[],\n  query: string,\n  selectedValue: string\n) {\n  const normalizedQuery = normalizeManualSearch(query);\n  const terms = normalizedQuery.split(/\\s+/).filter(Boolean);\n  const matches = terms.length\n    ? options.filter((option) => {\n        const searchable = normalizeManualSearch(`${option.label} ${option.value}`);\n        return terms.every((term) => searchable.includes(term));\n      })\n    : options;\n\n  const selected = selectedValue\n    ? options.find((option) => option.value === selectedValue)\n    : undefined;\n\n  if (selected && !matches.some((option) => option.value === selected.value)) {\n    return [selected, ...matches];\n  }\n\n  return matches;\n}\n\nfunction SearchableManualSelect({\n  fieldId,\n  label,\n  searchPlaceholder,\n  emptyLabel,\n  options,\n  value,\n  searchValue,\n  onValueChange,\n  onSearchChange,\n}: {\n  fieldId: string;\n  label: string;\n  searchPlaceholder: string;\n  emptyLabel: string;\n  options: ManualSelectOption[];\n  value: string;\n  searchValue: string;\n  onValueChange: (value: string) => void;\n  onSearchChange: (value: string) => void;\n}) {\n  const visibleOptions = useMemo(\n    () => filterManualOptions(options, searchValue, value),\n    [options, searchValue, value]\n  );\n  const normalizedQuery = normalizeManualSearch(searchValue);\n  const matchCount = normalizedQuery\n    ? visibleOptions.filter((option) => option.value !== value).length +\n      (visibleOptions.some((option) => option.value === value && normalizeManualSearch(`${option.label} ${option.value}`).includes(normalizedQuery)) ? 1 : 0)\n    : options.length;\n\n  return (\n    <div className={styles.configField}>\n      <label htmlFor={`${fieldId}-search`}>{label}</label>\n      <div className={styles.configSearch}>\n        <Search size={15} aria-hidden=\"true\" />\n        <input\n          id={`${fieldId}-search`}\n          type=\"search\"\n          value={searchValue}\n          placeholder={searchPlaceholder}\n          autoComplete=\"off\"\n          spellCheck={false}\n          aria-controls={fieldId}\n          onChange={(event) => onSearchChange(event.target.value)}\n        />\n        <span aria-live=\"polite\">{matchCount}</span>\n      </div>\n      <select\n        id={fieldId}\n        value={value}\n        aria-label={`Seleccionar ${label.toLocaleLowerCase(\"es\")}`}\n        onChange={(event) => {\n          onValueChange(event.target.value);\n          onSearchChange(\"\");\n        }}\n      >\n        <option value=\"\">{emptyLabel}</option>\n        {visibleOptions.map((option) => (\n          <option key={option.value} value={option.value}>\n            {option.label}\n          </option>\n        ))}\n      </select>\n      <small className={styles.configMatchCount}>\n        {searchValue.trim()\n          ? `${matchCount} coincidencia${matchCount === 1 ? \"\" : \"s\"}`\n          : `${options.length} opciones disponibles`}\n      </small>\n    </div>\n  );\n}\n'''
+          assert text.count(anchor) == 1
+          text = text.replace(anchor, insert, 1)
+
+          old = '''  const [manualDraft, setManualDraft] = useState<ManualDraft>(() => profileToManualDraft(null));\n\n  const settingsDialogRef'''
+          new = '''  const [manualDraft, setManualDraft] = useState<ManualDraft>(() => profileToManualDraft(null));\n  const [manualSearch, setManualSearch] = useState<ManualSearchState>(() => emptyManualSearch());\n\n  const settingsDialogRef'''
+          assert text.count(old) == 1
+          text = text.replace(old, new, 1)
+
+          old = '''  if (profile?.source === \"manual\" || profile?.source === \"saved\") {\n    return \"Este perfil local se usa para calcular los rangos de FPS del catálogo.\";\n  }'''
+          new = '''  if (profile?.source === \"manual\" || profile?.source === \"saved\") {\n    if (snapshot) {\n      return \"Volvimos a consultar el navegador. CPU, GPU y RAM confirmadas se conservan porque son más fiables; la lectura automática sólo completa o mejora datos que la web puede identificar con certeza.\";\n    }\n    return \"Este perfil local se usa para calcular los rangos de FPS del catálogo.\";\n  }'''
+          assert text.count(old) == 1
+          text = text.replace(old, new, 1)
+
+          old = '''    setManualDraft(profileToManualDraft(sourceProfile));\n    setSettingsOpen(true);'''
+          new = '''    setManualDraft(profileToManualDraft(sourceProfile));\n    setManualSearch(emptyManualSearch());\n    setSettingsOpen(true);'''
+          assert text.count(old) == 1
+          text = text.replace(old, new, 1)
+
+          old = '''    setHardware(manualProfile);\n    setDetectionState(\"ready\");\n    setSettingsOpen(false);'''
+          new = '''    setSnapshot(null);\n    setHardware(manualProfile);\n    setManualSearch(emptyManualSearch());\n    setDetectionState(\"ready\");\n    setSettingsOpen(false);'''
+          assert text.count(old) == 1
+          text = text.replace(old, new, 1)
+
+          old = '''              <div className={styles.configGrid}>\n                <label>\n                  <span>Procesador</span>\n                  <select value={manualDraft.cpuId} onChange={(event: ChangeEvent<HTMLSelectElement>) => setManualDraft((current) => ({ ...current, cpuId: event.target.value }))}>\n                    <option value=\"\">Selecciona tu CPU</option>\n                    {cpuCatalog.map((cpu) => (\n                      <option key={cpu.id} value={cpu.id}>{cpu.name}</option>\n                    ))}\n                  </select>\n                </label>\n\n                <label>\n                  <span>Tarjeta gráfica</span>\n                  <select value={manualDraft.gpuId} onChange={(event: ChangeEvent<HTMLSelectElement>) => setManualDraft((current) => ({ ...current, gpuId: event.target.value }))}>\n                    <option value=\"\">Selecciona tu GPU</option>\n                    {gpuCatalog.map((gpu) => (\n                      <option key={gpu.id} value={gpu.id}>{gpu.name}</option>\n                    ))}\n                  </select>\n                </label>\n\n                <label>\n                  <span>Memoria RAM física</span>\n                  <select value={manualDraft.ramGb} onChange={(event: ChangeEvent<HTMLSelectElement>) => setManualDraft((current) => ({ ...current, ramGb: event.target.value }))}>\n                    <option value=\"\">Selecciona tu RAM</option>\n                    {[1, 2, 3, 4, 6, 8, 10, 12, 16, 20, 24, 32, 48, 64, 96, 128, 192, 256].map((ram) => (\n                      <option key={ram} value={ram}>{ram} GB</option>\n                    ))}\n                  </select>\n                </label>\n\n                <label>\n                  <span>Sistema operativo</span>\n                  <select value={manualDraft.os} onChange={(event: ChangeEvent<HTMLSelectElement>) => setManualDraft((current) => ({ ...current, os: event.target.value }))}>\n                    <option>Windows 10/11 64-bit</option>\n                    <option>Windows 10/11</option>\n                    <option>Windows 11 64-bit</option>\n                    <option>Windows 10 64-bit</option>\n                    <option>Linux 64-bit</option>\n                    <option>{UNCONFIRMED_OS_OPTION}</option>\n                  </select>\n                </label>\n\n                {selectedManualGpu?.integrated && (\n                  <label>\n                    <span>Canales de memoria</span>\n                    <select value={manualDraft.memoryMode} onChange={(event: ChangeEvent<HTMLSelectElement>) => setManualDraft((current) => ({ ...current, memoryMode: event.target.value as MemoryMode }))}>\n                      <option value=\"unknown\">No lo sé</option>\n                      <option value=\"single\">Single-channel / un módulo</option>\n                      <option value=\"dual\">Dual-channel / dos módulos</option>\n                    </select>\n                  </label>\n                )}\n              </div>'''
+          new = '''              <div className={styles.configGrid}>\n                <SearchableManualSelect\n                  fieldId=\"manual-cpu\"\n                  label=\"Procesador\"\n                  searchPlaceholder=\"Buscar CPU: Ryzen 5 5600G, i5-12400...\"\n                  emptyLabel=\"Selecciona tu CPU\"\n                  options={CPU_MANUAL_OPTIONS}\n                  value={manualDraft.cpuId}\n                  searchValue={manualSearch.cpu}\n                  onSearchChange={(value) => setManualSearch((current) => ({ ...current, cpu: value }))}\n                  onValueChange={(value) => setManualDraft((current) => ({ ...current, cpuId: value }))}\n                />\n\n                <SearchableManualSelect\n                  fieldId=\"manual-gpu\"\n                  label=\"Tarjeta gráfica\"\n                  searchPlaceholder=\"Buscar GPU: GTX 1660 SUPER, RX 6600...\"\n                  emptyLabel=\"Selecciona tu GPU\"\n                  options={GPU_MANUAL_OPTIONS}\n                  value={manualDraft.gpuId}\n                  searchValue={manualSearch.gpu}\n                  onSearchChange={(value) => setManualSearch((current) => ({ ...current, gpu: value }))}\n                  onValueChange={(value) => setManualDraft((current) => ({ ...current, gpuId: value }))}\n                />\n\n                <SearchableManualSelect\n                  fieldId=\"manual-ram\"\n                  label=\"Memoria RAM física\"\n                  searchPlaceholder=\"Buscar cantidad: 16 GB, 32 GB...\"\n                  emptyLabel=\"Selecciona tu RAM\"\n                  options={RAM_MANUAL_OPTIONS}\n                  value={manualDraft.ramGb}\n                  searchValue={manualSearch.ram}\n                  onSearchChange={(value) => setManualSearch((current) => ({ ...current, ram: value }))}\n                  onValueChange={(value) => setManualDraft((current) => ({ ...current, ramGb: value }))}\n                />\n\n                <SearchableManualSelect\n                  fieldId=\"manual-os\"\n                  label=\"Sistema operativo\"\n                  searchPlaceholder=\"Buscar Windows, Linux...\"\n                  emptyLabel=\"Selecciona tu sistema\"\n                  options={OS_MANUAL_OPTIONS}\n                  value={manualDraft.os}\n                  searchValue={manualSearch.os}\n                  onSearchChange={(value) => setManualSearch((current) => ({ ...current, os: value }))}\n                  onValueChange={(value) => setManualDraft((current) => ({ ...current, os: value }))}\n                />\n\n                {selectedManualGpu?.integrated && (\n                  <label>\n                    <span>Canales de memoria</span>\n                    <select value={manualDraft.memoryMode} onChange={(event: ChangeEvent<HTMLSelectElement>) => setManualDraft((current) => ({ ...current, memoryMode: event.target.value as MemoryMode }))}>\n                      <option value=\"unknown\">No lo sé</option>\n                      <option value=\"single\">Single-channel / un módulo</option>\n                      <option value=\"dual\">Dual-channel / dos módulos</option>\n                    </select>\n                  </label>\n                )}\n              </div>'''
+          assert text.count(old) == 1
+          text = text.replace(old, new, 1)
+          client_path.write_text(text)
+
+          browser_path = Path('src/features/game-finder/browser-detection.ts')
+          text = browser_path.read_text()
+          old = '''export function profileFromBrowserSnapshot(\n  snapshot: BrowserHardwareSnapshot,\n  preferredProfile: HardwareProfile | null = null\n): HardwareProfile {\n  const detectedOs = detectOs(snapshot, navigator.userAgent);\n\n  // CPU/GPU/RAM confirmados manualmente siguen siendo más fiables que una\n  // lectura web. Una nueva detección sólo puede corregir el SO si UA-CH expone\n  // una versión inequívoca; perfiles automáticos anteriores sí se recalculan.\n  const confirmedProfile =\n    preferredProfile?.source === \"manual\" ||\n    preferredProfile?.source === \"saved\"\n      ? preferredProfile\n      : null;\n\n  if (confirmedProfile) {\n    const detectedIsSpecific = isSpecificDetectedOs(detectedOs);\n    const useDetectedOs =\n      detectedIsSpecific ||\n      confirmedProfile.osConfirmed !== true;\n\n    return {\n      ...confirmedProfile,\n      os: useDetectedOs ? detectedOs : confirmedProfile.os,\n      osConfirmed: useDetectedOs\n        ? detectedIsSpecific\n        : confirmedProfile.osConfirmed,\n    };\n  }\n\n  const cpu = estimateCpuFromLogicalProcessors(snapshot.logicalProcessors);\n  const gpu = matchGpuRenderer(snapshot.gpuRenderer)?.gpu ?? null;\n\n  return {\n    cpu,\n    gpu,\n    ramGb: snapshot.approximateMemoryGb,\n    ramKnowledge: snapshot.memoryKind,\n    os: detectedOs,\n    osConfirmed: isSpecificDetectedOs(detectedOs),\n    memoryMode: \"unknown\",\n    source: \"browser\",\n    confidence: \"low\",\n    updatedAt: new Date().toISOString(),\n  };\n}'''
+          new = '''export function profileFromBrowserSnapshot(\n  snapshot: BrowserHardwareSnapshot,\n  preferredProfile: HardwareProfile | null = null\n): HardwareProfile {\n  const detectedOs = detectOs(snapshot, navigator.userAgent);\n  const detectedCpu = estimateCpuFromLogicalProcessors(snapshot.logicalProcessors);\n  const detectedGpu = matchGpuRenderer(snapshot.gpuRenderer)?.gpu ?? null;\n  const detectedIsSpecific = isSpecificDetectedOs(detectedOs);\n\n  const browserProfile: HardwareProfile = {\n    cpu: detectedCpu,\n    gpu: detectedGpu,\n    ramGb: snapshot.approximateMemoryGb,\n    ramKnowledge: snapshot.memoryKind,\n    os: detectedOs,\n    osConfirmed: detectedIsSpecific,\n    memoryMode: \"unknown\",\n    source: \"browser\",\n    confidence: \"low\",\n    updatedAt: new Date().toISOString(),\n  };\n\n  // La redetección siempre ejecuta una lectura real del navegador. Después se\n  // fusiona con el perfil confirmado: una lectura aproximada o protegida nunca\n  // debe degradar CPU/GPU/RAM que el usuario identificó manualmente.\n  const confirmedProfile =\n    preferredProfile?.source === \"manual\" ||\n    preferredProfile?.source === \"saved\"\n      ? preferredProfile\n      : null;\n\n  if (!confirmedProfile) return browserProfile;\n\n  const useDetectedOs =\n    detectedIsSpecific ||\n    confirmedProfile.osConfirmed !== true;\n\n  return {\n    ...browserProfile,\n    cpu: confirmedProfile.cpu ?? detectedCpu,\n    gpu: confirmedProfile.gpu ?? detectedGpu,\n    ramGb: confirmedProfile.ramGb ?? snapshot.approximateMemoryGb,\n    ramKnowledge: confirmedProfile.ramGb\n      ? confirmedProfile.ramKnowledge\n      : snapshot.memoryKind,\n    os: useDetectedOs ? detectedOs : confirmedProfile.os,\n    osConfirmed: useDetectedOs\n      ? detectedIsSpecific\n      : confirmedProfile.osConfirmed,\n    memoryMode: confirmedProfile.gpu\n      ? confirmedProfile.memoryMode\n      : \"unknown\",\n    source: confirmedProfile.source,\n    confidence: confirmedProfile.confidence,\n    updatedAt: new Date().toISOString(),\n  };\n}'''
+          assert text.count(old) == 1
+          browser_path.write_text(text.replace(old, new, 1))
+
+          css_path = Path('src/features/game-finder/GameFinderClient.module.css')
+          text = css_path.read_text()
+          text = text.replace('''  grid-template-columns: repeat(5, minmax(0, 1fr));''', '''  grid-template-columns: repeat(2, minmax(0, 1fr));''', 1)
+          text = text.replace('''.configGrid label,\n.filterField,''', '''.configGrid label,\n.configField,\n.filterField,''', 1)
+          text = text.replace('''.configGrid label > span,\n.filterField > span,''', '''.configGrid label > span,\n.configField > label,\n.filterField > span,''', 1)
+          anchor = '''.configGrid select:focus-visible,\n.filterField select:focus-visible,\n.sortControl select:focus-visible {\n  border-color: rgba(255, 8, 71, 0.48);\n  box-shadow: 0 0 0 3px rgba(255, 8, 71, 0.05);\n}\n'''
+          insert = anchor + '''\n.configSearch {\n  position: relative;\n  min-width: 0;\n}\n\n.configSearch > svg {\n  position: absolute;\n  left: 11px;\n  top: 50%;\n  z-index: 1;\n  transform: translateY(-50%);\n  color: var(--text-muted);\n  pointer-events: none;\n}\n\n.configSearch input {\n  width: 100%;\n  min-width: 0;\n  min-height: 40px;\n  padding: 0 52px 0 34px;\n  color: var(--text-soft);\n  border: 1px solid var(--finder-line);\n  border-radius: 8px;\n  outline: 0;\n  background: rgba(5, 9, 14, 0.78);\n  font-size: var(--font-xs);\n}\n\n.configSearch input::placeholder {\n  color: #778393;\n}\n\n.configSearch input:focus-visible {\n  border-color: rgba(255, 8, 71, 0.48);\n  box-shadow: 0 0 0 3px rgba(255, 8, 71, 0.05);\n}\n\n.configSearch > span {\n  position: absolute;\n  right: 10px;\n  top: 50%;\n  transform: translateY(-50%);\n  color: var(--brand-light);\n  font-size: 9px;\n  font-weight: 800;\n  pointer-events: none;\n}\n\n.configMatchCount {\n  color: #7f8b9b;\n  font-size: 9px;\n  line-height: 1.2;\n}\n'''
+          assert text.count(anchor) == 1
+          text = text.replace(anchor, insert, 1)
+          text = text.replace('''  .configGrid {\n    grid-template-columns: repeat(3, minmax(0, 1fr));\n  }''', '''  .configGrid {\n    grid-template-columns: repeat(2, minmax(0, 1fr));\n  }''', 1)
+          css_path.write_text(text)
+          PY
+          git rm .github/workflows/manual-search-detection-v14.yml
+      - name: Validate
+        run: |
+          npm run lint
+          npm run typecheck
+          npm run check:architecture
+          npm run check:data
+          npm run check:css-modules
+          npm run security:scan
+      - name: Commit
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/features/game-finder/GameFinderClient.tsx src/features/game-finder/GameFinderClient.module.css src/features/game-finder/browser-detection.ts
+          git commit -m "feat: buscar hardware manual y proteger redetección"
+          git push origin HEAD:feature/game-detail-download-v2
