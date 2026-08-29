@@ -67,6 +67,7 @@ import styles from "./GameFinderClient.module.css";
 import overlayStyles from "./GameFinderOverlay.module.css";
 
 const FAVORITES_STORAGE_KEY = "deuna-games:finder-favorites:v2";
+const UNCONFIRMED_OS_OPTION = "Otro / no estoy seguro";
 
 const EMPTY_PROFILE: HardwareProfile = {
   cpu: null,
@@ -173,7 +174,7 @@ function profileToManualDraft(profile: HardwareProfile | null): ManualDraft {
       : "",
     os: profile?.os && profile.os !== "Sistema sin confirmar"
       ? profile.os
-      : "Otro / no estoy seguro",
+      : UNCONFIRMED_OS_OPTION,
     memoryMode: profile?.memoryMode ?? "unknown",
   };
 }
@@ -431,12 +432,12 @@ export default function GameFinderClient({ games }: GameFinderClientProps) {
   const [favorites, setFavorites] = useState<Set<string>>(() => new Set());
   const [favoritesHydrated, setFavoritesHydrated] = useState(false);
 
-  const runDetection = useCallback(async () => {
+  const runDetection = useCallback(async (preferredProfile: HardwareProfile | null = null) => {
     setDetectionState("detecting");
 
     try {
       const detected = await detectBrowserHardware();
-      const browserProfile = profileFromBrowserSnapshot(detected);
+      const browserProfile = profileFromBrowserSnapshot(detected, preferredProfile);
 
       setSnapshot(detected);
       setHardware(browserProfile);
@@ -581,8 +582,7 @@ export default function GameFinderClient({ games }: GameFinderClientProps) {
 
   const selectedGame =
     visibleGames.find((game) => game.slug === selectedSlug) ??
-    visibleGames[0] ??
-    games[0];
+    visibleGames[0];
   const selectedEstimate = selectedGame ? estimates.get(selectedGame.slug) ?? null : null;
   const selectedProfile = selectedGame ? getPerformanceProfile(selectedGame.slug) : null;
   const selectedManualGpu = findGpuById(manualDraft.gpuId);
@@ -657,6 +657,9 @@ export default function GameFinderClient({ games }: GameFinderClientProps) {
     const cpu = findCpuById(manualDraft.cpuId);
     const gpu = findGpuById(manualDraft.gpuId);
     const ramGb = Number(manualDraft.ramGb);
+    const osConfirmed =
+      manualDraft.os.trim().length > 0 &&
+      manualDraft.os !== UNCONFIRMED_OS_OPTION;
 
     if (!cpu || !gpu || !Number.isFinite(ramGb) || ramGb < 1 || ramGb > 256) return;
 
@@ -665,8 +668,8 @@ export default function GameFinderClient({ games }: GameFinderClientProps) {
       gpu,
       ramGb,
       ramKnowledge: "confirmed",
-      os: manualDraft.os || "Sistema sin confirmar",
-      osConfirmed: Boolean(manualDraft.os),
+      os: osConfirmed ? manualDraft.os : "Sistema sin confirmar",
+      osConfirmed,
       memoryMode: gpu.integrated ? manualDraft.memoryMode : "unknown",
       source: "manual",
       confidence: "high",
@@ -765,7 +768,7 @@ export default function GameFinderClient({ games }: GameFinderClientProps) {
         hasRealAnalysis={hasRealAnalysis}
         onAnalyze={useExampleProfile}
         onConfigure={openSettings}
-        onDetect={() => void runDetection()}
+        onDetect={() => void runDetection(hardware)}
         onSelectGame={(slug) => {
           setSelectedSlug(slug);
           scrollToResults();
@@ -851,7 +854,7 @@ export default function GameFinderClient({ games }: GameFinderClientProps) {
                     <option>Windows 11 64-bit</option>
                     <option>Windows 10 64-bit</option>
                     <option>Linux 64-bit</option>
-                    <option>Otro / no estoy seguro</option>
+                    <option>{UNCONFIRMED_OS_OPTION}</option>
                   </select>
                 </label>
 

@@ -1,5 +1,4 @@
 import { estimateCpuFromLogicalProcessors } from "./hardware-catalog";
-import { readStoredHardwareProfile } from "./hardware-storage";
 import {
   matchGpuRenderer,
   type GpuRendererMatch,
@@ -335,25 +334,33 @@ export async function detectBrowserHardware(): Promise<BrowserHardwareSnapshot> 
   };
 }
 
-export function profileFromBrowserSnapshot(snapshot: BrowserHardwareSnapshot): HardwareProfile {
+export function profileFromBrowserSnapshot(
+  snapshot: BrowserHardwareSnapshot,
+  preferredProfile: HardwareProfile | null = null
+): HardwareProfile {
   const detectedOs = detectOs(snapshot, navigator.userAgent);
 
-  // Un perfil confirmado manualmente sigue siendo más fiable para CPU/GPU/RAM,
-  // pero una relectura puede corregir el sistema operativo si UA-CH expone una
-  // versión inequívoca (por ejemplo Windows 10 frente a Windows 11).
-  const storedProfile = readStoredHardwareProfile();
-  if (storedProfile) {
+  // CPU/GPU/RAM confirmados manualmente siguen siendo más fiables que una
+  // lectura web. Una nueva detección sólo puede corregir el SO si UA-CH expone
+  // una versión inequívoca; perfiles automáticos anteriores sí se recalculan.
+  const confirmedProfile =
+    preferredProfile?.source === "manual" ||
+    preferredProfile?.source === "saved"
+      ? preferredProfile
+      : null;
+
+  if (confirmedProfile) {
     const detectedIsSpecific = isSpecificDetectedOs(detectedOs);
     const useDetectedOs =
       detectedIsSpecific ||
-      storedProfile.osConfirmed !== true;
+      confirmedProfile.osConfirmed !== true;
 
     return {
-      ...storedProfile,
-      os: useDetectedOs ? detectedOs : storedProfile.os,
+      ...confirmedProfile,
+      os: useDetectedOs ? detectedOs : confirmedProfile.os,
       osConfirmed: useDetectedOs
         ? detectedIsSpecific
-        : storedProfile.osConfirmed,
+        : confirmedProfile.osConfirmed,
     };
   }
 

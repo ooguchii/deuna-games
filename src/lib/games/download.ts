@@ -97,8 +97,7 @@ function resolveHref(
 }
 
 function resolveSource(
-  source: GameDownloadSource,
-  fallbackIndex: number
+  source: GameDownloadSource
 ): ResolvedDownloadSource | null {
   const resolved =
     resolveHref(source.href);
@@ -115,7 +114,7 @@ function resolveSource(
   }
 
   return {
-    id: id || `source-${fallbackIndex + 1}`,
+    id,
     name,
     href: resolved.href,
     external: resolved.external,
@@ -137,12 +136,8 @@ export function resolveGameDownload(
   const sources: ResolvedDownloadSource[] = [];
   const seenHrefs = new Set<string>();
 
-  for (const [index, source] of
-    (config.sources ?? []).entries()) {
-    const resolved = resolveSource(
-      source,
-      index
-    );
+  for (const source of config.sources ?? []) {
+    const resolved = resolveSource(source);
 
     if (
       !resolved ||
