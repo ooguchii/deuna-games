@@ -233,10 +233,14 @@ function detectionLabel(
 
 function detectionHint(
   state: DetectionState,
-  profile: HardwareProfile | null
+  profile: HardwareProfile | null,
+  snapshot: BrowserHardwareSnapshot | null
 ) {
   if (state === "detecting") {
     return "Leemos únicamente los datos que el navegador permite exponer.";
+  }
+  if (snapshot?.secureContext === false) {
+    return "Estás usando una conexión HTTP de red local: la web funciona, pero WebGPU y parte de la detección avanzada pueden quedar limitados. Para una lectura más completa usa HTTPS o localhost.";
   }
   if (state === "error") {
     return "Puedes configurar CPU, GPU y RAM manualmente sin instalar nada.";
@@ -782,7 +786,7 @@ export default function GameFinderClient({ games }: GameFinderClientProps) {
         ramLabel={profileRamLabel(activeHardware)}
         detectionState={detectionState}
         detectionStatus={detectionLabel(detectionState, hardware)}
-        detectionHint={detectionHint(detectionState, hardware)}
+        detectionHint={detectionHint(detectionState, hardware, snapshot)}
         detectionSource={detectionSource(hardware, snapshot)}
         hasRealAnalysis={hasRealAnalysis}
         onAnalyze={useExampleProfile}

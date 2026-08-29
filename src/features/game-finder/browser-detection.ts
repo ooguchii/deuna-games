@@ -234,6 +234,7 @@ function chooseGpuReading(
 export async function detectBrowserHardware(): Promise<BrowserHardwareSnapshot> {
   const nav = navigator as NavigatorWithDeviceMemory;
   const warnings: string[] = [];
+  const secureContext = window.isSecureContext;
 
   const logicalProcessors = Number.isFinite(nav.hardwareConcurrency)
     ? nav.hardwareConcurrency
@@ -281,6 +282,12 @@ export async function detectBrowserHardware(): Promise<BrowserHardwareSnapshot> 
   const gpuSource: BrowserHardwareSnapshot["gpuSource"] =
     selectedGpu?.source ?? "none";
 
+  if (!secureContext) {
+    warnings.push(
+      "La página usa un contexto HTTP no seguro; WebGPU y parte de la detección avanzada pueden quedar limitados."
+    );
+  }
+
   if (!logicalProcessors) {
     warnings.push("El navegador no informó procesadores lógicos.");
   } else {
@@ -320,6 +327,7 @@ export async function detectBrowserHardware(): Promise<BrowserHardwareSnapshot> 
   }
 
   return {
+    secureContext,
     logicalProcessors,
     approximateMemoryGb,
     memoryKind,

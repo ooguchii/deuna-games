@@ -31,6 +31,7 @@ export type HardwareProfile = {
 };
 
 export type BrowserHardwareSnapshot = {
+  secureContext: boolean;
   logicalProcessors: number | null;
   approximateMemoryGb: number | null;
   memoryKind: "unknown" | "approximate" | "lower-bound";
