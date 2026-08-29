@@ -505,6 +505,28 @@ export default function GameFinderClient({
   }, [runDetection]);
 
   useEffect(() => {
+    function handleStorage(event: StorageEvent) {
+      if (
+        event.storageArea !== window.localStorage ||
+        event.key !== PROFILE_STORAGE_KEY
+      ) {
+        return;
+      }
+
+      const saved = readStoredHardwareProfile();
+      if (!saved) return;
+
+      setSnapshot(null);
+      setHardware(saved);
+      setManualDraft(profileToManualDraft(saved));
+      setDetectionState("ready");
+    }
+
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, []);
+
+  useEffect(() => {
     if (
       !hardware ||
       hardware.source === "browser" ||
