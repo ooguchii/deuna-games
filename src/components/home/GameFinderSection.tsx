@@ -25,7 +25,7 @@ export default function GameFinderSection() {
           </span>
 
           <h2>
-            ¿Buscás algo que <span>funcione en tu PC?</span>
+            ¿Buscas algo que <span>funcione en tu PC?</span>
           </h2>
 
           <p>
