@@ -190,18 +190,21 @@ function normalizeManualSearch(value: string) {
     .trim();
 }
 
+function manualOptionMatches(option: ManualSelectOption, query: string) {
+  const terms = normalizeManualSearch(query).split(/\s+/).filter(Boolean);
+  if (!terms.length) return true;
+
+  const searchable = normalizeManualSearch(`${option.label} ${option.value}`);
+  return terms.every((term) => searchable.includes(term));
+}
+
 function filterManualOptions(
   options: ManualSelectOption[],
   query: string,
   selectedValue: string
 ) {
-  const normalizedQuery = normalizeManualSearch(query);
-  const terms = normalizedQuery.split(/\s+/).filter(Boolean);
-  const matches = terms.length
-    ? options.filter((option) => {
-        const searchable = normalizeManualSearch(`${option.label} ${option.value}`);
-        return terms.every((term) => searchable.includes(term));
-      })
+  const matches = query.trim()
+    ? options.filter((option) => manualOptionMatches(option, query))
     : options;
 
   const selected = selectedValue
@@ -240,10 +243,8 @@ function SearchableManualSelect({
     () => filterManualOptions(options, searchValue, value),
     [options, searchValue, value]
   );
-  const normalizedQuery = normalizeManualSearch(searchValue);
-  const matchCount = normalizedQuery
-    ? visibleOptions.filter((option) => option.value !== value).length +
-      (visibleOptions.some((option) => option.value === value && normalizeManualSearch(`${option.label} ${option.value}`).includes(normalizedQuery)) ? 1 : 0)
+  const matchCount = searchValue.trim()
+    ? options.filter((option) => manualOptionMatches(option, searchValue)).length
     : options.length;
 
   return (
@@ -421,8 +422,12 @@ function detectionSource(
   // El origen visible debe describir el perfil que realmente está usando el
   // cálculo. Un snapshot automático anterior no debe eclipsar un perfil
   // manual, guardado o de demostración que esté activo ahora.
-  if (profile?.source === "manual") return "Entrada manual";
-  if (profile?.source === "saved") return "Perfil local";
+  if (profile?.source === "manual") {
+    return snapshot ? "Manual + verificación web" : "Entrada manual";
+  }
+  if (profile?.source === "saved") {
+    return snapshot ? "Guardado + verificación web" : "Perfil local";
+  }
   if (profile?.source === "example") return "Ejemplo local";
   if (snapshot) return sourceLabel(snapshot);
   return "Sin lectura automática";

@@ -376,8 +376,8 @@ export function profileFromBrowserSnapshot(
   if (!confirmedProfile) return browserProfile;
 
   const useDetectedOs =
-    detectedIsSpecific ||
-    confirmedProfile.osConfirmed !== true;
+    confirmedProfile.osConfirmed !== true &&
+    detectedOs !== "Sistema sin confirmar";
 
   return {
     ...browserProfile,
