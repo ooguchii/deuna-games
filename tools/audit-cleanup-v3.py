@@ -96,6 +96,9 @@ selector_replacements = [
 for pattern, replacement in selector_replacements:
     css = re.sub(pattern, replacement, css)
 
+# Última referencia histórica: aparecía sólo en una lista de reduced-motion.
+css = css.replace("  .mobileMenuToggle,\n", "")
+
 if "mobileMenuToggle" in css:
     leftovers = [
         line.strip()
