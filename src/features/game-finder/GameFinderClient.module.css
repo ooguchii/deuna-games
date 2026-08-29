@@ -1232,21 +1232,25 @@
 @media (prefers-reduced-motion: reduce) {
   .gameCard,
   .gameCardImage,
-  .gameCardSpotlight,
-  .gameCard::before,
   .favoriteButton,
-  .tierFilter {
+  .tierFilter,
+  .detailPrimaryLink {
     transition: none !important;
   }
 
   .gameCard,
-  .gameCard:hover {
+  .gameCard:hover,
+  .gameCardImage,
+  .gameCard:hover .gameCardImage,
+  .favoriteButton:hover,
+  .tierFilter:hover,
+  .detailPrimaryLink:hover {
     transform: none !important;
   }
 
-  .gameCardImage,
-  .gameCard:hover .gameCardImage {
-    transform: none !important;
+  .gameCard::before,
+  .gameCardSpotlight {
+    display: none;
   }
 }
 
