@@ -1,0 +1,84 @@
+name: Hardware Cache V9
+
+on:
+  push:
+    branches:
+      - feature/game-detail-download-v2
+    paths:
+      - .github/workflows/hardware-cache-v9.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: feature/game-detail-download-v2
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply hardware cache fix
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+
+          const hookPath = 'src/features/game-finder/useResolvedHardwareProfile.ts';
+          let hook = fs.readFileSync(hookPath, 'utf8');
+
+          const promiseBlock = `let browserProfilePromise:\n  Promise<HardwareProfile> | null = null;`;
+          const promiseReplacement = `let browserProfilePromise:\n  Promise<HardwareProfile> | null = null;\n\nexport function invalidateDetectedBrowserProfileCache() {\n  browserProfilePromise = null;\n}\n\nexport function primeDetectedBrowserProfileCache(\n  profile: HardwareProfile\n) {\n  if (profile.source !== \"browser\") {\n    return;\n  }\n\n  browserProfilePromise = Promise.resolve(profile);\n}`;
+          if (!hook.includes(promiseBlock)) throw new Error('Bloque de caché esperado no encontrado');
+          hook = hook.replace(promiseBlock, promiseReplacement);
+          fs.writeFileSync(hookPath, hook);
+
+          const clientPath = 'src/features/game-finder/GameFinderClient.tsx';
+          let client = fs.readFileSync(clientPath, 'utf8');
+
+          const importAnchor = `import { estimateGamePerformance } from \"./performance-model\";`;
+          const importReplacement = `import { estimateGamePerformance } from \"./performance-model\";\nimport {\n  invalidateDetectedBrowserProfileCache,\n  primeDetectedBrowserProfileCache,\n} from \"./useResolvedHardwareProfile\";`;
+          if (!client.includes(importAnchor)) throw new Error('Ancla de import no encontrada');
+          client = client.replace(importAnchor, importReplacement);
+
+          const detectionStart = `  const runDetection = useCallback(async (preferredProfile: HardwareProfile | null = null) => {\n    setDetectionState(\"detecting\");\n\n    try {`;
+          const detectionStartReplacement = `  const runDetection = useCallback(async (preferredProfile: HardwareProfile | null = null) => {\n    setDetectionState(\"detecting\");\n    invalidateDetectedBrowserProfileCache();\n\n    try {`;
+          if (!client.includes(detectionStart)) throw new Error('Inicio de detección esperado no encontrado');
+          client = client.replace(detectionStart, detectionStartReplacement);
+
+          const profileBlock = `      const detected = await detectBrowserHardware();\n      const browserProfile = profileFromBrowserSnapshot(detected, preferredProfile);\n\n      setSnapshot(detected);`;
+          const profileReplacement = `      const detected = await detectBrowserHardware();\n      const browserProfile = profileFromBrowserSnapshot(detected, preferredProfile);\n\n      primeDetectedBrowserProfileCache(browserProfile);\n      setSnapshot(detected);`;
+          if (!client.includes(profileBlock)) throw new Error('Bloque de perfil detectado no encontrado');
+          client = client.replace(profileBlock, profileReplacement);
+
+          fs.writeFileSync(clientPath, client);
+          NODE
+
+      - name: Validate focused checks
+        run: |
+          npm run lint
+          npm run typecheck
+          npm run check:architecture
+          npm run check:source
+          npm run check:data
+
+      - name: Commit fix and remove temporary automation
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/hardware-cache-v9.yml
+          git add src/features/game-finder/GameFinderClient.tsx src/features/game-finder/useResolvedHardwareProfile.ts
+          git commit -m "fix: refrescar caché de detección entre páginas"
+          git push origin HEAD:feature/game-detail-download-v2
