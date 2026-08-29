@@ -334,6 +334,65 @@ assert(
   "Las credenciales de migración no deben estar en el entorno cargado por Next.js."
 );
 
+const preflight = await readFile(
+  path.join(
+    root,
+    "tools",
+    "admin",
+    "preflight.ts"
+  ),
+  "utf8"
+);
+
+assert(
+  preflight.includes(
+    'has_database_privilege('
+  ) &&
+    preflight.includes(
+      'has_schema_privilege('
+    ) &&
+    preflight.includes(
+      'information_schema.column_privileges'
+    ) &&
+    preflight.includes(
+      'acl.grantee = 0'
+    ),
+  "El preflight debe verificar privilegios mínimos y el cierre de PUBLIC."
+);
+assert(
+  preflight.includes(
+    'source_present = true'
+  ) &&
+    preflight.includes(
+      'active_count === 1'
+    ) &&
+    !/\b(?:INSERT|UPDATE|DELETE|TRUNCATE)\s+(?:INTO|FROM|TABLE|deuna_admin)/i.test(
+      preflight
+    ),
+  "El preflight debe validar propietario y contenido sin modificar datos."
+);
+
+const deployGuide = await readFile(
+  path.join(
+    root,
+    "ops",
+    "deploy",
+    "README.md"
+  ),
+  "utf8"
+);
+
+assert(
+  deployGuide.includes(
+    "DEUNA_ADMIN_ENABLED=false"
+  ) &&
+    deployGuide.includes("`403`") &&
+    deployGuide.includes(
+      "No hacen falta contraseñas ni claves privadas en el chat."
+    ),
+  "La guía de despliegue debe mantener el panel cerrado y exigir la prueba fuera de la VPN."
+);
+
 if (failures.length > 0) {
   console.error("\nSeguridad administrativa: ERROR\n");
   for (const failure of failures) {

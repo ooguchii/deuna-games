@@ -16,11 +16,14 @@ Se mantienen dos roles:
 5. Ejecutar `npm.cmd run db:migrate`.
 6. Ejecutar `npm.cmd run admin:import-content`. El importador es idempotente: actualiza la fuente sin sobrescribir borradores modificados y nunca elimina registros ausentes.
 7. Ejecutar `npm.cmd run admin:create-owner` desde una terminal interactiva.
-8. Configurar y probar la VPN y Nginx antes de cambiar `DEUNA_ADMIN_ENABLED` a `true`.
+8. Ejecutar `npm.cmd run admin:preflight` y corregir cualquier bloqueo sin habilitar todavía el panel.
+9. Configurar y probar la VPN y Nginx antes de cambiar `DEUNA_ADMIN_ENABLED` a `true`.
 
 Next.js no carga `.env.admin-migration.local`. Ese archivo no debe entregarse al proceso web ni copiarse dentro de `deploy/`; puede retirarse del VPS entre operaciones y recuperarse desde un gestor privado de secretos.
 
 El proceso de migración valida el checksum de cada archivo SQL y falla si una migración aplicada fue alterada. Después de migrar, actualiza los permisos mínimos del rol runtime.
+
+El preflight posterior es de sólo lectura y vuelve a comprobar los checksums, la separación de roles, el cierre de `PUBLIC`, los permisos exactos del runtime, la única cuenta propietaria y el contenido editorial activo. Debe aprobar tanto con las credenciales del migrador como con las del runtime.
 
 ## Privacidad
 

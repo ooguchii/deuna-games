@@ -151,7 +151,10 @@ Copy-Item ops/postgresql/admin-migration.env.example .env.admin-migration.local
 npm.cmd run db:migrate
 npm.cmd run admin:import-content
 npm.cmd run admin:create-owner
+npm.cmd run admin:preflight
 ```
+
+`admin:preflight` ejecuta dos comprobaciones de sólo lectura: una con el rol migrador y otra con el rol runtime. Antes de permitir el encendido verifica conexión local, roles sin privilegios globales, cierre de acceso para `PUBLIC`, permisos exactos por columna y secuencia, checksums de migraciones, una sola cuenta propietaria y las cantidades importadas. No imprime contraseñas ni altera registros.
 
 Antes de habilitar el panel se debe adaptar y probar `ops/nginx/deuna-games.conf.example`, configurar `DEUNA_ADMIN_ORIGIN`, confirmar que `/admin` responde únicamente dentro de la VPN y que PostgreSQL escucha sólo en loopback o en una interfaz privada. Las instrucciones de roles y base están en `ops/postgresql/README.md`.
 
@@ -160,6 +163,8 @@ Antes de habilitar el panel se debe adaptar y probar `ops/nginx/deuna-games.conf
 Las migraciones usan checksum y no admiten que un archivo SQL ya aplicado sea reescrito. `deuna_migrator` conserva la capacidad de modificar el esquema; el proceso web usa `deuna_runtime` con permisos mínimos. Sus credenciales están separadas: `.env.local` contiene únicamente el acceso runtime, mientras `.env.admin-migration.local` contiene el acceso privilegiado y no es cargado por Next.js.
 
 Los scripts de migración, importación y creación del propietario no forman parte del runtime público `deploy/`. Se ejecutan desde una copia privada del repositorio en el VPS antes de sustituir el artefacto de la aplicación; así el proceso web no recibe herramientas ni credenciales de migración. Cuando no haya una operación pendiente, el archivo de migración puede retirarse del servidor y restaurarse desde el gestor privado de secretos.
+
+La secuencia completa de instalación, prueba externa/interna y vuelta atrás está en `ops/deploy/README.md`. El archivo `ops/systemd/runtime.env.example` sirve sólo como plantilla sin secretos para `/etc/deuna-games/runtime.env`.
 
 ## Build seguro de deploy
 
