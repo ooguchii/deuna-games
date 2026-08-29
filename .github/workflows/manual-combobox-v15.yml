@@ -23,6 +23,18 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - name: Fix transformer expectation
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('tools/manual-combobox-v15.py')
+          text = path.read_text(encoding='utf-8')
+          old = "assert text.count(reset_line) == 1\ntext = text.replace(reset_line, '', 1)"
+          new = "assert text.count(reset_line) == 2\ntext = text.replace(reset_line, '')"
+          assert text.count(old) == 1
+          path.write_text(text.replace(old, new, 1), encoding='utf-8')
+          PY
       - name: Apply integrated searchable selectors
         run: python3 tools/manual-combobox-v15.py
       - name: Validate
