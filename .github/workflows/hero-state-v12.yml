@@ -1,0 +1,91 @@
+name: Hero State V12
+
+on:
+  push:
+    branches:
+      - feature/game-detail-download-v2
+    paths:
+      - .github/workflows/hero-state-v12.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/game-detail-download-v2
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Apply hero state fixes
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          hero = Path('src/features/game-finder/GameFinderUnifiedHero.tsx')
+          text = hero.read_text()
+
+          old = '''  const isDetecting = detectionState === "detecting";\n  const isWarning = detectionState === "partial" || detectionState === "error";'''
+          new = '''  const isDetecting = detectionState === "detecting";\n  const isReady = detectionState === "ready";\n  const isWarning = detectionState === "partial" || detectionState === "error";'''
+          assert text.count(old) == 1
+          text = text.replace(old, new)
+
+          old = '''          <button type="button" className={styles.primaryAction} onClick={onAnalyze}>\n            <Target size={18} aria-hidden="true" />\n            {hasRealAnalysis ? "Ver análisis con mi PC" : "Ver análisis de ejemplo"}\n            <ArrowRight size={17} aria-hidden="true" />\n          </button>'''
+          new = '''          <button\n            type="button"\n            className={styles.primaryAction}\n            onClick={onAnalyze}\n            disabled={isDetecting}\n            aria-busy={isDetecting}\n          >\n            {isDetecting ? (\n              <>\n                <LoaderCircle className={styles.spin} size={18} aria-hidden="true" />\n                Detectando tu PC...\n              </>\n            ) : (\n              <>\n                <Target size={18} aria-hidden="true" />\n                {hasRealAnalysis ? "Ver análisis con mi PC" : "Ver análisis de ejemplo"}\n                <ArrowRight size={17} aria-hidden="true" />\n              </>\n            )}\n          </button>'''
+          assert text.count(old) == 1
+          text = text.replace(old, new)
+
+          old = '''            <div className={styles.profileIdentityTop}>\n              <span>TU PERFIL ACTUAL</span>\n              {isDetecting ? (\n                <LoaderCircle className={styles.spin} size={19} aria-hidden="true" />\n              ) : (\n                <CheckCircle2 size={19} aria-hidden="true" />\n              )}\n            </div>'''
+          new = '''            <div className={styles.profileIdentityTop} data-state={detectionState}>\n              <span>TU PERFIL ACTUAL</span>\n              {isDetecting ? (\n                <LoaderCircle className={styles.spin} size={19} aria-hidden="true" />\n              ) : isReady ? (\n                <CheckCircle2 size={19} aria-hidden="true" />\n              ) : (\n                <Info size={19} aria-hidden="true" />\n              )}\n            </div>'''
+          assert text.count(old) == 1
+          text = text.replace(old, new)
+
+          old = '''            <div className={styles.profileState}>'''
+          new = '''            <div\n              className={styles.profileState}\n              role="status"\n              aria-live="polite"\n              aria-atomic="true"\n            >'''
+          assert text.count(old) == 1
+          text = text.replace(old, new)
+          hero.write_text(text)
+
+          css = Path('src/features/game-finder/GameFinderUnifiedHero.module.css')
+          text = css.read_text()
+
+          anchor = '''.secondaryAction:hover {\n  color: var(--text);\n  border-color: rgba(255, 255, 255, 0.24);\n  background: rgba(15, 21, 31, 0.88);\n}\n'''
+          insert = '''.secondaryAction:hover {\n  color: var(--text);\n  border-color: rgba(255, 255, 255, 0.24);\n  background: rgba(15, 21, 31, 0.88);\n}\n\n.primaryAction:disabled,\n.primaryAction:disabled:hover {\n  cursor: wait;\n  opacity: 0.68;\n  transform: none;\n  box-shadow: 0 10px 24px rgba(255, 8, 71, 0.12);\n}\n'''
+          assert text.count(anchor) == 1
+          text = text.replace(anchor, insert)
+
+          anchor = '''.profileIdentityTop > svg {\n  flex: 0 0 auto;\n  width: 20px;\n  height: 20px;\n  color: var(--success);\n  filter: drop-shadow(0 0 8px rgba(32, 207, 121, 0.16));\n}\n'''
+          insert = '''.profileIdentityTop > svg {\n  flex: 0 0 auto;\n  width: 20px;\n  height: 20px;\n  color: var(--success);\n  filter: drop-shadow(0 0 8px rgba(32, 207, 121, 0.16));\n}\n\n.profileIdentityTop[data-state="detecting"] > svg,\n.profileIdentityTop[data-state="error"] > svg {\n  color: var(--brand-light);\n  filter: drop-shadow(0 0 8px rgba(255, 8, 71, 0.14));\n}\n\n.profileIdentityTop[data-state="partial"] > svg {\n  color: var(--warning);\n  filter: drop-shadow(0 0 8px rgba(255, 165, 31, 0.12));\n}\n\n.profileIdentityTop[data-state="idle"] > svg {\n  color: #aeb9c8;\n  filter: none;\n}\n'''
+          assert text.count(anchor) == 1
+          text = text.replace(anchor, insert)
+          css.write_text(text)
+
+          client = Path('src/features/game-finder/GameFinderClient.tsx')
+          text = client.read_text()
+          old = '''  function scrollToResults() {\n    window.requestAnimationFrame(() => {\n      document.getElementById("results-title")?.scrollIntoView({\n        behavior: "smooth",\n        block: "start",\n      });\n    });\n  }'''
+          new = '''  function scrollToResults() {\n    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;\n\n    window.requestAnimationFrame(() => {\n      document.getElementById("results-title")?.scrollIntoView({\n        behavior: reduceMotion ? "auto" : "smooth",\n        block: "start",\n      });\n    });\n  }'''
+          assert text.count(old) == 1
+          text = text.replace(old, new)
+          client.write_text(text)
+          PY
+      - name: Validate
+        run: |
+          npm run lint
+          npm run typecheck
+          npm run check:architecture
+      - name: Commit
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/hero-state-v12.yml
+          git add src/features/game-finder/GameFinderUnifiedHero.tsx src/features/game-finder/GameFinderUnifiedHero.module.css src/features/game-finder/GameFinderClient.tsx
+          git commit -m "fix: alinear estado y accesibilidad del hero"
+          git push origin HEAD:feature/game-detail-download-v2
