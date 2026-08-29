@@ -48,7 +48,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git rm .github/workflows/manual-combobox-v15.yml tools/manual-combobox-v15.py
+          git rm -f .github/workflows/manual-combobox-v15.yml tools/manual-combobox-v15.py
           git add src/features/game-finder/GameFinderClient.tsx src/features/game-finder/GameFinderClient.module.css
           git commit -m "feat: integrar búsqueda dentro de selectores manuales"
           git push origin HEAD:feature/game-detail-download-v2
