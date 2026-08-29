@@ -8,9 +8,12 @@
   "scripts": {
     "dev": "next dev",
     "dev:webpack": "next dev --webpack",
+    "dev:lan": "next dev -H 0.0.0.0 -p 3000",
     "build": "next build",
     "start": "next start",
-    "mobile": "next build && next start -H 0.0.0.0",
+    "start:lan": "next start -H 0.0.0.0 -p 3000",
+    "mobile": "npm run build && npm run start:lan",
+    "lan:info": "node ./tools/lan-info.mjs",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "check:source": "node ./tools/check-source-hygiene.mjs",
