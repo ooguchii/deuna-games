@@ -761,24 +761,6 @@
   color: var(--brand);
 }
 
-.dots {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.dots i {
-  width: 8px;
-  height: 3px;
-
-  border-radius: 999px;
-  background: #3d4654;
-}
-
-.dots .dotActive {
-  width: 15px;
-  background: var(--brand);
-}
 
 @media (max-width: 1500px) {
   .hero {

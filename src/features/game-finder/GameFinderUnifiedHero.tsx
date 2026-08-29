@@ -265,13 +265,6 @@ export default function GameFinderUnifiedHero({
               <Gamepad2 size={13} aria-hidden="true" />
               Según tu perfil actual
             </span>
-            <div className={styles.dots} aria-hidden="true">
-              <i className={styles.dotActive} />
-              <i />
-              <i />
-              <i />
-              <i />
-            </div>
           </div>
         </article>
       </div>

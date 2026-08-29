@@ -537,6 +537,28 @@ export default function GameFinderClient({ games }: GameFinderClientProps) {
     );
   }, [activeHardware, estimateSettings, games]);
 
+  const heroRecommendations = useMemo(() => {
+    const rankedGames = [...games].sort((a, b) => {
+      const aEstimate = estimates.get(a.slug);
+      const bEstimate = estimates.get(b.slug);
+      const aReady = Boolean(aEstimate?.canEstimate);
+      const bReady = Boolean(bEstimate?.canEstimate);
+
+      if (aReady !== bReady) return aReady ? -1 : 1;
+      if (aReady && bReady) {
+        return (bEstimate?.fps ?? 0) - (aEstimate?.fps ?? 0);
+      }
+
+      // Sin un perfil suficiente conservamos el orden editorial original.
+      return 0;
+    });
+
+    return rankedGames.slice(0, 4).map((game) => ({
+      game,
+      estimate: estimates.get(game.slug) ?? null,
+    }));
+  }, [estimates, games]);
+
   const genres = useMemo(() => {
     return [...new Set(games.map((game) => game.category))].sort((a, b) => a.localeCompare(b, "es"));
   }, [games]);
@@ -754,10 +776,7 @@ export default function GameFinderClient({ games }: GameFinderClientProps) {
   return (
     <div className={styles.finderRoot}>
       <GameFinderUnifiedHero
-        recommendations={games.slice(0, 4).map((game) => ({
-          game,
-          estimate: estimates.get(game.slug) ?? null,
-        }))}
+        recommendations={heroRecommendations}
         hardware={activeHardware}
         profileTitle={profileLabel(hardware)}
         ramLabel={profileRamLabel(activeHardware)}
