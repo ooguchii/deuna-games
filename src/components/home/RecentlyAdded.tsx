@@ -3,9 +3,9 @@ import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 
 import CardCarousel from "@/components/ui/CardCarousel";
+import UniversalGameCard from "@/components/ui/UniversalGameCard";
 import { recentGames } from "@/data/home";
 
-import RecentGameCard from "./RecentGameCard";
 import styles from "./RecentlyAdded.module.css";
 
 export default function RecentlyAdded() {
@@ -27,9 +27,10 @@ export default function RecentlyAdded() {
         itemsDesktop={5}
       >
         {recentGames.map((game) => (
-          <RecentGameCard
+          <UniversalGameCard
             key={game.slug}
             game={game}
+            variant="recent"
           />
         ))}
       </CardCarousel>

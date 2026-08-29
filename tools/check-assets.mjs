@@ -189,7 +189,7 @@ function validateWebp(
   }
 
   if (hasExif || hasXmp) {
-    return `${fileName}: contiene metadata EXIF/XMP; eliminála antes de publicar`;
+    return `${fileName}: contiene metadata EXIF/XMP; eliminala antes de publicar`;
   }
 
   return null;
@@ -252,7 +252,7 @@ function validatePng(
     }
 
     if (forbiddenChunks.has(type)) {
-      return `${fileName}: contiene metadata PNG ${type}; eliminála antes de publicar`;
+      return `${fileName}: contiene metadata PNG ${type}; eliminala antes de publicar`;
     }
 
     offset = chunkEnd;
@@ -344,7 +344,7 @@ function validateJpeg(
             ? "APP13 (IPTC/Photoshop)"
             : "COM (comentario)";
 
-      return `${fileName}: contiene metadata JPEG ${label}; eliminála antes de publicar`;
+      return `${fileName}: contiene metadata JPEG ${label}; eliminala antes de publicar`;
     }
 
     offset += segmentLength;
@@ -380,7 +380,7 @@ function validateGif(
       buffer[index] === 0x21 &&
       buffer[index + 1] === 0xfe
     ) {
-      return `${fileName}: contiene bloque de comentario GIF; eliminá metadata antes de publicar`;
+      return `${fileName}: contiene bloque de comentario GIF; elimina metadata antes de publicar`;
     }
   }
 
@@ -427,7 +427,7 @@ function validateAvif(
     /<x:xmpmeta\b/i.test(ascii) ||
     /<rdf:RDF\b/i.test(ascii)
   ) {
-    return `${fileName}: contiene metadata EXIF/XMP embebida; eliminála antes de publicar`;
+    return `${fileName}: contiene metadata EXIF/XMP embebida; eliminala antes de publicar`;
   }
 
   return null;

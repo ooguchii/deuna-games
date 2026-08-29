@@ -208,7 +208,7 @@ console.log("Binding esperado: 0.0.0.0 (todas las interfaces)\n");
 
 if (!recommended) {
   console.log("No encontré una IPv4 utilizable.");
-  console.log("Conectá la PC por Wi-Fi/Ethernet y ejecutá nuevamente npm.cmd run lan:doctor.\n");
+  console.log("Conecta la PC por Wi-Fi/Ethernet y ejecuta nuevamente npm.cmd run lan:doctor.\n");
   process.exit(0);
 }
 
@@ -240,11 +240,11 @@ console.log(`- ${recommended.address}:${port}: ${lanListening ? "RESPONDE" : "NO
 
 if (!hasSystemListener && process.platform === "win32") {
   console.log("DIAGNÓSTICO: el servidor no está escuchando el puerto 3000 en Windows.");
-  console.log("Dejá abierta otra PowerShell con:");
+  console.log("Deja abierta otra PowerShell con:");
   console.log("  npm.cmd run lan\n");
 } else if (loopbackOnly) {
   console.log("DIAGNÓSTICO: el proceso está enlazado sólo a loopback.");
-  console.log("Detenelo y arrancalo con:");
+  console.log("Detén el proceso y inícialo con:");
   console.log("  npm.cmd run lan\n");
 } else if (wildcardListener && localhostListening && lanListening) {
   console.log("DIAGNÓSTICO: el servidor está correctamente publicado en esta PC y en la LAN.\n");
@@ -253,10 +253,10 @@ if (!hasSystemListener && process.platform === "win32") {
   console.log("Esto apunta a firewall/antivirus o a una política de red local.\n");
 } else if (hasSystemListener && !localhostListening && !lanListening) {
   console.log("DIAGNÓSTICO: Windows ve un proceso escuchando el puerto, pero las pruebas TCP locales fallan.");
-  console.log("Revisá software de seguridad/filtrado; no culpes al repetidor todavía.\n");
+  console.log("Revisa software de seguridad/filtrado; no culpes al repetidor todavía.\n");
 } else if (localhostListening && !lanListening) {
   console.log("DIAGNÓSTICO: el servidor responde localmente, pero no por la IPv4 de la LAN.");
-  console.log("Revisá el binding y Windows Firewall.\n");
+  console.log("Revisa el binding y Windows Firewall.\n");
 }
 
 if (recommended.category === "Public") {
@@ -280,10 +280,10 @@ console.log("Prueba desde la OTRA computadora:");
 console.log(`  Test-NetConnection ${recommended.address} -Port ${port}`);
 console.log("Debe mostrar: TcpTestSucceeded : True\n");
 
-console.log("Si usás un repetidor/AP cableado:");
+console.log("Si usas un repetidor/AP cableado:");
 console.log("- Lo ideal es que esté en modo Access Point/Bridge, no Router/NAT.");
 console.log("- La otra PC debería recibir una IP de la misma LAN y normalmente el mismo gateway.");
-console.log("- Desactivá Guest Wi-Fi, AP Isolation o Client Isolation si están habilitados.");
+console.log("- Desactiva Guest Wi-Fi, AP Isolation o Client Isolation si están habilitados.");
 console.log("- No abras el puerto 3000 hacia Internet; esta configuración es sólo para tu LAN.\n");
 
 console.log("Detección de hardware por HTTP LAN:");

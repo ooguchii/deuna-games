@@ -173,7 +173,7 @@ function profileToManualDraft(profile: HardwareProfile | null): ManualDraft {
       : "",
     os: profile?.os && profile.os !== "Sistema sin confirmar"
       ? profile.os
-      : "Windows 11 64-bit",
+      : "Otro / no estoy seguro",
     memoryMode: profile?.memoryMode ?? "unknown",
   };
 }
@@ -844,6 +844,8 @@ export default function GameFinderClient({ games }: GameFinderClientProps) {
                 <label>
                   <span>Sistema operativo</span>
                   <select value={manualDraft.os} onChange={(event: ChangeEvent<HTMLSelectElement>) => setManualDraft((current) => ({ ...current, os: event.target.value }))}>
+                    <option>Windows 10/11 64-bit</option>
+                    <option>Windows 10/11</option>
                     <option>Windows 11 64-bit</option>
                     <option>Windows 10 64-bit</option>
                     <option>Linux 64-bit</option>

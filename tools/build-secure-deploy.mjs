@@ -27,16 +27,13 @@ const deployRoot = path.join(
   "deploy"
 );
 
-const stageBase =
-  process.platform === "win32"
-    ? path.resolve(
-        `${process.env.SystemDrive || "C:"}${path.sep}`,
-        "DeUnaSecureBuild"
-      )
-    : path.join(
-        os.tmpdir(),
-        "deuna-secure-build"
-      );
+const stageBase = path.resolve(
+  process.env.DEUNA_SECURE_STAGE_DIR?.trim() ||
+    path.join(
+      os.tmpdir(),
+      "deuna-secure-build"
+    )
+);
 
 const stageRoot = path.join(
   stageBase,
@@ -188,16 +185,19 @@ function runNpm(
   args,
   cwd = root
 ) {
+  const npmCommand =
+    process.platform === "win32"
+      ? "npm.cmd"
+      : "npm";
+
   const result = spawnSync(
-    "npm",
+    npmCommand,
     args,
     {
       cwd,
       env: process.env,
       stdio: "inherit",
-      shell:
-        process.platform ===
-        "win32",
+      shell: false,
     }
   );
 
@@ -237,7 +237,7 @@ function validateProductionSiteUrl() {
 
   if (!raw) {
     fail(
-      "NEXT_PUBLIC_SITE_URL es obligatorio para build:secure. Configurá el dominio HTTPS real antes de generar un deploy."
+      "NEXT_PUBLIC_SITE_URL es obligatorio para build:secure. Configura el dominio HTTPS real antes de generar un deploy."
     );
   }
 
@@ -339,7 +339,7 @@ async function assembleDeploy() {
 
   if (!(await exists(standalone))) {
     fail(
-      "No se generó .next/standalone. Revisá output: 'standalone' en next.config.ts."
+      "No se generó .next/standalone. Revisa output: 'standalone' en next.config.ts."
     );
   }
 
@@ -560,6 +560,7 @@ console.log(
 for (const script of [
   "lint",
   "typecheck",
+  "check:architecture",
   "check:source",
   "check:encoding",
   "check:privacy",
@@ -651,5 +652,5 @@ console.log(
   `Artefacto final: ${deployRoot}`
 );
 console.log(
-  "Subí únicamente el contenido de deploy/."
+  "Sube únicamente el contenido de deploy/."
 );

@@ -990,9 +990,7 @@
     scale(1);
 }
 
-.mobileMenuToggle:focus-visible
-~ .header
-.menuButton {
+.menuButton:focus-visible {
   outline:
     2px solid
     var(--brand);

@@ -94,7 +94,7 @@ for (const file of sourceFiles) if (!reachable.has(file)) issues.push(`${relativ
 if (issues.length) {
   console.error("\nArquitectura de código: ERROR\n");
   for (const issue of issues) console.error(`- ${issue}`);
-  console.error("\nEliminá código huérfano o conectalo explícitamente antes de integrar.\n");
+  console.error("\nElimina código huérfano o conéctalo explícitamente antes de integrar.\n");
   process.exit(1);
 }
 

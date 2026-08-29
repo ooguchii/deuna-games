@@ -446,7 +446,7 @@ function checkGitIdentity() {
 
   if (name || email) {
     warnings.push(
-      "Git tiene identidad configurada. Si el repositorio se hace público, revisá autor/email del historial antes de publicarlo."
+      "Git tiene identidad configurada. Si el repositorio se hace público, revisa autor/email del historial antes de publicarlo."
     );
   }
 }

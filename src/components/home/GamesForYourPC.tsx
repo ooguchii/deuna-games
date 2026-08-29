@@ -9,9 +9,9 @@ import {
 } from "lucide-react";
 
 import CardCarousel from "@/components/ui/CardCarousel";
+import UniversalGameCard from "@/components/ui/UniversalGameCard";
 import { lowSpecGames } from "@/data/home";
 
-import LowSpecGameCard from "./LowSpecGameCard";
 import styles from "./GamesForYourPC.module.css";
 
 const catalogOptions = [
@@ -114,9 +114,10 @@ export default function GamesForYourPC() {
         itemsDesktop={5}
       >
         {lowSpecGames.map((game) => (
-          <LowSpecGameCard
+          <UniversalGameCard
             key={game.slug}
             game={game}
+            variant="low-spec"
           />
         ))}
       </CardCarousel>

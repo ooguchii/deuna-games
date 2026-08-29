@@ -177,7 +177,7 @@ if (issues.length > 0) {
   }
 
   console.error(
-    "\nRetirá restos de depuración, placeholders o supresiones antes de integrar.\n"
+    "\nRetira restos de depuración, placeholders o supresiones antes de integrar.\n"
   );
   process.exit(1);
 }

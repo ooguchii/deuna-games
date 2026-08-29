@@ -201,7 +201,7 @@ async function assertStatus(pathname, expectedStatus) {
 
 await access(serverPath).catch(() => {
   fail(
-    "No existe .next/standalone/server.js. Ejecutá npm run build antes del smoke test."
+    "No existe .next/standalone/server.js. Ejecuta npm run build antes del smoke test."
   );
 });
 
