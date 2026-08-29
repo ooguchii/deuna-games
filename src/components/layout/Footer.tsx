@@ -20,8 +20,8 @@ export default function Footer() {
           </Link>
 
           <p>
-            Descubre juegos, comprobá sus requisitos
-            y mantenete al día con sus versiones.
+            Descubre juegos, comprueba sus requisitos
+            y mantente al día con sus versiones.
           </p>
         </div>
 
