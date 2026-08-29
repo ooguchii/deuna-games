@@ -37,7 +37,7 @@ export async function generateMetadata({
   const params = await searchParams;
   const hasFocusedGame =
     typeof params.juego === "string" &&
-    params.juego.length > 0;
+    games.some((game) => game.slug === params.juego);
 
   return {
     title,
@@ -74,21 +74,11 @@ export default async function RequirementsPage({
   searchParams,
 }: RequirementsPageProps) {
   const { juego } = await searchParams;
-  const requestedIndex =
-    typeof juego === "string"
-      ? games.findIndex(
-          (game) => game.slug === juego
-        )
-      : -1;
-
-  const orderedGames =
-    requestedIndex > 0
-      ? [
-          games[requestedIndex],
-          ...games.slice(0, requestedIndex),
-          ...games.slice(requestedIndex + 1),
-        ]
-      : games;
+  const focusedSlug =
+    typeof juego === "string" &&
+    games.some((game) => game.slug === juego)
+      ? juego
+      : undefined;
 
   const breadcrumbJsonLd = {
     "@context": "https://schema.org",
@@ -149,7 +139,10 @@ export default async function RequirementsPage({
           <span aria-current="page">¿Qué puedo jugar?</span>
         </nav>
 
-        <GameFinderClient games={orderedGames} />
+        <GameFinderClient
+          games={games}
+          focusedSlug={focusedSlug}
+        />
       </main>
 
       <Footer />

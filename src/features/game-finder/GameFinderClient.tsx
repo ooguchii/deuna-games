@@ -127,6 +127,7 @@ type DetectionState = "idle" | "detecting" | "ready" | "partial" | "error";
 
 type GameFinderClientProps = {
   games: Game[];
+  focusedSlug?: string;
 };
 
 type ManualDraft = {
@@ -419,7 +420,10 @@ function GameResultCard({
   );
 }
 
-export default function GameFinderClient({ games }: GameFinderClientProps) {
+export default function GameFinderClient({
+  games,
+  focusedSlug,
+}: GameFinderClientProps) {
   const [hardware, setHardware] = useState<HardwareProfile | null>(null);
   const [snapshot, setSnapshot] = useState<BrowserHardwareSnapshot | null>(null);
   const [detectionState, setDetectionState] = useState<DetectionState>("idle");
@@ -438,7 +442,22 @@ export default function GameFinderClient({ games }: GameFinderClientProps) {
   const [tierFilter, setTierFilter] = useState<PerformanceTier | "all">("all");
   const [sortMode, setSortMode] = useState<SortMode>("performance");
   const [view, setView] = useState<ViewMode>("grid");
-  const [selectedSlug, setSelectedSlug] = useState(games[0]?.slug ?? "");
+  const validFocusedSlug =
+    focusedSlug && games.some((game) => game.slug === focusedSlug)
+      ? focusedSlug
+      : undefined;
+  const [selectedGameState, setSelectedGameState] = useState(() => ({
+    focusKey: validFocusedSlug,
+    slug: validFocusedSlug ?? games[0]?.slug ?? "",
+  }));
+  const storedSelectionIsValid = games.some(
+    (game) => game.slug === selectedGameState.slug
+  );
+  const selectedSlug =
+    selectedGameState.focusKey === validFocusedSlug &&
+    storedSelectionIsValid
+      ? selectedGameState.slug
+      : validFocusedSlug ?? games[0]?.slug ?? "";
   const [favorites, setFavorites] = useState<Set<string>>(() => new Set());
   const [favoritesHydrated, setFavoritesHydrated] = useState(false);
 
@@ -626,6 +645,13 @@ export default function GameFinderClient({ games }: GameFinderClientProps) {
     manualRamGb >= 1 &&
     manualRamGb <= 256
   );
+
+  function setSelectedSlug(slug: string) {
+    setSelectedGameState({
+      focusKey: validFocusedSlug,
+      slug,
+    });
+  }
 
   function toggleFavorite(slug: string) {
     setFavorites((current) => {
