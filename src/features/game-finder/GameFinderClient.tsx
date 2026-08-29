@@ -780,9 +780,11 @@ export default function GameFinderClient({
   }
 
   function scrollToResults() {
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
     window.requestAnimationFrame(() => {
       document.getElementById("results-title")?.scrollIntoView({
-        behavior: "smooth",
+        behavior: reduceMotion ? "auto" : "smooth",
         block: "start",
       });
     });

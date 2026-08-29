@@ -77,6 +77,7 @@ export default function GameFinderUnifiedHero({
   onViewAll,
 }: GameFinderUnifiedHeroProps) {
   const isDetecting = detectionState === "detecting";
+  const isReady = detectionState === "ready";
   const isWarning = detectionState === "partial" || detectionState === "error";
 
   return (
@@ -104,10 +105,25 @@ export default function GameFinderUnifiedHero({
         </div>
 
         <div className={styles.actions}>
-          <button type="button" className={styles.primaryAction} onClick={onAnalyze}>
-            <Target size={18} aria-hidden="true" />
-            {hasRealAnalysis ? "Ver análisis con mi PC" : "Ver análisis de ejemplo"}
-            <ArrowRight size={17} aria-hidden="true" />
+          <button
+            type="button"
+            className={styles.primaryAction}
+            onClick={onAnalyze}
+            disabled={isDetecting}
+            aria-busy={isDetecting}
+          >
+            {isDetecting ? (
+              <>
+                <LoaderCircle className={styles.spin} size={18} aria-hidden="true" />
+                Detectando tu PC...
+              </>
+            ) : (
+              <>
+                <Target size={18} aria-hidden="true" />
+                {hasRealAnalysis ? "Ver análisis con mi PC" : "Ver análisis de ejemplo"}
+                <ArrowRight size={17} aria-hidden="true" />
+              </>
+            )}
           </button>
 
           <button type="button" className={styles.secondaryAction} onClick={onConfigure}>
@@ -125,12 +141,14 @@ export default function GameFinderUnifiedHero({
       <div className={styles.workspace}>
         <article className={styles.profileCard} aria-label="Perfil actual del equipo">
           <div className={styles.profileIdentity}>
-            <div className={styles.profileIdentityTop}>
+            <div className={styles.profileIdentityTop} data-state={detectionState}>
               <span>TU PERFIL ACTUAL</span>
               {isDetecting ? (
                 <LoaderCircle className={styles.spin} size={19} aria-hidden="true" />
-              ) : (
+              ) : isReady ? (
                 <CheckCircle2 size={19} aria-hidden="true" />
+              ) : (
+                <Info size={19} aria-hidden="true" />
               )}
             </div>
 
@@ -139,7 +157,12 @@ export default function GameFinderUnifiedHero({
               <small>{detectionSource}</small>
             </div>
 
-            <div className={styles.profileState}>
+            <div
+              className={styles.profileState}
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
+            >
               <span className={styles.profileStateLabel} data-state={detectionState}>
                 {isDetecting ? (
                   <LoaderCircle size={12} aria-hidden="true" />

@@ -211,6 +211,14 @@
   background: rgba(15, 21, 31, 0.88);
 }
 
+.primaryAction:disabled,
+.primaryAction:disabled:hover {
+  cursor: wait;
+  opacity: 0.68;
+  transform: none;
+  box-shadow: 0 10px 24px rgba(255, 8, 71, 0.12);
+}
+
 .trust {
   display: flex;
   align-items: flex-start;
@@ -331,6 +339,22 @@
   height: 20px;
   color: var(--success);
   filter: drop-shadow(0 0 8px rgba(32, 207, 121, 0.16));
+}
+
+.profileIdentityTop[data-state="detecting"] > svg,
+.profileIdentityTop[data-state="error"] > svg {
+  color: var(--brand-light);
+  filter: drop-shadow(0 0 8px rgba(255, 8, 71, 0.14));
+}
+
+.profileIdentityTop[data-state="partial"] > svg {
+  color: var(--warning);
+  filter: drop-shadow(0 0 8px rgba(255, 165, 31, 0.12));
+}
+
+.profileIdentityTop[data-state="idle"] > svg {
+  color: #aeb9c8;
+  filter: none;
 }
 
 .profileTitleLine {
