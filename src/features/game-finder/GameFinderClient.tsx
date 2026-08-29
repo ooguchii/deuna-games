@@ -239,6 +239,15 @@ function detectionHint(
   if (state === "detecting") {
     return "Leemos únicamente los datos que el navegador permite exponer.";
   }
+  // Las limitaciones del snapshot sólo importan mientras el perfil activo sea
+  // realmente una detección web. Si el usuario ya confirmó los componentes,
+  // ese perfil es la fuente del cálculo y no debe heredar avisos antiguos.
+  if (profile?.source === "manual" || profile?.source === "saved") {
+    return "Este perfil local se usa para calcular los rangos de FPS del catálogo.";
+  }
+  if (profile?.source === "example") {
+    return "El ejemplo no reemplaza el perfil guardado de tu PC.";
+  }
   if (snapshot?.secureContext === false) {
     return "Estás usando una conexión HTTP de red local: la web funciona, pero WebGPU y parte de la detección avanzada pueden quedar limitados. Para una lectura más completa usa HTTPS o localhost.";
   }
@@ -248,12 +257,6 @@ function detectionHint(
   if (state === "partial") {
     return "Parte del hardware está protegida; confirma los componentes para mejorar los FPS estimados.";
   }
-  if (profile?.source === "manual" || profile?.source === "saved") {
-    return "Este perfil local se usa para calcular los rangos de FPS del catálogo.";
-  }
-  if (profile?.source === "example") {
-    return "El ejemplo no reemplaza el perfil guardado de tu PC.";
-  }
   return "La detección web es orientativa; puedes confirmar los modelos cuando quieras.";
 }
 
@@ -261,10 +264,13 @@ function detectionSource(
   profile: HardwareProfile | null,
   snapshot: BrowserHardwareSnapshot | null
 ) {
-  if (snapshot) return sourceLabel(snapshot);
+  // El origen visible debe describir el perfil que realmente está usando el
+  // cálculo. Un snapshot automático anterior no debe eclipsar un perfil
+  // manual, guardado o de demostración que esté activo ahora.
   if (profile?.source === "manual") return "Entrada manual";
   if (profile?.source === "saved") return "Perfil local";
   if (profile?.source === "example") return "Ejemplo local";
+  if (snapshot) return sourceLabel(snapshot);
   return "Sin lectura automática";
 }
 
@@ -669,6 +675,18 @@ export default function GameFinderClient({ games }: GameFinderClientProps) {
     const first = focusable[0];
     const last = focusable[focusable.length - 1];
     const active = document.activeElement;
+    const activeIsFocusable =
+      active instanceof HTMLElement &&
+      Array.from(focusable).includes(active);
+
+    // El diálogo recibe el foco inicial mediante tabIndex=-1. Desde ese punto,
+    // Tab debe entrar por el primer control y Shift+Tab por el último, sin
+    // permitir que el foco escape hacia la página que queda detrás del modal.
+    if (!activeIsFocusable) {
+      event.preventDefault();
+      (event.shiftKey ? last : first).focus();
+      return;
+    }
 
     if (event.shiftKey && active === first) {
       event.preventDefault();
