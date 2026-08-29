@@ -4,7 +4,9 @@ on:
   push:
     branches: [master]
   pull_request:
-    branches: [master]
+    branches:
+      - master
+      - feature/game-detail-download-v2
 
 permissions:
   contents: read
@@ -39,7 +41,7 @@ jobs:
             exit 1
           fi
 
-          sensitive='(^|/)\.env($|\.)|\.(pem|key|p12|pfx|kdbx|crt|cer)$'
+          sensitive='(^|/)\.env($|\.)|\.(pem|key|p12|pfx|kdbx|crt|cer|backup|dump)$|\.sql\.gz$|(^|/)pg_dump[^/]*$'
           sensitive_matches="$(git ls-files | grep -E "$sensitive" | grep -v '^\.env\.example$' || true)"
 
           if [ -n "$sensitive_matches" ]; then
@@ -80,6 +82,9 @@ jobs:
 
       - name: Public privacy
         run: npm run check:privacy
+
+      - name: Admin security invariants
+        run: npm run check:admin-security
 
       - name: Text encoding
         run: npm run check:encoding

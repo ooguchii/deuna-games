@@ -43,6 +43,8 @@ const forbiddenPublicExtensions =
     ".pem",
     ".p12",
     ".pfx",
+    ".backup",
+    ".dump",
   ]);
 
 const textExtensions =
@@ -271,6 +273,17 @@ function addTrackedFileChecks(
     ) {
       errors.push(
         `Archivo criptográfico/credencial trackeado: ${tracked}`
+      );
+    }
+
+    if (
+      /(?:\.backup|\.dump|\.sql\.gz)$/i.test(
+        normalized
+      ) ||
+      /(^|\/)pg_dump[^/]*$/i.test(normalized)
+    ) {
+      errors.push(
+        `Copia de PostgreSQL trackeada por Git: ${tracked}`
       );
     }
   }

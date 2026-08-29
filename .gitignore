@@ -60,6 +60,10 @@ payload/
 *.tmp
 *.temp
 *.bak
+*.backup
+*.dump
+*.sql.gz
+pg_dump*
 *.orig
 *.swp
 *~

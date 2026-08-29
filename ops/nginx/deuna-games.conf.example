@@ -5,13 +5,18 @@
 # Política privacy-first:
 # - no se reenvía la IP real del visitante a la aplicación;
 # - access_log queda desactivado;
-# - sólo se conservan errores críticos de infraestructura;
+# - error_log se descarta para no persistir direcciones en diagnósticos;
 # - el rate limiting puede seguir usando $binary_remote_addr en Nginx
 #   sin entregar ese dato a Next.
 #
 # En nginx.conf, dentro de http {}, se puede definir:
 #
 # limit_req_zone $binary_remote_addr zone=deuna_general:10m rate=20r/s;
+# limit_req_zone $binary_remote_addr zone=deuna_admin_login:1m rate=5r/m;
+# limit_req_zone $binary_remote_addr zone=deuna_admin_api:1m rate=30r/m;
+#
+# Las zonas de administración usan la IP únicamente en memoria para permitir
+# acceso desde la VPN y limitar ataques. No se registra ni se reenvía a Next.
 
 server {
     listen 80;
@@ -20,9 +25,9 @@ server {
     server_name example.com www.example.com;
 
     access_log off;
-    error_log /var/log/nginx/deuna-games-error.log crit;
+    error_log /dev/null crit;
 
-    return 301 https://$host$request_uri;
+    return 301 https://$server_name$request_uri;
 }
 
 server {
@@ -34,15 +39,101 @@ server {
     server_tokens off;
 
     access_log off;
-    error_log /var/log/nginx/deuna-games-error.log crit;
+    error_log /dev/null crit;
 
     ssl_certificate     /RUTA/CERTIFICADO/fullchain.pem;
     ssl_certificate_key /RUTA/CERTIFICADO/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_session_tickets off;
 
     client_max_body_size 1m;
 
     # Activar HSTS SOLAMENTE cuando HTTPS ya esté probado y sea permanente.
     # add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+
+    # Panel privado. Cambiar 10.8.0.0/24 si WireGuard utiliza otra subred.
+    # Estas ubicaciones deben permanecer ANTES de location /.
+    location = /admin {
+        allow 10.8.0.0/24;
+        deny all;
+
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        proxy_hide_header X-Powered-By;
+        proxy_hide_header X-Nextjs-Cache;
+        proxy_hide_header X-Nextjs-Prerender;
+        proxy_hide_header X-Nextjs-Stale-Time;
+
+        proxy_connect_timeout 10s;
+        proxy_send_timeout 30s;
+        proxy_read_timeout 30s;
+    }
+
+    location ^~ /admin/ {
+        allow 10.8.0.0/24;
+        deny all;
+
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        proxy_hide_header X-Powered-By;
+        proxy_hide_header X-Nextjs-Cache;
+        proxy_hide_header X-Nextjs-Prerender;
+        proxy_hide_header X-Nextjs-Stale-Time;
+
+        proxy_connect_timeout 10s;
+        proxy_send_timeout 30s;
+        proxy_read_timeout 30s;
+    }
+
+    location = /api/admin/auth/login {
+        allow 10.8.0.0/24;
+        deny all;
+
+        limit_req zone=deuna_admin_login burst=5 nodelay;
+        client_max_body_size 8k;
+
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        proxy_hide_header X-Powered-By;
+        proxy_hide_header X-Nextjs-Cache;
+        proxy_hide_header X-Nextjs-Prerender;
+        proxy_hide_header X-Nextjs-Stale-Time;
+
+        proxy_connect_timeout 10s;
+        proxy_send_timeout 30s;
+        proxy_read_timeout 30s;
+    }
+
+    location ^~ /api/admin/ {
+        allow 10.8.0.0/24;
+        deny all;
+
+        limit_req zone=deuna_admin_api burst=20 nodelay;
+        client_max_body_size 8k;
+
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        proxy_hide_header X-Powered-By;
+        proxy_hide_header X-Nextjs-Cache;
+        proxy_hide_header X-Nextjs-Prerender;
+        proxy_hide_header X-Nextjs-Stale-Time;
+
+        proxy_connect_timeout 10s;
+        proxy_send_timeout 30s;
+        proxy_read_timeout 30s;
+    }
 
     location / {
         # Si configuraste limit_req_zone en http{}:

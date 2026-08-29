@@ -2,8 +2,9 @@
   "name": "deuna-games",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "engines": {
-    "node": ">=20.9.0"
+    "node": ">=24.0.0"
   },
   "scripts": {
     "dev": "next dev",
@@ -12,6 +13,9 @@
     "lan:doctor": "node ./tools/lan-doctor.mjs",
     "mobile": "npm run lan",
     "dev:webpack": "next dev --webpack",
+    "db:migrate": "node --env-file=.env.admin-migration.local ./tools/admin/migrate.ts",
+    "admin:create-owner": "node --env-file=.env.admin-migration.local ./tools/admin/create-owner.ts",
+    "admin:setup": "npm run db:migrate && npm run admin:create-owner",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
@@ -20,13 +24,14 @@
     "check:source": "node ./tools/check-source-hygiene.mjs",
     "check:encoding": "node ./tools/check-text-encoding.mjs",
     "check:privacy": "node ./tools/check-public-privacy.mjs",
+    "check:admin-security": "node ./tools/check-admin-security.ts",
     "check:data": "node ./tools/check-data.mjs",
     "check:assets": "node ./tools/check-assets.mjs",
     "check:routes": "node ./tools/check-routes.mjs",
     "check:css-vars": "node ./tools/check-css-vars.mjs",
     "check:css-modules": "node ./tools/check-css-modules.mjs",
     "smoke": "node ./tools/smoke-test.mjs",
-    "check": "npm run lint && npm run typecheck && npm run check:architecture && npm run check:source && npm run check:encoding && npm run check:privacy && npm run check:data && npm run check:assets && npm run check:routes && npm run check:css-vars && npm run check:css-modules && npm run build && npm run smoke",
+    "check": "npm run lint && npm run typecheck && npm run check:architecture && npm run check:source && npm run check:encoding && npm run check:privacy && npm run check:admin-security && npm run check:data && npm run check:assets && npm run check:routes && npm run check:css-vars && npm run check:css-modules && npm run build && npm run smoke",
     "audit:deps": "npm audit --audit-level=high",
     "audit:prod": "npm audit --omit=dev --audit-level=high",
     "security:scan": "node ./tools/security-audit.mjs",
@@ -39,11 +44,15 @@
   "dependencies": {
     "lucide-react": "^1.34.0",
     "next": "16.3.3",
+    "pg": "^8.23.0",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "server-only": "^0.0.1",
+    "zod": "^4.5.2"
   },
   "devDependencies": {
     "@types/node": "^20",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",

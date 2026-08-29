@@ -12,8 +12,7 @@ Este repositorio contiene la aplicación activa de DeUna Games. El objetivo de e
 
 ## Requisitos
 
-- Node.js 20.9 o superior
-- Node.js 24 recomendado y usado por CI (`.node-version`)
+- Node.js 24 o superior, usado también por CI (`.node-version`)
 - npm
 
 ## Desarrollo
@@ -124,6 +123,42 @@ El proyecto mantiene ESLint 9 mientras la cadena estable de plugins incluida por
 Copiar `.env.example` a `.env.local` cuando haga falta configurar el entorno. Nunca versionar `.env.local` ni secretos.
 
 `NEXT_PUBLIC_SITE_URL` es una URL pública usada para metadata, sitemap y URLs absolutas. Debe contener sólo el origen del sitio, sin credenciales, ruta, query ni fragmento. En producción debe configurarse con el dominio HTTPS real.
+
+## Panel administrativo privado
+
+La primera etapa del panel se encuentra en `/admin` e incorpora:
+
+- acceso restringido por Nginx a la subred privada de WireGuard;
+- una única cuenta propietaria, creada desde una terminal del servidor;
+- contraseña derivada con `scrypt`, sal aleatoria y comparación constante;
+- sesiones opacas y revocables guardadas en PostgreSQL;
+- cookie `HttpOnly`, `Secure`, `SameSite=Strict`, prioridad alta y vencimiento máximo configurable de 1 a 24 horas;
+- bloqueo progresivo de intentos fallidos y rate limiting adicional en Nginx;
+- rate limiting efímero en memoria, sin access log, error log persistente ni reenvío de IP a Next.js;
+- vistas privadas de juegos, actualizaciones, sesiones y eventos de seguridad;
+- `noindex`, `noarchive` y `no-store` en todas las rutas administrativas;
+- ausencia deliberada de IP, user-agent, ubicación, huellas de dispositivo y actividad de visitantes en la base administrativa.
+
+`DEUNA_ADMIN_ORIGIN` fija el origen exacto aceptado por los formularios y redirects del panel. En producción debe ser el origen HTTPS real accesible mediante la VPN; no se deriva del encabezado `Host` de la solicitud.
+
+El panel permanece deshabilitado cuando `DEUNA_ADMIN_ENABLED` no es exactamente `true`. La primera etapa es de sólo lectura para el contenido: no permite modificar el catálogo hasta que los datos editoriales migren a PostgreSQL y cuenten con las mismas validaciones, historial y recuperación que tienen hoy los archivos versionados.
+
+La instalación se realiza en este orden:
+
+```powershell
+Copy-Item .env.example .env.local
+Copy-Item ops/postgresql/admin-migration.env.example .env.admin-migration.local
+npm.cmd run db:migrate
+npm.cmd run admin:create-owner
+```
+
+Antes de habilitar el panel se debe adaptar y probar `ops/nginx/deuna-games.conf.example`, configurar `DEUNA_ADMIN_ORIGIN`, confirmar que `/admin` responde únicamente dentro de la VPN y que PostgreSQL escucha sólo en loopback o en una interfaz privada. Las instrucciones de roles y base están en `ops/postgresql/README.md`.
+
+`ops/systemd/deuna-games.service.example` mantiene Next.js en `127.0.0.1`, carga el entorno runtime desde `/etc/deuna-games/runtime.env`, aplica aislamiento del proceso y bloquea conexiones de red fuera de loopback. Deben adaptarse el usuario y las rutas antes de instalarlo. El archivo de entorno debe ser propiedad de `root`, modo `0600`, y no debe contener las credenciales del migrador.
+
+Las migraciones usan checksum y no admiten que un archivo SQL ya aplicado sea reescrito. `deuna_migrator` conserva la capacidad de modificar el esquema; el proceso web usa `deuna_runtime` con permisos mínimos. Sus credenciales están separadas: `.env.local` contiene únicamente el acceso runtime, mientras `.env.admin-migration.local` contiene el acceso privilegiado y no es cargado por Next.js.
+
+Los scripts de migración y creación del propietario no forman parte del runtime público `deploy/`. Se ejecutan desde una copia privada del repositorio en el VPS antes de sustituir el artefacto de la aplicación; así el proceso web no recibe herramientas ni credenciales de migración. Cuando no haya una operación pendiente, el archivo de migración puede retirarse del servidor y restaurarse desde el gestor privado de secretos.
 
 ## Build seguro de deploy
 

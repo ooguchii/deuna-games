@@ -607,6 +607,7 @@ for (const script of [
   "check:source",
   "check:encoding",
   "check:privacy",
+  "check:admin-security",
   "check:data",
   "check:assets",
   "check:routes",

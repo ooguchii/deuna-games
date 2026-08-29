@@ -64,6 +64,19 @@ const securityHeaders = [
   },
 ] as const;
 
+const privateAdminHeaders = [
+  {
+    key: "Cache-Control",
+    value:
+      "private, no-store, no-cache, max-age=0, must-revalidate",
+  },
+  {
+    key: "X-Robots-Tag",
+    value:
+      "noindex, nofollow, noarchive, nosnippet, noimageindex",
+  },
+] as const;
+
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   compress: true,
@@ -92,6 +105,14 @@ const nextConfig: NextConfig = {
 
   async headers() {
     return [
+      {
+        source: "/admin/:path*",
+        headers: [...privateAdminHeaders],
+      },
+      {
+        source: "/api/admin/:path*",
+        headers: [...privateAdminHeaders],
+      },
       {
         source: "/(.*)",
         headers: [...securityHeaders],
