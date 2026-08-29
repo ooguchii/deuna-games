@@ -49,14 +49,14 @@ jobs:
           client = client.replace(oldSignature, newSignature);
 
           const oldSelected = `  const [view, setView] = useState<ViewMode>(\"grid\");\n  const [selectedSlug, setSelectedSlug] = useState(games[0]?.slug ?? \"\");\n  const [favorites, setFavorites] = useState<Set<string>>(() => new Set());`;
-          const newSelected = `  const [view, setView] = useState<ViewMode>(\"grid\");\n  const [selectedSlug, setSelectedSlug] = useState(() =>\n    focusedSlug && games.some((game) => game.slug === focusedSlug)\n      ? focusedSlug\n      : games[0]?.slug ?? \"\"\n  );\n  const [favorites, setFavorites] = useState<Set<string>>(() => new Set());`;
+          const newSelected = `  const [view, setView] = useState<ViewMode>(\"grid\");\n  const validFocusedSlug =\n    focusedSlug && games.some((game) => game.slug === focusedSlug)\n      ? focusedSlug\n      : undefined;\n  const [selectedGameState, setSelectedGameState] = useState(() => ({\n    focusKey: validFocusedSlug,\n    slug: validFocusedSlug ?? games[0]?.slug ?? \"\",\n  }));\n  const storedSelectionIsValid = games.some(\n    (game) => game.slug === selectedGameState.slug\n  );\n  const selectedSlug =\n    selectedGameState.focusKey === validFocusedSlug &&\n    storedSelectionIsValid\n      ? selectedGameState.slug\n      : validFocusedSlug ?? games[0]?.slug ?? \"\";\n  const [favorites, setFavorites] = useState<Set<string>>(() => new Set());`;
           if (!client.includes(oldSelected)) throw new Error('Estado selectedSlug esperado no encontrado');
           client = client.replace(oldSelected, newSelected);
 
-          const anchor = `  useEffect(() => {\n    const timer = window.setTimeout(() => {\n      const saved = readStoredHardwareProfile();`;
-          const syncEffect = `  useEffect(() => {\n    if (\n      !focusedSlug ||\n      !games.some((game) => game.slug === focusedSlug)\n    ) {\n      return;\n    }\n\n    // El query ?juego= representa el foco de navegación de la página. Si el\n    // usuario usa atrás/adelante y Next actualiza las props sin desmontar este\n    // cliente, sincronizamos la selección sin reordenar el catálogo completo.\n    setSelectedSlug(focusedSlug);\n  }, [focusedSlug, games]);\n\n`;
-          if (!client.includes(anchor)) throw new Error('Ancla para efecto de foco no encontrada');
-          client = client.replace(anchor, syncEffect + anchor);
+          const functionAnchor = `  function toggleFavorite(slug: string) {`;
+          const selectionSetter = `  function setSelectedSlug(slug: string) {\n    setSelectedGameState({\n      focusKey: validFocusedSlug,\n      slug,\n    });\n  }\n\n`;
+          if (!client.includes(functionAnchor)) throw new Error('Ancla de selección no encontrada');
+          client = client.replace(functionAnchor, selectionSetter + functionAnchor);
 
           fs.writeFileSync(clientPath, client);
 
