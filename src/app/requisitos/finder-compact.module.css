@@ -1,0 +1,413 @@
+.finderShell {
+  min-width: 0;
+}
+
+.finderShell > div {
+  gap: 14px;
+}
+
+/* Cabecera compacta: conserva el diseño original, pero prioriza el perfil real. */
+.finderShell :global(section[aria-labelledby="finder-title"]) {
+  min-height: 242px !important;
+  grid-template-columns: minmax(300px, 0.72fr) minmax(0, 1.28fr) !important;
+  align-items: stretch !important;
+  gap: 26px !important;
+  padding: 22px 26px !important;
+}
+
+.finderShell :global(section[aria-labelledby="finder-title"] > :nth-child(3)) {
+  align-self: center;
+  min-width: 0;
+}
+
+.finderShell :global(section[aria-labelledby="finder-title"] > :nth-child(3) > span:first-child) {
+  font-size: 9px !important;
+  letter-spacing: 0.1em !important;
+}
+
+.finderShell :global(section[aria-labelledby="finder-title"] > :nth-child(3) > h1) {
+  max-width: 520px !important;
+  margin-top: 8px !important;
+  font-size: clamp(30px, 3vw, 44px) !important;
+  line-height: 0.98 !important;
+}
+
+.finderShell :global(section[aria-labelledby="finder-title"] > :nth-child(3) > h1 strong) {
+  margin-top: 4px !important;
+}
+
+.finderShell :global(section[aria-labelledby="finder-title"] > :nth-child(3) > p) {
+  max-width: 510px !important;
+  margin-top: 10px !important;
+  font-size: 13px !important;
+  line-height: 1.48 !important;
+}
+
+/* Sacamos la explicación y acciones duplicadas del hero. La configuración queda destacada en el perfil. */
+.finderShell :global(section[aria-labelledby="finder-title"] > :nth-child(3) > :nth-child(4)),
+.finderShell :global(section[aria-labelledby="finder-title"] > :nth-child(3) > :nth-child(5)) {
+  display: none !important;
+}
+
+.finderShell :global(section[aria-labelledby="finder-title"] > :nth-child(4)) {
+  min-width: 0;
+  min-height: 0 !important;
+  display: grid !important;
+  grid-template-rows: auto 106px;
+  gap: 9px;
+  align-self: center;
+}
+
+/* Perfil actual: una franja útil, no una tarjeta alta flotando sobre el hero. */
+.finderShell :global(section[aria-labelledby="finder-title"] > :nth-child(4) > :nth-child(2)) {
+  position: relative !important;
+  inset: auto !important;
+  grid-row: 1;
+  width: 100% !important;
+  min-width: 0 !important;
+  display: grid !important;
+  grid-template-columns: minmax(142px, 0.72fr) minmax(0, 2fr) auto;
+  align-items: center;
+  gap: 13px;
+  padding: 11px 12px !important;
+  border-color: rgba(255, 8, 71, 0.3) !important;
+  border-radius: 11px !important;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3) !important;
+}
+
+.finderShell :global(section[aria-labelledby="finder-title"] > :nth-child(4) > :nth-child(2) > :first-child) {
+  min-width: 0;
+  align-items: center !important;
+  gap: 9px !important;
+}
+
+.finderShell :global(section[aria-labelledby="finder-title"] > :nth-child(4) > :nth-child(2) > :first-child > div) {
+  gap: 3px !important;
+}
+
+.finderShell :global(section[aria-labelledby="finder-title"] > :nth-child(4) > :nth-child(2) > :first-child span) {
+  font-size: 0 !important;
+}
+
+.finderShell :global(section[aria-labelledby="finder-title"] > :nth-child(4) > :nth-child(2) > :first-child span)::after {
+  content: "TU PERFIL ACTUAL";
+  color: var(--brand-light);
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+}
+
+.finderShell :global(section[aria-labelledby="finder-title"] > :nth-child(4) > :nth-child(2) > :first-child strong) {
+  font-size: 12px !important;
+}
+
+.finderShell :global(section[aria-labelledby="finder-title"] > :nth-child(4) > :nth-child(2) > dl) {
+  min-width: 0;
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px !important;
+  margin-top: 0 !important;
+}
+
+.finderShell :global(section[aria-labelledby="finder-title"] > :nth-child(4) > :nth-child(2) > dl > div) {
+  min-width: 0;
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 2px !important;
+  padding: 6px 8px;
+  border: 1px solid rgba(132, 151, 175, 0.12);
+  border-radius: 7px;
+  background: rgba(2, 6, 11, 0.42);
+}
+
+.finderShell :global(section[aria-labelledby="finder-title"] > :nth-child(4) > :nth-child(2) > dl dt) {
+  font-size: 9px !important;
+}
+
+.finderShell :global(section[aria-labelledby="finder-title"] > :nth-child(4) > :nth-child(2) > dl dd) {
+  color: var(--text) !important;
+  font-size: 11px !important;
+  font-weight: 760 !important;
+  text-align: left !important;
+}
+
+.finderShell :global(section[aria-labelledby="finder-title"] > :nth-child(4) > :nth-child(2) > button) {
+  width: auto !important;
+  min-height: 36px !important;
+  margin-top: 0 !important;
+  padding: 0 13px;
+  color: var(--text) !important;
+  border-color: rgba(255, 8, 71, 0.35) !important;
+  background: rgba(255, 8, 71, 0.075) !important;
+  white-space: nowrap;
+}
+
+/* Recomendaciones: segunda fila visual de la cabecera. */
+.finderShell :global(section[aria-labelledby="finder-title"] > :nth-child(4) > :first-child) {
+  position: relative !important;
+  inset: auto !important;
+  grid-row: 2;
+  width: 100%;
+  min-height: 106px;
+  border-radius: 11px !important;
+}
+
+.finderShell :global(section[aria-labelledby="finder-title"] > :nth-child(4) > :first-child > span:last-child) {
+  top: 8px !important;
+  bottom: auto !important;
+  left: 10px !important;
+  min-height: 30px !important;
+  padding: 0 10px !important;
+  font-size: 0 !important;
+}
+
+.finderShell :global(section[aria-labelledby="finder-title"] > :nth-child(4) > :first-child > span:last-child)::after {
+  content: "Recomendaciones para ti";
+  font-size: 10px;
+  font-weight: 800;
+}
+
+/* Estado del equipo: mantenemos las funciones, quitamos la segunda explicación larga. */
+.finderShell :global(section[aria-labelledby="detection-title"]) {
+  min-height: 0 !important;
+  grid-template-columns: auto minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  gap: 12px !important;
+  padding: 9px 11px !important;
+}
+
+.finderShell :global(section[aria-labelledby="detection-title"] > :first-child) {
+  gap: 9px !important;
+}
+
+.finderShell :global(section[aria-labelledby="detection-title"] > :first-child > :first-child) {
+  width: 36px !important;
+  height: 36px !important;
+}
+
+.finderShell :global(section[aria-labelledby="detection-title"] > :first-child > :last-child > span) {
+  font-size: 0 !important;
+}
+
+.finderShell :global(section[aria-labelledby="detection-title"] > :first-child > :last-child > span)::after {
+  content: "ESTADO DEL EQUIPO";
+  color: var(--brand-light);
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+}
+
+.finderShell :global(section[aria-labelledby="detection-title"] > :first-child h2),
+.finderShell :global(section[aria-labelledby="detection-title"] > :first-child p) {
+  display: none !important;
+}
+
+.finderShell :global(section[aria-labelledby="detection-title"] > :nth-child(2)) {
+  grid-template-columns: 0.8fr 0.8fr 1.4fr !important;
+  gap: 6px !important;
+}
+
+.finderShell :global(section[aria-labelledby="detection-title"] > :nth-child(2) > div) {
+  gap: 2px !important;
+  padding: 7px 9px !important;
+}
+
+.finderShell :global(section[aria-labelledby="detection-title"] > :nth-child(2) strong) {
+  font-size: 10px !important;
+}
+
+.finderShell :global(section[aria-labelledby="detection-title"] > :nth-child(3)) {
+  display: flex !important;
+  gap: 6px !important;
+}
+
+.finderShell :global(section[aria-labelledby="detection-title"] > :nth-child(3) button) {
+  min-height: 34px !important;
+  padding: 0 10px !important;
+}
+
+/* El formulario manual ahora es una ventana superpuesta real y no agrega altura a la página. */
+.finderShell :global(section[aria-labelledby="config-title"]) {
+  position: fixed !important;
+  top: 50% !important;
+  left: 50% !important;
+  right: auto !important;
+  bottom: auto !important;
+  z-index: 5000 !important;
+  width: min(920px, calc(100vw - 40px)) !important;
+  max-height: min(86vh, 720px);
+  overflow: auto;
+  margin: 0 !important;
+  padding: 22px !important;
+  transform: translate(-50%, -50%);
+  border-color: rgba(255, 8, 71, 0.42) !important;
+  background:
+    radial-gradient(520px 260px at 96% 0%, rgba(255, 8, 71, 0.12), transparent 72%),
+    linear-gradient(180deg, rgba(13, 19, 29, 0.995), rgba(5, 9, 15, 0.995)) !important;
+  box-shadow:
+    0 0 0 100vmax rgba(0, 0, 0, 0.72),
+    0 34px 90px rgba(0, 0, 0, 0.68) !important;
+}
+
+.finderShell :global(section[aria-labelledby="config-title"] > :first-child p) {
+  display: none !important;
+}
+
+.finderShell :global(section[aria-labelledby="config-title"] > :nth-child(2)) {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 12px !important;
+  margin-top: 18px !important;
+}
+
+.finderShell :global(section[aria-labelledby="config-title"] > :last-child) {
+  margin-top: 16px !important;
+}
+
+.finderShell :global(section[aria-labelledby="config-title"] > :last-child p) {
+  max-width: 600px !important;
+  font-size: 11px !important;
+}
+
+/* La explicación de cuatro pasos era redundante con el flujo real de la herramienta. */
+.finderShell :global(section[aria-labelledby="process-title"]) {
+  display: none !important;
+}
+
+/* Conservamos el aviso de precisión, pero en formato breve. */
+.finderShell :global(section[aria-label="Cómo interpretar las estimaciones"] p) {
+  display: none !important;
+}
+
+.finderShell :global(section[aria-label="Cómo interpretar las estimaciones"]) {
+  min-height: 0 !important;
+  padding-top: 12px !important;
+  padding-bottom: 12px !important;
+}
+
+@media (max-width: 1180px) {
+  .finderShell :global(section[aria-labelledby="finder-title"]) {
+    grid-template-columns: minmax(260px, 0.65fr) minmax(0, 1.35fr) !important;
+    gap: 18px !important;
+    padding: 19px 20px !important;
+  }
+
+  .finderShell :global(section[aria-labelledby="finder-title"] > :nth-child(4) > :nth-child(2)) {
+    grid-template-columns: minmax(130px, 0.65fr) minmax(0, 2fr);
+  }
+
+  .finderShell :global(section[aria-labelledby="finder-title"] > :nth-child(4) > :nth-child(2) > button) {
+    grid-column: 1 / -1;
+    width: 100% !important;
+  }
+
+  .finderShell :global(section[aria-labelledby="detection-title"]) {
+    grid-template-columns: auto minmax(0, 1fr) !important;
+  }
+
+  .finderShell :global(section[aria-labelledby="detection-title"] > :nth-child(3)) {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 900px) {
+  .finderShell :global(section[aria-labelledby="finder-title"]) {
+    grid-template-columns: 1fr !important;
+    min-height: 0 !important;
+  }
+
+  .finderShell :global(section[aria-labelledby="finder-title"] > :nth-child(3) > h1) {
+    max-width: 640px !important;
+    font-size: clamp(30px, 6vw, 40px) !important;
+  }
+
+  .finderShell :global(section[aria-labelledby="finder-title"] > :nth-child(4) > :nth-child(2)) {
+    grid-template-columns: 1fr !important;
+  }
+
+  .finderShell :global(section[aria-labelledby="finder-title"] > :nth-child(4) > :nth-child(2) > dl) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .finderShell :global(section[aria-labelledby="detection-title"]) {
+    grid-template-columns: 1fr !important;
+  }
+
+  .finderShell :global(section[aria-labelledby="detection-title"] > :first-child) {
+    display: none !important;
+  }
+
+  .finderShell :global(section[aria-labelledby="detection-title"] > :nth-child(3)) {
+    grid-column: auto;
+    justify-content: stretch;
+  }
+
+  .finderShell :global(section[aria-labelledby="detection-title"] > :nth-child(3) button) {
+    flex: 1 1 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .finderShell > div {
+    gap: 10px;
+  }
+
+  .finderShell :global(section[aria-labelledby="finder-title"]) {
+    gap: 14px !important;
+    padding: 15px !important;
+    border-radius: 14px !important;
+  }
+
+  .finderShell :global(section[aria-labelledby="finder-title"] > :nth-child(3) > h1) {
+    margin-top: 6px !important;
+    font-size: 30px !important;
+  }
+
+  .finderShell :global(section[aria-labelledby="finder-title"] > :nth-child(3) > p) {
+    font-size: 12px !important;
+  }
+
+  .finderShell :global(section[aria-labelledby="finder-title"] > :nth-child(4)) {
+    grid-template-rows: auto 92px;
+  }
+
+  .finderShell :global(section[aria-labelledby="finder-title"] > :nth-child(4) > :first-child) {
+    min-height: 92px;
+  }
+
+  .finderShell :global(section[aria-labelledby="finder-title"] > :nth-child(4) > :nth-child(2)) {
+    padding: 10px !important;
+  }
+
+  .finderShell :global(section[aria-labelledby="finder-title"] > :nth-child(4) > :nth-child(2) > dl) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .finderShell :global(section[aria-labelledby="detection-title"] > :nth-child(2)) {
+    grid-template-columns: 1fr !important;
+  }
+
+  .finderShell :global(section[aria-labelledby="detection-title"] > :nth-child(3)) {
+    flex-direction: column;
+  }
+
+  .finderShell :global(section[aria-labelledby="config-title"]) {
+    width: calc(100vw - 22px) !important;
+    max-height: calc(100dvh - 22px);
+    padding: 16px !important;
+    border-radius: 13px !important;
+  }
+
+  .finderShell :global(section[aria-labelledby="config-title"] > :nth-child(2)) {
+    grid-template-columns: 1fr !important;
+  }
+
+  .finderShell :global(section[aria-labelledby="config-title"] > :last-child) {
+    align-items: stretch !important;
+    flex-direction: column !important;
+  }
+
+  .finderShell :global(section[aria-labelledby="config-title"] > :last-child button) {
+    width: 100%;
+  }
+}
