@@ -33,7 +33,7 @@ import {
   useRouter,
 } from "next/navigation";
 
-import GameCard from "@/components/home/GameCard";
+import UniversalGameCard from "@/components/ui/UniversalGameCard";
 
 import {
   filterAndSortGames,
@@ -1247,11 +1247,12 @@ export default function GameCatalogClient({
         >
           {visibleGames.map(
             (game) => (
-              <GameCard
+              <UniversalGameCard
                 key={
                   game.slug
                 }
                 game={game}
+                variant="standard"
               />
             )
           )}

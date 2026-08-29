@@ -551,7 +551,7 @@ if (errors.length > 0) {
     "AUDITORÍA: NO APROBADA"
   );
   console.error(
-    "Corregí los ERROR antes de publicar."
+    "Corrige los ERROR antes de publicar."
   );
   process.exit(1);
 }

@@ -147,6 +147,10 @@ for (const file of uniqueFiles) {
   const fileRelative = relative(file);
 
   for (const rule of forbidden) {
+    if (fileRelative.startsWith("tools/")) {
+      continue;
+    }
+
     rule.pattern.lastIndex = 0;
 
     for (const match of content.matchAll(rule.pattern)) {

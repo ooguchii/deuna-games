@@ -117,7 +117,7 @@ export default function GamesForYourPC() {
           <UniversalGameCard
             key={game.slug}
             game={game}
-            variant="low-spec"
+            variant="lowSpec"
           />
         ))}
       </CardCarousel>
