@@ -88,7 +88,7 @@ export default function GameFinderUnifiedHero({
         <span className={styles.eyebrow}>COMPATIBILIDAD ORIENTATIVA</span>
 
         <h1 id="finder-unified-title">
-          Descubre los juegos que
+          Descubre los juegos{"\u00a0"}que
           <strong> tu PC puede correr</strong>
         </h1>
 

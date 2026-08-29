@@ -360,10 +360,10 @@
 .profileTitleLine {
   min-width: 0;
 
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 2px;
 
   margin-top: 5px;
 }
@@ -382,8 +382,6 @@
 }
 
 .profileTitleLine small {
-  flex: 0 0 auto;
-
   color: #aab4c2;
 
   font-size: 8px;
@@ -429,6 +427,7 @@
 .profileHint {
   overflow: hidden;
 
+  display: -webkit-box;
   margin-top: 3px;
 
   color: #8f9bab;
@@ -436,8 +435,8 @@
   font-size: 8px;
   font-weight: 580;
   line-height: 1.38;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .profileSpecs {
@@ -998,8 +997,6 @@
 
 @media (max-width: 430px) {
   .profileTitleLine {
-    align-items: flex-start;
-    flex-direction: column;
     gap: 3px;
   }
 

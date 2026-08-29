@@ -48,14 +48,11 @@ const profiles: GamePerformanceProfile[] = [
 const profileMap = new Map(profiles.map((profile) => [profile.slug, profile]));
 
 export function getPerformanceProfile(slug: string): GamePerformanceProfile {
-  return (
-    profileMap.get(slug) ?? {
-      slug,
-      referenceFps: 72,
-      ramGb: 8,
-      cpuWeight: 0.3,
-      gpuWeight: 0.7,
-      optimization: 0.95,
-    }
-  );
+  const profile = profileMap.get(slug);
+
+  if (!profile) {
+    throw new Error(`No existe un perfil de rendimiento para "${slug}".`);
+  }
+
+  return profile;
 }
