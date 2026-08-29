@@ -64,6 +64,9 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Architecture
+        run: npm run check:architecture
+
       - name: Source hygiene
         run: npm run check:source
 
