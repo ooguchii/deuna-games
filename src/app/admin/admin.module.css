@@ -35,7 +35,8 @@
 }
 
 .loginBadge,
-.secureState {
+.secureState,
+.draftState {
   display: inline-flex;
   align-items: center;
   gap: 7px;
@@ -390,6 +391,13 @@
   background: rgba(32, 207, 121, 0.035);
 }
 
+.draftState {
+  flex-shrink: 0;
+  color: #f0bf8f;
+  border-color: rgba(234, 154, 85, 0.24);
+  background: rgba(234, 154, 85, 0.045);
+}
+
 .metricGrid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -609,6 +617,192 @@
   color: #c99972;
 }
 
+.tableAction,
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #e9a6b6;
+  font-weight: 750;
+}
+
+.tableAction:hover,
+.tableAction:focus-visible,
+.backLink:hover,
+.backLink:focus-visible {
+  color: #ffd1dc;
+}
+
+.backLink {
+  margin-bottom: 17px;
+  font-size: 10px;
+}
+
+.editorNotice {
+  margin-top: 18px;
+  padding: 13px 15px;
+  border: 1px solid;
+  border-radius: 9px;
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.editorNoticeSuccess {
+  color: #9ce2bd;
+  border-color: rgba(32, 207, 121, 0.24);
+  background: rgba(32, 207, 121, 0.045);
+}
+
+.editorNoticeWarning {
+  color: #ebbf95;
+  border-color: rgba(234, 154, 85, 0.25);
+  background: rgba(234, 154, 85, 0.045);
+}
+
+.editorNoticeError {
+  color: #ffb4c5;
+  border-color: rgba(255, 72, 112, 0.28);
+  background: rgba(255, 8, 71, 0.055);
+}
+
+.editorPanel,
+.historyPanel {
+  margin-top: 22px;
+  padding: 22px;
+  border: 1px solid #19232e;
+  border-radius: 12px;
+  background: rgba(8, 13, 20, 0.88);
+}
+
+.editorForm {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 17px;
+}
+
+.editorForm label {
+  min-width: 0;
+  display: grid;
+  gap: 7px;
+}
+
+.editorForm label > span {
+  color: #aeb8c4;
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.editorForm input,
+.editorForm textarea,
+.editorForm select {
+  width: 100%;
+  color: #eef2f7;
+  border: 1px solid #283442;
+  border-radius: 8px;
+  outline: none;
+  background: #080d14;
+  font: inherit;
+  font-size: 11px;
+}
+
+.editorForm input,
+.editorForm select {
+  min-height: 44px;
+  padding: 0 12px;
+}
+
+.editorForm textarea {
+  min-height: 120px;
+  padding: 12px;
+  resize: vertical;
+  line-height: 1.55;
+}
+
+.editorForm input:focus,
+.editorForm textarea:focus,
+.editorForm select:focus {
+  border-color:
+    color-mix(in srgb, var(--brand) 65%, #ffffff);
+  box-shadow:
+    0 0 0 3px
+    color-mix(in srgb, var(--brand) 10%, transparent);
+}
+
+.fieldWide,
+.formActions {
+  grid-column: 1 / -1;
+}
+
+.formActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding-top: 18px;
+  border-top: 1px solid #18222c;
+}
+
+.formActions p {
+  max-width: 540px;
+  color: #6d7987;
+  font-size: 9px;
+  line-height: 1.55;
+}
+
+.formActions button,
+.historyList button {
+  min-height: 39px;
+  padding: 0 15px;
+  color: #ffffff;
+  border: 0;
+  border-radius: 7px;
+  background:
+    linear-gradient(135deg, var(--brand), var(--brand-dark));
+  cursor: pointer;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.historyList {
+  display: grid;
+  margin-top: 18px;
+  list-style: none;
+}
+
+.historyList li {
+  min-height: 61px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 11px 2px;
+  border-top: 1px solid #17212b;
+}
+
+.historyList strong,
+.historyList span {
+  display: block;
+}
+
+.historyList strong {
+  color: #cbd3dd;
+  font-size: 10px;
+}
+
+.historyList span {
+  margin-top: 4px;
+  color: #65717f;
+  font-size: 8px;
+}
+
+.historyList button {
+  min-height: 32px;
+  color: #e9a8b8;
+  border: 1px solid rgba(255, 94, 132, 0.22);
+  background: transparent;
+}
+
 .securityGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -767,6 +961,24 @@
   .securityGrid {
     grid-template-columns: 1fr;
   }
+
+  .editorForm {
+    grid-template-columns: 1fr;
+  }
+
+  .fieldWide,
+  .formActions {
+    grid-column: auto;
+  }
+
+  .formActions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .formActions button {
+    width: 100%;
+  }
 }
 
 @media (max-width: 520px) {
@@ -789,7 +1001,9 @@
 
   .adminSection,
   .eventPanel,
-  .tablePanel {
+  .tablePanel,
+  .editorPanel,
+  .historyPanel {
     padding: 16px;
   }
 
@@ -800,13 +1014,21 @@
   .adminNavigation a {
     min-width: 0;
   }
+
+  .historyList li {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .loginForm input,
   .loginForm button,
   .adminNavigation a,
-  .moduleGrid a {
+  .moduleGrid a,
+  .editorForm input,
+  .editorForm textarea,
+  .editorForm select {
     transition: none;
   }
 

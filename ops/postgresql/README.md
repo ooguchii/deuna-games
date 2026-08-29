@@ -14,8 +14,9 @@ Se mantienen dos roles:
 3. Copiar `.env.example` a `.env.local`, completar sólo las variables del proceso web y fijar `DEUNA_ADMIN_ORIGIN` al origen HTTPS exacto usado desde la VPN.
 4. Copiar `admin-migration.env.example` como `.env.admin-migration.local` en la raíz privada y completar únicamente la contraseña del migrador. La contraseña runtime no se duplica allí.
 5. Ejecutar `npm.cmd run db:migrate`.
-6. Ejecutar `npm.cmd run admin:create-owner` desde una terminal interactiva.
-7. Configurar y probar la VPN y Nginx antes de cambiar `DEUNA_ADMIN_ENABLED` a `true`.
+6. Ejecutar `npm.cmd run admin:import-content`. El importador es idempotente: actualiza la fuente sin sobrescribir borradores modificados y nunca elimina registros ausentes.
+7. Ejecutar `npm.cmd run admin:create-owner` desde una terminal interactiva.
+8. Configurar y probar la VPN y Nginx antes de cambiar `DEUNA_ADMIN_ENABLED` a `true`.
 
 Next.js no carga `.env.admin-migration.local`. Ese archivo no debe entregarse al proceso web ni copiarse dentro de `deploy/`; puede retirarse del VPS entre operaciones y recuperarse desde un gestor privado de secretos.
 
@@ -24,6 +25,10 @@ El proceso de migración valida el checksum de cada archivo SQL y falla si una m
 ## Privacidad
 
 Las tablas administrativas no contienen IP, ubicación, user-agent, identificadores de publicidad ni navegación de visitantes. Los únicos eventos conservados corresponden al acceso de la cuenta propietaria y a futuros cambios editoriales.
+
+## Área editorial
+
+`editorial_items` conserva por separado la fuente importada y el borrador de trabajo. `editorial_revisions` agrega una versión inmutable por importación o guardado. Si los archivos cambian mientras existe un borrador modificado, la importación actualiza la fuente pero preserva el borrador y declara un conflicto para revisión manual.
 
 ## Copias de seguridad
 

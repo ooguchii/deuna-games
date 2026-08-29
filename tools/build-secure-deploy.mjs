@@ -608,6 +608,7 @@ for (const script of [
   "check:encoding",
   "check:privacy",
   "check:admin-security",
+  "check:admin-content",
   "check:data",
   "check:assets",
   "check:routes",

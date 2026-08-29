@@ -4,17 +4,18 @@ import {
   Database,
   Gamepad2,
   RefreshCcw,
+  Settings2,
   ShieldCheck,
 } from "lucide-react";
 
 import { games } from "@/data/games";
 import { gameUpdates } from "@/data/updates";
 import {
-  resolveGameDownload,
-} from "@/lib/games/download";
-import {
   getAdminSecurityOverview,
 } from "@/lib/admin/security-overview";
+import {
+  getEditorialOverview,
+} from "@/lib/admin/content-service";
 import {
   verifyAdminSession,
 } from "@/lib/admin/session";
@@ -25,11 +26,10 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminDashboardPage() {
   await verifyAdminSession();
-  const security =
-    await getAdminSecurityOverview();
-  const downloadableGames = games.filter(
-    (game) => resolveGameDownload(game)
-  ).length;
+  const [security, editorial] = await Promise.all([
+    getAdminSecurityOverview(),
+    getEditorialOverview(),
+  ]);
 
   return (
     <>
@@ -38,7 +38,7 @@ export default async function AdminDashboardPage() {
           <span>PANEL PRIVADO</span>
           <h1>Resumen de administración</h1>
           <p>
-            Primera etapa segura: lectura del catálogo, control de sesiones y preparación para edición con PostgreSQL.
+            Área editorial segura: borradores versionados en PostgreSQL, recuperación y control de sesiones.
           </p>
         </div>
 
@@ -55,17 +55,17 @@ export default async function AdminDashboardPage() {
         <article>
           <span><Gamepad2 size={20} aria-hidden="true" /></span>
           <strong>{games.length}</strong>
-          <p>Juegos publicados</p>
+          <p>Juegos públicos</p>
         </article>
         <article>
           <span><RefreshCcw size={20} aria-hidden="true" /></span>
           <strong>{gameUpdates.length}</strong>
-          <p>Actualizaciones</p>
+          <p>Actualizaciones públicas</p>
         </article>
         <article>
           <span><Database size={20} aria-hidden="true" /></span>
-          <strong>{downloadableGames}</strong>
-          <p>Juegos con descarga</p>
+          <strong>{editorial.modified}</strong>
+          <p>Borradores modificados</p>
         </article>
         <article>
           <span><ShieldCheck size={20} aria-hidden="true" /></span>
@@ -81,7 +81,7 @@ export default async function AdminDashboardPage() {
             <h2>Estado actual del catálogo</h2>
           </div>
           <p>
-            Las vistas son de sólo lectura hasta completar la migración editorial y sus validaciones.
+            Los cambios permanecen privados hasta implementar una publicación explícita y auditada.
           </p>
         </div>
 
@@ -114,6 +114,17 @@ export default async function AdminDashboardPage() {
               <strong>Comprobar seguridad</strong>
               <span>
                 Sesiones y eventos administrativos sin rastreo de visitantes.
+              </span>
+            </div>
+            <ArrowRight size={18} aria-hidden="true" />
+          </Link>
+
+          <Link href="/admin/configuracion">
+            <Settings2 size={23} aria-hidden="true" />
+            <div>
+              <strong>Configuración editorial</strong>
+              <span>
+                Identidad pública versionada, sin exponer secretos ni opciones del servidor.
               </span>
             </div>
             <ArrowRight size={18} aria-hidden="true" />

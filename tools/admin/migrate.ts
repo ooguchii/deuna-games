@@ -124,8 +124,69 @@ async function grantRuntimePrivileges(
       ON deuna_admin.admin_events
       TO ${role};
 
+    GRANT SELECT (
+        id,
+        item_type,
+        item_key,
+        source_payload,
+        source_checksum,
+        source_present,
+        draft_payload,
+        draft_status,
+        revision,
+        source_imported_at,
+        updated_at,
+        updated_by
+      )
+      ON deuna_admin.editorial_items
+      TO ${role};
+
+    GRANT UPDATE (
+        draft_payload,
+        draft_status,
+        revision,
+        updated_at,
+        updated_by
+      )
+      ON deuna_admin.editorial_items
+      TO ${role};
+
+    GRANT SELECT (
+        id,
+        item_id,
+        revision,
+        payload,
+        action,
+        actor_user_id,
+        created_at
+      )
+      ON deuna_admin.editorial_revisions
+      TO ${role};
+
+    GRANT INSERT (
+        item_id,
+        revision,
+        payload,
+        action,
+        actor_user_id
+      )
+      ON deuna_admin.editorial_revisions
+      TO ${role};
+
+    GRANT INSERT (
+        user_id,
+        action,
+        entity_type,
+        entity_id,
+        details
+      )
+      ON deuna_admin.admin_audit_log
+      TO ${role};
+
     GRANT USAGE, SELECT
-      ON SEQUENCE deuna_admin.admin_events_id_seq
+      ON SEQUENCE deuna_admin.admin_events_id_seq,
+                  deuna_admin.editorial_revisions_id_seq,
+                  deuna_admin.admin_audit_log_id_seq
       TO ${role};
 
     REVOKE ALL

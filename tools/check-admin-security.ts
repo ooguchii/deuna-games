@@ -14,6 +14,23 @@ import {
   hashAdminSessionToken,
   isValidAdminSessionToken,
 } from "../src/lib/admin/session-token.ts";
+import { games } from "../src/data/games.ts";
+import {
+  gameUpdates,
+} from "../src/data/update-records.ts";
+import {
+  hashEditorialPayload,
+} from "../src/lib/admin/content-hash.ts";
+import {
+  editorialGameSchema,
+  editorialSiteConfigSchema,
+  editorialUpdateSchema,
+} from "../src/lib/admin/content-validation.ts";
+import {
+  editorialGameFormSchema,
+  editorialUpdateFormSchema,
+} from "../src/lib/admin/content-forms.ts";
+import { siteConfig } from "../src/lib/site.ts";
 
 const root = process.cwd();
 const failures: string[] = [];
@@ -76,15 +93,73 @@ assert(
   "El token sin procesar no debe persistir en su hash."
 );
 
-const migration = await readFile(
-  path.join(
-    root,
-    "database",
-    "migrations",
-    "001_admin_foundation.sql"
-  ),
-  "utf8"
+for (const game of games) {
+  assert(
+    editorialGameSchema.safeParse(game).success,
+    `El juego ${game.slug} no puede importarse al área editorial.`
+  );
+}
+
+for (const update of gameUpdates) {
+  assert(
+    editorialUpdateSchema.safeParse(update).success,
+    `La actualización ${update.id} no puede importarse al área editorial.`
+  );
+}
+
+assert(
+  editorialSiteConfigSchema.safeParse(siteConfig).success,
+  "La configuración pública no puede importarse al área editorial."
 );
+assert(
+  hashEditorialPayload({ b: 2, a: 1 }) ===
+    hashEditorialPayload({ a: 1, b: 2 }),
+  "El checksum editorial debe ser estable ante el orden de claves."
+);
+assert(
+  !editorialGameFormSchema.safeParse({
+    expectedRevision: "1",
+    title: "Juego",
+    description: "Descripción",
+    category: "Acción",
+    version: "",
+    badge: "",
+    rating: "9",
+    reviews: "1K",
+    imageAlt: "Portada",
+  }).success,
+  "El editor no debe aceptar una valoración fuera de rango."
+);
+assert(
+  !editorialUpdateFormSchema.safeParse({
+    expectedRevision: "1",
+    version: "v1.0",
+    publishedAt: "2026-02-31T12:00",
+    type: "update",
+    summary: "Resumen válido",
+    featured: "false",
+  }).success,
+  "El editor no debe normalizar silenciosamente una fecha imposible."
+);
+
+const migration = (
+  await Promise.all(
+    [
+      "001_admin_foundation.sql",
+      "002_editorial_workspace.sql",
+    ].map((name) =>
+      readFile(
+        path.join(
+          root,
+          "database",
+          "migrations",
+          name
+        ),
+        "utf8"
+      )
+    )
+  )
+).join("\n");
 
 for (const forbidden of [
   "ip_address",
@@ -183,6 +258,51 @@ assert(
     ),
   "El rol runtime debe usar permisos de columna y no borrar sesiones."
 );
+assert(
+  !/GRANT[\s\S]{0,300}\bDELETE\b/i.test(
+    migrator
+  ) &&
+    migrator.includes(
+      "GRANT UPDATE (\n        draft_payload"
+    ),
+  "El rol runtime no debe borrar contenido y sólo puede actualizar el borrador."
+);
+
+const importer = await readFile(
+  path.join(
+    root,
+    "tools",
+    "admin",
+    "import-content.ts"
+  ),
+  "utf8"
+);
+
+assert(
+  importer.includes(
+    'current.draft_status === "modified"'
+  ) &&
+    !/\bDELETE\s+FROM\b/i.test(importer),
+  "El importador debe preservar borradores modificados y registros ausentes."
+);
+
+const contentService = await readFile(
+  path.join(
+    root,
+    "src",
+    "lib",
+    "admin",
+    "content-service.ts"
+  ),
+  "utf8"
+);
+
+assert(
+  contentService.includes("FOR UPDATE") &&
+    contentService.includes("draft_restored") &&
+    contentService.includes("admin_audit_log"),
+  "La edición debe controlar concurrencia, permitir recuperación y auditar cambios."
+);
 
 const systemd = await readFile(
   path.join(
@@ -223,5 +343,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  "Seguridad administrativa: OK (scrypt, tokens opacos, esquema sin rastreo y cierre por VPN verificados)."
+  "Seguridad administrativa: OK (scrypt, sesiones opacas, edición versionada sin rastreo y cierre por VPN verificados)."
 );

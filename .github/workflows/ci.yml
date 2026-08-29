@@ -86,6 +86,9 @@ jobs:
       - name: Admin security invariants
         run: npm run check:admin-security
 
+      - name: Admin editorial import
+        run: npm run check:admin-content
+
       - name: Text encoding
         run: npm run check:encoding
 

@@ -5,6 +5,7 @@ import {
   LayoutDashboard,
   LogOut,
   RefreshCcw,
+  Settings2,
   ShieldCheck,
 } from "lucide-react";
 
@@ -34,6 +35,11 @@ const navigation = [
     href: "/admin/seguridad",
     label: "Seguridad",
     icon: ShieldCheck,
+  },
+  {
+    href: "/admin/configuracion",
+    label: "Configuración",
+    icon: Settings2,
   },
 ] as const;
 

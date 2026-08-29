@@ -66,3 +66,20 @@ export async function readTrustedAdminForm(
 
   return new URLSearchParams(body);
 }
+
+export function hasExactAdminFormFields(
+  form: URLSearchParams,
+  fields: readonly string[]
+) {
+  const allowed = new Set(fields);
+
+  return (
+    form.size === fields.length &&
+    fields.every(
+      (field) => form.getAll(field).length === 1
+    ) &&
+    [...form.keys()].every((field) =>
+      allowed.has(field)
+    )
+  );
+}

@@ -135,13 +135,13 @@ La primera etapa del panel se encuentra en `/admin` e incorpora:
 - cookie `HttpOnly`, `Secure`, `SameSite=Strict`, prioridad alta y vencimiento máximo configurable de 1 a 24 horas;
 - bloqueo progresivo de intentos fallidos y rate limiting adicional en Nginx;
 - rate limiting efímero en memoria, sin access log, error log persistente ni reenvío de IP a Next.js;
-- vistas privadas de juegos, actualizaciones, sesiones y eventos de seguridad;
+- edición en borrador de juegos, actualizaciones y configuración pública, con validación, control de concurrencia e historial recuperable;
 - `noindex`, `noarchive` y `no-store` en todas las rutas administrativas;
 - ausencia deliberada de IP, user-agent, ubicación, huellas de dispositivo y actividad de visitantes en la base administrativa.
 
 `DEUNA_ADMIN_ORIGIN` fija el origen exacto aceptado por los formularios y redirects del panel. En producción debe ser el origen HTTPS real accesible mediante la VPN; no se deriva del encabezado `Host` de la solicitud.
 
-El panel permanece deshabilitado cuando `DEUNA_ADMIN_ENABLED` no es exactamente `true`. La primera etapa es de sólo lectura para el contenido: no permite modificar el catálogo hasta que los datos editoriales migren a PostgreSQL y cuenten con las mismas validaciones, historial y recuperación que tienen hoy los archivos versionados.
+El panel permanece deshabilitado cuando `DEUNA_ADMIN_ENABLED` no es exactamente `true`. El área editorial permite modificar borradores en PostgreSQL, pero no publica esos cambios: la web pública continúa leyendo los archivos versionados hasta que se implemente y audite una transición explícita. Cada guardado crea una revisión inmutable y una entrada mínima de auditoría administrativa; restaurar una versión genera otra revisión y no elimina el historial.
 
 La instalación se realiza en este orden:
 
@@ -149,6 +149,7 @@ La instalación se realiza en este orden:
 Copy-Item .env.example .env.local
 Copy-Item ops/postgresql/admin-migration.env.example .env.admin-migration.local
 npm.cmd run db:migrate
+npm.cmd run admin:import-content
 npm.cmd run admin:create-owner
 ```
 
@@ -158,7 +159,7 @@ Antes de habilitar el panel se debe adaptar y probar `ops/nginx/deuna-games.conf
 
 Las migraciones usan checksum y no admiten que un archivo SQL ya aplicado sea reescrito. `deuna_migrator` conserva la capacidad de modificar el esquema; el proceso web usa `deuna_runtime` con permisos mínimos. Sus credenciales están separadas: `.env.local` contiene únicamente el acceso runtime, mientras `.env.admin-migration.local` contiene el acceso privilegiado y no es cargado por Next.js.
 
-Los scripts de migración y creación del propietario no forman parte del runtime público `deploy/`. Se ejecutan desde una copia privada del repositorio en el VPS antes de sustituir el artefacto de la aplicación; así el proceso web no recibe herramientas ni credenciales de migración. Cuando no haya una operación pendiente, el archivo de migración puede retirarse del servidor y restaurarse desde el gestor privado de secretos.
+Los scripts de migración, importación y creación del propietario no forman parte del runtime público `deploy/`. Se ejecutan desde una copia privada del repositorio en el VPS antes de sustituir el artefacto de la aplicación; así el proceso web no recibe herramientas ni credenciales de migración. Cuando no haya una operación pendiente, el archivo de migración puede retirarse del servidor y restaurarse desde el gestor privado de secretos.
 
 ## Build seguro de deploy
 
