@@ -1,0 +1,55 @@
+name: Audit Cleanup V3
+
+on:
+  push:
+    branches:
+      - feature/game-detail-download-v2
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: true
+
+      - name: Setup Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Apply cleanup
+        run: python3 tools/audit-cleanup-v3.py
+
+      - name: Validate focused checks
+        run: |
+          npm run lint
+          npm run typecheck
+          npm run check:architecture
+          npm run check:data
+          npm run check:css-modules
+          npm run check:privacy
+          npm run security:scan -- --skip-npm-audit
+
+      - name: Commit cleanup and remove temporary automation
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm tools/audit-cleanup-v3.py .github/workflows/audit-cleanup-v3.yml
+          git add src/features/game-finder/hardware-catalog.ts src/components/layout/Header.tsx src/components/layout/Header.module.css
+          git commit -m "refactor: eliminar deduplicación silenciosa y checkbox móvil"
+          git push origin HEAD:feature/game-detail-download-v2
