@@ -17,6 +17,7 @@ import {
 } from "@/lib/site";
 import { safeJsonLd } from "@/lib/safe-json-ld";
 
+import compactStyles from "./finder-compact.module.css";
 import styles from "./page.module.css";
 
 export const metadata: Metadata = {
@@ -101,7 +102,9 @@ export default function RequirementsPage() {
           <span aria-current="page">¿Qué puedo jugar?</span>
         </nav>
 
-        <GameFinderClient games={games} />
+        <div className={compactStyles.finderShell}>
+          <GameFinderClient games={games} />
+        </div>
       </main>
 
       <Footer />
