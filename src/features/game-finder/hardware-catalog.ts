@@ -12,41 +12,23 @@ import {
 } from "./hardware-catalog-expansion";
 import type { HardwarePart } from "./types";
 
-function mergeHardwareCatalog(
+function composeHardwareCatalog(
   base: readonly HardwarePart[],
   expansion: readonly HardwarePart[]
 ): HardwarePart[] {
-  const merged = [...base];
-  const ids = new Set(merged.map((part) => part.id));
-  const names = new Set(
-    merged.map((part) => part.name.toLowerCase())
-  );
-
-  for (const part of expansion) {
-    const normalizedName = part.name.toLowerCase();
-
-    if (ids.has(part.id) || names.has(normalizedName)) {
-      continue;
-    }
-
-    merged.push(part);
-    ids.add(part.id);
-    names.add(normalizedName);
-  }
-
-  return merged.sort((a, b) =>
+  return [...base, ...expansion].sort((a, b) =>
     a.name.localeCompare(b.name, "en", {
       numeric: true,
     })
   );
 }
 
-export const cpuCatalog = mergeHardwareCatalog(
+export const cpuCatalog = composeHardwareCatalog(
   baseCpuCatalog,
   cpuCatalogExpansion
 );
 
-export const gpuCatalog = mergeHardwareCatalog(
+export const gpuCatalog = composeHardwareCatalog(
   baseGpuCatalog,
   gpuCatalogExpansion
 );

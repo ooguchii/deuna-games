@@ -14,8 +14,6 @@ import {
 import HeaderNavigation from "./HeaderNavigation";
 import styles from "./Header.module.css";
 
-const MOBILE_MENU_ID = "deuna-mobile-menu-toggle";
-
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
@@ -96,15 +94,6 @@ export default function Header() {
 
   return (
     <>
-      <input
-        id={MOBILE_MENU_ID}
-        type="checkbox"
-        className={styles.mobileMenuToggle}
-        checked={mobileMenuOpen}
-        readOnly
-        aria-hidden="true"
-        tabIndex={-1}
-      />
 
       <header className={styles.header}>
         <div className={styles.inner}>
@@ -196,7 +185,7 @@ export default function Header() {
             <button
               ref={menuButtonRef}
               type="button"
-              className={styles.menuButton}
+              className={`${styles.menuButton} ${mobileMenuOpen ? styles.menuButtonOpen : ""}`}
               aria-label={mobileMenuOpen ? "Cerrar menú" : "Abrir menú"}
               aria-expanded={mobileMenuOpen}
               aria-controls="mobile-navigation"
@@ -221,7 +210,7 @@ export default function Header() {
       <div
         id="mobile-navigation"
         ref={mobilePanelRef}
-        className={styles.mobileNativePanel}
+        className={`${styles.mobileNativePanel} ${mobileMenuOpen ? styles.mobileNativePanelOpen : ""}`}
         aria-hidden={!mobileMenuOpen}
         onClick={(event) => {
           if ((event.target as HTMLElement).closest("a")) {
