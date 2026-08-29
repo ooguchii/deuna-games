@@ -52,6 +52,10 @@ import {
 } from "./hardware-storage";
 import { getPerformanceProfile } from "./performance-data";
 import { estimateGamePerformance } from "./performance-model";
+import {
+  invalidateDetectedBrowserProfileCache,
+  primeDetectedBrowserProfileCache,
+} from "./useResolvedHardwareProfile";
 import type {
   BrowserHardwareSnapshot,
   EstimateSettings,
@@ -463,11 +467,13 @@ export default function GameFinderClient({
 
   const runDetection = useCallback(async (preferredProfile: HardwareProfile | null = null) => {
     setDetectionState("detecting");
+    invalidateDetectedBrowserProfileCache();
 
     try {
       const detected = await detectBrowserHardware();
       const browserProfile = profileFromBrowserSnapshot(detected, preferredProfile);
 
+      primeDetectedBrowserProfileCache(browserProfile);
       setSnapshot(detected);
       setHardware(browserProfile);
       setManualDraft(profileToManualDraft(browserProfile));

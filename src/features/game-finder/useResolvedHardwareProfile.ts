@@ -27,6 +27,20 @@ export type ResolvedHardwareStatus =
 let browserProfilePromise:
   Promise<HardwareProfile> | null = null;
 
+export function invalidateDetectedBrowserProfileCache() {
+  browserProfilePromise = null;
+}
+
+export function primeDetectedBrowserProfileCache(
+  profile: HardwareProfile
+) {
+  if (profile.source !== "browser") {
+    return;
+  }
+
+  browserProfilePromise = Promise.resolve(profile);
+}
+
 function subscribeToStoredProfile(
   onStoreChange: () => void
 ) {
