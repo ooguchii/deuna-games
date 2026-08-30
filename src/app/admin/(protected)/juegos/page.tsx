@@ -2,6 +2,7 @@ import Link from "next/link";
 import {
   CheckCircle2,
   CircleSlash2,
+  Eye,
   Pencil,
 } from "lucide-react";
 
@@ -98,13 +99,28 @@ export default async function AdminGamesPage({
                     </td>
                     <td>{item.revision}</td>
                     <td>
-                      <Link
-                        className={styles.tableAction}
-                        href={`/admin/juegos/${encodeURIComponent(item.key)}`}
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 12,
+                        }}
                       >
-                        <Pencil size={13} aria-hidden="true" />
-                        Editar
-                      </Link>
+                        <Link
+                          className={styles.tableAction}
+                          href={`/admin/juegos/${encodeURIComponent(item.key)}`}
+                        >
+                          <Pencil size={13} aria-hidden="true" />
+                          Editar
+                        </Link>
+                        <Link
+                          className={styles.tableAction}
+                          href={`/admin/juegos/${encodeURIComponent(item.key)}/vista-previa`}
+                        >
+                          <Eye size={13} aria-hidden="true" />
+                          Vista previa
+                        </Link>
+                      </div>
                     </td>
                   </tr>
                 ))}
