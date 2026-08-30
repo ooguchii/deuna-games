@@ -51,7 +51,7 @@ export default function AdminContextBar() {
               className={active ? ux.contextActive : undefined}
               aria-current={active ? "page" : undefined}
             >
-              <Icon size={13} aria-hidden="true" />
+              <Icon size={16} strokeWidth={1.9} aria-hidden="true" />
               {section.label}
             </a>
           );
@@ -76,7 +76,7 @@ export default function AdminContextBar() {
               className={active ? ux.contextActive : undefined}
               aria-current={active ? "page" : undefined}
             >
-              <Icon size={13} aria-hidden="true" />
+              <Icon size={16} strokeWidth={1.9} aria-hidden="true" />
               {section.label}
             </a>
           );
