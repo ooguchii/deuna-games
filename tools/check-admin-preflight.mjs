@@ -27,6 +27,11 @@ const packageJson = JSON.parse(packageSource);
 const scripts = packageJson.scripts ?? {};
 
 assert(
+  scripts["admin:update-local"] ===
+    "npm run db:migrate && npm run admin:import-content && npm run admin:preflight",
+  "admin:update-local debe aplicar migraciones, importar contenido y terminar con el preflight completo, sin recrear propietario ni contraseña."
+);
+assert(
   scripts["admin:preflight"] ===
     "npm run admin:preflight:migration && npm run admin:preflight:local",
   "admin:preflight debe verificar migraciones y después el workspace local."
@@ -104,6 +109,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Preflight administrativo: OK (local y producción separados; workspace editorial completo y chequeo local de sólo lectura protegidos)."
+    "Preflight administrativo: OK (actualización local segura, local y producción separados; workspace editorial completo y chequeo local de sólo lectura protegidos)."
   );
 }
