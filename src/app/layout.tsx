@@ -2,6 +2,9 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 
 import {
+  getPublicHomeConfig,
+} from "@/lib/home/public-home-config";
+import {
   siteUrl,
 } from "@/lib/site";
 import {
@@ -19,9 +22,12 @@ const inter = Inter({
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const config = await getPublicSiteConfig();
+  const [config, homeConfig] = await Promise.all([
+    getPublicSiteConfig(),
+    getPublicHomeConfig(),
+  ]);
   const homeTitle =
-    `${config.name} | Encuentra juegos para tu PC`;
+    `${config.name} | ${homeConfig.copy.hero.accessibleTitle}`;
 
   return {
     metadataBase: new URL(siteUrl),
