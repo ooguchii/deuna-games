@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import EditorialHistory from "@/components/admin/EditorialHistory";
 import EditorStateNotice from "@/components/admin/EditorStateNotice";
 import GameDownloadEditor from "@/components/admin/GameDownloadEditor";
+import GameMediaUploadForm from "@/components/admin/GameMediaUploadForm";
 import GamePlatformEditor from "@/components/admin/GamePlatformEditor";
 import {
   getEditorialItem,
@@ -451,7 +452,7 @@ export default async function AdminGameEditorPage({
 
           <div className={styles.formActions}>
             <p>
-              Si dejás todos los campos vacíos, el juego quedará sin requisitos editoriales configurados.
+              Si todos los campos quedan vacíos, el juego quedará sin requisitos editoriales configurados.
             </p>
             <button type="submit">
               Guardar requisitos
@@ -470,9 +471,15 @@ export default async function AdminGameEditorPage({
             <h2>Portada, hero y galería</h2>
           </div>
           <p>
-            Por seguridad, esta etapa administra únicamente imágenes locales ya existentes dentro de /public/images.
+            Puedes subir WebP al almacén editorial persistente o seguir usando imágenes incluidas en /public/images.
           </p>
         </div>
+
+        <GameMediaUploadForm
+          slug={slug}
+          revision={item.revision}
+          screenshotCount={game.screenshots?.length ?? 0}
+        />
 
         <form
           className={styles.editorForm}
@@ -518,7 +525,7 @@ export default async function AdminGameEditorPage({
 
           <div className={styles.formActions}>
             <p>
-              Se aceptan hasta 8 capturas, sin duplicados, y sólo formatos de imagen locales permitidos. La ficha pública muestra actualmente las primeras cinco.
+              Se aceptan hasta 8 capturas, sin duplicados. Las rutas persistentes subidas desde el panel y las imágenes locales permitidas se validan antes de guardar.
             </p>
             <button type="submit">
               Guardar multimedia
@@ -537,7 +544,7 @@ export default async function AdminGameEditorPage({
             <h2>Página de descarga</h2>
           </div>
           <p>
-            Esta configuración alimentará la pantalla de descarga del juego cuando el contenido editorial pase a publicación.
+            Esta configuración alimenta la pantalla pública cuando el borrador pasa a publicación.
           </p>
         </div>
 
