@@ -29,9 +29,8 @@ import TaxonomyIcon from "@/components/taxonomy/TaxonomyIcon";
 import UniversalGameCard from "@/components/ui/UniversalGameCard";
 import {
   filterAndSortGames,
-  getCategoryStats,
+  getOrderedClassificationStats,
   MAX_CATALOG_QUERY_LENGTH,
-  normalizeCatalogText,
   sanitizeCatalogQuery,
   type EquipmentFilter,
   type SearchScope,
@@ -62,61 +61,6 @@ type GameCatalogClientProps = {
   initialStatus?: StatusFilter;
   initialView?: ViewMode;
 };
-
-function orderedCategoryStats(
-  games: readonly Game[],
-  terms: readonly GameTaxonomyTerm[]
-) {
-  const counts = new Map(getCategoryStats(games));
-  const labels = new Map(
-    [...counts.keys()].map((label) => [
-      normalizeCatalogText(label),
-      label,
-    ])
-  );
-  const used = new Set<string>();
-  const ordered: Array<{
-    term: GameTaxonomyTerm;
-    label: string;
-    count: number;
-  }> = [];
-
-  terms.forEach((term) => {
-    const label = labels.get(normalizeCatalogText(term.label));
-    if (!label) return;
-
-    used.add(label);
-    ordered.push({
-      term,
-      label,
-      count: counts.get(label) ?? 0,
-    });
-  });
-
-  [...counts.entries()]
-    .filter(([label]) => !used.has(label))
-    .sort(([left], [right]) =>
-      left.localeCompare(right, "es", {
-        sensitivity: "base",
-      })
-    )
-    .forEach(([label, count]) => {
-      ordered.push({
-        term: {
-          key:
-            normalizeCatalogText(label)
-              .replace(/[^a-z0-9]+/g, "-") ||
-            "clasificacion",
-          label,
-          active: true,
-        },
-        label,
-        count,
-      });
-    });
-
-  return ordered;
-}
 
 export default function GameCatalogClient({
   games,
@@ -149,7 +93,7 @@ export default function GameCatalogClient({
   const [view, setView] = useState<ViewMode>(initialView);
 
   const categoryStats = useMemo(
-    () => orderedCategoryStats(games, categoryTerms),
+    () => getOrderedClassificationStats(games, categoryTerms),
     [games, categoryTerms]
   );
 
