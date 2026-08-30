@@ -17,6 +17,9 @@ import {
 import {
   hasExactAdminFormFields,
 } from "@/lib/admin/request-security";
+import {
+  resolveEditorialMediaDiskPath,
+} from "@/lib/media/editorial-media";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -28,8 +31,22 @@ const fields = [
   "screenshotsText",
 ] as const;
 
-async function mediaFilesExist(
-  mediaPaths: string[]
+async function fileIsRegular(
+  absolutePath: string
+) {
+  try {
+    const stats = await lstat(absolutePath);
+    return (
+      stats.isFile() &&
+      !stats.isSymbolicLink()
+    );
+  } catch {
+    return false;
+  }
+}
+
+async function bundledImageExists(
+  mediaPath: string
 ) {
   const publicRoot = path.resolve(
     process.cwd(),
@@ -39,30 +56,50 @@ async function mediaFilesExist(
     publicRoot,
     "images"
   );
+  const absolutePath = path.resolve(
+    publicRoot,
+    `.${mediaPath}`
+  );
 
+  if (
+    !absolutePath.startsWith(
+      `${imagesRoot}${path.sep}`
+    )
+  ) {
+    return false;
+  }
+
+  return fileIsRegular(absolutePath);
+}
+
+async function editorialImageExists(
+  mediaPath: string
+) {
+  try {
+    const resolved =
+      resolveEditorialMediaDiskPath(mediaPath);
+
+    return resolved
+      ? fileIsRegular(resolved.filePath)
+      : false;
+  } catch {
+    return false;
+  }
+}
+
+async function mediaFilesExist(
+  mediaPaths: string[]
+) {
   for (const mediaPath of new Set(mediaPaths)) {
-    const absolutePath = path.resolve(
-      publicRoot,
-      `.${mediaPath}`
-    );
+    const exists = mediaPath.startsWith(
+      "/media/editorial/"
+    )
+      ? await editorialImageExists(mediaPath)
+      : mediaPath.startsWith("/images/")
+        ? await bundledImageExists(mediaPath)
+        : false;
 
-    if (
-      !absolutePath.startsWith(
-        `${imagesRoot}${path.sep}`
-      )
-    ) {
-      return false;
-    }
-
-    try {
-      const stats = await lstat(absolutePath);
-
-      if (!stats.isFile()) {
-        return false;
-      }
-    } catch {
-      return false;
-    }
+    if (!exists) return false;
   }
 
   return true;
