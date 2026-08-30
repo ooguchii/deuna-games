@@ -342,6 +342,27 @@ const homeSectionsSchema = z
     });
   });
 
+const homeCurationModeSchema = z.enum([
+  "manual",
+  "automatic",
+  "hybrid",
+]);
+
+const homeCurationCollectionSchema = z
+  .object({
+    mode: homeCurationModeSchema,
+  })
+  .strict();
+
+const homeCurationSchema = z
+  .object({
+    hero: homeCurationCollectionSchema,
+    popular: homeCurationCollectionSchema,
+    lowSpec: homeCurationCollectionSchema,
+    recommended: homeCurationCollectionSchema,
+  })
+  .strict();
+
 const homeCopySchema = z
   .object({
     hero: z
@@ -401,6 +422,11 @@ const homeCopySchema = z
         title: editorialHeading,
         highlight: editorialHeading,
         text: editorialParagraph,
+        features: z.tuple([
+          editorialLabel,
+          editorialLabel,
+          editorialLabel,
+        ]).optional(),
         cta: editorialLabel,
         optionTitles: z.tuple([
           editorialHeading,
@@ -528,6 +554,7 @@ export const editorialHomeConfigSchema = z
     popularSlugs: uniqueIdentifiers(24),
     lowSpecSlugs: uniqueIdentifiers(24),
     recommendedSlugs: uniqueIdentifiers(24),
+    curation: homeCurationSchema.optional(),
     sections: homeSectionsSchema.optional(),
     copy: homeCopySchema.optional(),
   })
