@@ -88,7 +88,7 @@ export async function generateMetadata({
   const title =
     "Juegos para PC";
   const description =
-    `Explora el catálogo de ${config.name} y encuentra juegos por categoría, popularidad, puntuación, requisitos y estado.`;
+    `Explora el catálogo de ${config.name} y encuentra juegos por clasificación, popularidad, puntuación, requisitos y estado.`;
 
   return {
     title,
@@ -139,7 +139,7 @@ export default async function GamesPage({
     buildHomeGameCollections(games);
 
   const description =
-    "Explora nuestro catálogo, filtra por categoría, puntuación, requisitos o popularidad y encuentra exactamente lo que quieres jugar.";
+    "Explora nuestro catálogo, filtra por clasificación, puntuación, requisitos o popularidad y encuentra exactamente lo que quieres jugar.";
 
   const breadcrumbJsonLd = {
     "@context":
@@ -318,7 +318,7 @@ export default async function GamesPage({
 
         <GameCatalogClient
           games={games}
-          categoryTerms={taxonomy.categories}
+          categoryTerms={taxonomy.classifications}
           lowSpecSlugs={
             collections.lowSpecGames.map(
               (game) =>
