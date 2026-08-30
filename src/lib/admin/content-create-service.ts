@@ -198,6 +198,7 @@ export async function createGameDraft(
     version: input.version,
     badge: input.badge,
     imageAlt: input.imageAlt,
+    addedAt: new Date().toISOString().slice(0, 10),
     platforms: ["PC"],
   };
 
