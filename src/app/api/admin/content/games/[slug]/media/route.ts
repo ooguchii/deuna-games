@@ -129,7 +129,7 @@ export async function POST(
   ) {
     return adminRedirect(
       authorized.adminOrigin,
-      `${target}?estado=solicitud#multimedia`
+      `${target}?estado=solicitud&seccion=multimedia`
     );
   }
 
@@ -140,7 +140,7 @@ export async function POST(
   if (!parsed.success) {
     return adminRedirect(
       authorized.adminOrigin,
-      `${target}?estado=datos#multimedia`
+      `${target}?estado=datos&seccion=multimedia`
     );
   }
 
@@ -161,7 +161,7 @@ export async function POST(
     if (!(await mediaFilesExist(mediaPaths))) {
       return adminRedirect(
         authorized.adminOrigin,
-        `${target}?estado=asset#multimedia`
+        `${target}?estado=asset&seccion=multimedia`
       );
     }
 
@@ -189,7 +189,7 @@ export async function POST(
 
     return adminRedirect(
       authorized.adminOrigin,
-      `${target}?estado=${state}#multimedia`
+      `${target}?estado=${state}&seccion=multimedia`
     );
   } catch {
     console.error(
