@@ -8,6 +8,7 @@ export const editorialItemTypes = [
   "game_update",
   "site_config",
   "home_config",
+  "about_config",
 ] as const;
 
 export type EditorialItemType =
@@ -143,6 +144,16 @@ function uniqueIdentifiers(maximum: number) {
     });
 }
 
+const aboutTitle = z.string().trim().min(1).max(180);
+const aboutText = z.string().trim().min(1).max(700);
+const aboutEyebrow = z.string().trim().min(1).max(60);
+const aboutCardSchema = z
+  .object({
+    title: aboutTitle,
+    text: aboutText,
+  })
+  .strict();
+
 export const editorialGameSchema: z.ZodType<Game> = z
   .object({
     id: identifierSchema,
@@ -231,6 +242,53 @@ export const editorialHomeConfigSchema = z
   })
   .strict();
 
+export const editorialAboutConfigSchema = z
+  .object({
+    hero: z
+      .object({
+        title: aboutTitle,
+        highlight: aboutTitle,
+        text: aboutText,
+        signals: z.array(aboutCardSchema).length(3),
+      })
+      .strict(),
+    intro: z
+      .object({
+        title: aboutTitle,
+        highlight: aboutTitle,
+        paragraphs: z.array(aboutText).length(2),
+      })
+      .strict(),
+    principles: z
+      .array(
+        z
+          .object({
+            eyebrow: aboutEyebrow,
+            title: aboutTitle,
+            text: aboutText,
+          })
+          .strict()
+      )
+      .length(3),
+    reason: z
+      .object({
+        title: aboutTitle,
+        highlight: aboutTitle,
+        paragraphs: z.array(aboutText).length(2),
+      })
+      .strict(),
+    ecosystem: z.array(aboutCardSchema).length(3),
+    manifesto: z
+      .object({
+        title: aboutTitle,
+        highlight: aboutTitle,
+        text: aboutText,
+      })
+      .strict(),
+    ctaTitle: aboutTitle,
+  })
+  .strict();
+
 export type EditorialSiteConfig = z.infer<
   typeof editorialSiteConfigSchema
 >;
@@ -239,11 +297,16 @@ export type EditorialHomeConfig = z.infer<
   typeof editorialHomeConfigSchema
 >;
 
+export type EditorialAboutConfig = z.infer<
+  typeof editorialAboutConfigSchema
+>;
+
 export type EditorialPayloadByType = {
   game: Game;
   game_update: GameUpdate;
   site_config: EditorialSiteConfig;
   home_config: EditorialHomeConfig;
+  about_config: EditorialAboutConfig;
 };
 
 export function parseEditorialPayload<
@@ -256,7 +319,9 @@ export function parseEditorialPayload<
         ? editorialUpdateSchema
         : type === "site_config"
           ? editorialSiteConfigSchema
-          : editorialHomeConfigSchema;
+          : type === "home_config"
+            ? editorialHomeConfigSchema
+            : editorialAboutConfigSchema;
 
   return schema.parse(payload) as EditorialPayloadByType[Type];
 }
