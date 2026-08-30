@@ -7,6 +7,7 @@ import EditorStateNotice from "@/components/admin/EditorStateNotice";
 import GameDownloadEditor from "@/components/admin/GameDownloadEditor";
 import GameEditorFormActions from "@/components/admin/GameEditorFormActions";
 import GameMediaUploadForm from "@/components/admin/GameMediaUploadForm";
+import GamePerformanceEditor from "@/components/admin/GamePerformanceEditor";
 import GamePlatformEditor from "@/components/admin/GamePlatformEditor";
 import {
   getEditorialItem,
@@ -29,6 +30,7 @@ const gameSections = [
   "ficha",
   "datos",
   "requisitos",
+  "rendimiento",
   "multimedia",
   "descargas",
   "historial",
@@ -137,6 +139,7 @@ export default async function AdminGameEditorPage({
     `/api/admin/content/games/${encodeURIComponent(slug)}`;
   const advancedAction = `${coreAction}/advanced`;
   const requirementsAction = `${coreAction}/requirements`;
+  const performanceAction = `${coreAction}/performance`;
   const mediaAction = `${coreAction}/media`;
   const downloadAction = `${coreAction}/download`;
 
@@ -541,12 +544,21 @@ export default async function AdminGameEditorPage({
             <GameEditorFormActions
               note="Si todos los campos quedan vacíos, el juego quedará sin requisitos editoriales configurados."
               action={requirementsAction}
-              continueTo="multimedia"
+              continueTo="rendimiento"
               saveLabel="Guardar requisitos"
-              continueLabel="Guardar y continuar a Multimedia"
+              continueLabel="Guardar y continuar a Rendimiento"
             />
           </form>
         </section>
+      )}
+
+      {section === "rendimiento" && (
+        <GamePerformanceEditor
+          slug={slug}
+          revision={item.revision}
+          action={performanceAction}
+          calibration={game.performance}
+        />
       )}
 
       {section === "multimedia" && (
