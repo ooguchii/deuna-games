@@ -1,4 +1,5 @@
 .root {
+  --taxonomy-accent: #ff1554;
   display: grid;
   gap: 18px;
 }
