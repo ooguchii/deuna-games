@@ -14,6 +14,10 @@ import {
 
 import { useMemo } from "react";
 
+import type {
+  GamePerformanceCalibration,
+} from "@/types/game";
+
 import {
   estimateGamePerformance,
 } from "./performance-model";
@@ -58,6 +62,7 @@ const tierMeta: Record<
 
 type GamePerformanceEstimateProps = {
   slug: string;
+  calibration?: GamePerformanceCalibration;
 };
 
 function sourceLabel(profile: HardwareProfile | null) {
@@ -88,6 +93,7 @@ function ramLabel(profile: HardwareProfile | null) {
 
 export default function GamePerformanceEstimate({
   slug,
+  calibration,
 }: GamePerformanceEstimateProps) {
   const {
     profile: hardware,
@@ -100,10 +106,11 @@ export default function GamePerformanceEstimate({
         ? estimateGamePerformance(
             slug,
             hardware,
-            DEFAULT_SETTINGS
+            DEFAULT_SETTINGS,
+            calibration
           )
         : null,
-    [hardware, slug]
+    [calibration, hardware, slug]
   );
 
   const missingParts = useMemo(() => {
@@ -155,11 +162,13 @@ export default function GamePerformanceEstimate({
     !estimate?.canEstimate ||
     !hardware
   ) {
-    const missingText = missingParts.length
-      ? `Falta confirmar ${missingParts.join(", ")}.`
-      : status === "error"
-        ? "No se pudo completar la detección local del hardware."
-        : "No pudimos completar una lectura suficiente del hardware.";
+    const missingText =
+      estimate?.reason ??
+      (missingParts.length
+        ? `Falta confirmar ${missingParts.join(", ")}.`
+        : status === "error"
+          ? "No se pudo completar la detección local del hardware."
+          : "No pudimos completar una lectura suficiente del hardware.");
 
     return (
       <aside className={styles.panel} aria-live="polite">
@@ -190,7 +199,7 @@ export default function GamePerformanceEstimate({
           <p>
             El navegador no siempre puede revelar CPU, GPU o RAM con
             precisión. Puedes completar esos datos manualmente para obtener
-            una estimación útil.
+            una estimación útil cuando el juego tenga calibración disponible.
           </p>
 
           <Link href={configurationHref}>
