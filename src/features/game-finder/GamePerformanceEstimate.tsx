@@ -65,7 +65,7 @@ const tierMeta: Record<
 
 type GamePerformanceEstimateProps = {
   slug: string;
-  calibration?: GamePerformanceCalibration;
+  calibration?: GamePerformanceCalibration | null;
 };
 
 function sourceLabel(profile: HardwareProfile | null) {
@@ -106,11 +106,13 @@ export default function GamePerformanceEstimate({
     calibration: publishedCalibration,
     loading: publishedCalibrationLoading,
   } = useGamePerformanceCalibration(slug);
-  const calibration =
-    previewCalibration ?? publishedCalibration;
+  const hasPreviewOverride =
+    previewCalibration !== undefined;
+  const calibration = hasPreviewOverride
+    ? previewCalibration
+    : publishedCalibration;
   const calibrationLoading =
-    previewCalibration === undefined &&
-    publishedCalibrationLoading;
+    !hasPreviewOverride && publishedCalibrationLoading;
 
   const estimate = useMemo(
     () =>
@@ -160,7 +162,7 @@ export default function GamePerformanceEstimate({
           <div className={styles.stateCopy}>
             <strong>Preparando la estimación</strong>
             <span>
-              Comprobamos la calibración publicada del juego y el perfil de hardware disponible en este navegador.
+              Comprobamos la calibración del juego y el perfil de hardware disponible en este navegador.
             </span>
           </div>
         </div>
