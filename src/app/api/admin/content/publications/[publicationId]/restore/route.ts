@@ -90,7 +90,7 @@ export async function POST(
     }
 
     const target =
-      `/admin/juegos/${encodeURIComponent(result.key)}/vista-previa`;
+      `/admin/juegos/${encodeURIComponent(result.key)}/publicacion`;
 
     if (result.outcome === "conflict") {
       return adminRedirect(
