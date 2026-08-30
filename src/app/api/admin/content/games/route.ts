@@ -79,7 +79,7 @@ export async function POST(
 
     return adminRedirect(
       authorized.adminOrigin,
-      `/admin/juegos/${encodeURIComponent(result.key)}?estado=creado`
+      `/admin/juegos/${encodeURIComponent(result.key)}?seccion=datos&estado=creado`
     );
   } catch {
     console.error(
