@@ -4,7 +4,9 @@ import { notFound, redirect } from "next/navigation";
 
 import {
   ArrowLeft,
+  CheckCircle2,
   ChevronRight,
+  CircleX,
   Download,
   ExternalLink,
   FileArchive,
@@ -13,6 +15,7 @@ import {
   Info,
   Monitor,
   ShieldCheck,
+  Wrench,
 } from "lucide-react";
 
 import Footer from "@/components/layout/Footer";
@@ -25,6 +28,9 @@ import {
 import {
   resolveGameDownload,
 } from "@/lib/games/download";
+import type {
+  GameDownloadSourceStatus,
+} from "@/types/game";
 
 import styles from "./page.module.css";
 
@@ -32,6 +38,15 @@ type DownloadPageProps = {
   params: Promise<{
     slug: string;
   }>;
+};
+
+const sourceStatusLabels: Record<
+  GameDownloadSourceStatus,
+  string
+> = {
+  available: "Disponible",
+  down: "Caído",
+  maintenance: "Mantenimiento",
 };
 
 export const dynamicParams = true;
@@ -42,6 +57,22 @@ export function generateStaticParams() {
     .map((game) => ({
       slug: game.slug,
     }));
+}
+
+function SourceStatusIcon({
+  status,
+}: {
+  status: GameDownloadSourceStatus;
+}) {
+  if (status === "down") {
+    return <CircleX size={15} aria-hidden="true" />;
+  }
+
+  if (status === "maintenance") {
+    return <Wrench size={15} aria-hidden="true" />;
+  }
+
+  return <CheckCircle2 size={15} aria-hidden="true" />;
 }
 
 export async function generateMetadata({
@@ -213,61 +244,85 @@ export default async function DownloadPage({
               Elige una fuente para continuar
             </h2>
             <p>
-              Sólo mostramos destinos configurados para este juego y validados por la aplicación antes de renderizarlos.
+              Sólo mostramos destinos activos configurados para este juego. El estado de cada servidor se informa de forma independiente.
             </p>
           </div>
 
           <div className={styles.sourceList}>
-            {download.sources.map((source) => (
-              <article
-                key={`${source.id}:${source.href}`}
-                className={styles.sourceCard}
-              >
-                <span
-                  className={styles.sourceMark}
-                  aria-hidden="true"
-                >
-                  {source.name
-                    .trim()
-                    .charAt(0)
-                    .toUpperCase()}
-                </span>
+            {download.sources.map((source) => {
+              const available =
+                source.status === "available";
+              const statusClass =
+                source.status === "down"
+                  ? styles.sourceStatusDown
+                  : source.status === "maintenance"
+                    ? styles.sourceStatusMaintenance
+                    : styles.sourceStatusAvailable;
 
-                <div className={styles.sourceCopy}>
-                  <strong>{source.name}</strong>
-                  <span>
-                    {source.external
-                      ? "Destino externo HTTPS"
-                      : "Destino interno"}
+              return (
+                <article
+                  key={`${source.id}:${source.href}`}
+                  className={`${styles.sourceCard} ${!available ? styles.sourceCardUnavailable : ""}`}
+                >
+                  <span
+                    className={styles.sourceMark}
+                    aria-hidden="true"
+                  >
+                    {source.name
+                      .trim()
+                      .charAt(0)
+                      .toUpperCase()}
                   </span>
-                </div>
 
-                <span className={styles.sourceStatus}>
-                  <ShieldCheck size={15} aria-hidden="true" />
-                  Configurado
-                </span>
+                  <div className={styles.sourceCopy}>
+                    <strong>{source.name}</strong>
+                    <span>
+                      {source.external
+                        ? "Destino externo HTTPS"
+                        : "Destino interno"}
+                    </span>
+                  </div>
 
-                <a
-                  href={source.href}
-                  className={styles.sourceAction}
-                  target={source.external ? "_blank" : undefined}
-                  rel={source.external ? "noopener noreferrer" : undefined}
-                >
-                  {source.label}
-                  {source.external ? (
-                    <ExternalLink size={17} aria-hidden="true" />
+                  <span
+                    className={`${styles.sourceStatus} ${statusClass}`}
+                  >
+                    <SourceStatusIcon status={source.status} />
+                    {sourceStatusLabels[source.status]}
+                  </span>
+
+                  {available ? (
+                    <a
+                      href={source.href}
+                      className={styles.sourceAction}
+                      target={source.external ? "_blank" : undefined}
+                      rel={source.external ? "noopener noreferrer" : undefined}
+                    >
+                      {source.label}
+                      {source.external ? (
+                        <ExternalLink size={17} aria-hidden="true" />
+                      ) : (
+                        <Download size={17} aria-hidden="true" />
+                      )}
+                    </a>
                   ) : (
-                    <Download size={17} aria-hidden="true" />
+                    <span
+                      className={styles.sourceActionDisabled}
+                      aria-disabled="true"
+                    >
+                      {source.status === "maintenance"
+                        ? "En mantenimiento"
+                        : "No disponible"}
+                    </span>
                   )}
-                </a>
-              </article>
-            ))}
+                </article>
+              );
+            })}
           </div>
 
           <div className={styles.securityNote}>
             <ShieldCheck size={18} aria-hidden="true" />
             <span>
-              DeUna Games no genera enlaces desde parámetros del navegador: las fuentes salen de la configuración del juego.
+              DeUna Games no genera enlaces desde parámetros del navegador: las fuentes salen de la configuración editorial del juego.
             </span>
           </div>
         </section>
@@ -283,7 +338,7 @@ export default async function DownloadPage({
           <div>
             <h2 id="how-title">¿Cómo funciona?</h2>
             <p>
-              Elige una fuente y se abrirá el destino correspondiente. Si es externo, se abre en una pestaña nueva para que puedas volver al juego sin perder esta página.
+              Elige una fuente disponible y se abrirá el destino correspondiente. Si una fuente está caída o en mantenimiento seguirá visible como información, pero no permitirá abrir el enlace.
             </p>
           </div>
           <a href="#sources-title" className={styles.guideAction}>
