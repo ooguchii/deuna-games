@@ -1,14 +1,46 @@
-import type {
-  TaxonomyIconKey,
-  TaxonomyToneKey,
-} from "@/lib/games/taxonomy-presentation";
+export type GameTaxonomyIcon =
+  | "gamepad"
+  | "zap"
+  | "compass"
+  | "sword"
+  | "car"
+  | "puzzle"
+  | "box"
+  | "sparkles"
+  | "shield"
+  | "target"
+  | "crosshair"
+  | "ghost"
+  | "skull"
+  | "crown"
+  | "rocket"
+  | "plane"
+  | "ship"
+  | "bike"
+  | "trophy"
+  | "castle"
+  | "dices"
+  | "users"
+  | "hammer"
+  | "brain";
+
+export type GameTaxonomyTone =
+  | "brand"
+  | "purple"
+  | "violet"
+  | "blue"
+  | "green"
+  | "orange"
+  | "cyan"
+  | "gold"
+  | "red";
 
 export type GameTaxonomyTerm = {
   key: string;
   label: string;
   active: boolean;
-  icon?: TaxonomyIconKey;
-  tone?: TaxonomyToneKey;
+  icon?: GameTaxonomyIcon;
+  tone?: GameTaxonomyTone;
 };
 
 export type GameTaxonomy = {
