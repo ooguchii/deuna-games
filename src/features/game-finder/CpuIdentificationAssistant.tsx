@@ -15,7 +15,6 @@ import {
 } from "react";
 
 import {
-  clearConfirmedCpu,
   readConfirmedCpu,
   writeConfirmedCpu,
 } from "./cpu-confirmation-storage";
@@ -37,7 +36,7 @@ export default function CpuIdentificationAssistant() {
     () => readConfirmedCpu()
   );
   const [editing, setEditing] = useState(
-    () => !readConfirmedCpu()
+    () => readConfirmedCpu() === null
   );
   const [rawName, setRawName] = useState("");
   const [selectedCpuId, setSelectedCpuId] = useState("");
@@ -91,15 +90,6 @@ export default function CpuIdentificationAssistant() {
     window.location.reload();
   }
 
-  function forgetCpu() {
-    clearConfirmedCpu();
-    setConfirmedCpu(null);
-    setRawName("");
-    setSelectedCpuId("");
-    setEditing(true);
-    window.location.reload();
-  }
-
   if (confirmedCpu && !editing) {
     return (
       <section
@@ -124,7 +114,10 @@ export default function CpuIdentificationAssistant() {
         <button
           type="button"
           className={styles.secondaryButton}
-          onClick={() => setEditing(true)}
+          onClick={() => {
+            setRawName(confirmedCpu.name);
+            setEditing(true);
+          }}
         >
           Cambiar
         </button>
@@ -260,9 +253,13 @@ export default function CpuIdentificationAssistant() {
               <button
                 type="button"
                 className={styles.secondaryButton}
-                onClick={forgetCpu}
+                onClick={() => {
+                  setRawName(confirmedCpu.name);
+                  setSelectedCpuId("");
+                  setEditing(false);
+                }}
               >
-                Olvidar CPU confirmada
+                Cancelar
               </button>
             )}
           </div>
