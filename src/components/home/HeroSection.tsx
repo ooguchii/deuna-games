@@ -21,6 +21,7 @@ import {
   useState,
 } from "react";
 
+import type { HomeCopy } from "@/data/home-config";
 import type { Game } from "@/types/game";
 
 import artworkStyles from "./HeroArtwork.module.css";
@@ -88,6 +89,7 @@ function ResponsiveArtwork({
 
 type HeroSlideProps = {
   game: Game;
+  copy: HomeCopy["hero"];
   logicalIndex: number;
   total: number;
   clone?: boolean;
@@ -98,6 +100,7 @@ const HeroSlide = forwardRef<HTMLElement, HeroSlideProps>(
   function HeroSlide(
     {
       game,
+      copy,
       logicalIndex,
       total,
       clone = false,
@@ -160,7 +163,7 @@ const HeroSlide = forwardRef<HTMLElement, HeroSlideProps>(
               tabIndex={accessible ? 0 : -1}
             >
               <Play size={17} fill="currentColor" />
-              Ver juego
+              {copy.primaryCta}
             </Link>
 
             <Link
@@ -169,7 +172,7 @@ const HeroSlide = forwardRef<HTMLElement, HeroSlideProps>(
               tabIndex={accessible ? 0 : -1}
             >
               <Info size={18} />
-              Más información
+              {copy.secondaryCta}
             </Link>
           </div>
         </div>
@@ -195,8 +198,10 @@ function logicalIndexFromPhysical(
 
 export default function HeroSection({
   games,
+  copy,
 }: {
   games: Game[];
+  copy: HomeCopy["hero"];
 }) {
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const trackRef = useRef<HTMLDivElement | null>(null);
@@ -502,7 +507,7 @@ export default function HeroSection({
       }}
     >
       <h1 className={styles.srOnly}>
-        Descubre juegos para PC
+        {copy.accessibleTitle}
       </h1>
 
       <div className={styles.ambientBackdrop} aria-hidden="true">
@@ -534,6 +539,7 @@ export default function HeroSection({
                 slideRefs.current[trackIndex] = element;
               }}
               game={trackSlide.game}
+              copy={copy}
               logicalIndex={trackSlide.logicalIndex}
               total={games.length}
               clone={trackSlide.clone}
