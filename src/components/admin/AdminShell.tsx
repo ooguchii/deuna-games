@@ -22,6 +22,10 @@ export default function AdminShell({
 }) {
   return (
     <div className={`${styles.shell} ${ux.shell}`}>
+      <a href="#main-content" className={ux.skipLink}>
+        Saltar al contenido principal
+      </a>
+
       <aside className={`${styles.sidebar} ${ux.sidebar}`}>
         <Link
           href="/admin"
@@ -72,6 +76,7 @@ export default function AdminShell({
 
       <main
         id="main-content"
+        tabIndex={-1}
         className={`${styles.adminMain} ${ux.main}`}
       >
         <AdminContextBar />
