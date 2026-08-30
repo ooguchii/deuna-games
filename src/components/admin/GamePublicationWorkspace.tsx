@@ -92,6 +92,18 @@ function RequestNotice({
     );
   }
 
+  if (state === "catalogos-sin-publicar") {
+    return (
+      <div className={`${styles.notice} ${styles.noticeWarning}`}>
+        <strong>Publicación bloqueada por Catálogos.</strong>{" "}
+        Este juego usa una clasificación o etiqueta que todavía no existe en el snapshot público de Catálogos. Publica primero los datos maestros para mantener una sola definición en toda la web.{" "}
+        <Link href="/admin/catalogos?seccion=publicacion">
+          Revisar publicación de Catálogos
+        </Link>
+      </div>
+    );
+  }
+
   if (
     state === "asset-publicacion" ||
     state === "asset-restauracion"
