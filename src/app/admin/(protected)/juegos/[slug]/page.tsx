@@ -11,6 +11,9 @@ import {
 import {
   verifyAdminSession,
 } from "@/lib/admin/session";
+import type {
+  GameHardwareRequirements,
+} from "@/types/game";
 
 import styles from "../../../admin.module.css";
 
@@ -22,6 +25,24 @@ type PageProps = {
     estado?: string | string[];
   }>;
 };
+
+function legacyMinimum(
+  requirements: GameHardwareRequirements | undefined
+) {
+  if (!requirements) return undefined;
+
+  const minimum: GameHardwareRequirements = {
+    system: requirements.system,
+    processor: requirements.processor,
+    ram: requirements.ram,
+    graphics: requirements.graphics,
+    storage: requirements.storage,
+  };
+
+  return Object.values(minimum).some(Boolean)
+    ? minimum
+    : undefined;
+}
 
 export default async function AdminGameEditorPage({
   params,
@@ -41,6 +62,11 @@ export default async function AdminGameEditorPage({
     : parameters.estado;
   const game = item.payload;
   const download = game.download;
+  const requirements = game.requirements;
+  const minimum =
+    requirements?.minimum ??
+    legacyMinimum(requirements);
+  const recommended = requirements?.recommended;
 
   return (
     <>
@@ -54,7 +80,7 @@ export default async function AdminGameEditorPage({
           <span>JUEGO · REVISIÓN {item.revision}</span>
           <h1>{game.title}</h1>
           <p>
-            Edita los datos principales y la configuración de descarga. Requisitos y rutas de imágenes permanecen intactos por ahora.
+            Edita la ficha, los requisitos, la multimedia y la configuración de descarga desde un único borrador versionado.
           </p>
         </div>
         <span className={styles.draftState}>
@@ -181,6 +207,212 @@ export default async function AdminGameEditorPage({
             </p>
             <button type="submit">
               Guardar ficha
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section
+        id="requisitos"
+        className={styles.editorPanel}
+      >
+        <div className={styles.sectionHeading}>
+          <div>
+            <span>REQUISITOS</span>
+            <h2>Compatibilidad del sistema</h2>
+          </div>
+          <p>
+            Los mínimos se conservan también en el formato anterior para que las vistas existentes sigan siendo compatibles.
+          </p>
+        </div>
+
+        <form
+          className={styles.editorForm}
+          method="post"
+          action={`/api/admin/content/games/${encodeURIComponent(slug)}/requirements`}
+        >
+          <input
+            type="hidden"
+            name="expectedRevision"
+            value={item.revision}
+          />
+
+          <div className={styles.formSubheading}>
+            <strong>Requisitos mínimos</strong>
+            <span>Equipo base para ejecutar el juego.</span>
+          </div>
+
+          <label>
+            <span>Sistema operativo</span>
+            <input
+              name="minimumSystem"
+              defaultValue={minimum?.system ?? ""}
+              maxLength={240}
+              placeholder="Windows 10 de 64 bits"
+            />
+          </label>
+
+          <label>
+            <span>Procesador</span>
+            <input
+              name="minimumProcessor"
+              defaultValue={minimum?.processor ?? ""}
+              maxLength={240}
+            />
+          </label>
+
+          <label>
+            <span>Memoria RAM</span>
+            <input
+              name="minimumRam"
+              defaultValue={minimum?.ram ?? ""}
+              maxLength={240}
+              placeholder="12 GB"
+            />
+          </label>
+
+          <label>
+            <span>Gráficos</span>
+            <input
+              name="minimumGraphics"
+              defaultValue={minimum?.graphics ?? ""}
+              maxLength={240}
+            />
+          </label>
+
+          <label className={styles.fieldWide}>
+            <span>Almacenamiento</span>
+            <input
+              name="minimumStorage"
+              defaultValue={minimum?.storage ?? ""}
+              maxLength={240}
+              placeholder="60 GB"
+            />
+          </label>
+
+          <div className={styles.formSubheading}>
+            <strong>Requisitos recomendados</strong>
+            <span>Configuración sugerida para una mejor experiencia.</span>
+          </div>
+
+          <label>
+            <span>Sistema operativo</span>
+            <input
+              name="recommendedSystem"
+              defaultValue={recommended?.system ?? ""}
+              maxLength={240}
+            />
+          </label>
+
+          <label>
+            <span>Procesador</span>
+            <input
+              name="recommendedProcessor"
+              defaultValue={recommended?.processor ?? ""}
+              maxLength={240}
+            />
+          </label>
+
+          <label>
+            <span>Memoria RAM</span>
+            <input
+              name="recommendedRam"
+              defaultValue={recommended?.ram ?? ""}
+              maxLength={240}
+            />
+          </label>
+
+          <label>
+            <span>Gráficos</span>
+            <input
+              name="recommendedGraphics"
+              defaultValue={recommended?.graphics ?? ""}
+              maxLength={240}
+            />
+          </label>
+
+          <label className={styles.fieldWide}>
+            <span>Almacenamiento</span>
+            <input
+              name="recommendedStorage"
+              defaultValue={recommended?.storage ?? ""}
+              maxLength={240}
+            />
+          </label>
+
+          <div className={styles.formActions}>
+            <p>
+              Si dejás todos los campos vacíos, el juego quedará sin requisitos editoriales configurados.
+            </p>
+            <button type="submit">
+              Guardar requisitos
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section
+        id="multimedia"
+        className={styles.editorPanel}
+      >
+        <div className={styles.sectionHeading}>
+          <div>
+            <span>MULTIMEDIA</span>
+            <h2>Portada, hero y galería</h2>
+          </div>
+          <p>
+            Por seguridad, esta etapa administra únicamente imágenes locales ya existentes dentro de /public/images.
+          </p>
+        </div>
+
+        <form
+          className={styles.editorForm}
+          method="post"
+          action={`/api/admin/content/games/${encodeURIComponent(slug)}/media`}
+        >
+          <input
+            type="hidden"
+            name="expectedRevision"
+            value={item.revision}
+          />
+
+          <label className={styles.fieldWide}>
+            <span>Ruta de portada</span>
+            <input
+              name="coverImage"
+              defaultValue={game.coverImage ?? ""}
+              maxLength={400}
+              placeholder="/images/games/juego/cover.webp"
+            />
+          </label>
+
+          <label className={styles.fieldWide}>
+            <span>Ruta de imagen hero</span>
+            <input
+              name="heroImage"
+              defaultValue={game.heroImage ?? ""}
+              maxLength={400}
+              placeholder="/images/games/juego/hero.webp"
+            />
+          </label>
+
+          <label className={styles.fieldWide}>
+            <span>Galería — una ruta por línea</span>
+            <textarea
+              name="screenshotsText"
+              defaultValue={(game.screenshots ?? []).join("\n")}
+              maxLength={3500}
+              rows={7}
+              placeholder={"/images/games/juego/screenshot-1.webp\n/images/games/juego/screenshot-2.webp"}
+            />
+          </label>
+
+          <div className={styles.formActions}>
+            <p>
+              Se aceptan hasta 8 capturas, sin duplicados, y sólo formatos de imagen locales permitidos. La ficha pública muestra actualmente las primeras cinco.
+            </p>
+            <button type="submit">
+              Guardar multimedia
             </button>
           </div>
         </form>
