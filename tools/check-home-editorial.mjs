@@ -71,20 +71,23 @@ assert(
     rankingEngine.includes("reviewScore") &&
     rankingEngine.includes("minimumRamGb") &&
     rankingEngine.includes("homeRankingDay") &&
+    rankingEngine.includes("homeRankingProfiles") &&
+    rankingEngine.includes("homeRankingDescription") &&
+    rankingEngine.includes("components") &&
     rankingEngine.includes('mode === "manual"') &&
     rankingEngine.includes('mode === "automatic"') &&
     rankingEngine.includes("isHomeRankingEligible"),
-  "La portada debe conservar un motor compartido, explicable, estable por día y determinista para Manual, Automático e Híbrido."
+  "La portada debe conservar un motor compartido, perfilado, explicable, estable por día y determinista para Manual, Automático e Híbrido."
 );
 
 assert(
-  rankingEngine.includes("popularity * 58") &&
-    rankingEngine.includes("rating * 34") &&
-    rankingEngine.includes("lowSpec * 60") &&
-    rankingEngine.includes("ram !== null && ram <= 12") &&
+  rankingEngine.includes("popularity: 58") &&
+    rankingEngine.includes("rating: 34") &&
+    rankingEngine.includes("lowSpec: 60") &&
+    rankingEngine.includes("HOME_LOW_SPEC_MAX_RAM_GB") &&
     rankingEngine.includes('target === "hero"') &&
     rankingEngine.includes("game.heroImage || game.coverImage"),
-  "El ranking debe mantener señales explícitas y exigir arte utilizable en Hero automático."
+  "El ranking debe mantener perfiles explícitos y exigir arte utilizable en Hero automático."
 );
 
 assert(
@@ -139,11 +142,14 @@ assert(
     curationEditor.includes("Híbrido") &&
     curationEditor.includes("resolveHomeCollectionGames") &&
     curationEditor.includes("rankHomeGames") &&
+    curationEditor.includes("homeRankingDescription") &&
     curationEditor.includes('name="curationJson"') &&
     curationEditor.includes("VISTA PREVIA DEL RESULTADO") &&
     curationEditor.includes("activeSelection.length >= meta.limit") &&
+    !curationEditor.includes("Popularidad 38%") &&
+    !curationEditor.includes("Volumen de reseñas 58%") &&
     !curationEditor.includes("textarea"),
-  "Curaduría debe ser un espacio editorial profesional con modos, límite visible, ranking explicable y vista previa, no un editor de slugs crudos."
+  "Curaduría debe reutilizar la definición real del ranking, respetar el límite visible y evitar fórmulas duplicadas o slugs crudos."
 );
 
 assert(
@@ -175,6 +181,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Home editorial: OK (curaduría profesional, preview con snapshots públicos, ranking explicable compartido, estabilidad diaria y compatibilidad histórica)."
+    "Home editorial: OK (curaduría profesional, perfiles centralizados, preview con snapshots públicos, ranking explicable, estabilidad diaria y compatibilidad histórica)."
   );
 }
