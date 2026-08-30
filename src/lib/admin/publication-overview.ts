@@ -96,9 +96,11 @@ export async function getPublicationOverview():
         `SELECT
            COUNT(*) FILTER (
              WHERE item_type = 'game'
+               AND public_visible = true
            )::int AS games,
            COUNT(*) FILTER (
              WHERE item_type = 'game_update'
+               AND public_visible = true
            )::int AS updates,
            COUNT(*) FILTER (
              WHERE item_type IN (
@@ -106,7 +108,10 @@ export async function getPublicationOverview():
                'game_update',
                'site_config'
              )
-               AND draft_payload IS DISTINCT FROM published_payload
+               AND (
+                 public_visible = false OR
+                 draft_payload IS DISTINCT FROM published_payload
+               )
            )::int AS pending
          FROM deuna_admin.editorial_items`
       ),
@@ -168,6 +173,7 @@ export async function listPublicationStates(
          item_key,
          publication_number,
          (
+           public_visible = false OR
            draft_payload IS DISTINCT FROM published_payload
          ) AS has_unpublished_changes
        FROM deuna_admin.editorial_items
