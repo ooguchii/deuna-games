@@ -4,7 +4,6 @@ import Footer from "@/components/layout/Footer";
 import Header from "@/components/layout/Header";
 
 import FeaturedCategories from "@/components/home/FeaturedCategories";
-import FeaturedGenres from "@/components/home/FeaturedGenres";
 import GameFinderSection from "@/components/home/GameFinderSection";
 import GamesForYourPC from "@/components/home/GamesForYourPC";
 import HeroSection from "@/components/home/HeroSection";
@@ -110,9 +109,6 @@ export default async function Home() {
         <GameFinderSection />
         {games.length > 0 && (
           <FeaturedCategories games={games} />
-        )}
-        {games.length > 0 && (
-          <FeaturedGenres games={games} />
         )}
         {collections.recentGames.length > 0 && (
           <RecentlyAdded games={collections.recentGames} />
