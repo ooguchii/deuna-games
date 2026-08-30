@@ -1,18 +1,29 @@
 "use client";
 
 import {
+  ArrowDown,
+  ArrowUp,
   Plus,
   Trash2,
 } from "lucide-react";
+import type { CSSProperties } from "react";
 import {
   useMemo,
   useState,
 } from "react";
 
+import TaxonomyIcon from "@/components/taxonomy/TaxonomyIcon";
+import {
+  taxonomyIconOptions,
+  taxonomyToneOptions,
+  withTaxonomyVisualDefaults,
+} from "@/lib/games/taxonomy-presentation";
 import type {
   GameTaxonomy,
+  GameTaxonomyIcon,
   GameTaxonomyKind,
   GameTaxonomyTerm,
+  GameTaxonomyTone,
 } from "@/types/game-taxonomy";
 
 import styles from "./GameTaxonomyEditor.module.css";
@@ -34,14 +45,14 @@ const sections: Section[] = [
     kind: "categories",
     title: "Categorías",
     description:
-      "Clasificación principal y amplia que organiza el catálogo público.",
+      "Clasificación principal. Su icono, color y orden se reutilizan en Inicio y en el catálogo público.",
     singular: "categoría",
   },
   {
     kind: "genres",
     title: "Géneros",
     description:
-      "Clasificaciones específicas que un juego podrá combinar en su ficha.",
+      "Clasificaciones específicas. Su identidad visual se reutiliza donde el género sea visible públicamente.",
     singular: "género",
   },
   {
@@ -92,6 +103,16 @@ function availableKey(
   return "";
 }
 
+function visualizedTaxonomy(
+  taxonomy: GameTaxonomy
+): GameTaxonomy {
+  return {
+    categories: taxonomy.categories.map(withTaxonomyVisualDefaults),
+    genres: taxonomy.genres.map(withTaxonomyVisualDefaults),
+    tags: taxonomy.tags,
+  };
+}
+
 export default function GameTaxonomyEditor({
   initialTaxonomy,
   revision,
@@ -101,7 +122,9 @@ export default function GameTaxonomyEditor({
   revision: number;
   usage: Usage;
 }) {
-  const [taxonomy, setTaxonomy] = useState(initialTaxonomy);
+  const [taxonomy, setTaxonomy] = useState(() =>
+    visualizedTaxonomy(initialTaxonomy)
+  );
   const [draftLabels, setDraftLabels] = useState<
     Record<GameTaxonomyKind, string>
   >({
@@ -150,9 +173,19 @@ export default function GameTaxonomyEditor({
       return;
     }
 
+    const base: GameTaxonomyTerm = {
+      key,
+      label,
+      active: true,
+    };
+    const term =
+      section.kind === "tags"
+        ? base
+        : withTaxonomyVisualDefaults(base, terms.length);
+
     updateTerms(section.kind, (current) => [
       ...current,
-      { key, label, active: true },
+      term,
     ]);
     setDraftLabels((current) => ({
       ...current,
@@ -173,6 +206,36 @@ export default function GameTaxonomyEditor({
           : term
       )
     );
+  }
+
+  function setVisual(
+    kind: GameTaxonomyKind,
+    key: string,
+    field: "icon" | "tone",
+    value: GameTaxonomyIcon | GameTaxonomyTone
+  ) {
+    updateTerms(kind, (terms) =>
+      terms.map((term) =>
+        term.key === key
+          ? { ...term, [field]: value }
+          : term
+      )
+    );
+  }
+
+  function moveTerm(
+    kind: GameTaxonomyKind,
+    index: number,
+    direction: -1 | 1
+  ) {
+    updateTerms(kind, (terms) => {
+      const target = index + direction;
+      if (target < 0 || target >= terms.length) return terms;
+
+      const next = [...terms];
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
   }
 
   function toggleTerm(
@@ -219,7 +282,7 @@ export default function GameTaxonomyEditor({
         <div>
           <strong>Datos maestros del catálogo</strong>
           <p>
-            Guardar aquí sólo modifica esta estructura administrativa. Ningún juego ni página pública cambia hasta que conectemos y guardemos cada ficha de forma explícita.
+            Ésta es la identidad única de categorías y géneros. Nombre, icono, color y orden se reutilizan en todas las superficies públicas que correspondan a juegos publicados.
           </p>
         </div>
         <span>Revisión {revision}</span>
@@ -235,6 +298,7 @@ export default function GameTaxonomyEditor({
         {sections.map((section) => {
           const terms = taxonomy[section.kind];
           const active = terms.filter((term) => term.active).length;
+          const hasVisuals = section.kind !== "tags";
 
           return (
             <section key={section.kind} className={styles.panel}>
@@ -284,8 +348,11 @@ export default function GameTaxonomyEditor({
                 </p>
               ) : (
                 <div className={styles.termList}>
-                  {terms.map((term) => {
+                  {terms.map((term, index) => {
                     const used = usage[section.kind][term.key] ?? 0;
+                    const tone = taxonomyToneOptions.find(
+                      (option) => option.key === term.tone
+                    );
 
                     return (
                       <div key={term.key} className={styles.termRow}>
@@ -306,11 +373,91 @@ export default function GameTaxonomyEditor({
                           <code>{term.key}</code>
                         </div>
 
+                        {hasVisuals && term.icon && term.tone && (
+                          <div className={styles.visualEditor}>
+                            <span
+                              className={styles.visualPreview}
+                              style={
+                                {
+                                  "--taxonomy-accent": tone?.color ?? "#ff1554",
+                                } as CSSProperties
+                              }
+                            >
+                              <TaxonomyIcon icon={term.icon} size={23} />
+                            </span>
+
+                            <label>
+                              <span>Icono</span>
+                              <select
+                                value={term.icon}
+                                onChange={(event) =>
+                                  setVisual(
+                                    section.kind,
+                                    term.key,
+                                    "icon",
+                                    event.target.value as GameTaxonomyIcon
+                                  )
+                                }
+                              >
+                                {taxonomyIconOptions.map((option) => (
+                                  <option key={option.key} value={option.key}>
+                                    {option.label}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+
+                            <label>
+                              <span>Color</span>
+                              <select
+                                value={term.tone}
+                                onChange={(event) =>
+                                  setVisual(
+                                    section.kind,
+                                    term.key,
+                                    "tone",
+                                    event.target.value as GameTaxonomyTone
+                                  )
+                                }
+                              >
+                                {taxonomyToneOptions.map((option) => (
+                                  <option key={option.key} value={option.key}>
+                                    {option.label}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                          </div>
+                        )}
+
                         <span className={styles.usage}>
                           {used === 0
                             ? "Sin uso"
                             : `${used} ${used === 1 ? "juego" : "juegos"}`}
                         </span>
+
+                        <div className={styles.orderButtons}>
+                          <button
+                            type="button"
+                            disabled={index === 0}
+                            aria-label={`Subir ${term.label}`}
+                            onClick={() =>
+                              moveTerm(section.kind, index, -1)
+                            }
+                          >
+                            <ArrowUp size={14} aria-hidden="true" />
+                          </button>
+                          <button
+                            type="button"
+                            disabled={index === terms.length - 1}
+                            aria-label={`Bajar ${term.label}`}
+                            onClick={() =>
+                              moveTerm(section.kind, index, 1)
+                            }
+                          >
+                            <ArrowDown size={14} aria-hidden="true" />
+                          </button>
+                        </div>
 
                         <button
                           type="button"
@@ -354,7 +501,7 @@ export default function GameTaxonomyEditor({
 
       <div className={styles.actions}>
         <p>
-          Los términos usados por juegos no se pueden borrar ni renombrar desde aquí; sí pueden quedar inactivos para no ofrecerlos en futuras fichas.
+          El orden que definas aquí será también el orden público. Los términos usados no se borran ni renombran, pero sí puedes cambiar su icono, color, posición o estado sin duplicar configuraciones.
         </p>
         <button type="submit">
           Guardar catálogos
