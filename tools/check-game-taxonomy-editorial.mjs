@@ -184,10 +184,13 @@ assert(
     homeClassifications.includes("getPublicTaxonomyPresentation") &&
     homeClassifications.includes("taxonomy.classifications") &&
     homeClassifications.includes("getCategoryStats") &&
-    homeClassifications.includes("CLASIFICACIONES") &&
+    homeClassifications.includes('copy: HomeCopy["classifications"]') &&
+    homeClassifications.includes("{copy.title}") &&
+    homeClassifications.includes("{copy.highlight}") &&
+    homeClassifications.includes("{copy.linkLabel}") &&
     !homePage.includes("FeaturedGenres") &&
     !homePage.includes("Explora por género"),
-  "Inicio debe mostrar una sola superficie de clasificación, sin bloque de géneros duplicado."
+  "Inicio debe mostrar una sola superficie de clasificación, con copy editorial y sin bloque de géneros duplicado."
 );
 
 assert(
