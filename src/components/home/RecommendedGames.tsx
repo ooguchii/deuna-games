@@ -4,11 +4,15 @@ import { ChevronRight } from "lucide-react";
 
 import CardCarousel from "@/components/ui/CardCarousel";
 import UniversalGameCard from "@/components/ui/UniversalGameCard";
-import { recommendedGames } from "@/data/home";
+import type { Game } from "@/types/game";
 
 import styles from "./RecommendedGames.module.css";
 
-export default function RecommendedGames() {
+export default function RecommendedGames({
+  games,
+}: {
+  games: Game[];
+}) {
   return (
     <section className={styles.section}>
       <div className={styles.header}>
@@ -36,7 +40,7 @@ export default function RecommendedGames() {
         ariaLabel="Juegos recomendados"
         itemsDesktop={5}
       >
-        {recommendedGames.map((game) => (
+        {games.map((game) => (
           <UniversalGameCard
             key={game.slug}
             game={game}
