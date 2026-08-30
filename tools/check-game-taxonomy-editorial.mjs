@@ -34,8 +34,7 @@ const [
   taxonomyPresentation,
   taxonomyIcon,
   publicTaxonomy,
-  homeCategories,
-  homeGenres,
+  homeClassifications,
   homePage,
   catalogClient,
   gamesPage,
@@ -60,7 +59,6 @@ const [
   source("src/components/taxonomy/TaxonomyIcon.tsx"),
   source("src/lib/games/public-taxonomy.ts"),
   source("src/components/home/FeaturedCategories.tsx"),
-  source("src/components/home/FeaturedGenres.tsx"),
   source("src/app/page.tsx"),
   source("src/components/games/GameCatalogClient.tsx"),
   source("src/app/juegos/page.tsx"),
@@ -70,12 +68,13 @@ const [
 assert(
   validation.includes('"game_taxonomy"') &&
     validation.includes("editorialGameTaxonomySchema") &&
-    validation.includes("categories: taxonomyTerms(80)") &&
-    validation.includes("genres: taxonomyTerms(200)") &&
+    validation.includes("classifications: taxonomyTerms(280)") &&
+    validation.includes("legacyGameTaxonomySchema") &&
+    validation.includes("mergeLegacyTaxonomyTerms") &&
     validation.includes("tags: taxonomyTerms(500)") &&
     validation.includes("icon: z.enum(taxonomyIconKeys).optional()") &&
     validation.includes("tone: z.enum(taxonomyToneKeys).optional()"),
-  "La taxonomía debe ser un tipo editorial validado, acotado y admitir presentación visual segura."
+  "La taxonomía debe validar una sola clasificación, migrar la forma antigua y admitir presentación visual segura."
 );
 
 assert(
@@ -88,10 +87,11 @@ assert(
 assert(
   importer.includes("ensureGameTaxonomyItem") &&
     importer.includes("buildGameTaxonomy") &&
+    importer.includes("classifications: taxonomyTerms") &&
+    importer.includes("...(game.genres ?? [])") &&
     importer.includes("public_visible") &&
-    importer.includes("false") &&
-    importer.includes('parseEditorialPayload(\n      "game_taxonomy"'),
-  "El importador debe generar una taxonomía inicial privada a partir de los juegos existentes."
+    importer.includes("false"),
+  "El importador debe generar una clasificación única a partir de categoría y géneros históricos sin perder datos."
 );
 
 assert(
@@ -101,10 +101,12 @@ assert(
     service.includes("editorial_revisions") &&
     service.includes("admin_audit_log") &&
     service.includes("resolveGameTaxonomySelection") &&
+    service.includes("taxonomy.classifications") &&
+    service.includes("gameClassifications") &&
     service.includes("currentGameKey") &&
     service.includes("term.active") &&
     !/\bDELETE\s+FROM\b/i.test(service),
-  "Catálogos debe usar concurrencia, historial y auditoría, proteger términos en uso y validar asignaciones activas sin borrado SQL."
+  "Catálogos debe usar una sola clasificación, concurrencia, historial, auditoría y protección de términos en uso."
 );
 
 assert(
@@ -118,9 +120,10 @@ assert(
 assert(
   page.includes("verifyAdminSession") &&
     page.includes('getEditorialItem("game_taxonomy", "games")') &&
+    page.includes("classifications") &&
     page.includes("GameTaxonomyEditor") &&
     page.includes("EditorialHistory"),
-  "Catálogos debe permanecer dentro del área protegida y mostrar editor e historial."
+  "Catálogos debe permanecer protegido y presentar una sola lista de clasificaciones."
 );
 
 assert(
@@ -137,62 +140,68 @@ assert(
     advancedRoute.includes("resolveGameTaxonomySelection") &&
     advancedRoute.includes("genres: classification.genres") &&
     advancedRoute.includes("tags: classification.tags"),
-  "Crear y editar juegos debe validar categoría, géneros y etiquetas contra la taxonomía maestra también en el servidor."
+  "Crear y editar juegos debe validar clasificación principal, adicionales y etiquetas en el servidor."
 );
 
 assert(
   newGamePage.includes('getEditorialItem("game_taxonomy", "games")') &&
+    newGamePage.includes("payload.classifications") &&
     newGamePage.includes("term.active") &&
-    newGameForm.includes('<select\n              name="category"') &&
+    newGameForm.includes("Clasificación principal") &&
+    newGameForm.includes("classifications.map") &&
     !newGameForm.includes('list="game-category-options"'),
-  "Nuevo juego debe consumir sólo categorías activas de Catálogos y no aceptar clasificación libre."
+  "Nuevo juego debe consumir sólo clasificaciones activas de la única lista maestra."
 );
 
 assert(
   gameEditorPage.includes('getEditorialItem("game_taxonomy", "games")') &&
-    gameEditorPage.includes("GameTaxonomyMultiSelect") &&
+    gameEditorPage.includes("taxonomy?.classifications.filter") &&
+    gameEditorPage.includes('label="Clasificaciones adicionales"') &&
     gameEditorPage.includes('name="genresText"') &&
     gameEditorPage.includes('name="tagsText"') &&
     taxonomySelector.includes('type="hidden"') &&
     taxonomySelector.includes("!term.active && !selectedTerm"),
-  "El editor de juegos debe seleccionar géneros y etiquetas desde Catálogos conservando términos antiguos inactivos sin reofrecerlos."
+  "El editor debe usar la misma lista maestra para clasificación principal y adicionales, conservando compatibilidad interna."
 );
 
 assert(
-  taxonomyEditor.includes("taxonomyIconOptions") &&
+  taxonomyEditor.includes('kind: "classifications"') &&
+    !taxonomyEditor.includes('kind: "genres"') &&
+    taxonomyEditor.includes("taxonomyIconOptions") &&
     taxonomyEditor.includes("taxonomyToneOptions") &&
     taxonomyEditor.includes("moveTerm") &&
     taxonomyEditor.includes('field: "icon" | "tone"') &&
     taxonomyPresentation.includes("taxonomyIconKeys") &&
     taxonomyPresentation.includes("taxonomyToneKeys") &&
     taxonomyIcon.includes("iconMap"),
-  "Catálogos debe gobernar también icono, color y orden con un registro visual reutilizable."
+  "Catálogos debe gobernar una sola clasificación con icono, color y orden reutilizables."
 );
 
 assert(
   publicTaxonomy.includes("draft_payload") &&
+    publicTaxonomy.includes("taxonomy.classifications") &&
     publicTaxonomy.includes("ensureVisuals") &&
-    homeCategories.includes("getPublicTaxonomyPresentation") &&
-    homeCategories.includes("resolveTaxonomyVisual") &&
-    homeCategories.includes("orderedCategories") &&
-    homeGenres.includes("getPublicTaxonomyPresentation") &&
-    homeGenres.includes("resolveTaxonomyVisual") &&
-    homeGenres.includes("orderedGenres") &&
-    homePage.includes("<FeaturedGenres games={games} />"),
-  "Inicio debe reutilizar directamente la identidad visual y el orden de Catálogos para categorías y géneros publicados."
+    homeClassifications.includes("getPublicTaxonomyPresentation") &&
+    homeClassifications.includes("taxonomy.classifications") &&
+    homeClassifications.includes("getCategoryStats") &&
+    homeClassifications.includes("CLASIFICACIONES") &&
+    !homePage.includes("FeaturedGenres") &&
+    !homePage.includes("Explora por género"),
+  "Inicio debe mostrar una sola superficie de clasificación, sin bloque de géneros duplicado."
 );
 
 assert(
   gamesPage.includes("getPublicTaxonomyPresentation") &&
-    gamesPage.includes("categoryTerms={taxonomy.categories}") &&
+    gamesPage.includes("categoryTerms={taxonomy.classifications}") &&
     catalogClient.includes("categoryTerms: GameTaxonomyTerm[]") &&
     catalogClient.includes("orderedCategoryStats") &&
     catalogClient.includes("resolveTaxonomyVisual") &&
     catalogClient.includes("<TaxonomyIcon") &&
-    publicCatalog.includes("classificationText(game)") &&
-    publicCatalog.includes("...(game.genres ?? [])") &&
-    publicCatalog.includes("...(game.tags ?? [])"),
-  "El catálogo público debe reutilizar la misma categoría maestra y mantener búsqueda por categoría, género y etiqueta."
+    publicCatalog.includes("gameClassifications") &&
+    publicCatalog.includes("getCategoryStats") &&
+    publicCatalog.includes("hasClassification") &&
+    publicCatalog.includes("seen.has(normalized)"),
+  "El catálogo público debe contar y filtrar una clasificación única, deduplicando cada juego dentro de cada término."
 );
 
 if (failures.length > 0) {
@@ -201,6 +210,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Taxonomía editorial: OK (una sola definición controla nombre, icono, color, orden y asignación; Inicio y catálogo reutilizan la misma identidad sin listas visuales duplicadas)."
+    "Taxonomía editorial: OK (categorías y géneros unificados en una sola clasificación; contador único por juego, identidad visual compartida y sin bloque público duplicado)."
   );
 }
