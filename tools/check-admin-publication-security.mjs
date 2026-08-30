@@ -27,6 +27,7 @@ const [
   publicAboutConfig,
   publicCatalog,
   publicUpdates,
+  gamePublicRevalidation,
   publishRoute,
   restoreRoute,
   homePublishRoute,
@@ -49,6 +50,7 @@ const [
   source("src/lib/about/public-about-config.ts"),
   source("src/lib/games/public-catalog.ts"),
   source("src/lib/updates/public-updates.ts"),
+  source("src/lib/admin/game-public-revalidation.ts"),
   source("src/app/api/admin/content/configuration/publish/route.ts"),
   source("src/app/api/admin/content/configuration-publications/[publicationId]/restore/route.ts"),
   source(
@@ -177,18 +179,35 @@ assert(
   "Quiénes somos debe exigir visibilidad explícita y usar sólo el snapshot publicado."
 );
 
-for (const [name, route] of [
-  ["juego", hideGameRoute],
-  ["actualización", hideUpdateRoute],
+assert(
+  hideGameRoute.includes("authorizeAdminFormRequest") &&
+    hideGameRoute.includes("expectedPublicationNumber") &&
+    hideGameRoute.includes("hasExactAdminFormFields") &&
+    hideGameRoute.includes("revalidatePublicGameSurfaces"),
+  "Ocultar juego debe exigir sesión/origen, control de concurrencia y el refresco público compartido."
+);
+
+for (const publicPath of [
+  'revalidatePath("/")',
+  'revalidatePath("/juegos")',
+  'revalidatePath("/actualizaciones")',
+  'revalidatePath("/requisitos")',
+  'revalidatePath(`/juegos/${slug}`)',
+  'revalidatePath(`/juegos/${slug}/descargar`)',
 ]) {
   assert(
-    route.includes("authorizeAdminFormRequest") &&
-      route.includes("expectedPublicationNumber") &&
-      route.includes("hasExactAdminFormFields") &&
-      route.includes("revalidatePath"),
-    `Ocultar ${name} debe exigir sesión/origen, control de concurrencia y revalidación pública.`
+    gamePublicRevalidation.includes(publicPath),
+    `El refresco público de juegos debe conservar ${publicPath}.`
   );
 }
+
+assert(
+  hideUpdateRoute.includes("authorizeAdminFormRequest") &&
+    hideUpdateRoute.includes("expectedPublicationNumber") &&
+    hideUpdateRoute.includes("hasExactAdminFormFields") &&
+    hideUpdateRoute.includes("revalidatePath"),
+  "Ocultar actualización debe exigir sesión/origen, control de concurrencia y revalidación pública."
+);
 
 assert(
   publishRoute.includes("authorizeAdminFormRequest") &&
@@ -278,6 +297,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Publicación administrativa: OK (juegos, actualizaciones, identidad, portada y páginas usan snapshots, auditoría y restauración sin borrado)."
+    "Publicación administrativa: OK (juegos, actualizaciones, identidad, portada y páginas usan snapshots, auditoría, refresco público y restauración sin borrado)."
   );
 }
