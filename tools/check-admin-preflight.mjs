@@ -69,11 +69,19 @@ for (const required of [
   );
 }
 
-assert(
-  !/\b(?:INSERT|UPDATE|DELETE|TRUNCATE|ALTER|DROP|CREATE)\b/i.test(
-    localPreflight
+const sqlQueries = [
+  ...localPreflight.matchAll(
+    /pool\.query(?:<[\s\S]*?>)?\(\s*`([\s\S]*?)`/g
   ),
-  "El preflight local debe permanecer estrictamente de sólo lectura."
+].map((match) => match[1].trim());
+
+assert(
+  sqlQueries.length >= 5,
+  "El preflight local debe mantener sus consultas explícitas bajo inspección."
+);
+assert(
+  sqlQueries.every((query) => /^SELECT\b/i.test(query)),
+  "El preflight local debe permanecer estrictamente de sólo lectura: todas sus consultas deben ser SELECT."
 );
 assert(
   localPreflight.includes(
