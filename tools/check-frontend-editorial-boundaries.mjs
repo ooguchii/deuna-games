@@ -27,6 +27,8 @@ async function joinSources(relativeDirectory) {
 }
 
 const [
+  rootLayout,
+  manifest,
   homePage,
   homeConfig,
   publicHomeReader,
@@ -38,6 +40,8 @@ const [
   publicPagesReader,
   footer,
 ] = await Promise.all([
+  source("src/app/layout.tsx"),
+  source("src/app/manifest.ts"),
   source("src/app/page.tsx"),
   source("src/data/home-config.ts"),
   source("src/lib/home/public-home-config.ts"),
@@ -80,6 +84,24 @@ for (const phrase of [
     `El copy editorial de Inicio debe vivir en home-config y no quedar fijo en componentes: ${phrase}`
   );
 }
+
+assert(
+  rootLayout.includes("getPublicHomeConfig") &&
+    rootLayout.includes("homeConfig.copy.hero.accessibleTitle") &&
+    homePage.includes("homeConfig.copy.hero.accessibleTitle") &&
+    !rootLayout.includes("Encuentra juegos para tu PC") &&
+    !homePage.includes("Encuentra juegos para tu PC"),
+  "La metadata de Inicio debe reutilizar el título accesible publicado en Portada, sin mantener un segundo copy SEO fijo."
+);
+
+assert(
+  manifest.includes("getPublicSiteConfig") &&
+    manifest.includes("name: config.name") &&
+    manifest.includes("short_name: config.shortName") &&
+    manifest.includes("description: config.description") &&
+    manifest.includes("theme_color: config.themeColor"),
+  "El manifest debe reutilizar la identidad pública publicada en vez de duplicar marca o descripción."
+);
 
 for (const [name, content] of [
   ["Juegos", gamesPage],
