@@ -10,7 +10,7 @@ import {
   Zap,
 } from "lucide-react";
 
-import { games } from "@/data/games";
+import type { Game } from "@/types/game";
 
 import styles from "./FeaturedCategories.module.css";
 
@@ -47,7 +47,11 @@ const categories = [
   },
 ] as const;
 
-export default function FeaturedCategories() {
+export default function FeaturedCategories({
+  games,
+}: {
+  games: Game[];
+}) {
   return (
     <section className={styles.section}>
       <div className={styles.header}>
