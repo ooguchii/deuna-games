@@ -62,7 +62,7 @@ export default async function Footer() {
       <div className={styles.bottom}>
         <span>© {year} {config.name}</span>
 
-        <span>Hecho para encontrar tu próximo juego.</span>
+        <span>{config.footerTagline}</span>
       </div>
     </footer>
   );
