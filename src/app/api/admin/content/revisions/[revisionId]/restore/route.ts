@@ -24,25 +24,26 @@ export const runtime = "nodejs";
 
 function itemPath(
   type: EditorialItemType,
-  key: string
+  key: string,
+  state: string
 ) {
   if (type === "game") {
-    return `/admin/juegos/${encodeURIComponent(key)}`;
+    return `/admin/juegos/${encodeURIComponent(key)}?estado=${state}&seccion=historial`;
   }
 
   if (type === "game_update") {
-    return `/admin/actualizaciones/${encodeURIComponent(key)}`;
+    return `/admin/actualizaciones/${encodeURIComponent(key)}?estado=${state}&seccion=historial`;
   }
 
   if (type === "home_config") {
-    return "/admin/portada";
+    return `/admin/portada?estado=${state}`;
   }
 
   if (type === "about_config") {
-    return "/admin/paginas/quienes-somos";
+    return `/admin/paginas/quienes-somos?estado=${state}`;
   }
 
-  return "/admin/configuracion";
+  return `/admin/configuracion?estado=${state}`;
 }
 
 export async function POST(
@@ -115,7 +116,7 @@ export async function POST(
 
     return adminRedirect(
       authorized.adminOrigin,
-      `${itemPath(result.type, result.key)}?estado=${state}`
+      itemPath(result.type, result.key, state)
     );
   } catch {
     console.error(
