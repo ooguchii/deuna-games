@@ -2,6 +2,7 @@ export type GameEditorSection =
   | "ficha"
   | "datos"
   | "requisitos"
+  | "rendimiento"
   | "multimedia"
   | "descargas";
 
@@ -15,7 +16,8 @@ const nextSection: Record<
 > = {
   ficha: "datos",
   datos: "requisitos",
-  requisitos: "multimedia",
+  requisitos: "rendimiento",
+  rendimiento: "multimedia",
   multimedia: "descargas",
   descargas: "publicacion",
 };
