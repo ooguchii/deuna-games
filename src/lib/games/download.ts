@@ -1,6 +1,7 @@
 import type {
   Game,
   GameDownloadSource,
+  GameDownloadSourceStatus,
 } from "@/types/game";
 
 export type ResolvedDownloadSource = {
@@ -9,6 +10,7 @@ export type ResolvedDownloadSource = {
   href: string;
   label: string;
   external: boolean;
+  status: GameDownloadSourceStatus;
 };
 
 export type ResolvedDownload = {
@@ -96,9 +98,22 @@ function resolveHref(
   }
 }
 
+function resolveStatus(
+  status: GameDownloadSourceStatus | undefined
+): GameDownloadSourceStatus {
+  return status === "down" ||
+    status === "maintenance"
+    ? status
+    : "available";
+}
+
 function resolveSource(
   source: GameDownloadSource
 ): ResolvedDownloadSource | null {
+  if (source.enabled === false) {
+    return null;
+  }
+
   const resolved =
     resolveHref(source.href);
 
@@ -118,6 +133,7 @@ function resolveSource(
     name,
     href: resolved.href,
     external: resolved.external,
+    status: resolveStatus(source.status),
     label:
       source.label?.trim() ||
       `Abrir ${name}`,
@@ -163,6 +179,7 @@ export function resolveGameDownload(
         name: "Descarga principal",
         href: resolved.href,
         external: resolved.external,
+        status: "available",
         label:
           config.label?.trim() ||
           "Descargar versión actual",
@@ -170,7 +187,10 @@ export function resolveGameDownload(
     }
   }
 
-  const primary = sources[0];
+  const primary =
+    sources.find(
+      (source) => source.status === "available"
+    ) ?? sources[0];
 
   if (!primary) {
     return null;
