@@ -21,6 +21,18 @@ export type GameRequirements =
     recommended?: GameHardwareRequirements;
   };
 
+export type GamePerformanceCalibration = {
+  /*
+   * FPS observados o calibrados sobre el equipo de referencia del modelo
+   * a 1080p / calidad media. Se mantiene dentro del payload editorial para
+   * que juegos creados desde el panel puedan estimar rendimiento sin exigir
+   * una entrada nueva en el código fuente.
+   */
+  referenceFps: number;
+  ramGb: number;
+  fpsCap?: number;
+};
+
 export type GamePlatform =
   | "PC"
   | "PlayStation"
@@ -99,5 +111,6 @@ export type Game = {
   imageAlt: string;
 
   requirements?: GameRequirements;
+  performance?: GamePerformanceCalibration;
   download?: GameDownload;
 };
