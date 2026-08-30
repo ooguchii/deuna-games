@@ -48,6 +48,7 @@ const requiredStageItems = [
   "next.config.ts",
   "tsconfig.json",
   "next-env.d.ts",
+  "tools/run-next.mjs",
   "tools/smoke-test.mjs",
 ];
 
