@@ -12,12 +12,19 @@ import PopularGames from "@/components/home/PopularGames";
 import RecentlyAdded from "@/components/home/RecentlyAdded";
 import RecommendedGames from "@/components/home/RecommendedGames";
 import TrustSection from "@/components/home/TrustSection";
-
+import {
+  buildHomeGameCollections,
+} from "@/data/home";
+import {
+  getPublicGames,
+} from "@/lib/games/public-catalog";
 import {
   absoluteUrl,
   siteConfig,
 } from "@/lib/site";
 import { safeJsonLd } from "@/lib/safe-json-ld";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   alternates: {
@@ -32,7 +39,10 @@ export const metadata: Metadata = {
   },
 };
 
-export default function Home() {
+export default async function Home() {
+  const games = await getPublicGames();
+  const collections =
+    buildHomeGameCollections(games);
   const websiteJsonLd = {
     "@context": "https://schema.org",
     "@type": "WebSite",
@@ -73,14 +83,16 @@ export default function Home() {
         id="main-content"
         className="main-content"
       >
-        <HeroSection />
-        <PopularGames />
+        <HeroSection games={collections.heroGames} />
+        <PopularGames games={collections.popularGames} />
         <GameFinderSection />
-        <FeaturedCategories />
-        <RecentlyAdded />
+        <FeaturedCategories games={games} />
+        <RecentlyAdded games={collections.recentGames} />
         <LatestUpdates />
-        <GamesForYourPC />
-        <RecommendedGames />
+        <GamesForYourPC games={collections.lowSpecGames} />
+        <RecommendedGames
+          games={collections.recommendedGames}
+        />
         <TrustSection />
       </main>
 
