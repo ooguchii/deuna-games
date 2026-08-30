@@ -14,6 +14,7 @@ import {
 } from "@/lib/admin/game-media-integrity";
 import {
   getHistoricalGamePublicationCandidate,
+  inspectPublishedGameTaxonomyIntegrity,
 } from "@/lib/admin/game-publication-review";
 import {
   revalidatePublicGameSurfaces,
@@ -95,6 +96,18 @@ export async function POST(
       return adminRedirect(
         authorized.adminOrigin,
         `${target}?estado=conflicto-publicacion`
+      );
+    }
+
+    const taxonomyIntegrity =
+      await inspectPublishedGameTaxonomyIntegrity(
+        candidate.game
+      );
+
+    if (!taxonomyIntegrity.ok) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        `${target}?estado=catalogos-sin-publicar`
       );
     }
 
