@@ -39,6 +39,13 @@ const catalogSections = [
   { id: "historial", label: "Historial", icon: FileClock },
 ] as const;
 
+const homeSections = [
+  { id: "curaduria", label: "Curaduría", icon: PanelTop },
+  { id: "presentacion", label: "Presentación", icon: SquarePen },
+  { id: "publicacion", label: "Publicación", icon: Rocket },
+  { id: "historial", label: "Historial", icon: FileClock },
+] as const;
+
 export default function AdminContextBar() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -107,6 +114,31 @@ export default function AdminContextBar() {
     return (
       <nav className={ux.contextBar} aria-label="Secciones del panel de catálogos">
         {catalogSections.map((section) => {
+          const Icon = section.icon;
+          const active = selected === section.id;
+
+          return (
+            <a
+              key={section.id}
+              href={`${pathname}?seccion=${section.id}`}
+              className={active ? ux.contextActive : undefined}
+              aria-current={active ? "page" : undefined}
+            >
+              <Icon size={16} strokeWidth={1.9} aria-hidden="true" />
+              {section.label}
+            </a>
+          );
+        })}
+      </nav>
+    );
+  }
+
+  if (pathname === "/admin/portada") {
+    const selected = searchParams.get("seccion") ?? "curaduria";
+
+    return (
+      <nav className={ux.contextBar} aria-label="Secciones del editor de Portada">
+        {homeSections.map((section) => {
           const Icon = section.icon;
           const active = selected === section.id;
 
