@@ -27,8 +27,13 @@ export default function GamePerformanceEditor({
   action,
   calibration,
 }: GamePerformanceEditorProps) {
-  const legacyProfile = resolvePerformanceProfile(slug);
-  const usesLegacyFallback = !calibration && legacyProfile;
+  const legacyProfile = calibration
+    ? null
+    : resolvePerformanceProfile(slug);
+  const legacyReferenceFps = legacyProfile?.referenceFps;
+  const legacyRamGb = legacyProfile?.ramGb;
+  const legacyFpsCap = legacyProfile?.fpsCap;
+  const usesLegacyFallback = legacyProfile !== null;
 
   return (
     <section className={adminStyles.editorPanel}>
@@ -70,7 +75,7 @@ export default function GamePerformanceEditor({
         ) : usesLegacyFallback ? (
           <div className={`${adminStyles.editorNotice} ${adminStyles.editorNoticeWarning} ${adminStyles.fieldWide}`}>
             <Info size={16} aria-hidden="true" />
-            La web todavía puede estimar este juego con su perfil histórico de código ({legacyProfile.referenceFps} FPS, {legacyProfile.ramGb} GB de RAM de referencia). Guardar aquí lo convierte en contenido editorial versionado.
+            La web todavía puede estimar este juego con su perfil histórico de código ({legacyReferenceFps} FPS, {legacyRamGb} GB de RAM de referencia). Guardar aquí lo convierte en contenido editorial versionado.
           </div>
         ) : (
           <div className={`${adminStyles.editorNotice} ${adminStyles.editorNoticeWarning} ${adminStyles.fieldWide}`}>
@@ -88,7 +93,11 @@ export default function GamePerformanceEditor({
             max="1000"
             step="0.01"
             defaultValue={calibration?.referenceFps ?? ""}
-            placeholder={usesLegacyFallback ? String(legacyProfile.referenceFps) : "Ej. 72"}
+            placeholder={
+              legacyReferenceFps !== undefined
+                ? String(legacyReferenceFps)
+                : "Ej. 72"
+            }
           />
           <small>
             FPS observados en el equipo de referencia a 1080p y calidad media.
@@ -104,7 +113,11 @@ export default function GamePerformanceEditor({
             max="512"
             step="0.01"
             defaultValue={calibration?.ramGb ?? ""}
-            placeholder={usesLegacyFallback ? String(legacyProfile.ramGb) : "Ej. 16"}
+            placeholder={
+              legacyRamGb !== undefined
+                ? String(legacyRamGb)
+                : "Ej. 16"
+            }
           />
           <small>
             Cantidad de RAM usada para calibrar la penalización cuando el equipo del visitante queda por debajo.
@@ -121,8 +134,8 @@ export default function GamePerformanceEditor({
             step="0.01"
             defaultValue={calibration?.fpsCap ?? ""}
             placeholder={
-              usesLegacyFallback && legacyProfile.fpsCap
-                ? String(legacyProfile.fpsCap)
+              legacyFpsCap !== undefined
+                ? String(legacyFpsCap)
                 : "Ej. 60 si el juego está limitado a 60 FPS"
             }
           />
