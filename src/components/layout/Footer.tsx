@@ -2,27 +2,33 @@ import Link from "next/link";
 
 import { Gamepad2 } from "lucide-react";
 
+import {
+  getPublicSiteConfig,
+} from "@/lib/site/public-site-config";
+
 import styles from "./Footer.module.css";
 
-export default function Footer() {
+export default async function Footer() {
+  const config = await getPublicSiteConfig();
+  const year = new Date().getUTCFullYear();
+
   return (
     <footer className={styles.footer}>
       <div className={styles.inner}>
         <div className={styles.brandColumn}>
-          <Link href="/" className={styles.brand}>
+          <Link
+            href="/"
+            className={styles.brand}
+            aria-label={`${config.name} - Inicio`}
+          >
             <div className={styles.logo}>
-              <Gamepad2 size={25} />
+              <Gamepad2 size={25} aria-hidden="true" />
             </div>
 
-            <strong>
-              DeUna <span>Games</span>
-            </strong>
+            <strong>{config.name}</strong>
           </Link>
 
-          <p>
-            Descubre juegos, comprueba sus requisitos
-            y mantente al día con sus versiones.
-          </p>
+          <p>{config.description}</p>
         </div>
 
         <div className={styles.column}>
@@ -47,14 +53,14 @@ export default function Footer() {
         </div>
 
         <div className={styles.column}>
-          <h3>DeUna Games</h3>
+          <h3>{config.shortName}</h3>
 
           <Link href="/quienes-somos">Quiénes somos</Link>
         </div>
       </div>
 
       <div className={styles.bottom}>
-        <span>© 2026 DeUna Games</span>
+        <span>© {year} {config.name}</span>
 
         <span>Hecho para encontrar tu próximo juego.</span>
       </div>
