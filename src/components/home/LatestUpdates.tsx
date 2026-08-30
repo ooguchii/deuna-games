@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 
 import GameMedia from "@/components/ui/GameMedia";
+import type { HomeCopy } from "@/data/home-config";
 import {
   formatUpdateDate,
 } from "@/lib/updates/catalog";
@@ -25,10 +26,12 @@ const fallbackClassBySlug:
 
 type LatestUpdatesProps = {
   updates: readonly ResolvedGameUpdate[];
+  copy: HomeCopy["updates"];
 };
 
 export default function LatestUpdates({
   updates,
+  copy,
 }: LatestUpdatesProps) {
   return (
     <section
@@ -42,14 +45,14 @@ export default function LatestUpdates({
         }
       >
         <h2>
-          ÚLTIMAS{" "}
+          {copy.title}{" "}
           <span>
-            ACTUALIZACIONES
+            {copy.highlight}
           </span>
         </h2>
 
         <Link href="/actualizaciones">
-          Ver todas las actualizaciones
+          {copy.linkLabel}
         </Link>
       </div>
 
@@ -125,7 +128,7 @@ export default function LatestUpdates({
                         styles.badge
                       }
                     >
-                      ACTUALIZADO
+                      {copy.badgeLabel}
                     </span>
                   </div>
 
@@ -178,7 +181,7 @@ export default function LatestUpdates({
                         styles.details
                       }
                     >
-                      Ver juego
+                      {copy.detailsLabel}
                       <ChevronRight
                         size={16}
                       />
