@@ -58,7 +58,7 @@ const [
   source("src/lib/admin/game-public-revalidation.ts"),
   source("src/app/api/admin/content/configuration/publish/route.ts"),
   source("src/app/api/admin/content/configuration-publications/[publicationId]/restore/route.ts"),
-  source("src/app/api/admin/content/home/publish/route.ts"),
+  source("src/app/api/admin/content/" + "home/publish/route.ts"),
   source("src/app/api/admin/content/home-publications/[publicationId]/restore/route.ts"),
   source("src/app/api/admin/content/about/publish/route.ts"),
   source("src/app/api/admin/content/about-publications/[publicationId]/restore/route.ts"),
