@@ -82,7 +82,7 @@ export async function POST(
   ) {
     return adminRedirect(
       authorized.adminOrigin,
-      `${target}?estado=solicitud#multimedia`
+      `${target}?estado=solicitud&seccion=multimedia`
     );
   }
 
@@ -108,7 +108,7 @@ export async function POST(
   ) {
     return adminRedirect(
       authorized.adminOrigin,
-      `${target}?estado=imagen-invalida#multimedia`
+      `${target}?estado=imagen-invalida&seccion=multimedia`
     );
   }
 
@@ -128,7 +128,7 @@ export async function POST(
     if (item.revision !== revision.data) {
       return adminRedirect(
         authorized.adminOrigin,
-        `${target}?estado=conflicto#multimedia`
+        `${target}?estado=conflicto&seccion=multimedia`
       );
     }
 
@@ -138,7 +138,7 @@ export async function POST(
     ) {
       return adminRedirect(
         authorized.adminOrigin,
-        `${target}?estado=galeria-llena#multimedia`
+        `${target}?estado=galeria-llena&seccion=multimedia`
       );
     }
 
@@ -182,13 +182,13 @@ export async function POST(
     if (result.outcome === "conflict") {
       return adminRedirect(
         authorized.adminOrigin,
-        `${target}?estado=conflicto#multimedia`
+        `${target}?estado=conflicto&seccion=multimedia`
       );
     }
 
     return adminRedirect(
       authorized.adminOrigin,
-      `${target}?estado=imagen-subida#multimedia`
+      `${target}?estado=imagen-subida&seccion=multimedia`
     );
   } catch {
     console.error(
@@ -197,7 +197,7 @@ export async function POST(
 
     return adminRedirect(
       authorized.adminOrigin,
-      `${target}?estado=imagen-invalida#multimedia`
+      `${target}?estado=imagen-invalida&seccion=multimedia`
     );
   }
 }
