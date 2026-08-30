@@ -18,6 +18,7 @@ import {
 } from "@/lib/admin/content-service";
 import {
   getPublicationOverview,
+  type RecentPublication,
 } from "@/lib/admin/publication-overview";
 import {
   verifyAdminSession,
@@ -28,12 +29,26 @@ import styles from "../admin.module.css";
 export const dynamic = "force-dynamic";
 
 function publicationPath(
-  type: "game" | "game_update",
+  type: RecentPublication["type"],
   key: string
 ) {
-  return type === "game"
-    ? `/admin/juegos/${encodeURIComponent(key)}/vista-previa`
-    : `/admin/actualizaciones/${encodeURIComponent(key)}`;
+  if (type === "game") {
+    return `/admin/juegos/${encodeURIComponent(key)}/vista-previa`;
+  }
+
+  if (type === "game_update") {
+    return `/admin/actualizaciones/${encodeURIComponent(key)}`;
+  }
+
+  return "/admin/configuracion";
+}
+
+function publicationTypeLabel(
+  type: RecentPublication["type"]
+) {
+  if (type === "game") return "Juego";
+  if (type === "game_update") return "Actualización";
+  return "Configuración";
 }
 
 function formatPublicationDate(value: Date) {
@@ -160,7 +175,7 @@ export default async function AdminDashboardPage() {
             <div>
               <strong>Configuración editorial</strong>
               <span>
-                Identidad pública versionada, sin exponer secretos ni opciones del servidor.
+                Identidad pública versionada, publicable y restaurable sin exponer secretos ni opciones del servidor.
               </span>
             </div>
             <ArrowRight size={18} aria-hidden="true" />
@@ -194,9 +209,7 @@ export default async function AdminDashboardPage() {
                       >
                         <strong>{entry.key}</strong>
                         <span>
-                          {entry.type === "game"
-                            ? "Juego"
-                            : "Actualización"}
+                          {publicationTypeLabel(entry.type)}
                         </span>
                       </Link>
                     </th>
