@@ -183,28 +183,37 @@ assert(
     publicTaxonomy.includes("ensureVisuals") &&
     homeClassifications.includes("getPublicTaxonomyPresentation") &&
     homeClassifications.includes("taxonomy.classifications") &&
-    homeClassifications.includes("getCategoryStats") &&
+    homeClassifications.includes("getOrderedClassificationStats") &&
     homeClassifications.includes('copy: HomeCopy["classifications"]') &&
     homeClassifications.includes("{copy.title}") &&
     homeClassifications.includes("{copy.highlight}") &&
     homeClassifications.includes("{copy.linkLabel}") &&
+    !homeClassifications.includes("function orderedClassifications") &&
     !homePage.includes("FeaturedGenres") &&
     !homePage.includes("Explora por género"),
-  "Inicio debe mostrar una sola superficie de clasificación, con copy editorial y sin bloque de géneros duplicado."
+  "Inicio debe mostrar una sola superficie de clasificación, reutilizar el cálculo compartido y no duplicar géneros."
 );
 
 assert(
   gamesPage.includes("getPublicTaxonomyPresentation") &&
     gamesPage.includes("categoryTerms={taxonomy.classifications}") &&
     catalogClient.includes("categoryTerms: GameTaxonomyTerm[]") &&
-    catalogClient.includes("orderedCategoryStats") &&
+    catalogClient.includes("getOrderedClassificationStats") &&
+    !catalogClient.includes("function orderedCategoryStats") &&
     catalogClient.includes("resolveTaxonomyVisual") &&
     catalogClient.includes("<TaxonomyIcon") &&
     publicCatalog.includes("gameClassifications") &&
     publicCatalog.includes("getCategoryStats") &&
     publicCatalog.includes("hasClassification") &&
     publicCatalog.includes("seen.has(normalized)"),
-  "El catálogo público debe contar y filtrar una clasificación única, deduplicando cada juego dentro de cada término."
+  "El catálogo público debe reutilizar el mismo orden/conteo de clasificaciones y deduplicar cada juego dentro de cada término."
+);
+
+assert(
+  publicCatalog.includes("getOrderedClassificationStats") &&
+    homeClassifications.includes("getOrderedClassificationStats") &&
+    catalogClient.includes("getOrderedClassificationStats"),
+  "Home y catálogo deben depender de una sola función compartida para ordenar y contar clasificaciones."
 );
 
 if (failures.length > 0) {
@@ -213,6 +222,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Taxonomía editorial: OK (categorías y géneros unificados en una sola clasificación; contador único por juego, identidad visual compartida y sin bloque público duplicado)."
+    "Taxonomía editorial: OK (clasificación única; contador, orden e identidad visual compartidos entre Home y catálogo; sin bloque público duplicado)."
   );
 }
