@@ -3,7 +3,11 @@ import "server-only";
 import type { PoolClient } from "pg";
 
 import type { Game } from "@/types/game";
-import type { GameTaxonomy } from "@/types/game-taxonomy";
+import type {
+  GameTaxonomy,
+  GameTaxonomyKind,
+  GameTaxonomyTerm,
+} from "@/types/game-taxonomy";
 
 import {
   hashEditorialPayload,
@@ -13,6 +17,7 @@ import {
   parseEditorialPayload,
 } from "./content-validation";
 import {
+  adminQuery,
   withAdminTransaction,
 } from "./database";
 import {
@@ -26,6 +31,10 @@ type TaxonomyItemRow = {
   revision: number;
 };
 
+type TaxonomyPayloadRow = {
+  draft_payload: unknown;
+};
+
 type GamePayloadRow = {
   draft_payload: unknown;
 };
@@ -35,6 +44,22 @@ export type GameTaxonomyMutationResult =
   | { outcome: "conflict"; revision: number }
   | { outcome: "in_use"; revision: number }
   | { outcome: "not_found" };
+
+export type GameTaxonomySelectionInput = {
+  category?: string;
+  genres?: readonly string[];
+  tags?: readonly string[];
+  currentGameKey?: string;
+};
+
+export type GameTaxonomySelectionResult =
+  | {
+      valid: true;
+      category?: string;
+      genres?: string[];
+      tags?: string[];
+    }
+  | { valid: false };
 
 function normalizeLabel(value: string) {
   return value
@@ -79,6 +104,58 @@ function preservesUsedGameTerms(
   return true;
 }
 
+function currentValuesForKind(
+  kind: GameTaxonomyKind,
+  game: Game | null
+) {
+  if (!game) return [];
+
+  if (kind === "categories") {
+    return [game.category];
+  }
+
+  return kind === "genres"
+    ? game.genres ?? []
+    : game.tags ?? [];
+}
+
+function resolveTerms(
+  terms: readonly GameTaxonomyTerm[],
+  requested: readonly string[] | undefined,
+  current: readonly string[]
+) {
+  if (requested === undefined) return undefined;
+
+  const active = new Map(
+    terms
+      .filter((term) => term.active)
+      .map((term) => [
+        normalizeLabel(term.label),
+        term.label,
+      ])
+  );
+  const retained = new Map(
+    current.map((value) => [normalizeLabel(value), value])
+  );
+  const resolved: string[] = [];
+  const seen = new Set<string>();
+
+  for (const value of requested) {
+    const normalized = normalizeLabel(value);
+    const canonical =
+      active.get(normalized) ?? retained.get(normalized);
+
+    if (!canonical || seen.has(normalized)) {
+      return null;
+    }
+
+    seen.add(normalized);
+    resolved.push(canonical);
+  }
+
+  return resolved;
+}
+
 async function readGames(client: PoolClient) {
   const result = await client.query<GamePayloadRow>(
     `SELECT draft_payload
@@ -90,6 +167,92 @@ async function readGames(client: PoolClient) {
   return result.rows.map((row) =>
     parseEditorialPayload("game", row.draft_payload)
   );
+}
+
+async function readCurrentGame(key: string | undefined) {
+  if (!key) return null;
+
+  const result = await adminQuery<GamePayloadRow>(
+    `SELECT draft_payload
+       FROM deuna_admin.editorial_items
+      WHERE item_type = 'game'
+        AND item_key = $1
+      LIMIT 1`,
+    [key]
+  );
+  const row = result.rows[0];
+
+  return row
+    ? parseEditorialPayload("game", row.draft_payload)
+    : null;
+}
+
+export async function resolveGameTaxonomySelection(
+  input: GameTaxonomySelectionInput
+): Promise<GameTaxonomySelectionResult> {
+  await verifyAdminSession();
+
+  const [taxonomyResult, currentGame] = await Promise.all([
+    adminQuery<TaxonomyPayloadRow>(
+      `SELECT draft_payload
+         FROM deuna_admin.editorial_items
+        WHERE item_type = 'game_taxonomy'
+          AND item_key = 'games'
+        LIMIT 1`
+    ),
+    readCurrentGame(input.currentGameKey),
+  ]);
+  const taxonomyRow = taxonomyResult.rows[0];
+
+  if (
+    !taxonomyRow ||
+    (input.currentGameKey && !currentGame)
+  ) {
+    return { valid: false };
+  }
+
+  const taxonomy = parseEditorialPayload(
+    "game_taxonomy",
+    taxonomyRow.draft_payload
+  );
+  const categoryValues = input.category
+    ? [input.category]
+    : undefined;
+  const category = resolveTerms(
+    taxonomy.categories,
+    categoryValues,
+    currentValuesForKind("categories", currentGame)
+  );
+  const genres = resolveTerms(
+    taxonomy.genres,
+    input.genres,
+    currentValuesForKind("genres", currentGame)
+  );
+  const tags = resolveTerms(
+    taxonomy.tags,
+    input.tags,
+    currentValuesForKind("tags", currentGame)
+  );
+
+  if (
+    category === null ||
+    genres === null ||
+    tags === null ||
+    (input.category !== undefined && category?.length !== 1)
+  ) {
+    return { valid: false };
+  }
+
+  return {
+    valid: true,
+    ...(category ? { category: category[0] } : {}),
+    ...(genres !== undefined
+      ? { genres: genres.length > 0 ? genres : undefined }
+      : {}),
+    ...(tags !== undefined
+      ? { tags: tags.length > 0 ? tags : undefined }
+      : {}),
+  };
 }
 
 export async function saveGameTaxonomyDraft(
