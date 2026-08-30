@@ -4,9 +4,6 @@ on:
   push:
     branches: [master]
   pull_request:
-    branches:
-      - master
-      - feature/game-detail-download-v2
 
 permissions:
   contents: read
