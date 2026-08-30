@@ -12,6 +12,7 @@ import {
 } from "./hardware-catalog";
 import type {
   ConfidenceLevel,
+  CpuKnowledge,
   EstimateSettings,
   GameEstimate,
   HardwarePart,
@@ -110,6 +111,62 @@ function ramUncertainty(
   };
 }
 
+function cpuKnowledgeOf(
+  hardware: HardwareProfile
+): CpuKnowledge {
+  if (hardware.cpuKnowledge) {
+    return hardware.cpuKnowledge;
+  }
+
+  if (!hardware.cpu) return "unknown";
+
+  if (
+    hardware.source === "manual" ||
+    hardware.source === "saved" ||
+    hardware.source === "example"
+  ) {
+    return "confirmed";
+  }
+
+  return hardware.cpu.id === "browser-cpu-estimate"
+    ? "estimated"
+    : "unknown";
+}
+
+function adjustedGpuRatio(
+  hardware: HardwareProfile
+) {
+  if (!hardware.gpu) return 0;
+
+  let ratio = hardware.gpu.score / referenceGpuScore;
+  if (hardware.gpu.integrated) {
+    if (hardware.memoryMode === "single") ratio *= 0.75;
+    if (hardware.memoryMode === "unknown") ratio *= 0.87;
+  }
+  return ratio;
+}
+
+function corePerformanceFactor(
+  cpuRatio: number,
+  gpuRatio: number,
+  cpuWeight: number,
+  gpuWeight: number
+) {
+  const weightedCore =
+    Math.pow(Math.max(cpuRatio, 0.15), cpuWeight) *
+    Math.pow(Math.max(gpuRatio, 0.1), gpuWeight);
+
+  const limitingRatio = Math.min(
+    cpuRatio * 1.08,
+    gpuRatio * 1.16,
+    1.45
+  );
+  const bottleneckCorrection =
+    0.74 + 0.26 * Math.min(1, Math.max(0.3, limitingRatio));
+
+  return weightedCore * bottleneckCorrection;
+}
+
 export function estimateGamePerformance(
   slug: string,
   hardware: HardwareProfile,
@@ -150,52 +207,85 @@ export function estimateGamePerformance(
     };
   }
 
+  const cpuKnowledge = cpuKnowledgeOf(hardware);
   const cpuRatio = hardware.cpu.score / referenceCpuScore;
-  let gpuRatio = hardware.gpu.score / referenceGpuScore;
+  const cpuMinRatio =
+    (hardware.cpu.scoreMin ?? hardware.cpu.score) /
+    referenceCpuScore;
+  const cpuMaxRatio =
+    (hardware.cpu.scoreMax ?? hardware.cpu.score) /
+    referenceCpuScore;
+  const gpuRatio = adjustedGpuRatio(hardware);
   const ramRatio = hardware.ramGb / profile.ramGb;
-
-  if (hardware.gpu.integrated) {
-    if (hardware.memoryMode === "single") gpuRatio *= 0.75;
-    if (hardware.memoryMode === "unknown") gpuRatio *= 0.87;
-    if (hardware.memoryMode === "dual") gpuRatio *= 1;
-  }
-
   const cpuWeight = profile.cpuWeight ?? 0.3;
   const gpuWeight = profile.gpuWeight ?? 0.7;
-
-  const weightedCore =
-    Math.pow(Math.max(cpuRatio, 0.15), cpuWeight) *
-    Math.pow(Math.max(gpuRatio, 0.1), gpuWeight);
-
-  const limitingRatio = Math.min(
-    cpuRatio * 1.08,
-    gpuRatio * 1.16,
-    1.45
+  const ramModel = ramUncertainty(
+    ramRatio,
+    hardware.ramKnowledge
   );
-  const bottleneckCorrection =
-    0.74 + 0.26 * Math.min(1, Math.max(0.3, limitingRatio));
-  const ramModel = ramUncertainty(ramRatio, hardware.ramKnowledge);
-
-  let fps =
+  const commonFactor =
     profile.referenceFps *
-    weightedCore *
-    bottleneckCorrection *
     ramModel.centerPenalty *
     resolutionFactor[settings.resolution] *
     qualityFactor[settings.quality] *
     (profile.optimization ?? 1);
 
-  if (profile.fpsCap) fps = Math.min(fps, profile.fpsCap);
+  function fpsForCpuRatio(candidateCpuRatio: number) {
+    return Math.max(
+      0,
+      commonFactor *
+        corePerformanceFactor(
+          candidateCpuRatio,
+          gpuRatio,
+          cpuWeight,
+          gpuWeight
+        )
+    );
+  }
 
-  fps = Math.max(0, fps);
+  let fps = fpsForCpuRatio(cpuRatio);
+  let cpuLowScenario = fpsForCpuRatio(cpuMinRatio);
+  let cpuHighScenario = fpsForCpuRatio(cpuMaxRatio);
 
-  const spread = estimateSpread[hardware.confidence];
+  if (profile.fpsCap) {
+    fps = Math.min(fps, profile.fpsCap);
+    cpuLowScenario = Math.min(
+      cpuLowScenario,
+      profile.fpsCap
+    );
+    cpuHighScenario = Math.min(
+      cpuHighScenario,
+      profile.fpsCap
+    );
+  }
+
+  const estimateConfidence: ConfidenceLevel =
+    cpuKnowledge === "estimated"
+      ? "low"
+      : hardware.confidence;
+  const spread = estimateSpread[estimateConfidence];
+  const cpuRangeActive =
+    cpuKnowledge === "estimated" &&
+    hardware.cpu.scoreMin !== undefined &&
+    hardware.cpu.scoreMax !== undefined;
+
+  const lowCenter = cpuRangeActive
+    ? Math.min(fps, cpuLowScenario)
+    : fps;
+  const highCenter = cpuRangeActive
+    ? Math.max(fps, cpuHighScenario)
+    : fps;
+
   const minFps = Math.max(
     0,
-    fps * (1 - spread) * ramModel.lowRangeFactor
+    lowCenter *
+      (1 - spread) *
+      ramModel.lowRangeFactor
   );
   const uncappedMaxFps =
-    fps * (1 + spread) * ramModel.highRangeFactor;
+    highCenter *
+    (1 + spread) *
+    ramModel.highRangeFactor;
   const maxFps = profile.fpsCap
     ? Math.min(profile.fpsCap, uncappedMaxFps)
     : uncappedMaxFps;
@@ -205,13 +295,20 @@ export function estimateGamePerformance(
   const roundedMaxFps = roundFps(maxFps);
 
   const bottleneck =
-    hardware.ramKnowledge === "confirmed" && ramRatio < 0.8
+    hardware.ramKnowledge === "confirmed" &&
+    ramRatio < 0.8
       ? "ram"
-      : cpuRatio + 0.1 < gpuRatio
-        ? "cpu"
-        : gpuRatio + 0.1 < cpuRatio
-          ? "gpu"
-          : "balanced";
+      : cpuKnowledge === "estimated"
+        ? cpuMaxRatio + 0.1 < gpuRatio
+          ? "cpu"
+          : gpuRatio + 0.1 < cpuMinRatio
+            ? "gpu"
+            : "balanced"
+        : cpuRatio + 0.1 < gpuRatio
+          ? "cpu"
+          : gpuRatio + 0.1 < cpuRatio
+            ? "gpu"
+            : "balanced";
 
   return {
     slug,
@@ -219,7 +316,7 @@ export function estimateGamePerformance(
     minFps: roundedMinFps,
     maxFps: roundedMaxFps,
     tier: getPerformanceTier(roundedMinFps),
-    confidence: hardware.confidence,
+    confidence: estimateConfidence,
     bottleneck,
     canEstimate: true,
   };
