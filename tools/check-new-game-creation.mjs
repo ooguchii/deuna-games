@@ -43,8 +43,9 @@ assert(
     form.includes("160 - suffix.length") &&
     form.includes("slugTaken") &&
     form.includes("Identificador disponible") &&
-    form.includes("disabled={slugTaken || !slugValid}"),
-  "El formulario debe generar un slug libre, reservar espacio para sufijos y bloquear localmente identificadores ya ocupados."
+    form.includes("slugTaken || !slugValid") &&
+    form.includes("categories.length === 0"),
+  "El formulario debe generar un slug libre, reservar espacio para sufijos, bloquear identificadores ocupados y exigir una categoría maestra disponible."
 );
 
 assert(
@@ -57,11 +58,13 @@ assert(
 
 assert(
   createRoute.includes("hasExactAdminFormFields") &&
+    createRoute.includes("resolveGameTaxonomySelection") &&
     createRoute.includes('result.outcome === "exists"') &&
     createRoute.includes("?estado=duplicado") &&
+    createRoute.includes("?estado=clasificacion") &&
     creationService.includes("ON CONFLICT (item_type, item_key)") &&
     creationService.includes('outcome: created ? "created" : "exists"'),
-  "La prevención visual nunca debe sustituir el rechazo transaccional de duplicados en el servidor."
+  "La prevención visual nunca debe sustituir el rechazo transaccional de duplicados ni la validación de clasificación en el servidor."
 );
 
 if (failures.length > 0) {
@@ -70,6 +73,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Alta de juegos: OK (slug automático libre, detección accesible y rechazo transaccional de duplicados preservados)."
+    "Alta de juegos: OK (slug automático libre, categoría maestra obligatoria, detección accesible y rechazo transaccional preservados)."
   );
 }
