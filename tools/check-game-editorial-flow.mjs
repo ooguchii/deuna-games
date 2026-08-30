@@ -28,6 +28,7 @@ const [
   hideRoute,
   restoreRoute,
   gamesPage,
+  gameEditor,
   catalog,
   contextBar,
   publicationPage,
@@ -47,6 +48,7 @@ const [
   source("src/app/api/admin/content/games/[slug]/hide/route.ts"),
   source("src/app/api/admin/content/publications/[publicationId]/restore/route.ts"),
   source("src/app/admin/(protected)/juegos/page.tsx"),
+  source("src/app/admin/(protected)/juegos/[slug]/page.tsx"),
   source("src/components/admin/AdminGamesCatalog.tsx"),
   source("src/components/admin/AdminContextBar.tsx"),
   source("src/app/admin/(protected)/juegos/[slug]/publicacion/page.tsx"),
@@ -85,10 +87,11 @@ assert(
 assert(
   publicationOverview.includes("panel_created") &&
     publicationOverview.includes("ever_published") &&
+    publicationOverview.includes("getGamePublicationIdentity") &&
     publicationOverview.includes("revision.revision = 1") &&
     publicationOverview.includes("revision.action = 'draft_saved'") &&
     publicationOverview.includes("publication.action IN ('published', 'rollback')"),
-  "La clasificación de altas debe derivarse del origen editorial y de publicaciones públicas reales, no sólo del número interno."
+  "La clasificación de altas debe derivarse del origen editorial permanente y de publicaciones públicas reales, no sólo del número interno o de una ventana de historial."
 );
 
 assert(
@@ -141,6 +144,13 @@ assert(
 );
 
 assert(
+  gameEditor.includes("getGamePublicationIdentity") &&
+    gameEditor.includes("publicationIdentity?.panelCreated") &&
+    gameEditor.includes("!item.sourcePresent && !panelCreated"),
+  "El editor no debe presentar una alta creada desde el panel como un juego desaparecido de los archivos fuente."
+);
+
+assert(
   catalog.includes("/publicacion") &&
     catalog.includes("publicationActionLabel") &&
     catalog.includes("Publicar cambios") &&
@@ -157,12 +167,13 @@ assert(
 
 assert(
   publicationPage.includes("getGamePublicationState") &&
+    publicationPage.includes("getGamePublicationIdentity") &&
     publicationPage.includes("getPublishedGameSnapshot") &&
     publicationPage.includes("publishedGame={publishedGame}") &&
     publicationPage.includes("neverPublished") &&
     publicationPage.includes("panelCreated") &&
     publicationPage.includes("GamePublicationWorkspace"),
-  "La estación de publicación debe distinguir altas privadas y comparar el borrador con el snapshot transaccional real."
+  "La estación de publicación debe distinguir altas privadas mediante origen permanente y comparar el borrador con el snapshot transaccional real."
 );
 
 assert(
@@ -207,6 +218,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Flujo editorial de juegos: OK (alta privada, estados históricos exactos, comparación de cambios, edición por borrador, vista previa sin mutaciones, primera publicación, republicación y restauración protegidas)."
+    "Flujo editorial de juegos: OK (alta privada con origen permanente, estados históricos exactos, comparación de cambios, edición por borrador, vista previa sin mutaciones, primera publicación, republicación y restauración protegidas)."
   );
 }
