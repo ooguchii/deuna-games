@@ -307,7 +307,12 @@ export default function HomeCurationEditor({
 
   function addGame(slug: string) {
     setSelections((current) => {
-      if (current[active].includes(slug)) return current;
+      if (
+        current[active].includes(slug) ||
+        current[active].length >= meta.limit
+      ) {
+        return current;
+      }
 
       return {
         ...current,
@@ -501,7 +506,7 @@ export default function HomeCurationEditor({
               <div className={styles.passiveNotice}>
                 <Info size={17} aria-hidden="true" />
                 <p>
-                  La lista manual queda guardada por si volvés a Manual o Híbrido, pero no altera el ranking mientras este bloque esté en Automático.
+                  La lista manual queda guardada por si vuelves a Manual o Híbrido, pero no altera el ranking mientras este bloque esté en Automático.
                 </p>
               </div>
             )}
@@ -513,10 +518,10 @@ export default function HomeCurationEditor({
                   <strong>
                     {activeMode === "automatic"
                       ? "Sin preferencias guardadas"
-                      : "Todavía no fijaste juegos"}
+                      : "Todavía no hay juegos fijados"}
                   </strong>
                   <span>
-                    Buscá un título abajo y agregalo a esta colección.
+                    Busca un título abajo y agrégalo a esta colección.
                   </span>
                 </div>
               ) : (
@@ -595,7 +600,7 @@ export default function HomeCurationEditor({
                 <div>
                   <strong>Agregar desde el catálogo</strong>
                   <span>
-                    Buscá por título, slug o clasificación.
+                    Busca por título, slug o clasificación.
                   </span>
                 </div>
               </div>
@@ -619,6 +624,8 @@ export default function HomeCurationEditor({
                 {candidates.map((game) => {
                   const selected =
                     activeSelection.includes(game.slug);
+                  const atLimit =
+                    activeSelection.length >= meta.limit;
                   const isPublished =
                     publishedSet === null ||
                     publishedSet.has(game.slug);
@@ -640,7 +647,7 @@ export default function HomeCurationEditor({
                       </div>
                       <button
                         type="button"
-                        disabled={selected}
+                        disabled={selected || atLimit}
                         onClick={() => addGame(game.slug)}
                       >
                         {selected ? (
@@ -648,7 +655,11 @@ export default function HomeCurationEditor({
                         ) : (
                           <Plus size={16} aria-hidden="true" />
                         )}
-                        {selected ? "Agregado" : "Agregar"}
+                        {selected
+                          ? "Agregado"
+                          : atLimit
+                            ? "Límite"
+                            : "Agregar"}
                       </button>
                     </div>
                   );
@@ -691,7 +702,7 @@ export default function HomeCurationEditor({
                       <span>
                         {manuallyPinned
                           ? activeMode === "hybrid"
-                            ? "Fijado por vos"
+                            ? "Fijado manualmente"
                             : "Orden manual"
                           : `Score ${rankingEntry?.score.toFixed(1) ?? "—"}`}
                       </span>
@@ -724,7 +735,7 @@ export default function HomeCurationEditor({
                 <Info size={20} aria-hidden="true" />
                 <strong>No hay candidatos públicos</strong>
                 <span>
-                  Revisá la selección manual o publicá juegos que cumplan las condiciones de este bloque.
+                  Revisa la selección manual o publica juegos que cumplan las condiciones de este bloque.
                 </span>
               </div>
             )}
