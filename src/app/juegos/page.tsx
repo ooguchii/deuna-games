@@ -35,6 +35,9 @@ import {
   absoluteUrl,
 } from "@/lib/site";
 import {
+  getPublicPagesConfig,
+} from "@/lib/site/public-pages-config";
+import {
   getPublicSiteConfig,
 } from "@/lib/site/public-site-config";
 import {
@@ -77,18 +80,20 @@ function hasCatalogFilters(
 export async function generateMetadata({
   searchParams,
 }: GamesPageProps): Promise<Metadata> {
-  const [params, config] = await Promise.all([
+  const [params, config, publicPages] = await Promise.all([
     searchParams,
     getPublicSiteConfig(),
+    getPublicPagesConfig(),
   ]);
   const filtered =
     hasCatalogFilters(
       params
     );
+  const page = publicPages.games;
   const title =
-    "Juegos para PC";
+    `${page.title} para PC`;
   const description =
-    `Explora el catálogo de ${config.name} y encuentra juegos por clasificación, popularidad, puntuación, requisitos y estado.`;
+    page.description;
 
   return {
     title,
@@ -129,17 +134,23 @@ export async function generateMetadata({
 export default async function GamesPage({
   searchParams,
 }: GamesPageProps) {
-  const [params, games, config, taxonomy] = await Promise.all([
+  const [
+    params,
+    games,
+    config,
+    taxonomy,
+    publicPages,
+  ] = await Promise.all([
     searchParams,
     getPublicGames(),
     getPublicSiteConfig(),
     getPublicTaxonomyPresentation(),
+    getPublicPagesConfig(),
   ]);
   const collections =
     buildHomeGameCollections(games);
-
-  const description =
-    "Explora nuestro catálogo, filtra por clasificación, puntuación, requisitos o popularidad y encuentra exactamente lo que quieres jugar.";
+  const page = publicPages.games;
+  const description = page.description;
 
   const breadcrumbJsonLd = {
     "@context":
@@ -159,7 +170,7 @@ export default async function GamesPage({
         "@type":
           "ListItem",
         position: 2,
-        name: "Juegos",
+        name: page.title,
         item:
           absoluteUrl(
             "/juegos"
@@ -174,7 +185,7 @@ export default async function GamesPage({
     "@type":
       "CollectionPage",
     name:
-      "Juegos para PC",
+      `${page.title} para PC`,
     url:
       absoluteUrl(
         "/juegos"
@@ -224,6 +235,14 @@ export default async function GamesPage({
             className={
               styles.heroImage
             }
+            style={
+              page.heroImage
+                ? {
+                    backgroundImage:
+                      `url(${JSON.stringify(page.heroImage)})`,
+                  }
+                : undefined
+            }
             aria-hidden="true"
           />
 
@@ -263,7 +282,7 @@ export default async function GamesPage({
             <span
               aria-current="page"
             >
-              Juegos
+              {page.title}
             </span>
           </nav>
 
@@ -277,13 +296,13 @@ export default async function GamesPage({
                 styles.eyebrow
               }
             >
-              CATÁLOGO DE JUEGOS
+              {page.eyebrow}
             </span>
 
             <h1
               id="games-title"
             >
-              Juegos
+              {page.title}
             </h1>
 
             <p>
@@ -310,7 +329,7 @@ export default async function GamesPage({
               </span>
 
               <span>
-                PC
+                {page.platformLabel}
               </span>
             </div>
           </div>
