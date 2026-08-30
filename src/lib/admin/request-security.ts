@@ -4,31 +4,64 @@ import type { NextRequest } from "next/server";
 
 const MAX_ADMIN_FORM_BYTES = 8 * 1024;
 
-export async function readTrustedAdminForm(
+function headerMatchesAdminOrigin(
+  value: string | null,
+  adminOrigin: string
+) {
+  if (!value) return false;
+
+  try {
+    return new URL(value).origin === adminOrigin;
+  } catch {
+    return false;
+  }
+}
+
+function hasTrustedAdminOrigin(
   request: NextRequest,
   adminOrigin: string
 ) {
   const origin = request.headers.get("origin");
+  const referer = request.headers.get("referer");
   const fetchSite = request.headers.get(
     "sec-fetch-site"
   );
-  const contentType =
-    request.headers.get("content-type") ?? "";
-  const contentLength = Number(
-    request.headers.get("content-length") ?? "0"
-  );
 
-  if (
-    !origin ||
-    origin !== adminOrigin
-  ) {
-    return null;
+  if (fetchSite === "cross-site") {
+    return false;
   }
 
+  if (origin) {
+    return origin === adminOrigin;
+  }
+
+  if (referer) {
+    return headerMatchesAdminOrigin(
+      referer,
+      adminOrigin
+    );
+  }
+
+  return fetchSite === "same-origin";
+}
+
+export async function readTrustedAdminForm(
+  request: NextRequest,
+  adminOrigin: string
+) {
+  const contentType =
+    request.headers.get("content-type") ?? "";
+  const contentLengthHeader =
+    request.headers.get("content-length");
+  const contentLength = contentLengthHeader
+    ? Number(contentLengthHeader)
+    : null;
+
   if (
-    fetchSite &&
-    fetchSite !== "same-origin" &&
-    fetchSite !== "none"
+    !hasTrustedAdminOrigin(
+      request,
+      adminOrigin
+    )
   ) {
     return null;
   }
@@ -42,9 +75,12 @@ export async function readTrustedAdminForm(
   }
 
   if (
-    !Number.isFinite(contentLength) ||
-    contentLength < 0 ||
-    contentLength > MAX_ADMIN_FORM_BYTES
+    contentLength !== null &&
+    (
+      !Number.isFinite(contentLength) ||
+      contentLength < 0 ||
+      contentLength > MAX_ADMIN_FORM_BYTES
+    )
   ) {
     return null;
   }
