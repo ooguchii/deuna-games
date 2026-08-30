@@ -3,6 +3,7 @@ import {
   ArrowRight,
   Database,
   Gamepad2,
+  LayoutTemplate,
   RefreshCcw,
   Settings2,
   ShieldCheck,
@@ -40,6 +41,10 @@ function publicationPath(
     return `/admin/actualizaciones/${encodeURIComponent(key)}`;
   }
 
+  if (type === "home_config") {
+    return "/admin/portada";
+  }
+
   return "/admin/configuracion";
 }
 
@@ -48,6 +53,7 @@ function publicationTypeLabel(
 ) {
   if (type === "game") return "Juego";
   if (type === "game_update") return "Actualización";
+  if (type === "home_config") return "Portada";
   return "Configuración";
 }
 
@@ -154,6 +160,17 @@ export default async function AdminDashboardPage() {
               <strong>Revisar actualizaciones</strong>
               <span>
                 Versiones, fechas, publicación y relación con cada juego.
+              </span>
+            </div>
+            <ArrowRight size={18} aria-hidden="true" />
+          </Link>
+
+          <Link href="/admin/portada">
+            <LayoutTemplate size={23} aria-hidden="true" />
+            <div>
+              <strong>Organizar portada</strong>
+              <span>
+                Prioridades de Hero, Populares, Bajos recursos y Recomendados con publicación versionada.
               </span>
             </div>
             <ArrowRight size={18} aria-hidden="true" />
