@@ -21,9 +21,18 @@ import styles from "../../admin.module.css";
 
 export const dynamic = "force-dynamic";
 
+const catalogSections = [
+  "clasificaciones",
+  "etiquetas",
+  "historial",
+] as const;
+
+type CatalogSection = (typeof catalogSections)[number];
+
 type PageProps = {
   searchParams: Promise<{
     estado?: string | string[];
+    seccion?: string | string[];
   }>;
 };
 
@@ -33,6 +42,18 @@ function normalize(value: string) {
     .replace(/[\u0300-\u036f]/g, "")
     .toLocaleLowerCase("es")
     .trim();
+}
+
+function resolveCatalogSection(
+  value: string | string[] | undefined
+): CatalogSection {
+  const candidate = Array.isArray(value)
+    ? value[0]
+    : value;
+
+  return catalogSections.includes(candidate as CatalogSection)
+    ? (candidate as CatalogSection)
+    : "clasificaciones";
 }
 
 function buildUsage(
@@ -101,6 +122,7 @@ export default async function AdminCatalogsPage({
   const state = Array.isArray(parameters.estado)
     ? parameters.estado[0]
     : parameters.estado;
+  const section = resolveCatalogSection(parameters.seccion);
 
   return (
     <>
@@ -109,7 +131,7 @@ export default async function AdminCatalogsPage({
           <span>DATOS MAESTROS</span>
           <h1>Catálogos</h1>
           <p>
-            Administra una sola lista de clasificaciones para los juegos y una lista separada de etiquetas descriptivas. No existen categorías y géneros duplicados.
+            Trabaja cada parte del catálogo en su propia ventana: clasificaciones, etiquetas e historial. La misma definición maestra sigue alimentando toda la web.
           </p>
         </div>
         <span className={styles.draftState}>
@@ -127,19 +149,22 @@ export default async function AdminCatalogsPage({
             Ejecuta la actualización local para generar el catálogo inicial a partir de los juegos existentes.
           </p>
         </section>
+      ) : section === "historial" ? (
+        <EditorialHistory
+          revisions={item.revisions}
+          currentRevision={item.revision}
+        />
       ) : (
-        <>
-          <GameTaxonomyEditor
-            initialTaxonomy={item.payload}
-            revision={item.revision}
-            usage={buildUsage(item.payload, games)}
-          />
-
-          <EditorialHistory
-            revisions={item.revisions}
-            currentRevision={item.revision}
-          />
-        </>
+        <GameTaxonomyEditor
+          initialTaxonomy={item.payload}
+          revision={item.revision}
+          usage={buildUsage(item.payload, games)}
+          section={
+            section === "clasificaciones"
+              ? "classifications"
+              : "tags"
+          }
+        />
       )}
     </>
   );
