@@ -29,6 +29,7 @@ const [
   contextBar,
   publicationPage,
   publicationWorkspace,
+  previewPage,
   newGamePage,
   newGameForm,
 ] = await Promise.all([
@@ -44,6 +45,7 @@ const [
   source("src/components/admin/AdminContextBar.tsx"),
   source("src/app/admin/(protected)/juegos/[slug]/publicacion/page.tsx"),
   source("src/components/admin/GamePublicationWorkspace.tsx"),
+  source("src/app/admin/(protected)/juegos/[slug]/vista-previa/page.tsx"),
   source("src/app/admin/(protected)/juegos/nuevo/page.tsx"),
   source("src/components/admin/NewGameForm.tsx"),
 ]);
@@ -136,6 +138,16 @@ assert(
 );
 
 assert(
+  previewPage.includes("/publicacion") &&
+    previewPage.includes("Esta vista sirve únicamente para revisar el contenido") &&
+    !previewPage.includes("PublicationPanel") &&
+    !previewPage.includes('/publish"') &&
+    !previewPage.includes('/hide"') &&
+    !previewPage.includes("/restore"),
+  "La vista previa debe ser de sólo revisión y delegar toda mutación pública a la estación de Publicación."
+);
+
+assert(
   newGamePage.includes("NewGameForm") &&
     newGamePage.includes('listEditorialItems("game")') &&
     newGameForm.includes("slugFromTitle") &&
@@ -152,6 +164,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Flujo editorial de juegos: OK (alta privada, edición por borrador, revisión, primera publicación, republicación y restauración protegidas)."
+    "Flujo editorial de juegos: OK (alta privada, edición por borrador, vista previa sin mutaciones, primera publicación, republicación y restauración protegidas)."
   );
 }
