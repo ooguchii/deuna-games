@@ -12,19 +12,9 @@ import {
 import GameCatalogClient from "@/components/games/GameCatalogClient";
 import Footer from "@/components/layout/Footer";
 import Header from "@/components/layout/Header";
-
-import { games } from "@/data/games";
 import {
-  lowSpecGames,
+  buildHomeGameCollections,
 } from "@/data/home";
-
-import {
-  absoluteUrl,
-  siteConfig,
-} from "@/lib/site";
-import {
-  safeJsonLd,
-} from "@/lib/safe-json-ld";
 import {
   parseCategory,
   parseEquipmentFilter,
@@ -35,8 +25,20 @@ import {
   parseViewMode,
   sanitizeCatalogQuery,
 } from "@/lib/games/catalog";
+import {
+  getPublicGames,
+} from "@/lib/games/public-catalog";
+import {
+  absoluteUrl,
+  siteConfig,
+} from "@/lib/site";
+import {
+  safeJsonLd,
+} from "@/lib/safe-json-ld";
 
 import styles from "./page.module.css";
+
+export const dynamic = "force-dynamic";
 
 type GamesSearchParams = {
   categoria?: string;
@@ -123,11 +125,15 @@ export async function generateMetadata({
 export default async function GamesPage({
   searchParams,
 }: GamesPageProps) {
-  const params =
-    await searchParams;
+  const [params, games] = await Promise.all([
+    searchParams,
+    getPublicGames(),
+  ]);
+  const collections =
+    buildHomeGameCollections(games);
 
   const description =
-    "Explora nuestro catálogo, filtrá por categoría, puntuación, requisitos o popularidad y encuentra exactamente lo que quieres jugar.";
+    "Explora nuestro catálogo, filtra por categoría, puntuación, requisitos o popularidad y encuentra exactamente lo que quieres jugar.";
 
   const breadcrumbJsonLd = {
     "@context":
@@ -307,7 +313,7 @@ export default async function GamesPage({
         <GameCatalogClient
           games={games}
           lowSpecSlugs={
-            lowSpecGames.map(
+            collections.lowSpecGames.map(
               (game) =>
                 game.slug
             )
