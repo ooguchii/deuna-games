@@ -27,6 +27,9 @@ import {
 import {
   getPublicGameBySlug,
 } from "@/lib/games/public-catalog";
+import {
+  getPublicSiteConfig,
+} from "@/lib/site/public-site-config";
 import type {
   GameDownloadSourceStatus,
 } from "@/types/game";
@@ -71,7 +74,10 @@ export async function generateMetadata({
   params,
 }: DownloadPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const game = await getPublicGameBySlug(slug);
+  const [game, publicSiteConfig] = await Promise.all([
+    getPublicGameBySlug(slug),
+    getPublicSiteConfig(),
+  ]);
   const download = game
     ? resolveGameDownload(game)
     : null;
@@ -96,7 +102,7 @@ export async function generateMetadata({
   return {
     title: `Descargar ${game.title}`,
     description:
-      `Fuentes de descarga configuradas para ${game.title} en DeUna Games.`,
+      `Fuentes de descarga configuradas para ${game.title} en ${publicSiteConfig.name}.`,
     alternates: {
       canonical: `/juegos/${game.slug}`,
     },
@@ -111,7 +117,10 @@ export default async function DownloadPage({
   params,
 }: DownloadPageProps) {
   const { slug } = await params;
-  const game = await getPublicGameBySlug(slug);
+  const [game, publicSiteConfig] = await Promise.all([
+    getPublicGameBySlug(slug),
+    getPublicSiteConfig(),
+  ]);
 
   if (!game) {
     notFound();
@@ -314,7 +323,7 @@ export default async function DownloadPage({
           <div className={styles.securityNote}>
             <ShieldCheck size={18} aria-hidden="true" />
             <span>
-              DeUna Games no genera enlaces desde parámetros del navegador: las fuentes salen de la configuración editorial del juego.
+              {publicSiteConfig.name} no genera enlaces desde parámetros del navegador: las fuentes salen de la configuración editorial del juego.
             </span>
           </div>
         </section>
