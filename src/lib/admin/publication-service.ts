@@ -21,7 +21,8 @@ import {
 
 type PublishableEditorialType =
   | "game"
-  | "game_update";
+  | "game_update"
+  | "site_config";
 
 type PublicationAction =
   | "bootstrap"
@@ -84,6 +85,8 @@ export type GamePublicationState =
   EditorialPublicationState;
 export type UpdatePublicationState =
   EditorialPublicationState;
+export type SiteConfigPublicationState =
+  EditorialPublicationState;
 
 export type PublishEditorialResult =
   | {
@@ -103,6 +106,8 @@ export type PublishEditorialResult =
 export type PublishGameResult =
   PublishEditorialResult;
 export type PublishUpdateResult =
+  PublishEditorialResult;
+export type PublishSiteConfigResult =
   PublishEditorialResult;
 
 export type RestorePublicationResult =
@@ -133,8 +138,14 @@ function normalizePublishablePayload(
     );
   }
 
+  if (type === "game_update") {
+    return normalizeEditorialPayload(
+      parseEditorialPayload("game_update", payload)
+    );
+  }
+
   return normalizeEditorialPayload(
-    parseEditorialPayload("game_update", payload)
+    parseEditorialPayload("site_config", payload)
   );
 }
 
@@ -499,6 +510,10 @@ export function getUpdatePublicationState(
   return getPublicationState("game_update", key);
 }
 
+export function getSiteConfigPublicationState() {
+  return getPublicationState("site_config", "site");
+}
+
 export function publishGameDraft(
   key: string,
   expectedRevision: number,
@@ -525,6 +540,18 @@ export function publishUpdateDraft(
   );
 }
 
+export function publishSiteConfigDraft(
+  expectedRevision: number,
+  actorUserId: string
+) {
+  return publishEditorialDraft(
+    "site_config",
+    "site",
+    expectedRevision,
+    actorUserId
+  );
+}
+
 export function restoreGamePublication(
   publicationId: string,
   expectedPublicationNumber: number,
@@ -545,6 +572,19 @@ export function restoreUpdatePublication(
 ) {
   return restoreEditorialPublication(
     "game_update",
+    publicationId,
+    expectedPublicationNumber,
+    actorUserId
+  );
+}
+
+export function restoreSiteConfigPublication(
+  publicationId: string,
+  expectedPublicationNumber: number,
+  actorUserId: string
+) {
+  return restoreEditorialPublication(
+    "site_config",
     publicationId,
     expectedPublicationNumber,
     actorUserId
