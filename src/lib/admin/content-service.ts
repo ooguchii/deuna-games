@@ -112,6 +112,14 @@ export type GameCoreDraftInput = Pick<
   | "imageAlt"
 >;
 
+export type GameDownloadDraftInput = Pick<
+  NonNullable<Game["download"]>,
+  | "sizeGb"
+  | "fileCount"
+  | "platform"
+  | "sources"
+>;
+
 export type UpdateDraftInput = Pick<
   GameUpdate,
   | "version"
@@ -395,6 +403,51 @@ export function saveGameCoreDraft(
       ...current,
       ...input,
     })
+  );
+}
+
+export function saveGameDownloadDraft(
+  key: string,
+  expectedRevision: number,
+  actorUserId: string,
+  input: GameDownloadDraftInput
+) {
+  return updateEditorialDraft(
+    "game",
+    key,
+    expectedRevision,
+    actorUserId,
+    (current) => {
+      const previous = current.download;
+      const nextDownload = {
+        ...(previous?.href
+          ? { href: previous.href }
+          : {}),
+        ...(previous?.label
+          ? { label: previous.label }
+          : {}),
+        ...(input.sources?.length
+          ? { sources: input.sources }
+          : {}),
+        ...(input.sizeGb !== undefined
+          ? { sizeGb: input.sizeGb }
+          : {}),
+        ...(input.fileCount !== undefined
+          ? { fileCount: input.fileCount }
+          : {}),
+        ...(input.platform
+          ? { platform: input.platform }
+          : {}),
+      };
+
+      return {
+        ...current,
+        download:
+          Object.keys(nextDownload).length > 0
+            ? nextDownload
+            : undefined,
+      };
+    }
   );
 }
 
