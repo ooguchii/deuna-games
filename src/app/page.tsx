@@ -23,6 +23,9 @@ import {
   siteConfig,
 } from "@/lib/site";
 import { safeJsonLd } from "@/lib/safe-json-ld";
+import {
+  getPublicResolvedUpdates,
+} from "@/lib/updates/public-updates";
 
 export const dynamic = "force-dynamic";
 
@@ -40,7 +43,10 @@ export const metadata: Metadata = {
 };
 
 export default async function Home() {
-  const games = await getPublicGames();
+  const [games, updates] = await Promise.all([
+    getPublicGames(),
+    getPublicResolvedUpdates(),
+  ]);
   const collections =
     buildHomeGameCollections(games);
   const websiteJsonLd = {
@@ -88,7 +94,7 @@ export default async function Home() {
         <GameFinderSection />
         <FeaturedCategories games={games} />
         <RecentlyAdded games={collections.recentGames} />
-        <LatestUpdates />
+        <LatestUpdates updates={updates.slice(0, 3)} />
         <GamesForYourPC games={collections.lowSpecGames} />
         <RecommendedGames
           games={collections.recommendedGames}
