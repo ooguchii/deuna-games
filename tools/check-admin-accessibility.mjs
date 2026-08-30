@@ -90,11 +90,13 @@ assert(
 );
 
 assert(
-  publicationOverview.includes('| "game_taxonomy"') &&
-    publicationOverview.includes('| "public_pages_config"') &&
+  publicationOverview.includes('"game_taxonomy",') &&
+    publicationOverview.includes('"public_pages_config",') &&
     publicationOverview.includes("pendingItems") &&
+    publicationOverview.includes("ANY($1::text[])") &&
+    publicationOverview.includes("[publishableTypes]") &&
     publicationOverview.includes("LIMIT 10"),
-  "El overview debe incluir Catálogos, Presentación pública y una cola acotada de pendientes."
+  "El overview debe incluir todos los tipos publicables, usar SQL parametrizado y mantener una cola acotada de pendientes."
 );
 
 const adminCssDir = path.join(
