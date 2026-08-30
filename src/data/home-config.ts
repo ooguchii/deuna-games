@@ -18,6 +18,28 @@ export type HomeSectionConfig = {
   visible: boolean;
 };
 
+export const homeCurationCollectionIds = [
+  "hero",
+  "popular",
+  "lowSpec",
+  "recommended",
+] as const;
+
+export type HomeCurationCollectionId =
+  (typeof homeCurationCollectionIds)[number];
+
+export type HomeCurationMode =
+  | "manual"
+  | "automatic"
+  | "hybrid";
+
+export type HomeCurationConfig = Record<
+  HomeCurationCollectionId,
+  {
+    mode: HomeCurationMode;
+  }
+>;
+
 export type HomeCopy = {
   hero: {
     accessibleTitle: string;
@@ -84,20 +106,35 @@ export type HomeCopy = {
 };
 
 export type HomeConfig = {
+  /*
+   * Estas listas conservan compatibilidad con todas las revisiones ya
+   * publicadas. En modo manual representan la selección exacta; en híbrido
+   * son los juegos fijados por el editor; en automático se conservan pero el
+   * ranking decide la colección visible.
+   */
   heroSlugs: string[];
   popularSlugs: string[];
   lowSpecSlugs: string[];
   recommendedSlugs: string[];
+  curation?: HomeCurationConfig;
   sections?: HomeSectionConfig[];
   copy?: HomeCopy;
 };
 
 export type ResolvedHomeConfig = Omit<
   HomeConfig,
-  "sections" | "copy"
+  "curation" | "sections" | "copy"
 > & {
+  curation: HomeCurationConfig;
   sections: HomeSectionConfig[];
   copy: HomeCopy;
+};
+
+const defaultHomeCuration: HomeCurationConfig = {
+  hero: { mode: "manual" },
+  popular: { mode: "manual" },
+  lowSpec: { mode: "manual" },
+  recommended: { mode: "manual" },
 };
 
 export const sourceHomeConfig: ResolvedHomeConfig = {
@@ -134,6 +171,7 @@ export const sourceHomeConfig: ResolvedHomeConfig = {
     "god-of-war-ragnarok",
     "elden-ring",
   ],
+  curation: structuredClone(defaultHomeCuration),
   sections: homeSectionIds.map((id) => ({
     id,
     visible: true,
@@ -263,6 +301,29 @@ function resolveSections(
   return ordered;
 }
 
+function resolveCuration(
+  curation: HomeCurationConfig | undefined
+): HomeCurationConfig {
+  return {
+    hero: {
+      ...defaultHomeCuration.hero,
+      ...curation?.hero,
+    },
+    popular: {
+      ...defaultHomeCuration.popular,
+      ...curation?.popular,
+    },
+    lowSpec: {
+      ...defaultHomeCuration.lowSpec,
+      ...curation?.lowSpec,
+    },
+    recommended: {
+      ...defaultHomeCuration.recommended,
+      ...curation?.recommended,
+    },
+  };
+}
+
 export function resolveHomeConfig(
   config: HomeConfig
 ): ResolvedHomeConfig {
@@ -271,6 +332,7 @@ export function resolveHomeConfig(
     popularSlugs: [...config.popularSlugs],
     lowSpecSlugs: [...config.lowSpecSlugs],
     recommendedSlugs: [...config.recommendedSlugs],
+    curation: resolveCuration(config.curation),
     sections: resolveSections(config.sections),
     copy: config.copy
       ? {
