@@ -30,8 +30,10 @@ import {
 } from "@/lib/games/public-catalog";
 import {
   absoluteUrl,
-  siteConfig,
 } from "@/lib/site";
+import {
+  getPublicSiteConfig,
+} from "@/lib/site/public-site-config";
 import {
   safeJsonLd,
 } from "@/lib/safe-json-ld";
@@ -72,19 +74,18 @@ function hasCatalogFilters(
 export async function generateMetadata({
   searchParams,
 }: GamesPageProps): Promise<Metadata> {
-  const params =
-    await searchParams;
-
+  const [params, config] = await Promise.all([
+    searchParams,
+    getPublicSiteConfig(),
+  ]);
   const filtered =
     hasCatalogFilters(
       params
     );
-
   const title =
     "Juegos para PC";
-
   const description =
-    "Explora el catálogo de DeUna Games y encuentra juegos por categoría, popularidad, puntuación, requisitos y estado.";
+    `Explora el catálogo de ${config.name} y encuentra juegos por categoría, popularidad, puntuación, requisitos y estado.`;
 
   return {
     title,
@@ -106,7 +107,7 @@ export async function generateMetadata({
 
     openGraph: {
       title:
-        `${title} | ${siteConfig.name}`,
+        `${title} | ${config.name}`,
       description,
       url: "/juegos",
       type: "website",
@@ -116,7 +117,7 @@ export async function generateMetadata({
       card:
         "summary_large_image",
       title:
-        `${title} | ${siteConfig.name}`,
+        `${title} | ${config.name}`,
       description,
     },
   };
@@ -125,9 +126,10 @@ export async function generateMetadata({
 export default async function GamesPage({
   searchParams,
 }: GamesPageProps) {
-  const [params, games] = await Promise.all([
+  const [params, games, config] = await Promise.all([
     searchParams,
     getPublicGames(),
+    getPublicSiteConfig(),
   ]);
   const collections =
     buildHomeGameCollections(games);
@@ -175,7 +177,7 @@ export default async function GamesPage({
       ),
     description,
     inLanguage:
-      siteConfig.language,
+      config.language,
   };
 
   return (
