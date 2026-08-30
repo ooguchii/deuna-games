@@ -4,11 +4,15 @@ import { ChevronRight } from "lucide-react";
 
 import CardCarousel from "@/components/ui/CardCarousel";
 import UniversalGameCard from "@/components/ui/UniversalGameCard";
-import { popularGames } from "@/data/home";
+import type { Game } from "@/types/game";
 
 import styles from "./PopularGames.module.css";
 
-export default function PopularGames() {
+export default function PopularGames({
+  games,
+}: {
+  games: Game[];
+}) {
   return (
     <section className={styles.section}>
       <div className={styles.header}>
@@ -26,7 +30,7 @@ export default function PopularGames() {
         ariaLabel="Juegos populares"
         itemsDesktop={5}
       >
-        {popularGames.map((game) => (
+        {games.map((game) => (
           <UniversalGameCard
             key={game.slug}
             game={game}
