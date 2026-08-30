@@ -46,7 +46,7 @@ const optionalPositiveInteger = z
 
 const downloadSourcesJsonSchema = z
   .string()
-  .max(7_500)
+  .max(5_000)
   .transform((value, context) => {
     try {
       return JSON.parse(value) as unknown;
@@ -61,7 +61,7 @@ const downloadSourcesJsonSchema = z
   .pipe(
     z
       .array(editorialDownloadSourceSchema)
-      .max(12)
+      .max(6)
       .superRefine((sources, context) => {
         const ids = new Set<string>();
         const hrefs = new Set<string>();
