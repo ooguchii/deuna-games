@@ -22,9 +22,6 @@ import Footer from "@/components/layout/Footer";
 import Header from "@/components/layout/Header";
 import GameMedia from "@/components/ui/GameMedia";
 import UniversalGameCard from "@/components/ui/UniversalGameCard";
-import {
-  resolvedGameUpdates,
-} from "@/data/updates";
 import GamePerformanceEstimate from "@/features/game-finder/GamePerformanceEstimate";
 import { getPerformanceProfile } from "@/features/game-finder/performance-data";
 import {
@@ -39,6 +36,9 @@ import {
   siteConfig,
 } from "@/lib/site";
 import { safeJsonLd } from "@/lib/safe-json-ld";
+import {
+  getPublicUpdatesForGame,
+} from "@/lib/updates/public-updates";
 import type {
   GameHardwareRequirements,
 } from "@/types/game";
@@ -152,9 +152,10 @@ export default async function GameDetailPage({
   params,
 }: GameDetailPageProps) {
   const { slug } = await params;
-  const [game, games] = await Promise.all([
+  const [game, games, gameUpdates] = await Promise.all([
     getPublicGameBySlug(slug),
     getPublicGames(),
+    getPublicUpdatesForGame(slug),
   ]);
 
   if (!game) {
@@ -175,13 +176,7 @@ export default async function GameDetailPage({
     minimum,
     recommended
   );
-
-  const gameUpdates = resolvedGameUpdates
-    .filter(
-      (update) =>
-        update.game.slug === game.slug
-    )
-    .slice(0, 3);
+  const recentGameUpdates = gameUpdates.slice(0, 3);
 
   const relatedGames = games
     .filter(
@@ -484,7 +479,7 @@ export default async function GameDetailPage({
           {download && (
             <a href="#installation"><Download size={16} aria-hidden="true" />Instalación</a>
           )}
-          {gameUpdates.length > 0 && (
+          {recentGameUpdates.length > 0 && (
             <a href="#versions"><RefreshCcw size={16} aria-hidden="true" />Versiones</a>
           )}
         </nav>
@@ -630,7 +625,7 @@ export default async function GameDetailPage({
           </section>
         )}
 
-        {gameUpdates.length > 0 && (
+        {recentGameUpdates.length > 0 && (
           <section
             id="versions"
             className={styles.sectionPanel}
@@ -650,7 +645,7 @@ export default async function GameDetailPage({
             </div>
 
             <div className={styles.versionList}>
-              {gameUpdates.map((update, index) => (
+              {recentGameUpdates.map((update, index) => (
                 <article
                   key={update.id}
                   className={styles.versionRow}
