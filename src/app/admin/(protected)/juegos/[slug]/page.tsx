@@ -9,6 +9,7 @@ import GameEditorFormActions from "@/components/admin/GameEditorFormActions";
 import GameMediaUploadForm from "@/components/admin/GameMediaUploadForm";
 import GamePerformanceEditor from "@/components/admin/GamePerformanceEditor";
 import GamePlatformEditor from "@/components/admin/GamePlatformEditor";
+import GameTaxonomyMultiSelect from "@/components/admin/GameTaxonomyMultiSelect";
 import {
   getEditorialItem,
 } from "@/lib/admin/content-service";
@@ -21,6 +22,9 @@ import {
 import type {
   GameHardwareRequirements,
 } from "@/types/game";
+import type {
+  GameTaxonomyTerm,
+} from "@/types/game-taxonomy";
 
 import styles from "../../../admin.module.css";
 
@@ -106,6 +110,16 @@ function publicationLabel(
   return `Publicado · #${identity.publicationNumber}`;
 }
 
+function fallbackTerms(
+  values: readonly string[]
+): GameTaxonomyTerm[] {
+  return values.map((label, index) => ({
+    key: `legacy-${index}`,
+    label,
+    active: true,
+  }));
+}
+
 export default async function AdminGameEditorPage({
   params,
   searchParams,
@@ -115,9 +129,10 @@ export default async function AdminGameEditorPage({
     params,
     searchParams,
   ]);
-  const [item, publicationIdentity] = await Promise.all([
+  const [item, publicationIdentity, taxonomyItem] = await Promise.all([
     getEditorialItem("game", slug),
     getGamePublicationIdentity(slug),
+    getEditorialItem("game_taxonomy", "games"),
   ]);
 
   if (!item) notFound();
@@ -129,6 +144,14 @@ export default async function AdminGameEditorPage({
   const panelCreated =
     publicationIdentity?.panelCreated ?? false;
   const game = item.payload;
+  const taxonomy = taxonomyItem?.payload;
+  const categoryTerms = taxonomy?.categories.filter(
+    (term) => term.active || term.label === game.category
+  ) ?? fallbackTerms([game.category]);
+  const genreTerms = taxonomy?.genres ??
+    fallbackTerms(game.genres ?? []);
+  const tagTerms = taxonomy?.tags ??
+    fallbackTerms(game.tags ?? []);
   const download = game.download;
   const requirements = game.requirements;
   const minimum =
@@ -240,12 +263,20 @@ export default async function AdminGameEditorPage({
 
             <label>
               <span>Categoría</span>
-              <input
+              <select
                 name="category"
                 defaultValue={game.category}
-                maxLength={80}
                 required
-              />
+              >
+                {categoryTerms.map((term) => (
+                  <option key={term.key} value={term.label}>
+                    {term.label}{term.active ? "" : " · Inactiva"}
+                  </option>
+                ))}
+              </select>
+              <small>
+                Las opciones activas provienen de Catálogos. Una categoría antigua inactiva sólo puede conservarse o sustituirse.
+              </small>
             </label>
 
             <label>
@@ -378,34 +409,28 @@ export default async function AdminGameEditorPage({
               />
             </label>
 
-            <label className={styles.fieldWide}>
-              <span>Géneros — separados por coma o por línea</span>
-              <textarea
-                name="genresText"
-                defaultValue={(game.genres ?? []).join(", ")}
-                maxLength={1800}
-                rows={3}
-                placeholder="RPG, Acción"
-              />
-            </label>
+            <GameTaxonomyMultiSelect
+              name="genresText"
+              label="Géneros"
+              terms={genreTerms}
+              initialValues={game.genres ?? []}
+              maximum={20}
+            />
 
-            <label className={styles.fieldWide}>
-              <span>Etiquetas — separadas por coma o por línea</span>
-              <textarea
-                name="tagsText"
-                defaultValue={(game.tags ?? []).join(", ")}
-                maxLength={2600}
-                rows={4}
-                placeholder="Mundo abierto, Fantasía oscura, Un jugador"
-              />
-            </label>
+            <GameTaxonomyMultiSelect
+              name="tagsText"
+              label="Etiquetas"
+              terms={tagTerms}
+              initialValues={game.tags ?? []}
+              maximum={30}
+            />
 
             <GamePlatformEditor
               initialPlatforms={game.platforms ?? []}
             />
 
             <GameEditorFormActions
-              note="La categoría principal sigue funcionando como respaldo cuando no hay géneros o plataformas específicos."
+              note="Categorías, géneros y etiquetas quedan vinculados a Catálogos; publicar el juego hará visibles esos datos en las superficies públicas que los utilizan."
               action={advancedAction}
               continueTo="requisitos"
               saveLabel="Guardar datos avanzados"
