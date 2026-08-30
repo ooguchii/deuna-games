@@ -1,11 +1,9 @@
 import Link from "next/link";
-import {
-  CheckCircle2,
-  CircleSlash2,
-  Pencil,
-  Plus,
-} from "lucide-react";
+import { Plus } from "lucide-react";
 
+import AdminUpdatesCatalog, {
+  type AdminUpdateCatalogItem,
+} from "@/components/admin/AdminUpdatesCatalog";
 import EditorStateNotice from "@/components/admin/EditorStateNotice";
 import {
   listEditorialItems,
@@ -38,14 +36,48 @@ export default async function AdminUpdatesPage({
       searchParams,
     ]);
   const publicationByKey = new Map(
-    (publicationStates ?? []).map((item) => [
-      item.key,
-      item,
-    ])
+    (publicationStates ?? []).map((item) => [item.key, item])
   );
   const state = Array.isArray(parameters.estado)
     ? parameters.estado[0]
     : parameters.estado;
+
+  const catalog: AdminUpdateCatalogItem[] = items.map((item) => {
+    const publication = publicationByKey.get(item.key);
+    const hidden = Boolean(publication && !publication.publicVisible);
+    const neverPublished = Boolean(
+      hidden &&
+        !item.sourcePresent &&
+        publication?.publicationNumber === 1
+    );
+    const pending = publication
+      ? publication.hasUnpublishedChanges
+      : item.status !== "synced";
+    const status: AdminUpdateCatalogItem["status"] = hidden
+      ? neverPublished
+        ? "unpublished"
+        : "hidden"
+      : pending
+        ? "pending"
+        : "published";
+
+    return {
+      key: item.key,
+      gameSlug: item.payload.gameSlug,
+      version: item.payload.version,
+      type: item.payload.type,
+      revision: item.revision,
+      publicationNumber: publication?.publicationNumber ?? null,
+      status,
+      searchText: [
+        item.key,
+        item.payload.gameSlug,
+        item.payload.version,
+        item.payload.type,
+        item.payload.summary,
+      ].join(" "),
+    };
+  });
 
   return (
     <>
@@ -54,12 +86,12 @@ export default async function AdminUpdatesPage({
           <span>VERSIONES EDITORIALES</span>
           <h1>Actualizaciones</h1>
           <p>
-            Cada edición queda como borrador recuperable y sólo llega a la web pública mediante una publicación explícita.
+            Encuentra rápidamente una versión por juego, ID, tipo o estado sin recorrer toda la lista.
           </p>
         </div>
         <Link
           href="/admin/actualizaciones/nueva"
-          className={styles.tableAction}
+          className={styles.primaryAction}
         >
           <Plus size={15} aria-hidden="true" />
           Nueva actualización
@@ -68,101 +100,13 @@ export default async function AdminUpdatesPage({
 
       <EditorStateNotice state={state} />
 
-      <section className={styles.tablePanel}>
-        <div className={styles.tableSummary}>
-          <strong>
-            {items.length} actualizaciones editoriales
-          </strong>
-          <span>
-            {publicationStates
-              ? "Publicación controlada"
-              : "Edición en borrador"}
-          </span>
-        </div>
-
-        {items.length === 0 ? (
-          <p className={styles.emptyState}>
-            Importa las actualizaciones fuente o crea una nueva como borrador privado.
-          </p>
-        ) : (
-          <div className={styles.tableWrap}>
-            <table>
-              <thead>
-                <tr>
-                  <th scope="col">Identidad</th>
-                  <th scope="col">Juego</th>
-                  <th scope="col">Versión</th>
-                  <th scope="col">Estado</th>
-                  <th scope="col">Publicación</th>
-                  <th scope="col">Revisión</th>
-                  <th scope="col">Acción</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((item) => {
-                  const publication =
-                    publicationByKey.get(item.key);
-                  const hidden = Boolean(
-                    publication &&
-                      !publication.publicVisible
-                  );
-                  const neverPublished = Boolean(
-                    hidden &&
-                      !item.sourcePresent &&
-                      publication?.publicationNumber === 1
-                  );
-                  const pending = publication
-                    ? publication.hasUnpublishedChanges
-                    : item.status !== "synced";
-
-                  return (
-                    <tr key={item.key}>
-                      <th scope="row">
-                        <strong>{item.payload.id}</strong>
-                        <span>{item.payload.type}</span>
-                      </th>
-                      <td>{item.payload.gameSlug}</td>
-                      <td>{item.payload.version}</td>
-                      <td>
-                        {hidden || pending ? (
-                          <span className={styles.statusPending}>
-                            <CircleSlash2 size={14} aria-hidden="true" />
-                            {hidden
-                              ? neverPublished
-                                ? "Sin publicar"
-                                : "Oculta"
-                              : "Cambios sin publicar"}
-                          </span>
-                        ) : (
-                          <span className={styles.statusOk}>
-                            <CheckCircle2 size={14} aria-hidden="true" />
-                            Publicada
-                          </span>
-                        )}
-                      </td>
-                      <td>
-                        {publication
-                          ? `#${publication.publicationNumber}`
-                          : "No disponible"}
-                      </td>
-                      <td>{item.revision}</td>
-                      <td>
-                        <Link
-                          className={styles.tableAction}
-                          href={`/admin/actualizaciones/${encodeURIComponent(item.key)}`}
-                        >
-                          <Pencil size={13} aria-hidden="true" />
-                          Editar
-                        </Link>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+      {items.length === 0 ? (
+        <p className={styles.emptyState}>
+          Importa las actualizaciones fuente o crea una nueva como borrador privado.
+        </p>
+      ) : (
+        <AdminUpdatesCatalog items={catalog} />
+      )}
     </>
   );
 }
