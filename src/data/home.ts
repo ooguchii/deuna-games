@@ -1,34 +1,27 @@
 import {
   parseGameDate,
-  reviewScore,
 } from "@/lib/games/catalog";
+import {
+  rankHomeGames,
+} from "@/lib/home/ranking";
 import type { Game } from "@/types/game";
 
 import { games } from "./games";
 import {
+  resolveHomeConfig,
   sourceHomeConfig,
   type HomeConfig,
+  type HomeCurationCollectionId,
+  type HomeCurationMode,
 } from "./home-config";
 import {
   resolvedGameUpdates,
 } from "./updates";
 
-function rankGames(catalog: Game[]) {
-  return [...catalog].sort(
-    (a, b) =>
-      reviewScore(b.reviews) -
-        reviewScore(a.reviews) ||
-      (b.rating ?? 0) -
-        (a.rating ?? 0) ||
-      a.title.localeCompare(b.title, "es")
-  );
-}
-
-function pickPreferredGames(
+function pickConfiguredGames(
   catalog: Game[],
   slugs: readonly string[],
-  limit: number,
-  fill: boolean
+  limit: number
 ) {
   const bySlug = new Map(
     catalog.map((game) => [game.slug, game])
@@ -47,15 +40,45 @@ function pickPreferredGames(
     selectedSlugs.add(game.slug);
 
     if (selected.length === limit) {
-      return selected;
+      break;
     }
   }
 
-  if (!fill) {
-    return selected;
+  return selected;
+}
+
+function selectCuratedGames(
+  catalog: Game[],
+  slugs: readonly string[],
+  target: HomeCurationCollectionId,
+  mode: HomeCurationMode,
+  limit: number
+) {
+  const configured = pickConfiguredGames(
+    catalog,
+    slugs,
+    limit
+  );
+
+  if (mode === "manual") {
+    return configured;
   }
 
-  for (const game of rankGames(catalog)) {
+  const ranked = rankHomeGames(
+    catalog,
+    target
+  ).map((entry) => entry.game);
+
+  if (mode === "automatic") {
+    return ranked.slice(0, limit);
+  }
+
+  const selected = [...configured];
+  const selectedSlugs = new Set(
+    selected.map((game) => game.slug)
+  );
+
+  for (const game of ranked) {
     if (selectedSlugs.has(game.slug)) {
       continue;
     }
@@ -75,18 +98,22 @@ export function buildHomeGameCollections(
   catalog: Game[],
   config: HomeConfig = sourceHomeConfig
 ) {
+  const resolved = resolveHomeConfig(config);
+
   return {
-    heroGames: pickPreferredGames(
+    heroGames: selectCuratedGames(
       catalog,
-      config.heroSlugs,
-      4,
-      true
+      resolved.heroSlugs,
+      "hero",
+      resolved.curation.hero.mode,
+      4
     ),
-    popularGames: pickPreferredGames(
+    popularGames: selectCuratedGames(
       catalog,
-      config.popularSlugs,
-      7,
-      true
+      resolved.popularSlugs,
+      "popular",
+      resolved.curation.popular.mode,
+      7
     ),
     recentGames: [
       ...catalog.filter((game) => Boolean(game.addedAt)),
@@ -96,17 +123,19 @@ export function buildHomeGameCollections(
           parseGameDate(a.addedAt) ||
         a.title.localeCompare(b.title, "es")
     ),
-    lowSpecGames: pickPreferredGames(
+    lowSpecGames: selectCuratedGames(
       catalog,
-      config.lowSpecSlugs,
-      7,
-      false
+      resolved.lowSpecSlugs,
+      "lowSpec",
+      resolved.curation.lowSpec.mode,
+      7
     ),
-    recommendedGames: pickPreferredGames(
+    recommendedGames: selectCuratedGames(
       catalog,
-      config.recommendedSlugs,
-      7,
-      true
+      resolved.recommendedSlugs,
+      "recommended",
+      resolved.curation.recommended.mode,
+      7
     ),
   };
 }
