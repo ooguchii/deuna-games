@@ -20,9 +20,10 @@ type PublicationTableRow = {
   publication_table: string | null;
 };
 
-type PublishedGameRow = {
+type EditorialGameRow = {
   item_key: string;
   published_payload: unknown;
+  public_visible: boolean;
 };
 
 function sourceFallback() {
@@ -31,20 +32,62 @@ function sourceFallback() {
   }));
 }
 
-function mergePublishedGames(
-  publishedGames: Game[]
+function parsePublishedGame(
+  row: EditorialGameRow
+): Game | null {
+  try {
+    const game = parseEditorialPayload(
+      "game",
+      row.published_payload
+    );
+
+    return game.slug === row.item_key
+      ? game
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function mergeEditorialGames(
+  rows: EditorialGameRow[]
 ) {
-  const publishedBySlug = new Map(
-    publishedGames.map((game) => [game.slug, game])
+  const editorialBySlug = new Map(
+    rows.map((row) => [row.item_key, row])
   );
   const sourceSlugs = new Set(
     sourceGames.map((game) => game.slug)
   );
-  const merged = sourceGames.map(
-    (game) => publishedBySlug.get(game.slug) ?? game
-  );
-  const additional = publishedGames
-    .filter((game) => !sourceSlugs.has(game.slug))
+  const merged: Game[] = [];
+
+  for (const sourceGame of sourceGames) {
+    const editorial = editorialBySlug.get(
+      sourceGame.slug
+    );
+
+    if (!editorial) {
+      merged.push(sourceGame);
+      continue;
+    }
+
+    if (!editorial.public_visible) {
+      continue;
+    }
+
+    merged.push(
+      parsePublishedGame(editorial) ??
+        sourceGame
+    );
+  }
+
+  const additional = rows
+    .filter(
+      (row) =>
+        row.public_visible &&
+        !sourceSlugs.has(row.item_key)
+    )
+    .map(parsePublishedGame)
+    .filter((game): game is Game => game !== null)
     .sort((a, b) =>
       a.title.localeCompare(b.title, "es")
     );
@@ -52,7 +95,7 @@ function mergePublishedGames(
   return [...merged, ...additional];
 }
 
-async function readPublishedGames() {
+async function readEditorialGames() {
   const workspace =
     await adminQuery<PublicationTableRow>(
       `SELECT
@@ -65,13 +108,13 @@ async function readPublishedGames() {
     return null;
   }
 
-  const result = await adminQuery<PublishedGameRow>(
+  const result = await adminQuery<EditorialGameRow>(
     `SELECT
        item_key,
-       published_payload
+       published_payload,
+       public_visible
      FROM deuna_admin.editorial_items
      WHERE item_type = 'game'
-       AND public_visible = true
      ORDER BY lower(
        COALESCE(
          published_payload ->> 'title',
@@ -79,26 +122,8 @@ async function readPublishedGames() {
        )
      ) ASC`
   );
-  const games: Game[] = [];
 
-  for (const row of result.rows) {
-    try {
-      const game = parseEditorialPayload(
-        "game",
-        row.published_payload
-      );
-
-      if (game.slug !== row.item_key) {
-        continue;
-      }
-
-      games.push(game);
-    } catch {
-      // Un snapshot inválido nunca reemplaza el catálogo fuente.
-    }
-  }
-
-  return games;
+  return result.rows;
 }
 
 export const getPublicGames = cache(
@@ -106,13 +131,13 @@ export const getPublicGames = cache(
     await connection();
 
     try {
-      const published = await readPublishedGames();
+      const editorial = await readEditorialGames();
 
-      if (!published || published.length === 0) {
+      if (!editorial || editorial.length === 0) {
         return sourceFallback();
       }
 
-      return mergePublishedGames(published);
+      return mergeEditorialGames(editorial);
     } catch {
       /*
        * El catálogo fuente sigue siendo un fallback deliberado:
