@@ -159,6 +159,12 @@ const platformsJsonSchema = z
     platforms.length > 0 ? platforms : undefined
   );
 
+const downloadSourceStatusSchema = z.enum([
+  "available",
+  "down",
+  "maintenance",
+]);
+
 const downloadSourceFormSchema = z
   .object({
     id: z
@@ -192,6 +198,8 @@ const downloadSourceFormSchema = z
         }
       }),
     label: optionalText(240),
+    enabled: z.boolean().optional(),
+    status: downloadSourceStatusSchema.optional(),
   })
   .strict();
 
@@ -230,7 +238,7 @@ const optionalPositiveInteger = z
 
 const downloadSourcesJsonSchema = z
   .string()
-  .max(5_000)
+  .max(5_500)
   .transform((value, context) => {
     try {
       return JSON.parse(value) as unknown;
