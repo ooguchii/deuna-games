@@ -102,6 +102,15 @@ export default async function AdminUpdatesPage({
                 {items.map((item) => {
                   const publication =
                     publicationByKey.get(item.key);
+                  const hidden = Boolean(
+                    publication &&
+                      !publication.publicVisible
+                  );
+                  const neverPublished = Boolean(
+                    hidden &&
+                      !item.sourcePresent &&
+                      publication?.publicationNumber === 1
+                  );
                   const pending = publication
                     ? publication.hasUnpublishedChanges
                     : item.status !== "synced";
@@ -115,10 +124,14 @@ export default async function AdminUpdatesPage({
                       <td>{item.payload.gameSlug}</td>
                       <td>{item.payload.version}</td>
                       <td>
-                        {pending ? (
+                        {hidden || pending ? (
                           <span className={styles.statusPending}>
                             <CircleSlash2 size={14} aria-hidden="true" />
-                            Sin publicar
+                            {hidden
+                              ? neverPublished
+                                ? "Sin publicar"
+                                : "Oculta"
+                              : "Cambios sin publicar"}
                           </span>
                         ) : (
                           <span className={styles.statusOk}>
