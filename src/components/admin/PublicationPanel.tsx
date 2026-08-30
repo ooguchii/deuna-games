@@ -115,6 +115,11 @@ export default function PublicationPanel({
   const resolvedRestoreActionBase =
     restoreActionBase ??
     "/api/admin/content/publications";
+  const resolvedHideAction =
+    hideAction ??
+    (slug
+      ? `/api/admin/content/games/${encodeURIComponent(slug)}/hide`
+      : null);
   const current = state.publications.find(
     (publication) =>
       publication.publicationNumber ===
@@ -204,10 +209,10 @@ export default function PublicationPanel({
           </span>
         </form>
 
-        {hideAction && state.publicVisible && (
+        {resolvedHideAction && state.publicVisible && (
           <form
             method="post"
-            action={hideAction}
+            action={resolvedHideAction}
             className={styles.hideForm}
           >
             <input
@@ -284,11 +289,13 @@ export default function PublicationPanel({
                   <button
                     type="submit"
                     className={styles.restoreButton}
-                    disabled={isCurrent && state.publicVisible}
+                    disabled={isCurrent}
                   >
                     <RotateCcw size={14} aria-hidden="true" />
-                    {isCurrent && state.publicVisible
-                      ? "Versión activa"
+                    {isCurrent
+                      ? state.publicVisible
+                        ? "Versión activa"
+                        : "Snapshot actual"
                       : "Restaurar"}
                   </button>
                 </form>
