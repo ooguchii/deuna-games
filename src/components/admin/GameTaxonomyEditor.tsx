@@ -36,6 +36,7 @@ type Usage = Record<
 type Section = {
   kind: GameTaxonomyKind;
   title: string;
+  eyebrow: string;
   description: string;
   singular: string;
 };
@@ -44,15 +45,17 @@ const sections: Section[] = [
   {
     kind: "classifications",
     title: "Clasificaciones",
+    eyebrow: "CLASIFICACIÓN MAESTRA",
     description:
-      "Una sola lista para Acción, Aventura, RPG, Carreras, Puzzle y cualquier otra clasificación. Cada nombre tiene un único icono, color, orden y contador en toda la web.",
+      "Acción, Aventura, RPG, Carreras, Puzzle y el resto viven en una única lista. Desde aquí controlas nombre, icono, color, orden y estado para toda la web.",
     singular: "clasificación",
   },
   {
     kind: "tags",
     title: "Etiquetas",
+    eyebrow: "ATRIBUTOS DESCRIPTIVOS",
     description:
-      "Atributos descriptivos como Mundo abierto, Cooperativo o Ciencia ficción. No compiten con las clasificaciones principales del catálogo.",
+      "Mundo abierto, Cooperativo, Ciencia ficción y otros atributos complementarios. Se mantienen separados porque describen al juego, pero no reemplazan su clasificación.",
     singular: "etiqueta",
   },
 ];
@@ -111,10 +114,12 @@ export default function GameTaxonomyEditor({
   initialTaxonomy,
   revision,
   usage,
+  section,
 }: {
   initialTaxonomy: GameTaxonomy;
   revision: number;
   usage: Usage;
+  section: GameTaxonomyKind;
 }) {
   const [taxonomy, setTaxonomy] = useState(() =>
     visualizedTaxonomy(initialTaxonomy)
@@ -131,6 +136,12 @@ export default function GameTaxonomyEditor({
     () => JSON.stringify(taxonomy),
     [taxonomy]
   );
+  const currentSection =
+    sections.find((candidate) => candidate.kind === section) ?? sections[0];
+  const terms = taxonomy[currentSection.kind];
+  const active = terms.filter((term) => term.active).length;
+  const hasVisuals = currentSection.kind === "classifications";
+  const returnSection = hasVisuals ? "clasificaciones" : "etiquetas";
 
   function updateTerms(
     kind: GameTaxonomyKind,
@@ -142,23 +153,23 @@ export default function GameTaxonomyEditor({
     }));
   }
 
-  function addTerm(section: Section) {
-    const label = draftLabels[section.kind].trim();
+  function addTerm(sectionDefinition: Section) {
+    const label = draftLabels[sectionDefinition.kind].trim();
     if (!label) return;
 
-    const terms = taxonomy[section.kind];
+    const currentTerms = taxonomy[sectionDefinition.kind];
     if (
-      terms.some(
+      currentTerms.some(
         (term) => normalize(term.label) === normalize(label)
       )
     ) {
       setFeedback(
-        `Ya existe una ${section.singular} con ese nombre o uno equivalente.`
+        `Ya existe una ${sectionDefinition.singular} con ese nombre o uno equivalente.`
       );
       return;
     }
 
-    const key = availableKey(keyFromLabel(label), terms);
+    const key = availableKey(keyFromLabel(label), currentTerms);
     if (!key) {
       setFeedback(
         "No se pudo generar un identificador único para el término."
@@ -172,17 +183,17 @@ export default function GameTaxonomyEditor({
       active: true,
     };
     const term =
-      section.kind === "tags"
+      sectionDefinition.kind === "tags"
         ? base
-        : withTaxonomyVisualDefaults(base, terms.length);
+        : withTaxonomyVisualDefaults(base, currentTerms.length);
 
-    updateTerms(section.kind, (current) => [
+    updateTerms(sectionDefinition.kind, (current) => [
       ...current,
       term,
     ]);
     setDraftLabels((current) => ({
       ...current,
-      [section.kind]: "",
+      [sectionDefinition.kind]: "",
     }));
     setFeedback("");
   }
@@ -192,8 +203,8 @@ export default function GameTaxonomyEditor({
     key: string,
     label: string
   ) {
-    updateTerms(kind, (terms) =>
-      terms.map((term) =>
+    updateTerms(kind, (currentTerms) =>
+      currentTerms.map((term) =>
         term.key === key
           ? { ...term, label }
           : term
@@ -207,8 +218,8 @@ export default function GameTaxonomyEditor({
     field: "icon" | "tone",
     value: GameTaxonomyIcon | GameTaxonomyTone
   ) {
-    updateTerms(kind, (terms) =>
-      terms.map((term) =>
+    updateTerms(kind, (currentTerms) =>
+      currentTerms.map((term) =>
         term.key === key
           ? { ...term, [field]: value }
           : term
@@ -221,11 +232,11 @@ export default function GameTaxonomyEditor({
     index: number,
     direction: -1 | 1
   ) {
-    updateTerms(kind, (terms) => {
+    updateTerms(kind, (currentTerms) => {
       const target = index + direction;
-      if (target < 0 || target >= terms.length) return terms;
+      if (target < 0 || target >= currentTerms.length) return currentTerms;
 
-      const next = [...terms];
+      const next = [...currentTerms];
       [next[index], next[target]] = [next[target], next[index]];
       return next;
     });
@@ -235,8 +246,8 @@ export default function GameTaxonomyEditor({
     kind: GameTaxonomyKind,
     key: string
   ) {
-    updateTerms(kind, (terms) =>
-      terms.map((term) =>
+    updateTerms(kind, (currentTerms) =>
+      currentTerms.map((term) =>
         term.key === key
           ? { ...term, active: !term.active }
           : term
@@ -249,15 +260,15 @@ export default function GameTaxonomyEditor({
     key: string
   ) {
     if ((usage[kind][key] ?? 0) > 0) return;
-    updateTerms(kind, (terms) =>
-      terms.filter((term) => term.key !== key)
+    updateTerms(kind, (currentTerms) =>
+      currentTerms.filter((term) => term.key !== key)
     );
   }
 
   return (
     <form
       method="post"
-      action="/api/admin/content/catalogs/games"
+      action={`/api/admin/content/catalogs/games?seccion=${returnSection}`}
       className={styles.root}
     >
       <input
@@ -273,9 +284,11 @@ export default function GameTaxonomyEditor({
 
       <div className={styles.summary}>
         <div>
-          <strong>Una sola clasificación maestra</strong>
+          <strong>{currentSection.title}</strong>
           <p>
-            Categoría y género ya no son dos cosas diferentes. Acción, Aventura, RPG y el resto existen una sola vez y esa misma definición alimenta Inicio, Juegos, filtros y edición administrativa.
+            {hasVisuals
+              ? "Esta ventana gobierna la clasificación visible de los juegos. Un mismo nombre existe una sola vez y conserva un único contador en Inicio y Juegos."
+              : "Esta ventana contiene solamente atributos descriptivos. Así puedes trabajar las etiquetas sin mezclar ni desplazar las clasificaciones principales."}
           </p>
         </div>
         <span>Revisión {revision}</span>
@@ -287,217 +300,230 @@ export default function GameTaxonomyEditor({
         </div>
       )}
 
-      <div className={styles.sections}>
-        {sections.map((section) => {
-          const terms = taxonomy[section.kind];
-          const active = terms.filter((term) => term.active).length;
-          const hasVisuals = section.kind === "classifications";
+      <section className={styles.panel}>
+        <header className={styles.panelHeader}>
+          <div>
+            <span>{currentSection.eyebrow}</span>
+            <h2>{currentSection.title}</h2>
+            <p>{currentSection.description}</p>
+          </div>
+          <div className={styles.counts}>
+            <strong>{active}</strong>
+            <span>activos · {terms.length} total</span>
+          </div>
+        </header>
 
-          return (
-            <section key={section.kind} className={styles.panel}>
-              <header className={styles.panelHeader}>
-                <div>
-                  <span>CATÁLOGO</span>
-                  <h2>{section.title}</h2>
-                  <p>{section.description}</p>
-                </div>
-                <div className={styles.counts}>
-                  <strong>{active}</strong>
-                  <span>activos · {terms.length} total</span>
-                </div>
-              </header>
+        <div className={styles.addRow}>
+          <input
+            value={draftLabels[currentSection.kind]}
+            onChange={(event) =>
+              setDraftLabels((current) => ({
+                ...current,
+                [currentSection.kind]: event.target.value,
+              }))
+            }
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                addTerm(currentSection);
+              }
+            }}
+            maxLength={80}
+            placeholder={`Nueva ${currentSection.singular}`}
+            aria-label={`Nueva ${currentSection.singular}`}
+          />
+          <button
+            type="button"
+            onClick={() => addTerm(currentSection)}
+          >
+            <Plus size={15} aria-hidden="true" />
+            Agregar
+          </button>
+        </div>
 
-              <div className={styles.addRow}>
-                <input
-                  value={draftLabels[section.kind]}
-                  onChange={(event) =>
-                    setDraftLabels((current) => ({
-                      ...current,
-                      [section.kind]: event.target.value,
-                    }))
-                  }
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      event.preventDefault();
-                      addTerm(section);
-                    }
-                  }}
-                  maxLength={80}
-                  placeholder={`Nueva ${section.singular}`}
-                  aria-label={`Nueva ${section.singular}`}
-                />
-                <button
-                  type="button"
-                  onClick={() => addTerm(section)}
-                >
-                  <Plus size={15} aria-hidden="true" />
-                  Agregar
-                </button>
-              </div>
+        {terms.length === 0 ? (
+          <p className={styles.empty}>
+            Todavía no hay términos en este catálogo.
+          </p>
+        ) : (
+          <>
+            <div
+              className={`${styles.columnHeader} ${
+                hasVisuals ? "" : styles.columnHeaderSimple
+              }`}
+              aria-hidden="true"
+            >
+              <span>Nombre e identificador</span>
+              {hasVisuals && <span>Apariencia</span>}
+              <span>Uso</span>
+              <span>Orden</span>
+              <span>Estado</span>
+              <span />
+            </div>
 
-              {terms.length === 0 ? (
-                <p className={styles.empty}>
-                  Todavía no hay términos en este catálogo.
-                </p>
-              ) : (
-                <div className={styles.termList}>
-                  {terms.map((term, index) => {
-                    const used = usage[section.kind][term.key] ?? 0;
-                    const tone = taxonomyToneOptions.find(
-                      (option) => option.key === term.tone
-                    );
+            <div className={styles.termList}>
+              {terms.map((term, index) => {
+                const used = usage[currentSection.kind][term.key] ?? 0;
+                const tone = taxonomyToneOptions.find(
+                  (option) => option.key === term.tone
+                );
 
-                    return (
-                      <div key={term.key} className={styles.termRow}>
-                        <div className={styles.termMain}>
-                          <input
-                            value={term.label}
-                            readOnly={used > 0}
-                            onChange={(event) =>
-                              renameTerm(
-                                section.kind,
-                                term.key,
-                                event.target.value
-                              )
-                            }
-                            maxLength={80}
-                            aria-label={`Nombre de ${term.label}`}
-                          />
-                          <code>{term.key}</code>
-                        </div>
+                return (
+                  <div
+                    key={term.key}
+                    className={`${styles.termRow} ${
+                      hasVisuals ? "" : styles.termRowSimple
+                    }`}
+                  >
+                    <div className={styles.termMain}>
+                      <input
+                        value={term.label}
+                        readOnly={used > 0}
+                        onChange={(event) =>
+                          renameTerm(
+                            currentSection.kind,
+                            term.key,
+                            event.target.value
+                          )
+                        }
+                        maxLength={80}
+                        aria-label={`Nombre de ${term.label}`}
+                      />
+                      <code>{term.key}</code>
+                    </div>
 
-                        {hasVisuals && term.icon && term.tone && (
-                          <div className={styles.visualEditor}>
-                            <span
-                              className={styles.visualPreview}
-                              style={
-                                {
-                                  "--taxonomy-accent": tone?.color ?? "#ff1554",
-                                } as CSSProperties
-                              }
-                            >
-                              <TaxonomyIcon icon={term.icon} size={23} />
-                            </span>
-
-                            <label>
-                              <span>Icono</span>
-                              <select
-                                value={term.icon}
-                                onChange={(event) =>
-                                  setVisual(
-                                    section.kind,
-                                    term.key,
-                                    "icon",
-                                    event.target.value as GameTaxonomyIcon
-                                  )
-                                }
-                              >
-                                {taxonomyIconOptions.map((option) => (
-                                  <option key={option.key} value={option.key}>
-                                    {option.label}
-                                  </option>
-                                ))}
-                              </select>
-                            </label>
-
-                            <label>
-                              <span>Color</span>
-                              <select
-                                value={term.tone}
-                                onChange={(event) =>
-                                  setVisual(
-                                    section.kind,
-                                    term.key,
-                                    "tone",
-                                    event.target.value as GameTaxonomyTone
-                                  )
-                                }
-                              >
-                                {taxonomyToneOptions.map((option) => (
-                                  <option key={option.key} value={option.key}>
-                                    {option.label}
-                                  </option>
-                                ))}
-                              </select>
-                            </label>
-                          </div>
-                        )}
-
-                        <span className={styles.usage}>
-                          {used === 0
-                            ? "Sin uso"
-                            : `${used} ${used === 1 ? "juego" : "juegos"}`}
+                    {hasVisuals && term.icon && term.tone && (
+                      <div className={styles.visualEditor}>
+                        <span
+                          className={styles.visualPreview}
+                          style={
+                            {
+                              "--taxonomy-accent": tone?.color ?? "#ff1554",
+                            } as CSSProperties
+                          }
+                        >
+                          <TaxonomyIcon icon={term.icon} size={23} />
                         </span>
 
-                        <div className={styles.orderButtons}>
-                          <button
-                            type="button"
-                            disabled={index === 0}
-                            aria-label={`Subir ${term.label}`}
-                            onClick={() =>
-                              moveTerm(section.kind, index, -1)
+                        <label>
+                          <span>Icono</span>
+                          <select
+                            value={term.icon}
+                            onChange={(event) =>
+                              setVisual(
+                                currentSection.kind,
+                                term.key,
+                                "icon",
+                                event.target.value as GameTaxonomyIcon
+                              )
                             }
                           >
-                            <ArrowUp size={14} aria-hidden="true" />
-                          </button>
-                          <button
-                            type="button"
-                            disabled={index === terms.length - 1}
-                            aria-label={`Bajar ${term.label}`}
-                            onClick={() =>
-                              moveTerm(section.kind, index, 1)
+                            {taxonomyIconOptions.map((option) => (
+                              <option key={option.key} value={option.key}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+
+                        <label>
+                          <span>Color</span>
+                          <select
+                            value={term.tone}
+                            onChange={(event) =>
+                              setVisual(
+                                currentSection.kind,
+                                term.key,
+                                "tone",
+                                event.target.value as GameTaxonomyTone
+                              )
                             }
                           >
-                            <ArrowDown size={14} aria-hidden="true" />
-                          </button>
-                        </div>
-
-                        <button
-                          type="button"
-                          className={
-                            term.active
-                              ? styles.activeButton
-                              : styles.inactiveButton
-                          }
-                          onClick={() =>
-                            toggleTerm(section.kind, term.key)
-                          }
-                        >
-                          {term.active ? "Activo" : "Inactivo"}
-                        </button>
-
-                        <button
-                          type="button"
-                          className={styles.removeButton}
-                          disabled={used > 0}
-                          title={
-                            used > 0
-                              ? "Un término usado por juegos se conserva; puedes desactivarlo."
-                              : "Eliminar término sin uso"
-                          }
-                          aria-label={`Eliminar ${term.label}`}
-                          onClick={() =>
-                            removeTerm(section.kind, term.key)
-                          }
-                        >
-                          <Trash2 size={15} aria-hidden="true" />
-                        </button>
+                            {taxonomyToneOptions.map((option) => (
+                              <option key={option.key} value={option.key}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
-            </section>
-          );
-        })}
-      </div>
+                    )}
+
+                    <span className={styles.usage}>
+                      {used === 0
+                        ? "Sin uso"
+                        : `${used} ${used === 1 ? "juego" : "juegos"}`}
+                    </span>
+
+                    <div className={styles.orderButtons}>
+                      <button
+                        type="button"
+                        disabled={index === 0}
+                        aria-label={`Subir ${term.label}`}
+                        onClick={() =>
+                          moveTerm(currentSection.kind, index, -1)
+                        }
+                      >
+                        <ArrowUp size={14} aria-hidden="true" />
+                      </button>
+                      <button
+                        type="button"
+                        disabled={index === terms.length - 1}
+                        aria-label={`Bajar ${term.label}`}
+                        onClick={() =>
+                          moveTerm(currentSection.kind, index, 1)
+                        }
+                      >
+                        <ArrowDown size={14} aria-hidden="true" />
+                      </button>
+                    </div>
+
+                    <button
+                      type="button"
+                      className={
+                        term.active
+                          ? styles.activeButton
+                          : styles.inactiveButton
+                      }
+                      onClick={() =>
+                        toggleTerm(currentSection.kind, term.key)
+                      }
+                    >
+                      {term.active ? "Activo" : "Inactivo"}
+                    </button>
+
+                    <button
+                      type="button"
+                      className={styles.removeButton}
+                      disabled={used > 0}
+                      title={
+                        used > 0
+                          ? "Un término usado por juegos se conserva; puedes desactivarlo."
+                          : "Eliminar término sin uso"
+                      }
+                      aria-label={`Eliminar ${term.label}`}
+                      onClick={() =>
+                        removeTerm(currentSection.kind, term.key)
+                      }
+                    >
+                      <Trash2 size={15} aria-hidden="true" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+      </section>
 
       <div className={styles.actions}>
         <p>
-          El contador de uso considera cada juego una sola vez por clasificación, aunque el contenido antiguo la tuviera guardada simultáneamente como categoría y género.
+          {hasVisuals
+            ? "El orden de esta ventana es el mismo orden que se reutiliza públicamente. El contador considera cada juego una sola vez por clasificación."
+            : "Las etiquetas usadas no se eliminan para proteger las fichas existentes; puedes desactivarlas y mantener el historial editorial."}
         </p>
         <button type="submit">
-          Guardar catálogos
+          Guardar {hasVisuals ? "clasificaciones" : "etiquetas"}
         </button>
       </div>
     </form>
