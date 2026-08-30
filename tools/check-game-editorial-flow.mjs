@@ -23,12 +23,19 @@ const [
   publicationOverview,
   publicationReview,
   publicationChanges,
+  editorFlow,
   createRoute,
+  coreRoute,
+  advancedRoute,
+  requirementsRoute,
+  mediaRoute,
+  downloadRoute,
   publishRoute,
   hideRoute,
   restoreRoute,
   gamesPage,
   gameEditor,
+  formActions,
   catalog,
   contextBar,
   publicationPage,
@@ -43,12 +50,19 @@ const [
   source("src/lib/admin/publication-overview.ts"),
   source("src/lib/admin/game-publication-review.ts"),
   source("src/lib/admin/game-publication-changes.ts"),
+  source("src/lib/admin/game-editor-flow.ts"),
   source("src/app/api/admin/content/games/route.ts"),
+  source("src/app/api/admin/content/games/[slug]/route.ts"),
+  source("src/app/api/admin/content/games/[slug]/advanced/route.ts"),
+  source("src/app/api/admin/content/games/[slug]/requirements/route.ts"),
+  source("src/app/api/admin/content/games/[slug]/media/route.ts"),
+  source("src/app/api/admin/content/games/[slug]/download/route.ts"),
   source("src/app/api/admin/content/games/[slug]/publish/route.ts"),
   source("src/app/api/admin/content/games/[slug]/hide/route.ts"),
   source("src/app/api/admin/content/publications/[publicationId]/restore/route.ts"),
   source("src/app/admin/(protected)/juegos/page.tsx"),
   source("src/app/admin/(protected)/juegos/[slug]/page.tsx"),
+  source("src/components/admin/GameEditorFormActions.tsx"),
   source("src/components/admin/AdminGamesCatalog.tsx"),
   source("src/components/admin/AdminContextBar.tsx"),
   source("src/app/admin/(protected)/juegos/[slug]/publicacion/page.tsx"),
@@ -88,10 +102,12 @@ assert(
   publicationOverview.includes("panel_created") &&
     publicationOverview.includes("ever_published") &&
     publicationOverview.includes("getGamePublicationIdentity") &&
+    publicationOverview.includes("item.public_visible") &&
+    publicationOverview.includes("has_unpublished_changes") &&
     publicationOverview.includes("revision.revision = 1") &&
     publicationOverview.includes("revision.action = 'draft_saved'") &&
     publicationOverview.includes("publication.action IN ('published', 'rollback')"),
-  "La clasificación de altas debe derivarse del origen editorial permanente y de publicaciones públicas reales, no sólo del número interno o de una ventana de historial."
+  "El editor y el catálogo deben derivar su estado del origen permanente, la visibilidad pública y la diferencia real entre borrador y snapshot."
 );
 
 assert(
@@ -120,6 +136,42 @@ assert(
   "Después de crear un juego, el flujo debe continuar por la siguiente sección editorial."
 );
 
+assert(
+  editorFlow.includes('ficha: "datos"') &&
+    editorFlow.includes('datos: "requisitos"') &&
+    editorFlow.includes('requisitos: "multimedia"') &&
+    editorFlow.includes('multimedia: "descargas"') &&
+    editorFlow.includes('descargas: "publicacion"') &&
+    editorFlow.includes('searchParams.get("continuar")') &&
+    editorFlow.includes("requested === nextSection[current]"),
+  "El avance guiado debe aceptar exclusivamente la siguiente etapa prevista y leer la intención desde la URL, no desde campos de contenido."
+);
+
+for (const [name, route, current] of [
+  ["ficha", coreRoute, '"ficha"'],
+  ["datos", advancedRoute, '"datos"'],
+  ["requisitos", requirementsRoute, '"requisitos"'],
+  ["multimedia", mediaRoute, '"multimedia"'],
+  ["descargas", downloadRoute, '"descargas"'],
+]) {
+  assert(
+    route.includes("requestedGameEditorContinuation") &&
+      route.includes("request.nextUrl") &&
+      route.includes("gameEditorSuccessTarget") &&
+      route.includes(current) &&
+      route.includes("hasExactAdminFormFields") &&
+      route.includes('result.outcome === "conflict"'),
+    `Guardar ${name} debe mantener validación exacta y sólo avanzar tras un guardado sin conflicto.`
+  );
+}
+
+assert(
+  formActions.includes("formAction") &&
+    formActions.includes("?continuar=") &&
+    !formActions.includes('name="continuar"'),
+  "Guardar y continuar debe conservar los mismos campos del formulario y expresar el destino sólo en la URL de acción."
+);
+
 for (const [name, route] of [
   ["publicar", publishRoute],
   ["ocultar", hideRoute],
@@ -145,9 +197,14 @@ assert(
 
 assert(
   gameEditor.includes("getGamePublicationIdentity") &&
+    gameEditor.includes("publicationLabel") &&
+    gameEditor.includes("Cambios pendientes") &&
+    gameEditor.includes("Publicado · #") &&
     gameEditor.includes("publicationIdentity?.panelCreated") &&
-    gameEditor.includes("!item.sourcePresent && !panelCreated"),
-  "El editor no debe presentar una alta creada desde el panel como un juego desaparecido de los archivos fuente."
+    gameEditor.includes("!item.sourcePresent && !panelCreated") &&
+    gameEditor.includes("GameEditorFormActions") &&
+    gameEditor.includes('continueTo="publicacion"'),
+  "El editor debe mostrar el estado real frente a la web, no confundir altas del panel con fuentes perdidas y guiar el alta hasta Publicación."
 );
 
 assert(
@@ -218,6 +275,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Flujo editorial de juegos: OK (alta privada con origen permanente, estados históricos exactos, comparación de cambios, edición por borrador, vista previa sin mutaciones, primera publicación, republicación y restauración protegidas)."
+    "Flujo editorial de juegos: OK (alta privada con origen permanente, avance guiado seguro, estados públicos exactos, comparación de cambios, borradores, vista previa sin mutaciones, primera publicación, republicación y restauración protegidas)."
   );
 }
