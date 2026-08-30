@@ -4,6 +4,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import {
   Download,
   FileClock,
+  Gauge,
   ImageIcon,
   ListTree,
   MonitorCog,
@@ -18,6 +19,7 @@ const gameSections = [
   { id: "ficha", label: "Ficha", icon: PanelTop },
   { id: "datos", label: "Datos", icon: ListTree },
   { id: "requisitos", label: "Requisitos", icon: MonitorCog },
+  { id: "rendimiento", label: "Rendimiento", icon: Gauge },
   { id: "multimedia", label: "Multimedia", icon: ImageIcon },
   { id: "descargas", label: "Descargas", icon: Download },
   { id: "publicacion", label: "Publicación", icon: Rocket },
