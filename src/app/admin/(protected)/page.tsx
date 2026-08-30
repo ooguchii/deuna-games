@@ -20,6 +20,7 @@ import {
 } from "@/lib/admin/content-service";
 import {
   getPublicationOverview,
+  type PendingPublication,
   type RecentPublication,
 } from "@/lib/admin/publication-overview";
 import {
@@ -43,14 +44,30 @@ function publicationPath(
   }
 
   if (type === "home_config") {
-    return "/admin/portada";
+    return "/admin/portada?seccion=publicacion";
   }
 
   if (type === "about_config") {
     return "/admin/paginas/quienes-somos";
   }
 
+  if (type === "game_taxonomy") {
+    return "/admin/catalogos?seccion=publicacion";
+  }
+
+  if (type === "public_pages_config") {
+    return "/admin/paginas/presentacion?seccion=publicacion";
+  }
+
   return "/admin/configuracion";
+}
+
+function attentionPath(item: PendingPublication) {
+  if (item.type === "game") {
+    return `/admin/juegos/${encodeURIComponent(item.key)}/publicacion`;
+  }
+
+  return publicationPath(item.type, item.key);
 }
 
 function publicationTypeLabel(
@@ -60,7 +77,17 @@ function publicationTypeLabel(
   if (type === "game_update") return "Actualización";
   if (type === "home_config") return "Portada";
   if (type === "about_config") return "Página";
+  if (type === "game_taxonomy") return "Catálogos";
+  if (type === "public_pages_config") return "Presentación pública";
   return "Configuración";
+}
+
+function pendingStatusLabel(
+  status: PendingPublication["status"]
+) {
+  if (status === "hidden") return "Oculto";
+  if (status === "unpublished") return "Sin publicar";
+  return "Cambios pendientes";
 }
 
 function formatPublicationDate(value: Date) {
@@ -135,6 +162,57 @@ export default async function AdminDashboardPage() {
         </article>
       </section>
 
+      {publication.available && publication.pendingItems.length > 0 && (
+        <section className={styles.tablePanel} aria-labelledby="attention-title">
+          <div className={styles.tableSummary}>
+            <strong id="attention-title">Requiere atención</strong>
+            <span>
+              {publication.pending} {publication.pending === 1 ? "pendiente" : "pendientes"}
+            </span>
+          </div>
+
+          <div className={styles.tableWrap}>
+            <table aria-label="Contenido editorial que requiere atención">
+              <thead>
+                <tr>
+                  <th scope="col">Contenido</th>
+                  <th scope="col">Tipo</th>
+                  <th scope="col">Estado</th>
+                  <th scope="col">Pub.</th>
+                  <th scope="col">Acción</th>
+                </tr>
+              </thead>
+              <tbody>
+                {publication.pendingItems.map((item) => (
+                  <tr key={`${item.type}:${item.key}`}>
+                    <th scope="row">
+                      <strong>{item.label}</strong>
+                      <span>{item.key}</span>
+                    </th>
+                    <td>{publicationTypeLabel(item.type)}</td>
+                    <td>
+                      <span className={styles.statusPending}>
+                        {pendingStatusLabel(item.status)}
+                      </span>
+                    </td>
+                    <td>#{item.publicationNumber}</td>
+                    <td>
+                      <Link
+                        href={attentionPath(item)}
+                        className={styles.tableAction}
+                      >
+                        Resolver
+                        <ArrowRight size={14} aria-hidden="true" />
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
       <section className={styles.adminSection}>
         <div className={styles.sectionHeading}>
           <div>
@@ -154,7 +232,7 @@ export default async function AdminDashboardPage() {
             <div>
               <strong>Revisar juegos</strong>
               <span>
-                Títulos, categorías, versiones, requisitos, descargas y publicación.
+                Títulos, clasificaciones, versiones, requisitos, descargas y publicación.
               </span>
             </div>
             <ArrowRight size={18} aria-hidden="true" />
@@ -225,7 +303,7 @@ export default async function AdminDashboardPage() {
           </div>
 
           <div className={styles.tableWrap}>
-            <table>
+            <table aria-label="Publicaciones editoriales recientes">
               <thead>
                 <tr>
                   <th scope="col">Contenido</th>
