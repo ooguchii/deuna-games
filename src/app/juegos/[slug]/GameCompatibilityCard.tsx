@@ -21,11 +21,15 @@ import type {
 import {
   useResolvedHardwareProfile,
 } from "@/features/game-finder/useResolvedHardwareProfile";
+import type {
+  GamePerformanceCalibration,
+} from "@/types/game";
 
 import styles from "./page.module.css";
 
 type GameCompatibilityCardProps = {
   slug: string;
+  calibration?: GamePerformanceCalibration;
 };
 
 const tierLabels: Record<
@@ -76,6 +80,7 @@ function profileStatusLabel(profile: HardwareProfile) {
 
 export default function GameCompatibilityCard({
   slug,
+  calibration,
 }: GameCompatibilityCardProps) {
   const {
     profile,
@@ -91,10 +96,11 @@ export default function GameCompatibilityCard({
             {
               resolution: "1080p",
               quality: "medium",
-            }
+            },
+            calibration
           )
         : null,
-    [profile, slug]
+    [calibration, profile, slug]
   );
 
   if (
@@ -110,7 +116,8 @@ export default function GameCompatibilityCard({
     const description =
       status === "loading"
         ? "Estamos comprobando primero el perfil guardado y después los datos que el navegador pueda identificar."
-        : "La detección automática no obtuvo CPU, GPU y RAM suficientes para calcular un rango fiable.";
+        : estimate?.reason ??
+          "La detección automática no obtuvo CPU, GPU y RAM suficientes para calcular un rango fiable.";
 
     return (
       <aside
