@@ -17,6 +17,7 @@
     "db:migrate": "node --env-file=.env.admin-migration.local ./tools/admin/migrate.ts",
     "admin:import-content": "node --env-file=.env.admin-migration.local ./tools/admin/import-content.ts",
     "admin:create-owner": "node --env-file=.env.admin-migration.local ./tools/admin/create-owner.ts",
+    "admin:change-password": "node --env-file=.env.admin-migration.local ./tools/admin/change-owner-password.ts",
     "admin:setup": "npm run db:migrate && npm run admin:import-content && npm run admin:create-owner",
     "admin:preflight:migration": "node --env-file=.env.admin-migration.local ./tools/admin/preflight.ts --purpose=migration",
     "admin:preflight:runtime": "node --env-file=.env.local ./tools/admin/preflight.ts --purpose=runtime",

@@ -67,6 +67,14 @@ npm run admin:create-owner
 npm run admin:preflight
 ```
 
+Si es necesario reemplazar la contraseña propietaria, ejecutar desde esta misma copia privada:
+
+```bash
+npm run admin:change-password
+```
+
+El comando no muestra ni registra la contraseña, revoca las sesiones existentes y deja un evento mínimo de auditoría sin IP ni datos del dispositivo.
+
 `admin:preflight` es de sólo lectura. Comprueba conexión local, separación de roles, ausencia de privilegios globales, cierre de `PUBLIC`, permisos exactos por columna, migraciones y checksums, una sola cuenta propietaria y el contenido importado. No muestra contraseñas ni modifica datos.
 
 Después del preflight se puede retirar `.env.admin-migration.local` del VPS y recuperarlo desde un gestor privado de secretos sólo cuando exista otra migración.

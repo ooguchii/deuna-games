@@ -19,6 +19,9 @@ import {
   adminUsernameSchema,
   normalizeAdminUsername,
 } from "../../src/lib/admin/validation.ts";
+import {
+  readConfirmedAdminPassword,
+} from "./interactive-password.ts";
 
 async function readUsername() {
   const configured =
@@ -48,72 +51,6 @@ async function readUsername() {
   }
 }
 
-async function readHidden(
-  label: string
-) {
-  if (
-    !process.stdin.isTTY ||
-    typeof process.stdin.setRawMode !== "function"
-  ) {
-    throw new Error(
-      "La contraseña sólo se puede leer desde una terminal interactiva segura."
-    );
-  }
-
-  process.stdout.write(label);
-  process.stdin.setEncoding("utf8");
-  process.stdin.setRawMode(true);
-  process.stdin.resume();
-
-  return new Promise<string>(
-    (resolve, reject) => {
-      let secret = "";
-
-      function finish() {
-        process.stdin.off("data", onData);
-        process.stdin.setRawMode(false);
-        process.stdin.pause();
-        process.stdout.write("\n");
-      }
-
-      function onData(chunk: string | Buffer) {
-        for (const character of chunk.toString()) {
-          if (character === "\u0003") {
-            finish();
-            reject(
-              new Error("Operación cancelada.")
-            );
-            return;
-          }
-
-          if (
-            character === "\r" ||
-            character === "\n"
-          ) {
-            finish();
-            resolve(secret);
-            return;
-          }
-
-          if (
-            character === "\u007f" ||
-            character === "\b"
-          ) {
-            secret = secret.slice(0, -1);
-            continue;
-          }
-
-          if (character >= " ") {
-            secret += character;
-          }
-        }
-      }
-
-      process.stdin.on("data", onData);
-    }
-  );
-}
-
 async function readPassword() {
   const configured =
     process.env.DEUNA_ADMIN_OWNER_PASSWORD;
@@ -123,20 +60,10 @@ async function readPassword() {
     return configured;
   }
 
-  const first = await readHidden(
-    "Contraseña extensa del propietario: "
-  );
-  const second = await readHidden(
+  return readConfirmedAdminPassword(
+    "Contraseña extensa del propietario: ",
     "Repite la contraseña: "
   );
-
-  if (first !== second) {
-    throw new Error(
-      "Las contraseñas no coinciden."
-    );
-  }
-
-  return first;
 }
 
 async function main() {

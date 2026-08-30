@@ -296,11 +296,40 @@ const ownerCreator = await readFile(
   "utf8"
 );
 
+const ownerPasswordChanger = await readFile(
+  path.join(
+    root,
+    "tools",
+    "admin",
+    "change-owner-password.ts"
+  ),
+  "utf8"
+);
+
 assert(
   ownerCreator.includes(
     "VALUES ($1::uuid, 'owner_created', 'admin_user', $2::text)"
   ) && ownerCreator.includes("[id, id]"),
   "La auditoría inicial debe usar parámetros separados para UUID y texto."
+);
+
+assert(
+  ownerPasswordChanger.includes(
+    "SET password_hash = $2"
+  ) &&
+    ownerPasswordChanger.includes(
+      "failed_login_count = 0"
+    ) &&
+    ownerPasswordChanger.includes(
+      "locked_until = NULL"
+    ) &&
+    ownerPasswordChanger.includes(
+      "SET revoked_at = COALESCE(revoked_at, now())"
+    ) &&
+    ownerPasswordChanger.includes(
+      "owner_password_changed"
+    ),
+  "El cambio de contraseña debe desbloquear la cuenta, revocar sesiones y dejar auditoría mínima."
 );
 
 assert(
@@ -334,6 +363,15 @@ const packageManifest = JSON.parse(
 const nextRunner = await readFile(
   path.join(root, "tools", "run-next.mjs"),
   "utf8"
+);
+
+assert(
+  packageManifest.scripts?.[
+    "admin:change-password"
+  ]?.includes(
+    "--env-file=.env.admin-migration.local"
+  ),
+  "El cambio de contraseña debe usar únicamente las credenciales privadas de migración."
 );
 
 assert(

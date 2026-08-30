@@ -194,6 +194,14 @@ El instalador es repetible y realiza las siguientes acciones:
 
 La contraseña propietaria no muestra letras, puntos ni asteriscos mientras se escribe. Debe tener entre 16 y 128 caracteres e incluir una letra, un número y un símbolo. No debe compartirse ni guardarse en el repositorio.
 
+Para reemplazarla desde la terminal privada, detener primero el servidor y ejecutar:
+
+```bash
+npm run admin:change-password
+```
+
+El comando vuelve a aplicar la política, guarda únicamente el hash `scrypt`, elimina el bloqueo por intentos fallidos, revoca todas las sesiones anteriores y registra el cambio sin conservar la contraseña.
+
 Al finalizar, iniciar el servidor limitado al equipo local:
 
 ```bash
