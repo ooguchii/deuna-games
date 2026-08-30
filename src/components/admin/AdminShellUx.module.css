@@ -84,6 +84,22 @@
   background: color-mix(in srgb, var(--brand) 5%, #0a1017);
 }
 
+.contextActive.contextActive {
+  color: #ffffff;
+  border-color: color-mix(in srgb, var(--brand) 46%, #2b3540);
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--brand) 14%, #101720),
+      color-mix(in srgb, var(--brand) 7%, #0a1017)
+    );
+  box-shadow: inset 0 -2px 0 var(--brand);
+}
+
+.contextActive.contextActive svg {
+  color: #ff8da8;
+}
+
 @media (max-width: 760px) {
   .shell.shell {
     display: block;
