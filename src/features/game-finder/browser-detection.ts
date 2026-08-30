@@ -1,3 +1,4 @@
+import { readConfirmedCpu } from "./cpu-confirmation-storage";
 import { estimateCpuFromLogicalProcessors } from "./hardware-catalog";
 import {
   matchGpuRenderer,
@@ -291,7 +292,9 @@ export async function detectBrowserHardware(): Promise<BrowserHardwareSnapshot> 
   if (!logicalProcessors) {
     warnings.push("El navegador no informó procesadores lógicos.");
   } else {
-    warnings.push("El navegador informa hilos lógicos, no el modelo exacto de CPU.");
+    warnings.push(
+      "El navegador informa hilos lógicos, no el modelo exacto de CPU. La capacidad automática se expresa como un intervalo hasta que confirmes el procesador."
+    );
   }
 
   if (!approximateMemoryGb) {
@@ -347,12 +350,22 @@ export function profileFromBrowserSnapshot(
   preferredProfile: HardwareProfile | null = null
 ): HardwareProfile {
   const detectedOs = detectOs(snapshot, navigator.userAgent);
-  const detectedCpu = estimateCpuFromLogicalProcessors(snapshot.logicalProcessors);
+  const confirmedCpu = readConfirmedCpu();
+  const estimatedCpu = estimateCpuFromLogicalProcessors(
+    snapshot.logicalProcessors
+  );
+  const detectedCpu = confirmedCpu ?? estimatedCpu;
+  const detectedCpuKnowledge = confirmedCpu
+    ? "confirmed"
+    : estimatedCpu
+      ? "estimated"
+      : "unknown";
   const detectedGpu = matchGpuRenderer(snapshot.gpuRenderer)?.gpu ?? null;
   const detectedIsSpecific = isSpecificDetectedOs(detectedOs);
 
   const browserProfile: HardwareProfile = {
     cpu: detectedCpu,
+    cpuKnowledge: detectedCpuKnowledge,
     gpu: detectedGpu,
     ramGb: snapshot.approximateMemoryGb,
     ramKnowledge: snapshot.memoryKind,
@@ -382,6 +395,9 @@ export function profileFromBrowserSnapshot(
   return {
     ...browserProfile,
     cpu: confirmedProfile.cpu ?? detectedCpu,
+    cpuKnowledge: confirmedProfile.cpu
+      ? "confirmed"
+      : detectedCpuKnowledge,
     gpu: confirmedProfile.gpu ?? detectedGpu,
     ramGb: confirmedProfile.ramGb ?? snapshot.approximateMemoryGb,
     ramKnowledge: confirmedProfile.ramGb
