@@ -1,15 +1,15 @@
 .root {
   display: grid;
-  gap: 18px;
+  gap: 20px;
 }
 
 .summary,
 .structurePanel,
 .copyPanel,
 .actions {
-  border: 1px solid #273342;
+  border: 1px solid #354354;
   border-radius: 14px;
-  background: rgba(12, 20, 30, 0.72);
+  background: rgba(12, 20, 30, 0.82);
 }
 
 .summary,
@@ -18,13 +18,15 @@
   align-items: center;
   justify-content: space-between;
   gap: 20px;
-  padding: 16px 18px;
+  padding: 18px 20px;
 }
 
 .summary strong,
 .copyHeader strong {
   display: block;
-  margin-bottom: 4px;
+  margin-bottom: 5px;
+  color: #eef3f8;
+  font-size: 15px;
 }
 
 .summary p,
@@ -32,82 +34,89 @@
 .actions p,
 .structureIntro {
   margin: 0;
-  color: #8da2bd;
-  font-size: 13px;
-  line-height: 1.55;
+  color: #a4b3c4;
+  font-size: 14px;
+  line-height: 1.6;
 }
 
 .summary span {
   flex: 0 0 auto;
-  border: 1px solid #39495d;
+  border: 1px solid #46586e;
   border-radius: 999px;
-  padding: 7px 10px;
-  color: #c9d5e5;
+  padding: 7px 11px;
+  color: #d5deea;
   font-size: 12px;
 }
 
 .structurePanel,
 .copyPanel {
-  padding: 18px;
+  padding: 20px;
 }
 
 .structureIntro {
-  margin-bottom: 14px;
+  margin-bottom: 16px;
 }
 
 .sectionList {
   display: grid;
-  gap: 8px;
+  gap: 10px;
 }
 
 .sectionRow {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) 120px 80px;
+  grid-template-columns: minmax(220px, 1fr) 130px 90px;
   align-items: center;
-  gap: 10px;
-  border: 1px solid #202c3a;
+  gap: 11px;
+  border: 1px solid #344252;
   border-radius: 10px;
-  padding: 10px 12px;
-  background: rgba(5, 12, 20, 0.72);
+  padding: 12px 14px;
+  background: rgba(8, 15, 24, 0.82);
+}
+
+.sectionRow:hover,
+.sectionRow:focus-within {
+  border-color: #4b5b6d;
+  background: #0e1722;
 }
 
 .sectionIdentity {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 11px;
 }
 
 .sectionOrder {
-  width: 30px;
-  height: 30px;
+  width: 34px;
+  height: 34px;
   display: grid;
   place-items: center;
   border-radius: 8px;
-  background: #111b27;
-  color: #7890ad;
-  font-size: 11px;
+  background: #131e2a;
+  color: #9eb0c4;
+  font-size: 12px;
   font-weight: 800;
 }
 
 .sectionIdentity strong {
-  color: #eef3f9;
-  font-size: 13px;
+  color: #f0f4f8;
+  font-size: 14px;
 }
 
 .orderButtons {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 5px;
+  gap: 6px;
 }
 
 .orderButtons button,
 .visibilityButton {
-  min-height: 34px;
-  border: 1px solid #334256;
+  min-height: 40px;
+  border: 1px solid #40516a;
   border-radius: 8px;
-  background: #0b141f;
-  color: #9fb0c4;
+  background: #0d1621;
+  color: #b2c0cf;
   cursor: pointer;
+  font-size: 12px;
 }
 
 .orderButtons button {
@@ -117,45 +126,45 @@
 
 .orderButtons button:disabled {
   cursor: not-allowed;
-  opacity: 0.25;
+  opacity: 0.35;
 }
 
 .visibilityButton[data-visible="true"] {
-  border-color: rgba(66, 211, 146, 0.34);
-  background: rgba(66, 211, 146, 0.08);
-  color: #62e5a8;
+  border-color: rgba(66, 211, 146, 0.42);
+  background: rgba(66, 211, 146, 0.1);
+  color: #82e9ba;
 }
 
 .copyGroups {
   display: grid;
-  gap: 10px;
+  gap: 11px;
 }
 
 .copyGroup {
-  border: 1px solid #202c3a;
-  border-radius: 10px;
-  background: rgba(5, 12, 20, 0.55);
   overflow: hidden;
+  border: 1px solid #344252;
+  border-radius: 10px;
+  background: rgba(8, 15, 24, 0.7);
 }
 
 .copyGroup summary {
-  padding: 13px 14px;
+  padding: 14px 16px;
   cursor: pointer;
-  color: #eef3f9;
-  font-size: 13px;
+  color: #f0f4f8;
+  font-size: 14px;
   font-weight: 800;
 }
 
 .copyFields {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  padding: 0 14px 14px;
+  gap: 13px;
+  padding: 0 16px 16px;
 }
 
 .copyFields label {
   display: grid;
-  gap: 6px;
+  gap: 7px;
 }
 
 .copyFields label[data-wide="true"] {
@@ -163,41 +172,45 @@
 }
 
 .copyFields span {
-  color: #aebed0;
-  font-size: 11px;
+  color: #c0ccda;
+  font-size: 13px;
   font-weight: 700;
 }
 
 .copyFields input,
 .copyFields textarea {
   width: 100%;
-  border: 1px solid #314053;
+  min-height: 44px;
+  border: 1px solid #405169;
   border-radius: 9px;
-  background: #08111b;
+  background: #09121c;
   color: #f5f7fb;
-  padding: 10px 11px;
+  padding: 10px 12px;
   outline: none;
+  font-size: 14px;
 }
 
-.copyFields input:focus,
-.copyFields textarea:focus {
-  border-color: #ff2d66;
-  box-shadow: 0 0 0 2px rgba(255, 45, 102, 0.12);
+.copyFields input:focus-visible,
+.copyFields textarea:focus-visible {
+  border-color: color-mix(in srgb, var(--brand) 70%, #ffffff);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 14%, transparent);
 }
 
 .copyFields textarea {
+  min-height: 92px;
   resize: vertical;
-  min-height: 76px;
+  line-height: 1.55;
 }
 
 .actions button {
   flex: 0 0 auto;
-  min-height: 42px;
+  min-height: 44px;
   border: 0;
   border-radius: 9px;
   background: #ff1554;
   color: #fff;
-  padding: 0 18px;
+  padding: 0 19px;
+  font-size: 13px;
   font-weight: 800;
   cursor: pointer;
 }
@@ -216,5 +229,10 @@
 
   .copyFields label[data-wide="true"] {
     grid-column: auto;
+  }
+
+  .copyFields input,
+  .copyFields textarea {
+    font-size: 16px;
   }
 }
