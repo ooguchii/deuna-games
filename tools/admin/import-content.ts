@@ -8,6 +8,9 @@ import {
   type PoolClient,
 } from "pg";
 
+import {
+  sourceAboutConfig,
+} from "../../src/data/about-config.ts";
 import { games } from "../../src/data/games.ts";
 import {
   sourceHomeConfig,
@@ -76,6 +79,12 @@ function buildSourceItems(): SourceItem[] {
       sourceHomeConfig
     )
   );
+  const aboutConfig = normalizeEditorialPayload(
+    parseEditorialPayload(
+      "about_config",
+      sourceAboutConfig
+    )
+  );
 
   for (const slug of new Set([
     ...homeConfig.heroSlugs,
@@ -122,6 +131,11 @@ function buildSourceItems(): SourceItem[] {
       type: "home_config",
       key: "home",
       payload: homeConfig as unknown as Record<string, unknown>,
+    },
+    {
+      type: "about_config",
+      key: "about",
+      payload: aboutConfig as unknown as Record<string, unknown>,
     },
   ];
   const identities = new Set<string>();
@@ -277,6 +291,7 @@ async function markMissingSources(
     "game_update",
     "site_config",
     "home_config",
+    "about_config",
   ] satisfies EditorialItemType[]) {
     const keys = items
       .filter((item) => item.type === type)
@@ -302,7 +317,7 @@ async function main() {
 
   if (validateOnly) {
     console.log(
-      `Contenido editorial validado: ${games.length} juegos, ${gameUpdates.length} actualizaciones, 1 configuración y 1 portada.`
+      `Contenido editorial validado: ${games.length} juegos, ${gameUpdates.length} actualizaciones, 1 configuración, 1 portada y 1 página institucional.`
     );
     return;
   }
