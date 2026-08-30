@@ -18,6 +18,7 @@ import {
   type EditorialHomeConfig,
   type EditorialItemType,
   type EditorialPayloadByType,
+  type EditorialPublicPagesConfig,
   type EditorialSiteConfig,
 } from "./content-validation";
 import {
@@ -636,6 +637,22 @@ export function saveHomeConfigDraft(
     expectedRevision,
     actorUserId,
     () => input
+  );
+}
+
+export function savePublicPagesConfigDraft(
+  expectedRevision: number,
+  actorUserId: string,
+  update: (
+    current: EditorialPublicPagesConfig
+  ) => EditorialPublicPagesConfig
+) {
+  return updateEditorialDraft(
+    "public_pages_config",
+    "public-pages",
+    expectedRevision,
+    actorUserId,
+    update
   );
 }
 
