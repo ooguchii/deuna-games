@@ -2,10 +2,15 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
 import {
+  adminRedirect,
+  adminUnavailableResponse,
+} from "@/lib/admin/admin-route";
+import {
   getAdminOrigin,
   isAdminEnabled,
 } from "@/lib/admin/database-config";
 import {
+  hasExactAdminFormFields,
   readTrustedAdminForm,
 } from "@/lib/admin/request-security";
 import {
@@ -16,6 +21,21 @@ import {
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+
+const fields = ["intent"] as const;
+
+function rejectedResponse() {
+  return new NextResponse(
+    "Solicitud rechazada.",
+    {
+      status: 403,
+      headers: {
+        "Cache-Control": "no-store, max-age=0",
+        "Content-Type": "text/plain; charset=utf-8",
+      },
+    }
+  );
+}
 
 export async function POST(request: NextRequest) {
   if (!isAdminEnabled()) {
@@ -35,34 +55,15 @@ export async function POST(request: NextRequest) {
     console.error(
       "La configuración del origen administrativo no es válida."
     );
-
-    return new NextResponse(
-      "Servicio administrativo no disponible.",
-      {
-        status: 503,
-        headers: {
-          "Cache-Control": "no-store, max-age=0",
-          "Content-Type": "text/plain; charset=utf-8",
-        },
-      }
-    );
+    return adminUnavailableResponse();
   }
 
   if (
     !form ||
-    form.getAll("intent").length !== 1 ||
+    !hasExactAdminFormFields(form, fields) ||
     form.get("intent") !== "logout"
   ) {
-    return new NextResponse(
-      "Solicitud rechazada.",
-      {
-        status: 403,
-        headers: {
-          "Cache-Control": "no-store, max-age=0",
-          "Content-Type": "text/plain; charset=utf-8",
-        },
-      }
-    );
+    return rejectedResponse();
   }
 
   const cookieName =
@@ -89,18 +90,14 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const response = NextResponse.redirect(
-    new URL("/admin/login", adminOrigin),
-    303
+  const response = adminRedirect(
+    adminOrigin,
+    "/admin/login"
   );
   response.cookies.set(
     cookieName,
     "",
     getExpiredAdminCookieOptions()
-  );
-  response.headers.set(
-    "Cache-Control",
-    "no-store, max-age=0"
   );
   return response;
 }
