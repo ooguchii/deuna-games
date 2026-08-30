@@ -23,46 +23,61 @@ const [
   creationService,
   visibilityService,
   publicSiteConfig,
+  publicHomeConfig,
   publicCatalog,
   publicUpdates,
   publishRoute,
   restoreRoute,
+  homePublishRoute,
+  homeRestoreRoute,
   hideGameRoute,
   hideUpdateRoute,
   publicationMigration,
   visibilityMigration,
+  homeMigration,
   migrator,
 ] = await Promise.all([
   source("src/lib/admin/publication-service.ts"),
   source("src/lib/admin/content-create-service.ts"),
   source("src/lib/admin/visibility-service.ts"),
   source("src/lib/site/public-site-config.ts"),
+  source("src/lib/home/public-home-config.ts"),
   source("src/lib/games/public-catalog.ts"),
   source("src/lib/updates/public-updates.ts"),
   source("src/app/api/admin/content/configuration/publish/route.ts"),
   source("src/app/api/admin/content/configuration-publications/[publicationId]/restore/route.ts"),
+  source("src/app/api/admin/content/home/publish/route.ts"),
+  source("src/app/api/admin/content/home-publications/[publicationId]/restore/route.ts"),
   source("src/app/api/admin/content/games/[slug]/hide/route.ts"),
   source("src/app/api/admin/content/updates/[id]/hide/route.ts"),
   source("database/migrations/003_editorial_publications.sql"),
   source("database/migrations/004_editorial_visibility.sql"),
+  source("database/migrations/005_home_editorial_config.sql"),
   source("tools/admin/migrate.ts"),
 ]);
 
 assert(
   publicationService.includes('| "site_config"') &&
+    publicationService.includes('| "home_config"') &&
     publicationService.includes(
       'parseEditorialPayload("site_config", payload)'
+    ) &&
+    publicationService.includes(
+      'parseEditorialPayload("home_config", payload)'
     ) &&
     publicationService.includes(
       'return getPublicationState("site_config", "site")'
     ) &&
     publicationService.includes(
-      'publishEditorialDraft(\n    "site_config",\n    "site"'
+      'return getPublicationState("home_config", "home")'
     ) &&
     publicationService.includes(
-      'restoreEditorialPublication(\n    "site_config"'
+      'publishEditorialDraft(\n    "home_config",\n    "home"'
+    ) &&
+    publicationService.includes(
+      'restoreEditorialPublication(\n    "home_config"'
     ),
-  "site_config debe compartir el mismo servicio de publicación y restauración que el resto del contenido."
+  "site_config y home_config deben compartir el mismo servicio de publicación y restauración."
 );
 
 assert(
@@ -120,6 +135,14 @@ assert(
   "La configuración pública debe exigir visibilidad explícita y usar sólo el snapshot publicado."
 );
 
+assert(
+  publicHomeConfig.includes("public_visible = true") &&
+    publicHomeConfig.includes("published_payload") &&
+    publicHomeConfig.includes("item_type = 'home_config'") &&
+    !publicHomeConfig.includes("draft_payload"),
+  "La portada pública debe exigir visibilidad explícita y usar sólo el snapshot publicado."
+);
+
 for (const [name, route] of [
   ["juego", hideGameRoute],
   ["actualización", hideUpdateRoute],
@@ -148,11 +171,26 @@ assert(
 );
 
 assert(
+  homePublishRoute.includes("authorizeAdminFormRequest") &&
+    homePublishRoute.includes("publishHomeConfigDraft") &&
+    homePublishRoute.includes('revalidatePath("/")'),
+  "Publicar portada debe exigir sesión/origen y revalidar Inicio."
+);
+
+assert(
+  homeRestoreRoute.includes("authorizeAdminFormRequest") &&
+    homeRestoreRoute.includes("restoreHomeConfigPublication") &&
+    homeRestoreRoute.includes("expectedPublicationNumber") &&
+    homeRestoreRoute.includes('revalidatePath("/")'),
+  "Restaurar portada debe exigir sesión/origen, concurrencia y revalidación de Inicio."
+);
+
+assert(
   publicationMigration.includes("published_payload") &&
     publicationMigration.includes("editorial_publications") &&
     publicationMigration.includes("'bootstrap'") &&
     !/WHERE\s+item_type\s*=\s*'game'/i.test(publicationMigration),
-  "La migración de publicaciones debe inicializar snapshots para todos los tipos editoriales, incluida la configuración."
+  "La migración de publicaciones debe inicializar snapshots para todos los tipos editoriales."
 );
 
 assert(
@@ -160,6 +198,13 @@ assert(
     visibilityMigration.includes("DEFAULT true") &&
     visibilityMigration.includes("SET public_visible = true"),
   "La migración de visibilidad debe conservar visible todo contenido existente y permitir que las altas nuevas nazcan ocultas."
+);
+
+assert(
+  homeMigration.includes("home_config") &&
+    homeMigration.includes("editorial_items_type_check") &&
+    !/\bDELETE\s+FROM\b/i.test(homeMigration),
+  "La migración de portada debe ampliar únicamente los tipos editoriales sin borrar contenido."
 );
 
 assert(
@@ -177,6 +222,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Publicación administrativa: OK (altas ocultas, snapshots explícitos, visibilidad reversible, auditoría y restauración sin borrado)."
+    "Publicación administrativa: OK (juegos, actualizaciones, identidad y portada usan snapshots, auditoría y restauración sin borrado)."
   );
 }
