@@ -1,0 +1,212 @@
+.panel {
+  display: grid;
+  gap: 18px;
+}
+
+.notice {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.035);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.noticeSuccess {
+  border-color: rgba(87, 211, 137, 0.34);
+  background: rgba(87, 211, 137, 0.08);
+}
+
+.noticeWarning {
+  border-color: rgba(255, 190, 92, 0.34);
+  background: rgba(255, 190, 92, 0.08);
+}
+
+.noticeError {
+  border-color: rgba(255, 102, 102, 0.34);
+  background: rgba(255, 102, 102, 0.08);
+}
+
+.summary {
+  display: grid;
+  gap: 12px;
+}
+
+.summary strong {
+  font-size: 1rem;
+}
+
+.summary p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.55;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.fact {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 11px 12px;
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.fact span {
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.fact strong {
+  overflow-wrap: anywhere;
+  font-size: 0.9rem;
+}
+
+.publishForm {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.publishButton,
+.restoreButton {
+  border: 0;
+  border-radius: 10px;
+  min-height: 42px;
+  padding: 0 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.publishButton {
+  background: #f04a56;
+  color: #fff;
+}
+
+.publishButton:disabled,
+.restoreButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.statusText {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.86rem;
+}
+
+.history {
+  display: grid;
+  gap: 10px;
+  padding-top: 2px;
+}
+
+.historyHeading {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 16px;
+}
+
+.historyHeading div {
+  display: grid;
+  gap: 3px;
+}
+
+.historyHeading strong {
+  font-size: 0.92rem;
+}
+
+.historyHeading span {
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 0.78rem;
+}
+
+.historyList {
+  display: grid;
+  gap: 8px;
+}
+
+.historyRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 11px 12px;
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.historyCopy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.historyTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.historyTitle strong {
+  font-size: 0.9rem;
+}
+
+.currentBadge {
+  border-radius: 999px;
+  padding: 2px 7px;
+  background: rgba(87, 211, 137, 0.14);
+  color: #8fe3ae;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.historyMeta {
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.76rem;
+  overflow-wrap: anywhere;
+}
+
+.restoreButton {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 0.8rem;
+}
+
+@media (max-width: 760px) {
+  .facts {
+    grid-template-columns: 1fr;
+  }
+
+  .historyRow {
+    grid-template-columns: 1fr;
+  }
+
+  .restoreButton {
+    width: 100%;
+  }
+}
