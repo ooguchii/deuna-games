@@ -166,7 +166,7 @@ export default async function AdminPublicPresentationPage({
                 name="heroImage"
                 defaultValue={config.games.heroImage ?? ""}
                 maxLength={400}
-                placeholder="/images/catalog/hero.webp"
+                placeholder="/images/catalog/juegos-reference-hero-v2.webp"
               />
             </label>
 
