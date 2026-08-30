@@ -11,10 +11,20 @@ const notices = {
     message:
       "Revisión restaurada como un borrador nuevo y recuperable.",
   },
+  "imagen-subida": {
+    kind: "success",
+    message:
+      "Imagen WebP almacenada y guardada en el borrador. Aún no fue publicada.",
+  },
   conflicto: {
     kind: "warning",
     message:
       "Otra pestaña guardó una versión más reciente. Revisa los datos actuales antes de volver a guardar.",
+  },
+  "galeria-llena": {
+    kind: "warning",
+    message:
+      "La galería ya contiene ocho capturas. Retira una ruta antes de añadir otra imagen.",
   },
   datos: {
     kind: "error",
@@ -24,7 +34,12 @@ const notices = {
   asset: {
     kind: "error",
     message:
-      "Una de las imágenes indicadas no existe como archivo dentro de public/images. Corrige la ruta antes de guardar.",
+      "Una de las imágenes indicadas no existe en el almacén permitido. Corrige la ruta antes de guardar.",
+  },
+  "imagen-invalida": {
+    kind: "error",
+    message:
+      "La imagen no pudo almacenarse. Usa un WebP estático de hasta 6 MB, sin EXIF, XMP, perfil ICC ni animación.",
   },
   solicitud: {
     kind: "error",
