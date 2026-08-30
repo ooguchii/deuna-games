@@ -15,6 +15,7 @@ import {
 } from "./editorial-media";
 import {
   inspectSafeEditorialWebp,
+  sanitizeEditorialWebp,
 } from "./safe-webp";
 
 export type EditorialMediaUploadResult = {
@@ -70,9 +71,17 @@ export async function storeEditorialWebp(
     );
   }
 
-  const buffer = Buffer.from(
+  const input = Buffer.from(
     await file.arrayBuffer()
   );
+  const buffer = sanitizeEditorialWebp(input);
+
+  if (!buffer) {
+    throw new Error(
+      "El WebP no pudo normalizarse al formato multimedia seguro."
+    );
+  }
+
   const inspection =
     inspectSafeEditorialWebp(buffer);
 
