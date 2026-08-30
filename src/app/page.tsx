@@ -19,6 +19,9 @@ import {
   getPublicGames,
 } from "@/lib/games/public-catalog";
 import {
+  getPublicHomeConfig,
+} from "@/lib/home/public-home-config";
+import {
   absoluteUrl,
 } from "@/lib/site";
 import {
@@ -49,13 +52,14 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function Home() {
-  const [games, updates, config] = await Promise.all([
+  const [games, updates, config, homeConfig] = await Promise.all([
     getPublicGames(),
     getPublicResolvedUpdates(),
     getPublicSiteConfig(),
+    getPublicHomeConfig(),
   ]);
   const collections =
-    buildHomeGameCollections(games);
+    buildHomeGameCollections(games, homeConfig);
   const websiteJsonLd = {
     "@context": "https://schema.org",
     "@type": "WebSite",
