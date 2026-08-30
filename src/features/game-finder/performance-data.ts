@@ -68,11 +68,15 @@ export function resolvePerformanceProfile(
 }
 
 export function getPerformanceProfile(slug: string): GamePerformanceProfile {
-  const profile = resolvePerformanceProfile(slug);
-
-  if (!profile) {
-    throw new Error(`No existe un perfil de rendimiento para "${slug}".`);
-  }
-
-  return profile;
+  /*
+   * Acceso de compatibilidad para vistas antiguas que sólo consultan datos
+   * auxiliares como storageGb. Un slug editorial nuevo no debe derribar la
+   * ficha pública. El motor de FPS usa resolvePerformanceProfile y distingue
+   * explícitamente la ausencia de calibración.
+   */
+  return profileMap.get(slug) ?? {
+    slug,
+    referenceFps: 0,
+    ramGb: 1,
+  };
 }
