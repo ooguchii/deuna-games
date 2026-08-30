@@ -1,0 +1,91 @@
+.jumpNav {
+  position: sticky;
+  top: 10px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 14px;
+  padding: 7px;
+  overflow-x: auto;
+  border: 1px solid #202b36;
+  border-radius: 10px;
+  background: rgba(7, 12, 18, 0.94);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(16px);
+  scrollbar-width: thin;
+}
+
+.jumpNav a {
+  min-height: 31px;
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  padding: 0 10px;
+  color: #8793a1;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-size: 9px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.jumpNav a:hover,
+.jumpNav a:focus-visible {
+  color: #f3c0cd;
+  border-color: color-mix(in srgb, var(--brand) 25%, #28333f);
+  background: color-mix(in srgb, var(--brand) 5%, #0b1118);
+}
+
+.compactEditor > section {
+  scroll-margin-top: 68px;
+  margin-top: 14px;
+  padding: 17px;
+}
+
+.compactEditor section form {
+  gap: 12px;
+}
+
+.compactEditor section form input,
+.compactEditor section form select {
+  min-height: 38px;
+}
+
+.compactEditor section form textarea {
+  min-height: 88px;
+  padding: 10px 12px;
+}
+
+.compactEditor section form label {
+  gap: 5px;
+}
+
+.compactEditor section form > div:last-child {
+  padding-top: 12px;
+}
+
+.compactHeader {
+  padding-bottom: 17px;
+}
+
+.compactHeader h1 {
+  font-size: clamp(24px, 3vw, 32px);
+}
+
+.compactHeader p {
+  margin-top: 7px;
+  line-height: 1.5;
+}
+
+@media (max-width: 760px) {
+  .jumpNav {
+    top: 4px;
+    margin-inline: -4px;
+  }
+
+  .compactEditor > section {
+    padding: 14px;
+    scroll-margin-top: 58px;
+  }
+}
