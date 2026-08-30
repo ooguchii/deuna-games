@@ -164,6 +164,44 @@ Las migraciones usan checksum y no admiten que un archivo SQL ya aplicado sea re
 
 Los scripts de migración, importación y creación del propietario no forman parte del runtime público `deploy/`. Se ejecutan desde una copia privada del repositorio en el VPS antes de sustituir el artefacto de la aplicación; así el proceso web no recibe herramientas ni credenciales de migración. Cuando no haya una operación pendiente, el archivo de migración puede retirarse del servidor y restaurarse desde el gestor privado de secretos.
 
+### Servidor local seguro en WSL2
+
+Para probar el panel en una computadora Windows se recomienda ejecutar Next.js y PostgreSQL directamente dentro de Ubuntu sobre WSL2. Docker no es necesario para este entorno: WSL2 ya aporta el límite Linux y PostgreSQL permanece escuchando únicamente en loopback.
+
+Requisitos comprobados por el instalador:
+
+- Node.js 24 o superior instalado dentro de Linux;
+- PostgreSQL 18 o superior con `data_checksums=on`;
+- PostgreSQL limitado a `localhost`;
+- `systemd`, `sudo`, OpenSSL y Git disponibles;
+- repositorio ubicado en el sistema de archivos Linux, no bajo `/mnt/c`.
+
+Desde la raíz del repositorio ejecutar:
+
+```bash
+npm run local:setup
+```
+
+El instalador es repetible y realiza las siguientes acciones:
+
+- desactiva la telemetría de Next.js;
+- instala exactamente las dependencias fijadas en `package-lock.json`;
+- genera contraseñas PostgreSQL aleatorias sin mostrarlas;
+- guarda cada credencial únicamente en el archivo privado que la necesita, con modo `0600`;
+- crea `deuna_migrator`, `deuna_runtime` y `deuna_games` con privilegios separados;
+- aplica migraciones, importa el contenido y ejecuta los preflight;
+- pide de forma interactiva el nombre y la contraseña de la única cuenta propietaria.
+
+La contraseña propietaria no muestra letras, puntos ni asteriscos mientras se escribe. Debe tener entre 16 y 128 caracteres e incluir una letra, un número y un símbolo. No debe compartirse ni guardarse en el repositorio.
+
+Al finalizar, iniciar el servidor limitado al equipo local:
+
+```bash
+npm run dev
+```
+
+La web queda en `http://localhost:3000` y el panel en `http://localhost:3000/admin`. No ejecutar `npm run lan` mientras `.env.local` tenga `DEUNA_ADMIN_ENABLED=true`, porque ese comando escucha en todas las interfaces. El modo HTTP y la habilitación directa del panel se reservan exclusivamente para desarrollo local; el despliegue real conserva `DEUNA_ADMIN_ENABLED=false` hasta completar VPN, Nginx y HTTPS.
+
 La secuencia completa de instalación, prueba externa/interna y vuelta atrás está en `ops/deploy/README.md`. El archivo `ops/systemd/runtime.env.example` sirve sólo como plantilla sin secretos para `/etc/deuna-games/runtime.env`.
 
 ## Build seguro de deploy

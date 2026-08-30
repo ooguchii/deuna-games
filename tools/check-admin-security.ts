@@ -258,6 +258,96 @@ assert(
     ),
   "El rol runtime debe usar permisos de columna y no borrar sesiones."
 );
+
+const localSetup = await readFile(
+  path.join(
+    root,
+    "tools",
+    "setup-local-server.sh"
+  ),
+  "utf8"
+);
+
+const packageManifest = JSON.parse(
+  await readFile(
+    path.join(root, "package.json"),
+    "utf8"
+  )
+) as {
+  scripts?: Record<string, string>;
+};
+
+const nextRunner = await readFile(
+  path.join(root, "tools", "run-next.mjs"),
+  "utf8"
+);
+
+assert(
+  localSetup.includes("set -Eeuo pipefail") &&
+    localSetup.includes("umask 077") &&
+    localSetup.includes(
+      'NEXT_TELEMETRY_DISABLED=1'
+    ) &&
+    localSetup.includes(
+      'NEXT_PUBLIC_SITE_URL=http://localhost:3000'
+    ) &&
+    localSetup.includes(
+      'DEUNA_ADMIN_ORIGIN=http://localhost:3000'
+    ),
+  "El instalador local debe fallar cerrado, proteger archivos y desactivar telemetría."
+);
+
+assert(
+  localSetup.includes(
+    "PostgreSQL escucha en"
+  ) &&
+    localSetup.includes(
+      "Debe escuchar sólo en localhost"
+    ) &&
+    localSetup.includes(
+      "data_checksums=on"
+    ),
+  "El instalador local debe rechazar PostgreSQL expuesto o sin checksums."
+);
+
+assert(
+  localSetup.includes(
+    "openssl rand -hex 32"
+  ) &&
+    localSetup.includes(
+      'chmod 600 -- "${MIGRATION_ENV}"'
+    ) &&
+    localSetup.includes(
+      'chmod 600 -- "${RUNTIME_ENV}"'
+    ) &&
+    !localSetup.includes("set -x") &&
+    !localSetup.includes("curl") &&
+    !localSetup.includes("wget"),
+  "El instalador local debe generar secretos privados sin descargar ni trazar comandos."
+);
+
+assert(
+  packageManifest.scripts?.dev?.includes(
+    "--hostname 127.0.0.1"
+  ) &&
+    packageManifest.scripts?.["dev:webpack"]?.includes(
+      "--hostname 127.0.0.1"
+    ),
+  "Los servidores de desarrollo deben escuchar sólo en loopback."
+);
+
+assert(
+  nextRunner.includes(
+    'NEXT_TELEMETRY_DISABLED: "1"'
+  ) &&
+    ["dev", "dev:webpack", "build", "start"].every(
+      (name) =>
+        packageManifest.scripts?.[name]?.includes(
+          "tools/run-next.mjs"
+        )
+    ),
+  "Next.js debe ejecutarse siempre mediante el wrapper sin telemetría."
+);
 assert(
   !/GRANT[\s\S]{0,300}\bDELETE\b/i.test(
     migrator
