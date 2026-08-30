@@ -44,7 +44,7 @@ export async function POST(
 
   const { slug } = await context.params;
   const target =
-    `/admin/juegos/${encodeURIComponent(slug)}/vista-previa`;
+    `/admin/juegos/${encodeURIComponent(slug)}/publicacion`;
 
   if (
     !hasExactAdminFormFields(
