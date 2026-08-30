@@ -54,7 +54,7 @@ export async function POST(
   ) {
     return adminRedirect(
       authorized.adminOrigin,
-      `${target}?estado=solicitud#datos-avanzados`
+      `${target}?estado=solicitud&seccion=datos`
     );
   }
 
@@ -65,7 +65,7 @@ export async function POST(
   if (!parsed.success) {
     return adminRedirect(
       authorized.adminOrigin,
-      `${target}?estado=datos#datos-avanzados`
+      `${target}?estado=datos&seccion=datos`
     );
   }
 
@@ -103,7 +103,7 @@ export async function POST(
 
     return adminRedirect(
       authorized.adminOrigin,
-      `${target}?estado=${state}#datos-avanzados`
+      `${target}?estado=${state}&seccion=datos`
     );
   } catch {
     console.error(
