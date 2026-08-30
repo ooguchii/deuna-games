@@ -234,19 +234,23 @@ export default function NewGameForm({
 
           <label>
             <span>Categoría principal</span>
-            <input
+            <select
               name="category"
-              maxLength={80}
-              autoComplete="off"
-              list="game-category-options"
-              placeholder="Ej. Acción"
+              defaultValue=""
               required
-            />
-            <datalist id="game-category-options">
+            >
+              <option value="" disabled>
+                Selecciona una categoría
+              </option>
               {categories.map((category) => (
-                <option key={category} value={category} />
+                <option key={category} value={category}>
+                  {category}
+                </option>
               ))}
-            </datalist>
+            </select>
+            <small>
+              Las categorías se administran desde Catálogos. Aquí sólo se pueden usar las que estén activas.
+            </small>
           </label>
 
           <label>
@@ -307,7 +311,7 @@ export default function NewGameForm({
             </div>
             <button
               type="submit"
-              disabled={slugTaken || !slugValid}
+              disabled={slugTaken || !slugValid || categories.length === 0}
             >
               Crear borrador y continuar
             </button>
