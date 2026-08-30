@@ -7,49 +7,77 @@ import {
 const slugPattern =
   /^[a-z0-9][a-z0-9._-]*$/;
 
-function slugListSchema(maximum: number) {
+function slugArraySchema(maximum: number) {
   return z
-    .string()
-    .max(4_000)
-    .transform((value) =>
-      value
-        .split(/[,\r\n]+/)
-        .map((item) => item.trim())
-        .filter(Boolean)
-    )
-    .pipe(
+    .array(
       z
-        .array(
-          z
-            .string()
-            .min(1)
-            .max(160)
-            .regex(slugPattern)
-        )
-        .max(maximum)
-        .superRefine((items, context) => {
-          const seen = new Set<string>();
+        .string()
+        .min(1)
+        .max(160)
+        .regex(slugPattern)
+    )
+    .max(maximum)
+    .superRefine((items, context) => {
+      const seen = new Set<string>();
 
-          items.forEach((item, index) => {
-            if (seen.has(item)) {
-              context.addIssue({
-                code: "custom",
-                path: [index],
-                message: "Un slug no puede repetirse dentro de la misma colección.",
-              });
-            }
-            seen.add(item);
+      items.forEach((item, index) => {
+        if (seen.has(item)) {
+          context.addIssue({
+            code: "custom",
+            path: [index],
+            message:
+              "Un juego no puede repetirse dentro de la misma colección.",
           });
-        })
-    );
+        }
+        seen.add(item);
+      });
+    });
 }
+
+const modeSchema = z.enum([
+  "manual",
+  "automatic",
+  "hybrid",
+]);
+
+function collectionSchema(maximum: number) {
+  return z
+    .object({
+      mode: modeSchema,
+      slugs: slugArraySchema(maximum),
+    })
+    .strict();
+}
+
+export const homeCurationPayloadSchema = z
+  .object({
+    hero: collectionSchema(8),
+    popular: collectionSchema(24),
+    lowSpec: collectionSchema(24),
+    recommended: collectionSchema(24),
+  })
+  .strict();
+
+const curationJsonSchema = z
+  .string()
+  .max(20_000)
+  .transform((value, context) => {
+    try {
+      return JSON.parse(value) as unknown;
+    } catch {
+      context.addIssue({
+        code: "custom",
+        message:
+          "La configuración de curaduría no contiene JSON válido.",
+      });
+      return z.NEVER;
+    }
+  })
+  .pipe(homeCurationPayloadSchema);
 
 export const editorialHomeConfigFormSchema = z
   .object({
     expectedRevision: expectedRevisionSchema,
-    heroSlugsText: slugListSchema(8),
-    popularSlugsText: slugListSchema(24),
-    lowSpecSlugsText: slugListSchema(24),
-    recommendedSlugsText: slugListSchema(24),
+    curationJson: curationJsonSchema,
   })
   .strict();
