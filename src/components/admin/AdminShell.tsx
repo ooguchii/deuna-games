@@ -4,6 +4,7 @@ import {
   LogOut,
 } from "lucide-react";
 
+import AdminContextBar from "@/components/admin/AdminContextBar";
 import AdminNavigation from "@/components/admin/AdminNavigation";
 import type {
   AdminSession,
@@ -73,6 +74,7 @@ export default function AdminShell({
         id="main-content"
         className={`${styles.adminMain} ${ux.main}`}
       >
+        <AdminContextBar />
         {children}
       </main>
     </div>
