@@ -23,13 +23,24 @@ const [
   publicationOverview,
   publicationReview,
   publicationChanges,
+  publicationReadiness,
   editorFlow,
   mediaIntegrity,
   publicRevalidation,
+  performanceService,
+  contentValidation,
+  contentForms,
+  performanceModel,
+  performanceData,
+  calibrationHook,
+  performanceEstimate,
+  compatibilityCard,
+  publicPerformanceRoute,
   createRoute,
   coreRoute,
   advancedRoute,
   requirementsRoute,
+  performanceRoute,
   mediaRoute,
   downloadRoute,
   publishRoute,
@@ -52,13 +63,24 @@ const [
   source("src/lib/admin/publication-overview.ts"),
   source("src/lib/admin/game-publication-review.ts"),
   source("src/lib/admin/game-publication-changes.ts"),
+  source("src/lib/admin/game-publication-readiness.ts"),
   source("src/lib/admin/game-editor-flow.ts"),
   source("src/lib/admin/game-media-integrity.ts"),
   source("src/lib/admin/game-public-revalidation.ts"),
+  source("src/lib/admin/game-performance-service.ts"),
+  source("src/lib/admin/content-validation.ts"),
+  source("src/lib/admin/content-forms.ts"),
+  source("src/features/game-finder/performance-model.ts"),
+  source("src/features/game-finder/performance-data.ts"),
+  source("src/features/game-finder/useGamePerformanceCalibration.ts"),
+  source("src/features/game-finder/GamePerformanceEstimate.tsx"),
+  source("src/app/juegos/[slug]/GameCompatibilityCard.tsx"),
+  source("src/app/api/games/[slug]/performance/route.ts"),
   source("src/app/api/admin/content/games/route.ts"),
   source("src/app/api/admin/content/games/[slug]/route.ts"),
   source("src/app/api/admin/content/games/[slug]/advanced/route.ts"),
   source("src/app/api/admin/content/games/[slug]/requirements/route.ts"),
+  source("src/app/api/admin/content/games/[slug]/performance/route.ts"),
   source("src/app/api/admin/content/games/[slug]/media/route.ts"),
   source("src/app/api/admin/content/games/[slug]/download/route.ts"),
   source("src/app/api/admin/content/games/[slug]/publish/route.ts"),
@@ -130,6 +152,7 @@ for (const section of [
   "Ficha principal",
   "Datos e identidad",
   "Requisitos",
+  "Rendimiento",
   "Multimedia",
   "Descargas",
 ]) {
@@ -138,6 +161,13 @@ for (const section of [
     `La comparación previa debe contemplar la sección ${section}.`
   );
 }
+
+assert(
+  publicationReadiness.includes('section: "rendimiento"') &&
+    publicationReadiness.includes("resolvePerformanceProfile") &&
+    publicationReadiness.includes('label: "Estimación de FPS"'),
+  "El checklist de publicación debe indicar si existe una calibración capaz de estimar FPS."
+);
 
 assert(
   mediaIntegrity.includes("lstat") &&
@@ -166,6 +196,79 @@ for (const publicPath of [
 }
 
 assert(
+  contentValidation.includes("performanceCalibrationSchema") &&
+    contentValidation.includes("performance: performanceCalibrationSchema.optional()") &&
+    contentValidation.includes("referenceFps") &&
+    contentValidation.includes("ramGb") &&
+    contentValidation.includes("fpsCap"),
+  "El payload editorial del juego debe validar estrictamente la calibración de rendimiento."
+);
+
+assert(
+  contentForms.includes("editorialGamePerformanceFormSchema") &&
+    contentForms.includes("optionalCalibrationNumber(1_000)") &&
+    contentForms.includes("optionalCalibrationNumber(512)") &&
+    contentForms.includes("value.referenceFps > value.fpsCap"),
+  "El formulario de Rendimiento debe validar rangos, campos parciales y coherencia del límite de FPS."
+);
+
+assert(
+  performanceService.includes("verifyAdminSession") &&
+    performanceService.includes("FOR UPDATE") &&
+    performanceService.includes("draft_payload") &&
+    performanceService.includes("source_checksum") &&
+    performanceService.includes("editorial_revisions") &&
+    performanceService.includes("admin_audit_log") &&
+    performanceService.includes('section: "performance"') &&
+    !/\bDELETE\s+FROM\b/i.test(performanceService),
+  "Guardar Rendimiento debe ser transaccional, versionado, auditable y no destructivo."
+);
+
+assert(
+  publicPerformanceRoute.includes("getPublicGameBySlug") &&
+    publicPerformanceRoute.includes("game.performance ?? null") &&
+    publicPerformanceRoute.includes('"Cache-Control": "no-store, max-age=0"') &&
+    !publicPerformanceRoute.includes("draft_payload"),
+  "La calibración consumida por visitantes debe proceder únicamente del juego público visible y nunca del borrador."
+);
+
+assert(
+  performanceData.includes("resolvePerformanceProfile") &&
+    performanceData.includes("return profileMap.get(slug) ?? null") &&
+    performanceData.includes("referenceFps: calibration.referenceFps"),
+  "El motor debe priorizar la calibración editorial y conservar perfiles históricos sólo como respaldo."
+);
+
+assert(
+  performanceModel.includes("resolvePerformanceProfile") &&
+    performanceModel.includes("if (!profile)") &&
+    performanceModel.includes("canEstimate: false") &&
+    performanceModel.includes("todavía no tiene una calibración de rendimiento publicada"),
+  "Un slug nuevo sin calibración debe degradar a estado no estimable sin lanzar una excepción."
+);
+
+assert(
+  calibrationHook.includes("resolved = new Map") &&
+    calibrationHook.includes("pending = new Map") &&
+    calibrationHook.includes("/performance") &&
+    calibrationHook.includes("parsePublishedCalibration") &&
+    calibrationHook.includes("cache: \"no-store\""),
+  "Los bloques públicos de rendimiento deben compartir una lectura validada y deduplicada de la calibración publicada."
+);
+
+for (const [name, component] of [
+  ["FPS estimados", performanceEstimate],
+  ["compatibilidad", compatibilityCard],
+]) {
+  assert(
+    component.includes("useGamePerformanceCalibration") &&
+      component.includes("estimateGamePerformance") &&
+      component.includes("calibration ?? undefined"),
+    `El bloque público de ${name} debe usar la misma calibración publicada.`
+  );
+}
+
+assert(
   createRoute.includes("?seccion=datos&estado=creado"),
   "Después de crear un juego, el flujo debe continuar por la siguiente sección editorial."
 );
@@ -173,18 +276,20 @@ assert(
 assert(
   editorFlow.includes('ficha: "datos"') &&
     editorFlow.includes('datos: "requisitos"') &&
-    editorFlow.includes('requisitos: "multimedia"') &&
+    editorFlow.includes('requisitos: "rendimiento"') &&
+    editorFlow.includes('rendimiento: "multimedia"') &&
     editorFlow.includes('multimedia: "descargas"') &&
     editorFlow.includes('descargas: "publicacion"') &&
     editorFlow.includes('searchParams.get("continuar")') &&
     editorFlow.includes("requested === nextSection[current]"),
-  "El avance guiado debe aceptar exclusivamente la siguiente etapa prevista y leer la intención desde la URL, no desde campos de contenido."
+  "El avance guiado debe pasar por Rendimiento y aceptar exclusivamente la siguiente etapa prevista desde la URL."
 );
 
 for (const [name, route, current] of [
   ["ficha", coreRoute, '"ficha"'],
   ["datos", advancedRoute, '"datos"'],
   ["requisitos", requirementsRoute, '"requisitos"'],
+  ["rendimiento", performanceRoute, '"rendimiento"'],
   ["multimedia", mediaRoute, '"multimedia"'],
   ["descargas", downloadRoute, '"descargas"'],
 ]) {
@@ -198,6 +303,15 @@ for (const [name, route, current] of [
     `Guardar ${name} debe mantener validación exacta y sólo avanzar tras un guardado sin conflicto.`
   );
 }
+
+assert(
+  performanceRoute.includes("editorialGamePerformanceFormSchema") &&
+    performanceRoute.includes("saveGamePerformanceDraft") &&
+    performanceRoute.includes('"referenceFps"') &&
+    performanceRoute.includes('"ramGb"') &&
+    performanceRoute.includes('"fpsCap"'),
+  "La ruta administrativa de Rendimiento debe aceptar únicamente los campos esperados y usar el servicio versionado."
+);
 
 assert(
   mediaRoute.includes("inspectLocalImageReferences") &&
@@ -259,9 +373,11 @@ assert(
     gameEditor.includes("Publicado · #") &&
     gameEditor.includes("publicationIdentity?.panelCreated") &&
     gameEditor.includes("!item.sourcePresent && !panelCreated") &&
-    gameEditor.includes("GameEditorFormActions") &&
+    gameEditor.includes("GamePerformanceEditor") &&
+    gameEditor.includes('section === "rendimiento"') &&
+    gameEditor.includes('continueTo="rendimiento"') &&
     gameEditor.includes('continueTo="publicacion"'),
-  "El editor debe mostrar el estado real frente a la web, no confundir altas del panel con fuentes perdidas y guiar el alta hasta Publicación."
+  "El editor debe mostrar el estado real, integrar Rendimiento y guiar el alta completa hasta Publicación."
 );
 
 assert(
@@ -273,10 +389,12 @@ assert(
 );
 
 assert(
-  contextBar.includes('id: "publicacion"') &&
+  contextBar.includes('id: "rendimiento"') &&
+    contextBar.includes('label: "Rendimiento"') &&
+    contextBar.includes('id: "publicacion"') &&
     contextBar.includes("/publicacion") &&
     contextBar.includes("Publicación"),
-  "Publicación debe ser una pestaña principal del workspace del juego."
+  "Rendimiento y Publicación deben ser pestañas principales del workspace del juego."
 );
 
 assert(
@@ -335,6 +453,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Flujo editorial de juegos: OK (alta privada, avance guiado seguro, integridad multimedia al publicar, refresco público uniforme, estados exactos, comparación de cambios, vista previa sin mutaciones, republicación y restauración protegidas)."
+    "Flujo editorial de juegos: OK (alta privada, Rendimiento versionado, FPS públicos compartidos, avance guiado seguro, integridad multimedia, refresco uniforme, comparación de cambios, vista previa, publicación y restauración protegidas)."
   );
 }
