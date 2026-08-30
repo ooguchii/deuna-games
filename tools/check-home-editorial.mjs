@@ -22,6 +22,7 @@ const [
   homeCollections,
   rankingEngine,
   homePage,
+  adminHomePage,
   sourceConfig,
   publicConfig,
   curationEditor,
@@ -32,6 +33,7 @@ const [
   source("src/data/home.ts"),
   source("src/lib/home/ranking.ts"),
   source("src/app/page.tsx"),
+  source("src/app/admin/(protected)/portada/page.tsx"),
   source("src/data/home-config.ts"),
   source("src/lib/home/public-home-config.ts"),
   source("src/components/admin/HomeCurationEditor.tsx"),
@@ -68,18 +70,21 @@ assert(
     rankingEngine.includes("resolveHomeCollectionGames") &&
     rankingEngine.includes("reviewScore") &&
     rankingEngine.includes("minimumRamGb") &&
+    rankingEngine.includes("homeRankingDay") &&
     rankingEngine.includes('mode === "manual"') &&
     rankingEngine.includes('mode === "automatic"') &&
     rankingEngine.includes("isHomeRankingEligible"),
-  "La portada debe conservar un motor compartido, explicable y determinista para Manual, Automático e Híbrido."
+  "La portada debe conservar un motor compartido, explicable, estable por día y determinista para Manual, Automático e Híbrido."
 );
 
 assert(
   rankingEngine.includes("popularity * 58") &&
     rankingEngine.includes("rating * 34") &&
     rankingEngine.includes("lowSpec * 60") &&
-    rankingEngine.includes("ram !== null && ram <= 12"),
-  "El ranking debe mantener señales explícitas de popularidad, calidad y bajos recursos sin rellenar estos últimos arbitrariamente."
+    rankingEngine.includes("ram !== null && ram <= 12") &&
+    rankingEngine.includes('target === "hero"') &&
+    rankingEngine.includes("game.heroImage || game.coverImage"),
+  "El ranking debe mantener señales explícitas y exigir arte utilizable en Hero automático."
 );
 
 assert(
@@ -121,6 +126,14 @@ assert(
 );
 
 assert(
+  adminHomePage.includes("getPublicGames") &&
+    adminHomePage.includes("publicBySlug") &&
+    adminHomePage.includes("curationGames") &&
+    adminHomePage.includes("games={curationGames}"),
+  "La vista previa administrativa debe calcular el ranking con payloads públicos reales y no con cambios de juegos todavía en borrador."
+);
+
+assert(
   curationEditor.includes("Manual") &&
     curationEditor.includes("Automático") &&
     curationEditor.includes("Híbrido") &&
@@ -128,8 +141,9 @@ assert(
     curationEditor.includes("rankHomeGames") &&
     curationEditor.includes('name="curationJson"') &&
     curationEditor.includes("VISTA PREVIA DEL RESULTADO") &&
+    curationEditor.includes("activeSelection.length >= meta.limit") &&
     !curationEditor.includes("textarea"),
-  "Curaduría debe ser un espacio editorial profesional con modos, ranking explicable y vista previa, no un editor de slugs crudos."
+  "Curaduría debe ser un espacio editorial profesional con modos, límite visible, ranking explicable y vista previa, no un editor de slugs crudos."
 );
 
 assert(
@@ -161,6 +175,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Home editorial: OK (curaduría profesional Manual/Automático/Híbrido, ranking explicable compartido, snapshot público y compatibilidad histórica)."
+    "Home editorial: OK (curaduría profesional, preview con snapshots públicos, ranking explicable compartido, estabilidad diaria y compatibilidad histórica)."
   );
 }
