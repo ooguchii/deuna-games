@@ -12,6 +12,9 @@ import {
   createGameDraft,
 } from "@/lib/admin/content-create-service";
 import {
+  resolveGameTaxonomySelection,
+} from "@/lib/admin/game-taxonomy-service";
+import {
   hasExactAdminFormFields,
 } from "@/lib/admin/request-security";
 
@@ -65,9 +68,24 @@ export async function POST(
   }
 
   try {
+    const classification =
+      await resolveGameTaxonomySelection({
+        category: parsed.data.category,
+      });
+
+    if (!classification.valid || !classification.category) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        `${createPage}?estado=clasificacion`
+      );
+    }
+
     const result = await createGameDraft(
       authorized.session.userId,
-      parsed.data
+      {
+        ...parsed.data,
+        category: classification.category,
+      }
     );
 
     if (result.outcome === "exists") {
