@@ -29,6 +29,9 @@ import {
   getPublicGames,
 } from "@/lib/games/public-catalog";
 import {
+  getPublicTaxonomyPresentation,
+} from "@/lib/games/public-taxonomy";
+import {
   absoluteUrl,
 } from "@/lib/site";
 import {
@@ -126,10 +129,11 @@ export async function generateMetadata({
 export default async function GamesPage({
   searchParams,
 }: GamesPageProps) {
-  const [params, games, config] = await Promise.all([
+  const [params, games, config, taxonomy] = await Promise.all([
     searchParams,
     getPublicGames(),
     getPublicSiteConfig(),
+    getPublicTaxonomyPresentation(),
   ]);
   const collections =
     buildHomeGameCollections(games);
@@ -314,6 +318,7 @@ export default async function GamesPage({
 
         <GameCatalogClient
           games={games}
+          categoryTerms={taxonomy.categories}
           lowSpecSlugs={
             collections.lowSpecGames.map(
               (game) =>
