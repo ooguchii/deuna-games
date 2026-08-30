@@ -11,13 +11,114 @@ import type { Game } from "@/types/game";
 export type HomeRankingTarget =
   HomeCurationCollectionId;
 
+export type HomeRankingSignalKey =
+  | "popularity"
+  | "rating"
+  | "releaseRecency"
+  | "addedRecency"
+  | "completeness"
+  | "heroAsset"
+  | "lowSpec";
+
+export type HomeRankingComponent = {
+  key: HomeRankingSignalKey;
+  points: number;
+  detail: string;
+};
+
 export type HomeGameRanking = {
   game: Game;
   score: number;
   reasons: string[];
+  components: HomeRankingComponent[];
+};
+
+type HomeRankingProfile = {
+  weights: Partial<
+    Record<HomeRankingSignalKey, number>
+  >;
 };
 
 const DAY_MS = 86_400_000;
+export const HOME_LOW_SPEC_MAX_RAM_GB = 12;
+
+const signalLabels: Record<
+  HomeRankingSignalKey,
+  string
+> = {
+  popularity: "Popularidad (reseñas)",
+  rating: "Rating",
+  releaseRecency: "Lanzamiento",
+  addedRecency: "Incorporación",
+  completeness: "Ficha completa",
+  heroAsset: "Arte Hero",
+  lowSpec: "RAM mínima",
+};
+
+export const homeRankingProfiles = {
+  hero: {
+    weights: {
+      popularity: 38,
+      rating: 24,
+      releaseRecency: 18,
+      addedRecency: 8,
+      heroAsset: 12,
+    },
+  },
+  popular: {
+    weights: {
+      popularity: 58,
+      rating: 24,
+      releaseRecency: 10,
+      addedRecency: 8,
+    },
+  },
+  lowSpec: {
+    weights: {
+      lowSpec: 60,
+      rating: 18,
+      popularity: 10,
+      completeness: 12,
+    },
+  },
+  recommended: {
+    weights: {
+      rating: 34,
+      popularity: 28,
+      releaseRecency: 16,
+      completeness: 12,
+      addedRecency: 10,
+    },
+  },
+} satisfies Record<
+  HomeRankingTarget,
+  HomeRankingProfile
+>;
+
+function profileEntries(
+  target: HomeRankingTarget
+) {
+  return Object.entries(
+    homeRankingProfiles[target].weights
+  ) as Array<[HomeRankingSignalKey, number]>;
+}
+
+export function homeRankingDescription(
+  target: HomeRankingTarget
+) {
+  const parts = profileEntries(target).map(
+    ([key, weight]) =>
+      `${signalLabels[key]} ${weight}%`
+  );
+
+  if (target === "lowSpec") {
+    parts.push(
+      `Automático: RAM mínima conocida de hasta ${HOME_LOW_SPEC_MAX_RAM_GB} GB`
+    );
+  }
+
+  return parts.join(" · ");
+}
 
 function clamp01(value: number) {
   return Math.max(0, Math.min(1, value));
@@ -144,7 +245,7 @@ function lowSpecSignal(game: Game) {
   if (ram <= 4) return 1;
   if (ram <= 6) return 0.92;
   if (ram <= 8) return 0.82;
-  if (ram <= 12) return 0.55;
+  if (ram <= HOME_LOW_SPEC_MAX_RAM_GB) return 0.55;
   return 0;
 }
 
@@ -159,7 +260,10 @@ export function isHomeRankingEligible(
   if (target !== "lowSpec") return true;
 
   const ram = minimumRamGb(game);
-  return ram !== null && ram <= 12;
+  return (
+    ram !== null &&
+    ram <= HOME_LOW_SPEC_MAX_RAM_GB
+  );
 }
 
 function formatReviewReason(game: Game) {
@@ -175,98 +279,112 @@ function formatReviewReason(game: Game) {
   return `${Math.round(reviews)} reseñas`;
 }
 
+function signalDetail(
+  key: HomeRankingSignalKey,
+  game: Game,
+  value: number
+) {
+  if (key === "popularity") {
+    return formatReviewReason(game) ?? "sin reseñas";
+  }
+
+  if (key === "rating") {
+    return game.rating === undefined
+      ? "sin rating"
+      : `rating ${game.rating.toFixed(1)}/5`;
+  }
+
+  if (key === "releaseRecency") {
+    return "actualidad de lanzamiento";
+  }
+
+  if (key === "addedRecency") {
+    return "incorporación reciente";
+  }
+
+  if (key === "completeness") {
+    return value >= 0.8
+      ? "ficha muy completa"
+      : "completitud de ficha";
+  }
+
+  if (key === "heroAsset") {
+    return "arte Hero disponible";
+  }
+
+  const ram = minimumRamGb(game);
+  return ram === null
+    ? "RAM mínima desconocida"
+    : `mínimo ${Math.round(ram * 10) / 10} GB RAM`;
+}
+
+function rankingSignals(
+  game: Game,
+  referenceDay: number
+): Record<HomeRankingSignalKey, number> {
+  return {
+    popularity: popularitySignal(game),
+    rating: ratingSignal(game),
+    releaseRecency: ageSignal(
+      game.releaseDate,
+      1_095,
+      referenceDay
+    ),
+    addedRecency: ageSignal(
+      game.addedAt,
+      365,
+      referenceDay
+    ),
+    completeness: completenessSignal(game),
+    heroAsset: game.heroImage ? 1 : 0,
+    lowSpec: lowSpecSignal(game),
+  };
+}
+
 export function scoreHomeGame(
   game: Game,
   target: HomeRankingTarget,
   now = Date.now()
 ): HomeGameRanking {
   const referenceDay = homeRankingDay(now);
-  const popularity = popularitySignal(game);
-  const rating = ratingSignal(game);
-  const releaseRecency = ageSignal(
-    game.releaseDate,
-    1_095,
+  const signals = rankingSignals(
+    game,
     referenceDay
   );
-  const addedRecency = ageSignal(
-    game.addedAt,
-    365,
-    referenceDay
+  const components = profileEntries(target)
+    .map(([key, weight]) => ({
+      key,
+      points: signals[key] * weight,
+      detail: signalDetail(
+        key,
+        game,
+        signals[key]
+      ),
+    }))
+    .filter((component) =>
+      component.points > 0
+    )
+    .sort(
+      (a, b) =>
+        b.points - a.points ||
+        a.key.localeCompare(b.key, "es")
+    );
+  const weighted = components.reduce(
+    (total, component) =>
+      total + component.points,
+    0
   );
-  const completeness = completenessSignal(game);
-  const heroAsset = game.heroImage ? 1 : 0;
-  const lowSpec = lowSpecSignal(game);
-
-  let weighted = 0;
-
-  if (target === "popular") {
-    weighted =
-      popularity * 58 +
-      rating * 24 +
-      releaseRecency * 10 +
-      addedRecency * 8;
-  } else if (target === "hero") {
-    weighted =
-      popularity * 38 +
-      rating * 24 +
-      releaseRecency * 18 +
-      addedRecency * 8 +
-      heroAsset * 12;
-  } else if (target === "recommended") {
-    weighted =
-      rating * 34 +
-      popularity * 28 +
-      releaseRecency * 16 +
-      completeness * 12 +
-      addedRecency * 10;
-  } else {
-    weighted =
-      lowSpec * 60 +
-      rating * 18 +
-      popularity * 10 +
-      completeness * 12;
-  }
-
-  const reasons: string[] = [];
-  const reviews = formatReviewReason(game);
-  if (reviews) reasons.push(reviews);
-  if (game.rating !== undefined) {
-    reasons.push(`rating ${game.rating.toFixed(1)}/5`);
-  }
-
-  if (
-    target === "hero" ||
-    target === "popular" ||
-    target === "recommended"
-  ) {
-    if (releaseRecency >= 0.55) {
-      reasons.push("lanzamiento reciente");
-    }
-    if (addedRecency >= 0.65) {
-      reasons.push("incorporación reciente");
-    }
-  }
-
-  if (target === "hero" && game.heroImage) {
-    reasons.push("arte Hero disponible");
-  }
-
-  if (target === "lowSpec") {
-    const ram = minimumRamGb(game);
-    if (ram !== null) {
-      const shownRam = Math.round(ram * 10) / 10;
-      reasons.push(`mínimo ${shownRam} GB RAM`);
-    }
-  }
-
-  if (target === "recommended" && completeness >= 0.8) {
-    reasons.push("ficha completa");
-  }
 
   return {
     game,
     score: Math.round(weighted * 10) / 10,
-    reasons: reasons.slice(0, 3),
+    reasons: components
+      .slice(0, 3)
+      .map(
+        (component) =>
+          `${component.detail} (+${component.points.toFixed(1)})`
+      ),
+    components,
   };
 }
 
