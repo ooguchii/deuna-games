@@ -7,6 +7,55 @@ const optionalText = (maximum: number) =>
     .max(maximum)
     .transform((value) => value || undefined);
 
+const localImagePattern =
+  /^\/images\/[A-Za-z0-9/_.,@+() -]+\.(?:avif|gif|jpe?g|png|webp)$/i;
+
+const optionalLocalImage = z
+  .string()
+  .trim()
+  .max(400)
+  .refine(
+    (value) => value === "" || localImagePattern.test(value)
+  )
+  .transform((value) => value || undefined);
+
+const screenshotsTextSchema = z
+  .string()
+  .max(3_500)
+  .transform((value) =>
+    value
+      .split(/\r?\n/)
+      .map((item) => item.trim())
+      .filter(Boolean)
+  )
+  .pipe(
+    z
+      .array(
+        z
+          .string()
+          .max(400)
+          .regex(localImagePattern)
+      )
+      .max(8)
+      .superRefine((screenshots, context) => {
+        const seen = new Set<string>();
+
+        screenshots.forEach((screenshot, index) => {
+          if (seen.has(screenshot)) {
+            context.addIssue({
+              code: "custom",
+              path: [index],
+              message: "Una captura no puede repetirse.",
+            });
+          }
+          seen.add(screenshot);
+        });
+      })
+  )
+  .transform((value) =>
+    value.length > 0 ? value : undefined
+  );
+
 const downloadSourceFormSchema = z
   .object({
     id: z
@@ -168,6 +217,27 @@ export const editorialGameDownloadFormSchema = z.object({
   fileCount: optionalPositiveInteger,
   platform: optionalText(80),
   sourcesJson: downloadSourcesJsonSchema,
+});
+
+export const editorialGameRequirementsFormSchema = z.object({
+  expectedRevision: expectedRevisionSchema,
+  minimumSystem: optionalText(240),
+  minimumProcessor: optionalText(240),
+  minimumRam: optionalText(240),
+  minimumGraphics: optionalText(240),
+  minimumStorage: optionalText(240),
+  recommendedSystem: optionalText(240),
+  recommendedProcessor: optionalText(240),
+  recommendedRam: optionalText(240),
+  recommendedGraphics: optionalText(240),
+  recommendedStorage: optionalText(240),
+});
+
+export const editorialGameMediaFormSchema = z.object({
+  expectedRevision: expectedRevisionSchema,
+  coverImage: optionalLocalImage,
+  heroImage: optionalLocalImage,
+  screenshotsText: screenshotsTextSchema,
 });
 
 export const editorialUpdateFormSchema = z.object({
