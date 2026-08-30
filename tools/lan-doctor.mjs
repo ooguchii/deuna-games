@@ -6,10 +6,10 @@ import process from "node:process";
 const port = Number(process.env.PORT || 3000);
 const virtualInterfacePattern =
   /(?:vEthernet|WSL|Docker|Hyper-V|VirtualBox|VMware|Tailscale|ZeroTier|Hamachi|Loopback|Npcap|Bluetooth)/i;
+const heroProbePath =
+  "/images/games/dragon-ball-sparking-zero/hero.webp";
 
 function runPowerShell(script, timeout = 7000) {
-  if (process.platform !== "win32") return null;
-
   const result = spawnSync(
     "powershell.exe",
     ["-NoProfile", "-NonInteractive", "-Command", script],
@@ -20,7 +20,14 @@ function runPowerShell(script, timeout = 7000) {
     }
   );
 
-  if (result.status !== 0 || !result.stdout.trim()) return null;
+  if (
+    result.error ||
+    result.status !== 0 ||
+    !result.stdout.trim()
+  ) {
+    return null;
+  }
+
   return result.stdout.trim();
 }
 
@@ -38,7 +45,15 @@ function parsePowerShellJson(script) {
 
 function isPrivateIpv4(address) {
   const octets = address.split(".").map(Number);
-  if (octets.length !== 4 || octets.some((value) => !Number.isInteger(value))) {
+  if (
+    octets.length !== 4 ||
+    octets.some(
+      (value) =>
+        !Number.isInteger(value) ||
+        value < 0 ||
+        value > 255
+    )
+  ) {
     return false;
   }
 
@@ -67,6 +82,7 @@ function getNodeInterfaces() {
           : null,
         gateway: null,
         category: null,
+        source: "node",
       });
     }
   }
@@ -89,6 +105,7 @@ $items = Get-NetIPConfiguration | Where-Object {
     prefixLength = $ipv4.PrefixLength
     gateway = if ($gateway) { $gateway.NextHop } else { $null }
     category = if ($profile) { [string]$profile.NetworkCategory } else { $null }
+    source = 'windows'
   }
 }
 @($items) | ConvertTo-Json -Compress
@@ -96,8 +113,6 @@ $items = Get-NetIPConfiguration | Where-Object {
 }
 
 function getWindowsListeners() {
-  if (process.platform !== "win32") return [];
-
   return parsePowerShellJson(String.raw`
 $items = Get-NetTCPConnection -State Listen -LocalPort ${port} -ErrorAction SilentlyContinue | ForEach-Object {
   $processName = $null
@@ -136,10 +151,11 @@ function scoreInterface(item) {
   let score = 0;
 
   if (isPrivateIpv4(item.address)) score += 50;
-  if (item.gateway) score += 35;
+  if (item.gateway) score += 40;
+  if (item.source === "windows") score += 20;
   if (item.category === "Private") score += 20;
   if (item.category === "Public") score -= 5;
-  if (!virtualInterfacePattern.test(item.name)) score += 15;
+  if (!virtualInterfacePattern.test(item.name)) score += 20;
   if (virtualInterfacePattern.test(item.name)) score -= 100;
   if (isApipa(item.address)) score -= 100;
 
@@ -167,6 +183,29 @@ function checkTcp(host, timeoutMs = 2500) {
     socket.once("timeout", () => finish(false));
     socket.once("error", () => finish(false));
   });
+}
+
+async function fetchProbe(url, options = {}) {
+  try {
+    const response = await fetch(url, {
+      cache: "no-store",
+      redirect: "manual",
+      signal: AbortSignal.timeout(5000),
+      ...options,
+    });
+
+    return response;
+  } catch {
+    return null;
+  }
+}
+
+function firstNextAsset(html) {
+  const match = html.match(
+    /(?:src|href)=["'](\/_next\/static\/[^"']+)["']/
+  );
+
+  return match?.[1] ?? null;
 }
 
 const interfaces = mergeInterfaces(
@@ -208,28 +247,26 @@ console.log("Binding esperado: 0.0.0.0 (todas las interfaces)\n");
 
 if (!recommended) {
   console.log("No encontré una IPv4 utilizable.");
-  console.log("Conecta la PC por Wi-Fi/Ethernet y ejecuta nuevamente npm.cmd run lan:doctor.\n");
+  console.log("Conecta la PC por Wi-Fi/Ethernet y ejecuta nuevamente npm run lan:doctor.\n");
   process.exit(0);
 }
+
+const lanOrigin = `http://${recommended.address}:${port}`;
 
 console.log("Conexión recomendada:");
 console.log(`- Adaptador: ${recommended.name}`);
 console.log(`- IPv4: ${recommended.address}${recommended.prefixLength ? `/${recommended.prefixLength}` : ""}`);
 console.log(`- Gateway: ${recommended.gateway ?? "no detectado"}`);
 console.log(`- Perfil de Windows: ${recommended.category ?? "no detectado"}`);
-console.log(`- URL para OTRA PC: http://${recommended.address}:${port}\n`);
+console.log(`- URL para OTRA PC: ${lanOrigin}\n`);
 
-if (process.platform === "win32") {
+if (listeners.length) {
   console.log("Puerto en Windows:");
-  if (!listeners.length) {
-    console.log(`- Windows no registra ningún proceso escuchando TCP/${port}.`);
-  } else {
-    for (const listener of listeners) {
-      const processLabel = listener.processName
-        ? `${listener.processName} (PID ${listener.pid})`
-        : `PID ${listener.pid}`;
-      console.log(`- ${listener.localAddress}:${listener.localPort} -> ${processLabel}`);
-    }
+  for (const listener of listeners) {
+    const processLabel = listener.processName
+      ? `${listener.processName} (PID ${listener.pid})`
+      : `PID ${listener.pid}`;
+    console.log(`- ${listener.localAddress}:${listener.localPort} -> ${processLabel}`);
   }
   console.log("");
 }
@@ -238,25 +275,79 @@ console.log("Prueba TCP desde esta PC:");
 console.log(`- 127.0.0.1:${port}: ${localhostListening ? "RESPONDE" : "NO RESPONDE"}`);
 console.log(`- ${recommended.address}:${port}: ${lanListening ? "RESPONDE" : "NO RESPONDE"}\n`);
 
-if (!hasSystemListener && process.platform === "win32") {
-  console.log("DIAGNÓSTICO: el servidor no está escuchando el puerto 3000 en Windows.");
-  console.log("Deja abierta otra PowerShell con:");
-  console.log("  npm.cmd run lan\n");
+if (lanListening) {
+  const pageResponse = await fetchProbe(`${lanOrigin}/`, {
+    headers: {
+      Origin: lanOrigin,
+    },
+  });
+  const pageOk = pageResponse?.status === 200;
+  const html = pageOk
+    ? await pageResponse.text()
+    : "";
+  const containsLocalhost = html.includes(
+    "http://localhost:3000"
+  );
+  const nextAsset = firstNextAsset(html);
+
+  const heroResponse = await fetchProbe(
+    `${lanOrigin}${heroProbePath}`,
+    {
+      headers: {
+        Origin: lanOrigin,
+      },
+    }
+  );
+  const heroOk =
+    heroResponse?.status === 200 &&
+    heroResponse.headers
+      .get("content-type")
+      ?.startsWith("image/webp");
+
+  let nextAssetOk = null;
+  if (nextAsset) {
+    const assetResponse = await fetchProbe(
+      `${lanOrigin}${nextAsset}`,
+      {
+        headers: {
+          Origin: lanOrigin,
+        },
+      }
+    );
+    nextAssetOk = assetResponse?.status === 200;
+  }
+
+  console.log("Prueba HTTP por la IP LAN:");
+  console.log(`- Home: ${pageOk ? "OK" : `FALLÓ (${pageResponse?.status ?? "sin respuesta"})`}`);
+  console.log(`- Hero WebP estático: ${heroOk ? "OK" : `FALLÓ (${heroResponse?.status ?? "sin respuesta"})`}`);
+  console.log(
+    `- Recurso interno de Next: ${
+      nextAssetOk === null
+        ? "NO DETECTADO"
+        : nextAssetOk
+          ? "OK"
+          : "FALLÓ"
+    }`
+  );
+  console.log(
+    `- HTML apunta todavía a localhost: ${containsLocalhost ? "SÍ (INCORRECTO EN MODO LAN)" : "NO"}\n`
+  );
+}
+
+if (!hasSystemListener && listeners.length === 0) {
+  console.log("NOTA: si estás dentro de WSL, Windows puede no mostrar el proceso Linux directamente; las pruebas TCP/HTTP son la señal principal.\n");
 } else if (loopbackOnly) {
   console.log("DIAGNÓSTICO: el proceso está enlazado sólo a loopback.");
-  console.log("Detén el proceso y inícialo con:");
-  console.log("  npm.cmd run lan\n");
+  console.log("Detén el proceso y usa:");
+  console.log("  npm run mobile\n");
 } else if (wildcardListener && localhostListening && lanListening) {
   console.log("DIAGNÓSTICO: el servidor está correctamente publicado en esta PC y en la LAN.\n");
 } else if (wildcardListener && localhostListening && !lanListening) {
   console.log("DIAGNÓSTICO: Next escucha en todas las interfaces, pero la IP LAN no acepta la conexión.");
-  console.log("Esto apunta a firewall/antivirus o a una política de red local.\n");
-} else if (hasSystemListener && !localhostListening && !lanListening) {
-  console.log("DIAGNÓSTICO: Windows ve un proceso escuchando el puerto, pero las pruebas TCP locales fallan.");
-  console.log("Revisa software de seguridad/filtrado; no culpes al repetidor todavía.\n");
+  console.log("Esto apunta a firewall/antivirus o al puente entre Windows y WSL.\n");
 } else if (localhostListening && !lanListening) {
   console.log("DIAGNÓSTICO: el servidor responde localmente, pero no por la IPv4 de la LAN.");
-  console.log("Revisa el binding y Windows Firewall.\n");
+  console.log("Revisa el binding, portproxy y Windows Firewall.\n");
 }
 
 if (recommended.category === "Public") {
@@ -280,14 +371,7 @@ console.log("Prueba desde la OTRA computadora:");
 console.log(`  Test-NetConnection ${recommended.address} -Port ${port}`);
 console.log("Debe mostrar: TcpTestSucceeded : True\n");
 
-console.log("Si usas un repetidor/AP cableado:");
-console.log("- Lo ideal es que esté en modo Access Point/Bridge, no Router/NAT.");
-console.log("- La otra PC debería recibir una IP de la misma LAN y normalmente el mismo gateway.");
-console.log("- Desactiva Guest Wi-Fi, AP Isolation o Client Isolation si están habilitados.");
-console.log("- No abras el puerto 3000 hacia Internet; esta configuración es sólo para tu LAN.\n");
-
 console.log("Detección de hardware por HTTP LAN:");
-console.log("- La web y WebGL pueden funcionar por http://IP:3000.");
-console.log("- WebGPU y User-Agent Client Hints requieren un contexto seguro en navegadores compatibles.");
-console.log("- Por eso la detección automática puede ser menos completa por HTTP LAN que en localhost/HTTPS.");
-console.log("- El perfil manual sigue funcionando y el sitio no debe romperse por esa limitación.\n");
+console.log("- La web, WebGL y el perfil manual deben seguir funcionando.");
+console.log("- WebGPU y algunos datos avanzados del navegador requieren un contexto seguro (localhost o HTTPS). ");
+console.log("- Por eso la detección automática puede ser menos completa por HTTP LAN; no es un fallo de PostgreSQL ni del catálogo.\n");
