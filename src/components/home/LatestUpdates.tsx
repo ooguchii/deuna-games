@@ -7,11 +7,11 @@ import {
 
 import GameMedia from "@/components/ui/GameMedia";
 import {
-  latestUpdates,
-} from "@/data/home";
-import {
   formatUpdateDate,
 } from "@/lib/updates/catalog";
+import type {
+  ResolvedGameUpdate,
+} from "@/types/update";
 
 import styles from "./LatestUpdates.module.css";
 
@@ -23,7 +23,13 @@ const fallbackClassBySlug:
       "stellarBlade",
   };
 
-export default function LatestUpdates() {
+type LatestUpdatesProps = {
+  updates: readonly ResolvedGameUpdate[];
+};
+
+export default function LatestUpdates({
+  updates,
+}: LatestUpdatesProps) {
   return (
     <section
       className={
@@ -52,7 +58,7 @@ export default function LatestUpdates() {
           styles.grid
         }
       >
-        {latestUpdates.map(
+        {updates.map(
           (update) => {
             const fallbackClass =
               fallbackClassBySlug[
