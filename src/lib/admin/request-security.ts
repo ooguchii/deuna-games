@@ -17,7 +17,7 @@ function headerMatchesAdminOrigin(
   }
 }
 
-function hasTrustedAdminOrigin(
+export function hasTrustedAdminOrigin(
   request: NextRequest,
   adminOrigin: string
 ) {
