@@ -53,11 +53,6 @@
   font-size: 13px;
 }
 
-.sections {
-  display: grid;
-  gap: 18px;
-}
-
 .panel {
   padding: 20px;
 }
@@ -103,7 +98,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
-  margin: 16px 0;
+  margin: 16px 0 12px;
 }
 
 .addRow input,
@@ -145,16 +140,38 @@
   cursor: pointer;
 }
 
+.columnHeader,
+.termRow {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) minmax(360px, 1.2fr) 92px 72px 90px 38px;
+  align-items: center;
+  gap: 10px;
+}
+
+.columnHeaderSimple,
+.termRowSimple {
+  grid-template-columns: minmax(300px, 1fr) 110px 82px 100px 38px;
+}
+
+.columnHeader {
+  padding: 0 10px 7px;
+  color: #62758d;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.columnHeader span:nth-last-child(-n + 4) {
+  text-align: center;
+}
+
 .termList {
   display: grid;
   gap: 8px;
 }
 
 .termRow {
-  display: grid;
-  grid-template-columns: minmax(240px, 1fr) minmax(360px, 1.2fr) 92px 72px 90px 38px;
-  align-items: center;
-  gap: 10px;
   border: 1px solid #202c3a;
   border-radius: 10px;
   padding: 10px;
@@ -292,13 +309,24 @@
 }
 
 @media (max-width: 1320px) {
+  .columnHeader,
   .termRow {
     grid-template-columns: minmax(240px, 1fr) minmax(330px, 1fr) 86px 72px 88px 38px;
+  }
+
+  .columnHeaderSimple,
+  .termRowSimple {
+    grid-template-columns: minmax(280px, 1fr) 100px 78px 96px 38px;
   }
 }
 
 @media (max-width: 1100px) {
-  .termRow {
+  .columnHeader {
+    display: none;
+  }
+
+  .termRow,
+  .termRowSimple {
     grid-template-columns: 1fr auto auto auto;
   }
 
@@ -325,6 +353,7 @@
   .addRow,
   .termMain,
   .termRow,
+  .termRowSimple,
   .visualEditor {
     grid-template-columns: 1fr;
   }
