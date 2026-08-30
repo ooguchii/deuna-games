@@ -1,4 +1,7 @@
-import { parseGameDate } from "@/lib/games/catalog";
+import {
+  parseGameDate,
+  reviewScore,
+} from "@/lib/games/catalog";
 import type { Game } from "@/types/game";
 
 import { games } from "./games";
@@ -43,38 +46,80 @@ const recommendedSlugs = [
   "elden-ring",
 ];
 
-function getRequiredGame(
-  catalog: Game[],
-  slug: string
-): Game {
-  const game = catalog.find(
-    (candidate) => candidate.slug === slug
+function rankGames(catalog: Game[]) {
+  return [...catalog].sort(
+    (a, b) =>
+      reviewScore(b.reviews) -
+        reviewScore(a.reviews) ||
+      (b.rating ?? 0) -
+        (a.rating ?? 0) ||
+      a.title.localeCompare(b.title, "es")
   );
-
-  if (!game) {
-    throw new Error(
-      `No se encontró el juego editorial requerido "${slug}".`
-    );
-  }
-
-  return game;
 }
 
-function getGames(
+function pickPreferredGames(
   catalog: Game[],
-  slugs: string[]
+  slugs: readonly string[],
+  limit: number,
+  fill: boolean
 ) {
-  return slugs.map((slug) =>
-    getRequiredGame(catalog, slug)
+  const bySlug = new Map(
+    catalog.map((game) => [game.slug, game])
   );
+  const selected: Game[] = [];
+  const selectedSlugs = new Set<string>();
+
+  for (const slug of slugs) {
+    const game = bySlug.get(slug);
+
+    if (!game || selectedSlugs.has(game.slug)) {
+      continue;
+    }
+
+    selected.push(game);
+    selectedSlugs.add(game.slug);
+
+    if (selected.length === limit) {
+      return selected;
+    }
+  }
+
+  if (!fill) {
+    return selected;
+  }
+
+  for (const game of rankGames(catalog)) {
+    if (selectedSlugs.has(game.slug)) {
+      continue;
+    }
+
+    selected.push(game);
+    selectedSlugs.add(game.slug);
+
+    if (selected.length === limit) {
+      break;
+    }
+  }
+
+  return selected;
 }
 
 export function buildHomeGameCollections(
   catalog: Game[]
 ) {
   return {
-    heroGames: getGames(catalog, heroSlugs),
-    popularGames: getGames(catalog, popularSlugs),
+    heroGames: pickPreferredGames(
+      catalog,
+      heroSlugs,
+      4,
+      true
+    ),
+    popularGames: pickPreferredGames(
+      catalog,
+      popularSlugs,
+      7,
+      true
+    ),
     recentGames: [
       ...catalog.filter((game) => Boolean(game.addedAt)),
     ].sort(
@@ -83,10 +128,17 @@ export function buildHomeGameCollections(
           parseGameDate(a.addedAt) ||
         a.title.localeCompare(b.title, "es")
     ),
-    lowSpecGames: getGames(catalog, lowSpecSlugs),
-    recommendedGames: getGames(
+    lowSpecGames: pickPreferredGames(
       catalog,
-      recommendedSlugs
+      lowSpecSlugs,
+      7,
+      false
+    ),
+    recommendedGames: pickPreferredGames(
+      catalog,
+      recommendedSlugs,
+      7,
+      true
     ),
   };
 }
