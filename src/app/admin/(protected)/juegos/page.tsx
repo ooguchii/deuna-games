@@ -44,11 +44,13 @@ export default async function AdminGamesPage({
 
   const catalog: AdminGameCatalogItem[] = items.map((item) => {
     const publication = publicationByKey.get(item.key);
-    const hidden = Boolean(publication && !publication.publicVisible);
+    const hidden = Boolean(
+      publication && !publication.publicVisible
+    );
     const neverPublished = Boolean(
       hidden &&
-        !item.sourcePresent &&
-        publication?.publicationNumber === 1
+        publication?.panelCreated &&
+        !publication.everPublished
     );
     const pending = publication
       ? publication.hasUnpublishedChanges
