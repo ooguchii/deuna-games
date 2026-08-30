@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 
 import {
   homeRankingDay,
+  homeRankingProfiles,
   minimumRamGb,
   rankHomeGames,
   resolveHomeCollectionGames,
@@ -41,6 +42,20 @@ function game(
 
 function slugs(items) {
   return items.map((item) => item.slug);
+}
+
+for (const [target, profile] of Object.entries(
+  homeRankingProfiles
+)) {
+  const totalWeight = Object.values(
+    profile.weights
+  ).reduce((total, weight) => total + weight, 0);
+
+  assert.equal(
+    totalWeight,
+    100,
+    `${target} debe conservar un perfil normalizado al 100%.`
+  );
 }
 
 assert.equal(
@@ -118,6 +133,24 @@ assert.equal(
   sameDayNight,
   "El score no debe fluctuar durante el mismo día UTC."
 );
+
+const explained = scoreHomeGame(
+  fameHigh,
+  "popular",
+  reference
+);
+assert.ok(
+  explained.components.length > 0 &&
+    explained.reasons.length > 0,
+  "El ranking debe exponer un desglose explicable de sus contribuciones."
+);
+for (let index = 1; index < explained.components.length; index += 1) {
+  assert.ok(
+    explained.components[index - 1].points >=
+      explained.components[index].points,
+    "Las razones deben ordenarse por contribución real al score."
+  );
+}
 
 const ramMb = game("ram-mb", {
   requirements: {
@@ -326,5 +359,5 @@ assert.ok(
 );
 
 console.log(
-  `Ranking de Portada: OK (${sourceGames.length} juegos reales + casos sintéticos; estabilidad diaria, fama, rating, actualidad, RAM, Hero, Manual, Automático e Híbrido verificados).`
+  `Ranking de Portada: OK (${sourceGames.length} juegos reales + casos sintéticos; perfiles al 100%, estabilidad diaria, fama, rating, actualidad, RAM, Hero, explicación, Manual, Automático e Híbrido verificados).`
 );
