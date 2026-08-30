@@ -14,6 +14,7 @@ type SocialImageIdentity = {
   name: string;
   description: string;
   themeColor: string;
+  headline: string;
 };
 
 export function createSocialImage(
@@ -119,8 +120,7 @@ export function createSocialImage(
                 fontWeight: 900,
               }}
             >
-              <span>Encuentra juegos para&nbsp;</span>
-              <span style={{ color: "#ff0847" }}>tu PC</span>
+              <span>{identity.headline}</span>
             </div>
 
             <div
