@@ -10,7 +10,8 @@ import {
 type PublishableType =
   | "game"
   | "game_update"
-  | "site_config";
+  | "site_config"
+  | "home_config";
 
 type PublicationTableRow = {
   publication_table: string | null;
@@ -108,7 +109,8 @@ export async function getPublicationOverview():
              WHERE item_type IN (
                'game',
                'game_update',
-               'site_config'
+               'site_config',
+               'home_config'
              )
                AND (
                  public_visible = false OR
@@ -131,7 +133,8 @@ export async function getPublicationOverview():
          WHERE item.item_type IN (
              'game',
              'game_update',
-             'site_config'
+             'site_config',
+             'home_config'
            )
            AND publication.action IN ('published', 'rollback')
          ORDER BY publication.created_at DESC,
