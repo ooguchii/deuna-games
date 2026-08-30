@@ -11,11 +11,17 @@ import Footer from "@/components/layout/Footer";
 import Header from "@/components/layout/Header";
 import GameFinderClient from "@/features/game-finder/GameFinderClient";
 import {
+  PublicFinderCopyProvider,
+} from "@/features/game-finder/PublicFinderCopyContext";
+import {
   getPublicGames,
 } from "@/lib/games/public-catalog";
 import {
   absoluteUrl,
 } from "@/lib/site";
+import {
+  getPublicPagesConfig,
+} from "@/lib/site/public-pages-config";
 import {
   getPublicSiteConfig,
 } from "@/lib/site/public-site-config";
@@ -33,18 +39,18 @@ type RequirementsPageProps = {
   searchParams: Promise<RequirementsSearchParams>;
 };
 
-const title = "¿Qué puedo jugar con mi PC?";
-const description =
-  "Detecta el hardware que el navegador pueda identificar o configúralo manualmente para obtener estimaciones orientativas de FPS por juego, resolución y calidad gráfica.";
-
 export async function generateMetadata({
   searchParams,
 }: RequirementsPageProps): Promise<Metadata> {
-  const [params, games, config] = await Promise.all([
+  const [params, games, config, publicPages] = await Promise.all([
     searchParams,
     getPublicGames(),
     getPublicSiteConfig(),
+    getPublicPagesConfig(),
   ]);
+  const page = publicPages.finder;
+  const title = `${page.title} ${page.highlight}`;
+  const description = page.description;
   const hasFocusedGame =
     typeof params.juego === "string" &&
     games.some((game) => game.slug === params.juego);
@@ -66,16 +72,14 @@ export async function generateMetadata({
         },
     openGraph: {
       title: `${title} | ${config.name}`,
-      description:
-        "Descubre juegos para tu PC con detección local, configuración manual y estimaciones orientativas de rendimiento.",
+      description,
       url: "/requisitos",
       type: "website",
     },
     twitter: {
       card: "summary_large_image",
       title: `${title} | ${config.name}`,
-      description:
-        "Descubre juegos para tu PC con detección local, configuración manual y estimaciones orientativas de rendimiento.",
+      description,
     },
   };
 }
@@ -83,11 +87,19 @@ export async function generateMetadata({
 export default async function RequirementsPage({
   searchParams,
 }: RequirementsPageProps) {
-  const [{ juego }, games, config] = await Promise.all([
+  const [
+    { juego },
+    games,
+    config,
+    publicPages,
+  ] = await Promise.all([
     searchParams,
     getPublicGames(),
     getPublicSiteConfig(),
+    getPublicPagesConfig(),
   ]);
+  const page = publicPages.finder;
+  const pageTitle = `${page.title} ${page.highlight}`;
   const focusedSlug =
     typeof juego === "string" &&
     games.some((game) => game.slug === juego)
@@ -123,10 +135,14 @@ export default async function RequirementsPage({
   const pageJsonLd = {
     "@context": "https://schema.org",
     "@type": "WebPage",
-    name: title,
+    name: pageTitle,
     url: absoluteUrl("/requisitos"),
-    description:
-      `Herramienta orientativa para comparar un perfil de hardware con juegos del catálogo de ${config.name}.`,
+    description: page.description,
+    isPartOf: {
+      "@type": "WebSite",
+      name: config.name,
+      url: absoluteUrl("/"),
+    },
     inLanguage: config.language,
   };
 
@@ -168,10 +184,12 @@ export default async function RequirementsPage({
           }}
         />
 
-        <GameFinderClient
-          games={games}
-          focusedSlug={focusedSlug}
-        />
+        <PublicFinderCopyProvider copy={page}>
+          <GameFinderClient
+            games={games}
+            focusedSlug={focusedSlug}
+          />
+        </PublicFinderCopyProvider>
       </main>
 
       <Footer />
