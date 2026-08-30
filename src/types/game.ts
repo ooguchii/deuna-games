@@ -27,11 +27,23 @@ export type GamePlatform =
   | "Xbox"
   | "Nintendo Switch";
 
+export type GameDownloadSourceStatus =
+  | "available"
+  | "down"
+  | "maintenance";
+
 export type GameDownloadSource = {
   id: string;
   name: string;
   href: string;
   label?: string;
+  /*
+   * El orden del array define el orden editorial en la página.
+   * enabled=false permite conservar una fuente sin mostrarla.
+   * status permite informar una caída sin eliminar el destino.
+   */
+  enabled?: boolean;
+  status?: GameDownloadSourceStatus;
 };
 
 export type GameDownload = {
