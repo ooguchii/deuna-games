@@ -1,4 +1,11 @@
-export const sourceHomeConfig = {
+export type HomeConfig = {
+  heroSlugs: string[];
+  popularSlugs: string[];
+  lowSpecSlugs: string[];
+  recommendedSlugs: string[];
+};
+
+export const sourceHomeConfig: HomeConfig = {
   heroSlugs: [
     "dragon-ball-sparking-zero",
     "god-of-war-ragnarok",
@@ -32,4 +39,4 @@ export const sourceHomeConfig = {
     "god-of-war-ragnarok",
     "elden-ring",
   ],
-} as const;
+};
