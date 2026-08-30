@@ -22,7 +22,10 @@ import {
   verifyAdminSession,
 } from "./session";
 
-import type { Game } from "@/types/game";
+import type {
+  Game,
+  GameHardwareRequirements,
+} from "@/types/game";
 import type { GameUpdate } from "@/types/update";
 
 type EditorialStatus = "synced" | "modified";
@@ -120,6 +123,18 @@ export type GameDownloadDraftInput = Pick<
   | "sources"
 >;
 
+export type GameRequirementsDraftInput = {
+  minimum?: GameHardwareRequirements;
+  recommended?: GameHardwareRequirements;
+};
+
+export type GameMediaDraftInput = Pick<
+  Game,
+  | "coverImage"
+  | "heroImage"
+  | "screenshots"
+>;
+
 export type UpdateDraftInput = Pick<
   GameUpdate,
   | "version"
@@ -128,6 +143,29 @@ export type UpdateDraftInput = Pick<
   | "summary"
   | "featured"
 >;
+
+function compactHardwareRequirements(
+  input: GameHardwareRequirements | undefined
+) {
+  if (!input) return undefined;
+
+  const compact: GameHardwareRequirements = {};
+
+  for (const key of [
+    "system",
+    "processor",
+    "ram",
+    "graphics",
+    "storage",
+  ] as const) {
+    const value = input[key]?.trim();
+    if (value) compact[key] = value;
+  }
+
+  return Object.keys(compact).length > 0
+    ? compact
+    : undefined;
+}
 
 function mapListRow<Type extends EditorialItemType>(
   type: Type,
@@ -448,6 +486,60 @@ export function saveGameDownloadDraft(
             : undefined,
       };
     }
+  );
+}
+
+export function saveGameRequirementsDraft(
+  key: string,
+  expectedRevision: number,
+  actorUserId: string,
+  input: GameRequirementsDraftInput
+) {
+  return updateEditorialDraft(
+    "game",
+    key,
+    expectedRevision,
+    actorUserId,
+    (current) => {
+      const minimum = compactHardwareRequirements(
+        input.minimum
+      );
+      const recommended = compactHardwareRequirements(
+        input.recommended
+      );
+
+      return {
+        ...current,
+        requirements:
+          minimum || recommended
+            ? {
+                ...(minimum ?? {}),
+                ...(minimum ? { minimum } : {}),
+                ...(recommended
+                  ? { recommended }
+                  : {}),
+              }
+            : undefined,
+      };
+    }
+  );
+}
+
+export function saveGameMediaDraft(
+  key: string,
+  expectedRevision: number,
+  actorUserId: string,
+  input: GameMediaDraftInput
+) {
+  return updateEditorialDraft(
+    "game",
+    key,
+    expectedRevision,
+    actorUserId,
+    (current) => ({
+      ...current,
+      ...input,
+    })
   );
 }
 
