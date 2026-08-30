@@ -19,11 +19,6 @@ import Footer from "@/components/layout/Footer";
 import Header from "@/components/layout/Header";
 
 import {
-  featuredUpdates,
-  resolvedGameUpdates,
-} from "@/data/updates";
-
-import {
   absoluteUrl,
   siteConfig,
 } from "@/lib/site";
@@ -38,6 +33,9 @@ import {
   parseUpdateType,
   sanitizeUpdateQuery,
 } from "@/lib/updates/catalog";
+import {
+  getPublicResolvedUpdates,
+} from "@/lib/updates/public-updates";
 
 import styles from "./page.module.css";
 
@@ -53,6 +51,8 @@ type UpdatesPageProps = {
   searchParams:
     Promise<UpdatesSearchParams>;
 };
+
+export const dynamic = "force-dynamic";
 
 function hasFilters(
   params: UpdatesSearchParams
@@ -125,6 +125,12 @@ export default async function UpdatesPage({
 }: UpdatesPageProps) {
   const params =
     await searchParams;
+  const resolvedGameUpdates =
+    await getPublicResolvedUpdates();
+  const featuredUpdates =
+    resolvedGameUpdates.filter(
+      (update) => update.featured
+    );
 
   const latestUpdate =
     resolvedGameUpdates[0];
