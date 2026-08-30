@@ -20,10 +20,29 @@ const identifierSchema = z
 
 const shortText = z.string().trim().max(240);
 const optionalShortText = shortText.optional();
+const localImagePattern =
+  /^\/images\/[A-Za-z0-9/_.,@+() -]+\.(?:avif|gif|jpe?g|png|webp)$/i;
+
+function isSafeLocalImagePath(value: string) {
+  if (
+    !localImagePattern.test(value) ||
+    value.includes("\\") ||
+    value.includes("//")
+  ) {
+    return false;
+  }
+
+  return !value
+    .split("/")
+    .some((segment) =>
+      segment === "." || segment === ".."
+    );
+}
+
 const localImageSchema = z
   .string()
   .max(400)
-  .regex(/^\/images\/[A-Za-z0-9/_.,@+() -]+\.(?:avif|gif|jpe?g|png|webp)$/i);
+  .refine(isSafeLocalImagePath);
 
 const downloadHrefSchema = z
   .string()
@@ -63,7 +82,7 @@ const requirementsSchema = hardwareRequirementsSchema
   })
   .strict();
 
-export const editorialDownloadSourceSchema = z
+const editorialDownloadSourceSchema = z
   .object({
     id: identifierSchema,
     name: z.string().trim().min(1).max(100),
