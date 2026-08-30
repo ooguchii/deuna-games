@@ -64,9 +64,9 @@
   display: inline-flex;
   align-items: center;
   gap: 9px;
-  min-height: 38px;
-  padding: 8px 11px;
-  border: 1px solid var(--surface-3);
+  min-height: 40px;
+  padding: 7px 11px 7px 7px;
+  border: 1px solid color-mix(in srgb, var(--taxonomy-accent) 20%, var(--surface-3));
   border-radius: 9px;
   background: var(--surface-control);
   transition:
@@ -77,8 +77,19 @@
 
 .genre:hover {
   transform: translateY(-2px);
-  border-color: rgba(255, 21, 84, 0.44);
-  background: rgba(255, 21, 84, 0.055);
+  border-color: color-mix(in srgb, var(--taxonomy-accent) 55%, transparent);
+  background: color-mix(in srgb, var(--taxonomy-accent) 6%, var(--surface-control));
+}
+
+.genreIcon {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--taxonomy-accent) 32%, transparent);
+  border-radius: 7px;
+  color: var(--taxonomy-accent);
+  background: color-mix(in srgb, var(--taxonomy-accent) 8%, transparent);
 }
 
 .genre strong {
@@ -86,7 +97,7 @@
   font-size: 12px;
 }
 
-.genre span {
+.genreCount {
   color: var(--text-muted);
   font-size: 10px;
   white-space: nowrap;
@@ -112,7 +123,10 @@
   }
 
   .genre {
-    flex: 1 1 145px;
-    justify-content: space-between;
+    flex: 1 1 155px;
+  }
+
+  .genreCount {
+    margin-left: auto;
   }
 }
