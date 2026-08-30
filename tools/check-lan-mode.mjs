@@ -7,8 +7,20 @@ const launcher = await readFile(
   "tools/run-lan.mjs",
   "utf8"
 );
+const secureLauncher = await readFile(
+  "tools/run-lan-https.mjs",
+  "utf8"
+);
+const secureSetup = await readFile(
+  "tools/setup-lan-https.mjs",
+  "utf8"
+);
 const nextConfig = await readFile(
   "next.config.ts",
+  "utf8"
+);
+const sessionSource = await readFile(
+  "src/lib/admin/session.ts",
   "utf8"
 );
 
@@ -27,6 +39,16 @@ assert(
   packageJson.scripts?.mobile ===
     "npm run lan",
   "npm run mobile debe delegar en el modo LAN seguro."
+);
+assert(
+  packageJson.scripts?.["mobile:secure:setup"] ===
+    "node ./tools/setup-lan-https.mjs",
+  "mobile:secure:setup debe preparar certificados locales."
+);
+assert(
+  packageJson.scripts?.["mobile:secure"] ===
+    "node ./tools/run-lan-https.mjs",
+  "mobile:secure debe usar el launcher HTTPS LAN dedicado."
 );
 
 for (const required of [
@@ -48,7 +70,7 @@ assert(
 );
 assert(
   !launcher.includes("DEUNA_ADMIN_ORIGIN:"),
-  "El modo LAN no debe ampliar ni sobrescribir DEUNA_ADMIN_ORIGIN."
+  "El modo LAN HTTP no debe ampliar ni sobrescribir DEUNA_ADMIN_ORIGIN."
 );
 assert(
   nextConfig.includes("allowedDevOrigins"),
@@ -63,6 +85,69 @@ assert(
   "Next sólo debe aceptar el origen de desarrollo si es una IPv4 privada."
 );
 
+for (const required of [
+  "isPrivateIpv4",
+  "DEUNA_LAN_SECURE_MODE",
+  "NEXT_PUBLIC_SITE_URL",
+  "DEUNA_ADMIN_ORIGIN",
+  "DEUNA_ADMIN_ENABLED",
+  '"--experimental-https"',
+  '"--experimental-https-key"',
+  '"--experimental-https-cert"',
+  '"--experimental-https-ca"',
+]) {
+  assert(
+    secureLauncher.includes(required),
+    `El launcher HTTPS LAN perdió una garantía requerida: ${required}`
+  );
+}
+
+assert(
+  secureLauncher.includes(
+    "DEUNA_ADMIN_ORIGIN: origin"
+  ),
+  "El admin LAN HTTPS debe fijar exactamente el origen privado detectado."
+);
+assert(
+  secureLauncher.includes(
+    'DEUNA_ADMIN_ENABLED: "true"'
+  ),
+  "El modo HTTPS LAN debe habilitar explícitamente el admin para esa ejecución."
+);
+assert(
+  secureLauncher.includes(
+    "certificateSupportsHost(lanHost)"
+  ),
+  "El launcher HTTPS debe comprobar que el certificado cubre la IP LAN actual."
+);
+assert(
+  secureSetup.includes(
+    "subjectAltName = @alt_names"
+  ) &&
+    secureSetup.includes(
+      "IP.2 = ${lanHost}"
+    ),
+  "El certificado HTTPS LAN debe contener la IPv4 privada como SAN."
+);
+assert(
+  secureSetup.includes(
+    "deuna-games-lan-ca.key"
+  ) &&
+    secureSetup.includes(
+      "deuna-games-lan-ca.cer"
+    ),
+  "La preparación HTTPS debe separar la CA privada del certificado público instalable."
+);
+assert(
+  sessionSource.includes(
+    "adminSessionUsesSecureTransport"
+  ) &&
+    sessionSource.includes(
+      'new URL(configured).protocol === "https:"'
+    ),
+  "La cookie administrativa debe marcarse Secure también en HTTPS LAN de desarrollo."
+);
+
 console.log(
-  "LAN mode invariants: OK (launcher dedicado, origen público LAN, allowedDevOrigins privado y admin origin intacto)."
+  "LAN mode invariants: OK (HTTP público conservador + HTTPS LAN con admin, certificado privado y cookie Secure)."
 );
