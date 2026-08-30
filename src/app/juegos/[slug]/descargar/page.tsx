@@ -22,12 +22,11 @@ import Footer from "@/components/layout/Footer";
 import Header from "@/components/layout/Header";
 import GameMedia from "@/components/ui/GameMedia";
 import {
-  games,
-  getGameBySlug,
-} from "@/data/games";
-import {
   resolveGameDownload,
 } from "@/lib/games/download";
+import {
+  getPublicGameBySlug,
+} from "@/lib/games/public-catalog";
 import type {
   GameDownloadSourceStatus,
 } from "@/types/game";
@@ -49,15 +48,8 @@ const sourceStatusLabels: Record<
   maintenance: "Mantenimiento",
 };
 
+export const dynamic = "force-dynamic";
 export const dynamicParams = true;
-
-export function generateStaticParams() {
-  return games
-    .filter((game) => Boolean(resolveGameDownload(game)))
-    .map((game) => ({
-      slug: game.slug,
-    }));
-}
 
 function SourceStatusIcon({
   status,
@@ -79,7 +71,7 @@ export async function generateMetadata({
   params,
 }: DownloadPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const game = getGameBySlug(slug);
+  const game = await getPublicGameBySlug(slug);
   const download = game
     ? resolveGameDownload(game)
     : null;
@@ -119,7 +111,7 @@ export default async function DownloadPage({
   params,
 }: DownloadPageProps) {
   const { slug } = await params;
-  const game = getGameBySlug(slug);
+  const game = await getPublicGameBySlug(slug);
 
   if (!game) {
     notFound();
@@ -191,7 +183,7 @@ export default async function DownloadPage({
           <div className={styles.gameCopy}>
             <div className={styles.titleRow}>
               <h1 id="download-title">{game.title}</h1>
-              <span>PC</span>
+              <span>{platform}</span>
             </div>
 
             <div className={styles.tags}>
