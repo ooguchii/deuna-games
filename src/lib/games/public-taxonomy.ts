@@ -24,7 +24,7 @@ const emptyTaxonomy: GameTaxonomy = {
 };
 
 type TaxonomyRow = {
-  draft_payload: unknown;
+  published_payload: unknown;
 };
 
 function ensureVisuals(
@@ -43,10 +43,11 @@ export const getPublicTaxonomyPresentation = cache(
 
     try {
       const result = await adminQuery<TaxonomyRow>(
-        `SELECT draft_payload
+        `SELECT published_payload
            FROM deuna_admin.editorial_items
           WHERE item_type = 'game_taxonomy'
             AND item_key = 'games'
+            AND public_visible = true
           LIMIT 1`
       );
       const row = result.rows[0];
@@ -55,7 +56,7 @@ export const getPublicTaxonomyPresentation = cache(
 
       const taxonomy = parseEditorialPayload(
         "game_taxonomy",
-        row.draft_payload
+        row.published_payload
       );
 
       return {
