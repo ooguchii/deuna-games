@@ -5,10 +5,14 @@ import {
 import EditorStateNotice from "@/components/admin/EditorStateNotice";
 import EditorialHistory from "@/components/admin/EditorialHistory";
 import GameTaxonomyEditor from "@/components/admin/GameTaxonomyEditor";
+import PublicationPanel from "@/components/admin/PublicationPanel";
 import {
   getEditorialItem,
   listEditorialItems,
 } from "@/lib/admin/content-service";
+import {
+  getGameTaxonomyPublicationState,
+} from "@/lib/admin/publication-service";
 import {
   verifyAdminSession,
 } from "@/lib/admin/session";
@@ -24,6 +28,7 @@ export const dynamic = "force-dynamic";
 const catalogSections = [
   "clasificaciones",
   "etiquetas",
+  "publicacion",
   "historial",
 ] as const;
 
@@ -124,6 +129,17 @@ export default async function AdminCatalogsPage({
     : parameters.estado;
   const section = resolveCatalogSection(parameters.seccion);
 
+  let publicationState = null;
+
+  try {
+    publicationState =
+      await getGameTaxonomyPublicationState();
+  } catch {
+    console.error(
+      "No se pudo leer el estado de publicación de Catálogos."
+    );
+  }
+
   return (
     <>
       <header className={styles.pageHeader}>
@@ -131,12 +147,16 @@ export default async function AdminCatalogsPage({
           <span>DATOS MAESTROS</span>
           <h1>Catálogos</h1>
           <p>
-            Trabaja cada parte del catálogo en su propia ventana: clasificaciones, etiquetas e historial. La misma definición maestra sigue alimentando toda la web.
+            Trabaja clasificaciones y etiquetas en borrador. La misma definición maestra alimenta toda la web únicamente después de publicar su snapshot.
           </p>
         </div>
         <span className={styles.draftState}>
           <BookOpenCheck size={15} aria-hidden="true" />
-          Privado · no publicable
+          {publicationState?.hasUnpublishedChanges
+            ? "Cambios sin publicar"
+            : item?.status === "synced"
+              ? "Sin cambios"
+              : "Borrador guardado"}
         </span>
       </header>
 
@@ -154,6 +174,21 @@ export default async function AdminCatalogsPage({
           revisions={item.revisions}
           currentRevision={item.revision}
         />
+      ) : section === "publicacion" ? (
+        <section className={styles.editorPanel}>
+          {publicationState ? (
+            <PublicationPanel
+              state={publicationState}
+              requestState={state}
+              publishAction="/api/admin/content/catalogs/publish"
+              restoreActionBase="/api/admin/content/catalog-publications"
+            />
+          ) : (
+            <p>
+              El snapshot publicado de Catálogos todavía no está disponible. Ejecuta la actualización local antes de publicar cambios visuales o de orden.
+            </p>
+          )}
+        </section>
       ) : (
         <GameTaxonomyEditor
           initialTaxonomy={item.payload}
