@@ -6,11 +6,11 @@ import {
   authorizeAdminFormRequest,
 } from "@/lib/admin/admin-route";
 import {
-  editorialSiteConfigFormSchema,
-} from "@/lib/admin/content-forms";
-import {
   saveSiteConfigDraft,
 } from "@/lib/admin/content-service";
+import {
+  frontendSiteConfigFormSchema,
+} from "@/lib/admin/frontend-content-forms";
 import {
   hasExactAdminFormFields,
 } from "@/lib/admin/request-security";
@@ -25,6 +25,7 @@ const fields = [
   "description",
   "language",
   "themeColor",
+  "footerTagline",
 ] as const;
 
 export async function POST(request: NextRequest) {
@@ -47,7 +48,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const parsed = editorialSiteConfigFormSchema.safeParse(
+  const parsed = frontendSiteConfigFormSchema.safeParse(
     Object.fromEntries(authorized.form)
   );
 
