@@ -34,7 +34,7 @@
     "check:site-identity": "node ./tools/check-public-site-identity.mjs",
     "check:admin-security": "node ./tools/check-admin-security.ts && node ./tools/check-admin-media-security.mjs && node ./tools/check-admin-publication-security.mjs",
     "check:admin-content": "node ./tools/admin/import-content.ts --validate-only",
-    "check:data": "node ./tools/check-data.mjs",
+    "check:data": "node ./tools/check-data.mjs && node ./tools/check-home-editorial.mjs",
     "check:assets": "node ./tools/check-assets.mjs",
     "check:routes": "node ./tools/check-routes.mjs",
     "check:css-vars": "node ./tools/check-css-vars.mjs",
