@@ -29,6 +29,7 @@ type PublishableEditorialType =
   | "site_config"
   | "home_config"
   | "about_config"
+  | "game_taxonomy"
   | "public_pages_config";
 
 type PublicationAction =
@@ -96,6 +97,7 @@ export type UpdatePublicationState = EditorialPublicationState;
 export type SiteConfigPublicationState = EditorialPublicationState;
 export type HomeConfigPublicationState = EditorialPublicationState;
 export type AboutConfigPublicationState = EditorialPublicationState;
+export type GameTaxonomyPublicationState = EditorialPublicationState;
 export type PublicPagesConfigPublicationState = EditorialPublicationState;
 
 export type PublishEditorialResult =
@@ -118,6 +120,7 @@ export type PublishUpdateResult = PublishEditorialResult;
 export type PublishSiteConfigResult = PublishEditorialResult;
 export type PublishHomeConfigResult = PublishEditorialResult;
 export type PublishAboutConfigResult = PublishEditorialResult;
+export type PublishGameTaxonomyResult = PublishEditorialResult;
 export type PublishPublicPagesConfigResult = PublishEditorialResult;
 
 export type RestorePublicationResult =
@@ -535,6 +538,10 @@ export function getAboutConfigPublicationState() {
   return getPublicationState("about_config", "about");
 }
 
+export function getGameTaxonomyPublicationState() {
+  return getPublicationState("game_taxonomy", "games");
+}
+
 export function getPublicPagesConfigPublicationState() {
   return getPublicationState(
     "public_pages_config",
@@ -599,6 +606,18 @@ export function publishAboutConfigDraft(
   return publishEditorialDraft(
     "about_config",
     "about",
+    expectedRevision,
+    actorUserId
+  );
+}
+
+export function publishGameTaxonomyDraft(
+  expectedRevision: number,
+  actorUserId: string
+) {
+  return publishEditorialDraft(
+    "game_taxonomy",
+    "games",
     expectedRevision,
     actorUserId
   );
@@ -675,6 +694,19 @@ export function restoreAboutConfigPublication(
 ) {
   return restoreEditorialPublication(
     "about_config",
+    publicationId,
+    expectedPublicationNumber,
+    actorUserId
+  );
+}
+
+export function restoreGameTaxonomyPublication(
+  publicationId: string,
+  expectedPublicationNumber: number,
+  actorUserId: string
+) {
+  return restoreEditorialPublication(
+    "game_taxonomy",
     publicationId,
     expectedPublicationNumber,
     actorUserId
