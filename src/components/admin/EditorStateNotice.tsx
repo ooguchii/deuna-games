@@ -34,7 +34,7 @@ const notices = {
   "imagen-subida": {
     kind: "success",
     message:
-      "Imagen WebP almacenada y guardada en el borrador. Aún no fue publicada.",
+      "Imagen normalizada a WebP seguro, almacenada y guardada en el borrador. Aún no fue publicada.",
   },
   conflicto: {
     kind: "warning",
@@ -59,7 +59,7 @@ const notices = {
   "imagen-invalida": {
     kind: "error",
     message:
-      "La imagen no pudo almacenarse. Usa un WebP estático de hasta 6 MB, sin EXIF, XMP, perfil ICC ni animación.",
+      "La imagen no pudo almacenarse. Vuelve a prepararla desde Multimedia; el panel puede convertir PNG, JPEG, AVIF o WebP y ajustar tamaño/calidad antes de guardar.",
   },
   solicitud: {
     kind: "error",
