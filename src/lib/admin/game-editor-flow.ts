@@ -21,7 +21,7 @@ const nextSection: Record<
 };
 
 export function requestedGameEditorContinuation(
-  requestUrl: URL,
+  requestUrl: { searchParams: URLSearchParams },
   current: GameEditorSection
 ): GameEditorContinuation | null {
   const requested = requestUrl.searchParams.get("continuar");
