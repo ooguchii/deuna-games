@@ -18,6 +18,9 @@ import Footer from "@/components/layout/Footer";
 import Header from "@/components/layout/Header";
 
 import {
+  getPublicAboutConfig,
+} from "@/lib/about/public-about-config";
+import {
   absoluteUrl,
 } from "@/lib/site";
 import {
@@ -29,50 +32,17 @@ import {
 
 import styles from "./page.module.css";
 
-const principles = [
-  {
-    icon: Search,
-    eyebrow: "CLARIDAD",
-    title: "Menos ruido. Más respuesta.",
-    text:
-      "La información importante tiene que encontrarse rápido: qué es el juego, qué necesita y en qué versión está.",
-  },
-  {
-    icon: Monitor,
-    eyebrow: "COMPATIBILIDAD",
-    title: "Entender tu PC sin complicarte.",
-    text:
-      "Queremos traducir requisitos y hardware a decisiones simples para que sepas qué puedes jugar antes de perder tiempo.",
-  },
-  {
-    icon: RefreshCcw,
-    eyebrow: "ACTUALIZACIÓN",
-    title: "Una versión clara por juego.",
-    text:
-      "Cada título puede mantener su información y su versión vigente en un mismo lugar, sin mezclar publicaciones innecesarias.",
-  },
-];
+const principleIcons = [
+  Search,
+  Monitor,
+  RefreshCcw,
+] as const;
 
-const ecosystem = [
-  {
-    icon: Compass,
-    title: "Descubrimiento",
-    text:
-      "Catálogo, categorías, recomendaciones y filtros para encontrar algo que realmente quieras jugar.",
-  },
-  {
-    icon: Layers3,
-    title: "Información ordenada",
-    text:
-      "Juego, requisitos, versión y actualización pensados como partes de una misma experiencia.",
-  },
-  {
-    icon: RefreshCcw,
-    title: "Versiones al día",
-    text:
-      "Cada juego mantiene su información, su versión vigente y sus actualizaciones dentro de una experiencia coherente.",
-  },
-];
+const ecosystemIcons = [
+  Compass,
+  Layers3,
+  RefreshCcw,
+] as const;
 
 export const dynamic = "force-dynamic";
 
@@ -106,7 +76,10 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function AboutPage() {
-  const config = await getPublicSiteConfig();
+  const [config, about] = await Promise.all([
+    getPublicSiteConfig(),
+    getPublicAboutConfig(),
+  ]);
   const shortName = config.shortName || config.name;
 
   const breadcrumbJsonLd = {
@@ -217,15 +190,12 @@ export default async function AboutPage() {
             </span>
 
             <h1 id="about-title">
-              Encontrar qué jugar
-              <span> debería ser simple.</span>
+              {about.hero.title}{" "}
+              <span>{about.hero.highlight}</span>
             </h1>
 
             <p>
-              {config.name} nace con una idea concreta:
-              ordenar lo que hoy suele estar disperso.
-              Juegos, requisitos, versiones y actualizaciones
-              en una experiencia directa, clara y fácil de usar.
+              {config.name} {about.hero.text}
             </p>
 
             <div className={styles.heroActions}>
@@ -254,44 +224,20 @@ export default async function AboutPage() {
               NUESTRA IDEA
             </span>
 
-            <div className={styles.signalLine}>
-              <span className={styles.signalNumber}>
-                01
-              </span>
-              <div>
-                <strong>Encontrar</strong>
-                <p>
-                  Descubre opciones sin recorrer
-                  información desordenada.
-                </p>
+            {about.hero.signals.map((signal, index) => (
+              <div
+                key={`${signal.title}-${index}`}
+                className={styles.signalLine}
+              >
+                <span className={styles.signalNumber}>
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                <div>
+                  <strong>{signal.title}</strong>
+                  <p>{signal.text}</p>
+                </div>
               </div>
-            </div>
-
-            <div className={styles.signalLine}>
-              <span className={styles.signalNumber}>
-                02
-              </span>
-              <div>
-                <strong>Entender</strong>
-                <p>
-                  Requisitos y versiones presentados
-                  de forma simple.
-                </p>
-              </div>
-            </div>
-
-            <div className={styles.signalLine}>
-              <span className={styles.signalNumber}>
-                03
-              </span>
-              <div>
-                <strong>Jugar</strong>
-                <p>
-                  Menos vueltas entre descubrir un juego
-                  y decidir si es para ti.
-                </p>
-              </div>
-            </div>
+            ))}
           </div>
         </section>
 
@@ -302,24 +248,17 @@ export default async function AboutPage() {
           <div className={styles.sectionHeading}>
             <span>QUÉ ES {shortName.toUpperCase()}</span>
             <h2 id="what-is-title">
-              Un lugar pensado para
-              <strong> decidir mejor.</strong>
+              {about.intro.title}{" "}
+              <strong>{about.intro.highlight}</strong>
             </h2>
           </div>
 
           <div className={styles.introCopy}>
-            <p>
-              No queremos sumar otra pantalla llena de datos.
-              Queremos que cada pieza tenga un propósito:
-              ayudarte a encontrar un juego, entenderlo y saber
-              qué necesitás para disfrutarlo.
-            </p>
-
-            <p>
-              Por eso el catálogo, los requisitos, las versiones
-              y las actualizaciones se diseñan como partes de un
-              mismo sistema, no como secciones aisladas.
-            </p>
+            {about.intro.paragraphs.map((paragraph, index) => (
+              <p key={`${paragraph.slice(0, 30)}-${index}`}>
+                {paragraph}
+              </p>
+            ))}
           </div>
         </section>
 
@@ -342,12 +281,12 @@ export default async function AboutPage() {
           </div>
 
           <div className={styles.principlesGrid}>
-            {principles.map((item) => {
-              const Icon = item.icon;
+            {about.principles.map((item, index) => {
+              const Icon = principleIcons[index] ?? Search;
 
               return (
                 <article
-                  key={item.eyebrow}
+                  key={`${item.eyebrow}-${index}`}
                   className={styles.principleCard}
                 >
                   <div className={styles.principleIcon}>
@@ -395,21 +334,14 @@ export default async function AboutPage() {
             </span>
 
             <h2 id="reason-title">
-              La información sirve cuando
-              <span> te ayuda a decidir.</span>
+              {about.reason.title}{" "}
+              <span>{about.reason.highlight}</span>
             </h2>
 
-            <p>
-              Buscar un juego no debería significar abrir diez
-              pestañas para descubrir qué versión existe, qué pide
-              o si puede funcionar en tu equipo.
-            </p>
+            <p>{about.reason.paragraphs[0]}</p>
 
             <p>
-              {shortName} intenta reducir esa fricción: presentar lo
-              importante con jerarquía, mantener cada juego ligado
-              a su información y hacer que la navegación tenga una
-              lógica clara de principio a fin.
+              {shortName} {about.reason.paragraphs[1]}
             </p>
           </div>
         </section>
@@ -429,12 +361,12 @@ export default async function AboutPage() {
           </div>
 
           <div className={styles.ecosystemGrid}>
-            {ecosystem.map((item) => {
-              const Icon = item.icon;
+            {about.ecosystem.map((item, index) => {
+              const Icon = ecosystemIcons[index] ?? Compass;
 
               return (
                 <article
-                  key={item.title}
+                  key={`${item.title}-${index}`}
                   className={styles.ecosystemCard}
                 >
                   <Icon
@@ -458,15 +390,11 @@ export default async function AboutPage() {
           </span>
 
           <h2 id="manifesto-title">
-            No queremos que pases más tiempo buscando
-            información que <span>encontrando tu próximo juego.</span>
+            {about.manifesto.title}{" "}
+            <span>{about.manifesto.highlight}</span>
           </h2>
 
-          <p>
-            Ese es el criterio que queremos mantener a medida que
-            {" "}{shortName} crezca: claridad, utilidad y una experiencia que
-            no te haga dar vueltas de más.
-          </p>
+          <p>{about.manifesto.text}</p>
         </section>
 
         <section
@@ -476,7 +404,7 @@ export default async function AboutPage() {
           <div>
             <span>EMPEZÁ POR ACÁ</span>
             <h2 id="cta-title">
-              Encuentra algo que quieras jugar hoy.
+              {about.ctaTitle}
             </h2>
           </div>
 
