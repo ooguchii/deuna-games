@@ -20,6 +20,7 @@ const gameSections = [
   { id: "requisitos", label: "Requisitos", icon: MonitorCog },
   { id: "multimedia", label: "Multimedia", icon: ImageIcon },
   { id: "descargas", label: "Descargas", icon: Download },
+  { id: "publicacion", label: "Publicación", icon: Rocket },
   { id: "historial", label: "Historial", icon: FileClock },
 ] as const;
 
@@ -32,22 +33,28 @@ const updateSections = [
 export default function AdminContextBar() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const gameMatch = /^\/admin\/juegos\/([^/]+)$/.exec(pathname);
+  const gameMatch = /^\/admin\/juegos\/([^/]+)(?:\/(publicacion))?$/.exec(pathname);
   const updateMatch = /^\/admin\/actualizaciones\/([^/]+)$/.exec(pathname);
 
   if (gameMatch && gameMatch[1] !== "nuevo") {
-    const selected = searchParams.get("seccion") ?? "ficha";
+    const gamePath = `/admin/juegos/${gameMatch[1]}`;
+    const selected = gameMatch[2] === "publicacion"
+      ? "publicacion"
+      : searchParams.get("seccion") ?? "ficha";
 
     return (
       <nav className={ux.contextBar} aria-label="Secciones del editor de juego">
         {gameSections.map((section) => {
           const Icon = section.icon;
           const active = selected === section.id;
+          const href = section.id === "publicacion"
+            ? `${gamePath}/publicacion`
+            : `${gamePath}?seccion=${section.id}`;
 
           return (
             <a
               key={section.id}
-              href={`${pathname}?seccion=${section.id}`}
+              href={href}
               className={active ? ux.contextActive : undefined}
               aria-current={active ? "page" : undefined}
             >
