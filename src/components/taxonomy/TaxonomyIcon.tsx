@@ -71,6 +71,10 @@ export default function TaxonomyIcon({
     <Icon
       size={size}
       strokeWidth={strokeWidth}
+      style={{
+        color:
+          "var(--taxonomy-accent, currentColor)",
+      }}
       aria-hidden="true"
     />
   );
