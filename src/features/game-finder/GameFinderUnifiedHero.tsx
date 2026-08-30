@@ -97,12 +97,11 @@ export default function GameFinderUnifiedHero({
         <p>{copy.description}</p>
 
         <div className={styles.microFlow} aria-label="Resumen del proceso">
-          {copy.flow.map((label, index) => (
-            <span key={`${index}-${label}`}>
-              {index > 0 && <i aria-hidden="true" />}
-              <span>{label}</span>
-            </span>
-          ))}
+          <span>{copy.flow[0]}</span>
+          <i aria-hidden="true" />
+          <span>{copy.flow[1]}</span>
+          <i aria-hidden="true" />
+          <span>{copy.flow[2]}</span>
         </div>
 
         <div className={styles.actions}>
