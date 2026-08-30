@@ -2,9 +2,11 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 
 import {
-  siteConfig,
   siteUrl,
 } from "@/lib/site";
+import {
+  getPublicSiteConfig,
+} from "@/lib/site/public-site-config";
 
 import "./globals.css";
 import "@/theme/deuna-theme.css";
@@ -14,60 +16,74 @@ const inter = Inter({
   display: "swap",
 });
 
-export const metadata: Metadata = {
-  metadataBase: new URL(siteUrl),
+export const dynamic = "force-dynamic";
 
-  title: {
-    default: "DeUna Games | Encuentra juegos para tu PC",
-    template: "%s | DeUna Games",
-  },
+export async function generateMetadata(): Promise<Metadata> {
+  const config = await getPublicSiteConfig();
+  const homeTitle =
+    `${config.name} | Encuentra juegos para tu PC`;
 
-  description: siteConfig.description,
+  return {
+    metadataBase: new URL(siteUrl),
 
-  applicationName: siteConfig.name,
+    title: {
+      default: homeTitle,
+      template: `%s | ${config.name}`,
+    },
 
-  openGraph: {
-    type: "website",
-    siteName: siteConfig.name,
-    title: "DeUna Games | Encuentra juegos para tu PC",
-    description: siteConfig.description,
-  },
+    description: config.description,
 
-  twitter: {
-    card: "summary_large_image",
-    title: "DeUna Games | Encuentra juegos para tu PC",
-    description: siteConfig.description,
-  },
+    applicationName: config.name,
 
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
+    openGraph: {
+      type: "website",
+      siteName: config.name,
+      title: homeTitle,
+      description: config.description,
+    },
+
+    twitter: {
+      card: "summary_large_image",
+      title: homeTitle,
+      description: config.description,
+    },
+
+    robots: {
       index: true,
       follow: true,
-      "max-image-preview": "large",
-      "max-snippet": -1,
-      "max-video-preview": -1,
+      googleBot: {
+        index: true,
+        follow: true,
+        "max-image-preview": "large",
+        "max-snippet": -1,
+        "max-video-preview": -1,
+      },
     },
-  },
 
-  category: "games",
-};
+    category: "games",
+  };
+}
 
-export const viewport: Viewport = {
-  width: "device-width",
-  initialScale: 1,
-  themeColor: siteConfig.themeColor,
-  colorScheme: "dark",
-};
+export async function generateViewport(): Promise<Viewport> {
+  const config = await getPublicSiteConfig();
 
-export default function RootLayout({
+  return {
+    width: "device-width",
+    initialScale: 1,
+    themeColor: config.themeColor,
+    colorScheme: "dark",
+  };
+}
+
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const config = await getPublicSiteConfig();
+
   return (
-    <html lang={siteConfig.language}>
+    <html lang={config.language}>
       <body className={inter.className}>
         <a
           href="#main-content"
