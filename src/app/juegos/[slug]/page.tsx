@@ -23,17 +23,17 @@ import Header from "@/components/layout/Header";
 import GameMedia from "@/components/ui/GameMedia";
 import UniversalGameCard from "@/components/ui/UniversalGameCard";
 import {
-  games,
-  getGameBySlug,
-} from "@/data/games";
-import GamePerformanceEstimate from "@/features/game-finder/GamePerformanceEstimate";
-import {
   resolvedGameUpdates,
 } from "@/data/updates";
+import GamePerformanceEstimate from "@/features/game-finder/GamePerformanceEstimate";
 import { getPerformanceProfile } from "@/features/game-finder/performance-data";
 import {
   resolveGameDownload,
 } from "@/lib/games/download";
+import {
+  getPublicGameBySlug,
+  getPublicGames,
+} from "@/lib/games/public-catalog";
 import {
   absoluteUrl,
   siteConfig,
@@ -58,13 +58,8 @@ type RequirementRow = {
   recommended?: string;
 };
 
-export const dynamicParams = false;
-
-export function generateStaticParams() {
-  return games.map((game) => ({
-    slug: game.slug,
-  }));
-}
+export const dynamic = "force-dynamic";
+export const dynamicParams = true;
 
 function legacyRequirements(
   requirements: GameHardwareRequirements
@@ -108,7 +103,7 @@ export async function generateMetadata({
   params,
 }: GameDetailPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const game = getGameBySlug(slug);
+  const game = await getPublicGameBySlug(slug);
 
   if (!game) {
     return {
@@ -157,7 +152,10 @@ export default async function GameDetailPage({
   params,
 }: GameDetailPageProps) {
   const { slug } = await params;
-  const game = getGameBySlug(slug);
+  const [game, games] = await Promise.all([
+    getPublicGameBySlug(slug),
+    getPublicGames(),
+  ]);
 
   if (!game) {
     notFound();
