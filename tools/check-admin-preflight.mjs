@@ -61,6 +61,7 @@ for (const required of [
   '"site_config", "site"',
   '"home_config", "home"',
   '"about_config", "about"',
+  '"public_pages_config", "public-pages"',
   "published_payload",
   "published_checksum",
   "public_visible",
