@@ -21,6 +21,7 @@ import {
 
 import type { Game } from "@/types/game";
 
+import { usePublicFinderCopy } from "./PublicFinderCopyContext";
 import type {
   GameEstimate,
   HardwareProfile,
@@ -76,6 +77,7 @@ export default function GameFinderUnifiedHero({
   onSelectGame,
   onViewAll,
 }: GameFinderUnifiedHeroProps) {
+  const copy = usePublicFinderCopy();
   const isDetecting = detectionState === "detecting";
   const isReady = detectionState === "ready";
   const isWarning = detectionState === "partial" || detectionState === "error";
@@ -85,23 +87,22 @@ export default function GameFinderUnifiedHero({
       <div className={styles.heroGlow} aria-hidden="true" />
 
       <div className={styles.copy}>
-        <span className={styles.eyebrow}>COMPATIBILIDAD ORIENTATIVA</span>
+        <span className={styles.eyebrow}>{copy.eyebrow}</span>
 
         <h1 id="finder-unified-title">
-          Descubre los juegos{"\u00a0"}que
-          <strong> tu PC puede correr</strong>
+          {copy.title}{"\u00a0"}
+          <strong>{copy.highlight}</strong>
         </h1>
 
-        <p>
-          Detectamos lo que el navegador permite, comparamos CPU, GPU y RAM con cada juego y calculamos FPS orientativos según resolución y calidad.
-        </p>
+        <p>{copy.description}</p>
 
         <div className={styles.microFlow} aria-label="Resumen del proceso">
-          <span>Detectamos</span>
-          <i aria-hidden="true" />
-          <span>Comparamos</span>
-          <i aria-hidden="true" />
-          <span>Estimamos FPS</span>
+          {copy.flow.map((label, index) => (
+            <span key={`${index}-${label}`}>
+              {index > 0 && <i aria-hidden="true" />}
+              <span>{label}</span>
+            </span>
+          ))}
         </div>
 
         <div className={styles.actions}>
@@ -134,7 +135,7 @@ export default function GameFinderUnifiedHero({
 
         <div className={styles.trust}>
           <ShieldCheck size={15} aria-hidden="true" />
-          Todo se procesa en tu navegador. No leemos archivos ni instalamos nada.
+          {copy.trustText}
         </div>
       </div>
 
