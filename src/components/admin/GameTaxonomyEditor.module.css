@@ -1,15 +1,15 @@
 .root {
   --taxonomy-accent: #ff1554;
   display: grid;
-  gap: 18px;
+  gap: 20px;
 }
 
 .summary,
 .panel,
 .actions {
-  border: 1px solid #273342;
+  border: 1px solid #354354;
   border-radius: 14px;
-  background: rgba(12, 20, 30, 0.72);
+  background: rgba(12, 20, 30, 0.82);
 }
 
 .summary {
@@ -17,44 +17,45 @@
   align-items: center;
   justify-content: space-between;
   gap: 24px;
-  padding: 18px 20px;
+  padding: 19px 21px;
 }
 
 .summary strong {
   display: block;
-  margin-bottom: 4px;
-  font-size: 15px;
+  margin-bottom: 5px;
+  color: #f0f4f8;
+  font-size: 16px;
 }
 
 .summary p,
 .panelHeader p,
 .actions p {
   margin: 0;
-  color: #8da2bd;
-  font-size: 13px;
-  line-height: 1.55;
+  color: #a3b2c3;
+  font-size: 14px;
+  line-height: 1.6;
 }
 
 .summary > span {
   flex: 0 0 auto;
-  border: 1px solid #39495d;
+  border: 1px solid #46586e;
   border-radius: 999px;
-  padding: 7px 10px;
-  color: #c9d5e5;
+  padding: 7px 11px;
+  color: #d4deea;
   font-size: 12px;
 }
 
 .feedback {
-  border: 1px solid rgba(255, 179, 71, 0.38);
+  border: 1px solid rgba(255, 179, 71, 0.44);
   border-radius: 10px;
-  background: rgba(255, 179, 71, 0.08);
-  padding: 12px 14px;
-  color: #ffc36f;
-  font-size: 13px;
+  background: rgba(255, 179, 71, 0.09);
+  padding: 13px 15px;
+  color: #ffd08c;
+  font-size: 14px;
 }
 
 .panel {
-  padding: 20px;
+  padding: 22px;
 }
 
 .panelHeader {
@@ -62,35 +63,36 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 24px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid #202b38;
+  padding-bottom: 18px;
+  border-bottom: 1px solid #334150;
 }
 
 .panelHeader span {
-  color: #ff2d66;
-  font-size: 11px;
+  color: #ff6a93;
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.08em;
 }
 
 .panelHeader h2 {
-  margin: 4px 0 6px;
-  font-size: 21px;
+  margin: 5px 0 7px;
+  font-size: 23px;
 }
 
 .counts {
-  min-width: 110px;
+  min-width: 120px;
   text-align: right;
 }
 
 .counts strong {
   display: block;
-  font-size: 24px;
+  color: #f2f5f8;
+  font-size: 26px;
 }
 
 .counts span {
-  color: #7f93ac;
-  font-size: 11px;
+  color: #99a9bb;
+  font-size: 12px;
   letter-spacing: 0;
 }
 
@@ -98,31 +100,33 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
-  margin: 16px 0 12px;
+  margin: 18px 0 14px;
 }
 
 .addRow input,
 .termMain input,
 .visualEditor select {
   width: 100%;
-  border: 1px solid #314053;
+  min-height: 44px;
+  border: 1px solid #405169;
   border-radius: 9px;
-  background: #08111b;
+  background: #09121c;
   color: #f5f7fb;
-  padding: 11px 12px;
+  padding: 10px 12px;
   outline: none;
+  font-size: 14px;
 }
 
-.addRow input:focus,
-.termMain input:focus,
-.visualEditor select:focus {
-  border-color: #ff2d66;
-  box-shadow: 0 0 0 2px rgba(255, 45, 102, 0.12);
+.addRow input:focus-visible,
+.termMain input:focus-visible,
+.visualEditor select:focus-visible {
+  border-color: color-mix(in srgb, var(--brand) 70%, #ffffff);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 14%, transparent);
 }
 
 .termMain input[readonly] {
-  color: #d5dfec;
-  background: #0a131e;
+  color: #dbe4ef;
+  background: #0b1520;
 }
 
 .addRow button,
@@ -131,11 +135,13 @@
   align-items: center;
   justify-content: center;
   gap: 7px;
+  min-height: 44px;
   border: 0;
   border-radius: 9px;
   background: #ff1554;
   color: white;
-  padding: 0 16px;
+  padding: 0 17px;
+  font-size: 13px;
   font-weight: 800;
   cursor: pointer;
 }
@@ -143,22 +149,22 @@
 .columnHeader,
 .termRow {
   display: grid;
-  grid-template-columns: minmax(240px, 1fr) minmax(360px, 1.2fr) 92px 72px 90px 38px;
+  grid-template-columns: minmax(240px, 1fr) minmax(360px, 1.2fr) 100px 80px 100px 44px;
   align-items: center;
-  gap: 10px;
+  gap: 11px;
 }
 
 .columnHeaderSimple,
 .termRowSimple {
-  grid-template-columns: minmax(300px, 1fr) 110px 82px 100px 38px;
+  grid-template-columns: minmax(300px, 1fr) 120px 90px 110px 44px;
 }
 
 .columnHeader {
-  padding: 0 10px 7px;
-  color: #62758d;
-  font-size: 10px;
+  padding: 0 11px 8px;
+  color: #8fa0b3;
+  font-size: 11px;
   font-weight: 800;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.055em;
   text-transform: uppercase;
 }
 
@@ -168,14 +174,20 @@
 
 .termList {
   display: grid;
-  gap: 8px;
+  gap: 10px;
 }
 
 .termRow {
-  border: 1px solid #202c3a;
-  border-radius: 10px;
-  padding: 10px;
-  background: rgba(5, 12, 20, 0.7);
+  border: 1px solid #344252;
+  border-radius: 11px;
+  padding: 12px;
+  background: rgba(8, 15, 24, 0.82);
+}
+
+.termRow:hover,
+.termRow:focus-within {
+  border-color: #4b5c6e;
+  background: #0d1722;
 }
 
 .termMain {
@@ -187,112 +199,113 @@
 
 .termMain code {
   overflow: hidden;
-  color: #71859f;
-  font-size: 11px;
+  color: #94a5ba;
+  font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .visualEditor {
   display: grid;
-  grid-template-columns: 46px minmax(130px, 1fr) minmax(110px, 0.8fr);
+  grid-template-columns: 48px minmax(130px, 1fr) minmax(110px, 0.8fr);
   align-items: end;
-  gap: 8px;
+  gap: 9px;
 }
 
 .visualEditor label {
   display: grid;
-  gap: 5px;
+  gap: 6px;
 }
 
 .visualEditor label > span {
-  color: #7f93ac;
-  font-size: 10px;
+  color: #9fb0c4;
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
 .visualEditor select {
-  min-height: 38px;
-  padding: 7px 8px;
-  font-size: 12px;
+  min-height: 44px;
+  padding: 7px 9px;
+  font-size: 13px;
 }
 
 .visualPreview {
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   display: grid;
   place-items: center;
-  border: 1px solid color-mix(in srgb, var(--taxonomy-accent) 38%, transparent);
+  border: 1px solid color-mix(in srgb, var(--taxonomy-accent) 44%, transparent);
   border-radius: 10px;
   color: var(--taxonomy-accent);
-  background: color-mix(in srgb, var(--taxonomy-accent) 9%, #08111b);
+  background: color-mix(in srgb, var(--taxonomy-accent) 10%, #09121c);
 }
 
 .usage {
-  color: #8da2bd;
-  font-size: 12px;
+  color: #aab8c8;
+  font-size: 13px;
   text-align: center;
 }
 
 .orderButtons {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 4px;
+  gap: 5px;
 }
 
 .orderButtons button,
 .activeButton,
 .inactiveButton,
 .removeButton {
+  min-height: 40px;
   border-radius: 8px;
-  min-height: 34px;
+  font-size: 12px;
   cursor: pointer;
 }
 
 .orderButtons button {
   display: grid;
   place-items: center;
-  border: 1px solid #334256;
-  background: #0b141f;
-  color: #9fb0c4;
+  border: 1px solid #40516a;
+  background: #0d1621;
+  color: #b3c0cf;
 }
 
 .orderButtons button:disabled {
-  opacity: 0.25;
+  opacity: 0.35;
   cursor: not-allowed;
 }
 
 .activeButton {
-  border: 1px solid rgba(66, 211, 146, 0.34);
-  background: rgba(66, 211, 146, 0.08);
-  color: #62e5a8;
+  border: 1px solid rgba(66, 211, 146, 0.42);
+  background: rgba(66, 211, 146, 0.1);
+  color: #82e9ba;
 }
 
 .inactiveButton {
-  border: 1px solid #3a4655;
-  background: #111923;
-  color: #97a6b8;
+  border: 1px solid #485665;
+  background: #131c26;
+  color: #b0bdca;
 }
 
 .removeButton {
   display: grid;
   place-items: center;
-  border: 1px solid rgba(255, 75, 110, 0.3);
-  background: rgba(255, 75, 110, 0.06);
-  color: #ff7895;
+  border: 1px solid rgba(255, 75, 110, 0.38);
+  background: rgba(255, 75, 110, 0.08);
+  color: #ff94aa;
 }
 
 .removeButton:disabled {
   cursor: not-allowed;
-  opacity: 0.28;
+  opacity: 0.35;
 }
 
 .empty {
-  margin: 14px 0 0;
-  color: #7f93ac;
-  font-size: 13px;
+  margin: 16px 0 0;
+  color: #9eafc2;
+  font-size: 14px;
 }
 
 .actions {
@@ -300,23 +313,22 @@
   align-items: center;
   justify-content: space-between;
   gap: 24px;
-  padding: 16px 18px;
+  padding: 17px 19px;
 }
 
 .actions > button {
-  min-height: 42px;
   flex: 0 0 auto;
 }
 
 @media (max-width: 1320px) {
   .columnHeader,
   .termRow {
-    grid-template-columns: minmax(240px, 1fr) minmax(330px, 1fr) 86px 72px 88px 38px;
+    grid-template-columns: minmax(240px, 1fr) minmax(330px, 1fr) 94px 78px 96px 44px;
   }
 
   .columnHeaderSimple,
   .termRowSimple {
-    grid-template-columns: minmax(280px, 1fr) 100px 78px 96px 38px;
+    grid-template-columns: minmax(280px, 1fr) 110px 84px 102px 44px;
   }
 }
 
