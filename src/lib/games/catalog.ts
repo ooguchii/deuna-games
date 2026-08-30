@@ -161,6 +161,14 @@ export function requirementsText(
   ).join(" ");
 }
 
+function classificationText(game: Game) {
+  return [
+    game.category,
+    ...(game.genres ?? []),
+    ...(game.tags ?? []),
+  ].join(" ");
+}
+
 export function matchesCatalogSearch(
   game: Game,
   query: string,
@@ -185,7 +193,7 @@ export function matchesCatalogSearch(
 
   if (scope === "category") {
     return normalizeCatalogText(
-      game.category
+      classificationText(game)
     ).includes(
       normalizedQuery
     );
@@ -205,7 +213,7 @@ export function matchesCatalogSearch(
     [
       game.title,
       game.description,
-      game.category,
+      classificationText(game),
       game.badge ?? "",
       game.version ?? "",
       requirementsText(game),
