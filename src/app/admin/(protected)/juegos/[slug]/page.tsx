@@ -569,7 +569,7 @@ export default async function AdminGameEditorPage({
               <h2>Portada, hero y galería</h2>
             </div>
             <p>
-              Sube WebP al almacén persistente o usa imágenes locales permitidas.
+              Sube una imagen de tu equipo o impórtala desde una URL HTTPS. El panel la normaliza a WebP seguro antes de guardarla.
             </p>
           </div>
 
