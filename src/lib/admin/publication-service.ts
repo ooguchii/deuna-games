@@ -22,7 +22,8 @@ import {
 type PublishableEditorialType =
   | "game"
   | "game_update"
-  | "site_config";
+  | "site_config"
+  | "home_config";
 
 type PublicationAction =
   | "bootstrap"
@@ -90,6 +91,8 @@ export type UpdatePublicationState =
   EditorialPublicationState;
 export type SiteConfigPublicationState =
   EditorialPublicationState;
+export type HomeConfigPublicationState =
+  EditorialPublicationState;
 
 export type PublishEditorialResult =
   | {
@@ -111,6 +114,8 @@ export type PublishGameResult =
 export type PublishUpdateResult =
   PublishEditorialResult;
 export type PublishSiteConfigResult =
+  PublishEditorialResult;
+export type PublishHomeConfigResult =
   PublishEditorialResult;
 
 export type RestorePublicationResult =
@@ -147,8 +152,14 @@ function normalizePublishablePayload(
     );
   }
 
+  if (type === "site_config") {
+    return normalizeEditorialPayload(
+      parseEditorialPayload("site_config", payload)
+    );
+  }
+
   return normalizeEditorialPayload(
-    parseEditorialPayload("site_config", payload)
+    parseEditorialPayload("home_config", payload)
   );
 }
 
@@ -532,6 +543,10 @@ export function getSiteConfigPublicationState() {
   return getPublicationState("site_config", "site");
 }
 
+export function getHomeConfigPublicationState() {
+  return getPublicationState("home_config", "home");
+}
+
 export function publishGameDraft(
   key: string,
   expectedRevision: number,
@@ -570,6 +585,18 @@ export function publishSiteConfigDraft(
   );
 }
 
+export function publishHomeConfigDraft(
+  expectedRevision: number,
+  actorUserId: string
+) {
+  return publishEditorialDraft(
+    "home_config",
+    "home",
+    expectedRevision,
+    actorUserId
+  );
+}
+
 export function restoreGamePublication(
   publicationId: string,
   expectedPublicationNumber: number,
@@ -603,6 +630,19 @@ export function restoreSiteConfigPublication(
 ) {
   return restoreEditorialPublication(
     "site_config",
+    publicationId,
+    expectedPublicationNumber,
+    actorUserId
+  );
+}
+
+export function restoreHomeConfigPublication(
+  publicationId: string,
+  expectedPublicationNumber: number,
+  actorUserId: string
+) {
+  return restoreEditorialPublication(
+    "home_config",
     publicationId,
     expectedPublicationNumber,
     actorUserId
