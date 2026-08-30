@@ -52,7 +52,7 @@ export async function POST(
   ) {
     return adminRedirect(
       authorized.adminOrigin,
-      `${target}?estado=solicitud`
+      `${target}?estado=solicitud&seccion=publicacion`
     );
   }
 
@@ -63,7 +63,7 @@ export async function POST(
   if (!expected.success) {
     return adminRedirect(
       authorized.adminOrigin,
-      `${target}?estado=datos`
+      `${target}?estado=datos&seccion=publicacion`
     );
   }
 
@@ -84,7 +84,7 @@ export async function POST(
     if (result.outcome === "conflict") {
       return adminRedirect(
         authorized.adminOrigin,
-        `${target}?estado=conflicto`
+        `${target}?estado=conflicto&seccion=publicacion`
       );
     }
 
@@ -99,7 +99,7 @@ export async function POST(
 
     return adminRedirect(
       authorized.adminOrigin,
-      `${target}?estado=${state}`
+      `${target}?estado=${state}&seccion=publicacion`
     );
   } catch {
     console.error(
