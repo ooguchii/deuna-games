@@ -18,7 +18,11 @@ import {
 import {
   verifyAdminSession,
 } from "@/lib/admin/session";
+import {
+  resolveGameDownload,
+} from "@/lib/games/download";
 import type {
+  GameDownloadSourceStatus,
   GameHardwareRequirements,
 } from "@/types/game";
 
@@ -34,6 +38,15 @@ type RequirementRow = {
   label: string;
   minimum?: string;
   recommended?: string;
+};
+
+const downloadStatusLabels: Record<
+  GameDownloadSourceStatus,
+  string
+> = {
+  available: "Disponible",
+  down: "Caído",
+  maintenance: "Mantenimiento",
 };
 
 function legacyMinimum(
@@ -100,6 +113,7 @@ export default async function AdminGamePreviewPage({
   if (!item) notFound();
 
   const game = item.payload;
+  const download = resolveGameDownload(game);
   const requirements = game.requirements;
   const minimum =
     requirements?.minimum ??
@@ -129,7 +143,7 @@ export default async function AdminGamePreviewPage({
       ...(game.heroImage ? [game.heroImage] : []),
     ])
   ).slice(0, 8);
-  const sources = game.download?.sources ?? [];
+  const sources = download?.sources ?? [];
 
   return (
     <>
@@ -243,14 +257,14 @@ export default async function AdminGamePreviewPage({
           <HardDrive size={18} aria-hidden="true" />
           <span>Tamaño</span>
           <strong>
-            {game.download?.sizeGb
-              ? `${game.download.sizeGb} GB`
+            {download?.sizeGb
+              ? `${download.sizeGb} GB`
               : minimum?.storage ?? "A confirmar"}
           </strong>
         </article>
         <article>
           <Download size={18} aria-hidden="true" />
-          <span>Fuentes</span>
+          <span>Fuentes visibles</span>
           <strong>{sources.length}</strong>
         </article>
       </section>
@@ -362,7 +376,7 @@ export default async function AdminGamePreviewPage({
         <article className={styles.panel}>
           <div className={styles.sectionHeading}>
             <span>DESCARGAS</span>
-            <h2>Fuentes configuradas</h2>
+            <h2>Fuentes visibles</h2>
           </div>
 
           {sources.length > 0 ? (
@@ -373,14 +387,16 @@ export default async function AdminGamePreviewPage({
                     <strong>{source.name}</strong>
                     <span>{downloadHost(source.href)}</span>
                   </div>
-                  <span>{source.label ?? "Ir al enlace"}</span>
+                  <span>
+                    {downloadStatusLabels[source.status]} · {source.label}
+                  </span>
                 </div>
               ))}
             </div>
           ) : (
             <div className={styles.emptyState}>
               <Download size={22} aria-hidden="true" />
-              No hay fuentes de descarga en este borrador.
+              No hay fuentes activas en este borrador.
             </div>
           )}
         </article>
