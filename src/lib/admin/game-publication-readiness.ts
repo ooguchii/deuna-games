@@ -1,9 +1,13 @@
+import {
+  resolvePerformanceProfile,
+} from "@/features/game-finder/performance-data";
 import type { Game } from "@/types/game";
 
 export type GameReadinessSection =
   | "ficha"
   | "datos"
   | "requisitos"
+  | "rendimiento"
   | "multimedia"
   | "descargas";
 
@@ -116,9 +120,22 @@ export function evaluateGamePublicationReadiness(
     {
       id: "recommended-requirements",
       label: "Requisitos recomendados",
-      detail: "Procesador, RAM y gráficos recomendados mejoran la estimación y la ficha técnica.",
+      detail: "Procesador, RAM y gráficos recomendados mejoran la ficha técnica.",
       section: "requisitos",
       complete: hasRecommendedRequirements(game),
+      priority: "recommended",
+    },
+    {
+      id: "performance",
+      label: "Estimación de FPS",
+      detail: "Una calibración editorial o histórica permite adaptar los FPS al hardware de cada visitante.",
+      section: "rendimiento",
+      complete: Boolean(
+        resolvePerformanceProfile(
+          game.slug,
+          game.performance
+        )
+      ),
       priority: "recommended",
     },
     {
