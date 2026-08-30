@@ -1,5 +1,9 @@
 import { z } from "zod";
 
+import {
+  taxonomyIconKeys,
+  taxonomyToneKeys,
+} from "@/lib/games/taxonomy-presentation";
 import type { Game } from "@/types/game";
 import type { GameTaxonomy } from "@/types/game-taxonomy";
 import type { GameUpdate } from "@/types/update";
@@ -177,6 +181,8 @@ const taxonomyTermSchema = z
     key: identifierSchema,
     label: z.string().trim().min(1).max(80),
     active: z.boolean(),
+    icon: z.enum(taxonomyIconKeys).optional(),
+    tone: z.enum(taxonomyToneKeys).optional(),
   })
   .strict();
 
