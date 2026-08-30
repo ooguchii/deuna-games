@@ -7,11 +7,11 @@ import {
   HardDrive,
   ImageIcon,
   Monitor,
+  Rocket,
   Star,
 } from "lucide-react";
 import { notFound } from "next/navigation";
 
-import PublicationPanel from "@/components/admin/PublicationPanel";
 import GameMedia from "@/components/ui/GameMedia";
 import {
   getEditorialItem,
@@ -36,7 +36,6 @@ export const dynamic = "force-dynamic";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ estado?: string }>;
 };
 
 type RequirementRow = {
@@ -110,13 +109,9 @@ function downloadHost(href: string) {
 
 export default async function AdminGamePreviewPage({
   params,
-  searchParams,
 }: PageProps) {
   await verifyAdminSession();
-  const [{ slug }, query] = await Promise.all([
-    params,
-    searchParams,
-  ]);
+  const { slug } = await params;
   const item = await getEditorialItem("game", slug);
 
   if (!item) notFound();
@@ -164,6 +159,8 @@ export default async function AdminGamePreviewPage({
     ])
   ).slice(0, 8);
   const sources = download?.sources ?? [];
+  const publicationHref =
+    `/admin/juegos/${encodeURIComponent(slug)}/publicacion`;
 
   return (
     <>
@@ -175,15 +172,26 @@ export default async function AdminGamePreviewPage({
           <ArrowLeft size={15} aria-hidden="true" />
           Volver al editor
         </Link>
-        <Link
-          href={`/juegos/${encodeURIComponent(slug)}`}
-          className={styles.publicLink}
-          target="_blank"
-          rel="noreferrer"
-        >
-          Ficha pública actual
-          <ExternalLink size={14} aria-hidden="true" />
-        </Link>
+
+        {publicationState?.publicVisible ? (
+          <Link
+            href={`/juegos/${encodeURIComponent(slug)}`}
+            className={styles.publicLink}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Ficha pública actual
+            <ExternalLink size={14} aria-hidden="true" />
+          </Link>
+        ) : (
+          <Link
+            href={publicationHref}
+            className={styles.publicLink}
+          >
+            Revisar publicación
+            <Rocket size={14} aria-hidden="true" />
+          </Link>
+        )}
       </div>
 
       <header className={styles.previewHeader}>
@@ -191,17 +199,19 @@ export default async function AdminGamePreviewPage({
           <span>VISTA PREVIA EDITORIAL</span>
           <h1>{game.title}</h1>
           <p>
-            Esta pantalla usa el borrador de PostgreSQL, no el contenido público actual.
+            Esta pantalla usa el borrador de PostgreSQL, no el contenido público actual. Publicar, ocultar y restaurar se gestionan únicamente desde la pestaña Publicación.
           </p>
         </div>
         <div className={styles.revisionState}>
           <strong>Revisión {item.revision}</strong>
           <span>
-            {publicationState?.hasUnpublishedChanges
-              ? "Cambios sin publicar"
-              : item.status === "synced"
-                ? "Sin cambios"
-                : "Borrador guardado"}
+            {!publicationState
+              ? "Estado público no disponible"
+              : !publicationState.publicVisible
+                ? "No visible en la web"
+                : publicationState.hasUnpublishedChanges
+                  ? "Cambios sin publicar"
+                  : "Coincide con la publicación"}
           </span>
         </div>
       </header>
@@ -324,25 +334,27 @@ export default async function AdminGamePreviewPage({
             <h2>Estado del borrador</h2>
           </div>
 
-          {publicationState ? (
-            <PublicationPanel
-              slug={slug}
-              state={publicationState}
-              requestState={query.estado}
-            />
-          ) : (
-            <div className={styles.publishGate}>
-              <strong>
-                La infraestructura de publicación todavía no está disponible en esta base.
-              </strong>
-              <p>
-                El borrador permanece seguro y no se publicará hasta que la migración editorial correspondiente esté aplicada.
-              </p>
-              <button type="button" disabled>
-                Publicar borrador
-              </button>
-            </div>
-          )}
+          <div className={styles.publishGate}>
+            <strong>
+              {!publicationState
+                ? "No se pudo leer el estado de publicación."
+                : !publicationState.publicVisible
+                  ? "Este borrador no está visible públicamente."
+                  : publicationState.hasUnpublishedChanges
+                    ? "La web mantiene el snapshot anterior."
+                    : "El borrador coincide con la publicación actual."}
+            </strong>
+            <p>
+              Esta vista sirve únicamente para revisar el contenido. La publicación es una acción explícita y separada para evitar cambios públicos accidentales.
+            </p>
+            <Link
+              href={publicationHref}
+              className={styles.publicLink}
+            >
+              Ir a Publicación
+              <Rocket size={14} aria-hidden="true" />
+            </Link>
+          </div>
         </article>
       </section>
 
