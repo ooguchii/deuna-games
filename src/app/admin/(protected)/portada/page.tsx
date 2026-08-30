@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 
 import EditorialHistory from "@/components/admin/EditorialHistory";
 import EditorStateNotice from "@/components/admin/EditorStateNotice";
+import HomeCurationEditor from "@/components/admin/HomeCurationEditor";
 import HomePresentationEditor from "@/components/admin/HomePresentationEditor";
 import PublicationPanel from "@/components/admin/PublicationPanel";
 import {
@@ -11,6 +12,9 @@ import {
   getEditorialItem,
   listEditorialItems,
 } from "@/lib/admin/content-service";
+import {
+  listPublicationStates,
+} from "@/lib/admin/publication-overview";
 import {
   getHomeConfigPublicationState,
 } from "@/lib/admin/publication-service";
@@ -38,10 +42,6 @@ type PageProps = {
   }>;
 };
 
-function asText(values: string[]) {
-  return values.join("\n");
-}
-
 function resolveSection(
   value: string | string[] | undefined
 ): HomeAdminSection {
@@ -58,9 +58,15 @@ export default async function AdminHomeEditorPage({
   searchParams,
 }: PageProps) {
   await verifyAdminSession();
-  const [item, games, parameters] = await Promise.all([
+  const [
+    item,
+    games,
+    gamePublicationStates,
+    parameters,
+  ] = await Promise.all([
     getEditorialItem("home_config", "home"),
     listEditorialItems("game"),
+    listPublicationStates("game"),
     searchParams,
   ]);
 
@@ -81,8 +87,13 @@ export default async function AdminHomeEditorPage({
     ? parameters.estado[0]
     : parameters.estado;
   const section = resolveSection(parameters.seccion);
-  const config = item.payload;
-  const resolved = resolveHomeConfig(config);
+  const resolved = resolveHomeConfig(item.payload);
+  const publishedSlugs =
+    gamePublicationStates === null
+      ? null
+      : gamePublicationStates
+          .filter((game) => game.publicVisible)
+          .map((game) => game.key);
 
   return (
     <>
@@ -91,7 +102,7 @@ export default async function AdminHomeEditorPage({
           <span>PORTADA · REVISIÓN {item.revision}</span>
           <h1>Inicio</h1>
           <p>
-            Administra curaduría, orden, visibilidad y textos de Inicio sin mezclar contenido con la lógica de los componentes. Todo queda en borrador hasta publicar.
+            Administra curaduría, automatización, orden, visibilidad y textos de Inicio sin mezclar contenido con la lógica de los componentes. Todo queda en borrador hasta publicar.
           </p>
         </div>
         <span className={styles.draftState}>
@@ -106,97 +117,12 @@ export default async function AdminHomeEditorPage({
       <EditorStateNotice state={state} />
 
       {section === "curaduria" && (
-        <>
-          <section className={styles.editorPanel}>
-            <form
-              className={styles.editorForm}
-              method="post"
-              action="/api/admin/content/home"
-            >
-              <input
-                type="hidden"
-                name="expectedRevision"
-                value={item.revision}
-              />
-
-              <label className={styles.fieldWide}>
-                <span>Hero · hasta 8 prioridades</span>
-                <textarea
-                  name="heroSlugsText"
-                  defaultValue={asText(config.heroSlugs)}
-                  rows={7}
-                  maxLength={4000}
-                />
-              </label>
-
-              <label className={styles.fieldWide}>
-                <span>Populares · hasta 24 prioridades</span>
-                <textarea
-                  name="popularSlugsText"
-                  defaultValue={asText(config.popularSlugs)}
-                  rows={9}
-                  maxLength={4000}
-                />
-              </label>
-
-              <label className={styles.fieldWide}>
-                <span>Bajos recursos · hasta 24 juegos</span>
-                <textarea
-                  name="lowSpecSlugsText"
-                  defaultValue={asText(config.lowSpecSlugs)}
-                  rows={9}
-                  maxLength={4000}
-                />
-              </label>
-
-              <label className={styles.fieldWide}>
-                <span>Recomendados · hasta 24 prioridades</span>
-                <textarea
-                  name="recommendedSlugsText"
-                  defaultValue={asText(config.recommendedSlugs)}
-                  rows={9}
-                  maxLength={4000}
-                />
-              </label>
-
-              <div className={styles.formActions}>
-                <p>
-                  Usa un slug por línea o separados por coma. Esta ventana decide qué juegos priorizar; Presentación decide cómo ordenar y titular los bloques.
-                </p>
-                <button type="submit">
-                  Guardar curaduría
-                </button>
-              </div>
-            </form>
-          </section>
-
-          <section className={styles.tablePanel}>
-            <div className={styles.tableSummary}>
-              <strong>{games.length} juegos editoriales disponibles</strong>
-              <span>Referencia de slugs</span>
-            </div>
-            <div className={styles.tableWrap}>
-              <table>
-                <thead>
-                  <tr>
-                    <th scope="col">Juego</th>
-                    <th scope="col">Slug</th>
-                    <th scope="col">Clasificación principal</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {games.map((game) => (
-                    <tr key={game.key}>
-                      <th scope="row">{game.payload.title}</th>
-                      <td>{game.key}</td>
-                      <td>{game.payload.category}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
-        </>
+        <HomeCurationEditor
+          config={resolved}
+          games={games.map((game) => game.payload)}
+          publishedSlugs={publishedSlugs}
+          revision={item.revision}
+        />
       )}
 
       {section === "presentacion" && (
