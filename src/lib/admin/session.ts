@@ -47,13 +47,29 @@ export function getAdminSessionCookieName() {
     : "deuna_admin_session";
 }
 
+function adminSessionUsesSecureTransport() {
+  if (process.env.NODE_ENV === "production") {
+    return true;
+  }
+
+  const configured =
+    process.env.DEUNA_ADMIN_ORIGIN?.trim();
+
+  if (!configured) return false;
+
+  try {
+    return new URL(configured).protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 export function getAdminSessionCookieOptions(
   expires: Date
 ) {
   return {
     httpOnly: true,
-    secure:
-      process.env.NODE_ENV === "production",
+    secure: adminSessionUsesSecureTransport(),
     sameSite: "strict" as const,
     path: "/",
     expires,
@@ -64,8 +80,7 @@ export function getAdminSessionCookieOptions(
 export function getExpiredAdminCookieOptions() {
   return {
     httpOnly: true,
-    secure:
-      process.env.NODE_ENV === "production",
+    secure: adminSessionUsesSecureTransport(),
     sameSite: "strict" as const,
     path: "/",
     expires: new Date(0),
