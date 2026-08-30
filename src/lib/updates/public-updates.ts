@@ -102,6 +102,7 @@ async function readPublishedUpdates() {
        published_payload
      FROM deuna_admin.editorial_items
      WHERE item_type = 'game_update'
+       AND public_visible = true
      ORDER BY item_key ASC`
   );
   const updates: GameUpdate[] = [];
