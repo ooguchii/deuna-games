@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  AlertTriangle,
   Check,
   FilePenLine,
   ImageIcon,
@@ -14,6 +15,8 @@ import {
 import adminStyles from "../../app/admin/admin.module.css";
 import styles from "./NewGameForm.module.css";
 
+const slugPattern = /^[a-z0-9][a-z0-9._-]{0,159}$/;
+
 function slugFromTitle(value: string) {
   return value
     .normalize("NFD")
@@ -25,26 +28,64 @@ function slugFromTitle(value: string) {
     .slice(0, 160);
 }
 
+function availableSlug(
+  base: string,
+  existing: Set<string>
+) {
+  if (!base || !existing.has(base)) return base;
+
+  for (let index = 2; index < 100_000; index += 1) {
+    const suffix = `-${index}`;
+    const candidate = `${base.slice(
+      0,
+      160 - suffix.length
+    )}${suffix}`;
+
+    if (!existing.has(candidate)) return candidate;
+  }
+
+  return "";
+}
+
 export default function NewGameForm({
   categories,
+  existingSlugs,
 }: {
   categories: string[];
+  existingSlugs: string[];
 }) {
   const [title, setTitle] = useState("");
   const [slug, setSlug] = useState("");
   const [slugEdited, setSlugEdited] = useState(false);
   const [imageAlt, setImageAlt] = useState("");
   const [imageAltEdited, setImageAltEdited] = useState(false);
-  const generatedSlug = useMemo(
+  const existingSlugSet = useMemo(
+    () => new Set(existingSlugs),
+    [existingSlugs]
+  );
+  const baseGeneratedSlug = useMemo(
     () => slugFromTitle(title),
     [title]
   );
+  const generatedSlug = useMemo(
+    () => availableSlug(baseGeneratedSlug, existingSlugSet),
+    [baseGeneratedSlug, existingSlugSet]
+  );
+  const slugTaken = Boolean(
+    slug && existingSlugSet.has(slug)
+  );
+  const slugValid = slugPattern.test(slug);
 
   function handleTitleChange(value: string) {
     setTitle(value);
 
     if (!slugEdited) {
-      setSlug(slugFromTitle(value));
+      setSlug(
+        availableSlug(
+          slugFromTitle(value),
+          existingSlugSet
+        )
+      );
     }
 
     if (!imageAltEdited) {
@@ -134,6 +175,8 @@ export default function NewGameForm({
                   setSlugEdited(true);
                   setSlug(event.target.value.toLowerCase());
                 }}
+                aria-invalid={slugTaken || (Boolean(slug) && !slugValid)}
+                aria-describedby="new-game-slug-status"
                 placeholder="hollow-knight-silksong"
                 minLength={1}
                 maxLength={160}
@@ -153,8 +196,39 @@ export default function NewGameForm({
                 </button>
               )}
             </div>
+
+            <div
+              id="new-game-slug-status"
+              className={
+                slugTaken
+                  ? styles.slugStatusError
+                  : slugValid
+                    ? styles.slugStatusOk
+                    : styles.slugStatusHint
+              }
+              aria-live="polite"
+            >
+              {slugTaken ? (
+                <>
+                  <AlertTriangle size={14} aria-hidden="true" />
+                  <span>
+                    Este identificador ya pertenece a otro juego. Elige otro o usa el automático disponible.
+                  </span>
+                </>
+              ) : slugValid ? (
+                <>
+                  <Check size={14} aria-hidden="true" />
+                  <span>Identificador disponible.</span>
+                </>
+              ) : (
+                <span>
+                  Se genera desde el título. Usa sólo letras minúsculas, números, punto, guion o guion bajo.
+                </span>
+              )}
+            </div>
+
             <small>
-              Se genera desde el título. Conviene no cambiarlo una vez creado porque forma parte de la URL y de las relaciones internas.
+              Conviene no cambiarlo una vez creado porque forma parte de la URL y de las relaciones internas. El servidor volverá a comprobarlo al crear el borrador.
             </small>
           </label>
 
@@ -231,7 +305,10 @@ export default function NewGameForm({
                 Crear no publica. El nuevo juego nace oculto y sólo se vuelve visible desde su pestaña Publicación.
               </p>
             </div>
-            <button type="submit">
+            <button
+              type="submit"
+              disabled={slugTaken || !slugValid}
+            >
               Crear borrador y continuar
             </button>
           </div>
