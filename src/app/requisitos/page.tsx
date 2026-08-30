@@ -15,8 +15,10 @@ import {
 } from "@/lib/games/public-catalog";
 import {
   absoluteUrl,
-  siteConfig,
 } from "@/lib/site";
+import {
+  getPublicSiteConfig,
+} from "@/lib/site/public-site-config";
 import { safeJsonLd } from "@/lib/safe-json-ld";
 
 import styles from "./page.module.css";
@@ -38,9 +40,10 @@ const description =
 export async function generateMetadata({
   searchParams,
 }: RequirementsPageProps): Promise<Metadata> {
-  const [params, games] = await Promise.all([
+  const [params, games, config] = await Promise.all([
     searchParams,
     getPublicGames(),
+    getPublicSiteConfig(),
   ]);
   const hasFocusedGame =
     typeof params.juego === "string" &&
@@ -62,7 +65,7 @@ export async function generateMetadata({
           follow: true,
         },
     openGraph: {
-      title: `${title} | ${siteConfig.name}`,
+      title: `${title} | ${config.name}`,
       description:
         "Descubre juegos para tu PC con detección local, configuración manual y estimaciones orientativas de rendimiento.",
       url: "/requisitos",
@@ -70,7 +73,7 @@ export async function generateMetadata({
     },
     twitter: {
       card: "summary_large_image",
-      title: `${title} | ${siteConfig.name}`,
+      title: `${title} | ${config.name}`,
       description:
         "Descubre juegos para tu PC con detección local, configuración manual y estimaciones orientativas de rendimiento.",
     },
@@ -80,9 +83,10 @@ export async function generateMetadata({
 export default async function RequirementsPage({
   searchParams,
 }: RequirementsPageProps) {
-  const [{ juego }, games] = await Promise.all([
+  const [{ juego }, games, config] = await Promise.all([
     searchParams,
     getPublicGames(),
+    getPublicSiteConfig(),
   ]);
   const focusedSlug =
     typeof juego === "string" &&
@@ -115,8 +119,8 @@ export default async function RequirementsPage({
     name: title,
     url: absoluteUrl("/requisitos"),
     description:
-      "Herramienta orientativa para comparar un perfil de hardware con juegos del catálogo de DeUna Games.",
-    inLanguage: siteConfig.language,
+      `Herramienta orientativa para comparar un perfil de hardware con juegos del catálogo de ${config.name}.`,
+    inLanguage: config.language,
   };
 
   return (
