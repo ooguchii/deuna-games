@@ -14,6 +14,8 @@ type GameDownloadEditorProps = {
   initialSources: GameDownloadSource[];
 };
 
+const MAX_EDITOR_SOURCES = 6;
+
 function emptySource(
   sources: GameDownloadSource[]
 ): GameDownloadSource {
@@ -41,9 +43,13 @@ export default function GameDownloadEditor({
 }: GameDownloadEditorProps) {
   const [sources, setSources] = useState<
     GameDownloadSource[]
-  >(() => initialSources.map((source) => ({
-    ...source,
-  })));
+  >(() =>
+    initialSources
+      .slice(0, MAX_EDITOR_SOURCES)
+      .map((source) => ({
+        ...source,
+      }))
+  );
 
   const serialized = useMemo(
     () =>
@@ -84,7 +90,7 @@ export default function GameDownloadEditor({
 
   function addSource() {
     setSources((current) =>
-      current.length >= 12
+      current.length >= MAX_EDITOR_SOURCES
         ? current
         : [...current, emptySource(current)]
     );
@@ -102,14 +108,14 @@ export default function GameDownloadEditor({
         <div>
           <strong>Fuentes de descarga</strong>
           <span>
-            Hasta 12 destinos. Se aceptan rutas internas o HTTPS sin credenciales.
+            Hasta 6 destinos por ahora. Se aceptan rutas internas o HTTPS sin credenciales.
           </span>
         </div>
         <button
           type="button"
           className={styles.addButton}
           onClick={addSource}
-          disabled={sources.length >= 12}
+          disabled={sources.length >= MAX_EDITOR_SOURCES}
         >
           <Plus size={15} aria-hidden="true" />
           Agregar fuente
@@ -124,7 +130,7 @@ export default function GameDownloadEditor({
         <div className={styles.list}>
           {sources.map((source, index) => (
             <fieldset
-              key={`${source.id}:${index}`}
+              key={index}
               className={styles.source}
             >
               <legend>Fuente {index + 1}</legend>
