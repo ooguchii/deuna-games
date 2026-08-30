@@ -12,6 +12,10 @@ import {
   saveGameAdvancedDraft,
 } from "@/lib/admin/content-service";
 import {
+  gameEditorSuccessTarget,
+  requestedGameEditorContinuation,
+} from "@/lib/admin/game-editor-flow";
+import {
   hasExactAdminFormFields,
 } from "@/lib/admin/request-security";
 
@@ -45,6 +49,10 @@ export async function POST(
 
   const { slug } = await context.params;
   const target = `/admin/juegos/${encodeURIComponent(slug)}`;
+  const continuation = requestedGameEditorContinuation(
+    request.nextUrl,
+    "datos"
+  );
 
   if (
     !hasExactAdminFormFields(
@@ -96,14 +104,20 @@ export async function POST(
       );
     }
 
-    const state =
-      result.outcome === "conflict"
-        ? "conflicto"
-        : "guardado";
+    if (result.outcome === "conflict") {
+      return adminRedirect(
+        authorized.adminOrigin,
+        `${target}?estado=conflicto&seccion=datos`
+      );
+    }
 
     return adminRedirect(
       authorized.adminOrigin,
-      `${target}?estado=${state}&seccion=datos`
+      gameEditorSuccessTarget(
+        target,
+        "datos",
+        continuation
+      )
     );
   } catch {
     console.error(
