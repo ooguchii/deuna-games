@@ -110,10 +110,27 @@ function publicationLabel(
   return `Publicado · #${identity.publicationNumber}`;
 }
 
+function normalizeClassification(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("es")
+    .trim();
+}
+
 function fallbackTerms(
   values: readonly string[]
 ): GameTaxonomyTerm[] {
-  return values.map((label, index) => ({
+  const labels = new Map<string, string>();
+
+  for (const raw of values) {
+    const label = raw.trim();
+    if (!label) continue;
+    const normalized = normalizeClassification(label);
+    if (!labels.has(normalized)) labels.set(normalized, label);
+  }
+
+  return [...labels.values()].map((label, index) => ({
     key: `legacy-${index}`,
     label,
     active: true,
@@ -145,11 +162,21 @@ export default async function AdminGameEditorPage({
     publicationIdentity?.panelCreated ?? false;
   const game = item.payload;
   const taxonomy = taxonomyItem?.payload;
-  const categoryTerms = taxonomy?.categories.filter(
-    (term) => term.active || term.label === game.category
-  ) ?? fallbackTerms([game.category]);
-  const genreTerms = taxonomy?.genres ??
-    fallbackTerms(game.genres ?? []);
+  const currentClassifications = [
+    game.category,
+    ...(game.genres ?? []),
+  ];
+  const currentClassificationSet = new Set(
+    currentClassifications.map(normalizeClassification)
+  );
+  const classificationTerms =
+    taxonomy?.classifications.filter(
+      (term) =>
+        term.active ||
+        currentClassificationSet.has(
+          normalizeClassification(term.label)
+        )
+    ) ?? fallbackTerms(currentClassifications);
   const tagTerms = taxonomy?.tags ??
     fallbackTerms(game.tags ?? []);
   const download = game.download;
@@ -225,7 +252,7 @@ export default async function AdminGameEditorPage({
               <h2>Ficha editorial</h2>
             </div>
             <p>
-              Título, descripción, categoría y datos de presentación principales.
+              Título, descripción, clasificación principal y datos de presentación.
             </p>
           </div>
 
@@ -262,20 +289,20 @@ export default async function AdminGameEditorPage({
             </label>
 
             <label>
-              <span>Categoría</span>
+              <span>Clasificación principal</span>
               <select
                 name="category"
                 defaultValue={game.category}
                 required
               >
-                {categoryTerms.map((term) => (
+                {classificationTerms.map((term) => (
                   <option key={term.key} value={term.label}>
                     {term.label}{term.active ? "" : " · Inactiva"}
                   </option>
                 ))}
               </select>
               <small>
-                Las opciones activas provienen de Catálogos. Una categoría antigua inactiva sólo puede conservarse o sustituirse.
+                Todas las opciones provienen de la misma lista de Clasificaciones en Catálogos. La principal sólo define cuál se muestra primero en la ficha interna del juego.
               </small>
             </label>
 
@@ -348,7 +375,7 @@ export default async function AdminGameEditorPage({
               <h2>Identidad y clasificación</h2>
             </div>
             <p>
-              Información para etiquetas, filtros, plataformas y metadatos de la ficha.
+              Información para clasificaciones adicionales, etiquetas, plataformas y metadatos de la ficha.
             </p>
           </div>
 
@@ -411,8 +438,8 @@ export default async function AdminGameEditorPage({
 
             <GameTaxonomyMultiSelect
               name="genresText"
-              label="Géneros"
-              terms={genreTerms}
+              label="Clasificaciones adicionales"
+              terms={classificationTerms}
               initialValues={game.genres ?? []}
               maximum={20}
             />
@@ -430,7 +457,7 @@ export default async function AdminGameEditorPage({
             />
 
             <GameEditorFormActions
-              note="Categorías, géneros y etiquetas quedan vinculados a Catálogos; publicar el juego hará visibles esos datos en las superficies públicas que los utilizan."
+              note="La clasificación principal y las adicionales salen de una única lista maestra; un mismo juego nunca se contará dos veces dentro de la misma clasificación."
               action={advancedAction}
               continueTo="requisitos"
               saveLabel="Guardar datos avanzados"
