@@ -12,7 +12,9 @@ type PublishableType =
   | "game_update"
   | "site_config"
   | "home_config"
-  | "about_config";
+  | "about_config"
+  | "game_taxonomy"
+  | "public_pages_config";
 
 type PublicationTableRow = {
   publication_table: string | null;
@@ -31,6 +33,16 @@ type RecentPublicationRow = {
   publication_number: number;
   action: "published" | "rollback";
   created_at: Date;
+};
+
+type PendingPublicationRow = {
+  item_type: PublishableType;
+  item_key: string;
+  label: string;
+  publication_number: number;
+  public_visible: boolean;
+  draft_differs: boolean;
+  ever_published: boolean;
 };
 
 type ItemPublicationStateRow = {
@@ -59,11 +71,20 @@ export type RecentPublication = {
   createdAt: Date;
 };
 
+export type PendingPublication = {
+  type: PublishableType;
+  key: string;
+  label: string;
+  publicationNumber: number;
+  status: "pending" | "hidden" | "unpublished";
+};
+
 export type PublicationOverview = {
   available: boolean;
   games: number;
   updates: number;
   pending: number;
+  pendingItems: PendingPublication[];
   recent: RecentPublication[];
 };
 
@@ -89,8 +110,19 @@ const unavailableOverview: PublicationOverview = {
   games: 0,
   updates: 0,
   pending: 0,
+  pendingItems: [],
   recent: [],
 };
+
+const publishableSqlTypes = `
+  'game',
+  'game_update',
+  'site_config',
+  'home_config',
+  'about_config',
+  'game_taxonomy',
+  'public_pages_config'
+`;
 
 async function publicationWorkspaceAvailable() {
   const workspace =
@@ -106,6 +138,18 @@ async function publicationWorkspaceAvailable() {
   );
 }
 
+function pendingStatus(
+  row: PendingPublicationRow
+): PendingPublication["status"] {
+  if (row.public_visible && row.draft_differs) {
+    return "pending";
+  }
+
+  return row.ever_published
+    ? "hidden"
+    : "unpublished";
+}
+
 export async function getPublicationOverview():
   Promise<PublicationOverview> {
   await verifyAdminSession();
@@ -114,7 +158,7 @@ export async function getPublicationOverview():
     return unavailableOverview;
   }
 
-  const [countsResult, recentResult] =
+  const [countsResult, pendingResult, recentResult] =
     await Promise.all([
       adminQuery<PublicationCountsRow>(
         `SELECT
@@ -127,19 +171,51 @@ export async function getPublicationOverview():
                AND public_visible = true
            )::int AS updates,
            COUNT(*) FILTER (
-             WHERE item_type IN (
-               'game',
-               'game_update',
-               'site_config',
-               'home_config',
-               'about_config'
-             )
+             WHERE item_type IN (${publishableSqlTypes})
                AND (
                  public_visible = false OR
                  draft_payload IS DISTINCT FROM published_payload
                )
            )::int AS pending
          FROM deuna_admin.editorial_items`
+      ),
+      adminQuery<PendingPublicationRow>(
+        `SELECT
+           item.item_type,
+           item.item_key,
+           COALESCE(
+             NULLIF(item.draft_payload ->> 'title', ''),
+             NULLIF(item.draft_payload ->> 'name', ''),
+             CASE item.item_type
+               WHEN 'home_config' THEN 'Portada'
+               WHEN 'about_config' THEN 'Quiénes somos'
+               WHEN 'site_config' THEN 'Identidad pública'
+               WHEN 'game_taxonomy' THEN 'Catálogos de juegos'
+               WHEN 'public_pages_config' THEN 'Presentación pública'
+               ELSE item.item_key
+             END
+           ) AS label,
+           item.publication_number,
+           item.public_visible,
+           item.draft_payload IS DISTINCT FROM item.published_payload
+             AS draft_differs,
+           EXISTS (
+             SELECT 1
+             FROM deuna_admin.editorial_publications AS publication
+             WHERE publication.item_id = item.id
+               AND publication.action IN ('published', 'rollback')
+           ) AS ever_published
+         FROM deuna_admin.editorial_items AS item
+         WHERE item.item_type IN (${publishableSqlTypes})
+           AND (
+             item.public_visible = false OR
+             item.draft_payload IS DISTINCT FROM item.published_payload
+           )
+         ORDER BY
+           item.public_visible ASC,
+           item.updated_at DESC,
+           item.item_key ASC
+         LIMIT 10`
       ),
       adminQuery<RecentPublicationRow>(
         `SELECT
@@ -152,13 +228,7 @@ export async function getPublicationOverview():
          FROM deuna_admin.editorial_publications AS publication
          INNER JOIN deuna_admin.editorial_items AS item
            ON item.id = publication.item_id
-         WHERE item.item_type IN (
-             'game',
-             'game_update',
-             'site_config',
-             'home_config',
-             'about_config'
-           )
+         WHERE item.item_type IN (${publishableSqlTypes})
            AND publication.action IN ('published', 'rollback')
          ORDER BY publication.created_at DESC,
                   publication.id DESC
@@ -172,6 +242,13 @@ export async function getPublicationOverview():
     games: counts?.games ?? 0,
     updates: counts?.updates ?? 0,
     pending: counts?.pending ?? 0,
+    pendingItems: pendingResult.rows.map((item) => ({
+      type: item.item_type,
+      key: item.item_key,
+      label: item.label,
+      publicationNumber: item.publication_number,
+      status: pendingStatus(item),
+    })),
     recent: recentResult.rows.map(
       (publication) => ({
         id: publication.id,
