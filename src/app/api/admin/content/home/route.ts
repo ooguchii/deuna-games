@@ -21,10 +21,7 @@ export const runtime = "nodejs";
 
 const fields = [
   "expectedRevision",
-  "heroSlugsText",
-  "popularSlugsText",
-  "lowSpecSlugsText",
-  "recommendedSlugsText",
+  "curationJson",
 ] as const;
 
 export async function POST(request: NextRequest) {
@@ -75,19 +72,25 @@ export async function POST(request: NextRequest) {
 
     const {
       expectedRevision,
-      heroSlugsText,
-      popularSlugsText,
-      lowSpecSlugsText,
-      recommendedSlugsText,
+      curationJson,
     } = parsed.data;
     const result = await saveHomeConfigDraft(
       expectedRevision,
       authorized.session.userId,
       {
-        heroSlugs: heroSlugsText,
-        popularSlugs: popularSlugsText,
-        lowSpecSlugs: lowSpecSlugsText,
-        recommendedSlugs: recommendedSlugsText,
+        heroSlugs: curationJson.hero.slugs,
+        popularSlugs: curationJson.popular.slugs,
+        lowSpecSlugs: curationJson.lowSpec.slugs,
+        recommendedSlugs:
+          curationJson.recommended.slugs,
+        curation: {
+          hero: { mode: curationJson.hero.mode },
+          popular: { mode: curationJson.popular.mode },
+          lowSpec: { mode: curationJson.lowSpec.mode },
+          recommended: {
+            mode: curationJson.recommended.mode,
+          },
+        },
         sections: item.payload.sections,
         copy: item.payload.copy,
       }
