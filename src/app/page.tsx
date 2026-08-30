@@ -96,16 +96,30 @@ export default async function Home() {
         id="main-content"
         className="main-content"
       >
-        <HeroSection games={collections.heroGames} />
-        <PopularGames games={collections.popularGames} />
+        {collections.heroGames.length > 0 && (
+          <HeroSection games={collections.heroGames} />
+        )}
+        {collections.popularGames.length > 0 && (
+          <PopularGames games={collections.popularGames} />
+        )}
         <GameFinderSection />
-        <FeaturedCategories games={games} />
-        <RecentlyAdded games={collections.recentGames} />
-        <LatestUpdates updates={updates.slice(0, 3)} />
-        <GamesForYourPC games={collections.lowSpecGames} />
-        <RecommendedGames
-          games={collections.recommendedGames}
-        />
+        {games.length > 0 && (
+          <FeaturedCategories games={games} />
+        )}
+        {collections.recentGames.length > 0 && (
+          <RecentlyAdded games={collections.recentGames} />
+        )}
+        {updates.length > 0 && (
+          <LatestUpdates updates={updates.slice(0, 3)} />
+        )}
+        {collections.lowSpecGames.length > 0 && (
+          <GamesForYourPC games={collections.lowSpecGames} />
+        )}
+        {collections.recommendedGames.length > 0 && (
+          <RecommendedGames
+            games={collections.recommendedGames}
+          />
+        )}
         <TrustSection />
       </main>
 
