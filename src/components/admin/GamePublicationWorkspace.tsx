@@ -6,10 +6,14 @@ import {
   ExternalLink,
   Eye,
   EyeOff,
+  FilePenLine,
   RotateCcw,
   Rocket,
 } from "lucide-react";
 
+import {
+  evaluateGamePublicationChanges,
+} from "@/lib/admin/game-publication-changes";
 import {
   evaluateGamePublicationReadiness,
 } from "@/lib/admin/game-publication-readiness";
@@ -22,6 +26,7 @@ import styles from "./GamePublicationWorkspace.module.css";
 
 type GamePublicationWorkspaceProps = {
   game: Game;
+  publishedGame: Game | null;
   slug: string;
   state: EditorialPublicationState;
   requestState?: string;
@@ -87,7 +92,7 @@ function RequestNotice({ state }: { state?: string }) {
   ) {
     return (
       <div className={`${styles.notice} ${styles.noticeWarning}`}>
-        El juego cambió mientras se procesaba la operación. Actualizamos la pantalla sin sobrescribir la revisión más reciente.
+        El juego cambió mientras se procesaba la operación. La pantalla se actualizó sin sobrescribir la revisión más reciente.
       </div>
     );
   }
@@ -129,7 +134,7 @@ function resolveStatus(
     return {
       eyebrow: "CAMBIOS PENDIENTES",
       title: "La web todavía muestra la versión anterior",
-      text: "Tus cambios están guardados únicamente como borrador. Publicar creará un snapshot nuevo sin borrar el anterior.",
+      text: "Los cambios están guardados únicamente como borrador. Publicar creará un snapshot nuevo sin borrar el anterior.",
       tone: "pending" as const,
     };
   }
@@ -137,13 +142,14 @@ function resolveStatus(
   return {
     eyebrow: "PUBLICADO",
     title: "Borrador y web están sincronizados",
-    text: "La publicación activa coincide con la revisión actual. Puedes seguir editando: guardar no modificará la web hasta la próxima publicación.",
+    text: "La publicación activa coincide con la revisión actual. Se puede seguir editando: guardar no modificará la web hasta la próxima publicación.",
     tone: "published" as const,
   };
 }
 
 export default function GamePublicationWorkspace({
   game,
+  publishedGame,
   slug,
   state,
   requestState,
@@ -151,6 +157,10 @@ export default function GamePublicationWorkspace({
   panelCreated,
 }: GamePublicationWorkspaceProps) {
   const readiness = evaluateGamePublicationReadiness(game);
+  const publicationChanges = evaluateGamePublicationChanges(
+    game,
+    publishedGame
+  );
   const publicationStatus = resolveStatus(
     state,
     neverPublished
@@ -241,7 +251,7 @@ export default function GamePublicationWorkspace({
             <h2>Preparación de la ficha</h2>
           </div>
           <p>
-            Los controles recomendados no bloquean la publicación, pero te muestran qué conviene completar antes de hacer visible el juego.
+            Los controles recomendados no bloquean la publicación, pero muestran qué conviene completar antes de hacer visible el juego.
           </p>
         </div>
 
@@ -279,6 +289,47 @@ export default function GamePublicationWorkspace({
         </div>
       </section>
 
+      <section className={styles.checklistPanel}>
+        <div className={styles.sectionHeading}>
+          <div>
+            <span>CAMBIOS QUE SALDRÁN A LA WEB</span>
+            <h2>Contenido incluido en la próxima publicación</h2>
+          </div>
+          <p>
+            La comparación se hace entre el borrador actual y el último snapshot publicado. Sirve para revisar el alcance antes de confirmar.
+          </p>
+        </div>
+
+        {publicationChanges.length > 0 ? (
+          <div className={styles.checklist}>
+            {publicationChanges.map((change) => (
+              <Link
+                key={change.id}
+                href={`/admin/juegos/${encodeURIComponent(slug)}?seccion=${change.section}`}
+                className={styles.checkComplete}
+              >
+                <span className={styles.checkIcon}>
+                  <FilePenLine size={16} aria-hidden="true" />
+                </span>
+                <span className={styles.checkCopy}>
+                  <strong>{change.label}</strong>
+                  <small>{change.detail}</small>
+                </span>
+                <span className={styles.checkState}>
+                  Se publicará
+                </span>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <div className={styles.notice}>
+            {state.publicVisible
+              ? "No hay diferencias de contenido entre el borrador y el snapshot público actual."
+              : "No hay diferencias de contenido. Al volver a publicar se reactivará el juego conservando el mismo contenido como un snapshot nuevo y auditable."}
+          </div>
+        )}
+      </section>
+
       <section className={styles.publishPanel}>
         <div className={styles.publishCopy}>
           <span>ACCIÓN EDITORIAL</span>
@@ -293,7 +344,7 @@ export default function GamePublicationWorkspace({
             <div className={styles.advisory}>
               <AlertTriangle size={17} aria-hidden="true" />
               <span>
-                Quedan {readiness.recommendedMissing} controles recomendados sin completar. Puedes publicar igualmente si el contenido está correcto para tu criterio editorial.
+                Quedan {readiness.recommendedMissing} controles recomendados sin completar. Se puede publicar igualmente si el contenido es correcto para el criterio editorial.
               </span>
             </div>
           )}
