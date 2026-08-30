@@ -34,6 +34,7 @@ type RecentPublicationRow = {
 type ItemPublicationStateRow = {
   item_key: string;
   publication_number: number;
+  public_visible: boolean;
   has_unpublished_changes: boolean;
 };
 
@@ -57,6 +58,7 @@ export type PublicationOverview = {
 export type ItemPublicationState = {
   key: string;
   publicationNumber: number;
+  publicVisible: boolean;
   hasUnpublishedChanges: boolean;
 };
 
@@ -172,6 +174,7 @@ export async function listPublicationStates(
       `SELECT
          item_key,
          publication_number,
+         public_visible,
          (
            public_visible = false OR
            draft_payload IS DISTINCT FROM published_payload
@@ -185,6 +188,7 @@ export async function listPublicationStates(
   return result.rows.map((item) => ({
     key: item.item_key,
     publicationNumber: item.publication_number,
+    publicVisible: item.public_visible,
     hasUnpublishedChanges:
       item.has_unpublished_changes,
   }));
