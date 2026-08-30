@@ -93,6 +93,24 @@ const requirementsSchema = hardwareRequirementsSchema
   })
   .strict();
 
+const performanceCalibrationSchema = z
+  .object({
+    referenceFps: z.number().positive().max(1_000),
+    ramGb: z.number().positive().max(512),
+    fpsCap: z.number().positive().max(1_000).optional(),
+  })
+  .strict()
+  .refine(
+    (value) =>
+      value.fpsCap === undefined ||
+      value.referenceFps <= value.fpsCap,
+    {
+      message:
+        "Los FPS de referencia no pueden superar el límite configurado.",
+      path: ["fpsCap"],
+    }
+  );
+
 const downloadSourceStatusSchema = z.enum([
   "available",
   "down",
@@ -197,6 +215,7 @@ export const editorialGameSchema: z.ZodType<Game> = z
       .optional(),
     imageAlt: z.string().trim().min(1).max(240),
     requirements: requirementsSchema.optional(),
+    performance: performanceCalibrationSchema.optional(),
     download: downloadSchema.optional(),
   })
   .strict()
