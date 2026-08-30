@@ -2,6 +2,7 @@ import Link from "next/link";
 import {
   ArrowRight,
   Database,
+  FileText,
   Gamepad2,
   LayoutTemplate,
   RefreshCcw,
@@ -45,6 +46,10 @@ function publicationPath(
     return "/admin/portada";
   }
 
+  if (type === "about_config") {
+    return "/admin/paginas/quienes-somos";
+  }
+
   return "/admin/configuracion";
 }
 
@@ -54,6 +59,7 @@ function publicationTypeLabel(
   if (type === "game") return "Juego";
   if (type === "game_update") return "Actualización";
   if (type === "home_config") return "Portada";
+  if (type === "about_config") return "Página";
   return "Configuración";
 }
 
@@ -171,6 +177,17 @@ export default async function AdminDashboardPage() {
               <strong>Organizar portada</strong>
               <span>
                 Prioridades de Hero, Populares, Bajos recursos y Recomendados con publicación versionada.
+              </span>
+            </div>
+            <ArrowRight size={18} aria-hidden="true" />
+          </Link>
+
+          <Link href="/admin/paginas">
+            <FileText size={23} aria-hidden="true" />
+            <div>
+              <strong>Editar páginas</strong>
+              <span>
+                Textos institucionales estructurados, versionados y publicables sin HTML libre.
               </span>
             </div>
             <ArrowRight size={18} aria-hidden="true" />
