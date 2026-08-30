@@ -38,6 +38,10 @@ function itemPath(
     return "/admin/portada";
   }
 
+  if (type === "about_config") {
+    return "/admin/paginas/quienes-somos";
+  }
+
   return "/admin/configuracion";
 }
 
