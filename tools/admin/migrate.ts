@@ -134,6 +134,12 @@ async function grantRuntimePrivileges(
         draft_payload,
         draft_status,
         revision,
+        published_payload,
+        published_checksum,
+        published_from_revision,
+        publication_number,
+        published_at,
+        published_by,
         source_imported_at,
         updated_at,
         updated_by
@@ -145,6 +151,12 @@ async function grantRuntimePrivileges(
         draft_payload,
         draft_status,
         revision,
+        published_payload,
+        published_checksum,
+        published_from_revision,
+        publication_number,
+        published_at,
+        published_by,
         updated_at,
         updated_by
       )
@@ -173,6 +185,32 @@ async function grantRuntimePrivileges(
       ON deuna_admin.editorial_revisions
       TO ${role};
 
+    GRANT SELECT (
+        id,
+        item_id,
+        publication_number,
+        payload,
+        checksum,
+        source_revision,
+        action,
+        actor_user_id,
+        created_at
+      )
+      ON deuna_admin.editorial_publications
+      TO ${role};
+
+    GRANT INSERT (
+        item_id,
+        publication_number,
+        payload,
+        checksum,
+        source_revision,
+        action,
+        actor_user_id
+      )
+      ON deuna_admin.editorial_publications
+      TO ${role};
+
     GRANT INSERT (
         user_id,
         action,
@@ -186,6 +224,7 @@ async function grantRuntimePrivileges(
     GRANT USAGE, SELECT
       ON SEQUENCE deuna_admin.admin_events_id_seq,
                   deuna_admin.editorial_revisions_id_seq,
+                  deuna_admin.editorial_publications_id_seq,
                   deuna_admin.admin_audit_log_id_seq
       TO ${role};
 
