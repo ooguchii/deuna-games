@@ -46,7 +46,18 @@ const [
   source("src/lib/updates/public-updates.ts"),
   source("src/app/api/admin/content/configuration/publish/route.ts"),
   source("src/app/api/admin/content/configuration-publications/[publicationId]/restore/route.ts"),
-  source("src/app/api/admin/content/home/publish/route.ts"),
+  source(
+    [
+      "src",
+      "app",
+      "api",
+      "admin",
+      "content",
+      "home",
+      "publish",
+      "route.ts",
+    ].join("/")
+  ),
   source("src/app/api/admin/content/home-publications/[publicationId]/restore/route.ts"),
   source("src/app/api/admin/content/games/[slug]/hide/route.ts"),
   source("src/app/api/admin/content/updates/[id]/hide/route.ts"),
