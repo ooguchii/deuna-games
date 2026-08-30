@@ -80,6 +80,7 @@ export async function POST(request: NextRequest) {
         lowSpecSlugs: item.payload.lowSpecSlugs,
         recommendedSlugs:
           item.payload.recommendedSlugs,
+        curation: item.payload.curation,
         sections:
           parsed.data.presentationJson.sections,
         copy: parsed.data.presentationJson.copy,
