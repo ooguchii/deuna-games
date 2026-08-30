@@ -45,12 +45,12 @@ function assert(
   if (!condition) failures.push(message);
 }
 
-const password =
+const passwordFixture =
   "Frase-Privada-Extensa-2026!";
 const firstHash =
-  await hashAdminPassword(password);
+  await hashAdminPassword(passwordFixture);
 const secondHash =
-  await hashAdminPassword(password);
+  await hashAdminPassword(passwordFixture);
 
 assert(
   firstHash !== secondHash,
@@ -58,14 +58,14 @@ assert(
 );
 assert(
   await verifyAdminPassword(
-    password,
+    passwordFixture,
     firstHash
   ),
   "El hash administrativo no reconoce la contraseña correcta."
 );
 assert(
   !(await verifyAdminPassword(
-    `${password}x`,
+    `${passwordFixture}x`,
     firstHash
   )),
   "El hash administrativo aceptó una contraseña incorrecta."
