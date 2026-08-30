@@ -21,22 +21,28 @@ async function source(relativePath) {
 const [
   publicationService,
   creationService,
+  visibilityService,
   publicSiteConfig,
   publicCatalog,
   publicUpdates,
   publishRoute,
   restoreRoute,
+  hideGameRoute,
+  hideUpdateRoute,
   publicationMigration,
   visibilityMigration,
   migrator,
 ] = await Promise.all([
   source("src/lib/admin/publication-service.ts"),
   source("src/lib/admin/content-create-service.ts"),
+  source("src/lib/admin/visibility-service.ts"),
   source("src/lib/site/public-site-config.ts"),
   source("src/lib/games/public-catalog.ts"),
   source("src/lib/updates/public-updates.ts"),
   source("src/app/api/admin/content/configuration/publish/route.ts"),
   source("src/app/api/admin/content/configuration-publications/[publicationId]/restore/route.ts"),
+  source("src/app/api/admin/content/games/[slug]/hide/route.ts"),
+  source("src/app/api/admin/content/updates/[id]/hide/route.ts"),
   source("database/migrations/003_editorial_publications.sql"),
   source("database/migrations/004_editorial_visibility.sql"),
   source("tools/admin/migrate.ts"),
@@ -78,20 +84,52 @@ assert(
     creationService.includes("false") &&
     creationService.includes("ON CONFLICT (item_type, item_key)") &&
     creationService.includes("content_created") &&
+    creationService.includes("game_update") &&
     !/\bDELETE\s+FROM\b/i.test(creationService),
-  "Un juego creado desde el panel debe nacer como borrador oculto, preservar la fuente y rechazar identidades duplicadas sin borrar contenido."
+  "Las altas creadas desde el panel deben nacer como borradores ocultos, preservar la fuente y rechazar identidades duplicadas sin borrar contenido."
+);
+
+assert(
+  visibilityService.includes("FOR UPDATE") &&
+    visibilityService.includes("public_visible = false") &&
+    visibilityService.includes("content_hidden") &&
+    visibilityService.includes("admin_audit_log") &&
+    !visibilityService.includes("published_payload") &&
+    !visibilityService.includes("published_checksum") &&
+    !/\bDELETE\s+FROM\b/i.test(visibilityService),
+  "Ocultar debe ser transaccional y auditable, cambiar sólo visibilidad y nunca tocar snapshots ni borrar contenido."
 );
 
 for (const [name, content] of [
   ["catálogo", publicCatalog],
   ["actualizaciones", publicUpdates],
-  ["configuración", publicSiteConfig],
 ]) {
   assert(
-    content.includes("public_visible = true") &&
+    content.includes("public_visible") &&
       content.includes("published_payload") &&
+      content.includes("!editorial.public_visible") &&
       !content.includes("draft_payload"),
-    `La lectura pública de ${name} debe exigir visibilidad explícita y usar sólo snapshots publicados.`
+    `La lectura pública de ${name} debe considerar filas ocultas para suprimir contenido fuente y usar sólo snapshots publicados.`
+  );
+}
+
+assert(
+  publicSiteConfig.includes("public_visible = true") &&
+    publicSiteConfig.includes("published_payload") &&
+    !publicSiteConfig.includes("draft_payload"),
+  "La configuración pública debe exigir visibilidad explícita y usar sólo el snapshot publicado."
+);
+
+for (const [name, route] of [
+  ["juego", hideGameRoute],
+  ["actualización", hideUpdateRoute],
+]) {
+  assert(
+    route.includes("authorizeAdminFormRequest") &&
+      route.includes("expectedPublicationNumber") &&
+      route.includes("hasExactAdminFormFields") &&
+      route.includes("revalidatePath"),
+    `Ocultar ${name} debe exigir sesión/origen, control de concurrencia y revalidación pública.`
   );
 }
 
@@ -139,6 +177,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Publicación administrativa: OK (altas ocultas, snapshots explícitos, visibilidad controlada, auditoría y restauración sin borrado)."
+    "Publicación administrativa: OK (altas ocultas, snapshots explícitos, visibilidad reversible, auditoría y restauración sin borrado)."
   );
 }
