@@ -26,6 +26,11 @@ const [
   publishRoute,
   restoreRoute,
   navigation,
+  contextBar,
+  gamePublicationReview,
+  gamePublishRoute,
+  gameRestoreRoute,
+  gamePublicationWorkspace,
   createRoute,
   coreRoute,
   advancedRoute,
@@ -53,6 +58,11 @@ const [
   source("src/app/api/admin/content/catalogs/publish/route.ts"),
   source("src/app/api/admin/content/catalog-publications/[publicationId]/restore/route.ts"),
   source("src/components/admin/AdminNavigation.tsx"),
+  source("src/components/admin/AdminContextBar.tsx"),
+  source("src/lib/admin/game-publication-review.ts"),
+  source("src/app/api/admin/content/games/[slug]/publish/route.ts"),
+  source("src/app/api/admin/content/publications/[publicationId]/restore/route.ts"),
+  source("src/components/admin/GamePublicationWorkspace.tsx"),
   source("src/app/api/admin/content/games/route.ts"),
   source("src/app/api/admin/content/games/[slug]/route.ts"),
   source("src/app/api/admin/content/games/[slug]/advanced/route.ts"),
@@ -166,8 +176,27 @@ assert(
 
 assert(
   navigation.includes('href: "/admin/catalogos"') &&
-    navigation.includes('label: "Catálogos"'),
-  "Catálogos debe ser accesible desde la navegación administrativa principal."
+    navigation.includes('label: "Catálogos"') &&
+    contextBar.includes('id: "clasificaciones"') &&
+    contextBar.includes('id: "etiquetas"') &&
+    contextBar.includes('id: "publicacion"') &&
+    contextBar.includes('id: "historial"') &&
+    contextBar.includes('label="Secciones del panel de catálogos"'),
+  "Catálogos debe estar en la navegación principal y mostrar ventanas de Clasificaciones, Etiquetas, Publicación e Historial."
+);
+
+assert(
+  gamePublicationReview.includes("inspectPublishedGameTaxonomyIntegrity") &&
+    gamePublicationReview.includes("published_payload") &&
+    gamePublicationReview.includes("public_visible = true") &&
+    gamePublicationReview.includes('parseEditorialPayload(\n    "game_taxonomy"') &&
+    gamePublishRoute.includes("inspectPublishedGameTaxonomyIntegrity") &&
+    gamePublishRoute.includes("catalogos-sin-publicar") &&
+    gameRestoreRoute.includes("inspectPublishedGameTaxonomyIntegrity") &&
+    gameRestoreRoute.includes("catalogos-sin-publicar") &&
+    gamePublicationWorkspace.includes("catalogos-sin-publicar") &&
+    gamePublicationWorkspace.includes("/admin/catalogos?seccion=publicacion"),
+  "Publicar o restaurar un juego debe bloquear referencias a clasificaciones/etiquetas que aún no existen en el snapshot publicado de Catálogos."
 );
 
 assert(
@@ -262,6 +291,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Taxonomía editorial: OK (clasificación única; snapshot publicado separado del borrador; contador, orden e identidad visual compartidos entre Home y catálogo)."
+    "Taxonomía editorial: OK (clasificación única; snapshot publicado separado del borrador; dependencia de publicación protegida; contador, orden e identidad visual compartidos)."
   );
 }
