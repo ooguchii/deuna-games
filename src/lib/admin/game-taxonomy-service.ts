@@ -69,10 +69,24 @@ function normalizeLabel(value: string) {
     .trim();
 }
 
+function gameClassifications(game: Game) {
+  const values = [
+    game.category,
+    ...(game.genres ?? []),
+  ];
+  const seen = new Set<string>();
+
+  return values.filter((value) => {
+    const normalized = normalizeLabel(value);
+    if (!normalized || seen.has(normalized)) return false;
+    seen.add(normalized);
+    return true;
+  });
+}
+
 function gameValues(games: Game[]) {
   return {
-    categories: games.map((game) => game.category),
-    genres: games.flatMap((game) => game.genres ?? []),
+    classifications: games.flatMap(gameClassifications),
     tags: games.flatMap((game) => game.tags ?? []),
   };
 }
@@ -84,8 +98,7 @@ function preservesUsedGameTerms(
   const values = gameValues(games);
 
   for (const kind of [
-    "categories",
-    "genres",
+    "classifications",
     "tags",
   ] as const) {
     const available = new Set(
@@ -110,12 +123,8 @@ function currentValuesForKind(
 ) {
   if (!game) return [];
 
-  if (kind === "categories") {
-    return [game.category];
-  }
-
-  return kind === "genres"
-    ? game.genres ?? []
+  return kind === "classifications"
+    ? gameClassifications(game)
     : game.tags ?? [];
 }
 
@@ -215,18 +224,22 @@ export async function resolveGameTaxonomySelection(
     "game_taxonomy",
     taxonomyRow.draft_payload
   );
+  const currentClassifications = currentValuesForKind(
+    "classifications",
+    currentGame
+  );
   const categoryValues = input.category
     ? [input.category]
     : undefined;
   const category = resolveTerms(
-    taxonomy.categories,
+    taxonomy.classifications,
     categoryValues,
-    currentValuesForKind("categories", currentGame)
+    currentClassifications
   );
   const genres = resolveTerms(
-    taxonomy.genres,
+    taxonomy.classifications,
     input.genres,
-    currentValuesForKind("genres", currentGame)
+    currentClassifications
   );
   const tags = resolveTerms(
     taxonomy.tags,
@@ -243,11 +256,22 @@ export async function resolveGameTaxonomySelection(
     return { valid: false };
   }
 
+  const primary = category?.[0] ?? currentGame?.category;
+  const additional = genres?.filter(
+    (value) =>
+      !primary || normalizeLabel(value) !== normalizeLabel(primary)
+  );
+
   return {
     valid: true,
     ...(category ? { category: category[0] } : {}),
     ...(genres !== undefined
-      ? { genres: genres.length > 0 ? genres : undefined }
+      ? {
+          genres:
+            additional && additional.length > 0
+              ? additional
+              : undefined,
+        }
       : {}),
     ...(tags !== undefined
       ? { tags: tags.length > 0 ? tags : undefined }
