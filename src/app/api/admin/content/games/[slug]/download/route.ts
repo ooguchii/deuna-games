@@ -40,6 +40,7 @@ export async function POST(
   }
 
   const { slug } = await context.params;
+  const target = `/admin/juegos/${encodeURIComponent(slug)}`;
 
   if (
     !hasExactAdminFormFields(
@@ -49,7 +50,7 @@ export async function POST(
   ) {
     return adminRedirect(
       authorized.adminOrigin,
-      `/admin/juegos/${encodeURIComponent(slug)}?estado=solicitud#descargas`
+      `${target}?estado=solicitud&seccion=descargas`
     );
   }
 
@@ -60,7 +61,7 @@ export async function POST(
   if (!parsed.success) {
     return adminRedirect(
       authorized.adminOrigin,
-      `/admin/juegos/${encodeURIComponent(slug)}?estado=datos#descargas`
+      `${target}?estado=datos&seccion=descargas`
     );
   }
 
@@ -97,7 +98,7 @@ export async function POST(
 
     return adminRedirect(
       authorized.adminOrigin,
-      `/admin/juegos/${encodeURIComponent(slug)}?estado=${state}#descargas`
+      `${target}?estado=${state}&seccion=descargas`
     );
   } catch {
     console.error(
