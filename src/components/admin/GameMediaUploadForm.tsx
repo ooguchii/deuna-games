@@ -192,6 +192,26 @@ async function normalizeToSafeWebp(
   );
 }
 
+function uploadRedirectError(state: string | null) {
+  if (state === "conflicto") {
+    return "Otra pestaña guardó una revisión más reciente. Recarga el editor antes de volver a subir.";
+  }
+
+  if (state === "galeria-llena") {
+    return "La galería ya tiene ocho capturas. Retira una antes de añadir otra.";
+  }
+
+  if (state === "solicitud") {
+    return "La solicitud multimedia fue rechazada por seguridad. Recarga el editor e inténtalo otra vez.";
+  }
+
+  if (state === "imagen-invalida") {
+    return "El servidor no pudo normalizar el WebP preparado. La selección se conserva para que puedas reintentar sin empezar de cero.";
+  }
+
+  return "La imagen no pudo guardarse en el borrador. La selección y los ajustes se mantienen para reintentar.";
+}
+
 export default function GameMediaUploadForm({
   slug,
   revision,
@@ -307,8 +327,6 @@ export default function GameMediaUploadForm({
 
     if (busy) return;
 
-    // React limpia currentTarget después de la fase síncrona del evento.
-    // Leemos los campos del formulario antes del primer await.
     const submittedForm = new FormData(
       event.currentTarget
     );
@@ -362,7 +380,20 @@ export default function GameMediaUploadForm({
         );
       }
 
-      window.location.assign(response.url);
+      const resultUrl = new URL(
+        response.url,
+        window.location.href
+      );
+      const resultState =
+        resultUrl.searchParams.get("estado");
+
+      if (resultState !== "imagen-subida") {
+        throw new Error(
+          uploadRedirectError(resultState)
+        );
+      }
+
+      window.location.assign(resultUrl.toString());
     } catch (error) {
       setStatus(
         error instanceof Error
@@ -449,7 +480,7 @@ export default function GameMediaUploadForm({
       >
         <strong>Preparación de la imagen</strong>
         <span>
-          Siempre se genera un WebP estático limpio. EXIF, XMP y perfiles ICC no pasan al archivo editorial.
+          Siempre se genera un WebP estático limpio. El navegador convierte y el servidor vuelve a retirar ICC, EXIF y XMP antes de validar el archivo final.
         </span>
       </div>
 
@@ -525,7 +556,7 @@ export default function GameMediaUploadForm({
 
       <div className={styles.formActions}>
         <p>
-          La imagen se normaliza antes de salir del navegador. Las URLs se descargan mediante el panel privado, sólo desde HTTPS público. El resultado se guarda en el borrador y nunca se publica automáticamente.
+          La imagen se normaliza antes de salir del navegador. Las URLs se descargan mediante el panel privado, sólo desde HTTPS público. Si el servidor rechaza la carga, esta pantalla conserva la selección y los ajustes para poder corregir o reintentar.
         </p>
         <button type="submit" disabled={busy}>
           {busy
