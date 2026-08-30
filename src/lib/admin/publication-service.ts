@@ -38,6 +38,7 @@ type PublicationItemRow = {
   published_from_revision: number | null;
   publication_number: number;
   published_at: Date;
+  public_visible: boolean;
 };
 
 type PublicationHistoryRow = {
@@ -59,6 +60,7 @@ type RestorePublicationRow = {
   item_key: string;
   current_publication_number: number;
   current_published_checksum: string;
+  current_public_visible: boolean;
 };
 
 export type EditorialPublication = {
@@ -77,6 +79,7 @@ export type EditorialPublicationState = {
   publicationNumber: number;
   publishedFromRevision: number | null;
   publishedAt: Date;
+  publicVisible: boolean;
   hasUnpublishedChanges: boolean;
   publications: EditorialPublication[];
 };
@@ -198,7 +201,8 @@ async function getPublicationState(
        published_checksum,
        published_from_revision,
        publication_number,
-       published_at
+       published_at,
+       public_visible
      FROM deuna_admin.editorial_items
      WHERE item_type = $1
        AND item_key = $2
@@ -238,7 +242,9 @@ async function getPublicationState(
     publishedFromRevision:
       item.published_from_revision,
     publishedAt: item.published_at,
+    publicVisible: item.public_visible,
     hasUnpublishedChanges:
+      !item.public_visible ||
       draftChecksum !== item.published_checksum,
     publications: historyResult.rows.map(
       (publication) => ({
@@ -273,7 +279,8 @@ async function publishEditorialDraft(
          published_checksum,
          published_from_revision,
          publication_number,
-         published_at
+         published_at,
+         public_visible
        FROM deuna_admin.editorial_items
        WHERE item_type = $1
          AND item_key = $2
@@ -298,7 +305,10 @@ async function publishEditorialDraft(
     );
     const digest = hashEditorialPayload(normalized);
 
-    if (digest === item.published_checksum) {
+    if (
+      digest === item.published_checksum &&
+      item.public_visible
+    ) {
       return {
         outcome: "no_changes",
         publicationNumber: item.publication_number,
@@ -316,7 +326,8 @@ async function publishEditorialDraft(
            published_from_revision = $4,
            publication_number = $5,
            published_at = now(),
-           published_by = $6
+           published_by = $6,
+           public_visible = true
        WHERE id = $1`,
       [
         item.id,
@@ -357,6 +368,7 @@ async function publishEditorialDraft(
       {
         publicationNumber: nextPublication,
         revision: item.revision,
+        firstVisibility: !item.public_visible,
       }
     );
 
@@ -387,7 +399,8 @@ async function restoreEditorialPublication(
            item.id AS item_id,
            item.item_key,
            item.publication_number AS current_publication_number,
-           item.published_checksum AS current_published_checksum
+           item.published_checksum AS current_published_checksum,
+           item.public_visible AS current_public_visible
          FROM deuna_admin.editorial_publications AS publication
          INNER JOIN deuna_admin.editorial_items AS item
            ON item.id = publication.item_id
@@ -425,7 +438,10 @@ async function restoreEditorialPublication(
       );
     }
 
-    if (digest === row.current_published_checksum) {
+    if (
+      digest === row.current_published_checksum &&
+      row.current_public_visible
+    ) {
       return {
         outcome: "no_changes",
         key: row.item_key,
@@ -445,7 +461,8 @@ async function restoreEditorialPublication(
            published_from_revision = $4,
            publication_number = $5,
            published_at = now(),
-           published_by = $6
+           published_by = $6,
+           public_visible = true
        WHERE id = $1`,
       [
         row.item_id,
@@ -487,6 +504,7 @@ async function restoreEditorialPublication(
         publicationNumber: nextPublication,
         restoredFromPublication:
           row.target_publication_number,
+        firstVisibility: !row.current_public_visible,
       }
     );
 
