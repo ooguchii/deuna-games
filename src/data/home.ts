@@ -6,45 +6,12 @@ import type { Game } from "@/types/game";
 
 import { games } from "./games";
 import {
+  sourceHomeConfig,
+  type HomeConfig,
+} from "./home-config";
+import {
   resolvedGameUpdates,
 } from "./updates";
-
-const heroSlugs = [
-  "dragon-ball-sparking-zero",
-  "god-of-war-ragnarok",
-  "forza-horizon-5",
-  "resident-evil-4",
-];
-
-const popularSlugs = [
-  "god-of-war-ragnarok",
-  "elden-ring",
-  "forza-horizon-5",
-  "resident-evil-4",
-  "hogwarts-legacy",
-  "cyberpunk-2077",
-  "baldurs-gate-3",
-];
-
-const lowSpecSlugs = [
-  "minecraft-java-edition",
-  "left-4-dead-2",
-  "gta-san-andreas",
-  "terraria",
-  "half-life-2",
-  "portal-2",
-  "stardew-valley",
-];
-
-const recommendedSlugs = [
-  "cyberpunk-2077",
-  "baldurs-gate-3",
-  "red-dead-redemption-2",
-  "lies-of-p",
-  "armored-core-vi",
-  "god-of-war-ragnarok",
-  "elden-ring",
-];
 
 function rankGames(catalog: Game[]) {
   return [...catalog].sort(
@@ -105,18 +72,19 @@ function pickPreferredGames(
 }
 
 export function buildHomeGameCollections(
-  catalog: Game[]
+  catalog: Game[],
+  config: HomeConfig = sourceHomeConfig
 ) {
   return {
     heroGames: pickPreferredGames(
       catalog,
-      heroSlugs,
+      config.heroSlugs,
       4,
       true
     ),
     popularGames: pickPreferredGames(
       catalog,
-      popularSlugs,
+      config.popularSlugs,
       7,
       true
     ),
@@ -130,13 +98,13 @@ export function buildHomeGameCollections(
     ),
     lowSpecGames: pickPreferredGames(
       catalog,
-      lowSpecSlugs,
+      config.lowSpecSlugs,
       7,
       false
     ),
     recommendedGames: pickPreferredGames(
       catalog,
-      recommendedSlugs,
+      config.recommendedSlugs,
       7,
       true
     ),
