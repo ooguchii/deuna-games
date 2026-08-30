@@ -15,7 +15,40 @@ type StoredCpuConfirmation = {
   updatedAt: string;
 };
 
-function cpuFromIndependentConfirmation() {
+export type CpuConfirmationCandidate = {
+  cpu: HardwarePart;
+  updatedAt: string | null;
+};
+
+function confirmationTimestamp(value: string | null) {
+  if (!value) return 0;
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp) ? timestamp : 0;
+}
+
+export function chooseFreshestConfirmedCpu(
+  independent: CpuConfirmationCandidate | null,
+  storedProfile: CpuConfirmationCandidate | null
+): HardwarePart | null {
+  if (!independent) return storedProfile?.cpu ?? null;
+  if (!storedProfile) return independent.cpu;
+
+  const independentTime = confirmationTimestamp(
+    independent.updatedAt
+  );
+  const storedTime = confirmationTimestamp(
+    storedProfile.updatedAt
+  );
+
+  // Si ambas fuentes tienen la misma fecha (o fechas inválidas), el perfil
+  // completo es la fuente más autoritativa: puede haberse cambiado desde el
+  // configurador manual después de una confirmación asistida anterior.
+  return storedTime >= independentTime
+    ? storedProfile.cpu
+    : independent.cpu;
+}
+
+function cpuFromIndependentConfirmation(): CpuConfirmationCandidate | null {
   const raw = window.localStorage.getItem(
     CPU_CONFIRMATION_STORAGE_KEY
   );
@@ -24,22 +57,37 @@ function cpuFromIndependentConfirmation() {
   const value = JSON.parse(raw) as Partial<StoredCpuConfirmation>;
   if (typeof value.cpuId !== "string") return null;
 
-  return findCpuById(value.cpuId);
+  const cpu = findCpuById(value.cpuId);
+  if (!cpu) return null;
+
+  return {
+    cpu,
+    updatedAt:
+      typeof value.updatedAt === "string"
+        ? value.updatedAt
+        : null,
+  };
 }
 
-function cpuFromStoredProfile() {
+function cpuFromStoredProfile(): CpuConfirmationCandidate | null {
   const raw = window.localStorage.getItem(
     PROFILE_STORAGE_KEY
   );
-  return parseStoredHardwareProfile(raw)?.cpu ?? null;
+  const profile = parseStoredHardwareProfile(raw);
+  if (!profile?.cpu) return null;
+
+  return {
+    cpu: profile.cpu,
+    updatedAt: profile.updatedAt ?? null,
+  };
 }
 
 export function readConfirmedCpu(): HardwarePart | null {
   if (typeof window === "undefined") return null;
 
   try {
-    return (
-      cpuFromIndependentConfirmation() ??
+    return chooseFreshestConfirmedCpu(
+      cpuFromIndependentConfirmation(),
       cpuFromStoredProfile()
     );
   } catch {
