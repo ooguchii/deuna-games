@@ -24,17 +24,21 @@ const [
   visibilityService,
   publicSiteConfig,
   publicHomeConfig,
+  publicAboutConfig,
   publicCatalog,
   publicUpdates,
   publishRoute,
   restoreRoute,
   homePublishRoute,
   homeRestoreRoute,
+  aboutPublishRoute,
+  aboutRestoreRoute,
   hideGameRoute,
   hideUpdateRoute,
   publicationMigration,
   visibilityMigration,
   homeMigration,
+  aboutMigration,
   migrator,
 ] = await Promise.all([
   source("src/lib/admin/publication-service.ts"),
@@ -42,6 +46,7 @@ const [
   source("src/lib/admin/visibility-service.ts"),
   source("src/lib/site/public-site-config.ts"),
   source("src/lib/home/public-home-config.ts"),
+  source("src/lib/about/public-about-config.ts"),
   source("src/lib/games/public-catalog.ts"),
   source("src/lib/updates/public-updates.ts"),
   source("src/app/api/admin/content/configuration/publish/route.ts"),
@@ -59,22 +64,29 @@ const [
     ].join("/")
   ),
   source("src/app/api/admin/content/home-publications/[publicationId]/restore/route.ts"),
+  source("src/app/api/admin/content/about/publish/route.ts"),
+  source("src/app/api/admin/content/about-publications/[publicationId]/restore/route.ts"),
   source("src/app/api/admin/content/games/[slug]/hide/route.ts"),
   source("src/app/api/admin/content/updates/[id]/hide/route.ts"),
   source("database/migrations/003_editorial_publications.sql"),
   source("database/migrations/004_editorial_visibility.sql"),
   source("database/migrations/005_home_editorial_config.sql"),
+  source("database/migrations/006_about_editorial_config.sql"),
   source("tools/admin/migrate.ts"),
 ]);
 
 assert(
   publicationService.includes('| "site_config"') &&
     publicationService.includes('| "home_config"') &&
+    publicationService.includes('| "about_config"') &&
     publicationService.includes(
       'parseEditorialPayload("site_config", payload)'
     ) &&
     publicationService.includes(
       'parseEditorialPayload("home_config", payload)'
+    ) &&
+    publicationService.includes(
+      'parseEditorialPayload("about_config", payload)'
     ) &&
     publicationService.includes(
       'return getPublicationState("site_config", "site")'
@@ -83,12 +95,15 @@ assert(
       'return getPublicationState("home_config", "home")'
     ) &&
     publicationService.includes(
-      'publishEditorialDraft(\n    "home_config",\n    "home"'
+      'return getPublicationState("about_config", "about")'
     ) &&
     publicationService.includes(
-      'restoreEditorialPublication(\n    "home_config"'
+      'publishEditorialDraft(\n    "about_config",\n    "about"'
+    ) &&
+    publicationService.includes(
+      'restoreEditorialPublication(\n    "about_config"'
     ),
-  "site_config y home_config deben compartir el mismo servicio de publicación y restauración."
+  "Configuración, portada y páginas deben compartir el mismo servicio de publicación y restauración."
 );
 
 assert(
@@ -154,6 +169,14 @@ assert(
   "La portada pública debe exigir visibilidad explícita y usar sólo el snapshot publicado."
 );
 
+assert(
+  publicAboutConfig.includes("public_visible = true") &&
+    publicAboutConfig.includes("published_payload") &&
+    publicAboutConfig.includes("item_type = 'about_config'") &&
+    !publicAboutConfig.includes("draft_payload"),
+  "Quiénes somos debe exigir visibilidad explícita y usar sólo el snapshot publicado."
+);
+
 for (const [name, route] of [
   ["juego", hideGameRoute],
   ["actualización", hideUpdateRoute],
@@ -197,6 +220,21 @@ assert(
 );
 
 assert(
+  aboutPublishRoute.includes("authorizeAdminFormRequest") &&
+    aboutPublishRoute.includes("publishAboutConfigDraft") &&
+    aboutPublishRoute.includes('revalidatePath("/quienes-somos")'),
+  "Publicar Quiénes somos debe exigir sesión/origen y revalidar la página pública."
+);
+
+assert(
+  aboutRestoreRoute.includes("authorizeAdminFormRequest") &&
+    aboutRestoreRoute.includes("restoreAboutConfigPublication") &&
+    aboutRestoreRoute.includes("expectedPublicationNumber") &&
+    aboutRestoreRoute.includes('revalidatePath("/quienes-somos")'),
+  "Restaurar Quiénes somos debe exigir sesión/origen, concurrencia y revalidación pública."
+);
+
+assert(
   publicationMigration.includes("published_payload") &&
     publicationMigration.includes("editorial_publications") &&
     publicationMigration.includes("'bootstrap'") &&
@@ -219,6 +257,13 @@ assert(
 );
 
 assert(
+  aboutMigration.includes("about_config") &&
+    aboutMigration.includes("editorial_items_type_check") &&
+    !/\bDELETE\s+FROM\b/i.test(aboutMigration),
+  "La migración de páginas debe ampliar únicamente los tipos editoriales sin borrar contenido."
+);
+
+assert(
   migrator.includes("GRANT INSERT (\n        id,\n        item_type,\n        item_key") &&
     migrator.includes("public_visible") &&
     !/GRANT[\s\S]{0,300}\bDELETE\b/i.test(migrator),
@@ -233,6 +278,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Publicación administrativa: OK (juegos, actualizaciones, identidad y portada usan snapshots, auditoría y restauración sin borrado)."
+    "Publicación administrativa: OK (juegos, actualizaciones, identidad, portada y páginas usan snapshots, auditoría y restauración sin borrado)."
   );
 }
