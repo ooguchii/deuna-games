@@ -382,7 +382,7 @@ export default async function AdminGameEditorPage({
               name="coverImage"
               defaultValue={game.coverImage ?? ""}
               maxLength={400}
-              placeholder="/images/games/juego/cover.webp"
+              placeholder="Ruta local de la portada"
             />
           </label>
 
@@ -392,7 +392,7 @@ export default async function AdminGameEditorPage({
               name="heroImage"
               defaultValue={game.heroImage ?? ""}
               maxLength={400}
-              placeholder="/images/games/juego/hero.webp"
+              placeholder="Ruta local de la imagen hero"
             />
           </label>
 
@@ -403,7 +403,7 @@ export default async function AdminGameEditorPage({
               defaultValue={(game.screenshots ?? []).join("\n")}
               maxLength={3500}
               rows={7}
-              placeholder={"/images/games/juego/screenshot-1.webp\n/images/games/juego/screenshot-2.webp"}
+              placeholder="Una ruta local por línea"
             />
           </label>
 
