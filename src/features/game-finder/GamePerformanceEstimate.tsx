@@ -69,6 +69,12 @@ type GamePerformanceEstimateProps = {
   calibration?: GamePerformanceCalibration;
 };
 
+type FetchedCalibration = {
+  slug: string;
+  loaded: boolean;
+  value: GamePerformanceCalibration | null;
+};
+
 function sourceLabel(profile: HardwareProfile | null) {
   if (!profile) return "Sin perfil";
   if (profile.source === "saved") return "Perfil guardado";
@@ -148,24 +154,18 @@ export default function GamePerformanceEstimate({
     profile: hardware,
     status,
   } = useResolvedHardwareProfile();
-  const [publishedCalibration, setPublishedCalibration] =
-    useState<GamePerformanceCalibration | null>(
-      calibration ?? null
-    );
-  const [calibrationLoading, setCalibrationLoading] =
-    useState(calibration === undefined);
+  const [fetchedCalibration, setFetchedCalibration] =
+    useState<FetchedCalibration>({
+      slug,
+      loaded: false,
+      value: null,
+    });
 
   useEffect(() => {
-    if (calibration !== undefined) {
-      setPublishedCalibration(calibration);
-      setCalibrationLoading(false);
-      return;
-    }
+    if (calibration !== undefined) return;
 
     let active = true;
     const controller = new AbortController();
-
-    setCalibrationLoading(true);
 
     fetch(
       `/api/games/${encodeURIComponent(slug)}/performance`,
@@ -183,7 +183,11 @@ export default function GamePerformanceEstimate({
       })
       .then((nextCalibration) => {
         if (active) {
-          setPublishedCalibration(nextCalibration);
+          setFetchedCalibration({
+            slug,
+            loaded: true,
+            value: nextCalibration,
+          });
         }
       })
       .catch((error: unknown) => {
@@ -191,11 +195,12 @@ export default function GamePerformanceEstimate({
           active &&
           !(error instanceof DOMException && error.name === "AbortError")
         ) {
-          setPublishedCalibration(null);
+          setFetchedCalibration({
+            slug,
+            loaded: true,
+            value: null,
+          });
         }
-      })
-      .finally(() => {
-        if (active) setCalibrationLoading(false);
       });
 
     return () => {
@@ -204,8 +209,17 @@ export default function GamePerformanceEstimate({
     };
   }, [calibration, slug]);
 
+  const fetchedForCurrentSlug =
+    fetchedCalibration.slug === slug
+      ? fetchedCalibration
+      : null;
+  const calibrationLoading =
+    calibration === undefined &&
+    !fetchedForCurrentSlug?.loaded;
   const effectiveCalibration =
-    calibration ?? publishedCalibration ?? undefined;
+    calibration ??
+    fetchedForCurrentSlug?.value ??
+    undefined;
 
   const estimate = useMemo(
     () =>
