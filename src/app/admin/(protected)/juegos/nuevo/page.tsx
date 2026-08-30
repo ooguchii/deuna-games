@@ -41,6 +41,7 @@ export default async function AdminNewGamePage({
         .filter(Boolean)
     ),
   ].sort((a, b) => a.localeCompare(b, "es"));
+  const existingSlugs = games.map((game) => game.key);
 
   return (
     <>
@@ -68,7 +69,10 @@ export default async function AdminNewGamePage({
 
       <EditorStateNotice state={state} />
 
-      <NewGameForm categories={categories} />
+      <NewGameForm
+        categories={categories}
+        existingSlugs={existingSlugs}
+      />
     </>
   );
 }
