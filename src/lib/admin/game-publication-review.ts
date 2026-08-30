@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { Game } from "@/types/game";
+import type { GameTaxonomy } from "@/types/game-taxonomy";
 
 import {
   parseEditorialPayload,
@@ -21,6 +22,10 @@ type DraftGameRow = {
   revision: number;
 };
 
+type PublishedTaxonomyRow = {
+  published_payload: unknown;
+};
+
 type HistoricalGamePublicationRow = {
   payload: unknown;
   item_key: string;
@@ -37,6 +42,104 @@ export type HistoricalGamePublicationCandidate = {
   key: string;
   currentPublicationNumber: number;
 };
+
+export type GameTaxonomyPublicationIntegrity =
+  | { ok: true }
+  | {
+      ok: false;
+      missingClassifications: string[];
+      missingTags: string[];
+    };
+
+function normalizeTaxonomyLabel(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("es")
+    .trim();
+}
+
+function uniqueLabels(values: readonly string[]) {
+  const labels = new Map<string, string>();
+
+  for (const raw of values) {
+    const label = raw.trim();
+    if (!label) continue;
+    const normalized = normalizeTaxonomyLabel(label);
+    if (!labels.has(normalized)) labels.set(normalized, label);
+  }
+
+  return [...labels.values()];
+}
+
+async function getPublishedGameTaxonomy(): Promise<GameTaxonomy | null> {
+  const result = await adminQuery<PublishedTaxonomyRow>(
+    `SELECT published_payload
+       FROM deuna_admin.editorial_items
+      WHERE item_type = 'game_taxonomy'
+        AND item_key = 'games'
+        AND public_visible = true
+      LIMIT 1`
+  );
+  const row = result.rows[0];
+
+  if (!row) return null;
+
+  return parseEditorialPayload(
+    "game_taxonomy",
+    row.published_payload
+  );
+}
+
+export async function inspectPublishedGameTaxonomyIntegrity(
+  game: Game
+): Promise<GameTaxonomyPublicationIntegrity> {
+  await verifyAdminSession();
+
+  const taxonomy = await getPublishedGameTaxonomy();
+
+  if (!taxonomy) {
+    return {
+      ok: false,
+      missingClassifications: uniqueLabels([
+        game.category,
+        ...(game.genres ?? []),
+      ]),
+      missingTags: uniqueLabels(game.tags ?? []),
+    };
+  }
+
+  const classifications = new Set(
+    taxonomy.classifications.map((term) =>
+      normalizeTaxonomyLabel(term.label)
+    )
+  );
+  const tags = new Set(
+    taxonomy.tags.map((term) =>
+      normalizeTaxonomyLabel(term.label)
+    )
+  );
+  const requiredClassifications = uniqueLabels([
+    game.category,
+    ...(game.genres ?? []),
+  ]);
+  const requiredTags = uniqueLabels(game.tags ?? []);
+  const missingClassifications = requiredClassifications.filter(
+    (label) => !classifications.has(normalizeTaxonomyLabel(label))
+  );
+  const missingTags = requiredTags.filter(
+    (label) => !tags.has(normalizeTaxonomyLabel(label))
+  );
+
+  return missingClassifications.length === 0 &&
+    missingTags.length === 0
+    ? { ok: true }
+    : {
+        ok: false,
+        missingClassifications,
+        missingTags,
+      };
+}
 
 export async function getPublishedGameSnapshot(
   key: string
