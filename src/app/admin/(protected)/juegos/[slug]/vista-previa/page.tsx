@@ -13,6 +13,7 @@ import {
 import { notFound } from "next/navigation";
 
 import GameMedia from "@/components/ui/GameMedia";
+import GamePerformanceEstimate from "@/features/game-finder/GamePerformanceEstimate";
 import {
   getEditorialItem,
 } from "@/lib/admin/content-service";
@@ -299,6 +300,20 @@ export default async function AdminGamePreviewPage({
           <span>Fuentes visibles</span>
           <strong>{sources.length}</strong>
         </article>
+      </section>
+
+      <section className={styles.panel}>
+        <div className={styles.sectionHeading}>
+          <span>RENDIMIENTO DEL BORRADOR</span>
+          <h2>FPS estimados antes de publicar</h2>
+        </div>
+        <p>
+          Este cálculo usa la calibración de esta revisión privada. No modifica ni expone la calibración pública hasta que confirmes una publicación nueva.
+        </p>
+        <GamePerformanceEstimate
+          slug={game.slug}
+          calibration={game.performance ?? null}
+        />
       </section>
 
       <section className={styles.twoColumns}>
