@@ -12,6 +12,9 @@ import {
 import {
   restoreEditorialRevision,
 } from "@/lib/admin/content-service";
+import type {
+  EditorialItemType,
+} from "@/lib/admin/content-validation";
 import {
   hasExactAdminFormFields,
 } from "@/lib/admin/request-security";
@@ -20,7 +23,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 function itemPath(
-  type: "game" | "game_update" | "site_config",
+  type: EditorialItemType,
   key: string
 ) {
   if (type === "game") {
@@ -29,6 +32,10 @@ function itemPath(
 
   if (type === "game_update") {
     return `/admin/actualizaciones/${encodeURIComponent(key)}`;
+  }
+
+  if (type === "home_config") {
+    return "/admin/portada";
   }
 
   return "/admin/configuracion";
