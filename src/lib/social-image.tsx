@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 
 export const socialImageAlt =
-  "DeUna Games - Encuentra juegos para tu PC";
+  "Imagen social del sitio de juegos para PC";
 
 export const socialImageSize = {
   width: 1200,
@@ -10,7 +10,15 @@ export const socialImageSize = {
 
 export const socialImageContentType = "image/png";
 
-export function createSocialImage() {
+type SocialImageIdentity = {
+  name: string;
+  description: string;
+  themeColor: string;
+};
+
+export function createSocialImage(
+  identity: SocialImageIdentity
+) {
   return new ImageResponse(
     (
       <div
@@ -22,7 +30,7 @@ export function createSocialImage() {
           overflow: "hidden",
           color: "#f7f8fb",
           background:
-            "linear-gradient(135deg, #05060b 0%, #0b0f19 52%, #160812 100%)",
+            `linear-gradient(135deg, ${identity.themeColor} 0%, #0b0f19 52%, #160812 100%)`,
           fontFamily: "Arial, sans-serif",
         }}
       >
@@ -89,14 +97,13 @@ export function createSocialImage() {
             </div>
 
             <div style={{ display: "flex" }}>
-              <span>DeUna&nbsp;</span>
-              <span style={{ color: "#ff0847" }}>Games</span>
+              {identity.name}
             </div>
           </div>
 
           <div
             style={{
-              maxWidth: 910,
+              maxWidth: 930,
               display: "flex",
               flexDirection: "column",
               gap: 22,
@@ -119,14 +126,13 @@ export function createSocialImage() {
             <div
               style={{
                 display: "flex",
-                maxWidth: 820,
+                maxWidth: 850,
                 color: "#b8c1cf",
                 fontSize: 27,
                 lineHeight: 1.42,
               }}
             >
-              Juegos, requisitos, versiones y actualizaciones
-              en un solo lugar.
+              {identity.description}
             </div>
           </div>
 
