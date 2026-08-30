@@ -20,8 +20,10 @@ import Header from "@/components/layout/Header";
 
 import {
   absoluteUrl,
-  siteConfig,
 } from "@/lib/site";
+import {
+  getPublicSiteConfig,
+} from "@/lib/site/public-site-config";
 import {
   safeJsonLd,
 } from "@/lib/safe-json-ld";
@@ -70,17 +72,15 @@ function hasFilters(
 export async function generateMetadata({
   searchParams,
 }: UpdatesPageProps): Promise<Metadata> {
-  const params =
-    await searchParams;
-
-  const filtered =
-    hasFilters(params);
-
+  const [params, config] = await Promise.all([
+    searchParams,
+    getPublicSiteConfig(),
+  ]);
+  const filtered = hasFilters(params);
   const title =
     "Actualizaciones de juegos para PC";
-
   const description =
-    "Consulta las últimas versiones y actualizaciones de juegos disponibles en DeUna Games.";
+    `Consulta las últimas versiones y actualizaciones de juegos disponibles en ${config.name}.`;
 
   return {
     title,
@@ -103,7 +103,7 @@ export async function generateMetadata({
 
     openGraph: {
       title:
-        `${title} | ${siteConfig.name}`,
+        `${title} | ${config.name}`,
       description,
       url:
         "/actualizaciones",
@@ -114,7 +114,7 @@ export async function generateMetadata({
       card:
         "summary_large_image",
       title:
-        `${title} | ${siteConfig.name}`,
+        `${title} | ${config.name}`,
       description,
     },
   };
@@ -123,10 +123,12 @@ export async function generateMetadata({
 export default async function UpdatesPage({
   searchParams,
 }: UpdatesPageProps) {
-  const params =
-    await searchParams;
-  const resolvedGameUpdates =
-    await getPublicResolvedUpdates();
+  const [params, resolvedGameUpdates, config] =
+    await Promise.all([
+      searchParams,
+      getPublicResolvedUpdates(),
+      getPublicSiteConfig(),
+    ]);
   const featuredUpdates =
     resolvedGameUpdates.filter(
       (update) => update.featured
@@ -198,9 +200,9 @@ export default async function UpdatesPage({
         "/actualizaciones"
       ),
     description:
-      "Últimas versiones y actualizaciones de juegos disponibles en DeUna Games.",
+      `Últimas versiones y actualizaciones de juegos disponibles en ${config.name}.`,
     inLanguage:
-      siteConfig.language,
+      config.language,
   };
 
   return (
@@ -292,12 +294,7 @@ export default async function UpdatesPage({
             </h1>
 
             <p>
-              Sigue las nuevas
-              versiones de los juegos
-              disponibles en DeUna
-              Games. Encuentra qué se
-              actualizó y accede siempre
-              a la versión vigente.
+              Sigue las nuevas versiones de los juegos disponibles en {config.name}. Encuentra qué se actualizó y accede siempre a la versión vigente.
             </p>
 
             <div
