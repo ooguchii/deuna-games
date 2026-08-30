@@ -210,8 +210,8 @@ async function main() {
     await client.query(
       `INSERT INTO deuna_admin.admin_audit_log
          (user_id, action, entity_type, entity_id)
-       VALUES ($1, 'owner_created', 'admin_user', $1::text)`,
-      [id]
+       VALUES ($1::uuid, 'owner_created', 'admin_user', $2::text)`,
+      [id, id]
     );
 
     await client.query("COMMIT");

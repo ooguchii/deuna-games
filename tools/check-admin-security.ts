@@ -249,6 +249,23 @@ const migrator = await readFile(
   "utf8"
 );
 
+const ownerCreator = await readFile(
+  path.join(
+    root,
+    "tools",
+    "admin",
+    "create-owner.ts"
+  ),
+  "utf8"
+);
+
+assert(
+  ownerCreator.includes(
+    "VALUES ($1::uuid, 'owner_created', 'admin_user', $2::text)"
+  ) && ownerCreator.includes("[id, id]"),
+  "La auditoría inicial debe usar parámetros separados para UUID y texto."
+);
+
 assert(
   migrator.includes(
     "GRANT UPDATE (revoked_at)"
