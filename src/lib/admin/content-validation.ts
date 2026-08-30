@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import type { Game } from "@/types/game";
+import type { GameTaxonomy } from "@/types/game-taxonomy";
 import type { GameUpdate } from "@/types/update";
 
 export const editorialItemTypes = [
@@ -9,6 +10,7 @@ export const editorialItemTypes = [
   "site_config",
   "home_config",
   "about_config",
+  "game_taxonomy",
 ] as const;
 
 export type EditorialItemType =
@@ -162,6 +164,53 @@ function uniqueIdentifiers(maximum: number) {
     });
 }
 
+function normalizeTaxonomyLabel(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("es")
+    .trim();
+}
+
+const taxonomyTermSchema = z
+  .object({
+    key: identifierSchema,
+    label: z.string().trim().min(1).max(80),
+    active: z.boolean(),
+  })
+  .strict();
+
+function taxonomyTerms(maximum: number) {
+  return z
+    .array(taxonomyTermSchema)
+    .max(maximum)
+    .superRefine((terms, context) => {
+      const keys = new Set<string>();
+      const labels = new Set<string>();
+
+      terms.forEach((term, index) => {
+        if (keys.has(term.key)) {
+          context.addIssue({
+            code: "custom",
+            path: [index, "key"],
+            message: "Los identificadores del catálogo no pueden repetirse.",
+          });
+        }
+        keys.add(term.key);
+
+        const label = normalizeTaxonomyLabel(term.label);
+        if (labels.has(label)) {
+          context.addIssue({
+            code: "custom",
+            path: [index, "label"],
+            message: "El catálogo no admite nombres duplicados o equivalentes.",
+          });
+        }
+        labels.add(label);
+      });
+    });
+}
+
 const aboutTitle = z.string().trim().min(1).max(180);
 const aboutText = z.string().trim().min(1).max(700);
 const aboutEyebrow = z.string().trim().min(1).max(60);
@@ -308,6 +357,14 @@ export const editorialAboutConfigSchema = z
   })
   .strict();
 
+export const editorialGameTaxonomySchema: z.ZodType<GameTaxonomy> = z
+  .object({
+    categories: taxonomyTerms(80),
+    genres: taxonomyTerms(200),
+    tags: taxonomyTerms(500),
+  })
+  .strict();
+
 export type EditorialSiteConfig = z.infer<
   typeof editorialSiteConfigSchema
 >;
@@ -326,6 +383,7 @@ export type EditorialPayloadByType = {
   site_config: EditorialSiteConfig;
   home_config: EditorialHomeConfig;
   about_config: EditorialAboutConfig;
+  game_taxonomy: GameTaxonomy;
 };
 
 export function parseEditorialPayload<
@@ -340,7 +398,9 @@ export function parseEditorialPayload<
           ? editorialSiteConfigSchema
           : type === "home_config"
             ? editorialHomeConfigSchema
-            : editorialAboutConfigSchema;
+            : type === "about_config"
+              ? editorialAboutConfigSchema
+              : editorialGameTaxonomySchema;
 
   return schema.parse(payload) as EditorialPayloadByType[Type];
 }

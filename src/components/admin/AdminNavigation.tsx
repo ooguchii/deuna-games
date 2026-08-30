@@ -9,6 +9,7 @@ import {
   RefreshCcw,
   Settings2,
   ShieldCheck,
+  Tags,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 
@@ -18,6 +19,7 @@ import ux from "./AdminShellUx.module.css";
 const navigation = [
   { href: "/admin", label: "Resumen", icon: LayoutDashboard },
   { href: "/admin/juegos", label: "Juegos", icon: Gamepad2 },
+  { href: "/admin/catalogos", label: "Catálogos", icon: Tags },
   { href: "/admin/actualizaciones", label: "Actualizaciones", icon: RefreshCcw },
   { href: "/admin/portada", label: "Portada", icon: LayoutTemplate },
   { href: "/admin/paginas", label: "Páginas", icon: FileText },

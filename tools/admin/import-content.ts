@@ -1,4 +1,5 @@
 import {
+  createHash,
   randomUUID,
 } from "node:crypto";
 import process from "node:process";
@@ -19,9 +20,6 @@ import {
   gameUpdates,
 } from "../../src/data/update-records.ts";
 import {
-  siteConfig,
-} from "../../src/lib/site.ts";
-import {
   hashEditorialPayload,
   normalizeEditorialPayload,
 } from "../../src/lib/admin/content-hash.ts";
@@ -32,6 +30,14 @@ import {
 import {
   getAdminDatabaseConfig,
 } from "../../src/lib/admin/database-config.ts";
+import {
+  siteConfig,
+} from "../../src/lib/site.ts";
+import type { Game } from "../../src/types/game.ts";
+import type {
+  GameTaxonomy,
+  GameTaxonomyTerm,
+} from "../../src/types/game-taxonomy.ts";
 
 type SourceItem = {
   type: EditorialItemType;
@@ -46,10 +52,88 @@ type ExistingItemRow = {
   revision: number;
 };
 
+type ExistingTaxonomyRow = {
+  id: string;
+};
+
+type GamePayloadRow = {
+  draft_payload: unknown;
+};
+
 const importLockKey = 1_926_042_787;
 const validateOnly = process.argv.includes(
   "--validate-only"
 );
+
+function normalizeTaxonomyLabel(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("es")
+    .trim();
+}
+
+function taxonomyKey(label: string) {
+  const base = label
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/&/g, " y ")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 140);
+
+  return base || `term-${createHash("sha256")
+    .update(label, "utf8")
+    .digest("hex")
+    .slice(0, 12)}`;
+}
+
+function taxonomyTerms(values: string[]) {
+  const labels = new Map<string, string>();
+
+  for (const raw of values) {
+    const label = raw.trim();
+    if (!label) continue;
+    const normalized = normalizeTaxonomyLabel(label);
+    if (!labels.has(normalized)) labels.set(normalized, label);
+  }
+
+  const usedKeys = new Set<string>();
+
+  return [...labels.values()]
+    .sort((left, right) => left.localeCompare(right, "es"))
+    .map<GameTaxonomyTerm>((label) => {
+      const base = taxonomyKey(label);
+      let key = base;
+
+      if (usedKeys.has(key)) {
+        key = `${base.slice(0, 146)}-${createHash("sha256")
+          .update(label, "utf8")
+          .digest("hex")
+          .slice(0, 8)}`;
+      }
+
+      usedKeys.add(key);
+      return { key, label, active: true };
+    });
+}
+
+function buildGameTaxonomy(
+  sourceGames: readonly Game[]
+): GameTaxonomy {
+  return {
+    categories: taxonomyTerms(
+      sourceGames.map((game) => game.category)
+    ),
+    genres: taxonomyTerms(
+      sourceGames.flatMap((game) => game.genres ?? [])
+    ),
+    tags: taxonomyTerms(
+      sourceGames.flatMap((game) => game.tags ?? [])
+    ),
+  };
+}
 
 function buildSourceItems(): SourceItem[] {
   if (
@@ -280,6 +364,94 @@ async function importItem(
   return "refreshed" as const;
 }
 
+async function ensureGameTaxonomyItem(
+  client: PoolClient
+) {
+  const existing = await client.query<ExistingTaxonomyRow>(
+    `SELECT id
+       FROM deuna_admin.editorial_items
+      WHERE item_type = 'game_taxonomy'
+        AND item_key = 'games'
+      LIMIT 1
+      FOR UPDATE`
+  );
+
+  if (existing.rows[0]) return "unchanged" as const;
+
+  const gameRows = await client.query<GamePayloadRow>(
+    `SELECT draft_payload
+       FROM deuna_admin.editorial_items
+      WHERE item_type = 'game'
+      ORDER BY item_key ASC`
+  );
+  const editorialGames = gameRows.rows.map((row) =>
+    parseEditorialPayload("game", row.draft_payload)
+  );
+  const taxonomy = normalizeEditorialPayload(
+    parseEditorialPayload(
+      "game_taxonomy",
+      buildGameTaxonomy(editorialGames)
+    )
+  );
+  const payload = JSON.stringify(taxonomy);
+  const digest = hashEditorialPayload(taxonomy);
+  const id = randomUUID();
+
+  await client.query(
+    `INSERT INTO deuna_admin.editorial_items
+       (
+         id,
+         item_type,
+         item_key,
+         source_payload,
+         source_checksum,
+         source_present,
+         draft_payload,
+         draft_status,
+         published_payload,
+         published_checksum,
+         publication_number,
+         public_visible
+       )
+     VALUES (
+       $1,
+       'game_taxonomy',
+       'games',
+       $2::jsonb,
+       $3,
+       true,
+       $2::jsonb,
+       'synced',
+       $2::jsonb,
+       $3,
+       1,
+       false
+     )`,
+    [id, payload, digest]
+  );
+  await client.query(
+    `INSERT INTO deuna_admin.editorial_revisions
+       (item_id, revision, payload, action)
+     VALUES ($1, 1, $2::jsonb, 'imported')`,
+    [id, payload]
+  );
+  await client.query(
+    `INSERT INTO deuna_admin.editorial_publications
+       (
+         item_id,
+         publication_number,
+         payload,
+         checksum,
+         source_revision,
+         action
+       )
+     VALUES ($1, 1, $2::jsonb, $3, 1, 'bootstrap')`,
+    [id, payload, digest]
+  );
+
+  return "created" as const;
+}
+
 async function markMissingSources(
   client: PoolClient,
   items: SourceItem[]
@@ -314,10 +486,15 @@ async function markMissingSources(
 
 async function main() {
   const items = buildSourceItems();
+  const sourceTaxonomy = parseEditorialPayload(
+    "game_taxonomy",
+    buildGameTaxonomy(games)
+  );
 
   if (validateOnly) {
+    void sourceTaxonomy;
     console.log(
-      `Contenido editorial validado: ${games.length} juegos, ${gameUpdates.length} actualizaciones, 1 configuración, 1 portada y 1 página institucional.`
+      `Contenido editorial validado: ${games.length} juegos, ${gameUpdates.length} actualizaciones, 1 configuración, 1 portada, 1 página institucional y taxonomía de juegos válida.`
     );
     return;
   }
@@ -345,6 +522,10 @@ async function main() {
       const result = await importItem(client, item);
       counts[result] += 1;
     }
+
+    const taxonomyResult =
+      await ensureGameTaxonomyItem(client);
+    counts[taxonomyResult] += 1;
 
     counts.missing = await markMissingSources(
       client,

@@ -1,0 +1,269 @@
+.root {
+  display: grid;
+  gap: 18px;
+}
+
+.summary,
+.panel,
+.actions {
+  border: 1px solid var(--admin-border, #273342);
+  border-radius: 14px;
+  background: rgba(12, 20, 30, 0.72);
+}
+
+.summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 18px 20px;
+}
+
+.summary strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 15px;
+}
+
+.summary p,
+.panelHeader p,
+.actions p {
+  margin: 0;
+  color: #8da2bd;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.summary > span {
+  flex: 0 0 auto;
+  border: 1px solid #39495d;
+  border-radius: 999px;
+  padding: 7px 10px;
+  color: #c9d5e5;
+  font-size: 12px;
+}
+
+.feedback {
+  border: 1px solid rgba(255, 179, 71, 0.38);
+  border-radius: 10px;
+  background: rgba(255, 179, 71, 0.08);
+  padding: 12px 14px;
+  color: #ffc36f;
+  font-size: 13px;
+}
+
+.sections {
+  display: grid;
+  gap: 18px;
+}
+
+.panel {
+  padding: 20px;
+}
+
+.panelHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #202b38;
+}
+
+.panelHeader span {
+  color: #ff2d66;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.panelHeader h2 {
+  margin: 4px 0 6px;
+  font-size: 21px;
+}
+
+.counts {
+  min-width: 110px;
+  text-align: right;
+}
+
+.counts strong {
+  display: block;
+  font-size: 24px;
+}
+
+.counts span {
+  color: #7f93ac;
+  font-size: 11px;
+  letter-spacing: 0;
+}
+
+.addRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  margin: 16px 0;
+}
+
+.addRow input,
+.termMain input {
+  width: 100%;
+  border: 1px solid #314053;
+  border-radius: 9px;
+  background: #08111b;
+  color: #f5f7fb;
+  padding: 11px 12px;
+  outline: none;
+}
+
+.addRow input:focus,
+.termMain input:focus {
+  border-color: #ff2d66;
+  box-shadow: 0 0 0 2px rgba(255, 45, 102, 0.12);
+}
+
+.termMain input[readonly] {
+  color: #d5dfec;
+  background: #0a131e;
+}
+
+.addRow button,
+.actions > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 0;
+  border-radius: 9px;
+  background: #ff1554;
+  color: white;
+  padding: 0 16px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.termList {
+  display: grid;
+  gap: 8px;
+}
+
+.termRow {
+  display: grid;
+  grid-template-columns: minmax(250px, 1fr) 100px 90px 38px;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #202c3a;
+  border-radius: 10px;
+  padding: 10px;
+  background: rgba(5, 12, 20, 0.7);
+}
+
+.termMain {
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) minmax(120px, 0.65fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.termMain code {
+  overflow: hidden;
+  color: #71859f;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.usage {
+  color: #8da2bd;
+  font-size: 12px;
+  text-align: center;
+}
+
+.activeButton,
+.inactiveButton,
+.removeButton {
+  border-radius: 8px;
+  min-height: 34px;
+  cursor: pointer;
+}
+
+.activeButton {
+  border: 1px solid rgba(66, 211, 146, 0.34);
+  background: rgba(66, 211, 146, 0.08);
+  color: #62e5a8;
+}
+
+.inactiveButton {
+  border: 1px solid #3a4655;
+  background: #111923;
+  color: #97a6b8;
+}
+
+.removeButton {
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 75, 110, 0.3);
+  background: rgba(255, 75, 110, 0.06);
+  color: #ff7895;
+}
+
+.removeButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.28;
+}
+
+.empty {
+  margin: 14px 0 0;
+  color: #7f93ac;
+  font-size: 13px;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 16px 18px;
+}
+
+.actions > button {
+  min-height: 42px;
+  flex: 0 0 auto;
+}
+
+@media (max-width: 900px) {
+  .summary,
+  .panelHeader,
+  .actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .counts {
+    text-align: left;
+  }
+
+  .termRow {
+    grid-template-columns: 1fr auto auto;
+  }
+
+  .termMain {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 620px) {
+  .addRow,
+  .termMain,
+  .termRow {
+    grid-template-columns: 1fr;
+  }
+
+  .usage {
+    text-align: left;
+  }
+
+  .removeButton {
+    width: 100%;
+  }
+}

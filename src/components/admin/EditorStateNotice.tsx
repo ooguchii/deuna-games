@@ -26,6 +26,16 @@ const notices = {
     message:
       "Borrador guardado. La web pública todavía no fue modificada.",
   },
+  "catalogo-guardado": {
+    kind: "success",
+    message:
+      "Catálogos guardados y versionados. Ningún juego ni página pública fue modificado.",
+  },
+  "catalogo-en-uso": {
+    kind: "warning",
+    message:
+      "No se guardó el cambio porque quitaría o renombraría un término que todavía usa algún juego. Desactívalo si ya no querés ofrecerlo para nuevas fichas.",
+  },
   restaurado: {
     kind: "success",
     message:
