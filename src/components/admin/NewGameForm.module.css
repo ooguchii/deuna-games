@@ -140,8 +140,51 @@
   font-weight: 800;
 }
 
+.slugStatusOk,
+.slugStatusError,
+.slugStatusHint {
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 2px;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.slugStatusOk svg,
+.slugStatusError svg {
+  flex-shrink: 0;
+}
+
+.slugStatusOk {
+  color: #91ddb4;
+  border-color: rgba(55, 195, 124, 0.18);
+  background: rgba(55, 195, 124, 0.045);
+}
+
+.slugStatusError {
+  color: #ffb0c2;
+  border-color: rgba(255, 72, 112, 0.25);
+  background: rgba(255, 8, 71, 0.055);
+}
+
+.slugStatusHint {
+  color: #718091;
+  padding-left: 0;
+}
+
 .formActions {
   align-items: center;
+}
+
+.formActions button:disabled {
+  cursor: not-allowed;
+  filter: grayscale(0.35);
+  opacity: 0.45;
 }
 
 .safetyNote {
