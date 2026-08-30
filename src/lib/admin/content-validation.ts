@@ -63,7 +63,7 @@ const requirementsSchema = hardwareRequirementsSchema
   })
   .strict();
 
-const downloadSourceSchema = z
+export const editorialDownloadSourceSchema = z
   .object({
     id: identifierSchema,
     name: z.string().trim().min(1).max(100),
@@ -77,7 +77,7 @@ const downloadSchema = z
     href: downloadHrefSchema.optional(),
     label: optionalShortText,
     sources: z
-      .array(downloadSourceSchema)
+      .array(editorialDownloadSourceSchema)
       .max(12)
       .optional(),
     sizeGb: z.number().positive().max(100_000).optional(),
