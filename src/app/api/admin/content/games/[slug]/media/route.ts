@@ -1,6 +1,3 @@
-import { lstat } from "node:fs/promises";
-import path from "node:path";
-
 import type { NextRequest } from "next/server";
 
 import {
@@ -19,11 +16,11 @@ import {
   requestedGameEditorContinuation,
 } from "@/lib/admin/game-editor-flow";
 import {
+  inspectLocalImageReferences,
+} from "@/lib/admin/game-media-integrity";
+import {
   hasExactAdminFormFields,
 } from "@/lib/admin/request-security";
-import {
-  resolveEditorialMediaDiskPath,
-} from "@/lib/media/editorial-media";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -34,80 +31,6 @@ const fields = [
   "heroImage",
   "screenshotsText",
 ] as const;
-
-async function fileIsRegular(
-  absolutePath: string
-) {
-  try {
-    const stats = await lstat(absolutePath);
-    return (
-      stats.isFile() &&
-      !stats.isSymbolicLink()
-    );
-  } catch {
-    return false;
-  }
-}
-
-async function bundledImageExists(
-  mediaPath: string
-) {
-  const publicRoot = path.resolve(
-    process.cwd(),
-    "public"
-  );
-  const imagesRoot = path.resolve(
-    publicRoot,
-    "images"
-  );
-  const absolutePath = path.resolve(
-    publicRoot,
-    `.${mediaPath}`
-  );
-
-  if (
-    !absolutePath.startsWith(
-      `${imagesRoot}${path.sep}`
-    )
-  ) {
-    return false;
-  }
-
-  return fileIsRegular(absolutePath);
-}
-
-async function editorialImageExists(
-  mediaPath: string
-) {
-  try {
-    const resolved =
-      resolveEditorialMediaDiskPath(mediaPath);
-
-    return resolved
-      ? fileIsRegular(resolved.filePath)
-      : false;
-  } catch {
-    return false;
-  }
-}
-
-async function mediaFilesExist(
-  mediaPaths: string[]
-) {
-  for (const mediaPath of new Set(mediaPaths)) {
-    const exists = mediaPath.startsWith(
-      "/media/editorial/"
-    )
-      ? await editorialImageExists(mediaPath)
-      : mediaPath.startsWith("/images/")
-        ? await bundledImageExists(mediaPath)
-        : false;
-
-    if (!exists) return false;
-  }
-
-  return true;
-}
 
 export async function POST(
   request: NextRequest,
@@ -165,8 +88,10 @@ export async function POST(
     ].filter(
       (value): value is string => Boolean(value)
     );
+    const mediaIntegrity =
+      await inspectLocalImageReferences(mediaPaths);
 
-    if (!(await mediaFilesExist(mediaPaths))) {
+    if (!mediaIntegrity.ok) {
       return adminRedirect(
         authorized.adminOrigin,
         `${target}?estado=asset&seccion=multimedia`
