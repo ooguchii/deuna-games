@@ -80,6 +80,7 @@ export function parseStoredHardwareProfile(
 
     return {
       cpu,
+      cpuKnowledge: "confirmed",
       gpu,
       ramGb,
       ramKnowledge: "confirmed",
