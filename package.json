@@ -31,7 +31,7 @@
     "check:source": "node ./tools/check-source-hygiene.mjs",
     "check:encoding": "node ./tools/check-text-encoding.mjs",
     "check:privacy": "node ./tools/check-public-privacy.mjs",
-    "check:admin-security": "node ./tools/check-admin-security.ts",
+    "check:admin-security": "node ./tools/check-admin-security.ts && node ./tools/check-admin-media-security.mjs",
     "check:admin-content": "node ./tools/admin/import-content.ts --validate-only",
     "check:data": "node ./tools/check-data.mjs",
     "check:assets": "node ./tools/check-assets.mjs",
