@@ -30,26 +30,71 @@ type PublicationTableRow = {
   publication_table: string | null;
 };
 
-type PublishedUpdateRow = {
+type EditorialUpdateRow = {
   item_key: string;
   published_payload: unknown;
+  public_visible: boolean;
 };
 
-function mergePublishedUpdates(
-  publishedUpdates: GameUpdate[]
+function parsePublishedUpdate(
+  row: EditorialUpdateRow
+): GameUpdate | null {
+  try {
+    const update = parseEditorialPayload(
+      "game_update",
+      row.published_payload
+    );
+
+    return update.id === row.item_key
+      ? update
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function mergeEditorialUpdates(
+  rows: EditorialUpdateRow[]
 ) {
-  const publishedById = new Map(
-    publishedUpdates.map((update) => [update.id, update])
+  const editorialById = new Map(
+    rows.map((row) => [row.item_key, row])
   );
   const sourceIds = new Set(
     sourceUpdates.map((update) => update.id)
   );
-  const merged = sourceUpdates.map(
-    (update) => publishedById.get(update.id) ?? update
-  );
-  const additional = publishedUpdates.filter(
-    (update) => !sourceIds.has(update.id)
-  );
+  const merged: GameUpdate[] = [];
+
+  for (const sourceUpdate of sourceUpdates) {
+    const editorial = editorialById.get(
+      sourceUpdate.id
+    );
+
+    if (!editorial) {
+      merged.push(sourceUpdate);
+      continue;
+    }
+
+    if (!editorial.public_visible) {
+      continue;
+    }
+
+    merged.push(
+      parsePublishedUpdate(editorial) ??
+        sourceUpdate
+    );
+  }
+
+  const additional = rows
+    .filter(
+      (row) =>
+        row.public_visible &&
+        !sourceIds.has(row.item_key)
+    )
+    .map(parsePublishedUpdate)
+    .filter(
+      (update): update is GameUpdate =>
+        update !== null
+    );
 
   return [...merged, ...additional];
 }
@@ -83,7 +128,7 @@ function resolveUpdates(
   );
 }
 
-async function readPublishedUpdates() {
+async function readEditorialUpdates() {
   const workspace =
     await adminQuery<PublicationTableRow>(
       `SELECT
@@ -96,35 +141,17 @@ async function readPublishedUpdates() {
     return null;
   }
 
-  const result = await adminQuery<PublishedUpdateRow>(
+  const result = await adminQuery<EditorialUpdateRow>(
     `SELECT
        item_key,
-       published_payload
+       published_payload,
+       public_visible
      FROM deuna_admin.editorial_items
      WHERE item_type = 'game_update'
-       AND public_visible = true
      ORDER BY item_key ASC`
   );
-  const updates: GameUpdate[] = [];
 
-  for (const row of result.rows) {
-    try {
-      const update = parseEditorialPayload(
-        "game_update",
-        row.published_payload
-      );
-
-      if (update.id !== row.item_key) {
-        continue;
-      }
-
-      updates.push(update);
-    } catch {
-      // Un snapshot inválido no reemplaza la actualización fuente.
-    }
-  }
-
-  return updates;
+  return result.rows;
 }
 
 export const getPublicResolvedUpdates = cache(
@@ -133,14 +160,14 @@ export const getPublicResolvedUpdates = cache(
     const games = await getPublicGames();
 
     try {
-      const published = await readPublishedUpdates();
+      const editorial = await readEditorialUpdates();
 
-      if (!published || published.length === 0) {
+      if (!editorial || editorial.length === 0) {
         return resolveUpdates(sourceUpdates, games);
       }
 
       return resolveUpdates(
-        mergePublishedUpdates(published),
+        mergeEditorialUpdates(editorial),
         games
       );
     } catch {
