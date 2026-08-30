@@ -21,6 +21,11 @@ const notices = {
     message:
       "Hay datos inválidos. Revisa los límites y formatos del formulario.",
   },
+  asset: {
+    kind: "error",
+    message:
+      "Una de las imágenes indicadas no existe como archivo dentro de public/images. Corrige la ruta antes de guardar.",
+  },
   solicitud: {
     kind: "error",
     message:
