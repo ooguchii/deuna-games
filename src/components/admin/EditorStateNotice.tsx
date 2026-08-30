@@ -34,7 +34,7 @@ const notices = {
   "catalogo-en-uso": {
     kind: "warning",
     message:
-      "No se guardó el cambio porque quitaría o renombraría un término que todavía usa algún juego. Desactívalo si ya no querés ofrecerlo para nuevas fichas.",
+      "No se guardó el cambio porque quitaría o renombraría un término que todavía usa algún juego. Desactívalo si ya no quieres ofrecerlo para nuevas fichas.",
   },
   restaurado: {
     kind: "success",

@@ -332,7 +332,7 @@ export default function GameTaxonomyEditor({
                           disabled={used > 0}
                           title={
                             used > 0
-                              ? "Un término usado por juegos se conserva; podés desactivarlo."
+                              ? "Un término usado por juegos se conserva; puedes desactivarlo."
                               : "Eliminar término sin uso"
                           }
                           aria-label={`Eliminar ${term.label}`}
