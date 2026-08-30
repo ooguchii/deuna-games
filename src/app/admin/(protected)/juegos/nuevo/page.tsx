@@ -38,10 +38,11 @@ export default async function AdminNewGamePage({
     : parameters.estado;
   const fallbackClassifications = [
     ...new Set(
-      games.flatMap((game) => [
-        game.payload.category,
-        ...(game.payload.genres ?? []),
-      ])
+      games
+        .flatMap((game) => [
+          game.payload.category,
+          ...(game.payload.genres ?? []),
+        ])
         .map((value) => value.trim())
         .filter(Boolean)
     ),
@@ -80,7 +81,7 @@ export default async function AdminNewGamePage({
       <EditorStateNotice state={state} />
 
       <NewGameForm
-        categories={classifications}
+        classifications={classifications}
         existingSlugs={existingSlugs}
       />
     </>
