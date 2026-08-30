@@ -27,6 +27,7 @@ import type {
   ResolvedHomeConfig,
 } from "@/data/home-config";
 import {
+  homeRankingDescription,
   rankHomeGames,
   resolveHomeCollectionGames,
 } from "@/lib/home/ranking";
@@ -49,8 +50,7 @@ const collections: Array<{
     description:
       "Los títulos con mayor impacto visual y editorial de la portada.",
     limit: 4,
-    algorithm:
-      "Popularidad 38% · rating 24% · lanzamiento 18% · incorporación 8% · arte Hero 12%",
+    algorithm: homeRankingDescription("hero"),
   },
   {
     id: "popular",
@@ -59,8 +59,7 @@ const collections: Array<{
     description:
       "Orden dinámico de los juegos con mayor señal de fama dentro del catálogo.",
     limit: 7,
-    algorithm:
-      "Volumen de reseñas 58% · rating 24% · lanzamiento 10% · incorporación 8%",
+    algorithm: homeRankingDescription("popular"),
   },
   {
     id: "lowSpec",
@@ -69,8 +68,7 @@ const collections: Array<{
     description:
       "Juegos con requisitos mínimos moderados y buena calidad editorial.",
     limit: 7,
-    algorithm:
-      "RAM mínima 60% · rating 18% · popularidad 10% · ficha completa 12%. Automático sólo considera juegos con RAM mínima conocida de hasta 12 GB.",
+    algorithm: homeRankingDescription("lowSpec"),
   },
   {
     id: "recommended",
@@ -79,8 +77,7 @@ const collections: Array<{
     description:
       "Selección de descubrimiento equilibrando calidad, interés y actualidad.",
     limit: 7,
-    algorithm:
-      "Rating 34% · popularidad 28% · lanzamiento 16% · ficha completa 12% · incorporación 10%",
+    algorithm: homeRankingDescription("recommended"),
   },
 ];
 
