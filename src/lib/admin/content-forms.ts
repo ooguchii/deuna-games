@@ -36,6 +36,48 @@ const optionalLocalImage = z
   )
   .transform((value) => value || undefined);
 
+function delimitedTextList(
+  maximumItems: number,
+  maximumItemLength: number,
+  maximumInputLength: number
+) {
+  return z
+    .string()
+    .max(maximumInputLength)
+    .transform((value) =>
+      value
+        .split(/[,\r\n]+/)
+        .map((item) => item.trim())
+        .filter(Boolean)
+    )
+    .pipe(
+      z
+        .array(
+          z.string().min(1).max(maximumItemLength)
+        )
+        .max(maximumItems)
+        .superRefine((items, context) => {
+          const seen = new Set<string>();
+
+          items.forEach((item, index) => {
+            const normalized = item.toLocaleLowerCase("es");
+
+            if (seen.has(normalized)) {
+              context.addIssue({
+                code: "custom",
+                path: [index],
+                message: "Los valores no pueden repetirse.",
+              });
+            }
+            seen.add(normalized);
+          });
+        })
+    )
+    .transform((items) =>
+      items.length > 0 ? items : undefined
+    );
+}
+
 const screenshotsTextSchema = z
   .string()
   .max(3_500)
@@ -71,6 +113,50 @@ const screenshotsTextSchema = z
   )
   .transform((value) =>
     value.length > 0 ? value : undefined
+  );
+
+const gamePlatformSchema = z.enum([
+  "PC",
+  "PlayStation",
+  "Xbox",
+  "Nintendo Switch",
+]);
+
+const platformsJsonSchema = z
+  .string()
+  .max(180)
+  .transform((value, context) => {
+    try {
+      return JSON.parse(value) as unknown;
+    } catch {
+      context.addIssue({
+        code: "custom",
+        message: "La lista de plataformas no contiene JSON válido.",
+      });
+      return z.NEVER;
+    }
+  })
+  .pipe(
+    z
+      .array(gamePlatformSchema)
+      .max(4)
+      .superRefine((platforms, context) => {
+        const seen = new Set<string>();
+
+        platforms.forEach((platform, index) => {
+          if (seen.has(platform)) {
+            context.addIssue({
+              code: "custom",
+              path: [index],
+              message: "Una plataforma no puede repetirse.",
+            });
+          }
+          seen.add(platform);
+        });
+      })
+  )
+  .transform((platforms) =>
+    platforms.length > 0 ? platforms : undefined
   );
 
 const downloadSourceFormSchema = z
@@ -226,6 +312,18 @@ export const editorialGameFormSchema = z.object({
     )
     .transform((value) => value || undefined),
   imageAlt: z.string().trim().min(1).max(240),
+});
+
+export const editorialGameAdvancedFormSchema = z.object({
+  expectedRevision: expectedRevisionSchema,
+  shortTitle: optionalText(140),
+  highlightedTitle: optionalText(140),
+  developer: optionalText(160),
+  publisher: optionalText(160),
+  releaseDate: optionalText(40),
+  genresText: delimitedTextList(20, 80, 1_800),
+  tagsText: delimitedTextList(30, 80, 2_600),
+  platformsJson: platformsJsonSchema,
 });
 
 export const editorialGameDownloadFormSchema = z.object({
