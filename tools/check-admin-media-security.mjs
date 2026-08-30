@@ -143,6 +143,27 @@ const uploadRoute = await readFile(
   ),
   "utf8"
 );
+const remoteRoute = await readFile(
+  path.join(
+    root,
+    "src/app/api/admin/content/games/[slug]/media-source/route.ts"
+  ),
+  "utf8"
+);
+const uploadForm = await readFile(
+  path.join(
+    root,
+    "src/components/admin/GameMediaUploadForm.tsx"
+  ),
+  "utf8"
+);
+const remoteSource = await readFile(
+  path.join(
+    root,
+    "src/lib/media/remote-image-source.ts"
+  ),
+  "utf8"
+);
 const mediaStorage = await readFile(
   path.join(
     root,
@@ -204,6 +225,45 @@ assert(
   "La carga debe validar campos exactos, concurrencia y guardar sólo en borrador."
 );
 assert(
+  uploadForm.includes('"use client"') &&
+    uploadForm.includes("createImageBitmap") &&
+    uploadForm.includes('"image/webp"') &&
+    uploadForm.includes("MAX_OUTPUT_BYTES") &&
+    uploadForm.includes('value="url"') &&
+    uploadForm.includes('value="manual"') &&
+    uploadForm.includes("media-source") &&
+    uploadForm.includes("application/x-www-form-urlencoded"),
+  "El editor debe normalizar PNG/JPEG/AVIF/WebP en el navegador, permitir ajuste automático o manual e importar por URL sin saltarse la ruta administrativa."
+);
+assert(
+  remoteRoute.includes(
+    "authorizeAdminFormRequest"
+  ) &&
+    remoteRoute.includes(
+      "hasExactAdminFormFields"
+    ) &&
+    remoteRoute.includes(
+      "fetchRemoteEditorialImage"
+    ) &&
+    remoteRoute.includes(
+      '"Cache-Control": "no-store, max-age=0"'
+    ),
+  "La importación remota debe permanecer autenticada, con campos exactos y sin cachear la imagen origen."
+);
+assert(
+  remoteSource.includes("BlockList") &&
+    remoteSource.includes("lookup") &&
+    remoteSource.includes("httpsRequest") &&
+    remoteSource.includes("MAX_REMOTE_IMAGE_BYTES") &&
+    remoteSource.includes('url.protocol !== "https:"') &&
+    remoteSource.includes("MAX_REDIRECTS") &&
+    remoteSource.includes('"127.0.0.0"') &&
+    remoteSource.includes('"192.168.0.0"') &&
+    remoteSource.includes('"fc00::"') &&
+    remoteSource.includes('"fe80::"'),
+  "Las URLs de imagen deben limitarse a HTTPS público, resolver DNS de forma controlada y bloquear loopback, redes privadas y redirecciones abusivas."
+);
+assert(
   mediaStorage.includes(
     "DEUNA_EDITORIAL_MEDIA_ROOT"
   ) &&
@@ -255,5 +315,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  "Seguridad multimedia administrativa: OK (WebP, multipart, almacenamiento y ruta pública verificados)."
+  "Seguridad multimedia administrativa: OK (normalización local, URLs HTTPS públicas, WebP, multipart, almacenamiento y ruta pública verificados)."
 );
