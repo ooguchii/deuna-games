@@ -17,6 +17,9 @@ import {
   sourceHomeConfig,
 } from "../../src/data/home-config.ts";
 import {
+  sourcePublicPagesConfig,
+} from "../../src/data/public-pages-config.ts";
+import {
   gameUpdates,
 } from "../../src/data/update-records.ts";
 import {
@@ -169,6 +172,12 @@ function buildSourceItems(): SourceItem[] {
       sourceAboutConfig
     )
   );
+  const publicPagesConfig = normalizeEditorialPayload(
+    parseEditorialPayload(
+      "public_pages_config",
+      sourcePublicPagesConfig
+    )
+  );
 
   for (const slug of new Set([
     ...homeConfig.heroSlugs,
@@ -220,6 +229,12 @@ function buildSourceItems(): SourceItem[] {
       type: "about_config",
       key: "about",
       payload: aboutConfig as unknown as Record<string, unknown>,
+    },
+    {
+      type: "public_pages_config",
+      key: "public-pages",
+      payload:
+        publicPagesConfig as unknown as Record<string, unknown>,
     },
   ];
   const identities = new Set<string>();
@@ -464,6 +479,7 @@ async function markMissingSources(
     "site_config",
     "home_config",
     "about_config",
+    "public_pages_config",
   ] satisfies EditorialItemType[]) {
     const keys = items
       .filter((item) => item.type === type)
@@ -490,11 +506,16 @@ async function main() {
     "game_taxonomy",
     buildGameTaxonomy(games)
   );
+  const sourcePublicPages = parseEditorialPayload(
+    "public_pages_config",
+    sourcePublicPagesConfig
+  );
 
   if (validateOnly) {
     void sourceTaxonomy;
+    void sourcePublicPages;
     console.log(
-      `Contenido editorial validado: ${games.length} juegos, ${gameUpdates.length} actualizaciones, 1 configuración, 1 portada, 1 página institucional y taxonomía de juegos válida.`
+      `Contenido editorial validado: ${games.length} juegos, ${gameUpdates.length} actualizaciones, 1 configuración, 1 portada, 1 página institucional, 1 configuración de superficies públicas y taxonomía de juegos válida.`
     );
     return;
   }
