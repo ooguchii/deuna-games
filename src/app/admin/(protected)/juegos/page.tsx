@@ -67,7 +67,9 @@ export default async function AdminGamesPage({
       category: item.payload.category,
       version: item.payload.version ?? null,
       revision: item.revision,
-      publicationNumber: publication?.publicationNumber ?? null,
+      publicationNumber: neverPublished
+        ? null
+        : publication?.publicationNumber ?? null,
       status,
       searchText: [
         item.payload.title,
