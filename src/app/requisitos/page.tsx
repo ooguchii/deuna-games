@@ -9,8 +9,10 @@ import {
 
 import Footer from "@/components/layout/Footer";
 import Header from "@/components/layout/Header";
-import { games } from "@/data/games";
 import GameFinderClient from "@/features/game-finder/GameFinderClient";
+import {
+  getPublicGames,
+} from "@/lib/games/public-catalog";
 import {
   absoluteUrl,
   siteConfig,
@@ -18,6 +20,8 @@ import {
 import { safeJsonLd } from "@/lib/safe-json-ld";
 
 import styles from "./page.module.css";
+
+export const dynamic = "force-dynamic";
 
 type RequirementsSearchParams = {
   juego?: string;
@@ -34,7 +38,10 @@ const description =
 export async function generateMetadata({
   searchParams,
 }: RequirementsPageProps): Promise<Metadata> {
-  const params = await searchParams;
+  const [params, games] = await Promise.all([
+    searchParams,
+    getPublicGames(),
+  ]);
   const hasFocusedGame =
     typeof params.juego === "string" &&
     games.some((game) => game.slug === params.juego);
@@ -73,7 +80,10 @@ export async function generateMetadata({
 export default async function RequirementsPage({
   searchParams,
 }: RequirementsPageProps) {
-  const { juego } = await searchParams;
+  const [{ juego }, games] = await Promise.all([
+    searchParams,
+    getPublicGames(),
+  ]);
   const focusedSlug =
     typeof juego === "string" &&
     games.some((game) => game.slug === juego)
