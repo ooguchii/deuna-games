@@ -4,6 +4,7 @@ import {
   CircleSlash2,
   Eye,
   Pencil,
+  Plus,
 } from "lucide-react";
 
 import EditorStateNotice from "@/components/admin/EditorStateNotice";
@@ -57,13 +58,20 @@ export default async function AdminGamesPage({
             Guardar conserva un borrador versionado. La web pública sólo cambia cuando se crea un snapshot mediante Publicar.
           </p>
         </div>
+        <Link
+          href="/admin/juegos/nuevo"
+          className={styles.tableAction}
+        >
+          <Plus size={15} aria-hidden="true" />
+          Nuevo juego
+        </Link>
       </header>
 
       <EditorStateNotice state={state} />
 
       <section className={styles.tablePanel}>
         <div className={styles.tableSummary}>
-          <strong>{items.length} juegos importados</strong>
+          <strong>{items.length} juegos editoriales</strong>
           <span>
             {publicationStates
               ? "Publicación controlada"
@@ -73,7 +81,7 @@ export default async function AdminGamesPage({
 
         {items.length === 0 ? (
           <p className={styles.emptyState}>
-            Ejecuta `npm run admin:import-content` desde la copia privada del VPS.
+            Importa el catálogo fuente o crea un juego nuevo como borrador privado.
           </p>
         ) : (
           <div className={styles.tableWrap}>
