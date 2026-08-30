@@ -42,24 +42,17 @@ type Section = {
 
 const sections: Section[] = [
   {
-    kind: "categories",
-    title: "Categorías",
+    kind: "classifications",
+    title: "Clasificaciones",
     description:
-      "Clasificación principal. Su icono, color y orden se reutilizan en Inicio y en el catálogo público.",
-    singular: "categoría",
-  },
-  {
-    kind: "genres",
-    title: "Géneros",
-    description:
-      "Clasificaciones específicas. Su identidad visual se reutiliza donde el género sea visible públicamente.",
-    singular: "género",
+      "Una sola lista para Acción, Aventura, RPG, Carreras, Puzzle y cualquier otra clasificación. Cada nombre tiene un único icono, color, orden y contador en toda la web.",
+    singular: "clasificación",
   },
   {
     kind: "tags",
     title: "Etiquetas",
     description:
-      "Atributos descriptivos como Mundo abierto, Cooperativo o Ciencia ficción.",
+      "Atributos descriptivos como Mundo abierto, Cooperativo o Ciencia ficción. No compiten con las clasificaciones principales del catálogo.",
     singular: "etiqueta",
   },
 ];
@@ -107,8 +100,9 @@ function visualizedTaxonomy(
   taxonomy: GameTaxonomy
 ): GameTaxonomy {
   return {
-    categories: taxonomy.categories.map(withTaxonomyVisualDefaults),
-    genres: taxonomy.genres.map(withTaxonomyVisualDefaults),
+    classifications: taxonomy.classifications.map(
+      withTaxonomyVisualDefaults
+    ),
     tags: taxonomy.tags,
   };
 }
@@ -128,8 +122,7 @@ export default function GameTaxonomyEditor({
   const [draftLabels, setDraftLabels] = useState<
     Record<GameTaxonomyKind, string>
   >({
-    categories: "",
-    genres: "",
+    classifications: "",
     tags: "",
   });
   const [feedback, setFeedback] = useState("");
@@ -280,9 +273,9 @@ export default function GameTaxonomyEditor({
 
       <div className={styles.summary}>
         <div>
-          <strong>Datos maestros del catálogo</strong>
+          <strong>Una sola clasificación maestra</strong>
           <p>
-            Ésta es la identidad única de categorías y géneros. Nombre, icono, color y orden se reutilizan en todas las superficies públicas que correspondan a juegos publicados.
+            Categoría y género ya no son dos cosas diferentes. Acción, Aventura, RPG y el resto existen una sola vez y esa misma definición alimenta Inicio, Juegos, filtros y edición administrativa.
           </p>
         </div>
         <span>Revisión {revision}</span>
@@ -298,7 +291,7 @@ export default function GameTaxonomyEditor({
         {sections.map((section) => {
           const terms = taxonomy[section.kind];
           const active = terms.filter((term) => term.active).length;
-          const hasVisuals = section.kind !== "tags";
+          const hasVisuals = section.kind === "classifications";
 
           return (
             <section key={section.kind} className={styles.panel}>
@@ -501,7 +494,7 @@ export default function GameTaxonomyEditor({
 
       <div className={styles.actions}>
         <p>
-          El orden que definas aquí será también el orden público. Los términos usados no se borran ni renombran, pero sí puedes cambiar su icono, color, posición o estado sin duplicar configuraciones.
+          El contador de uso considera cada juego una sola vez por clasificación, aunque el contenido antiguo la tuviera guardada simultáneamente como categoría y género.
         </p>
         <button type="submit">
           Guardar catálogos
