@@ -4,40 +4,41 @@ import { ChevronRight } from "lucide-react";
 
 import CardCarousel from "@/components/ui/CardCarousel";
 import UniversalGameCard from "@/components/ui/UniversalGameCard";
+import type { HomeCopy } from "@/data/home-config";
 import type { Game } from "@/types/game";
 
 import styles from "./RecommendedGames.module.css";
 
 export default function RecommendedGames({
   games,
+  copy,
 }: {
   games: Game[];
+  copy: HomeCopy["recommended"];
 }) {
   return (
     <section className={styles.section}>
       <div className={styles.header}>
         <div>
           <span className={styles.eyebrow}>
-            PARA DESCUBRIR
+            {copy.eyebrow}
           </span>
 
           <h2>
-            JUEGOS <strong>RECOMENDADOS</strong>
+            {copy.title} <strong>{copy.highlight}</strong>
           </h2>
 
-          <p>
-            Una selección de juegos que creemos que vale la pena conocer.
-          </p>
+          <p>{copy.text}</p>
         </div>
 
         <Link href="/juegos">
-          Ver catálogo
+          {copy.linkLabel}
           <ChevronRight size={18} aria-hidden="true" />
         </Link>
       </div>
 
       <CardCarousel
-        ariaLabel="Juegos recomendados"
+        ariaLabel={`${copy.title} ${copy.highlight}`}
         itemsDesktop={5}
       >
         {games.map((game) => (
