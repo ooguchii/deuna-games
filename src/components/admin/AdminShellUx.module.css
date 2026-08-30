@@ -1,60 +1,185 @@
 .shell.shell {
-  grid-template-columns: 224px minmax(0, 1fr);
+  grid-template-columns: 232px minmax(0, 1fr);
+  background: #060a10;
 }
 
 .sidebar.sidebar {
-  padding: 16px 12px 14px;
+  padding: 17px 13px 15px;
+  border-right-color: #263240;
+  background:
+    linear-gradient(180deg, #0b1119 0%, #070c12 62%, #070b10 100%);
 }
 
 .main.main {
-  padding: 24px clamp(18px, 2.8vw, 38px) 42px;
+  padding: 26px clamp(22px, 3vw, 44px) 48px;
+  background:
+    radial-gradient(
+      820px 420px at 86% -8%,
+      color-mix(in srgb, var(--brand) 5%, transparent),
+      transparent 70%
+    ),
+    #070b11;
 }
 
 .navigation.navigation {
-  gap: 3px;
-  margin-top: 14px;
+  gap: 4px;
+  margin-top: 16px;
 }
 
 .navigation.navigation a {
-  min-height: 38px;
-  padding: 0 10px;
-  border-radius: 7px;
-  font-size: 11px;
+  min-height: 42px;
+  padding: 0 11px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1;
 }
 
 .activeLink.activeLink {
-  color: #f6f8fb;
-  border-color: color-mix(in srgb, var(--brand) 34%, #24303c);
+  color: #f8fafc;
+  border-color: color-mix(in srgb, var(--brand) 42%, #2c3947);
   background:
     linear-gradient(
       90deg,
-      color-mix(in srgb, var(--brand) 11%, #0c1219),
-      #0b1118
+      color-mix(in srgb, var(--brand) 15%, #111922),
+      #0d141d
     );
-  box-shadow: inset 3px 0 0 var(--brand);
+  box-shadow:
+    inset 3px 0 0 var(--brand),
+    0 7px 18px rgba(0, 0, 0, 0.14);
 }
 
 .activeLink.activeLink svg {
   color: #ff8da8;
 }
 
+/* Escala de lectura del área de trabajo. */
+.main > a:first-of-type {
+  font-size: 12px;
+}
+
+.main > header {
+  border-bottom-color: #2a3644;
+}
+
+.main > header > div > span {
+  font-size: 11px;
+}
+
+.main > header p {
+  color: #98a5b4;
+  font-size: 13px;
+}
+
+.main > section {
+  border-color: #2b3745;
+  background:
+    linear-gradient(160deg, #0d141e 0%, #0a1119 100%);
+  box-shadow:
+    0 14px 34px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.025);
+}
+
+.main > section h2 {
+  color: #f0f4f8;
+  font-size: 22px;
+}
+
+.main > section > div > div > span {
+  font-size: 10px;
+}
+
+.main > section > div > p {
+  color: #8b98a8;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.main label > span {
+  color: #c8d1dc;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.main input,
+.main textarea,
+.main select {
+  color: #f3f6fa;
+  border-color: #354353;
+  background: #090f17;
+  font-size: 13px;
+}
+
+.main input,
+.main select {
+  min-height: 46px;
+}
+
+.main textarea {
+  line-height: 1.6;
+}
+
+.main input::placeholder,
+.main textarea::placeholder {
+  color: #657385;
+}
+
+.main fieldset {
+  border-color: #31404e;
+  background: #0a1119;
+}
+
+.main fieldset legend {
+  color: #b9c4cf;
+}
+
+.main form p {
+  color: #8190a0;
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.main form button {
+  font-size: 12px;
+}
+
+.main table {
+  font-size: 12px;
+}
+
+.main table thead th {
+  color: #8795a5;
+  font-size: 10px;
+}
+
+.main table tbody th strong {
+  font-size: 13px;
+}
+
+.main table tbody th span {
+  color: #748293;
+  font-size: 10px;
+}
+
 .contextBar {
   position: sticky;
-  top: 8px;
+  top: 10px;
   z-index: 30;
   width: fit-content;
   max-width: 100%;
   display: flex;
   align-items: center;
-  gap: 4px;
-  margin: -5px 0 12px auto;
-  padding: 5px;
+  gap: 6px;
+  margin: -4px 0 16px auto;
+  padding: 6px;
   overflow-x: auto;
-  border: 1px solid #202b36;
-  border-radius: 9px;
-  background: rgba(7, 12, 18, 0.94);
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.24);
-  backdrop-filter: blur(16px);
+  border: 1px solid #334150;
+  border-radius: 12px;
+  background:
+    linear-gradient(180deg, rgba(15, 23, 33, 0.98), rgba(9, 15, 23, 0.98));
+  box-shadow:
+    0 14px 34px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.035);
+  backdrop-filter: blur(18px);
   scrollbar-width: none;
 }
 
@@ -63,41 +188,62 @@
 }
 
 .contextBar a {
-  min-height: 29px;
+  min-height: 42px;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 7px;
   flex: 0 0 auto;
-  padding: 0 8px;
-  color: #84909e;
-  border: 1px solid transparent;
-  border-radius: 6px;
-  font-size: 8px;
-  font-weight: 800;
+  padding: 0 13px;
+  color: #a1adba;
+  border: 1px solid #273442;
+  border-radius: 8px;
+  background: #0b121b;
+  font-size: 12px;
+  font-weight: 760;
   white-space: nowrap;
+  transition:
+    color 150ms ease,
+    border-color 150ms ease,
+    background 150ms ease,
+    transform 150ms ease;
 }
 
 .contextBar a:hover,
 .contextBar a:focus-visible {
-  color: #f2becb;
-  border-color: color-mix(in srgb, var(--brand) 26%, #27323e);
-  background: color-mix(in srgb, var(--brand) 5%, #0a1017);
+  color: #f7d7df;
+  border-color: color-mix(in srgb, var(--brand) 38%, #394654);
+  background: color-mix(in srgb, var(--brand) 7%, #101821);
+  transform: translateY(-1px);
 }
 
 .contextActive.contextActive {
   color: #ffffff;
-  border-color: color-mix(in srgb, var(--brand) 46%, #2b3540);
+  border-color: color-mix(in srgb, var(--brand) 66%, #3b4652);
   background:
     linear-gradient(
       180deg,
-      color-mix(in srgb, var(--brand) 14%, #101720),
-      color-mix(in srgb, var(--brand) 7%, #0a1017)
+      color-mix(in srgb, var(--brand) 22%, #151d27),
+      color-mix(in srgb, var(--brand) 11%, #0d151e)
     );
-  box-shadow: inset 0 -2px 0 var(--brand);
+  box-shadow:
+    inset 0 -3px 0 var(--brand),
+    0 7px 18px color-mix(in srgb, var(--brand) 9%, transparent);
 }
 
 .contextActive.contextActive svg {
-  color: #ff8da8;
+  color: #ff9db3;
+}
+
+@media (max-width: 980px) {
+  .shell.shell {
+    grid-template-columns: 210px minmax(0, 1fr);
+  }
+
+  .contextBar a {
+    min-height: 40px;
+    padding: 0 11px;
+    font-size: 11px;
+  }
 }
 
 @media (max-width: 760px) {
@@ -110,24 +256,44 @@
   }
 
   .main.main {
-    padding: 18px 13px 36px;
+    padding: 20px 14px 38px;
   }
 
   .navigation.navigation {
     display: flex;
-    gap: 5px;
+    gap: 6px;
     overflow-x: auto;
   }
 
   .navigation.navigation a {
     min-width: auto;
     flex: 0 0 auto;
-    padding: 0 10px;
+    padding: 0 11px;
+    font-size: 12px;
   }
 
   .contextBar {
     top: 4px;
     width: 100%;
-    margin: -3px 0 10px;
+    margin: 0 0 14px;
+  }
+
+  .contextBar a {
+    min-height: 42px;
+    font-size: 12px;
+  }
+
+  .main > section {
+    border-color: #334150;
+  }
+
+  .main label > span {
+    font-size: 12px;
+  }
+
+  .main input,
+  .main textarea,
+  .main select {
+    font-size: 14px;
   }
 }
