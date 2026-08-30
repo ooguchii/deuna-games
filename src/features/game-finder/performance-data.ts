@@ -1,3 +1,7 @@
+import type {
+  GamePerformanceCalibration,
+} from "@/types/game";
+
 import type { GamePerformanceProfile } from "./types";
 
 export const performanceModelReference = {
@@ -47,8 +51,24 @@ const profiles: GamePerformanceProfile[] = [
 
 const profileMap = new Map(profiles.map((profile) => [profile.slug, profile]));
 
+export function resolvePerformanceProfile(
+  slug: string,
+  calibration?: GamePerformanceCalibration
+): GamePerformanceProfile | null {
+  if (calibration) {
+    return {
+      slug,
+      referenceFps: calibration.referenceFps,
+      ramGb: calibration.ramGb,
+      fpsCap: calibration.fpsCap,
+    };
+  }
+
+  return profileMap.get(slug) ?? null;
+}
+
 export function getPerformanceProfile(slug: string): GamePerformanceProfile {
-  const profile = profileMap.get(slug);
+  const profile = resolvePerformanceProfile(slug);
 
   if (!profile) {
     throw new Error(`No existe un perfil de rendimiento para "${slug}".`);
