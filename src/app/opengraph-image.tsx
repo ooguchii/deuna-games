@@ -1,4 +1,7 @@
 import {
+  getPublicHomeConfig,
+} from "@/lib/home/public-home-config";
+import {
   getPublicSiteConfig,
 } from "@/lib/site/public-site-config";
 import {
@@ -19,7 +22,13 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export default async function OpenGraphImage() {
-  const config = await getPublicSiteConfig();
+  const [config, homeConfig] = await Promise.all([
+    getPublicSiteConfig(),
+    getPublicHomeConfig(),
+  ]);
 
-  return createSocialImage(config);
+  return createSocialImage({
+    ...config,
+    headline: homeConfig.copy.hero.accessibleTitle,
+  });
 }
