@@ -38,7 +38,15 @@ npm.cmd run audit:deps
 npm.cmd run security:scan
 ```
 
-`npm run check` ejecuta lint, TypeScript, higiene del código fuente, privacidad pública, encoding UTF-8, integridad de datos, assets, rutas, variables CSS, CSS Modules, build de producción y smoke test sobre el runtime standalone construido. CI repite estas verificaciones, suma el security scan y audita dependencias en cada Pull Request hacia `master`.
+`npm run check` ejecuta lint, TypeScript, arquitectura, invariantes de mantenimiento, higiene del código fuente, privacidad pública, encoding UTF-8, integridad de datos, assets, rutas, variables CSS, CSS Modules, build de producción y smoke test sobre el runtime standalone construido. CI repite estas verificaciones, suma el security scan y audita dependencias en cada Pull Request, independientemente de la rama base.
+
+### Mantenimiento
+
+```powershell
+npm.cmd run check:maintenance
+```
+
+Bloquea la reaparición de herramientas temporales de diagnóstico y comprueba invariantes que deben conservarse después de la auditoría: protección cross-site compatible con el flujo local, formularios administrativos con campos exactos, staging seguro con los wrappers requeridos y CI desacoplada de ramas temporales.
 
 ### Privacidad pública
 
@@ -106,7 +114,7 @@ Levanta temporalmente `.next/standalone/server.js` en loopback y comprueba el co
 npm.cmd run security:scan
 ```
 
-El auditor es Node y funciona de forma equivalente en Windows y CI. Busca archivos sensibles o históricos trackeados, posibles secretos hardcodeados, rutas personales en código público, archivos riesgosos dentro de `public/` y cadenas sensibles. También ejecuta la auditoría de dependencias de producción salvo que se invoque internamente con `--skip-npm-audit`.
+El auditor es Node y funciona de forma equivalente en Windows y CI. Revisa los archivos textuales versionados del repositorio, además de `public/`: busca archivos sensibles o históricos trackeados, posibles secretos hardcodeados, rutas personales, credenciales/tokens conocidos, URLs de base de datos con contraseña y archivos riesgosos. También inspecciona imágenes públicas y ejecuta la auditoría de dependencias de producción salvo que se invoque internamente con `--skip-npm-audit`.
 
 Para retirar EXIF/XMP de los WebP sin recomprimirlos y normalizar sus flags `VP8X`:
 
@@ -139,7 +147,7 @@ La primera etapa del panel se encuentra en `/admin` e incorpora:
 - `noindex`, `noarchive` y `no-store` en todas las rutas administrativas;
 - ausencia deliberada de IP, user-agent, ubicación, huellas de dispositivo y actividad de visitantes en la base administrativa.
 
-`DEUNA_ADMIN_ORIGIN` fija el origen exacto aceptado por los formularios y redirects del panel. En producción debe ser el origen HTTPS real accesible mediante la VPN; no se deriva del encabezado `Host` de la solicitud.
+`DEUNA_ADMIN_ORIGIN` fija el origen exacto aceptado por los formularios y redirects del panel. En producción debe ser el origen HTTPS real accesible mediante la VPN; no se deriva del encabezado `Host` de la solicitud. En desarrollo local la validación conserva el rechazo de solicitudes cross-site y admite las variantes legítimas de cabeceras que algunos navegadores envían bajo políticas de privacidad.
 
 El panel permanece deshabilitado cuando `DEUNA_ADMIN_ENABLED` no es exactamente `true`. El área editorial permite modificar borradores en PostgreSQL, pero no publica esos cambios: la web pública continúa leyendo los archivos versionados hasta que se implemente y audite una transición explícita. Cada guardado crea una revisión inmutable y una entrada mínima de auditoría administrativa; restaurar una versión genera otra revisión y no elimina el historial.
 
@@ -202,6 +210,8 @@ npm run admin:change-password
 
 El comando vuelve a aplicar la política, guarda únicamente el hash `scrypt`, elimina el bloqueo por intentos fallidos, revoca todas las sesiones anteriores y registra el cambio sin conservar la contraseña.
 
+El flujo local de PostgreSQL, rotación de contraseña, verificación de credenciales, creación de sesión y acceso al panel desde navegador fue validado sobre WSL2. Las herramientas temporales utilizadas durante ese diagnóstico no forman parte del proyecto mantenido.
+
 Al finalizar, iniciar el servidor limitado al equipo local:
 
 ```bash
@@ -253,5 +263,5 @@ tools/            herramientas mantenidas de build, seguridad e integridad
 - Las páginas con filtros/query deben mantener una URL canónica estable y evitar indexar combinaciones arbitrarias.
 - No agregar enlaces internos a rutas inexistentes ni assets públicos sin referencia real.
 - Una actualización sólo puede aparecer como descargable si el juego tiene un destino de descarga real y validado.
-- Los ratings, reseñas, fechas y demás métricas editoriales deben tener una fuente o metodología definida antes de tratarse como datos públicos reales.
+- Los ratings, reseñas, fechas y demás métricas editoriales deben tener una fuente o metodología definida antes de tratarlos como datos públicos reales.
 - Los cambios estructurales deben pasar por una rama/PR y mantener CI verde antes de llegar a `master`.
