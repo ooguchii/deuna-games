@@ -3,6 +3,43 @@ import type { NextConfig } from "next";
 const isDev =
   process.env.NODE_ENV !== "production";
 
+function isPrivateIpv4(value: string) {
+  const octets = value.split(".").map(Number);
+
+  if (
+    octets.length !== 4 ||
+    octets.some(
+      (octet) =>
+        !Number.isInteger(octet) ||
+        octet < 0 ||
+        octet > 255
+    )
+  ) {
+    return false;
+  }
+
+  if (octets[0] === 10) return true;
+  if (
+    octets[0] === 192 &&
+    octets[1] === 168
+  ) {
+    return true;
+  }
+
+  return (
+    octets[0] === 172 &&
+    octets[1] >= 16 &&
+    octets[1] <= 31
+  );
+}
+
+const lanHost =
+  process.env.DEUNA_LAN_HOST?.trim() ?? "";
+const allowedDevOrigins =
+  isDev && isPrivateIpv4(lanHost)
+    ? [lanHost]
+    : undefined;
+
 const contentSecurityPolicy = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${
@@ -81,6 +118,10 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   compress: true,
   reactStrictMode: true,
+
+  ...(allowedDevOrigins
+    ? { allowedDevOrigins }
+    : {}),
 
   /*
    * Genera un runtime mínimo para producción.
