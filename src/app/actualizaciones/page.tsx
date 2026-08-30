@@ -2,22 +2,24 @@ import type {
   Metadata,
 } from "next";
 
-import Link from "next/link";
-
 import {
   CalendarDays,
-  ChevronRight,
   Gamepad2,
-  House,
   Layers3,
   RefreshCcw,
 } from "lucide-react";
 
-import FeaturedUpdatesSlider from "@/components/updates/FeaturedUpdatesSlider";
-import UpdatesCatalogClient from "@/components/updates/UpdatesCatalogClient";
 import Footer from "@/components/layout/Footer";
 import Header from "@/components/layout/Header";
-
+import PublicBreadcrumb from "@/components/layout/PublicBreadcrumb";
+import FeaturedUpdatesSlider from "@/components/updates/FeaturedUpdatesSlider";
+import UpdatesCatalogClient from "@/components/updates/UpdatesCatalogClient";
+import {
+  safeJsonLd,
+} from "@/lib/safe-json-ld";
+import {
+  buildBreadcrumbJsonLd,
+} from "@/lib/seo/breadcrumb";
 import {
   absoluteUrl,
 } from "@/lib/site";
@@ -27,9 +29,6 @@ import {
 import {
   getPublicSiteConfig,
 } from "@/lib/site/public-site-config";
-import {
-  safeJsonLd,
-} from "@/lib/safe-json-ld";
 import {
   formatCompactUpdateDate,
   parseDownloadFilter,
@@ -176,33 +175,10 @@ export default async function UpdatesPage({
         ]
       : resolvedGameUpdates;
 
-  const breadcrumbJsonLd = {
-    "@context":
-      "https://schema.org",
-    "@type":
-      "BreadcrumbList",
-    itemListElement: [
-      {
-        "@type":
-          "ListItem",
-        position: 1,
-        name: "Inicio",
-        item:
-          absoluteUrl("/"),
-      },
-      {
-        "@type":
-          "ListItem",
-        position: 2,
-        name:
-          page.title,
-        item:
-          absoluteUrl(
-            "/actualizaciones"
-          ),
-      },
-    ],
-  };
+  const breadcrumbJsonLd = buildBreadcrumbJsonLd(
+    page.title,
+    "/actualizaciones"
+  );
 
   const collectionJsonLd = {
     "@context":
@@ -251,31 +227,11 @@ export default async function UpdatesPage({
           styles.main
         }
       >
-        <nav
-          className={
-            styles.breadcrumb
-          }
-          aria-label="Migas de pan"
-        >
-          <Link href="/">
-            <House
-              size={14}
-              aria-hidden="true"
-            />
-            Inicio
-          </Link>
-
-          <ChevronRight
-            size={14}
-            aria-hidden="true"
-          />
-
-          <span
-            aria-current="page"
-          >
-            {page.title}
-          </span>
-        </nav>
+        <PublicBreadcrumb
+          className={styles.breadcrumb}
+          currentLabel={page.title}
+          iconSize={14}
+        />
 
         <section
           className={
