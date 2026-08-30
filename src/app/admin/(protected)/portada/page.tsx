@@ -21,6 +21,9 @@ import {
 import {
   verifyAdminSession,
 } from "@/lib/admin/session";
+import {
+  getPublicGames,
+} from "@/lib/games/public-catalog";
 
 import styles from "../../admin.module.css";
 
@@ -61,11 +64,13 @@ export default async function AdminHomeEditorPage({
   const [
     item,
     games,
+    publicGames,
     gamePublicationStates,
     parameters,
   ] = await Promise.all([
     getEditorialItem("home_config", "home"),
     listEditorialItems("game"),
+    getPublicGames(),
     listPublicationStates("game"),
     searchParams,
   ]);
@@ -120,6 +125,7 @@ export default async function AdminHomeEditorPage({
         <HomeCurationEditor
           config={resolved}
           games={games.map((game) => game.payload)}
+          publicGames={publicGames}
           publishedSlugs={publishedSlugs}
           revision={item.revision}
         />
