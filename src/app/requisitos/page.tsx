@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Footer from "@/components/layout/Footer";
 import Header from "@/components/layout/Header";
 import PublicBreadcrumb from "@/components/layout/PublicBreadcrumb";
+import CpuIdentificationAssistant from "@/features/game-finder/CpuIdentificationAssistant";
 import GameFinderClient from "@/features/game-finder/GameFinderClient";
 import {
   PublicFinderCopyProvider,
@@ -159,6 +160,8 @@ export default async function RequirementsPage({
             __html: safeJsonLd(performanceCalibrations),
           }}
         />
+
+        <CpuIdentificationAssistant />
 
         <PublicFinderCopyProvider copy={page}>
           <GameFinderClient
