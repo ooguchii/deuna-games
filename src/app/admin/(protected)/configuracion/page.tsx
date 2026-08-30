@@ -12,6 +12,9 @@ import {
 import {
   verifyAdminSession,
 } from "@/lib/admin/session";
+import {
+  siteConfig as sourceSiteConfig,
+} from "@/lib/site";
 
 import styles from "../../admin.module.css";
 
@@ -57,7 +60,7 @@ export default async function AdminConfigurationPage({
           <span>CONFIGURACIÓN · REVISIÓN {item.revision}</span>
           <h1>Identidad pública</h1>
           <p>
-            Nombre, descripción, idioma y color se guardan primero como borrador. El dominio, secretos, VPN y configuración del servidor permanecen fuera del editor.
+            Nombre, descripción, idioma, color y lema global se guardan primero como borrador. El dominio, secretos, VPN y configuración del servidor permanecen fuera del editor.
           </p>
         </div>
         <span className={styles.draftState}>
@@ -112,6 +115,22 @@ export default async function AdminConfigurationPage({
               rows={5}
               required
             />
+          </label>
+
+          <label className={styles.fieldWide}>
+            <span>Lema del pie de página</span>
+            <input
+              name="footerTagline"
+              defaultValue={
+                config.footerTagline ??
+                sourceSiteConfig.footerTagline
+              }
+              maxLength={180}
+              required
+            />
+            <small>
+              Se muestra en el Footer junto al copyright. Los enlaces del Footer siguen protegidos como navegación estructural.
+            </small>
           </label>
 
           <label>
