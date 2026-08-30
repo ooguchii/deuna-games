@@ -12,15 +12,7 @@ import {
   Settings2,
 } from "lucide-react";
 
-import {
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
-
-import type {
-  GamePerformanceCalibration,
-} from "@/types/game";
+import { useMemo } from "react";
 
 import {
   estimateGamePerformance,
@@ -31,6 +23,9 @@ import type {
   HardwareProfile,
   PerformanceTier,
 } from "./types";
+import {
+  useGamePerformanceCalibration,
+} from "./useGamePerformanceCalibration";
 import {
   useResolvedHardwareProfile,
 } from "./useResolvedHardwareProfile";
@@ -66,13 +61,6 @@ const tierMeta: Record<
 
 type GamePerformanceEstimateProps = {
   slug: string;
-  calibration?: GamePerformanceCalibration;
-};
-
-type FetchedCalibration = {
-  slug: string;
-  loaded: boolean;
-  value: GamePerformanceCalibration | null;
 };
 
 function sourceLabel(profile: HardwareProfile | null) {
@@ -101,125 +89,17 @@ function ramLabel(profile: HardwareProfile | null) {
   return `${profile.ramGb} GB`;
 }
 
-function parsePublishedCalibration(
-  value: unknown
-): GamePerformanceCalibration | null {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return null;
-  }
-
-  const candidate = value as Record<string, unknown>;
-  const referenceFps = candidate.referenceFps;
-  const ramGb = candidate.ramGb;
-  const fpsCap = candidate.fpsCap;
-
-  if (
-    typeof referenceFps !== "number" ||
-    !Number.isFinite(referenceFps) ||
-    referenceFps <= 0 ||
-    referenceFps > 1_000 ||
-    typeof ramGb !== "number" ||
-    !Number.isFinite(ramGb) ||
-    ramGb <= 0 ||
-    ramGb > 512
-  ) {
-    return null;
-  }
-
-  if (
-    fpsCap !== undefined &&
-    (
-      typeof fpsCap !== "number" ||
-      !Number.isFinite(fpsCap) ||
-      fpsCap <= 0 ||
-      fpsCap > 1_000 ||
-      fpsCap < referenceFps
-    )
-  ) {
-    return null;
-  }
-
-  return {
-    referenceFps,
-    ramGb,
-    ...(typeof fpsCap === "number" ? { fpsCap } : {}),
-  };
-}
-
 export default function GamePerformanceEstimate({
   slug,
-  calibration,
 }: GamePerformanceEstimateProps) {
   const {
     profile: hardware,
     status,
   } = useResolvedHardwareProfile();
-  const [fetchedCalibration, setFetchedCalibration] =
-    useState<FetchedCalibration>({
-      slug,
-      loaded: false,
-      value: null,
-    });
-
-  useEffect(() => {
-    if (calibration !== undefined) return;
-
-    let active = true;
-    const controller = new AbortController();
-
-    fetch(
-      `/api/games/${encodeURIComponent(slug)}/performance`,
-      {
-        cache: "no-store",
-        signal: controller.signal,
-      }
-    )
-      .then(async (response) => {
-        if (!response.ok) return null;
-        const payload = await response.json() as {
-          calibration?: unknown;
-        };
-        return parsePublishedCalibration(payload.calibration);
-      })
-      .then((nextCalibration) => {
-        if (active) {
-          setFetchedCalibration({
-            slug,
-            loaded: true,
-            value: nextCalibration,
-          });
-        }
-      })
-      .catch((error: unknown) => {
-        if (
-          active &&
-          !(error instanceof DOMException && error.name === "AbortError")
-        ) {
-          setFetchedCalibration({
-            slug,
-            loaded: true,
-            value: null,
-          });
-        }
-      });
-
-    return () => {
-      active = false;
-      controller.abort();
-    };
-  }, [calibration, slug]);
-
-  const fetchedForCurrentSlug =
-    fetchedCalibration.slug === slug
-      ? fetchedCalibration
-      : null;
-  const calibrationLoading =
-    calibration === undefined &&
-    !fetchedForCurrentSlug?.loaded;
-  const effectiveCalibration =
-    calibration ??
-    fetchedForCurrentSlug?.value ??
-    undefined;
+  const {
+    calibration,
+    loading: calibrationLoading,
+  } = useGamePerformanceCalibration(slug);
 
   const estimate = useMemo(
     () =>
@@ -228,10 +108,10 @@ export default function GamePerformanceEstimate({
             slug,
             hardware,
             DEFAULT_SETTINGS,
-            effectiveCalibration
+            calibration ?? undefined
           )
         : null,
-    [effectiveCalibration, hardware, slug]
+    [calibration, hardware, slug]
   );
 
   const missingParts = useMemo(() => {
