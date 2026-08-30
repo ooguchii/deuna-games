@@ -46,6 +46,18 @@ const taxonomyToneKeys = [
   "red",
 ] as const;
 
+const homeSectionIds = [
+  "hero",
+  "popular",
+  "finder",
+  "classifications",
+  "recent",
+  "updates",
+  "lowSpec",
+  "recommended",
+  "trust",
+] as const;
+
 export const editorialItemTypes = [
   "game",
   "game_update",
@@ -53,6 +65,7 @@ export const editorialItemTypes = [
   "home_config",
   "about_config",
   "game_taxonomy",
+  "public_pages_config",
 ] as const;
 
 export type EditorialItemType =
@@ -294,6 +307,140 @@ const aboutCardSchema = z
   })
   .strict();
 
+const editorialHeading = z.string().trim().min(1).max(180);
+const editorialLabel = z.string().trim().min(1).max(100);
+const editorialParagraph = z.string().trim().min(1).max(900);
+const editorialCardSchema = z
+  .object({
+    title: editorialHeading,
+    text: editorialParagraph,
+  })
+  .strict();
+
+const homeSectionSchema = z
+  .object({
+    id: z.enum(homeSectionIds),
+    visible: z.boolean(),
+  })
+  .strict();
+
+const homeSectionsSchema = z
+  .array(homeSectionSchema)
+  .max(homeSectionIds.length)
+  .superRefine((sections, context) => {
+    const seen = new Set<string>();
+
+    sections.forEach((section, index) => {
+      if (seen.has(section.id)) {
+        context.addIssue({
+          code: "custom",
+          path: [index, "id"],
+          message: "Una sección de portada no puede repetirse.",
+        });
+      }
+      seen.add(section.id);
+    });
+  });
+
+const homeCopySchema = z
+  .object({
+    hero: z
+      .object({
+        accessibleTitle: editorialHeading,
+        primaryCta: editorialLabel,
+        secondaryCta: editorialLabel,
+      })
+      .strict(),
+    popular: z
+      .object({
+        title: editorialHeading,
+        highlight: editorialHeading,
+        linkLabel: editorialLabel,
+      })
+      .strict(),
+    finder: z
+      .object({
+        eyebrow: editorialLabel,
+        title: editorialHeading,
+        highlight: editorialHeading,
+        text: editorialParagraph,
+        features: z.tuple([
+          editorialLabel,
+          editorialLabel,
+          editorialLabel,
+        ]),
+        cta: editorialLabel,
+      })
+      .strict(),
+    classifications: z
+      .object({
+        title: editorialHeading,
+        highlight: editorialHeading,
+        linkLabel: editorialLabel,
+      })
+      .strict(),
+    recent: z
+      .object({
+        title: editorialHeading,
+        highlight: editorialHeading,
+        linkLabel: editorialLabel,
+      })
+      .strict(),
+    updates: z
+      .object({
+        title: editorialHeading,
+        highlight: editorialHeading,
+        linkLabel: editorialLabel,
+        badgeLabel: editorialLabel,
+        detailsLabel: editorialLabel,
+      })
+      .strict(),
+    lowSpec: z
+      .object({
+        eyebrow: editorialLabel,
+        title: editorialHeading,
+        highlight: editorialHeading,
+        text: editorialParagraph,
+        cta: editorialLabel,
+        optionTitles: z.tuple([
+          editorialHeading,
+          editorialHeading,
+          editorialHeading,
+          editorialHeading,
+        ]),
+        optionSubtitles: z.tuple([
+          editorialParagraph,
+          editorialParagraph,
+          editorialParagraph,
+          editorialParagraph,
+        ]),
+        listTitle: editorialHeading,
+        listHighlight: editorialHeading,
+        listLinkLabel: editorialLabel,
+      })
+      .strict(),
+    recommended: z
+      .object({
+        eyebrow: editorialLabel,
+        title: editorialHeading,
+        highlight: editorialHeading,
+        text: editorialParagraph,
+        linkLabel: editorialLabel,
+      })
+      .strict(),
+    trust: z
+      .object({
+        items: z.tuple([
+          editorialCardSchema,
+          editorialCardSchema,
+          editorialCardSchema,
+          editorialCardSchema,
+        ]),
+      })
+      .strict(),
+  })
+  .strict();
+
 export const editorialGameSchema: z.ZodType<Game> = z
   .object({
     id: identifierSchema,
@@ -371,6 +518,7 @@ export const editorialSiteConfigSchema = z
     description: z.string().trim().min(1).max(500),
     language: z.literal("es"),
     themeColor: z.string().regex(/^#[0-9a-f]{6}$/i),
+    footerTagline: z.string().trim().min(1).max(180).optional(),
   })
   .strict();
 
@@ -380,6 +528,8 @@ export const editorialHomeConfigSchema = z
     popularSlugs: uniqueIdentifiers(24),
     lowSpecSlugs: uniqueIdentifiers(24),
     recommendedSlugs: uniqueIdentifiers(24),
+    sections: homeSectionsSchema.optional(),
+    copy: homeCopySchema.optional(),
   })
   .strict();
 
@@ -464,6 +614,47 @@ export const editorialGameTaxonomySchema: z.ZodType<GameTaxonomy> = z
     };
   });
 
+export const editorialPublicPagesConfigSchema = z
+  .object({
+    games: z
+      .object({
+        eyebrow: editorialLabel,
+        title: editorialHeading,
+        description: editorialParagraph,
+        platformLabel: editorialLabel,
+        heroImage: localImageSchema.optional(),
+      })
+      .strict(),
+    updates: z
+      .object({
+        eyebrow: editorialLabel,
+        title: editorialHeading,
+        highlight: editorialHeading,
+        description: editorialParagraph,
+        infoCards: z.tuple([
+          editorialCardSchema,
+          editorialCardSchema,
+          editorialCardSchema,
+        ]),
+      })
+      .strict(),
+    finder: z
+      .object({
+        eyebrow: editorialLabel,
+        title: editorialHeading,
+        highlight: editorialHeading,
+        description: editorialParagraph,
+        flow: z.tuple([
+          editorialLabel,
+          editorialLabel,
+          editorialLabel,
+        ]),
+        trustText: editorialParagraph,
+      })
+      .strict(),
+  })
+  .strict();
+
 export type EditorialSiteConfig = z.infer<
   typeof editorialSiteConfigSchema
 >;
@@ -476,6 +667,10 @@ export type EditorialAboutConfig = z.infer<
   typeof editorialAboutConfigSchema
 >;
 
+export type EditorialPublicPagesConfig = z.infer<
+  typeof editorialPublicPagesConfigSchema
+>;
+
 export type EditorialPayloadByType = {
   game: Game;
   game_update: GameUpdate;
@@ -483,6 +678,7 @@ export type EditorialPayloadByType = {
   home_config: EditorialHomeConfig;
   about_config: EditorialAboutConfig;
   game_taxonomy: GameTaxonomy;
+  public_pages_config: EditorialPublicPagesConfig;
 };
 
 export function parseEditorialPayload<
@@ -499,7 +695,9 @@ export function parseEditorialPayload<
             ? editorialHomeConfigSchema
             : type === "about_config"
               ? editorialAboutConfigSchema
-              : editorialGameTaxonomySchema;
+              : type === "game_taxonomy"
+                ? editorialGameTaxonomySchema
+                : editorialPublicPagesConfigSchema;
 
   return schema.parse(payload) as EditorialPayloadByType[Type];
 }
