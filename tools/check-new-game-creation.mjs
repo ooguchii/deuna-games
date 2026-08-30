@@ -43,9 +43,12 @@ assert(
     form.includes("160 - suffix.length") &&
     form.includes("slugTaken") &&
     form.includes("Identificador disponible") &&
-    form.includes("slugTaken || !slugValid") &&
-    form.includes("categories.length === 0"),
-  "El formulario debe generar un slug libre, reservar espacio para sufijos, bloquear identificadores ocupados y exigir una categoría maestra disponible."
+    form.includes("slugTaken ||") &&
+    form.includes("!slugValid ||") &&
+    form.includes("classifications.length === 0") &&
+    form.includes("Clasificación principal") &&
+    page.includes("payload.classifications"),
+  "El formulario debe generar un slug libre, bloquear identificadores ocupados y exigir una clasificación maestra unificada disponible."
 );
 
 assert(
@@ -73,6 +76,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Alta de juegos: OK (slug automático libre, categoría maestra obligatoria, detección accesible y rechazo transaccional preservados)."
+    "Alta de juegos: OK (slug automático libre, clasificación maestra unificada obligatoria, detección accesible y rechazo transaccional preservados)."
   );
 }
