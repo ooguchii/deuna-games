@@ -9,7 +9,8 @@ import {
 
 type PublishableType =
   | "game"
-  | "game_update";
+  | "game_update"
+  | "site_config";
 
 type PublicationTableRow = {
   publication_table: string | null;
@@ -100,7 +101,11 @@ export async function getPublicationOverview():
              WHERE item_type = 'game_update'
            )::int AS updates,
            COUNT(*) FILTER (
-             WHERE item_type IN ('game', 'game_update')
+             WHERE item_type IN (
+               'game',
+               'game_update',
+               'site_config'
+             )
                AND draft_payload IS DISTINCT FROM published_payload
            )::int AS pending
          FROM deuna_admin.editorial_items`
@@ -116,7 +121,11 @@ export async function getPublicationOverview():
          FROM deuna_admin.editorial_publications AS publication
          INNER JOIN deuna_admin.editorial_items AS item
            ON item.id = publication.item_id
-         WHERE item.item_type IN ('game', 'game_update')
+         WHERE item.item_type IN (
+             'game',
+             'game_update',
+             'site_config'
+           )
            AND publication.action IN ('published', 'rollback')
          ORDER BY publication.created_at DESC,
                   publication.id DESC
