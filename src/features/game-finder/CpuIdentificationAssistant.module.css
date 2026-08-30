@@ -1,0 +1,409 @@
+.root,
+.confirmedBar {
+  margin: 18px 0 24px;
+  border: 1px solid rgba(132, 151, 175, 0.18);
+  border-radius: var(--radius-large);
+  background:
+    radial-gradient(620px 260px at 92% 0%, rgba(255, 8, 71, 0.08), transparent 70%),
+    linear-gradient(180deg, rgba(13, 19, 29, 0.97), rgba(7, 11, 17, 0.94));
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.22);
+}
+
+.root {
+  padding: 24px;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.iconBox {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  color: var(--brand-light);
+  border: 1px solid rgba(255, 8, 71, 0.24);
+  border-radius: 12px;
+  background: rgba(255, 8, 71, 0.08);
+}
+
+.header > div > span,
+.confirmedCopy > span {
+  color: var(--brand-light);
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0.11em;
+}
+
+.header h2 {
+  margin: 4px 0 0;
+  color: var(--text);
+  font-size: clamp(20px, 2.2vw, 27px);
+  letter-spacing: -0.025em;
+}
+
+.header p {
+  max-width: 900px;
+  margin: 7px 0 0;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(280px, 0.85fr);
+  gap: 18px;
+  margin-top: 22px;
+}
+
+.identifyPanel,
+.helpPanel {
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid rgba(132, 151, 175, 0.16);
+  border-radius: 13px;
+  background: rgba(4, 8, 13, 0.52);
+}
+
+.identifyPanel > label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--text-soft);
+  font-size: 13px;
+  font-weight: 760;
+}
+
+.searchField {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 12px;
+  border: 1px solid rgba(166, 184, 207, 0.22);
+  border-radius: 10px;
+  background: var(--surface-control);
+}
+
+.searchField:focus-within {
+  border-color: rgba(255, 8, 71, 0.5);
+  box-shadow: 0 0 0 3px rgba(255, 8, 71, 0.08);
+}
+
+.searchField svg {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+}
+
+.searchField input {
+  width: 100%;
+  min-width: 0;
+  height: 44px;
+  color: var(--text);
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 15px;
+}
+
+.searchField input::placeholder {
+  color: var(--text-muted);
+}
+
+.searchField button {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  color: var(--text-muted);
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.searchField button:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.matchArea {
+  margin-top: 12px;
+}
+
+.exactMatch,
+.noMatch,
+.suggestionHeading {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 13px;
+  border-radius: 10px;
+}
+
+.exactMatch {
+  color: #70e9b3;
+  border: 1px solid rgba(25, 217, 135, 0.24);
+  background: rgba(25, 217, 135, 0.07);
+}
+
+.exactMatch div {
+  display: grid;
+  gap: 3px;
+}
+
+.exactMatch span {
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.09em;
+}
+
+.exactMatch strong {
+  color: var(--text);
+  font-size: 15px;
+}
+
+.exactMatch small {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.noMatch,
+.suggestionHeading {
+  color: var(--text-muted);
+  border: 1px solid rgba(255, 173, 31, 0.2);
+  background: rgba(255, 173, 31, 0.05);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.suggestions {
+  display: grid;
+  gap: 7px;
+}
+
+.suggestions > button {
+  min-height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 12px;
+  color: var(--text-soft);
+  text-align: left;
+  border: 1px solid rgba(132, 151, 175, 0.16);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.025);
+  cursor: pointer;
+}
+
+.suggestions > button:hover,
+.suggestions > button[data-selected="true"] {
+  color: var(--text);
+  border-color: rgba(255, 8, 71, 0.34);
+  background: rgba(255, 8, 71, 0.07);
+}
+
+.suggestions > button span {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.suggestions > button small {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin-top: 14px;
+}
+
+.primaryButton,
+.secondaryButton,
+.copyButton {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 14px;
+  border-radius: 9px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 760;
+  cursor: pointer;
+}
+
+.primaryButton {
+  color: white;
+  border: 1px solid rgba(255, 8, 71, 0.62);
+  background: var(--brand);
+}
+
+.primaryButton:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.secondaryButton,
+.copyButton {
+  color: var(--text-soft);
+  border: 1px solid rgba(132, 151, 175, 0.2);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.primaryButton:focus-visible,
+.secondaryButton:focus-visible,
+.copyButton:focus-visible,
+.suggestions > button:focus-visible,
+.searchField button:focus-visible {
+  outline: 2px solid var(--brand-light);
+  outline-offset: 2px;
+}
+
+.helpPanel {
+  align-self: stretch;
+}
+
+.helpTitle {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: var(--brand-light);
+}
+
+.helpTitle > div {
+  display: grid;
+  gap: 3px;
+}
+
+.helpTitle strong {
+  color: var(--text);
+  font-size: 14px;
+}
+
+.helpTitle span,
+.helpPanel p {
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.helpPanel code {
+  display: block;
+  overflow-wrap: anywhere;
+  margin: 14px 0 10px;
+  padding: 12px;
+  color: #c6d4e3;
+  border: 1px solid rgba(132, 151, 175, 0.16);
+  border-radius: 9px;
+  background: rgba(0, 0, 0, 0.24);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.helpPanel p {
+  margin: 12px 0 0;
+}
+
+.error {
+  margin: 10px 0 0;
+  color: #ff9a9a;
+  font-size: 12px;
+}
+
+.confirmedBar {
+  min-height: 86px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 13px;
+  padding: 16px 18px;
+}
+
+.confirmedCopy {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.confirmedCopy strong {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 15px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.confirmedCopy small {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.confirmedIcon {
+  color: #4ee2a5;
+}
+
+@media (max-width: 860px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .confirmedBar {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .confirmedBar .secondaryButton {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+}
+
+@media (max-width: 560px) {
+  .root {
+    padding: 17px;
+  }
+
+  .header {
+    align-items: flex-start;
+  }
+
+  .identifyPanel,
+  .helpPanel {
+    padding: 14px;
+  }
+
+  .searchField input {
+    font-size: 16px;
+  }
+
+  .suggestions > button {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .primaryButton,
+  .secondaryButton,
+  .copyButton {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .root *,
+  .confirmedBar * {
+    scroll-behavior: auto !important;
+    transition: none !important;
+  }
+}
