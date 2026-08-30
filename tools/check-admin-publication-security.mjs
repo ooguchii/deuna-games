@@ -20,16 +20,26 @@ async function source(relativePath) {
 
 const [
   publicationService,
+  creationService,
   publicSiteConfig,
+  publicCatalog,
+  publicUpdates,
   publishRoute,
   restoreRoute,
-  migration,
+  publicationMigration,
+  visibilityMigration,
+  migrator,
 ] = await Promise.all([
   source("src/lib/admin/publication-service.ts"),
+  source("src/lib/admin/content-create-service.ts"),
   source("src/lib/site/public-site-config.ts"),
+  source("src/lib/games/public-catalog.ts"),
+  source("src/lib/updates/public-updates.ts"),
   source("src/app/api/admin/content/configuration/publish/route.ts"),
   source("src/app/api/admin/content/configuration-publications/[publicationId]/restore/route.ts"),
   source("database/migrations/003_editorial_publications.sql"),
+  source("database/migrations/004_editorial_visibility.sql"),
+  source("tools/admin/migrate.ts"),
 ]);
 
 assert(
@@ -55,17 +65,35 @@ assert(
     publicationService.includes("published_checksum") &&
     publicationService.includes("editorial_publications") &&
     publicationService.includes("admin_audit_log") &&
+    publicationService.includes("public_visible = true") &&
+    publicationService.includes("!item.public_visible") &&
     !/\bDELETE\s+FROM\b/i.test(publicationService),
-  "La publicación debe ser transaccional, auditable, conservar historial y no borrar registros."
+  "La publicación debe ser transaccional, auditable, activar visibilidad explícita, conservar historial y no borrar registros."
 );
 
 assert(
-  publicSiteConfig.includes("published_payload") &&
-    publicSiteConfig.includes("item_type = 'site_config'") &&
-    publicSiteConfig.includes("item_key = 'site'") &&
-    !publicSiteConfig.includes("draft_payload"),
-  "La identidad pública debe leer exclusivamente el snapshot publicado y nunca el borrador."
+  creationService.includes("source_present") &&
+    creationService.includes("'modified'") &&
+    creationService.includes("public_visible") &&
+    creationService.includes("false") &&
+    creationService.includes("ON CONFLICT (item_type, item_key)") &&
+    creationService.includes("content_created") &&
+    !/\bDELETE\s+FROM\b/i.test(creationService),
+  "Un juego creado desde el panel debe nacer como borrador oculto, preservar la fuente y rechazar identidades duplicadas sin borrar contenido."
 );
+
+for (const [name, content] of [
+  ["catálogo", publicCatalog],
+  ["actualizaciones", publicUpdates],
+  ["configuración", publicSiteConfig],
+]) {
+  assert(
+    content.includes("public_visible = true") &&
+      content.includes("published_payload") &&
+      !content.includes("draft_payload"),
+    `La lectura pública de ${name} debe exigir visibilidad explícita y usar sólo snapshots publicados.`
+  );
+}
 
 assert(
   publishRoute.includes("authorizeAdminFormRequest") &&
@@ -82,11 +110,25 @@ assert(
 );
 
 assert(
-  migration.includes("published_payload") &&
-    migration.includes("editorial_publications") &&
-    migration.includes("'bootstrap'") &&
-    !/WHERE\s+item_type\s*=\s*'game'/i.test(migration),
+  publicationMigration.includes("published_payload") &&
+    publicationMigration.includes("editorial_publications") &&
+    publicationMigration.includes("'bootstrap'") &&
+    !/WHERE\s+item_type\s*=\s*'game'/i.test(publicationMigration),
   "La migración de publicaciones debe inicializar snapshots para todos los tipos editoriales, incluida la configuración."
+);
+
+assert(
+  visibilityMigration.includes("public_visible") &&
+    visibilityMigration.includes("DEFAULT true") &&
+    visibilityMigration.includes("SET public_visible = true"),
+  "La migración de visibilidad debe conservar visible todo contenido existente y permitir que las altas nuevas nazcan ocultas."
+);
+
+assert(
+  migrator.includes("GRANT INSERT (\n        id,\n        item_type,\n        item_key") &&
+    migrator.includes("public_visible") &&
+    !/GRANT[\s\S]{0,300}\bDELETE\b/i.test(migrator),
+  "El runtime debe recibir INSERT editorial sólo por columnas y nunca permisos de borrado."
 );
 
 if (failures.length > 0) {
@@ -97,6 +139,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Publicación administrativa: OK (site_config usa snapshot publicado, transacción, auditoría y restauración sin borrar historial)."
+    "Publicación administrativa: OK (altas ocultas, snapshots explícitos, visibilidad controlada, auditoría y restauración sin borrado)."
   );
 }
