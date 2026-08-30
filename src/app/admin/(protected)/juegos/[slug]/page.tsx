@@ -237,9 +237,9 @@ export default async function AdminGameEditorPage({
             value={item.revision}
           />
 
-          <div className={styles.formSubheading}>
+          <div className={`${styles.tableSummary} ${styles.fieldWide}`}>
             <strong>Requisitos mínimos</strong>
-            <span>Equipo base para ejecutar el juego.</span>
+            <span>Equipo base para ejecutar el juego</span>
           </div>
 
           <label>
@@ -290,9 +290,9 @@ export default async function AdminGameEditorPage({
             />
           </label>
 
-          <div className={styles.formSubheading}>
+          <div className={`${styles.tableSummary} ${styles.fieldWide}`}>
             <strong>Requisitos recomendados</strong>
-            <span>Configuración sugerida para una mejor experiencia.</span>
+            <span>Configuración sugerida para una mejor experiencia</span>
           </div>
 
           <label>
