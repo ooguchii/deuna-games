@@ -307,6 +307,15 @@ export default function GameMediaUploadForm({
 
     if (busy) return;
 
+    // React limpia currentTarget después de la fase síncrona del evento.
+    // Leemos los campos del formulario antes del primer await.
+    const submittedForm = new FormData(
+      event.currentTarget
+    );
+    const kind = String(
+      submittedForm.get("kind") ?? "cover"
+    );
+
     setBusy(true);
     setStatus("Preparando imagen…");
 
@@ -318,8 +327,6 @@ export default function GameMediaUploadForm({
         quality,
         maximumDimension
       );
-      const form = new FormData(event.currentTarget);
-      const kind = String(form.get("kind") ?? "cover");
       const upload = new FormData();
       upload.set(
         "expectedRevision",
