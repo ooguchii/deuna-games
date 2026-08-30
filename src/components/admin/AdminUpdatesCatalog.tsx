@@ -96,10 +96,18 @@ export default function AdminUpdatesCatalog({
   const hasFilters = query || status !== "all" || type !== "all" || game !== "all";
 
   return (
-    <section className={styles.panel}>
-      <div className={styles.toolbar}>
+    <section className={styles.panel} aria-labelledby="admin-updates-catalog-title">
+      <h2 id="admin-updates-catalog-title" className={styles.srOnly}>
+        Catálogo editorial de actualizaciones
+      </h2>
+
+      <div
+        className={styles.toolbar}
+        role="search"
+        aria-label="Buscar y filtrar actualizaciones"
+      >
         <div className={styles.searchBox}>
-          <Search size={16} aria-hidden="true" />
+          <Search size={17} aria-hidden="true" />
           <input
             ref={searchRef}
             type="search"
@@ -108,10 +116,10 @@ export default function AdminUpdatesCatalog({
             placeholder="Buscar ID, juego, versión..."
             aria-label="Buscar actualizaciones"
           />
-          <kbd>/</kbd>
+          <kbd aria-hidden="true">/</kbd>
           {query && (
             <button type="button" onClick={() => setQuery("")} aria-label="Limpiar búsqueda">
-              <X size={14} aria-hidden="true" />
+              <X size={16} aria-hidden="true" />
             </button>
           )}
         </div>
@@ -143,13 +151,18 @@ export default function AdminUpdatesCatalog({
                 setGame("all");
               }}
             >
-              Limpiar
+              Limpiar filtros
             </button>
           )}
         </div>
       </div>
 
-      <div className={styles.resultBar}>
+      <div
+        className={styles.resultBar}
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      >
         <strong>{filtered.length}</strong>
         <span>de {items.length} actualizaciones</span>
       </div>
@@ -159,6 +172,9 @@ export default function AdminUpdatesCatalog({
       ) : (
         <div className={styles.tableViewport}>
           <table className={styles.table}>
+            <caption className={styles.srOnly}>
+              Actualizaciones editoriales, juego relacionado, estado de publicación, revisión y acciones
+            </caption>
             <thead>
               <tr>
                 <th scope="col">Actualización</th>
@@ -180,12 +196,12 @@ export default function AdminUpdatesCatalog({
                   <td>
                     {item.status === "published" ? (
                       <span className={styles.statusOk}>
-                        <CheckCircle2 size={13} aria-hidden="true" />
+                        <CheckCircle2 size={15} aria-hidden="true" />
                         Publicada
                       </span>
                     ) : (
                       <span className={styles.statusPending}>
-                        <CircleSlash2 size={13} aria-hidden="true" />
+                        <CircleSlash2 size={15} aria-hidden="true" />
                         {item.status === "hidden"
                           ? "Oculta"
                           : item.status === "unpublished"
@@ -198,8 +214,11 @@ export default function AdminUpdatesCatalog({
                   <td>{item.revision}</td>
                   <td>
                     <div className={styles.actions}>
-                      <Link href={`/admin/actualizaciones/${encodeURIComponent(item.key)}`}>
-                        <Pencil size={13} aria-hidden="true" />
+                      <Link
+                        href={`/admin/actualizaciones/${encodeURIComponent(item.key)}`}
+                        title={`Editar actualización ${item.version}`}
+                      >
+                        <Pencil size={14} aria-hidden="true" />
                         Editar
                       </Link>
                     </div>
