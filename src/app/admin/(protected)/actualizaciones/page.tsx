@@ -3,6 +3,7 @@ import {
   CheckCircle2,
   CircleSlash2,
   Pencil,
+  Plus,
 } from "lucide-react";
 
 import EditorStateNotice from "@/components/admin/EditorStateNotice";
@@ -56,6 +57,13 @@ export default async function AdminUpdatesPage({
             Cada edición queda como borrador recuperable y sólo llega a la web pública mediante una publicación explícita.
           </p>
         </div>
+        <Link
+          href="/admin/actualizaciones/nueva"
+          className={styles.tableAction}
+        >
+          <Plus size={15} aria-hidden="true" />
+          Nueva actualización
+        </Link>
       </header>
 
       <EditorStateNotice state={state} />
@@ -63,7 +71,7 @@ export default async function AdminUpdatesPage({
       <section className={styles.tablePanel}>
         <div className={styles.tableSummary}>
           <strong>
-            {items.length} actualizaciones importadas
+            {items.length} actualizaciones editoriales
           </strong>
           <span>
             {publicationStates
@@ -74,7 +82,7 @@ export default async function AdminUpdatesPage({
 
         {items.length === 0 ? (
           <p className={styles.emptyState}>
-            Ejecuta `npm run admin:import-content` desde la copia privada del VPS.
+            Importa las actualizaciones fuente o crea una nueva como borrador privado.
           </p>
         ) : (
           <div className={styles.tableWrap}>
