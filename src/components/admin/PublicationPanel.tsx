@@ -1,6 +1,7 @@
 import {
   AlertTriangle,
   CheckCircle2,
+  EyeOff,
   RotateCcw,
   Send,
 } from "lucide-react";
@@ -17,6 +18,7 @@ type PublicationPanelProps = {
   slug?: string;
   publishAction?: string;
   restoreActionBase?: string;
+  hideAction?: string;
 };
 
 const actionLabels = {
@@ -51,6 +53,14 @@ function StateNotice({
     );
   }
 
+  if (state === "oculto") {
+    return (
+      <div className={`${styles.notice} ${styles.noticeWarning}`}>
+        El contenido fue retirado de la web. El borrador, el snapshot y todo el historial siguen conservados.
+      </div>
+    );
+  }
+
   if (state === "publicacion-restaurada") {
     return (
       <div className={`${styles.notice} ${styles.noticeSuccess}`}>
@@ -62,7 +72,7 @@ function StateNotice({
   if (state === "sin-cambios") {
     return (
       <div className={styles.notice}>
-        No se realizaron cambios porque el contenido seleccionado ya coincide con la publicación activa.
+        No se realizaron cambios porque el estado solicitado ya estaba aplicado.
       </div>
     );
   }
@@ -95,6 +105,7 @@ export default function PublicationPanel({
   requestState,
   publishAction,
   restoreActionBase,
+  hideAction,
 }: PublicationPanelProps) {
   const resolvedPublishAction =
     publishAction ??
@@ -122,18 +133,30 @@ export default function PublicationPanel({
 
       <div className={styles.summary}>
         <strong>
-          {state.hasUnpublishedChanges
-            ? "Hay cambios listos para publicar."
-            : "El borrador coincide con la publicación activa."}
+          {!state.publicVisible
+            ? "Este contenido está oculto de la web."
+            : state.hasUnpublishedChanges
+              ? "Hay cambios listos para publicar."
+              : "El borrador coincide con la publicación activa."}
         </strong>
         <p>
-          Publicar crea un snapshot separado del borrador. Restaurar una versión anterior crea otra publicación nueva y conserva todo el historial.
+          {state.publicVisible
+            ? "Publicar crea un snapshot separado del borrador. Restaurar una versión anterior crea otra publicación nueva y conserva todo el historial."
+            : "Ocultar no borra nada. El snapshot publicado sigue conservado y Publicar borrador volverá a mostrar el contenido mediante una nueva publicación."}
         </p>
       </div>
 
       <div className={styles.facts}>
         <div className={styles.fact}>
-          <span>Publicación activa</span>
+          <span>Visibilidad</span>
+          <strong>
+            {state.publicVisible
+              ? "Visible en la web"
+              : "Oculto de la web"}
+          </strong>
+        </div>
+        <div className={styles.fact}>
+          <span>Publicación actual</span>
           <strong>#{state.publicationNumber}</strong>
         </div>
         <div className={styles.fact}>
@@ -145,38 +168,63 @@ export default function PublicationPanel({
           </strong>
         </div>
         <div className={styles.fact}>
-          <span>Publicada</span>
+          <span>Último snapshot</span>
           <strong>{formatDate(state.publishedAt)} UTC</strong>
         </div>
       </div>
 
-      <form
-        method="post"
-        action={resolvedPublishAction}
-        className={styles.publishForm}
-      >
-        <input
-          type="hidden"
-          name="expectedRevision"
-          value={state.draftRevision}
-        />
-        <button
-          type="submit"
-          className={styles.publishButton}
-          disabled={!state.hasUnpublishedChanges}
+      <div className={styles.publicationActions}>
+        <form
+          method="post"
+          action={resolvedPublishAction}
+          className={styles.publishForm}
         >
-          <Send size={16} aria-hidden="true" />
-          Publicar borrador
-        </button>
-        <span className={styles.statusText}>
-          {state.hasUnpublishedChanges ? (
-            <AlertTriangle size={15} aria-hidden="true" />
-          ) : (
-            <CheckCircle2 size={15} aria-hidden="true" />
-          )}
-          Revisión {state.draftRevision}
-        </span>
-      </form>
+          <input
+            type="hidden"
+            name="expectedRevision"
+            value={state.draftRevision}
+          />
+          <button
+            type="submit"
+            className={styles.publishButton}
+            disabled={!state.hasUnpublishedChanges}
+          >
+            <Send size={16} aria-hidden="true" />
+            {state.publicVisible
+              ? "Publicar borrador"
+              : "Volver a publicar"}
+          </button>
+          <span className={styles.statusText}>
+            {state.hasUnpublishedChanges ? (
+              <AlertTriangle size={15} aria-hidden="true" />
+            ) : (
+              <CheckCircle2 size={15} aria-hidden="true" />
+            )}
+            Revisión {state.draftRevision}
+          </span>
+        </form>
+
+        {hideAction && state.publicVisible && (
+          <form
+            method="post"
+            action={hideAction}
+            className={styles.hideForm}
+          >
+            <input
+              type="hidden"
+              name="expectedPublicationNumber"
+              value={state.publicationNumber}
+            />
+            <button
+              type="submit"
+              className={styles.hideButton}
+            >
+              <EyeOff size={16} aria-hidden="true" />
+              Ocultar de la web
+            </button>
+          </form>
+        )}
+      </div>
 
       <div className={styles.history}>
         <div className={styles.historyHeading}>
@@ -209,7 +257,9 @@ export default function PublicationPanel({
                     </strong>
                     {isCurrent && (
                       <span className={styles.currentBadge}>
-                        Activa
+                        {state.publicVisible
+                          ? "Activa"
+                          : "Snapshot actual"}
                       </span>
                     )}
                   </div>
@@ -234,10 +284,10 @@ export default function PublicationPanel({
                   <button
                     type="submit"
                     className={styles.restoreButton}
-                    disabled={isCurrent}
+                    disabled={isCurrent && state.publicVisible}
                   >
                     <RotateCcw size={14} aria-hidden="true" />
-                    {isCurrent
+                    {isCurrent && state.publicVisible
                       ? "Versión activa"
                       : "Restaurar"}
                   </button>
