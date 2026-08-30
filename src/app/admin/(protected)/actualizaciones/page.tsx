@@ -10,6 +10,9 @@ import {
   listEditorialItems,
 } from "@/lib/admin/content-service";
 import {
+  listPublicationStates,
+} from "@/lib/admin/publication-overview";
+import {
   verifyAdminSession,
 } from "@/lib/admin/session";
 
@@ -27,10 +30,18 @@ export default async function AdminUpdatesPage({
   searchParams,
 }: PageProps) {
   await verifyAdminSession();
-  const [items, parameters] = await Promise.all([
-    listEditorialItems("game_update"),
-    searchParams,
-  ]);
+  const [items, publicationStates, parameters] =
+    await Promise.all([
+      listEditorialItems("game_update"),
+      listPublicationStates("game_update"),
+      searchParams,
+    ]);
+  const publicationByKey = new Map(
+    (publicationStates ?? []).map((item) => [
+      item.key,
+      item,
+    ])
+  );
   const state = Array.isArray(parameters.estado)
     ? parameters.estado[0]
     : parameters.estado;
@@ -42,7 +53,7 @@ export default async function AdminUpdatesPage({
           <span>VERSIONES EDITORIALES</span>
           <h1>Actualizaciones</h1>
           <p>
-            Cada cambio queda en un borrador recuperable y mantiene la relación fija con su juego.
+            Cada edición queda como borrador recuperable y sólo llega a la web pública mediante una publicación explícita.
           </p>
         </div>
       </header>
@@ -54,7 +65,11 @@ export default async function AdminUpdatesPage({
           <strong>
             {items.length} actualizaciones importadas
           </strong>
-          <span>Edición en borrador</span>
+          <span>
+            {publicationStates
+              ? "Publicación controlada"
+              : "Edición en borrador"}
+          </span>
         </div>
 
         {items.length === 0 ? (
@@ -70,44 +85,58 @@ export default async function AdminUpdatesPage({
                   <th scope="col">Juego</th>
                   <th scope="col">Versión</th>
                   <th scope="col">Estado</th>
+                  <th scope="col">Publicación</th>
                   <th scope="col">Revisión</th>
                   <th scope="col">Acción</th>
                 </tr>
               </thead>
               <tbody>
-                {items.map((item) => (
-                  <tr key={item.key}>
-                    <th scope="row">
-                      <strong>{item.payload.id}</strong>
-                      <span>{item.payload.type}</span>
-                    </th>
-                    <td>{item.payload.gameSlug}</td>
-                    <td>{item.payload.version}</td>
-                    <td>
-                      {item.status === "synced" ? (
-                        <span className={styles.statusOk}>
-                          <CheckCircle2 size={14} aria-hidden="true" />
-                          Sin cambios
-                        </span>
-                      ) : (
-                        <span className={styles.statusPending}>
-                          <CircleSlash2 size={14} aria-hidden="true" />
-                          Borrador
-                        </span>
-                      )}
-                    </td>
-                    <td>{item.revision}</td>
-                    <td>
-                      <Link
-                        className={styles.tableAction}
-                        href={`/admin/actualizaciones/${encodeURIComponent(item.key)}`}
-                      >
-                        <Pencil size={13} aria-hidden="true" />
-                        Editar
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
+                {items.map((item) => {
+                  const publication =
+                    publicationByKey.get(item.key);
+                  const pending = publication
+                    ? publication.hasUnpublishedChanges
+                    : item.status !== "synced";
+
+                  return (
+                    <tr key={item.key}>
+                      <th scope="row">
+                        <strong>{item.payload.id}</strong>
+                        <span>{item.payload.type}</span>
+                      </th>
+                      <td>{item.payload.gameSlug}</td>
+                      <td>{item.payload.version}</td>
+                      <td>
+                        {pending ? (
+                          <span className={styles.statusPending}>
+                            <CircleSlash2 size={14} aria-hidden="true" />
+                            Sin publicar
+                          </span>
+                        ) : (
+                          <span className={styles.statusOk}>
+                            <CheckCircle2 size={14} aria-hidden="true" />
+                            Publicada
+                          </span>
+                        )}
+                      </td>
+                      <td>
+                        {publication
+                          ? `#${publication.publicationNumber}`
+                          : "No disponible"}
+                      </td>
+                      <td>{item.revision}</td>
+                      <td>
+                        <Link
+                          className={styles.tableAction}
+                          href={`/admin/actualizaciones/${encodeURIComponent(item.key)}`}
+                        >
+                          <Pencil size={13} aria-hidden="true" />
+                          Editar
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
