@@ -32,11 +32,25 @@ const statusOptions: Array<{
   { value: "maintenance", label: "Mantenimiento" },
 ];
 
+function normalizeIdentifier(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9._-]+/g, "-")
+    .replace(/^[^a-z0-9]+/, "")
+    .replace(/-+/g, "-")
+    .slice(0, 160);
+}
+
 function normalizeSource(
   source: GameDownloadSource
 ): GameDownloadSource {
   return {
     ...source,
+    id: normalizeIdentifier(source.id),
     enabled: source.enabled !== false,
     status: source.status ?? "available",
   };
@@ -48,7 +62,7 @@ function emptySource(
   let index = sources.length + 1;
   let id = `source-${index}`;
   const used = new Set(
-    sources.map((source) => source.id)
+    sources.map((source) => normalizeIdentifier(source.id))
   );
 
   while (used.has(id)) {
@@ -81,7 +95,7 @@ export default function GameDownloadEditor({
     () =>
       JSON.stringify(
         sources.map((source) => ({
-          id: source.id.trim(),
+          id: normalizeIdentifier(source.id),
           name: source.name.trim(),
           href: source.href.trim(),
           ...(source.label?.trim()
@@ -242,11 +256,22 @@ export default function GameDownloadEditor({
                         id: event.target.value,
                       })
                     }
+                    onBlur={(event) =>
+                      patchSource(index, {
+                        id: normalizeIdentifier(
+                          event.target.value
+                        ),
+                      })
+                    }
                     maxLength={160}
                     pattern="[a-z0-9][a-z0-9._-]*"
+                    title="Se guarda en minúsculas y sin espacios; por ejemplo: server-1"
                     placeholder="mediafire"
                     required
                   />
+                  <small>
+                    Se normaliza automáticamente: “Server 1” → “server-1”.
+                  </small>
                 </label>
 
                 <label>
