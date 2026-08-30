@@ -156,7 +156,7 @@ export default function GameDownloadEditor({
         <div>
           <strong>Fuentes de descarga</strong>
           <span>
-            El orden de esta lista será el orden mostrado al visitante. Podés ocultar una fuente sin borrarla o marcarla como caída.
+            El orden de esta lista será el orden mostrado al visitante. Puedes ocultar una fuente sin borrarla o marcarla como caída.
           </span>
         </div>
         <button
