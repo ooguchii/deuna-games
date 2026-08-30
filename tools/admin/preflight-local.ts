@@ -161,6 +161,10 @@ async function checkSourceContent(pool: Pool) {
     counts.get("about_config") === 1,
     "Falta la configuración editorial de Quiénes somos."
   );
+  assert(
+    counts.get("public_pages_config") === 1,
+    "Falta la configuración editorial de superficies públicas."
+  );
 }
 
 async function checkPublishedWorkspace(pool: Pool) {
@@ -168,6 +172,7 @@ async function checkPublishedWorkspace(pool: Pool) {
     ["site_config", "site"],
     ["home_config", "home"],
     ["about_config", "about"],
+    ["public_pages_config", "public-pages"],
   ] as const;
   const result = await pool.query<WorkspaceRow>(
     `SELECT item_type,
@@ -181,7 +186,8 @@ async function checkPublishedWorkspace(pool: Pool) {
       WHERE (item_type, item_key) IN (
         ('site_config', 'site'),
         ('home_config', 'home'),
-        ('about_config', 'about')
+        ('about_config', 'about'),
+        ('public_pages_config', 'public-pages')
       )`
   );
 
@@ -240,7 +246,8 @@ async function checkPublishedWorkspace(pool: Pool) {
         WHERE (item.item_type, item.item_key) IN (
           ('site_config', 'site'),
           ('home_config', 'home'),
-          ('about_config', 'about')
+          ('about_config', 'about'),
+          ('public_pages_config', 'public-pages')
         )
         GROUP BY item.item_type,
                  item.item_key`
@@ -315,7 +322,7 @@ async function main() {
   }
 
   console.log(
-    `Preflight local: OK (${games.length} juegos, ${gameUpdates.length} actualizaciones, identidad, Portada y Quiénes somos con snapshots publicados e historial verificados sin modificar datos).`
+    `Preflight local: OK (${games.length} juegos, ${gameUpdates.length} actualizaciones, identidad, Portada, Quiénes somos y superficies públicas con snapshots publicados e historial verificados sin modificar datos).`
   );
 }
 
