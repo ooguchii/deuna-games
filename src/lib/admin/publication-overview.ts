@@ -43,6 +43,9 @@ type ItemPublicationStateRow = {
 };
 
 type ItemPublicationIdentityRow = {
+  publication_number: number;
+  public_visible: boolean;
+  has_unpublished_changes: boolean;
   panel_created: boolean;
   ever_published: boolean;
 };
@@ -74,6 +77,9 @@ export type ItemPublicationState = {
 };
 
 export type ItemPublicationIdentity = {
+  publicationNumber: number;
+  publicVisible: boolean;
+  hasUnpublishedChanges: boolean;
   panelCreated: boolean;
   everPublished: boolean;
 };
@@ -241,6 +247,12 @@ export async function getGamePublicationIdentity(
   const result =
     await adminQuery<ItemPublicationIdentityRow>(
       `SELECT
+         item.publication_number,
+         item.public_visible,
+         (
+           item.public_visible = false OR
+           item.draft_payload IS DISTINCT FROM item.published_payload
+         ) AS has_unpublished_changes,
          EXISTS (
            SELECT 1
            FROM deuna_admin.editorial_revisions AS revision
@@ -265,6 +277,10 @@ export async function getGamePublicationIdentity(
   if (!identity) return null;
 
   return {
+    publicationNumber: identity.publication_number,
+    publicVisible: identity.public_visible,
+    hasUnpublishedChanges:
+      identity.has_unpublished_changes,
     panelCreated: identity.panel_created,
     everPublished: identity.ever_published,
   };
