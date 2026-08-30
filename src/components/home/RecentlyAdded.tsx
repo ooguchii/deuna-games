@@ -4,11 +4,15 @@ import { ChevronRight } from "lucide-react";
 
 import CardCarousel from "@/components/ui/CardCarousel";
 import UniversalGameCard from "@/components/ui/UniversalGameCard";
-import { recentGames } from "@/data/home";
+import type { Game } from "@/types/game";
 
 import styles from "./RecentlyAdded.module.css";
 
-export default function RecentlyAdded() {
+export default function RecentlyAdded({
+  games,
+}: {
+  games: Game[];
+}) {
   return (
     <section className={styles.section}>
       <div className={styles.header}>
@@ -26,7 +30,7 @@ export default function RecentlyAdded() {
         ariaLabel="Juegos añadidos recientemente"
         itemsDesktop={5}
       >
-        {recentGames.map((game) => (
+        {games.map((game) => (
           <UniversalGameCard
             key={game.slug}
             game={game}
