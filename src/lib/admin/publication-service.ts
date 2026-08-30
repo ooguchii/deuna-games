@@ -5,6 +5,10 @@ import type {
 } from "pg";
 
 import {
+  PUBLIC_PAGES_EDITORIAL_KEY,
+} from "@/data/public-pages-config";
+
+import {
   hashEditorialPayload,
   normalizeEditorialPayload,
 } from "./content-hash";
@@ -24,7 +28,8 @@ type PublishableEditorialType =
   | "game_update"
   | "site_config"
   | "home_config"
-  | "about_config";
+  | "about_config"
+  | "public_pages_config";
 
 type PublicationAction =
   | "bootstrap"
@@ -86,16 +91,12 @@ export type EditorialPublicationState = {
   publications: EditorialPublication[];
 };
 
-export type GamePublicationState =
-  EditorialPublicationState;
-export type UpdatePublicationState =
-  EditorialPublicationState;
-export type SiteConfigPublicationState =
-  EditorialPublicationState;
-export type HomeConfigPublicationState =
-  EditorialPublicationState;
-export type AboutConfigPublicationState =
-  EditorialPublicationState;
+export type GamePublicationState = EditorialPublicationState;
+export type UpdatePublicationState = EditorialPublicationState;
+export type SiteConfigPublicationState = EditorialPublicationState;
+export type HomeConfigPublicationState = EditorialPublicationState;
+export type AboutConfigPublicationState = EditorialPublicationState;
+export type PublicPagesConfigPublicationState = EditorialPublicationState;
 
 export type PublishEditorialResult =
   | {
@@ -112,16 +113,12 @@ export type PublishEditorialResult =
     }
   | { outcome: "not_found" };
 
-export type PublishGameResult =
-  PublishEditorialResult;
-export type PublishUpdateResult =
-  PublishEditorialResult;
-export type PublishSiteConfigResult =
-  PublishEditorialResult;
-export type PublishHomeConfigResult =
-  PublishEditorialResult;
-export type PublishAboutConfigResult =
-  PublishEditorialResult;
+export type PublishGameResult = PublishEditorialResult;
+export type PublishUpdateResult = PublishEditorialResult;
+export type PublishSiteConfigResult = PublishEditorialResult;
+export type PublishHomeConfigResult = PublishEditorialResult;
+export type PublishAboutConfigResult = PublishEditorialResult;
+export type PublishPublicPagesConfigResult = PublishEditorialResult;
 
 export type RestorePublicationResult =
   | {
@@ -145,32 +142,8 @@ function normalizePublishablePayload(
   type: PublishableEditorialType,
   payload: unknown
 ) {
-  if (type === "game") {
-    return normalizeEditorialPayload(
-      parseEditorialPayload("game", payload)
-    );
-  }
-
-  if (type === "game_update") {
-    return normalizeEditorialPayload(
-      parseEditorialPayload("game_update", payload)
-    );
-  }
-
-  if (type === "site_config") {
-    return normalizeEditorialPayload(
-      parseEditorialPayload("site_config", payload)
-    );
-  }
-
-  if (type === "home_config") {
-    return normalizeEditorialPayload(
-      parseEditorialPayload("home_config", payload)
-    );
-  }
-
   return normalizeEditorialPayload(
-    parseEditorialPayload("about_config", payload)
+    parseEditorialPayload(type, payload)
   );
 }
 
@@ -562,6 +535,13 @@ export function getAboutConfigPublicationState() {
   return getPublicationState("about_config", "about");
 }
 
+export function getPublicPagesConfigPublicationState() {
+  return getPublicationState(
+    "public_pages_config",
+    PUBLIC_PAGES_EDITORIAL_KEY
+  );
+}
+
 export function publishGameDraft(
   key: string,
   expectedRevision: number,
@@ -619,6 +599,18 @@ export function publishAboutConfigDraft(
   return publishEditorialDraft(
     "about_config",
     "about",
+    expectedRevision,
+    actorUserId
+  );
+}
+
+export function publishPublicPagesConfigDraft(
+  expectedRevision: number,
+  actorUserId: string
+) {
+  return publishEditorialDraft(
+    "public_pages_config",
+    PUBLIC_PAGES_EDITORIAL_KEY,
     expectedRevision,
     actorUserId
   );
@@ -683,6 +675,19 @@ export function restoreAboutConfigPublication(
 ) {
   return restoreEditorialPublication(
     "about_config",
+    publicationId,
+    expectedPublicationNumber,
+    actorUserId
+  );
+}
+
+export function restorePublicPagesConfigPublication(
+  publicationId: string,
+  expectedPublicationNumber: number,
+  actorUserId: string
+) {
+  return restoreEditorialPublication(
+    "public_pages_config",
     publicationId,
     expectedPublicationNumber,
     actorUserId
