@@ -19,8 +19,7 @@ import type {
 } from "@/types/game-taxonomy";
 
 const emptyTaxonomy: GameTaxonomy = {
-  categories: [],
-  genres: [],
+  classifications: [],
   tags: [],
 };
 
@@ -60,8 +59,9 @@ export const getPublicTaxonomyPresentation = cache(
       );
 
       return {
-        categories: ensureVisuals(taxonomy.categories),
-        genres: ensureVisuals(taxonomy.genres),
+        classifications: ensureVisuals(
+          taxonomy.classifications
+        ),
         tags: taxonomy.tags,
       };
     } catch {
