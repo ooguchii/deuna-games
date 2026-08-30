@@ -168,7 +168,8 @@
   line-height: 1.25;
 }
 
-.main > section > div > div > span {
+.main > section > div > div > span,
+.main.main > section > div > span {
   font-size: 12px;
 }
 
@@ -178,9 +179,27 @@
   line-height: 1.6;
 }
 
-.main article p,
-.main section p {
+.main.main article p,
+.main.main section p {
+  color: #9eabb8;
+  font-size: 13px;
   line-height: 1.55;
+}
+
+.main.main section a strong {
+  font-size: 14px;
+}
+
+.main.main section a span,
+.main.main li time,
+.main.main small,
+.main.main code {
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.main.main li strong {
+  font-size: 14px;
 }
 
 .main label > span {
@@ -260,6 +279,10 @@
 .main table th,
 .main table td {
   line-height: 1.4;
+}
+
+.main table a {
+  font-size: 13px;
 }
 
 .main :is(a, button, input, textarea, select):focus-visible,
