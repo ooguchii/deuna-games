@@ -23,6 +23,17 @@ const [
   route,
   page,
   navigation,
+  createRoute,
+  coreRoute,
+  advancedRoute,
+  newGamePage,
+  newGameForm,
+  gameEditorPage,
+  taxonomySelector,
+  homeCategories,
+  homeGenres,
+  homePage,
+  publicCatalog,
 ] = await Promise.all([
   source("src/lib/admin/content-validation.ts"),
   source("database/migrations/007_game_taxonomy.sql"),
@@ -31,6 +42,17 @@ const [
   source("src/app/api/admin/content/catalogs/games/route.ts"),
   source("src/app/admin/(protected)/catalogos/page.tsx"),
   source("src/components/admin/AdminNavigation.tsx"),
+  source("src/app/api/admin/content/games/route.ts"),
+  source("src/app/api/admin/content/games/[slug]/route.ts"),
+  source("src/app/api/admin/content/games/[slug]/advanced/route.ts"),
+  source("src/app/admin/(protected)/juegos/nuevo/page.tsx"),
+  source("src/components/admin/NewGameForm.tsx"),
+  source("src/app/admin/(protected)/juegos/[slug]/page.tsx"),
+  source("src/components/admin/GameTaxonomyMultiSelect.tsx"),
+  source("src/components/home/FeaturedCategories.tsx"),
+  source("src/components/home/FeaturedGenres.tsx"),
+  source("src/app/page.tsx"),
+  source("src/lib/games/catalog.ts"),
 ]);
 
 assert(
@@ -64,8 +86,11 @@ assert(
     service.includes("preservesUsedGameTerms") &&
     service.includes("editorial_revisions") &&
     service.includes("admin_audit_log") &&
+    service.includes("resolveGameTaxonomySelection") &&
+    service.includes("currentGameKey") &&
+    service.includes("term.active") &&
     !/\bDELETE\s+FROM\b/i.test(service),
-  "Guardar catálogos debe usar concurrencia, historial, auditoría y proteger términos en uso sin borrado SQL."
+  "Catálogos debe usar concurrencia, historial y auditoría, proteger términos en uso y validar asignaciones activas sin borrado SQL."
 );
 
 assert(
@@ -90,12 +115,53 @@ assert(
   "Catálogos debe ser accesible desde la navegación administrativa principal."
 );
 
+assert(
+  createRoute.includes("resolveGameTaxonomySelection") &&
+    createRoute.includes("classification.category") &&
+    coreRoute.includes("resolveGameTaxonomySelection") &&
+    coreRoute.includes("currentGameKey: slug") &&
+    advancedRoute.includes("resolveGameTaxonomySelection") &&
+    advancedRoute.includes("genres: classification.genres") &&
+    advancedRoute.includes("tags: classification.tags"),
+  "Crear y editar juegos debe validar categoría, géneros y etiquetas contra la taxonomía maestra también en el servidor."
+);
+
+assert(
+  newGamePage.includes('getEditorialItem("game_taxonomy", "games")') &&
+    newGamePage.includes("term.active") &&
+    newGameForm.includes('<select\n              name="category"') &&
+    !newGameForm.includes('list="game-category-options"'),
+  "Nuevo juego debe consumir sólo categorías activas de Catálogos y no aceptar clasificación libre."
+);
+
+assert(
+  gameEditorPage.includes('getEditorialItem("game_taxonomy", "games")') &&
+    gameEditorPage.includes("GameTaxonomyMultiSelect") &&
+    gameEditorPage.includes('name="genresText"') &&
+    gameEditorPage.includes('name="tagsText"') &&
+    taxonomySelector.includes('type="hidden"') &&
+    taxonomySelector.includes("!term.active && !selectedTerm"),
+  "El editor de juegos debe seleccionar géneros y etiquetas desde Catálogos conservando términos antiguos inactivos sin reofrecerlos."
+);
+
+assert(
+  homeCategories.includes("categoryStats(games)") &&
+    !homeCategories.includes("const categories = [") &&
+    homeGenres.includes("genreStats(games)") &&
+    homeGenres.includes("buscarEn=category") &&
+    homePage.includes("<FeaturedGenres games={games} />") &&
+    publicCatalog.includes("classificationText(game)") &&
+    publicCatalog.includes("...(game.genres ?? [])") &&
+    publicCatalog.includes("...(game.tags ?? [])"),
+  "La web pública debe derivar categorías y géneros de juegos publicados y permitir buscar también por géneros y etiquetas."
+);
+
 if (failures.length > 0) {
   console.error("\nTaxonomía editorial: REGRESIÓN\n");
   failures.forEach((failure) => console.error(`- ${failure}`));
   process.exitCode = 1;
 } else {
   console.log(
-    "Taxonomía editorial: OK (categorías, géneros y etiquetas privadas, versionadas, auditadas y protegidas frente a borrado de términos en uso)."
+    "Taxonomía editorial: OK (Catálogos gobierna creación y edición; categorías y géneros publicados alimentan Inicio, ficha y búsqueda sin exponer borradores administrativos)."
   );
 }
