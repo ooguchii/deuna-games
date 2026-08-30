@@ -1,12 +1,19 @@
 "use client";
 
 import {
+  ArrowDown,
+  ArrowUp,
+  Eye,
+  EyeOff,
   Plus,
   Trash2,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 
-import type { GameDownloadSource } from "@/types/game";
+import type {
+  GameDownloadSource,
+  GameDownloadSourceStatus,
+} from "@/types/game";
 
 import styles from "./GameDownloadEditor.module.css";
 
@@ -15,6 +22,25 @@ type GameDownloadEditorProps = {
 };
 
 const MAX_EDITOR_SOURCES = 6;
+
+const statusOptions: Array<{
+  value: GameDownloadSourceStatus;
+  label: string;
+}> = [
+  { value: "available", label: "Disponible" },
+  { value: "down", label: "Caído" },
+  { value: "maintenance", label: "Mantenimiento" },
+];
+
+function normalizeSource(
+  source: GameDownloadSource
+): GameDownloadSource {
+  return {
+    ...source,
+    enabled: source.enabled !== false,
+    status: source.status ?? "available",
+  };
+}
 
 function emptySource(
   sources: GameDownloadSource[]
@@ -35,6 +61,8 @@ function emptySource(
     name: "",
     href: "",
     label: "",
+    enabled: true,
+    status: "available",
   };
 }
 
@@ -46,9 +74,7 @@ export default function GameDownloadEditor({
   >(() =>
     initialSources
       .slice(0, MAX_EDITOR_SOURCES)
-      .map((source) => ({
-        ...source,
-      }))
+      .map(normalizeSource)
   );
 
   const serialized = useMemo(
@@ -61,20 +87,21 @@ export default function GameDownloadEditor({
           ...(source.label?.trim()
             ? { label: source.label.trim() }
             : {}),
+          enabled: source.enabled !== false,
+          status: source.status ?? "available",
         }))
       ),
     [sources]
   );
 
-  function updateSource(
+  function patchSource(
     index: number,
-    field: keyof GameDownloadSource,
-    value: string
+    patch: Partial<GameDownloadSource>
   ) {
     setSources((current) =>
       current.map((source, sourceIndex) =>
         sourceIndex === index
-          ? { ...source, [field]: value }
+          ? { ...source, ...patch }
           : source
       )
     );
@@ -86,6 +113,27 @@ export default function GameDownloadEditor({
         (_, sourceIndex) => sourceIndex !== index
       )
     );
+  }
+
+  function moveSource(
+    index: number,
+    direction: -1 | 1
+  ) {
+    setSources((current) => {
+      const target = index + direction;
+
+      if (
+        target < 0 ||
+        target >= current.length
+      ) {
+        return current;
+      }
+
+      const next = [...current];
+      const [source] = next.splice(index, 1);
+      next.splice(target, 0, source);
+      return next;
+    });
   }
 
   function addSource() {
@@ -108,7 +156,7 @@ export default function GameDownloadEditor({
         <div>
           <strong>Fuentes de descarga</strong>
           <span>
-            Hasta 6 destinos por ahora. Se aceptan rutas internas o HTTPS sin credenciales.
+            El orden de esta lista será el orden mostrado al visitante. Podés ocultar una fuente sin borrarla o marcarla como caída.
           </span>
         </div>
         <button
@@ -128,92 +176,156 @@ export default function GameDownloadEditor({
         </div>
       ) : (
         <div className={styles.list}>
-          {sources.map((source, index) => (
-            <fieldset
-              key={index}
-              className={styles.source}
-            >
-              <legend>Fuente {index + 1}</legend>
+          {sources.map((source, index) => {
+            const enabled = source.enabled !== false;
 
-              <label>
-                <span>Identificador</span>
-                <input
-                  value={source.id}
-                  onChange={(event) =>
-                    updateSource(
-                      index,
-                      "id",
-                      event.target.value
-                    )
-                  }
-                  maxLength={160}
-                  pattern="[a-z0-9][a-z0-9._-]*"
-                  placeholder="mediafire"
-                  required
-                />
-              </label>
-
-              <label>
-                <span>Nombre visible</span>
-                <input
-                  value={source.name}
-                  onChange={(event) =>
-                    updateSource(
-                      index,
-                      "name",
-                      event.target.value
-                    )
-                  }
-                  maxLength={100}
-                  placeholder="MediaFire"
-                  required
-                />
-              </label>
-
-              <label className={styles.hrefField}>
-                <span>Dirección</span>
-                <input
-                  value={source.href}
-                  onChange={(event) =>
-                    updateSource(
-                      index,
-                      "href",
-                      event.target.value
-                    )
-                  }
-                  maxLength={2048}
-                  placeholder="https://... o /ruta-interna"
-                  required
-                />
-              </label>
-
-              <label>
-                <span>Texto del botón</span>
-                <input
-                  value={source.label ?? ""}
-                  onChange={(event) =>
-                    updateSource(
-                      index,
-                      "label",
-                      event.target.value
-                    )
-                  }
-                  maxLength={240}
-                  placeholder="Ir al enlace"
-                />
-              </label>
-
-              <button
-                type="button"
-                className={styles.removeButton}
-                onClick={() => removeSource(index)}
-                aria-label={`Eliminar fuente ${index + 1}`}
+            return (
+              <fieldset
+                key={index}
+                className={styles.source}
+                data-enabled={enabled ? "true" : "false"}
               >
-                <Trash2 size={15} aria-hidden="true" />
-                Eliminar
-              </button>
-            </fieldset>
-          ))}
+                <legend>
+                  Fuente {index + 1}
+                  {!enabled && " · oculta"}
+                </legend>
+
+                <div className={styles.sourceToolbar}>
+                  <button
+                    type="button"
+                    onClick={() => moveSource(index, -1)}
+                    disabled={index === 0}
+                    aria-label={`Subir fuente ${index + 1}`}
+                    title="Subir"
+                  >
+                    <ArrowUp size={14} aria-hidden="true" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => moveSource(index, 1)}
+                    disabled={index === sources.length - 1}
+                    aria-label={`Bajar fuente ${index + 1}`}
+                    title="Bajar"
+                  >
+                    <ArrowDown size={14} aria-hidden="true" />
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.visibilityButton}
+                    onClick={() =>
+                      patchSource(index, {
+                        enabled: !enabled,
+                      })
+                    }
+                    aria-pressed={enabled}
+                    aria-label={
+                      enabled
+                        ? `Ocultar fuente ${index + 1}`
+                        : `Mostrar fuente ${index + 1}`
+                    }
+                    title={enabled ? "Ocultar" : "Mostrar"}
+                  >
+                    {enabled ? (
+                      <Eye size={14} aria-hidden="true" />
+                    ) : (
+                      <EyeOff size={14} aria-hidden="true" />
+                    )}
+                  </button>
+                </div>
+
+                <label>
+                  <span>Identificador</span>
+                  <input
+                    value={source.id}
+                    onChange={(event) =>
+                      patchSource(index, {
+                        id: event.target.value,
+                      })
+                    }
+                    maxLength={160}
+                    pattern="[a-z0-9][a-z0-9._-]*"
+                    placeholder="mediafire"
+                    required
+                  />
+                </label>
+
+                <label>
+                  <span>Nombre visible</span>
+                  <input
+                    value={source.name}
+                    onChange={(event) =>
+                      patchSource(index, {
+                        name: event.target.value,
+                      })
+                    }
+                    maxLength={100}
+                    placeholder="MediaFire"
+                    required
+                  />
+                </label>
+
+                <label>
+                  <span>Estado</span>
+                  <select
+                    value={source.status ?? "available"}
+                    onChange={(event) =>
+                      patchSource(index, {
+                        status: event.target.value as GameDownloadSourceStatus,
+                      })
+                    }
+                  >
+                    {statusOptions.map((option) => (
+                      <option
+                        key={option.value}
+                        value={option.value}
+                      >
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className={styles.hrefField}>
+                  <span>Dirección</span>
+                  <input
+                    value={source.href}
+                    onChange={(event) =>
+                      patchSource(index, {
+                        href: event.target.value,
+                      })
+                    }
+                    maxLength={2048}
+                    placeholder="HTTPS o ruta interna"
+                    required
+                  />
+                </label>
+
+                <label>
+                  <span>Texto del botón</span>
+                  <input
+                    value={source.label ?? ""}
+                    onChange={(event) =>
+                      patchSource(index, {
+                        label: event.target.value,
+                      })
+                    }
+                    maxLength={240}
+                    placeholder="Ir al enlace"
+                  />
+                </label>
+
+                <button
+                  type="button"
+                  className={styles.removeButton}
+                  onClick={() => removeSource(index)}
+                  aria-label={`Eliminar fuente ${index + 1}`}
+                >
+                  <Trash2 size={15} aria-hidden="true" />
+                  Eliminar
+                </button>
+              </fieldset>
+            );
+          })}
         </div>
       )}
     </div>
