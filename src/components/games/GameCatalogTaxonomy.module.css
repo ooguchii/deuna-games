@@ -1,0 +1,73 @@
+.card {
+  border-color:
+    color-mix(
+      in srgb,
+      var(--taxonomy-accent) 18%,
+      #17202b
+    );
+}
+
+.icon {
+  color: var(--taxonomy-accent) !important;
+}
+
+.card:hover {
+  border-color:
+    color-mix(
+      in srgb,
+      var(--taxonomy-accent) 42%,
+      #303b49
+    );
+}
+
+.card:hover .icon {
+  color: var(--taxonomy-accent) !important;
+}
+
+.active {
+  color: var(--taxonomy-accent) !important;
+  border-color:
+    color-mix(
+      in srgb,
+      var(--taxonomy-accent) 72%,
+      transparent
+    ) !important;
+  background:
+    radial-gradient(
+      circle at 50% 10%,
+      color-mix(
+        in srgb,
+        var(--taxonomy-accent) 12%,
+        transparent
+      ),
+      transparent 60%
+    ),
+    linear-gradient(
+      180deg,
+      #11151d,
+      var(--surface-control)
+    ) !important;
+  box-shadow:
+    0 0 0 1px
+      color-mix(
+        in srgb,
+        var(--taxonomy-accent) 12%,
+        transparent
+      ),
+    0 0 30px
+      color-mix(
+        in srgb,
+        var(--taxonomy-accent) 14%,
+        transparent
+      ),
+    0 18px 36px rgba(0, 0, 0, 0.30) !important;
+}
+
+.active small {
+  color:
+    color-mix(
+      in srgb,
+      var(--taxonomy-accent) 55%,
+      #9a8b92
+    ) !important;
+}
