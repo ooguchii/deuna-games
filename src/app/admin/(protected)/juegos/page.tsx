@@ -11,6 +11,9 @@ import {
   listEditorialItems,
 } from "@/lib/admin/content-service";
 import {
+  listPublicationStates,
+} from "@/lib/admin/publication-overview";
+import {
   verifyAdminSession,
 } from "@/lib/admin/session";
 
@@ -28,10 +31,18 @@ export default async function AdminGamesPage({
   searchParams,
 }: PageProps) {
   await verifyAdminSession();
-  const [items, parameters] = await Promise.all([
-    listEditorialItems("game"),
-    searchParams,
-  ]);
+  const [items, publicationStates, parameters] =
+    await Promise.all([
+      listEditorialItems("game"),
+      listPublicationStates("game"),
+      searchParams,
+    ]);
+  const publicationByKey = new Map(
+    (publicationStates ?? []).map((item) => [
+      item.key,
+      item,
+    ])
+  );
   const state = Array.isArray(parameters.estado)
     ? parameters.estado[0]
     : parameters.estado;
@@ -43,7 +54,7 @@ export default async function AdminGamesPage({
           <span>CATÁLOGO EDITORIAL</span>
           <h1>Juegos</h1>
           <p>
-            Los cambios se guardan como borradores versionados en PostgreSQL. No alteran todavía la web pública.
+            Guardar conserva un borrador versionado. La web pública sólo cambia cuando se crea un snapshot mediante Publicar.
           </p>
         </div>
       </header>
@@ -53,7 +64,11 @@ export default async function AdminGamesPage({
       <section className={styles.tablePanel}>
         <div className={styles.tableSummary}>
           <strong>{items.length} juegos importados</strong>
-          <span>Edición en borrador</span>
+          <span>
+            {publicationStates
+              ? "Publicación controlada"
+              : "Edición en borrador"}
+          </span>
         </div>
 
         {items.length === 0 ? (
@@ -69,61 +84,75 @@ export default async function AdminGamesPage({
                   <th scope="col">Categoría</th>
                   <th scope="col">Versión</th>
                   <th scope="col">Estado</th>
+                  <th scope="col">Publicación</th>
                   <th scope="col">Revisión</th>
                   <th scope="col">Acción</th>
                 </tr>
               </thead>
               <tbody>
-                {items.map((item) => (
-                  <tr key={item.key}>
-                    <th scope="row">
-                      <strong>{item.payload.title}</strong>
-                      <span>{item.key}</span>
-                    </th>
-                    <td>{item.payload.category}</td>
-                    <td>
-                      {item.payload.version ?? "Sin versión"}
-                    </td>
-                    <td>
-                      {item.status === "synced" ? (
-                        <span className={styles.statusOk}>
-                          <CheckCircle2 size={14} aria-hidden="true" />
-                          Sin cambios
-                        </span>
-                      ) : (
-                        <span className={styles.statusPending}>
-                          <CircleSlash2 size={14} aria-hidden="true" />
-                          Borrador
-                        </span>
-                      )}
-                    </td>
-                    <td>{item.revision}</td>
-                    <td>
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 12,
-                        }}
-                      >
-                        <Link
-                          className={styles.tableAction}
-                          href={`/admin/juegos/${encodeURIComponent(item.key)}`}
+                {items.map((item) => {
+                  const publication =
+                    publicationByKey.get(item.key);
+                  const pending = publication
+                    ? publication.hasUnpublishedChanges
+                    : item.status !== "synced";
+
+                  return (
+                    <tr key={item.key}>
+                      <th scope="row">
+                        <strong>{item.payload.title}</strong>
+                        <span>{item.key}</span>
+                      </th>
+                      <td>{item.payload.category}</td>
+                      <td>
+                        {item.payload.version ?? "Sin versión"}
+                      </td>
+                      <td>
+                        {pending ? (
+                          <span className={styles.statusPending}>
+                            <CircleSlash2 size={14} aria-hidden="true" />
+                            Sin publicar
+                          </span>
+                        ) : (
+                          <span className={styles.statusOk}>
+                            <CheckCircle2 size={14} aria-hidden="true" />
+                            Publicado
+                          </span>
+                        )}
+                      </td>
+                      <td>
+                        {publication
+                          ? `#${publication.publicationNumber}`
+                          : "No disponible"}
+                      </td>
+                      <td>{item.revision}</td>
+                      <td>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 12,
+                          }}
                         >
-                          <Pencil size={13} aria-hidden="true" />
-                          Editar
-                        </Link>
-                        <Link
-                          className={styles.tableAction}
-                          href={`/admin/juegos/${encodeURIComponent(item.key)}/vista-previa`}
-                        >
-                          <Eye size={13} aria-hidden="true" />
-                          Vista previa
-                        </Link>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                          <Link
+                            className={styles.tableAction}
+                            href={`/admin/juegos/${encodeURIComponent(item.key)}`}
+                          >
+                            <Pencil size={13} aria-hidden="true" />
+                            Editar
+                          </Link>
+                          <Link
+                            className={styles.tableAction}
+                            href={`/admin/juegos/${encodeURIComponent(item.key)}/vista-previa`}
+                          >
+                            <Eye size={13} aria-hidden="true" />
+                            Vista previa
+                          </Link>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
