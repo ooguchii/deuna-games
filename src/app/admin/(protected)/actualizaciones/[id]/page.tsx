@@ -4,9 +4,13 @@ import { notFound } from "next/navigation";
 
 import EditorialHistory from "@/components/admin/EditorialHistory";
 import EditorStateNotice from "@/components/admin/EditorStateNotice";
+import PublicationPanel from "@/components/admin/PublicationPanel";
 import {
   getEditorialItem,
 } from "@/lib/admin/content-service";
+import {
+  getUpdatePublicationState,
+} from "@/lib/admin/publication-service";
 import {
   verifyAdminSession,
 } from "@/lib/admin/session";
@@ -38,6 +42,17 @@ export default async function AdminUpdateEditorPage({
 
   if (!item) notFound();
 
+  let publicationState = null;
+
+  try {
+    publicationState =
+      await getUpdatePublicationState(id);
+  } catch {
+    console.error(
+      "No se pudo leer el estado de publicación de la actualización."
+    );
+  }
+
   const state = Array.isArray(parameters.estado)
     ? parameters.estado[0]
     : parameters.estado;
@@ -67,9 +82,11 @@ export default async function AdminUpdateEditorPage({
           </p>
         </div>
         <span className={styles.draftState}>
-          {item.status === "synced"
-            ? "Sin cambios"
-            : "Borrador modificado"}
+          {publicationState?.hasUnpublishedChanges
+            ? "Cambios sin publicar"
+            : item.status === "synced"
+              ? "Sin cambios"
+              : "Borrador guardado"}
         </span>
       </header>
 
@@ -148,13 +165,28 @@ export default async function AdminUpdateEditorPage({
 
           <div className={styles.formActions}>
             <p>
-              Guardar no modifica la sección pública de actualizaciones.
+              Guardar conserva el cambio como borrador. La web pública sólo cambia al publicar.
             </p>
             <button type="submit">
               Guardar borrador
             </button>
           </div>
         </form>
+      </section>
+
+      <section className={styles.editorPanel}>
+        {publicationState ? (
+          <PublicationPanel
+            state={publicationState}
+            requestState={state}
+            publishAction={`/api/admin/content/updates/${encodeURIComponent(id)}/publish`}
+            restoreActionBase="/api/admin/content/update-publications"
+          />
+        ) : (
+          <p>
+            La infraestructura de publicación todavía no está disponible en esta base. El borrador permanece intacto hasta aplicar la migración editorial correspondiente.
+          </p>
+        )}
       </section>
 
       <EditorialHistory
