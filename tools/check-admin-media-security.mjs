@@ -6,6 +6,7 @@ import process from "node:process";
 
 import {
   inspectSafeEditorialWebp,
+  sanitizeEditorialWebp,
 } from "../src/lib/media/safe-webp.ts";
 
 const root = process.cwd();
@@ -87,7 +88,34 @@ const withExif = riffWebp([
 ]);
 assert(
   inspectSafeEditorialWebp(withExif) === null,
-  "La carga multimedia debe rechazar EXIF."
+  "La inspección estricta debe rechazar EXIF sin normalizar."
+);
+
+const browserStyleMetadata = riffWebp([
+  chunk(
+    "VP8X",
+    vp8xPayload(0x20 | 0x08 | 0x04, 320, 180)
+  ),
+  chunk("ICCP", Buffer.from("profile")),
+  chunk("EXIF", Buffer.from("metadata")),
+  chunk("XMP ", Buffer.from("metadata")),
+  chunk("VP8 ", vp8Payload()),
+]);
+const sanitizedBrowserWebp =
+  sanitizeEditorialWebp(browserStyleMetadata);
+const sanitizedInspection = sanitizedBrowserWebp
+  ? inspectSafeEditorialWebp(sanitizedBrowserWebp)
+  : null;
+
+assert(
+  inspectSafeEditorialWebp(browserStyleMetadata) === null &&
+    sanitizedBrowserWebp !== null &&
+    sanitizedInspection?.width === 320 &&
+    sanitizedInspection?.height === 180 &&
+    !sanitizedBrowserWebp.includes(Buffer.from("ICCP")) &&
+    !sanitizedBrowserWebp.includes(Buffer.from("EXIF")) &&
+    !sanitizedBrowserWebp.includes(Buffer.from("XMP ")),
+  "El servidor debe poder retirar ICC/EXIF/XMP de un WebP estático generado por navegador antes de aplicar la validación estricta."
 );
 
 const animated = riffWebp([
@@ -98,8 +126,9 @@ const animated = riffWebp([
   chunk("VP8 ", vp8Payload()),
 ]);
 assert(
-  inspectSafeEditorialWebp(animated) === null,
-  "La carga multimedia debe rechazar WebP animado."
+  inspectSafeEditorialWebp(animated) === null &&
+    sanitizeEditorialWebp(animated) === null,
+  "La normalización nunca debe convertir una animación en una carga aceptable."
 );
 
 const hugeCanvas = riffWebp([
@@ -232,8 +261,10 @@ assert(
     uploadForm.includes('value="url"') &&
     uploadForm.includes('value="manual"') &&
     uploadForm.includes("media-source") &&
-    uploadForm.includes("application/x-www-form-urlencoded"),
-  "El editor debe normalizar PNG/JPEG/AVIF/WebP en el navegador, permitir ajuste automático o manual e importar por URL sin saltarse la ruta administrativa."
+    uploadForm.includes("application/x-www-form-urlencoded") &&
+    uploadForm.includes('resultState !== "imagen-subida"') &&
+    uploadForm.includes("uploadRedirectError"),
+  "El editor debe normalizar PNG/JPEG/AVIF/WebP, importar por URL y conservar la pantalla si el servidor rechaza el intento."
 );
 assert(
   remoteRoute.includes(
@@ -277,9 +308,10 @@ assert(
 );
 assert(
   uploadStorage.includes('flag: "wx"') &&
+    uploadStorage.includes("sanitizeEditorialWebp") &&
     uploadStorage.includes("inspectSafeEditorialWebp") &&
     uploadStorage.includes("isSymbolicLink"),
-  "Los archivos deben crearse sin sobrescritura, validarse y rechazar enlaces simbólicos."
+  "Los archivos deben sanear metadatos, crearse sin sobrescritura, validarse y rechazar enlaces simbólicos."
 );
 assert(
   publicRoute.includes(
@@ -315,5 +347,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  "Seguridad multimedia administrativa: OK (normalización local, URLs HTTPS públicas, WebP, multipart, almacenamiento y ruta pública verificados)."
+  "Seguridad multimedia administrativa: OK (normalización cliente/servidor, URLs HTTPS públicas, WebP, multipart, almacenamiento y ruta pública verificados)."
 );
