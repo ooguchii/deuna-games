@@ -4,13 +4,6 @@ import type { NextRequest } from "next/server";
 
 const MAX_ADMIN_FORM_BYTES = 8 * 1024;
 
-type AdminFormRejectionReason =
-  | "origin"
-  | "content-type"
-  | "content-length"
-  | "body-read"
-  | "body-size";
-
 function headerMatchesAdminOrigin(
   value: string | null,
   adminOrigin: string
@@ -34,14 +27,19 @@ function hasTrustedAdminOrigin(
     "sec-fetch-site"
   );
 
+  // Una petición declarada cross-site se rechaza siempre.
   if (fetchSite === "cross-site") {
     return false;
   }
 
+  // Algunos navegadores o políticas de privacidad pueden enviar
+  // Origin: null en formularios locales. Cuando existe un Origin
+  // utilizable, debe coincidir de forma exacta con el origen fijado.
   if (origin && origin !== "null") {
     return origin === adminOrigin;
   }
 
+  // Referer se usa únicamente como respaldo y sólo se compara el origen.
   if (referer) {
     return headerMatchesAdminOrigin(
       referer,
@@ -49,43 +47,11 @@ function hasTrustedAdminOrigin(
     );
   }
 
+  // Si Origin/Referer fueron omitidos por el navegador, sólo se admite
+  // una navegación que el propio navegador marque como no cross-site.
   return (
     fetchSite === "same-origin" ||
     fetchSite === "none"
-  );
-}
-
-function logRejectedAdminForm(
-  request: NextRequest,
-  adminOrigin: string,
-  reason: AdminFormRejectionReason
-) {
-  const origin = request.headers.get("origin");
-  const referer = request.headers.get("referer");
-  const fetchSite = request.headers.get(
-    "sec-fetch-site"
-  );
-  const contentType = request.headers.get(
-    "content-type"
-  );
-  const contentLength = request.headers.get(
-    "content-length"
-  );
-  const host = request.headers.get("host");
-
-  console.warn(
-    "[admin-login-rejected]",
-    JSON.stringify({
-      reason,
-      expectedOrigin: adminOrigin,
-      requestOrigin: request.nextUrl.origin,
-      host,
-      origin,
-      referer,
-      fetchSite,
-      contentType,
-      contentLength,
-    })
   );
 }
 
@@ -107,11 +73,6 @@ export async function readTrustedAdminForm(
       adminOrigin
     )
   ) {
-    logRejectedAdminForm(
-      request,
-      adminOrigin,
-      "origin"
-    );
     return null;
   }
 
@@ -120,11 +81,6 @@ export async function readTrustedAdminForm(
       "application/x-www-form-urlencoded"
     )
   ) {
-    logRejectedAdminForm(
-      request,
-      adminOrigin,
-      "content-type"
-    );
     return null;
   }
 
@@ -136,11 +92,6 @@ export async function readTrustedAdminForm(
       contentLength > MAX_ADMIN_FORM_BYTES
     )
   ) {
-    logRejectedAdminForm(
-      request,
-      adminOrigin,
-      "content-length"
-    );
     return null;
   }
 
@@ -149,11 +100,6 @@ export async function readTrustedAdminForm(
   try {
     body = await request.text();
   } catch {
-    logRejectedAdminForm(
-      request,
-      adminOrigin,
-      "body-read"
-    );
     return null;
   }
 
@@ -161,11 +107,6 @@ export async function readTrustedAdminForm(
     Buffer.byteLength(body, "utf8") >
     MAX_ADMIN_FORM_BYTES
   ) {
-    logRejectedAdminForm(
-      request,
-      adminOrigin,
-      "body-size"
-    );
     return null;
   }
 
