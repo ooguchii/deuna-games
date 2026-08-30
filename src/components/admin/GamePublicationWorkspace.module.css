@@ -1,43 +1,43 @@
 .workspace {
   display: grid;
-  gap: 18px;
+  gap: 20px;
 }
 
 .notice {
-  border: 1px solid #334150;
-  border-radius: 11px;
-  padding: 13px 15px;
-  background: #0b121b;
-  color: #c4ced9;
-  font-size: 13px;
-  line-height: 1.55;
+  border: 1px solid #3b4958;
+  border-radius: 12px;
+  padding: 14px 16px;
+  background: #0c141d;
+  color: #d0d8e1;
+  font-size: 14px;
+  line-height: 1.6;
 }
 
 .noticeSuccess {
-  border-color: rgba(87, 211, 137, 0.32);
-  background: rgba(87, 211, 137, 0.07);
-  color: #aeecc8;
+  border-color: rgba(87, 211, 137, 0.38);
+  background: rgba(87, 211, 137, 0.08);
+  color: #bcf2d2;
 }
 
 .noticeWarning {
-  border-color: rgba(255, 190, 92, 0.32);
-  background: rgba(255, 190, 92, 0.07);
-  color: #f1c986;
+  border-color: rgba(255, 190, 92, 0.38);
+  background: rgba(255, 190, 92, 0.08);
+  color: #f7d498;
 }
 
 .noticeError {
-  border-color: rgba(255, 102, 102, 0.34);
-  background: rgba(255, 102, 102, 0.07);
-  color: #ffb0b0;
+  border-color: rgba(255, 102, 102, 0.4);
+  background: rgba(255, 102, 102, 0.08);
+  color: #ffc0c0;
 }
 
 .statusCard,
 .checklistPanel,
 .publishPanel,
 .historyPanel {
-  border: 1px solid #2b3745;
-  border-radius: 14px;
-  background: linear-gradient(155deg, #0d151f, #091018);
+  border: 1px solid #364352;
+  border-radius: 15px;
+  background: linear-gradient(155deg, #0f1721, #0a1119);
   box-shadow:
     0 16px 38px rgba(0, 0, 0, 0.17),
     inset 0 1px 0 rgba(255, 255, 255, 0.025);
@@ -47,89 +47,89 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 22px;
-  padding: 24px;
+  gap: 24px;
+  padding: 26px;
 }
 
 .statusCard[data-tone="new"],
 .statusCard[data-tone="pending"] {
-  border-color: color-mix(in srgb, var(--brand) 35%, #2b3745);
+  border-color: color-mix(in srgb, var(--brand) 42%, #364352);
 }
 
 .statusCard[data-tone="published"] {
-  border-color: rgba(87, 211, 137, 0.28);
+  border-color: rgba(87, 211, 137, 0.34);
 }
 
 .statusCard[data-tone="hidden"] {
-  border-color: rgba(255, 190, 92, 0.3);
+  border-color: rgba(255, 190, 92, 0.36);
 }
 
 .statusCard span,
 .sectionHeading > div > span,
 .publishCopy > span {
   color: var(--brand);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 850;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.09em;
 }
 
 .statusCard h2,
 .sectionHeading h2,
 .publishCopy h2 {
-  margin-top: 6px;
-  color: #f3f6fa;
-  font-size: 22px;
-  line-height: 1.15;
+  margin-top: 7px;
+  color: #f5f7fa;
+  font-size: 24px;
+  line-height: 1.2;
 }
 
 .statusCard p,
 .sectionHeading p,
 .publishCopy p {
-  margin-top: 9px;
-  color: #91a0af;
-  font-size: 13px;
-  line-height: 1.6;
+  margin-top: 10px;
+  color: #a6b3c0;
+  font-size: 14px;
+  line-height: 1.65;
 }
 
 .quickActions {
   display: flex;
-  gap: 9px;
+  gap: 10px;
   flex-wrap: wrap;
   justify-content: flex-end;
 }
 
 .quickActions a {
-  min-height: 42px;
+  min-height: 44px;
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 0 13px;
-  color: #e2e7ed;
-  border: 1px solid #354353;
+  padding: 0 14px;
+  color: #e6ebf0;
+  border: 1px solid #415060;
   border-radius: 9px;
-  background: #0a1119;
-  font-size: 12px;
+  background: #0b121a;
+  font-size: 13px;
   font-weight: 750;
 }
 
 .quickActions a:hover,
 .quickActions a:focus-visible {
-  border-color: color-mix(in srgb, var(--brand) 44%, #354353);
-  color: #ffd4de;
+  border-color: color-mix(in srgb, var(--brand) 50%, #4d5c6b);
+  color: #fff0f4;
 }
 
 .summaryGrid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
+  gap: 12px;
 }
 
 .summaryGrid article {
   min-width: 0;
-  padding: 16px;
-  border: 1px solid #293644;
-  border-radius: 11px;
-  background: #0b121a;
+  padding: 18px;
+  border: 1px solid #344150;
+  border-radius: 12px;
+  background: #0c141c;
 }
 
 .summaryGrid span,
@@ -139,29 +139,29 @@
 }
 
 .summaryGrid span {
-  color: #7f8d9c;
-  font-size: 10px;
-  font-weight: 750;
+  color: #9aa8b7;
+  font-size: 11px;
+  font-weight: 780;
   text-transform: uppercase;
-  letter-spacing: 0.045em;
+  letter-spacing: 0.05em;
 }
 
 .summaryGrid strong {
-  margin-top: 8px;
-  color: #f0f4f8;
-  font-size: 17px;
+  margin-top: 9px;
+  color: #f3f6f9;
+  font-size: 19px;
 }
 
 .summaryGrid small {
-  margin-top: 5px;
-  color: #718091;
-  font-size: 11px;
-  line-height: 1.45;
+  margin-top: 6px;
+  color: #91a0af;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .checklistPanel,
 .historyPanel {
-  padding: 22px;
+  padding: 24px;
 }
 
 .sectionHeading {
@@ -172,17 +172,17 @@
 }
 
 .sectionHeading p {
-  max-width: 520px;
+  max-width: 540px;
   margin-top: 0;
   text-align: right;
 }
 
 .progressTrack {
-  height: 7px;
-  margin-top: 18px;
+  height: 8px;
+  margin-top: 20px;
   overflow: hidden;
   border-radius: 999px;
-  background: #151f2a;
+  background: #1c2733;
 }
 
 .progressTrack span {
@@ -195,8 +195,8 @@
 .checklist {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 9px;
-  margin-top: 15px;
+  gap: 11px;
+  margin-top: 17px;
 }
 
 .checklist > a {
@@ -204,12 +204,12 @@
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 11px;
-  min-height: 74px;
-  padding: 12px 13px;
-  border: 1px solid #283542;
-  border-radius: 10px;
-  background: #091019;
+  gap: 12px;
+  min-height: 82px;
+  padding: 14px;
+  border: 1px solid #344250;
+  border-radius: 11px;
+  background: #0a1119;
   transition:
     border-color 150ms ease,
     background 150ms ease,
@@ -218,37 +218,37 @@
 
 .checklist > a:hover,
 .checklist > a:focus-visible {
-  border-color: #3a4958;
-  background: #0d151e;
+  border-color: #526171;
+  background: #101a24;
   transform: translateY(-1px);
 }
 
 .checkComplete {
-  border-color: rgba(87, 211, 137, 0.18) !important;
+  border-color: rgba(87, 211, 137, 0.28) !important;
 }
 
 .checkMissing {
-  border-color: rgba(255, 190, 92, 0.16) !important;
+  border-color: rgba(255, 190, 92, 0.27) !important;
 }
 
 .checkIcon {
-  width: 30px;
-  height: 30px;
+  width: 34px;
+  height: 34px;
   display: grid;
   place-items: center;
-  border-radius: 8px;
-  background: #101925;
-  color: #8998a7;
+  border-radius: 9px;
+  background: #131d29;
+  color: #a1afbd;
 }
 
 .checkComplete .checkIcon {
-  color: #79dba8;
-  background: rgba(87, 211, 137, 0.08);
+  color: #8ae8b6;
+  background: rgba(87, 211, 137, 0.1);
 }
 
 .checkMissing .checkIcon {
-  color: #d9a866;
-  background: rgba(255, 190, 92, 0.06);
+  color: #efbd78;
+  background: rgba(255, 190, 92, 0.08);
 }
 
 .checkCopy {
@@ -261,20 +261,20 @@
 }
 
 .checkCopy strong {
-  color: #dfe5ec;
-  font-size: 12px;
+  color: #e8edf2;
+  font-size: 14px;
 }
 
 .checkCopy small {
-  margin-top: 4px;
-  color: #768596;
-  font-size: 11px;
-  line-height: 1.45;
+  margin-top: 5px;
+  color: #91a0af;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .checkState {
-  color: #8391a0 !important;
-  font-size: 9px !important;
+  color: #a5b1bd !important;
+  font-size: 11px !important;
   font-weight: 800 !important;
   letter-spacing: 0.04em !important;
   text-transform: uppercase;
@@ -282,38 +282,38 @@
 }
 
 .checkComplete .checkState {
-  color: #79dba8 !important;
+  color: #8ae8b6 !important;
 }
 
 .checkMissing .checkState {
-  color: #d9a866 !important;
+  color: #efbd78 !important;
 }
 
 .publishPanel {
   display: grid;
   grid-template-columns: minmax(0, 1.2fr) auto;
   align-items: center;
-  gap: 28px;
-  padding: 24px;
-  border-color: color-mix(in srgb, var(--brand) 25%, #2b3745);
+  gap: 30px;
+  padding: 26px;
+  border-color: color-mix(in srgb, var(--brand) 32%, #364352);
 }
 
 .publishCopy {
-  max-width: 760px;
+  max-width: 780px;
 }
 
 .advisory {
   display: flex;
   align-items: flex-start;
-  gap: 9px;
-  margin-top: 14px;
-  padding: 11px 12px;
-  color: #d7ad72;
-  border: 1px solid rgba(255, 190, 92, 0.18);
-  border-radius: 9px;
-  background: rgba(255, 190, 92, 0.045);
-  font-size: 11px;
-  line-height: 1.5;
+  gap: 10px;
+  margin-top: 15px;
+  padding: 13px 14px;
+  color: #e7bd82;
+  border: 1px solid rgba(255, 190, 92, 0.26);
+  border-radius: 10px;
+  background: rgba(255, 190, 92, 0.06);
+  font-size: 13px;
+  line-height: 1.55;
 }
 
 .advisory svg {
@@ -323,8 +323,8 @@
 
 .publishActions {
   display: grid;
-  gap: 9px;
-  min-width: 220px;
+  gap: 10px;
+  min-width: 230px;
 }
 
 .publishActions form,
@@ -341,11 +341,11 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 0 15px;
+  padding: 0 16px;
   border-radius: 9px;
   cursor: pointer;
   font: inherit;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 800;
 }
 
@@ -363,15 +363,15 @@
 }
 
 .hideButton {
-  color: #f1c986;
-  border: 1px solid rgba(255, 190, 92, 0.25);
-  background: rgba(255, 190, 92, 0.055);
+  color: #f7d498;
+  border: 1px solid rgba(255, 190, 92, 0.32);
+  background: rgba(255, 190, 92, 0.07);
 }
 
 .historyList {
   display: grid;
-  gap: 9px;
-  margin-top: 16px;
+  gap: 10px;
+  margin-top: 18px;
 }
 
 .historyRow {
@@ -379,11 +379,11 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 16px;
-  padding: 13px 14px;
-  border: 1px solid #273441;
-  border-radius: 10px;
-  background: #091019;
+  gap: 17px;
+  padding: 15px 16px;
+  border: 1px solid #354250;
+  border-radius: 11px;
+  background: #0a1119;
 }
 
 .historyRow > div:first-child {
@@ -396,36 +396,37 @@
 }
 
 .historyRow strong {
-  color: #dfe5ec;
-  font-size: 12px;
+  color: #e9eef3;
+  font-size: 14px;
 }
 
 .historyRow > div:first-child > span {
-  margin-top: 4px;
-  color: #718091;
-  font-size: 10px;
+  margin-top: 5px;
+  color: #91a0af;
+  font-size: 12px;
+  line-height: 1.45;
   overflow-wrap: anywhere;
 }
 
 .historyAction {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 11px;
 }
 
 .historyAction > span {
-  color: #79dba8;
-  font-size: 10px;
+  color: #8ae8b6;
+  font-size: 12px;
   font-weight: 800;
   white-space: nowrap;
 }
 
 .historyAction button {
-  min-height: 36px;
-  color: #dce3ea;
-  border: 1px solid #354353;
-  background: #0d151e;
-  font-size: 10px;
+  min-height: 40px;
+  color: #e6ebf0;
+  border: 1px solid #41505f;
+  background: #0e1720;
+  font-size: 12px;
 }
 
 @media (max-width: 1100px) {
@@ -480,5 +481,16 @@
   .historyAction {
     align-items: stretch;
     flex-direction: column;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .checklist > a {
+    transition: none;
+  }
+
+  .checklist > a:hover,
+  .checklist > a:focus-visible {
+    transform: none;
   }
 }
