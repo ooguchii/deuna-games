@@ -17,7 +17,14 @@ type PublishedSiteConfigRow = {
   published_payload: unknown;
 };
 
-function sourceFallback(): EditorialSiteConfig {
+export type PublicSiteConfig = Omit<
+  EditorialSiteConfig,
+  "footerTagline"
+> & {
+  footerTagline: string;
+};
+
+function sourceFallback(): PublicSiteConfig {
   return {
     ...sourceSiteConfig,
   };
@@ -44,12 +51,13 @@ async function readPublishedSiteConfig() {
 }
 
 export const getPublicSiteConfig = cache(
-  async (): Promise<EditorialSiteConfig> => {
+  async (): Promise<PublicSiteConfig> => {
     try {
-      return (
-        (await readPublishedSiteConfig()) ??
-        sourceFallback()
-      );
+      const published = await readPublishedSiteConfig();
+      return {
+        ...sourceFallback(),
+        ...(published ?? {}),
+      };
     } catch {
       /*
        * La identidad fuente es un fallback deliberado. Una caída de
