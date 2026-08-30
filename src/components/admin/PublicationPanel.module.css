@@ -44,7 +44,7 @@
 
 .facts {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
 }
 
@@ -70,7 +70,16 @@
   font-size: 0.9rem;
 }
 
-.publishForm {
+.publicationActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.publishForm,
+.hideForm {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -78,6 +87,7 @@
 }
 
 .publishButton,
+.hideButton,
 .restoreButton {
   border: 0;
   border-radius: 10px;
@@ -97,7 +107,14 @@
   color: #fff;
 }
 
+.hideButton {
+  border: 1px solid rgba(255, 190, 92, 0.32);
+  background: rgba(255, 190, 92, 0.08);
+  color: #ffd18a;
+}
+
 .publishButton:disabled,
+.hideButton:disabled,
 .restoreButton:disabled {
   cursor: not-allowed;
   opacity: 0.48;
@@ -197,9 +214,26 @@
   font-size: 0.8rem;
 }
 
+@media (max-width: 980px) {
+  .facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 760px) {
   .facts {
     grid-template-columns: 1fr;
+  }
+
+  .publicationActions,
+  .publishForm,
+  .hideForm {
+    align-items: stretch;
+  }
+
+  .publishButton,
+  .hideButton {
+    width: 100%;
   }
 
   .historyRow {
