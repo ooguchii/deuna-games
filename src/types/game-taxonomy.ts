@@ -43,9 +43,14 @@ export type GameTaxonomyTerm = {
   tone?: GameTaxonomyTone;
 };
 
+/*
+ * Categoría y género son una sola clasificación editorial.
+ * El modelo Game conserva category + genres internamente por compatibilidad
+ * con el contenido existente, pero el panel y la web consumen una única
+ * lista maestra: classifications.
+ */
 export type GameTaxonomy = {
-  categories: GameTaxonomyTerm[];
-  genres: GameTaxonomyTerm[];
+  classifications: GameTaxonomyTerm[];
   tags: GameTaxonomyTerm[];
 };
 
