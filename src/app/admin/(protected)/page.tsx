@@ -17,6 +17,9 @@ import {
   getEditorialOverview,
 } from "@/lib/admin/content-service";
 import {
+  getPublicationOverview,
+} from "@/lib/admin/publication-overview";
+import {
   verifyAdminSession,
 } from "@/lib/admin/session";
 
@@ -24,12 +27,43 @@ import styles from "../admin.module.css";
 
 export const dynamic = "force-dynamic";
 
+function publicationPath(
+  type: "game" | "game_update",
+  key: string
+) {
+  return type === "game"
+    ? `/admin/juegos/${encodeURIComponent(key)}/vista-previa`
+    : `/admin/actualizaciones/${encodeURIComponent(key)}`;
+}
+
+function formatPublicationDate(value: Date) {
+  return new Intl.DateTimeFormat("es", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "UTC",
+  }).format(value);
+}
+
 export default async function AdminDashboardPage() {
   await verifyAdminSession();
-  const [security, editorial] = await Promise.all([
-    getAdminSecurityOverview(),
-    getEditorialOverview(),
-  ]);
+  const [security, editorial, publication] =
+    await Promise.all([
+      getAdminSecurityOverview(),
+      getEditorialOverview(),
+      getPublicationOverview(),
+    ]);
+  const publicGames = publication.available
+    ? publication.games
+    : games.length;
+  const publicUpdates = publication.available
+    ? publication.updates
+    : gameUpdates.length;
+  const pending = publication.available
+    ? publication.pending
+    : editorial.modified;
 
   return (
     <>
@@ -38,7 +72,7 @@ export default async function AdminDashboardPage() {
           <span>PANEL PRIVADO</span>
           <h1>Resumen de administración</h1>
           <p>
-            Área editorial segura: borradores versionados en PostgreSQL, recuperación y control de sesiones.
+            Área editorial segura: borradores versionados, publicaciones separadas, recuperación e historial auditable en PostgreSQL.
           </p>
         </div>
 
@@ -54,18 +88,18 @@ export default async function AdminDashboardPage() {
       >
         <article>
           <span><Gamepad2 size={20} aria-hidden="true" /></span>
-          <strong>{games.length}</strong>
-          <p>Juegos públicos</p>
+          <strong>{publicGames}</strong>
+          <p>Juegos con snapshot público</p>
         </article>
         <article>
           <span><RefreshCcw size={20} aria-hidden="true" /></span>
-          <strong>{gameUpdates.length}</strong>
-          <p>Actualizaciones públicas</p>
+          <strong>{publicUpdates}</strong>
+          <p>Actualizaciones con snapshot</p>
         </article>
         <article>
           <span><Database size={20} aria-hidden="true" /></span>
-          <strong>{editorial.modified}</strong>
-          <p>Borradores modificados</p>
+          <strong>{pending}</strong>
+          <p>Cambios sin publicar</p>
         </article>
         <article>
           <span><ShieldCheck size={20} aria-hidden="true" /></span>
@@ -81,7 +115,9 @@ export default async function AdminDashboardPage() {
             <h2>Estado actual del catálogo</h2>
           </div>
           <p>
-            Los cambios permanecen privados hasta implementar una publicación explícita y auditada.
+            {publication.available
+              ? "Guardar conserva un borrador privado. Publicar crea un snapshot auditable y restaurable."
+              : "La publicación explícita quedará disponible al aplicar la migración editorial pendiente."}
           </p>
         </div>
 
@@ -91,7 +127,7 @@ export default async function AdminDashboardPage() {
             <div>
               <strong>Revisar juegos</strong>
               <span>
-                Títulos, categorías, versiones, requisitos y disponibilidad.
+                Títulos, categorías, versiones, requisitos, descargas y publicación.
               </span>
             </div>
             <ArrowRight size={18} aria-hidden="true" />
@@ -102,7 +138,7 @@ export default async function AdminDashboardPage() {
             <div>
               <strong>Revisar actualizaciones</strong>
               <span>
-                Versiones, fechas y relación con cada juego.
+                Versiones, fechas, publicación y relación con cada juego.
               </span>
             </div>
             <ArrowRight size={18} aria-hidden="true" />
@@ -131,6 +167,61 @@ export default async function AdminDashboardPage() {
           </Link>
         </div>
       </section>
+
+      {publication.available && publication.recent.length > 0 && (
+        <section className={styles.tablePanel}>
+          <div className={styles.tableSummary}>
+            <strong>Publicaciones recientes</strong>
+            <span>{publication.recent.length} movimientos</span>
+          </div>
+
+          <div className={styles.tableWrap}>
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Contenido</th>
+                  <th scope="col">Publicación</th>
+                  <th scope="col">Acción</th>
+                  <th scope="col">Fecha UTC</th>
+                </tr>
+              </thead>
+              <tbody>
+                {publication.recent.map((entry) => (
+                  <tr key={entry.id}>
+                    <th scope="row">
+                      <Link
+                        href={publicationPath(entry.type, entry.key)}
+                      >
+                        <strong>{entry.key}</strong>
+                        <span>
+                          {entry.type === "game"
+                            ? "Juego"
+                            : "Actualización"}
+                        </span>
+                      </Link>
+                    </th>
+                    <td>#{entry.publicationNumber}</td>
+                    <td>
+                      <span
+                        className={
+                          entry.action === "rollback"
+                            ? styles.statusPending
+                            : styles.statusOk
+                        }
+                      >
+                        {entry.action === "rollback"
+                          ? "Restauración"
+                          : "Publicación"}
+                      </span>
+                    </td>
+                    <td>{formatPublicationDate(entry.createdAt)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
     </>
   );
 }
