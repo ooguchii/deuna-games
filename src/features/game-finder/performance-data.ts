@@ -125,17 +125,17 @@ function browserPublishedCalibration(
 
 export function resolvePerformanceProfile(
   slug: string,
-  calibration?: GamePerformanceCalibration
+  explicitCalibration?: GamePerformanceCalibration
 ): GamePerformanceProfile | null {
-  const editorialCalibration =
-    calibration ?? browserPublishedCalibration(slug);
+  const calibration =
+    explicitCalibration ?? browserPublishedCalibration(slug);
 
-  if (editorialCalibration) {
+  if (calibration) {
     return {
       slug,
-      referenceFps: editorialCalibration.referenceFps,
-      ramGb: editorialCalibration.ramGb,
-      fpsCap: editorialCalibration.fpsCap,
+      referenceFps: calibration.referenceFps,
+      ramGb: calibration.ramGb,
+      fpsCap: calibration.fpsCap,
     };
   }
 
