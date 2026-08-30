@@ -49,7 +49,10 @@ const downloadHrefSchema = z
   .max(2_048)
   .refine((value) => {
     if (value.startsWith("/")) {
-      return !value.startsWith("//");
+      return (
+        !value.startsWith("//") &&
+        !value.includes("\\")
+      );
     }
 
     try {
@@ -82,12 +85,20 @@ const requirementsSchema = hardwareRequirementsSchema
   })
   .strict();
 
+const downloadSourceStatusSchema = z.enum([
+  "available",
+  "down",
+  "maintenance",
+]);
+
 const editorialDownloadSourceSchema = z
   .object({
     id: identifierSchema,
     name: z.string().trim().min(1).max(100),
     href: downloadHrefSchema,
     label: optionalShortText,
+    enabled: z.boolean().optional(),
+    status: downloadSourceStatusSchema.optional(),
   })
   .strict();
 
