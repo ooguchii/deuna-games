@@ -19,12 +19,18 @@ RestartSec=5s
 TimeoutStopSec=30s
 UMask=0077
 
+# systemd crea /var/lib/deuna-games con propietario y permisos del servicio.
+# DEUNA_EDITORIAL_MEDIA_ROOT debe apuntar a un subdirectorio de este estado,
+# por ejemplo /var/lib/deuna-games/editorial-media.
+StateDirectory=deuna-games
+StateDirectoryMode=0750
+
 # El runtime sólo necesita Nginx y PostgreSQL en loopback.
 IPAddressDeny=any
 IPAddressAllow=localhost
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
 
-# Aislamiento del proceso. Mantener escribible únicamente el caché de Next.
+# Aislamiento del proceso. Sólo el caché y el estado editorial son escribibles.
 NoNewPrivileges=true
 PrivateDevices=true
 PrivateTmp=true
@@ -42,7 +48,7 @@ RestrictNamespaces=true
 RestrictSUIDSGID=true
 CapabilityBoundingSet=
 AmbientCapabilities=
-ReadWritePaths=-/srv/deuna-games/current/.next/cache
+ReadWritePaths=-/srv/deuna-games/current/.next/cache /var/lib/deuna-games
 
 [Install]
 WantedBy=multi-user.target
