@@ -5,6 +5,10 @@ import {
 } from "lucide-react";
 
 import EditorStateNotice from "@/components/admin/EditorStateNotice";
+import NewGameForm from "@/components/admin/NewGameForm";
+import {
+  listEditorialItems,
+} from "@/lib/admin/content-service";
 import {
   verifyAdminSession,
 } from "@/lib/admin/session";
@@ -23,10 +27,20 @@ export default async function AdminNewGamePage({
   searchParams,
 }: PageProps) {
   await verifyAdminSession();
-  const parameters = await searchParams;
+  const [parameters, games] = await Promise.all([
+    searchParams,
+    listEditorialItems("game"),
+  ]);
   const state = Array.isArray(parameters.estado)
     ? parameters.estado[0]
     : parameters.estado;
+  const categories = [
+    ...new Set(
+      games
+        .map((game) => game.payload.category.trim())
+        .filter(Boolean)
+    ),
+  ].sort((a, b) => a.localeCompare(b, "es"));
 
   return (
     <>
@@ -43,7 +57,7 @@ export default async function AdminNewGamePage({
           <span>ALTA EDITORIAL</span>
           <h1>Nuevo juego</h1>
           <p>
-            Crea un borrador privado con los datos mínimos. El juego no aparecerá en la web hasta que lo revises y pulses Publicar.
+            Crea el borrador privado y completalo por etapas. Nada aparece en la web hasta que lo revises y confirmes la publicación.
           </p>
         </div>
         <span className={styles.draftState}>
@@ -54,94 +68,7 @@ export default async function AdminNewGamePage({
 
       <EditorStateNotice state={state} />
 
-      <section className={styles.editorPanel}>
-        <form
-          className={styles.editorForm}
-          method="post"
-          action="/api/admin/content/games"
-        >
-          <label>
-            <span>Slug / identificador</span>
-            <input
-              name="slug"
-              placeholder="ejemplo-mi-juego"
-              minLength={1}
-              maxLength={160}
-              pattern="[a-z0-9][a-z0-9._-]*"
-              autoComplete="off"
-              required
-            />
-          </label>
-
-          <label>
-            <span>Título</span>
-            <input
-              name="title"
-              maxLength={140}
-              autoComplete="off"
-              required
-            />
-          </label>
-
-          <label>
-            <span>Categoría</span>
-            <input
-              name="category"
-              maxLength={80}
-              autoComplete="off"
-              required
-            />
-          </label>
-
-          <label>
-            <span>Versión inicial</span>
-            <input
-              name="version"
-              maxLength={240}
-              autoComplete="off"
-            />
-          </label>
-
-          <label>
-            <span>Insignia</span>
-            <input
-              name="badge"
-              maxLength={240}
-              autoComplete="off"
-              placeholder="Opcional"
-            />
-          </label>
-
-          <label>
-            <span>Texto alternativo de portada</span>
-            <input
-              name="imageAlt"
-              maxLength={240}
-              autoComplete="off"
-              required
-            />
-          </label>
-
-          <label className={styles.fieldWide}>
-            <span>Descripción</span>
-            <textarea
-              name="description"
-              maxLength={2500}
-              rows={7}
-              required
-            />
-          </label>
-
-          <div className={styles.formActions}>
-            <p>
-              Después de crear el borrador podrás añadir imágenes, requisitos, plataformas, fuentes de descarga y el resto de la ficha desde el editor normal.
-            </p>
-            <button type="submit">
-              Crear borrador
-            </button>
-          </div>
-        </form>
-      </section>
+      <NewGameForm categories={categories} />
     </>
   );
 }
