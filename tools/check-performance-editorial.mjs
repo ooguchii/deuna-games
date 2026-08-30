@@ -63,17 +63,24 @@ assert(
 );
 
 assert(
-  validation.includes("performanceCalibrationSchema") &&
-    validation.includes("performance: performanceCalibrationSchema.optional()") &&
-    validation.includes("value.fpsCap >= value.referenceFps"),
+  /const performanceCalibrationSchema = z[\s\S]*?\.strict\(\)[\s\S]*?\.refine\([\s\S]*?value\.fpsCap === undefined[\s\S]*?(?:value\.fpsCap >= value\.referenceFps|value\.referenceFps <= value\.fpsCap)/.test(
+    validation
+  ) &&
+    validation.includes("performance: performanceCalibrationSchema.optional()"),
   "La calibración editorial debe validarse como parte estricta del snapshot del juego."
 );
 
 assert(
   forms.includes("editorialGamePerformanceFormSchema") &&
-    forms.includes("optionalCalibrationNumber(1_000)") &&
-    forms.includes("optionalCalibrationNumber(512)") &&
-    forms.includes("Los FPS y la RAM de referencia deben completarse juntos"),
+    forms.includes("referenceFps: optionalCalibrationNumber(1_000)") &&
+    forms.includes("ramGb: optionalCalibrationNumber(512)") &&
+    forms.includes("fpsCap: optionalCalibrationNumber(1_000)") &&
+    forms.includes(".superRefine((value, context) =>") &&
+    forms.includes("const hasAny =") &&
+    forms.includes("if (!hasAny) return") &&
+    forms.includes("if (value.referenceFps === undefined)") &&
+    forms.includes("if (value.ramGb === undefined)") &&
+    forms.includes("value.referenceFps > value.fpsCap"),
   "El formulario debe impedir calibraciones parciales o fuera de rango."
 );
 
