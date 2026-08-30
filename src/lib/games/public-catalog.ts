@@ -71,6 +71,7 @@ async function readPublishedGames() {
        published_payload
      FROM deuna_admin.editorial_items
      WHERE item_type = 'game'
+       AND public_visible = true
      ORDER BY lower(
        COALESCE(
          published_payload ->> 'title',
