@@ -20,36 +20,55 @@ async function source(relativePath) {
 
 const [
   homeCollections,
+  rankingEngine,
   homePage,
   sourceConfig,
   publicConfig,
+  curationEditor,
+  curationRoute,
+  presentationRoute,
   creationService,
 ] = await Promise.all([
   source("src/data/home.ts"),
+  source("src/lib/home/ranking.ts"),
   source("src/app/page.tsx"),
   source("src/data/home-config.ts"),
   source("src/lib/home/public-home-config.ts"),
+  source("src/components/admin/HomeCurationEditor.tsx"),
+  source("src/app/api/admin/content/home/route.ts"),
+  source("src/app/api/admin/content/home/presentation/route.ts"),
   source("src/lib/admin/content-create-service.ts"),
 ]);
 
 assert(
-  homeCollections.includes("pickPreferredGames") &&
-    homeCollections.includes("rankGames") &&
-    homeCollections.includes("reviewScore") &&
-    homeCollections.includes("config.heroSlugs") &&
-    homeCollections.includes("config.popularSlugs") &&
-    homeCollections.includes("config.lowSpecSlugs") &&
-    homeCollections.includes("config.recommendedSlugs") &&
+  homeCollections.includes("resolveHomeCollectionGames") &&
+    homeCollections.includes("resolved.curation.hero.mode") &&
+    homeCollections.includes("resolved.curation.popular.mode") &&
+    homeCollections.includes("resolved.curation.lowSpec.mode") &&
+    homeCollections.includes("resolved.curation.recommended.mode") &&
     !homeCollections.includes("getRequiredGame") &&
     !homeCollections.includes("No se encontró el juego editorial requerido"),
-  "La Home debe usar configuración inyectada y no depender de slugs obligatorios."
+  "La Home debe resolver cada colección mediante el modo editorial publicado y sin slugs obligatorios."
 );
 
 assert(
-  homeCollections.includes(
-    "config.lowSpecSlugs,\n      7,\n      false"
-  ),
-  "La sección de bajos recursos no debe rellenarse con juegos arbitrarios cuando faltan candidatos configurados."
+  rankingEngine.includes("scoreHomeGame") &&
+    rankingEngine.includes("rankHomeGames") &&
+    rankingEngine.includes("resolveHomeCollectionGames") &&
+    rankingEngine.includes("reviewScore") &&
+    rankingEngine.includes("minimumRamGb") &&
+    rankingEngine.includes('mode === "manual"') &&
+    rankingEngine.includes('mode === "automatic"') &&
+    rankingEngine.includes("isHomeRankingEligible"),
+  "La portada debe conservar un motor compartido, explicable y determinista para Manual, Automático e Híbrido."
+);
+
+assert(
+  rankingEngine.includes("popularity * 58") &&
+    rankingEngine.includes("rating * 34") &&
+    rankingEngine.includes("lowSpec * 60") &&
+    rankingEngine.includes("ram !== null && ram <= 12"),
+  "El ranking debe mantener señales explícitas de popularidad, calidad y bajos recursos sin rellenar estos últimos arbitrariamente."
 );
 
 assert(
@@ -57,8 +76,11 @@ assert(
     sourceConfig.includes("heroSlugs") &&
     sourceConfig.includes("popularSlugs") &&
     sourceConfig.includes("lowSpecSlugs") &&
-    sourceConfig.includes("recommendedSlugs"),
-  "La portada debe conservar una configuración fuente explícita como fallback."
+    sourceConfig.includes("recommendedSlugs") &&
+    sourceConfig.includes("defaultHomeCuration") &&
+    sourceConfig.includes('hero: { mode: "hybrid" }') &&
+    sourceConfig.includes('lowSpec: { mode: "manual" }'),
+  "La portada debe conservar fallback fuente y traducir el comportamiento histórico al nuevo modelo sin romper revisiones viejas."
 );
 
 assert(
@@ -88,6 +110,32 @@ assert(
 );
 
 assert(
+  curationEditor.includes("Manual") &&
+    curationEditor.includes("Automático") &&
+    curationEditor.includes("Híbrido") &&
+    curationEditor.includes("resolveHomeCollectionGames") &&
+    curationEditor.includes("rankHomeGames") &&
+    curationEditor.includes('name="curationJson"') &&
+    curationEditor.includes("VISTA PREVIA DEL RESULTADO") &&
+    !curationEditor.includes("textarea"),
+  "Curaduría debe ser un espacio editorial profesional con modos, ranking explicable y vista previa, no un editor de slugs crudos."
+);
+
+assert(
+  curationRoute.includes('"curationJson"') &&
+    curationRoute.includes("curationJson.hero.slugs") &&
+    curationRoute.includes("curationJson.popular.mode") &&
+    curationRoute.includes("curation:") &&
+    !curationRoute.includes("heroSlugsText"),
+  "La ruta de Curaduría debe persistir la selección estructurada y sus modos sin campos de texto heredados."
+);
+
+assert(
+  presentationRoute.includes("curation: item.payload.curation"),
+  "Guardar Presentación debe conservar la configuración de Curaduría existente."
+);
+
+assert(
   creationService.includes(
     "addedAt: new Date().toISOString().slice(0, 10)"
   ),
@@ -102,6 +150,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Home editorial: OK (curaduría publicada, fallback fuente, colecciones tolerantes y altas nuevas fechadas)."
+    "Home editorial: OK (curaduría profesional Manual/Automático/Híbrido, ranking explicable compartido, snapshot público y compatibilidad histórica)."
   );
 }
