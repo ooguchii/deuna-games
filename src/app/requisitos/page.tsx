@@ -1,14 +1,8 @@
 import type { Metadata } from "next";
 
-import Link from "next/link";
-
-import {
-  ChevronRight,
-  House,
-} from "lucide-react";
-
 import Footer from "@/components/layout/Footer";
 import Header from "@/components/layout/Header";
+import PublicBreadcrumb from "@/components/layout/PublicBreadcrumb";
 import GameFinderClient from "@/features/game-finder/GameFinderClient";
 import {
   PublicFinderCopyProvider,
@@ -16,6 +10,10 @@ import {
 import {
   getPublicGames,
 } from "@/lib/games/public-catalog";
+import { safeJsonLd } from "@/lib/safe-json-ld";
+import {
+  buildBreadcrumbJsonLd,
+} from "@/lib/seo/breadcrumb";
 import {
   absoluteUrl,
 } from "@/lib/site";
@@ -25,7 +23,6 @@ import {
 import {
   getPublicSiteConfig,
 } from "@/lib/site/public-site-config";
-import { safeJsonLd } from "@/lib/safe-json-ld";
 
 import styles from "./page.module.css";
 
@@ -112,25 +109,10 @@ export default async function RequirementsPage({
         : []
     )
   );
-
-  const breadcrumbJsonLd = {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    itemListElement: [
-      {
-        "@type": "ListItem",
-        position: 1,
-        name: "Inicio",
-        item: absoluteUrl("/"),
-      },
-      {
-        "@type": "ListItem",
-        position: 2,
-        name: "¿Qué puedo jugar?",
-        item: absoluteUrl("/requisitos"),
-      },
-    ],
-  };
+  const breadcrumbJsonLd = buildBreadcrumbJsonLd(
+    page.title,
+    "/requisitos"
+  );
 
   const pageJsonLd = {
     "@context": "https://schema.org",
@@ -165,16 +147,10 @@ export default async function RequirementsPage({
       <Header />
 
       <main id="main-content" className={styles.main}>
-        <nav className={styles.breadcrumb} aria-label="Migas de pan">
-          <Link href="/">
-            <House size={13} aria-hidden="true" />
-            Inicio
-          </Link>
-
-          <ChevronRight size={13} aria-hidden="true" />
-
-          <span aria-current="page">¿Qué puedo jugar?</span>
-        </nav>
+        <PublicBreadcrumb
+          className={styles.breadcrumb}
+          currentLabel={page.title}
+        />
 
         <script
           id="deuna-performance-calibrations"
