@@ -11,7 +11,7 @@ No publiques contraseñas, claves privadas, archivos `.env`, dumps ni capturas q
 3. Instalar PostgreSQL, Nginx, Node.js 24 y WireGuard desde fuentes confiables.
 4. Crear los roles y la base PostgreSQL sólo en loopback.
 5. Aplicar migraciones, importar contenido y crear la única cuenta propietaria.
-6. Ejecutar los preflight de migración y runtime.
+6. Preparar el estado multimedia persistente y ejecutar los preflight.
 7. Instalar una release nueva sin eliminar la release anterior.
 8. Probar Next.js en `127.0.0.1:3000` y después Nginx con HTTPS.
 9. Confirmar desde fuera de la VPN que `/admin` y `/api/admin/` responden `403`.
@@ -22,17 +22,21 @@ El panel no se habilita antes del paso 11. Si una verificación falla, se mantie
 
 ## 1. Estructura del servidor
 
-Usar una cuenta de servicio sin login interactivo y releases separadas:
+Usar una cuenta de servicio sin login interactivo, releases separadas y estado persistente fuera de las releases:
 
 ```text
 /srv/deuna-games/
   current -> /srv/deuna-games/releases/<RELEASE>
   releases/
   source-private/
+/var/lib/deuna-games/
+  editorial-media/
 /etc/deuna-games/runtime.env
 ```
 
 `source-private/` contiene temporalmente las migraciones y herramientas administrativas. No es servido por Nginx y no debe ser legible por el usuario del proceso web. `current/` contiene solamente el artefacto mínimo generado por `npm run build:secure`.
+
+`/var/lib/deuna-games/editorial-media/` contiene únicamente WebP editoriales aceptados por el panel. Está fuera de `current/` deliberadamente: cambiar de release o volver atrás no debe borrar las imágenes ya publicadas.
 
 La release anterior se conserva para poder volver atrás cambiando el enlace `current`; no se borra automáticamente.
 
@@ -79,7 +83,27 @@ El comando no muestra ni registra la contraseña, revoca las sesiones existentes
 
 Después del preflight se puede retirar `.env.admin-migration.local` del VPS y recuperarlo desde un gestor privado de secretos sólo cuando exista otra migración.
 
-## 3. Entorno del servicio
+## 3. Estado multimedia persistente
+
+Antes de habilitar cargas desde el panel, crear el almacén persistente con el preparador incluido en la copia privada:
+
+```bash
+sudo bash ops/deploy/prepare-editorial-media.sh
+```
+
+El script falla si `/var/lib/deuna-games` o `editorial-media` son enlaces simbólicos o archivos regulares. Crea ambos directorios con propietario `deuna-games:deuna-games` y modo `0750`.
+
+Si el usuario o grupo del servicio se cambian respecto del ejemplo, definirlos únicamente para ese comando:
+
+```bash
+sudo DEUNA_SERVICE_USER=<USUARIO-SERVICIO> \
+     DEUNA_SERVICE_GROUP=<GRUPO-SERVICIO> \
+     bash ops/deploy/prepare-editorial-media.sh
+```
+
+No apuntar `DEUNA_EDITORIAL_MEDIA_ROOT` a `current/`, `releases/`, `public/`, `/tmp` ni a la raíz del sistema. Las imágenes editoriales deben sobrevivir a un nuevo deploy y a una reversión de release.
+
+## 4. Entorno del servicio
 
 Copiar y adaptar `ops/systemd/runtime.env.example` como `/etc/deuna-games/runtime.env`. Instalarlo con propietario `root`, grupo `root` y modo `0600`. No copiar allí `DEUNA_DATABASE_MIGRATION_PASSWORD`.
 
@@ -90,13 +114,16 @@ NODE_ENV=production
 NEXT_PUBLIC_SITE_URL=https://<DOMINIO-REAL>
 DEUNA_ADMIN_ENABLED=false
 DEUNA_ADMIN_ORIGIN=https://<ORIGEN-EXACTO-DEL-PANEL>
+DEUNA_EDITORIAL_MEDIA_ROOT=/var/lib/deuna-games/editorial-media
 DEUNA_DATABASE_HOST=127.0.0.1
 DEUNA_DATABASE_USER=deuna_runtime
 ```
 
 No usar marcadores, localhost ni dominios de ejemplo en la release real.
 
-## 4. Release mínima
+En desarrollo local, si `DEUNA_EDITORIAL_MEDIA_ROOT` no está definido, la aplicación usa de forma deliberada un directorio privado bajo el home del usuario y fuera del repositorio. En producción no existe ese fallback: la variable es obligatoria.
+
+## 5. Release mínima
 
 En el equipo de construcción, con el dominio HTTPS real:
 
@@ -110,9 +137,13 @@ Subir la carpeta `deploy` completa a una carpeta nueva dentro de `releases/`. No
 
 Antes de cambiar `current`, verificar que la release incluye `server.js`, `.next/` y `public/`, y que no contiene `.env`, herramientas administrativas, migraciones ni repositorio `.git`.
 
-## 5. systemd y Nginx
+El directorio `/var/lib/deuna-games/editorial-media/` no forma parte del artefacto `deploy/` y no debe copiarse, reemplazarse ni vaciarse durante una release.
+
+## 6. systemd y Nginx
 
 Adaptar `ops/systemd/deuna-games.service.example` al usuario y rutas definitivos. El proceso debe escuchar sólo en `127.0.0.1:3000`, leer `/etc/deuna-games/runtime.env` y mantener las restricciones de red y sistema de archivos del ejemplo.
+
+El ejemplo usa `StateDirectory=deuna-games` y permite escritura únicamente en el caché de Next y `/var/lib/deuna-games`. No ampliar `ReadWritePaths` a todo `/srv/deuna-games`.
 
 Adaptar `ops/nginx/deuna-games.conf.example`:
 
@@ -125,7 +156,7 @@ Adaptar `ops/nginx/deuna-games.conf.example`:
 
 No activar HSTS hasta confirmar que HTTPS funciona correctamente y será permanente.
 
-## 6. Prueba de frontera
+## 7. Prueba de frontera
 
 Con `DEUNA_ADMIN_ENABLED=false`, primero verificar salud pública. Después realizar las dos pruebas siguientes sobre el dominio real:
 
@@ -143,13 +174,15 @@ Sólo cuando la frontera sea correcta, cambiar a `DEUNA_ADMIN_ENABLED=true`, rei
 - dentro de la VPN aparece el formulario de acceso;
 - una contraseña incorrecta no revela si el usuario existe;
 - la contraseña correcta crea una cookie `HttpOnly`, `Secure` y `SameSite=Strict`;
-- cerrar sesión revoca la sesión y vuelve al login.
+- cerrar sesión revoca la sesión y vuelve al login;
+- una imagen WebP válida puede subirse desde Multimedia y queda accesible bajo `/media/editorial/...`;
+- cambiar `current` a otra release no elimina esa imagen.
 
-## 7. Vuelta atrás
+## 8. Vuelta atrás
 
 Si el servicio nuevo falla, no se corrige sobre la carpeta activa. Se vuelve a apuntar `current` a la release anterior y se reinicia systemd. Las migraciones no se revierten automáticamente: son compatibles hacia adelante y una migración ya aplicada nunca se edita.
 
-Mantener `DEUNA_ADMIN_ENABLED=false` durante cualquier recuperación. No borrar la base, el esquema, releases ni copias de seguridad para intentar reparar un despliegue.
+Mantener `DEUNA_ADMIN_ENABLED=false` durante cualquier recuperación. No borrar la base, el esquema, releases, `/var/lib/deuna-games/editorial-media/` ni copias de seguridad para intentar reparar un despliegue.
 
 ## Datos necesarios antes de ejecutar en el VPS
 
