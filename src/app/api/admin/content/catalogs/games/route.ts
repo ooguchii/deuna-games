@@ -23,6 +23,16 @@ const fields = [
   "taxonomyJson",
 ] as const;
 
+function catalogSection(request: NextRequest) {
+  return request.nextUrl.searchParams.get("seccion") === "etiquetas"
+    ? "etiquetas"
+    : "clasificaciones";
+}
+
+function target(page: string, state: string, section: string) {
+  return `${page}?estado=${state}&seccion=${section}`;
+}
+
 export async function POST(request: NextRequest) {
   const authorized =
     await authorizeAdminFormRequest(request);
@@ -32,6 +42,7 @@ export async function POST(request: NextRequest) {
   }
 
   const page = "/admin/catalogos";
+  const section = catalogSection(request);
 
   if (
     !hasExactAdminFormFields(
@@ -41,7 +52,7 @@ export async function POST(request: NextRequest) {
   ) {
     return adminRedirect(
       authorized.adminOrigin,
-      `${page}?estado=solicitud`
+      target(page, "solicitud", section)
     );
   }
 
@@ -52,7 +63,7 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) {
     return adminRedirect(
       authorized.adminOrigin,
-      `${page}?estado=datos`
+      target(page, "datos", section)
     );
   }
 
@@ -66,14 +77,14 @@ export async function POST(request: NextRequest) {
     if (result.outcome === "not_found") {
       return adminRedirect(
         authorized.adminOrigin,
-        `${page}?estado=no-encontrado`
+        target(page, "no-encontrado", section)
       );
     }
 
     if (result.outcome === "in_use") {
       return adminRedirect(
         authorized.adminOrigin,
-        `${page}?estado=catalogo-en-uso`
+        target(page, "catalogo-en-uso", section)
       );
     }
 
@@ -84,7 +95,7 @@ export async function POST(request: NextRequest) {
 
     return adminRedirect(
       authorized.adminOrigin,
-      `${page}?estado=${state}`
+      target(page, state, section)
     );
   } catch {
     console.error(
