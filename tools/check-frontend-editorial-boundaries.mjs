@@ -30,7 +30,10 @@ const [
   rootLayout,
   manifest,
   openGraphImage,
+  twitterImage,
   socialImage,
+  robots,
+  sitemap,
   homePage,
   homeConfig,
   publicHomeReader,
@@ -45,7 +48,10 @@ const [
   source("src/app/layout.tsx"),
   source("src/app/manifest.ts"),
   source("src/app/opengraph-image.tsx"),
+  source("src/app/twitter-image.tsx"),
   source("src/lib/social-image.tsx"),
+  source("src/app/robots.ts"),
+  source("src/app/sitemap.ts"),
   source("src/app/page.tsx"),
   source("src/data/home-config.ts"),
   source("src/lib/home/public-home-config.ts"),
@@ -68,7 +74,7 @@ assert(
 );
 
 assert(
-  publicHomeReader.includes('item_type = \'home_config\'') &&
+  publicHomeReader.includes("item_type = 'home_config'") &&
     publicHomeReader.includes("published_payload") &&
     publicHomeReader.includes("public_visible = true") &&
     publicHomeReader.includes("cache(") &&
@@ -107,15 +113,40 @@ assert(
   "El manifest debe reutilizar la identidad pública publicada en vez de duplicar marca o descripción."
 );
 
+for (const [name, image] of [
+  ["OpenGraph", openGraphImage],
+  ["Twitter", twitterImage],
+]) {
+  assert(
+    image.includes("getPublicHomeConfig") &&
+      image.includes("homeConfig.copy.hero.accessibleTitle") &&
+      image.includes("headline:"),
+    `${name} debe reutilizar el titular publicado de Portada.`
+  );
+}
+
 assert(
-  openGraphImage.includes("getPublicHomeConfig") &&
-    openGraphImage.includes("homeConfig.copy.hero.accessibleTitle") &&
-    openGraphImage.includes("headline:") &&
-    socialImage.includes("headline: string") &&
+  socialImage.includes("headline: string") &&
     socialImage.includes("identity.headline") &&
     !socialImage.includes("Encuentra juegos para&nbsp;") &&
     !socialImage.includes(">tu PC<"),
-  "La imagen social debe reutilizar el titular publicado de Portada y no conservar un copy promocional paralelo."
+  "La plantilla social compartida debe recibir el titular editorial y no conservar un copy promocional paralelo."
+);
+
+assert(
+  robots.includes('disallow: [') &&
+    robots.includes('"/admin"') &&
+    robots.includes('"/api/admin/"') &&
+    robots.includes('absoluteUrl("/sitemap.xml")'),
+  "robots.txt debe seguir siendo una regla estructural que excluya el panel y su API administrativa."
+);
+
+assert(
+  sitemap.includes("getPublicGames") &&
+    sitemap.includes("await getPublicGames()") &&
+    !sitemap.includes('from "@/data/games"') &&
+    sitemap.includes("game.slug"),
+  "El sitemap debe generarse desde el catálogo público publicado para incluir altas del panel y excluir juegos ocultos."
 );
 
 for (const [name, content] of [
@@ -169,6 +200,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Fronteras editoriales del frontend: OK (contenido administrable centralizado; UI técnica y comportamiento permanecen en código)."
+    "Fronteras editoriales del frontend: OK (contenido administrable centralizado; metadata, social y sitemap coherentes con snapshots públicos; UI técnica permanece en código)."
   );
 }
