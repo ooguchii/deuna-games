@@ -57,7 +57,7 @@ export default async function AdminNewGamePage({
           <span>ALTA EDITORIAL</span>
           <h1>Nuevo juego</h1>
           <p>
-            Crea el borrador privado y completalo por etapas. Nada aparece en la web hasta que lo revises y confirmes la publicación.
+            Crea el borrador privado y complétalo por etapas. Nada aparece en la web hasta que lo revises y confirmes la publicación.
           </p>
         </div>
         <span className={styles.draftState}>
