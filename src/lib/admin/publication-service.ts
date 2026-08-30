@@ -19,6 +19,10 @@ import {
   verifyAdminSession,
 } from "./session";
 
+type PublishableEditorialType =
+  | "game"
+  | "game_update";
+
 type PublicationAction =
   | "bootstrap"
   | "published"
@@ -65,7 +69,7 @@ export type EditorialPublication = {
   createdAt: Date;
 };
 
-export type GamePublicationState = {
+export type EditorialPublicationState = {
   itemId: string;
   key: string;
   draftRevision: number;
@@ -76,7 +80,12 @@ export type GamePublicationState = {
   publications: EditorialPublication[];
 };
 
-export type PublishGameResult =
+export type GamePublicationState =
+  EditorialPublicationState;
+export type UpdatePublicationState =
+  EditorialPublicationState;
+
+export type PublishEditorialResult =
   | {
       outcome: "published";
       publicationNumber: number;
@@ -90,6 +99,11 @@ export type PublishGameResult =
       revision: number;
     }
   | { outcome: "not_found" };
+
+export type PublishGameResult =
+  PublishEditorialResult;
+export type PublishUpdateResult =
+  PublishEditorialResult;
 
 export type RestorePublicationResult =
   | {
@@ -109,15 +123,37 @@ export type RestorePublicationResult =
     }
   | { outcome: "not_found" };
 
-function normalizeGamePayload(payload: unknown) {
+function normalizePublishablePayload(
+  type: PublishableEditorialType,
+  payload: unknown
+) {
+  if (type === "game") {
+    return normalizeEditorialPayload(
+      parseEditorialPayload("game", payload)
+    );
+  }
+
   return normalizeEditorialPayload(
-    parseEditorialPayload("game", payload)
+    parseEditorialPayload("game_update", payload)
   );
+}
+
+async function assertActor(
+  actorUserId: string
+) {
+  const session = await verifyAdminSession();
+
+  if (session.userId !== actorUserId) {
+    throw new Error(
+      "La sesión administrativa no coincide con el actor."
+    );
+  }
 }
 
 async function writePublicationAudit(
   client: PoolClient,
   actorUserId: string,
+  type: PublishableEditorialType,
   key: string,
   action: "content_published" | "publication_restored",
   details: Record<string, unknown>
@@ -125,19 +161,21 @@ async function writePublicationAudit(
   await client.query(
     `INSERT INTO deuna_admin.admin_audit_log
        (user_id, action, entity_type, entity_id, details)
-     VALUES ($1, $2, 'game', $3, $4::jsonb)`,
+     VALUES ($1, $2, $3, $4, $5::jsonb)`,
     [
       actorUserId,
       action,
+      type,
       key,
       JSON.stringify(details),
     ]
   );
 }
 
-export async function getGamePublicationState(
+async function getPublicationState(
+  type: PublishableEditorialType,
   key: string
-): Promise<GamePublicationState | null> {
+): Promise<EditorialPublicationState | null> {
   await verifyAdminSession();
 
   const itemResult = await adminQuery<PublicationItemRow>(
@@ -151,16 +189,19 @@ export async function getGamePublicationState(
        publication_number,
        published_at
      FROM deuna_admin.editorial_items
-     WHERE item_type = 'game'
-       AND item_key = $1
+     WHERE item_type = $1
+       AND item_key = $2
      LIMIT 1`,
-    [key]
+    [type, key]
   );
   const item = itemResult.rows[0];
 
   if (!item) return null;
 
-  const draft = normalizeGamePayload(item.draft_payload);
+  const draft = normalizePublishablePayload(
+    type,
+    item.draft_payload
+  );
   const draftChecksum = hashEditorialPayload(draft);
   const historyResult =
     await adminQuery<PublicationHistoryRow>(
@@ -203,18 +244,13 @@ export async function getGamePublicationState(
   };
 }
 
-export async function publishGameDraft(
+async function publishEditorialDraft(
+  type: PublishableEditorialType,
   key: string,
   expectedRevision: number,
   actorUserId: string
-): Promise<PublishGameResult> {
-  const session = await verifyAdminSession();
-
-  if (session.userId !== actorUserId) {
-    throw new Error(
-      "La sesión administrativa no coincide con el actor."
-    );
-  }
+): Promise<PublishEditorialResult> {
+  await assertActor(actorUserId);
 
   return withAdminTransaction(async (client) => {
     const result = await client.query<PublicationItemRow>(
@@ -228,11 +264,11 @@ export async function publishGameDraft(
          publication_number,
          published_at
        FROM deuna_admin.editorial_items
-       WHERE item_type = 'game'
-         AND item_key = $1
+       WHERE item_type = $1
+         AND item_key = $2
        LIMIT 1
        FOR UPDATE`,
-      [key]
+      [type, key]
     );
     const item = result.rows[0];
 
@@ -245,7 +281,8 @@ export async function publishGameDraft(
       };
     }
 
-    const normalized = normalizeGamePayload(
+    const normalized = normalizePublishablePayload(
+      type,
       item.draft_payload
     );
     const digest = hashEditorialPayload(normalized);
@@ -303,6 +340,7 @@ export async function publishGameDraft(
     await writePublicationAudit(
       client,
       actorUserId,
+      type,
       item.item_key,
       "content_published",
       {
@@ -318,18 +356,13 @@ export async function publishGameDraft(
   });
 }
 
-export async function restoreGamePublication(
+async function restoreEditorialPublication(
+  type: PublishableEditorialType,
   publicationId: string,
   expectedPublicationNumber: number,
   actorUserId: string
 ): Promise<RestorePublicationResult> {
-  const session = await verifyAdminSession();
-
-  if (session.userId !== actorUserId) {
-    throw new Error(
-      "La sesión administrativa no coincide con el actor."
-    );
-  }
+  await assertActor(actorUserId);
 
   return withAdminTransaction(async (client) => {
     const result =
@@ -348,10 +381,10 @@ export async function restoreGamePublication(
          INNER JOIN deuna_admin.editorial_items AS item
            ON item.id = publication.item_id
          WHERE publication.id = $1
-           AND item.item_type = 'game'
+           AND item.item_type = $2
          LIMIT 1
          FOR UPDATE OF item`,
-        [publicationId]
+        [publicationId, type]
       );
     const row = result.rows[0];
 
@@ -369,7 +402,10 @@ export async function restoreGamePublication(
       };
     }
 
-    const normalized = normalizeGamePayload(row.payload);
+    const normalized = normalizePublishablePayload(
+      type,
+      row.payload
+    );
     const digest = hashEditorialPayload(normalized);
 
     if (digest !== row.checksum) {
@@ -433,6 +469,7 @@ export async function restoreGamePublication(
     await writePublicationAudit(
       client,
       actorUserId,
+      type,
       row.item_key,
       "publication_restored",
       {
@@ -448,4 +485,68 @@ export async function restoreGamePublication(
       publicationNumber: nextPublication,
     };
   });
+}
+
+export function getGamePublicationState(
+  key: string
+) {
+  return getPublicationState("game", key);
+}
+
+export function getUpdatePublicationState(
+  key: string
+) {
+  return getPublicationState("game_update", key);
+}
+
+export function publishGameDraft(
+  key: string,
+  expectedRevision: number,
+  actorUserId: string
+) {
+  return publishEditorialDraft(
+    "game",
+    key,
+    expectedRevision,
+    actorUserId
+  );
+}
+
+export function publishUpdateDraft(
+  key: string,
+  expectedRevision: number,
+  actorUserId: string
+) {
+  return publishEditorialDraft(
+    "game_update",
+    key,
+    expectedRevision,
+    actorUserId
+  );
+}
+
+export function restoreGamePublication(
+  publicationId: string,
+  expectedPublicationNumber: number,
+  actorUserId: string
+) {
+  return restoreEditorialPublication(
+    "game",
+    publicationId,
+    expectedPublicationNumber,
+    actorUserId
+  );
+}
+
+export function restoreUpdatePublication(
+  publicationId: string,
+  expectedPublicationNumber: number,
+  actorUserId: string
+) {
+  return restoreEditorialPublication(
+    "game_update",
+    publicationId,
+    expectedPublicationNumber,
+    actorUserId
+  );
 }
