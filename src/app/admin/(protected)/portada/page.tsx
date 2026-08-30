@@ -99,6 +99,12 @@ export default async function AdminHomeEditorPage({
       : gamePublicationStates
           .filter((game) => game.publicVisible)
           .map((game) => game.key);
+  const publicBySlug = new Map(
+    publicGames.map((game) => [game.slug, game])
+  );
+  const curationGames = games.map((game) =>
+    publicBySlug.get(game.key) ?? game.payload
+  );
 
   return (
     <>
@@ -124,8 +130,7 @@ export default async function AdminHomeEditorPage({
       {section === "curaduria" && (
         <HomeCurationEditor
           config={resolved}
-          games={games.map((game) => game.payload)}
-          publicGames={publicGames}
+          games={curationGames}
           publishedSlugs={publishedSlugs}
           revision={item.revision}
         />
