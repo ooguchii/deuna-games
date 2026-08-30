@@ -7,6 +7,7 @@ import {
 import EditorStateNotice from "@/components/admin/EditorStateNotice";
 import NewGameForm from "@/components/admin/NewGameForm";
 import {
+  getEditorialItem,
   listEditorialItems,
 } from "@/lib/admin/content-service";
 import {
@@ -27,20 +28,26 @@ export default async function AdminNewGamePage({
   searchParams,
 }: PageProps) {
   await verifyAdminSession();
-  const [parameters, games] = await Promise.all([
+  const [parameters, games, taxonomyItem] = await Promise.all([
     searchParams,
     listEditorialItems("game"),
+    getEditorialItem("game_taxonomy", "games"),
   ]);
   const state = Array.isArray(parameters.estado)
     ? parameters.estado[0]
     : parameters.estado;
-  const categories = [
+  const fallbackCategories = [
     ...new Set(
       games
         .map((game) => game.payload.category.trim())
         .filter(Boolean)
     ),
-  ].sort((a, b) => a.localeCompare(b, "es"));
+  ];
+  const categories = (
+    taxonomyItem?.payload.categories
+      .filter((term) => term.active)
+      .map((term) => term.label) ?? fallbackCategories
+  ).sort((a, b) => a.localeCompare(b, "es"));
   const existingSlugs = games.map((game) => game.key);
 
   return (
