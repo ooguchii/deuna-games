@@ -39,6 +39,13 @@ for (const script of [
   );
 }
 
+assert(
+  scripts["check:maintenance"]?.includes(
+    "tools/check-maintenance.mjs"
+  ),
+  "El control de mantenimiento debe permanecer integrado en package.json."
+);
+
 for (const temporaryFile of [
   "tools/admin/test-owner-rollback.ts",
   "tools/admin/diagnose-login.ts",
@@ -56,7 +63,8 @@ const requestSecurity = await read(
 assert(
   requestSecurity.includes('origin !== "null"') &&
     requestSecurity.includes('fetchSite === "cross-site"') &&
-    requestSecurity.includes('fetchSite === "same-origin"'),
+    requestSecurity.includes('fetchSite === "same-origin"') &&
+    requestSecurity.includes('fetchSite === "none"'),
   "La protección de formularios debe conservar el manejo local compatible y rechazar cross-site."
 );
 assert(
@@ -92,6 +100,10 @@ assert(
   workflow.includes("pull_request:") &&
     !workflow.includes("feature/game-detail-download-v2"),
   "CI no debe depender de una rama temporal concreta."
+);
+assert(
+  workflow.includes("npm run check:maintenance"),
+  "CI debe ejecutar las invariantes de mantenimiento."
 );
 
 if (failures.length > 0) {
