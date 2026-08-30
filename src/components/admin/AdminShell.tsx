@@ -1,59 +1,16 @@
 import Link from "next/link";
 import {
-  FileText,
-  Gamepad2,
   Gauge,
-  LayoutDashboard,
-  LayoutTemplate,
   LogOut,
-  RefreshCcw,
-  Settings2,
-  ShieldCheck,
 } from "lucide-react";
 
+import AdminNavigation from "@/components/admin/AdminNavigation";
 import type {
   AdminSession,
 } from "@/lib/admin/session";
 
 import styles from "../../app/admin/admin.module.css";
-
-const navigation = [
-  {
-    href: "/admin",
-    label: "Resumen",
-    icon: LayoutDashboard,
-  },
-  {
-    href: "/admin/juegos",
-    label: "Juegos",
-    icon: Gamepad2,
-  },
-  {
-    href: "/admin/actualizaciones",
-    label: "Actualizaciones",
-    icon: RefreshCcw,
-  },
-  {
-    href: "/admin/portada",
-    label: "Portada",
-    icon: LayoutTemplate,
-  },
-  {
-    href: "/admin/paginas",
-    label: "Páginas",
-    icon: FileText,
-  },
-  {
-    href: "/admin/seguridad",
-    label: "Seguridad",
-    icon: ShieldCheck,
-  },
-  {
-    href: "/admin/configuracion",
-    label: "Configuración",
-    icon: Settings2,
-  },
-] as const;
+import ux from "./AdminShellUx.module.css";
 
 export default function AdminShell({
   session,
@@ -63,8 +20,8 @@ export default function AdminShell({
   children: React.ReactNode;
 }) {
   return (
-    <div className={styles.shell}>
-      <aside className={styles.sidebar}>
+    <div className={`${styles.shell} ${ux.shell}`}>
+      <aside className={`${styles.sidebar} ${ux.sidebar}`}>
         <Link
           href="/admin"
           className={styles.adminBrand}
@@ -77,21 +34,7 @@ export default function AdminShell({
           </div>
         </Link>
 
-        <nav
-          className={styles.adminNavigation}
-          aria-label="Navegación administrativa"
-        >
-          {navigation.map((item) => {
-            const Icon = item.icon;
-
-            return (
-              <Link key={item.href} href={item.href}>
-                <Icon size={18} aria-hidden="true" />
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
+        <AdminNavigation />
 
         <div className={styles.privacyNotice}>
           <Gauge size={18} aria-hidden="true" />
@@ -128,7 +71,7 @@ export default function AdminShell({
 
       <main
         id="main-content"
-        className={styles.adminMain}
+        className={`${styles.adminMain} ${ux.main}`}
       >
         {children}
       </main>
