@@ -33,7 +33,7 @@
     "check:encoding": "node ./tools/check-text-encoding.mjs",
     "check:privacy": "node ./tools/check-public-privacy.mjs",
     "check:site-identity": "node ./tools/check-public-site-identity.mjs",
-    "check:admin-security": "node ./tools/check-admin-security.ts && node ./tools/check-admin-media-security.mjs && node ./tools/check-admin-publication-security.mjs",
+    "check:admin-security": "node ./tools/check-admin-security.ts && node ./tools/check-admin-media-security.mjs && node ./tools/check-admin-publication-security.mjs && node ./tools/check-admin-preflight.mjs",
     "check:admin-content": "node ./tools/admin/import-content.ts --validate-only",
     "check:data": "node ./tools/check-data.mjs && node ./tools/check-home-editorial.mjs && node ./tools/check-about-editorial.mjs",
     "check:assets": "node ./tools/check-assets.mjs",
