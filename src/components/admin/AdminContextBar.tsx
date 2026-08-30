@@ -46,6 +46,51 @@ const homeSections = [
   { id: "historial", label: "Historial", icon: FileClock },
 ] as const;
 
+const publicPageSections = [
+  { id: "juegos", label: "Juegos", icon: PanelTop },
+  { id: "actualizaciones", label: "Actualizaciones", icon: SquarePen },
+  { id: "compatibilidad", label: "¿Qué puedo jugar?", icon: MonitorCog },
+  { id: "publicacion", label: "Publicación", icon: Rocket },
+  { id: "historial", label: "Historial", icon: FileClock },
+] as const;
+
+function ContextLinks({
+  pathname,
+  selected,
+  sections,
+  label,
+}: {
+  pathname: string;
+  selected: string;
+  sections: readonly {
+    id: string;
+    label: string;
+    icon: typeof PanelTop;
+  }[];
+  label: string;
+}) {
+  return (
+    <nav className={ux.contextBar} aria-label={label}>
+      {sections.map((section) => {
+        const Icon = section.icon;
+        const active = selected === section.id;
+
+        return (
+          <a
+            key={section.id}
+            href={`${pathname}?seccion=${section.id}`}
+            className={active ? ux.contextActive : undefined}
+            aria-current={active ? "page" : undefined}
+          >
+            <Icon size={16} strokeWidth={1.9} aria-hidden="true" />
+            {section.label}
+          </a>
+        );
+      })}
+    </nav>
+  );
+}
+
 export default function AdminContextBar() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -84,77 +129,46 @@ export default function AdminContextBar() {
   }
 
   if (updateMatch && updateMatch[1] !== "nueva") {
-    const selected = searchParams.get("seccion") ?? "editar";
-
     return (
-      <nav className={ux.contextBar} aria-label="Secciones del editor de actualización">
-        {updateSections.map((section) => {
-          const Icon = section.icon;
-          const active = selected === section.id;
-
-          return (
-            <a
-              key={section.id}
-              href={`${pathname}?seccion=${section.id}`}
-              className={active ? ux.contextActive : undefined}
-              aria-current={active ? "page" : undefined}
-            >
-              <Icon size={16} strokeWidth={1.9} aria-hidden="true" />
-              {section.label}
-            </a>
-          );
-        })}
-      </nav>
+      <ContextLinks
+        pathname={pathname}
+        selected={searchParams.get("seccion") ?? "editar"}
+        sections={updateSections}
+        label="Secciones del editor de actualización"
+      />
     );
   }
 
   if (pathname === "/admin/catalogos") {
-    const selected = searchParams.get("seccion") ?? "clasificaciones";
-
     return (
-      <nav className={ux.contextBar} aria-label="Secciones del panel de catálogos">
-        {catalogSections.map((section) => {
-          const Icon = section.icon;
-          const active = selected === section.id;
-
-          return (
-            <a
-              key={section.id}
-              href={`${pathname}?seccion=${section.id}`}
-              className={active ? ux.contextActive : undefined}
-              aria-current={active ? "page" : undefined}
-            >
-              <Icon size={16} strokeWidth={1.9} aria-hidden="true" />
-              {section.label}
-            </a>
-          );
-        })}
-      </nav>
+      <ContextLinks
+        pathname={pathname}
+        selected={searchParams.get("seccion") ?? "clasificaciones"}
+        sections={catalogSections}
+        label="Secciones del panel de catálogos"
+      />
     );
   }
 
   if (pathname === "/admin/portada") {
-    const selected = searchParams.get("seccion") ?? "curaduria";
-
     return (
-      <nav className={ux.contextBar} aria-label="Secciones del editor de Portada">
-        {homeSections.map((section) => {
-          const Icon = section.icon;
-          const active = selected === section.id;
+      <ContextLinks
+        pathname={pathname}
+        selected={searchParams.get("seccion") ?? "curaduria"}
+        sections={homeSections}
+        label="Secciones del editor de Portada"
+      />
+    );
+  }
 
-          return (
-            <a
-              key={section.id}
-              href={`${pathname}?seccion=${section.id}`}
-              className={active ? ux.contextActive : undefined}
-              aria-current={active ? "page" : undefined}
-            >
-              <Icon size={16} strokeWidth={1.9} aria-hidden="true" />
-              {section.label}
-            </a>
-          );
-        })}
-      </nav>
+  if (pathname === "/admin/paginas/presentacion") {
+    return (
+      <ContextLinks
+        pathname={pathname}
+        selected={searchParams.get("seccion") ?? "juegos"}
+        sections={publicPageSections}
+        label="Secciones de presentación pública"
+      />
     );
   }
 
