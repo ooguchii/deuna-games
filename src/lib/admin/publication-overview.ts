@@ -38,6 +38,8 @@ type ItemPublicationStateRow = {
   publication_number: number;
   public_visible: boolean;
   has_unpublished_changes: boolean;
+  panel_created: boolean;
+  ever_published: boolean;
 };
 
 export type RecentPublication = {
@@ -62,6 +64,8 @@ export type ItemPublicationState = {
   publicationNumber: number;
   publicVisible: boolean;
   hasUnpublishedChanges: boolean;
+  panelCreated: boolean;
+  everPublished: boolean;
 };
 
 const unavailableOverview: PublicationOverview = {
@@ -178,16 +182,29 @@ export async function listPublicationStates(
   const result =
     await adminQuery<ItemPublicationStateRow>(
       `SELECT
-         item_key,
-         publication_number,
-         public_visible,
+         item.item_key,
+         item.publication_number,
+         item.public_visible,
          (
-           public_visible = false OR
-           draft_payload IS DISTINCT FROM published_payload
-         ) AS has_unpublished_changes
-       FROM deuna_admin.editorial_items
-       WHERE item_type = $1
-       ORDER BY item_key ASC`,
+           item.public_visible = false OR
+           item.draft_payload IS DISTINCT FROM item.published_payload
+         ) AS has_unpublished_changes,
+         EXISTS (
+           SELECT 1
+           FROM deuna_admin.editorial_revisions AS revision
+           WHERE revision.item_id = item.id
+             AND revision.revision = 1
+             AND revision.action = 'draft_saved'
+         ) AS panel_created,
+         EXISTS (
+           SELECT 1
+           FROM deuna_admin.editorial_publications AS publication
+           WHERE publication.item_id = item.id
+             AND publication.action IN ('published', 'rollback')
+         ) AS ever_published
+       FROM deuna_admin.editorial_items AS item
+       WHERE item.item_type = $1
+       ORDER BY item.item_key ASC`,
       [type]
     );
 
@@ -197,5 +214,7 @@ export async function listPublicationStates(
     publicVisible: item.public_visible,
     hasUnpublishedChanges:
       item.has_unpublished_changes,
+    panelCreated: item.panel_created,
+    everPublished: item.ever_published,
   }));
 }
