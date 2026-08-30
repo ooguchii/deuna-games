@@ -140,8 +140,26 @@ async function grantRuntimePrivileges(
         publication_number,
         published_at,
         published_by,
+        public_visible,
         source_imported_at,
         updated_at,
+        updated_by
+      )
+      ON deuna_admin.editorial_items
+      TO ${role};
+
+    GRANT INSERT (
+        id,
+        item_type,
+        item_key,
+        source_payload,
+        source_checksum,
+        source_present,
+        draft_payload,
+        draft_status,
+        published_payload,
+        published_checksum,
+        public_visible,
         updated_by
       )
       ON deuna_admin.editorial_items
@@ -157,6 +175,7 @@ async function grantRuntimePrivileges(
         publication_number,
         published_at,
         published_by,
+        public_visible,
         updated_at,
         updated_by
       )
