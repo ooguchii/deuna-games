@@ -7,12 +7,18 @@ const optionalText = (maximum: number) =>
     .max(maximum)
     .transform((value) => value || undefined);
 
-const localImagePattern =
+const bundledImagePattern =
   /^\/images\/[A-Za-z0-9/_.,@+() -]+\.(?:avif|gif|jpe?g|png|webp)$/i;
+const editorialMediaPattern =
+  /^\/media\/editorial\/[a-z0-9][a-z0-9._-]{0,159}\/[a-f0-9]{64}\.webp$/;
 
 function isSafeLocalImagePath(value: string) {
+  if (editorialMediaPattern.test(value)) {
+    return true;
+  }
+
   if (
-    !localImagePattern.test(value) ||
+    !bundledImagePattern.test(value) ||
     value.includes("\\") ||
     value.includes("//")
   ) {
