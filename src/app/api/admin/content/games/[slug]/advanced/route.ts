@@ -16,6 +16,9 @@ import {
   requestedGameEditorContinuation,
 } from "@/lib/admin/game-editor-flow";
 import {
+  resolveGameTaxonomySelection,
+} from "@/lib/admin/game-taxonomy-service";
+import {
   hasExactAdminFormFields,
 } from "@/lib/admin/request-security";
 
@@ -85,14 +88,28 @@ export async function POST(
       platformsJson,
       ...metadata
     } = parsed.data;
+    const classification =
+      await resolveGameTaxonomySelection({
+        genres: genresText,
+        tags: tagsText,
+        currentGameKey: slug,
+      });
+
+    if (!classification.valid) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        `${target}?estado=clasificacion&seccion=datos`
+      );
+    }
+
     const result = await saveGameAdvancedDraft(
       slug,
       expectedRevision,
       authorized.session.userId,
       {
         ...metadata,
-        genres: genresText,
-        tags: tagsText,
+        genres: classification.genres,
+        tags: classification.tags,
         platforms: platformsJson,
       }
     );
