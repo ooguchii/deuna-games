@@ -2,6 +2,10 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
 import {
+  adminRedirect,
+  adminUnavailableResponse,
+} from "@/lib/admin/admin-route";
+import {
   authenticateAdminOwner,
 } from "@/lib/admin/auth-service";
 import {
@@ -9,6 +13,7 @@ import {
   isAdminEnabled,
 } from "@/lib/admin/database-config";
 import {
+  hasExactAdminFormFields,
   readTrustedAdminForm,
 } from "@/lib/admin/request-security";
 import {
@@ -22,33 +27,10 @@ import {
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-function redirectTo(
-  adminOrigin: string,
-  pathname: string
-) {
-  const response = NextResponse.redirect(
-    new URL(pathname, adminOrigin),
-    303
-  );
-  response.headers.set(
-    "Cache-Control",
-    "no-store, max-age=0"
-  );
-  return response;
-}
-
-function unavailableResponse() {
-  return new NextResponse(
-    "Servicio administrativo no disponible.",
-    {
-      status: 503,
-      headers: {
-        "Cache-Control": "no-store, max-age=0",
-        "Content-Type": "text/plain; charset=utf-8",
-      },
-    }
-  );
-}
+const fields = [
+  "username",
+  "password",
+] as const;
 
 export async function POST(request: NextRequest) {
   if (!isAdminEnabled()) {
@@ -68,21 +50,14 @@ export async function POST(request: NextRequest) {
     console.error(
       "La configuración del origen administrativo no es válida."
     );
-    return unavailableResponse();
-  }
-
-  if (!form) {
-    return redirectTo(
-      adminOrigin,
-      "/admin/login?estado=solicitud"
-    );
+    return adminUnavailableResponse();
   }
 
   if (
-    form.getAll("username").length !== 1 ||
-    form.getAll("password").length !== 1
+    !form ||
+    !hasExactAdminFormFields(form, fields)
   ) {
-    return redirectTo(
+    return adminRedirect(
       adminOrigin,
       "/admin/login?estado=solicitud"
     );
@@ -94,7 +69,7 @@ export async function POST(request: NextRequest) {
   });
 
   if (!parsed.success) {
-    return redirectTo(
+    return adminRedirect(
       adminOrigin,
       "/admin/login?estado=credenciales"
     );
@@ -107,13 +82,13 @@ export async function POST(request: NextRequest) {
     );
 
     if (!result.authenticated) {
-      return redirectTo(
+      return adminRedirect(
         adminOrigin,
         "/admin/login?estado=credenciales"
       );
     }
 
-    const response = redirectTo(
+    const response = adminRedirect(
       adminOrigin,
       "/admin"
     );
@@ -130,6 +105,6 @@ export async function POST(request: NextRequest) {
       "El servicio administrativo de autenticación no está disponible."
     );
 
-    return unavailableResponse();
+    return adminUnavailableResponse();
   }
 }
