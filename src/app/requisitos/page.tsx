@@ -93,6 +93,13 @@ export default async function RequirementsPage({
     games.some((game) => game.slug === juego)
       ? juego
       : undefined;
+  const performanceCalibrations = Object.fromEntries(
+    games.flatMap((game) =>
+      game.performance
+        ? [[game.slug, game.performance] as const]
+        : []
+    )
+  );
 
   const breadcrumbJsonLd = {
     "@context": "https://schema.org",
@@ -152,6 +159,14 @@ export default async function RequirementsPage({
 
           <span aria-current="page">¿Qué puedo jugar?</span>
         </nav>
+
+        <script
+          id="deuna-performance-calibrations"
+          type="application/json"
+          dangerouslySetInnerHTML={{
+            __html: safeJsonLd(performanceCalibrations),
+          }}
+        />
 
         <GameFinderClient
           games={games}
