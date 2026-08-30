@@ -11,6 +11,9 @@ import {
   getEditorialItem,
 } from "@/lib/admin/content-service";
 import {
+  getGamePublicationIdentity,
+} from "@/lib/admin/publication-overview";
+import {
   verifyAdminSession,
 } from "@/lib/admin/session";
 import type {
@@ -79,7 +82,10 @@ export default async function AdminGameEditorPage({
     params,
     searchParams,
   ]);
-  const item = await getEditorialItem("game", slug);
+  const [item, publicationIdentity] = await Promise.all([
+    getEditorialItem("game", slug),
+    getGamePublicationIdentity(slug),
+  ]);
 
   if (!item) notFound();
 
@@ -87,6 +93,8 @@ export default async function AdminGameEditorPage({
     ? parameters.estado[0]
     : parameters.estado;
   const section = resolveGameSection(parameters.seccion);
+  const panelCreated =
+    publicationIdentity?.panelCreated ?? false;
   const game = item.payload;
   const download = game.download;
   const requirements = game.requirements;
@@ -136,7 +144,7 @@ export default async function AdminGameEditorPage({
 
       <EditorStateNotice state={state} />
 
-      {!item.sourcePresent && (
+      {!item.sourcePresent && !panelCreated && (
         <div className={`${styles.editorNotice} ${styles.editorNoticeWarning}`}>
           Este juego ya no está presente en los archivos fuente. Se conserva para revisión y recuperación.
         </div>
