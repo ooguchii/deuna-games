@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 
 import EditorialHistory from "@/components/admin/EditorialHistory";
 import EditorStateNotice from "@/components/admin/EditorStateNotice";
+import GameDownloadEditor from "@/components/admin/GameDownloadEditor";
 import {
   getEditorialItem,
 } from "@/lib/admin/content-service";
@@ -39,6 +40,7 @@ export default async function AdminGameEditorPage({
     ? parameters.estado[0]
     : parameters.estado;
   const game = item.payload;
+  const download = game.download;
 
   return (
     <>
@@ -52,7 +54,7 @@ export default async function AdminGameEditorPage({
           <span>JUEGO · REVISIÓN {item.revision}</span>
           <h1>{game.title}</h1>
           <p>
-            Edita solamente los datos principales. Descargas, rutas de imágenes y requisitos permanecen intactos.
+            Edita los datos principales y la configuración de descarga. Requisitos y rutas de imágenes permanecen intactos por ahora.
           </p>
         </div>
         <span className={styles.draftState}>
@@ -71,6 +73,16 @@ export default async function AdminGameEditorPage({
       )}
 
       <section className={styles.editorPanel}>
+        <div className={styles.sectionHeading}>
+          <div>
+            <span>DATOS PRINCIPALES</span>
+            <h2>Ficha editorial</h2>
+          </div>
+          <p>
+            Estos campos forman parte del borrador versionado del juego.
+          </p>
+        </div>
+
         <form
           className={styles.editorForm}
           method="post"
@@ -168,7 +180,89 @@ export default async function AdminGameEditorPage({
               Guardar no publica. La revisión anterior seguirá disponible debajo.
             </p>
             <button type="submit">
-              Guardar borrador
+              Guardar ficha
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section
+        id="descargas"
+        className={styles.editorPanel}
+      >
+        <div className={styles.sectionHeading}>
+          <div>
+            <span>DESCARGAS</span>
+            <h2>Página de descarga</h2>
+          </div>
+          <p>
+            Esta configuración alimentará la pantalla de descarga del juego cuando el contenido editorial pase a publicación.
+          </p>
+        </div>
+
+        {download?.href && (
+          <div className={`${styles.editorNotice} ${styles.editorNoticeWarning}`}>
+            Este borrador conserva un enlace principal heredado. Las nuevas fuentes se añadirán sin eliminarlo hasta completar la migración del formato antiguo.
+          </div>
+        )}
+
+        <form
+          className={styles.editorForm}
+          method="post"
+          action={`/api/admin/content/games/${encodeURIComponent(slug)}/download`}
+        >
+          <input
+            type="hidden"
+            name="expectedRevision"
+            value={item.revision}
+          />
+
+          <label>
+            <span>Tamaño total (GB)</span>
+            <input
+              name="sizeGb"
+              type="number"
+              min="0.01"
+              max="100000"
+              step="0.01"
+              defaultValue={download?.sizeGb ?? ""}
+              placeholder="60"
+            />
+          </label>
+
+          <label>
+            <span>Cantidad de archivos</span>
+            <input
+              name="fileCount"
+              type="number"
+              min="1"
+              max="10000"
+              step="1"
+              defaultValue={download?.fileCount ?? ""}
+              placeholder="1"
+            />
+          </label>
+
+          <label className={styles.fieldWide}>
+            <span>Plataforma mostrada</span>
+            <input
+              name="platform"
+              defaultValue={download?.platform ?? ""}
+              maxLength={80}
+              placeholder="Windows"
+            />
+          </label>
+
+          <GameDownloadEditor
+            initialSources={download?.sources ?? []}
+          />
+
+          <div className={styles.formActions}>
+            <p>
+              Las direcciones se validan antes de guardarse. No se aceptan URLs HTTP ni direcciones HTTPS con usuario o contraseña embebidos.
+            </p>
+            <button type="submit">
+              Guardar descargas
             </button>
           </div>
         </form>
