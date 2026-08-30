@@ -14,6 +14,7 @@ import {
 } from "./content-hash";
 import {
   parseEditorialPayload,
+  type EditorialHomeConfig,
   type EditorialItemType,
   type EditorialPayloadByType,
   type EditorialSiteConfig,
@@ -599,6 +600,20 @@ export function saveSiteConfigDraft(
   return updateEditorialDraft(
     "site_config",
     "site",
+    expectedRevision,
+    actorUserId,
+    () => input
+  );
+}
+
+export function saveHomeConfigDraft(
+  expectedRevision: number,
+  actorUserId: string,
+  input: EditorialHomeConfig
+) {
+  return updateEditorialDraft(
+    "home_config",
+    "home",
     expectedRevision,
     actorUserId,
     () => input
