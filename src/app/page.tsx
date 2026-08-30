@@ -35,7 +35,12 @@ import {
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const config = await getPublicSiteConfig();
+  const [config, homeConfig] = await Promise.all([
+    getPublicSiteConfig(),
+    getPublicHomeConfig(),
+  ]);
+  const title =
+    `${config.name} | ${homeConfig.copy.hero.accessibleTitle}`;
 
   return {
     alternates: {
@@ -45,7 +50,7 @@ export async function generateMetadata(): Promise<Metadata> {
       type: "website",
       url: "/",
       siteName: config.name,
-      title: `${config.name} | Encuentra juegos para tu PC`,
+      title,
       description: config.description,
     },
   };
