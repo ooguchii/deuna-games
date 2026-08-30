@@ -57,6 +57,10 @@ type ExistingItemRow = {
 
 type ExistingTaxonomyRow = {
   id: string;
+  draft_payload: unknown;
+  revision: number;
+  publication_number: number;
+  public_visible: boolean;
 };
 
 type GamePayloadRow = {
@@ -383,15 +387,76 @@ async function ensureGameTaxonomyItem(
   client: PoolClient
 ) {
   const existing = await client.query<ExistingTaxonomyRow>(
-    `SELECT id
-       FROM deuna_admin.editorial_items
-      WHERE item_type = 'game_taxonomy'
-        AND item_key = 'games'
-      LIMIT 1
-      FOR UPDATE`
+    `SELECT
+       id,
+       draft_payload,
+       revision,
+       publication_number,
+       public_visible
+     FROM deuna_admin.editorial_items
+     WHERE item_type = 'game_taxonomy'
+       AND item_key = 'games'
+     LIMIT 1
+     FOR UPDATE`
   );
+  const current = existing.rows[0];
 
-  if (existing.rows[0]) return "unchanged" as const;
+  if (current?.public_visible) {
+    return "unchanged" as const;
+  }
+
+  if (current) {
+    const taxonomy = normalizeEditorialPayload(
+      parseEditorialPayload(
+        "game_taxonomy",
+        current.draft_payload
+      )
+    );
+    const payload = JSON.stringify(taxonomy);
+    const digest = hashEditorialPayload(taxonomy);
+    const nextPublication = current.publication_number + 1;
+
+    await client.query(
+      `UPDATE deuna_admin.editorial_items
+       SET published_payload = $2::jsonb,
+           published_checksum = $3,
+           published_from_revision = $4,
+           publication_number = $5,
+           published_at = now(),
+           published_by = NULL,
+           public_visible = true
+       WHERE id = $1`,
+      [
+        current.id,
+        payload,
+        digest,
+        current.revision,
+        nextPublication,
+      ]
+    );
+    await client.query(
+      `INSERT INTO deuna_admin.editorial_publications
+         (
+           item_id,
+           publication_number,
+           payload,
+           checksum,
+           source_revision,
+           action,
+           actor_user_id
+         )
+       VALUES ($1, $2, $3::jsonb, $4, $5, 'published', NULL)`,
+      [
+        current.id,
+        nextPublication,
+        payload,
+        digest,
+        current.revision,
+      ]
+    );
+
+    return "refreshed" as const;
+  }
 
   const gameRows = await client.query<GamePayloadRow>(
     `SELECT draft_payload
@@ -440,7 +505,7 @@ async function ensureGameTaxonomyItem(
        $2::jsonb,
        $3,
        1,
-       false
+       true
      )`,
     [id, payload, digest]
   );
