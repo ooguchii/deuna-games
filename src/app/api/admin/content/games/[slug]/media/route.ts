@@ -1,3 +1,6 @@
+import { lstat } from "node:fs/promises";
+import path from "node:path";
+
 import type { NextRequest } from "next/server";
 
 import {
@@ -24,6 +27,46 @@ const fields = [
   "heroImage",
   "screenshotsText",
 ] as const;
+
+async function mediaFilesExist(
+  mediaPaths: string[]
+) {
+  const publicRoot = path.resolve(
+    process.cwd(),
+    "public"
+  );
+  const imagesRoot = path.resolve(
+    publicRoot,
+    "images"
+  );
+
+  for (const mediaPath of new Set(mediaPaths)) {
+    const absolutePath = path.resolve(
+      publicRoot,
+      `.${mediaPath}`
+    );
+
+    if (
+      !absolutePath.startsWith(
+        `${imagesRoot}${path.sep}`
+      )
+    ) {
+      return false;
+    }
+
+    try {
+      const stats = await lstat(absolutePath);
+
+      if (!stats.isFile()) {
+        return false;
+      }
+    } catch {
+      return false;
+    }
+  }
+
+  return true;
+}
 
 export async function POST(
   request: NextRequest,
@@ -70,6 +113,21 @@ export async function POST(
       screenshotsText,
       ...input
     } = parsed.data;
+    const mediaPaths = [
+      input.coverImage,
+      input.heroImage,
+      ...(screenshotsText ?? []),
+    ].filter(
+      (value): value is string => Boolean(value)
+    );
+
+    if (!(await mediaFilesExist(mediaPaths))) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        `${target}?estado=asset#multimedia`
+      );
+    }
+
     const result = await saveGameMediaDraft(
       slug,
       expectedRevision,
