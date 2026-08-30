@@ -15,6 +15,15 @@ const allowedChunks = new Set([
   "VP8L",
   "ALPH",
 ]);
+const removableMetadataChunks = new Set([
+  "ICCP",
+  "EXIF",
+  "XMP ",
+]);
+const metadataFlagMask =
+  0x20 | // ICC profile
+  0x08 | // EXIF
+  0x04; // XMP
 
 export type SafeWebpInspection = {
   digest: string;
@@ -160,26 +169,23 @@ function inspectVp8x(
   };
 }
 
-export function inspectSafeEditorialWebp(
-  buffer: Buffer
-): SafeWebpInspection | null {
+function hasValidRiffEnvelope(buffer: Buffer) {
   if (
     buffer.length < 20 ||
-    buffer.length > MAX_EDITORIAL_IMAGE_BYTES
-  ) {
-    return null;
-  }
-
-  if (
+    buffer.length > MAX_EDITORIAL_IMAGE_BYTES ||
     buffer.toString("ascii", 0, 4) !== "RIFF" ||
     buffer.toString("ascii", 8, 12) !== "WEBP"
   ) {
-    return null;
+    return false;
   }
 
-  const declaredSize = buffer.readUInt32LE(4);
+  return buffer.readUInt32LE(4) + 8 === buffer.length;
+}
 
-  if (declaredSize + 8 !== buffer.length) {
+export function inspectSafeEditorialWebp(
+  buffer: Buffer
+): SafeWebpInspection | null {
+  if (!hasValidRiffEnvelope(buffer)) {
     return null;
   }
 
@@ -320,4 +326,90 @@ export function inspectSafeEditorialWebp(
       canvasDimensions?.height ??
       imageDimensions.height,
   };
+}
+
+export function sanitizeEditorialWebp(
+  input: Buffer
+): Buffer | null {
+  if (!hasValidRiffEnvelope(input)) {
+    return null;
+  }
+
+  const chunks: Buffer[] = [];
+  let cursor = 12;
+  let changed = false;
+
+  while (cursor < input.length) {
+    if (cursor + 8 > input.length) {
+      return null;
+    }
+
+    const chunkType = input.toString(
+      "ascii",
+      cursor,
+      cursor + 4
+    );
+    const chunkSize = input.readUInt32LE(
+      cursor + 4
+    );
+    const dataEnd = cursor + 8 + chunkSize;
+    const paddedEnd = dataEnd + (chunkSize % 2);
+
+    if (
+      dataEnd > input.length ||
+      paddedEnd > input.length
+    ) {
+      return null;
+    }
+
+    if (removableMetadataChunks.has(chunkType)) {
+      changed = true;
+      cursor = paddedEnd;
+      continue;
+    }
+
+    const copied = Buffer.from(
+      input.subarray(cursor, paddedEnd)
+    );
+
+    if (
+      chunkType === "VP8X" &&
+      chunkSize === 10
+    ) {
+      const previousFlags = copied[8];
+
+      if (previousFlags === undefined) {
+        return null;
+      }
+
+      copied[8] &= ~metadataFlagMask;
+
+      if (copied[8] !== previousFlags) {
+        changed = true;
+      }
+    }
+
+    chunks.push(copied);
+    cursor = paddedEnd;
+  }
+
+  if (cursor !== input.length) {
+    return null;
+  }
+
+  const candidate = changed
+    ? (() => {
+        const body = Buffer.concat(chunks);
+        const output = Buffer.alloc(12 + body.length);
+        output.write("RIFF", 0, "ascii");
+        output.writeUInt32LE(output.length - 8, 4);
+        output.write("WEBP", 8, "ascii");
+        body.copy(output, 12);
+        return output;
+      })()
+    : input;
+
+  return inspectSafeEditorialWebp(candidate)
+    ? candidate
+    : null;
 }
