@@ -40,7 +40,6 @@ export async function POST(
   }
 
   const { slug } = await context.params;
-  const target = `/admin/juegos/${encodeURIComponent(slug)}#descargas`;
 
   if (
     !hasExactAdminFormFields(
