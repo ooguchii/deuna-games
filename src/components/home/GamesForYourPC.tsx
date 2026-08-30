@@ -10,7 +10,7 @@ import {
 
 import CardCarousel from "@/components/ui/CardCarousel";
 import UniversalGameCard from "@/components/ui/UniversalGameCard";
-import { lowSpecGames } from "@/data/home";
+import type { Game } from "@/types/game";
 
 import styles from "./GamesForYourPC.module.css";
 
@@ -41,7 +41,11 @@ const catalogOptions = [
   },
 ] as const;
 
-export default function GamesForYourPC() {
+export default function GamesForYourPC({
+  games,
+}: {
+  games: Game[];
+}) {
   return (
     <section className={styles.section}>
       <div className={styles.mainHeader}>
@@ -113,7 +117,7 @@ export default function GamesForYourPC() {
         ariaLabel="Juegos para equipos de bajos recursos"
         itemsDesktop={5}
       >
-        {lowSpecGames.map((game) => (
+        {games.map((game) => (
           <UniversalGameCard
             key={game.slug}
             game={game}
