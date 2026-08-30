@@ -60,6 +60,7 @@ export default async function Home() {
   ]);
   const collections =
     buildHomeGameCollections(games, homeConfig);
+  const copy = homeConfig.copy;
   const websiteJsonLd = {
     "@context": "https://schema.org",
     "@type": "WebSite",
@@ -75,6 +76,93 @@ export default async function Home() {
     name: config.name,
     url: absoluteUrl("/"),
   };
+
+  function renderSection(
+    section: (typeof homeConfig.sections)[number]
+  ) {
+    if (!section.visible) return null;
+
+    switch (section.id) {
+      case "hero":
+        return collections.heroGames.length > 0 ? (
+          <HeroSection
+            key={section.id}
+            games={collections.heroGames}
+            copy={copy.hero}
+          />
+        ) : null;
+
+      case "popular":
+        return collections.popularGames.length > 0 ? (
+          <PopularGames
+            key={section.id}
+            games={collections.popularGames}
+            copy={copy.popular}
+          />
+        ) : null;
+
+      case "finder":
+        return (
+          <GameFinderSection
+            key={section.id}
+            copy={copy.finder}
+          />
+        );
+
+      case "classifications":
+        return games.length > 0 ? (
+          <FeaturedCategories
+            key={section.id}
+            games={games}
+            copy={copy.classifications}
+          />
+        ) : null;
+
+      case "recent":
+        return collections.recentGames.length > 0 ? (
+          <RecentlyAdded
+            key={section.id}
+            games={collections.recentGames}
+            copy={copy.recent}
+          />
+        ) : null;
+
+      case "updates":
+        return updates.length > 0 ? (
+          <LatestUpdates
+            key={section.id}
+            updates={updates.slice(0, 3)}
+            copy={copy.updates}
+          />
+        ) : null;
+
+      case "lowSpec":
+        return collections.lowSpecGames.length > 0 ? (
+          <GamesForYourPC
+            key={section.id}
+            games={collections.lowSpecGames}
+            copy={copy.lowSpec}
+          />
+        ) : null;
+
+      case "recommended":
+        return collections.recommendedGames.length > 0 ? (
+          <RecommendedGames
+            key={section.id}
+            games={collections.recommendedGames}
+            copy={copy.recommended}
+          />
+        ) : null;
+
+      case "trust":
+        return (
+          <TrustSection
+            key={section.id}
+            copy={copy.trust}
+          />
+        );
+    }
+  }
 
   return (
     <>
@@ -100,31 +188,7 @@ export default async function Home() {
         id="main-content"
         className="main-content"
       >
-        {collections.heroGames.length > 0 && (
-          <HeroSection games={collections.heroGames} />
-        )}
-        {collections.popularGames.length > 0 && (
-          <PopularGames games={collections.popularGames} />
-        )}
-        <GameFinderSection />
-        {games.length > 0 && (
-          <FeaturedCategories games={games} />
-        )}
-        {collections.recentGames.length > 0 && (
-          <RecentlyAdded games={collections.recentGames} />
-        )}
-        {updates.length > 0 && (
-          <LatestUpdates updates={updates.slice(0, 3)} />
-        )}
-        {collections.lowSpecGames.length > 0 && (
-          <GamesForYourPC games={collections.lowSpecGames} />
-        )}
-        {collections.recommendedGames.length > 0 && (
-          <RecommendedGames
-            games={collections.recommendedGames}
-          />
-        )}
-        <TrustSection />
+        {homeConfig.sections.map(renderSection)}
       </main>
 
       <Footer />
