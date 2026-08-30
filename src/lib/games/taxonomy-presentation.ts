@@ -1,5 +1,7 @@
 import type {
+  GameTaxonomyIcon,
   GameTaxonomyTerm,
+  GameTaxonomyTone,
 } from "@/types/game-taxonomy";
 
 export const taxonomyIconKeys = [
@@ -27,10 +29,7 @@ export const taxonomyIconKeys = [
   "users",
   "hammer",
   "brain",
-] as const;
-
-export type TaxonomyIconKey =
-  (typeof taxonomyIconKeys)[number];
+] as const satisfies readonly GameTaxonomyIcon[];
 
 export const taxonomyToneKeys = [
   "brand",
@@ -42,13 +41,10 @@ export const taxonomyToneKeys = [
   "cyan",
   "gold",
   "red",
-] as const;
-
-export type TaxonomyToneKey =
-  (typeof taxonomyToneKeys)[number];
+] as const satisfies readonly GameTaxonomyTone[];
 
 export const taxonomyIconOptions: ReadonlyArray<{
-  key: TaxonomyIconKey;
+  key: GameTaxonomyIcon;
   label: string;
 }> = [
   { key: "gamepad", label: "Mando / juego" },
@@ -78,7 +74,7 @@ export const taxonomyIconOptions: ReadonlyArray<{
 ];
 
 export const taxonomyToneOptions: ReadonlyArray<{
-  key: TaxonomyToneKey;
+  key: GameTaxonomyTone;
   label: string;
   color: string;
 }> = [
@@ -103,7 +99,7 @@ function normalized(value: string) {
 
 export function defaultTaxonomyIcon(
   label: string
-): TaxonomyIconKey {
+): GameTaxonomyIcon {
   const value = normalized(label);
 
   if (value.includes("accion")) return "zap";
@@ -131,7 +127,7 @@ export function defaultTaxonomyIcon(
 export function defaultTaxonomyTone(
   label: string,
   index = 0
-): TaxonomyToneKey {
+): GameTaxonomyTone {
   const value = normalized(label);
 
   if (value.includes("accion")) return "brand";
@@ -154,14 +150,14 @@ export function resolveTaxonomyVisual(
   index = 0
 ) {
   const icon = taxonomyIconKeys.includes(
-    term.icon as TaxonomyIconKey
+    term.icon as GameTaxonomyIcon
   )
-    ? (term.icon as TaxonomyIconKey)
+    ? (term.icon as GameTaxonomyIcon)
     : defaultTaxonomyIcon(term.label);
   const tone = taxonomyToneKeys.includes(
-    term.tone as TaxonomyToneKey
+    term.tone as GameTaxonomyTone
   )
-    ? (term.tone as TaxonomyToneKey)
+    ? (term.tone as GameTaxonomyTone)
     : defaultTaxonomyTone(term.label, index);
   const color =
     taxonomyToneOptions.find((option) => option.key === tone)?.color ??
