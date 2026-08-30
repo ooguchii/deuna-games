@@ -11,6 +11,7 @@ import {
   PanelTop,
   Rocket,
   SquarePen,
+  Tags,
 } from "lucide-react";
 
 import ux from "./AdminShellUx.module.css";
@@ -29,6 +30,12 @@ const gameSections = [
 const updateSections = [
   { id: "editar", label: "Editar", icon: SquarePen },
   { id: "publicacion", label: "Publicación", icon: Rocket },
+  { id: "historial", label: "Historial", icon: FileClock },
+] as const;
+
+const catalogSections = [
+  { id: "clasificaciones", label: "Clasificaciones", icon: ListTree },
+  { id: "etiquetas", label: "Etiquetas", icon: Tags },
   { id: "historial", label: "Historial", icon: FileClock },
 ] as const;
 
@@ -75,6 +82,31 @@ export default function AdminContextBar() {
     return (
       <nav className={ux.contextBar} aria-label="Secciones del editor de actualización">
         {updateSections.map((section) => {
+          const Icon = section.icon;
+          const active = selected === section.id;
+
+          return (
+            <a
+              key={section.id}
+              href={`${pathname}?seccion=${section.id}`}
+              className={active ? ux.contextActive : undefined}
+              aria-current={active ? "page" : undefined}
+            >
+              <Icon size={16} strokeWidth={1.9} aria-hidden="true" />
+              {section.label}
+            </a>
+          );
+        })}
+      </nav>
+    );
+  }
+
+  if (pathname === "/admin/catalogos") {
+    const selected = searchParams.get("seccion") ?? "clasificaciones";
+
+    return (
+      <nav className={ux.contextBar} aria-label="Secciones del panel de catálogos">
+        {catalogSections.map((section) => {
           const Icon = section.icon;
           const active = selected === section.id;
 
