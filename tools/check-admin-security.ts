@@ -22,6 +22,9 @@ import {
   hashEditorialPayload,
 } from "../src/lib/admin/content-hash.ts";
 import {
+  resolveDevelopmentAdminRedirect,
+} from "../src/lib/admin/local-origin.ts";
+import {
   editorialGameSchema,
   editorialSiteConfigSchema,
   editorialUpdateSchema,
@@ -140,6 +143,40 @@ assert(
     featured: "false",
   }).success,
   "El editor no debe normalizar silenciosamente una fecha imposible."
+);
+
+assert(
+  resolveDevelopmentAdminRedirect({
+    adminOrigin: "http://localhost:3000",
+    nodeEnvironment: "development",
+    pathname: "/admin/login",
+    requestHost: "127.0.0.1:3000",
+  }) === "http://localhost:3000/admin/login",
+  "El acceso local debe normalizar el alias loopback antes de pedir credenciales."
+);
+assert(
+  resolveDevelopmentAdminRedirect({
+    adminOrigin: "http://localhost:3000",
+    nodeEnvironment: "production",
+    pathname: "/admin/login",
+    requestHost: "127.0.0.1:3000",
+  }) === null,
+  "Producción no debe aceptar alias del origen administrativo."
+);
+assert(
+  [
+    "localhost.ejemplo.test:3000",
+    "127.0.0.1:3001",
+  ].every(
+    (requestHost) =>
+      resolveDevelopmentAdminRedirect({
+        adminOrigin: "http://localhost:3000",
+        nodeEnvironment: "development",
+        pathname: "/admin/login",
+        requestHost,
+      }) === null
+  ),
+  "La normalización local debe rechazar hosts parecidos y puertos distintos."
 );
 
 const migration = (

@@ -2,11 +2,19 @@ import {
   LockKeyhole,
   ShieldCheck,
 } from "lucide-react";
-import { notFound } from "next/navigation";
+import { headers } from "next/headers";
+import {
+  notFound,
+  redirect,
+} from "next/navigation";
 
 import {
+  getAdminOrigin,
   isAdminEnabled,
 } from "@/lib/admin/database-config";
+import {
+  resolveDevelopmentAdminRedirect,
+} from "@/lib/admin/local-origin";
 
 import styles from "../admin.module.css";
 
@@ -27,6 +35,22 @@ export default async function AdminLoginPage({
   const state = Array.isArray(parameters.estado)
     ? parameters.estado[0]
     : parameters.estado;
+  const canonicalRedirect =
+    resolveDevelopmentAdminRedirect({
+      adminOrigin: getAdminOrigin(),
+      nodeEnvironment: process.env.NODE_ENV,
+      pathname:
+        state === "credenciales" ||
+        state === "solicitud"
+          ? `/admin/login?estado=${state}`
+          : "/admin/login",
+      requestHost: (await headers()).get("host"),
+    });
+
+  if (canonicalRedirect) {
+    redirect(canonicalRedirect);
+  }
+
   const message =
     state === "credenciales"
       ? "No fue posible iniciar la sesión. Revisa los datos o espera antes de intentarlo otra vez."
