@@ -7,6 +7,10 @@ import {
   verifyAdminSession,
 } from "./session";
 
+type PublishableType =
+  | "game"
+  | "game_update";
+
 type PublicationTableRow = {
   publication_table: string | null;
 };
@@ -19,16 +23,22 @@ type PublicationCountsRow = {
 
 type RecentPublicationRow = {
   id: string;
-  item_type: "game" | "game_update";
+  item_type: PublishableType;
   item_key: string;
   publication_number: number;
   action: "published" | "rollback";
   created_at: Date;
 };
 
+type ItemPublicationStateRow = {
+  item_key: string;
+  publication_number: number;
+  has_unpublished_changes: boolean;
+};
+
 export type RecentPublication = {
   id: string;
-  type: "game" | "game_update";
+  type: PublishableType;
   key: string;
   publicationNumber: number;
   action: "published" | "rollback";
@@ -43,6 +53,12 @@ export type PublicationOverview = {
   recent: RecentPublication[];
 };
 
+export type ItemPublicationState = {
+  key: string;
+  publicationNumber: number;
+  hasUnpublishedChanges: boolean;
+};
+
 const unavailableOverview: PublicationOverview = {
   available: false,
   games: 0,
@@ -51,10 +67,7 @@ const unavailableOverview: PublicationOverview = {
   recent: [],
 };
 
-export async function getPublicationOverview():
-  Promise<PublicationOverview> {
-  await verifyAdminSession();
-
+async function publicationWorkspaceAvailable() {
   const workspace =
     await adminQuery<PublicationTableRow>(
       `SELECT
@@ -63,7 +76,16 @@ export async function getPublicationOverview():
          )::text AS publication_table`
     );
 
-  if (!workspace.rows[0]?.publication_table) {
+  return Boolean(
+    workspace.rows[0]?.publication_table
+  );
+}
+
+export async function getPublicationOverview():
+  Promise<PublicationOverview> {
+  await verifyAdminSession();
+
+  if (!(await publicationWorkspaceAvailable())) {
     return unavailableOverview;
   }
 
@@ -120,4 +142,35 @@ export async function getPublicationOverview():
       })
     ),
   };
+}
+
+export async function listPublicationStates(
+  type: PublishableType
+): Promise<ItemPublicationState[] | null> {
+  await verifyAdminSession();
+
+  if (!(await publicationWorkspaceAvailable())) {
+    return null;
+  }
+
+  const result =
+    await adminQuery<ItemPublicationStateRow>(
+      `SELECT
+         item_key,
+         publication_number,
+         (
+           draft_payload IS DISTINCT FROM published_payload
+         ) AS has_unpublished_changes
+       FROM deuna_admin.editorial_items
+       WHERE item_type = $1
+       ORDER BY item_key ASC`,
+      [type]
+    );
+
+  return result.rows.map((item) => ({
+    key: item.item_key,
+    publicationNumber: item.publication_number,
+    hasUnpublishedChanges:
+      item.has_unpublished_changes,
+  }));
 }
