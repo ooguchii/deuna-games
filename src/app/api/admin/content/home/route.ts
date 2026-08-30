@@ -6,6 +6,7 @@ import {
   authorizeAdminFormRequest,
 } from "@/lib/admin/admin-route";
 import {
+  getEditorialItem,
   saveHomeConfigDraft,
 } from "@/lib/admin/content-service";
 import {
@@ -34,7 +35,7 @@ export async function POST(request: NextRequest) {
     return authorized.response;
   }
 
-  const target = "/admin/portada";
+  const target = "/admin/portada?seccion=curaduria";
 
   if (
     !hasExactAdminFormFields(
@@ -44,7 +45,7 @@ export async function POST(request: NextRequest) {
   ) {
     return adminRedirect(
       authorized.adminOrigin,
-      `${target}?estado=solicitud`
+      `${target}&estado=solicitud`
     );
   }
 
@@ -55,11 +56,23 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) {
     return adminRedirect(
       authorized.adminOrigin,
-      `${target}?estado=datos`
+      `${target}&estado=datos`
     );
   }
 
   try {
+    const item = await getEditorialItem(
+      "home_config",
+      "home"
+    );
+
+    if (!item) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        `${target}&estado=no-encontrado`
+      );
+    }
+
     const {
       expectedRevision,
       heroSlugsText,
@@ -75,19 +88,21 @@ export async function POST(request: NextRequest) {
         popularSlugs: popularSlugsText,
         lowSpecSlugs: lowSpecSlugsText,
         recommendedSlugs: recommendedSlugsText,
+        sections: item.payload.sections,
+        copy: item.payload.copy,
       }
     );
 
     if (result.outcome === "not_found") {
       return adminRedirect(
         authorized.adminOrigin,
-        `${target}?estado=no-encontrado`
+        `${target}&estado=no-encontrado`
       );
     }
 
     return adminRedirect(
       authorized.adminOrigin,
-      `${target}?estado=${
+      `${target}&estado=${
         result.outcome === "conflict"
           ? "conflicto"
           : "guardado"
