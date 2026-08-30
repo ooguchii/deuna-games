@@ -1,5 +1,6 @@
 import Link from "next/link";
 import {
+  FileText,
   Gamepad2,
   Gauge,
   LayoutDashboard,
@@ -36,6 +37,11 @@ const navigation = [
     href: "/admin/portada",
     label: "Portada",
     icon: LayoutTemplate,
+  },
+  {
+    href: "/admin/paginas",
+    label: "Páginas",
+    icon: FileText,
   },
   {
     href: "/admin/seguridad",
