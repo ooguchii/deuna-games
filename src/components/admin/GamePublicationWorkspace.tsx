@@ -51,7 +51,13 @@ function formatDate(value: Date) {
   }).format(value);
 }
 
-function RequestNotice({ state }: { state?: string }) {
+function RequestNotice({
+  state,
+  slug,
+}: {
+  state?: string;
+  slug: string;
+}) {
   if (!state) return null;
 
   if (state === "publicado") {
@@ -82,6 +88,23 @@ function RequestNotice({ state }: { state?: string }) {
     return (
       <div className={styles.notice}>
         No había un cambio nuevo que aplicar al estado publicado.
+      </div>
+    );
+  }
+
+  if (
+    state === "asset-publicacion" ||
+    state === "asset-restauracion"
+  ) {
+    return (
+      <div className={`${styles.notice} ${styles.noticeError}`}>
+        <strong>Publicación bloqueada por integridad multimedia.</strong>{" "}
+        Una portada, imagen hero o captura referenciada ya no existe en el almacenamiento. La web no fue modificada.{" "}
+        <Link
+          href={`/admin/juegos/${encodeURIComponent(slug)}?seccion=multimedia`}
+        >
+          Abrir Multimedia para corregirlo
+        </Link>
       </div>
     );
   }
@@ -173,7 +196,7 @@ export default function GamePublicationWorkspace({
 
   return (
     <div className={styles.workspace}>
-      <RequestNotice state={requestState} />
+      <RequestNotice state={requestState} slug={slug} />
 
       <section
         className={styles.statusCard}
