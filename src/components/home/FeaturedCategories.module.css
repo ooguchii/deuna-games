@@ -146,30 +146,6 @@
   font-weight: 700;
 }
 
-.red {
-  color: var(--brand);
-}
-
-.purple {
-  color: #b828ff;
-}
-
-.violet {
-  color: #7448ff;
-}
-
-.blue {
-  color: #188cff;
-}
-
-.green {
-  color: #20d980;
-}
-
-.orange {
-  color: #ff9818;
-}
-
 @media (max-width: 1100px) {
   .categories {
     grid-template-columns:
