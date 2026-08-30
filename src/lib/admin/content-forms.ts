@@ -226,6 +226,25 @@ const optionalPositiveNumber = z
       (Number.isFinite(value) && value > 0 && value <= 100_000)
   );
 
+function optionalCalibrationNumber(maximum: number) {
+  return z
+    .string()
+    .trim()
+    .refine(
+      (value) =>
+        value === "" ||
+        /^\d{1,4}(?:\.\d{1,2})?$/.test(value)
+    )
+    .transform((value) =>
+      value === "" ? undefined : Number(value)
+    )
+    .refine(
+      (value) =>
+        value === undefined ||
+        (Number.isFinite(value) && value > 0 && value <= maximum)
+    );
+}
+
 const optionalPositiveInteger = z
   .string()
   .trim()
@@ -361,6 +380,51 @@ export const editorialGameRequirementsFormSchema = z.object({
   recommendedGraphics: optionalText(240),
   recommendedStorage: optionalText(240),
 });
+
+export const editorialGamePerformanceFormSchema = z
+  .object({
+    expectedRevision: expectedRevisionSchema,
+    referenceFps: optionalCalibrationNumber(1_000),
+    ramGb: optionalCalibrationNumber(512),
+    fpsCap: optionalCalibrationNumber(1_000),
+  })
+  .superRefine((value, context) => {
+    const hasAny =
+      value.referenceFps !== undefined ||
+      value.ramGb !== undefined ||
+      value.fpsCap !== undefined;
+
+    if (!hasAny) return;
+
+    if (value.referenceFps === undefined) {
+      context.addIssue({
+        code: "custom",
+        path: ["referenceFps"],
+        message: "Indica los FPS de referencia.",
+      });
+    }
+
+    if (value.ramGb === undefined) {
+      context.addIssue({
+        code: "custom",
+        path: ["ramGb"],
+        message: "Indica la RAM de referencia.",
+      });
+    }
+
+    if (
+      value.referenceFps !== undefined &&
+      value.fpsCap !== undefined &&
+      value.referenceFps > value.fpsCap
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["fpsCap"],
+        message:
+          "El límite de FPS no puede ser menor que los FPS de referencia.",
+      });
+    }
+  });
 
 export const editorialGameMediaFormSchema = z.object({
   expectedRevision: expectedRevisionSchema,
