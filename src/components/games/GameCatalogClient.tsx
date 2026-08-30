@@ -106,7 +106,7 @@ function orderedCategoryStats(
           key:
             normalizeCatalogText(label)
               .replace(/[^a-z0-9]+/g, "-") ||
-            "categoria",
+            "clasificacion",
           label,
           active: true,
         },
@@ -269,13 +269,13 @@ export default function GameCatalogClient({
     <>
       <section
         className={styles.categoryArea}
-        aria-label="Categorías de juegos"
+        aria-label="Clasificaciones de juegos"
       >
         <button
           type="button"
           className={`${styles.categoryArrow} ${styles.arrowLeft}`}
           onClick={() => scrollCategories(-1)}
-          aria-label="Ver categorías anteriores"
+          aria-label="Ver clasificaciones anteriores"
         >
           <ChevronLeft size={20} aria-hidden="true" />
         </button>
@@ -351,7 +351,7 @@ export default function GameCatalogClient({
           type="button"
           className={`${styles.categoryArrow} ${styles.arrowRight}`}
           onClick={() => scrollCategories(1)}
-          aria-label="Ver categorías siguientes"
+          aria-label="Ver clasificaciones siguientes"
         >
           <ChevronRight size={20} aria-hidden="true" />
         </button>
@@ -428,7 +428,7 @@ export default function GameCatalogClient({
             >
               <option value="all">Todo</option>
               <option value="title">Nombre</option>
-              <option value="category">Categoría / género / etiqueta</option>
+              <option value="category">Clasificación / etiqueta</option>
               <option value="requirements">Requisitos</option>
             </select>
           </label>
@@ -666,7 +666,7 @@ export default function GameCatalogClient({
           <Search size={30} aria-hidden="true" />
           <h2>No encontramos juegos</h2>
           <p>
-            Prueba con otro nombre, categoría, puntuación o combinación de filtros.
+            Prueba con otro nombre, clasificación, puntuación o combinación de filtros.
           </p>
           <button type="button" onClick={clearAll}>
             Ver todo el catálogo
