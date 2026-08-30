@@ -14,6 +14,10 @@ import {
 
 import { useMemo } from "react";
 
+import type {
+  GamePerformanceCalibration,
+} from "@/types/game";
+
 import {
   estimateGamePerformance,
 } from "./performance-model";
@@ -61,6 +65,7 @@ const tierMeta: Record<
 
 type GamePerformanceEstimateProps = {
   slug: string;
+  calibration?: GamePerformanceCalibration;
 };
 
 function sourceLabel(profile: HardwareProfile | null) {
@@ -91,15 +96,21 @@ function ramLabel(profile: HardwareProfile | null) {
 
 export default function GamePerformanceEstimate({
   slug,
+  calibration: previewCalibration,
 }: GamePerformanceEstimateProps) {
   const {
     profile: hardware,
     status,
   } = useResolvedHardwareProfile();
   const {
-    calibration,
-    loading: calibrationLoading,
+    calibration: publishedCalibration,
+    loading: publishedCalibrationLoading,
   } = useGamePerformanceCalibration(slug);
+  const calibration =
+    previewCalibration ?? publishedCalibration;
+  const calibrationLoading =
+    previewCalibration === undefined &&
+    publishedCalibrationLoading;
 
   const estimate = useMemo(
     () =>
