@@ -23,7 +23,8 @@ type PublishableEditorialType =
   | "game"
   | "game_update"
   | "site_config"
-  | "home_config";
+  | "home_config"
+  | "about_config";
 
 type PublicationAction =
   | "bootstrap"
@@ -93,6 +94,8 @@ export type SiteConfigPublicationState =
   EditorialPublicationState;
 export type HomeConfigPublicationState =
   EditorialPublicationState;
+export type AboutConfigPublicationState =
+  EditorialPublicationState;
 
 export type PublishEditorialResult =
   | {
@@ -116,6 +119,8 @@ export type PublishUpdateResult =
 export type PublishSiteConfigResult =
   PublishEditorialResult;
 export type PublishHomeConfigResult =
+  PublishEditorialResult;
+export type PublishAboutConfigResult =
   PublishEditorialResult;
 
 export type RestorePublicationResult =
@@ -158,8 +163,14 @@ function normalizePublishablePayload(
     );
   }
 
+  if (type === "home_config") {
+    return normalizeEditorialPayload(
+      parseEditorialPayload("home_config", payload)
+    );
+  }
+
   return normalizeEditorialPayload(
-    parseEditorialPayload("home_config", payload)
+    parseEditorialPayload("about_config", payload)
   );
 }
 
@@ -547,6 +558,10 @@ export function getHomeConfigPublicationState() {
   return getPublicationState("home_config", "home");
 }
 
+export function getAboutConfigPublicationState() {
+  return getPublicationState("about_config", "about");
+}
+
 export function publishGameDraft(
   key: string,
   expectedRevision: number,
@@ -592,6 +607,18 @@ export function publishHomeConfigDraft(
   return publishEditorialDraft(
     "home_config",
     "home",
+    expectedRevision,
+    actorUserId
+  );
+}
+
+export function publishAboutConfigDraft(
+  expectedRevision: number,
+  actorUserId: string
+) {
+  return publishEditorialDraft(
+    "about_config",
+    "about",
     expectedRevision,
     actorUserId
   );
@@ -643,6 +670,19 @@ export function restoreHomeConfigPublication(
 ) {
   return restoreEditorialPublication(
     "home_config",
+    publicationId,
+    expectedPublicationNumber,
+    actorUserId
+  );
+}
+
+export function restoreAboutConfigPublication(
+  publicationId: string,
+  expectedPublicationNumber: number,
+  actorUserId: string
+) {
+  return restoreEditorialPublication(
+    "about_config",
     publicationId,
     expectedPublicationNumber,
     actorUserId
