@@ -139,8 +139,28 @@ async function importItem(
 
     await client.query(
       `INSERT INTO deuna_admin.editorial_items
-         (id, item_type, item_key, source_payload, source_checksum, draft_payload)
-       VALUES ($1, $2, $3, $4::jsonb, $5, $4::jsonb)`,
+         (
+           id,
+           item_type,
+           item_key,
+           source_payload,
+           source_checksum,
+           draft_payload,
+           published_payload,
+           published_checksum,
+           publication_number
+         )
+       VALUES (
+         $1,
+         $2,
+         $3,
+         $4::jsonb,
+         $5,
+         $4::jsonb,
+         $4::jsonb,
+         $5,
+         1
+       )`,
       [id, item.type, item.key, payload, digest]
     );
     await client.query(
@@ -148,6 +168,19 @@ async function importItem(
          (item_id, revision, payload, action)
        VALUES ($1, 1, $2::jsonb, 'imported')`,
       [id, payload]
+    );
+    await client.query(
+      `INSERT INTO deuna_admin.editorial_publications
+         (
+           item_id,
+           publication_number,
+           payload,
+           checksum,
+           source_revision,
+           action
+         )
+       VALUES ($1, 1, $2::jsonb, $3, 1, 'bootstrap')`,
+      [id, payload, digest]
     );
 
     return "created" as const;
