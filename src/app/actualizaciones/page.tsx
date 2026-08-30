@@ -22,6 +22,9 @@ import {
   absoluteUrl,
 } from "@/lib/site";
 import {
+  getPublicPagesConfig,
+} from "@/lib/site/public-pages-config";
+import {
   getPublicSiteConfig,
 } from "@/lib/site/public-site-config";
 import {
@@ -56,6 +59,12 @@ type UpdatesPageProps = {
 
 export const dynamic = "force-dynamic";
 
+const infoIcons = [
+  RefreshCcw,
+  Gamepad2,
+  Layers3,
+] as const;
+
 function hasFilters(
   params: UpdatesSearchParams
 ) {
@@ -72,15 +81,16 @@ function hasFilters(
 export async function generateMetadata({
   searchParams,
 }: UpdatesPageProps): Promise<Metadata> {
-  const [params, config] = await Promise.all([
+  const [params, config, publicPages] = await Promise.all([
     searchParams,
     getPublicSiteConfig(),
+    getPublicPagesConfig(),
   ]);
   const filtered = hasFilters(params);
+  const page = publicPages.updates;
   const title =
-    "Actualizaciones de juegos para PC";
-  const description =
-    `Consulta las últimas versiones y actualizaciones de juegos disponibles en ${config.name}.`;
+    `${page.title} de juegos para PC`;
+  const description = page.description;
 
   return {
     title,
@@ -123,12 +133,18 @@ export async function generateMetadata({
 export default async function UpdatesPage({
   searchParams,
 }: UpdatesPageProps) {
-  const [params, resolvedGameUpdates, config] =
-    await Promise.all([
-      searchParams,
-      getPublicResolvedUpdates(),
-      getPublicSiteConfig(),
-    ]);
+  const [
+    params,
+    resolvedGameUpdates,
+    config,
+    publicPages,
+  ] = await Promise.all([
+    searchParams,
+    getPublicResolvedUpdates(),
+    getPublicSiteConfig(),
+    getPublicPagesConfig(),
+  ]);
+  const page = publicPages.updates;
   const featuredUpdates =
     resolvedGameUpdates.filter(
       (update) => update.featured
@@ -179,7 +195,7 @@ export default async function UpdatesPage({
           "ListItem",
         position: 2,
         name:
-          "Actualizaciones",
+          page.title,
         item:
           absoluteUrl(
             "/actualizaciones"
@@ -194,13 +210,13 @@ export default async function UpdatesPage({
     "@type":
       "CollectionPage",
     name:
-      "Actualizaciones de juegos para PC",
+      `${page.title} de juegos para PC`,
     url:
       absoluteUrl(
         "/actualizaciones"
       ),
     description:
-      `Últimas versiones y actualizaciones de juegos disponibles en ${config.name}.`,
+      page.description,
     inLanguage:
       config.language,
   };
@@ -257,7 +273,7 @@ export default async function UpdatesPage({
           <span
             aria-current="page"
           >
-            Actualizaciones
+            {page.title}
           </span>
         </nav>
 
@@ -283,19 +299,17 @@ export default async function UpdatesPage({
                 styles.eyebrow
               }
             >
-              VERSIONES Y MEJORAS
+              {page.eyebrow}
             </span>
 
             <h1>
-              Actualizaciones{" "}
+              {page.title}{" "}
               <span>
-                recientes
+                {page.highlight}
               </span>
             </h1>
 
-            <p>
-              Sigue las nuevas versiones de los juegos disponibles en {config.name}. Encuentra qué se actualizó y accede siempre a la versión vigente.
-            </p>
+            <p>{page.description}</p>
 
             <div
               className={
@@ -441,72 +455,27 @@ export default async function UpdatesPage({
           className={
             styles.infoGrid
           }
-          aria-label="Cómo funciona Actualizaciones"
+          aria-label={`Cómo funciona ${page.title}`}
         >
-          <article>
-            <span>
-              <RefreshCcw
-                size={20}
-                aria-hidden="true"
-              />
-            </span>
+          {page.infoCards.map((card, index) => {
+            const Icon = infoIcons[index];
 
-            <div>
-              <strong>
-                Versiones ordenadas
-              </strong>
+            return (
+              <article key={`${index}-${card.title}`}>
+                <span>
+                  <Icon
+                    size={20}
+                    aria-hidden="true"
+                  />
+                </span>
 
-              <p>
-                Cada publicación queda
-                asociada a su juego y a
-                una versión concreta.
-              </p>
-            </div>
-          </article>
-
-          <article>
-            <span>
-              <Gamepad2
-                size={20}
-                aria-hidden="true"
-              />
-            </span>
-
-            <div>
-              <strong>
-                Un acceso por juego
-              </strong>
-
-              <p>
-                El mismo botón de
-                descarga puede ofrecer
-                siempre la versión
-                vigente.
-              </p>
-            </div>
-          </article>
-
-          <article>
-            <span>
-              <Layers3
-                size={20}
-                aria-hidden="true"
-              />
-            </span>
-
-            <div>
-              <strong>
-                Mirrors independientes
-              </strong>
-
-              <p>
-                Cambiar un enlace no
-                genera una actualización;
-                publicar una versión
-                nueva sí.
-              </p>
-            </div>
-          </article>
+                <div>
+                  <strong>{card.title}</strong>
+                  <p>{card.text}</p>
+                </div>
+              </article>
+            );
+          })}
         </section>
       </main>
 
