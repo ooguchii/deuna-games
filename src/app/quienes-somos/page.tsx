@@ -19,8 +19,10 @@ import Header from "@/components/layout/Header";
 
 import {
   absoluteUrl,
-  siteConfig,
 } from "@/lib/site";
+import {
+  getPublicSiteConfig,
+} from "@/lib/site/public-site-config";
 import {
   safeJsonLd,
 } from "@/lib/safe-json-ld";
@@ -72,32 +74,41 @@ const ecosystem = [
   },
 ];
 
-export const metadata: Metadata = {
-  title: "Quiénes somos",
-  description:
-    "Conoce qué es DeUna Games, por qué existe y cómo busca simplificar el descubrimiento de juegos, requisitos y actualizaciones para PC.",
+export const dynamic = "force-dynamic";
 
-  alternates: {
-    canonical: "/quienes-somos",
-  },
+export async function generateMetadata(): Promise<Metadata> {
+  const config = await getPublicSiteConfig();
 
-  openGraph: {
-    title: `Quiénes somos | ${siteConfig.name}`,
+  return {
+    title: "Quiénes somos",
     description:
-      "DeUna Games busca hacer más simple descubrir juegos, entender requisitos y mantener cada versión organizada.",
-    url: "/quienes-somos",
-    type: "website",
-  },
+      `Conoce qué es ${config.name}, por qué existe y cómo busca simplificar el descubrimiento de juegos, requisitos y actualizaciones para PC.`,
 
-  twitter: {
-    card: "summary_large_image",
-    title: `Quiénes somos | ${siteConfig.name}`,
-    description:
-      "Conoce la idea detrás de DeUna Games y la forma en que queremos ordenar el descubrimiento de juegos para PC.",
-  },
-};
+    alternates: {
+      canonical: "/quienes-somos",
+    },
 
-export default function AboutPage() {
+    openGraph: {
+      title: `Quiénes somos | ${config.name}`,
+      description:
+        `${config.name} busca hacer más simple descubrir juegos, entender requisitos y mantener cada versión organizada.`,
+      url: "/quienes-somos",
+      type: "website",
+    },
+
+    twitter: {
+      card: "summary_large_image",
+      title: `Quiénes somos | ${config.name}`,
+      description:
+        `Conoce la idea detrás de ${config.name} y la forma en que queremos ordenar el descubrimiento de juegos para PC.`,
+    },
+  };
+}
+
+export default async function AboutPage() {
+  const config = await getPublicSiteConfig();
+  const shortName = config.shortName || config.name;
+
   const breadcrumbJsonLd = {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
@@ -120,16 +131,16 @@ export default function AboutPage() {
   const aboutPageJsonLd = {
     "@context": "https://schema.org",
     "@type": "AboutPage",
-    name: "Quiénes somos | DeUna Games",
+    name: `Quiénes somos | ${config.name}`,
     url: absoluteUrl("/quienes-somos"),
     description:
-      "DeUna Games busca simplificar el descubrimiento de juegos, requisitos, versiones y actualizaciones para PC.",
-    inLanguage: siteConfig.language,
+      `${config.name} busca simplificar el descubrimiento de juegos, requisitos, versiones y actualizaciones para PC.`,
+    inLanguage: config.language,
     about: {
       "@type": "Organization",
-      name: siteConfig.name,
+      name: config.name,
       url: absoluteUrl("/"),
-      description: siteConfig.description,
+      description: config.description,
     },
   };
 
@@ -202,7 +213,7 @@ export default function AboutPage() {
 
           <div className={styles.heroCopy}>
             <span className={styles.eyebrow}>
-              SOBRE DEUNA GAMES
+              SOBRE {config.name.toUpperCase()}
             </span>
 
             <h1 id="about-title">
@@ -211,7 +222,7 @@ export default function AboutPage() {
             </h1>
 
             <p>
-              DeUna Games nace con una idea concreta:
+              {config.name} nace con una idea concreta:
               ordenar lo que hoy suele estar disperso.
               Juegos, requisitos, versiones y actualizaciones
               en una experiencia directa, clara y fácil de usar.
@@ -289,7 +300,7 @@ export default function AboutPage() {
           aria-labelledby="what-is-title"
         >
           <div className={styles.sectionHeading}>
-            <span>QUÉ ES DEUNA</span>
+            <span>QUÉ ES {shortName.toUpperCase()}</span>
             <h2 id="what-is-title">
               Un lugar pensado para
               <strong> decidir mejor.</strong>
@@ -364,7 +375,7 @@ export default function AboutPage() {
               className={styles.reasonRing}
               aria-hidden="true"
             >
-              <span>DEUNA</span>
+              <span>{shortName}</span>
             </div>
 
             <div className={styles.reasonBadge}>
@@ -395,7 +406,7 @@ export default function AboutPage() {
             </p>
 
             <p>
-              DeUna intenta reducir esa fricción: presentar lo
+              {shortName} intenta reducir esa fricción: presentar lo
               importante con jerarquía, mantener cada juego ligado
               a su información y hacer que la navegación tenga una
               lógica clara de principio a fin.
@@ -438,13 +449,12 @@ export default function AboutPage() {
           </div>
         </section>
 
-
         <section
           className={styles.manifesto}
           aria-labelledby="manifesto-title"
         >
           <span className={styles.manifestoEyebrow}>
-            MANIFIESTO DEUNA
+            MANIFIESTO {shortName.toUpperCase()}
           </span>
 
           <h2 id="manifesto-title">
@@ -454,7 +464,7 @@ export default function AboutPage() {
 
           <p>
             Ese es el criterio que queremos mantener a medida que
-            DeUna crezca: claridad, utilidad y una experiencia que
+            {" "}{shortName} crezca: claridad, utilidad y una experiencia que
             no te haga dar vueltas de más.
           </p>
         </section>
