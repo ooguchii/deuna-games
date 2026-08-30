@@ -1,5 +1,6 @@
 import "server-only";
 
+import os from "node:os";
 import path from "node:path";
 import process from "node:process";
 
@@ -29,6 +30,28 @@ function isContainedBy(
   );
 }
 
+function developmentMediaRoot() {
+  if (process.env.NODE_ENV === "production") {
+    return null;
+  }
+
+  const home = os.homedir();
+
+  if (!home || !path.isAbsolute(home)) {
+    throw new Error(
+      "No se pudo resolver un directorio personal seguro para la multimedia local."
+    );
+  }
+
+  return path.join(
+    home,
+    ".local",
+    "share",
+    "deuna-games",
+    "editorial-media"
+  );
+}
+
 export function isEditorialMediaSlug(
   value: string
 ) {
@@ -44,20 +67,22 @@ export function isEditorialMediaFilename(
 export function getEditorialMediaRoot() {
   const configured =
     process.env.DEUNA_EDITORIAL_MEDIA_ROOT?.trim();
+  const candidate =
+    configured || developmentMediaRoot();
 
-  if (!configured) {
+  if (!candidate) {
     throw new Error(
       "Falta configurar DEUNA_EDITORIAL_MEDIA_ROOT."
     );
   }
 
-  if (!path.isAbsolute(configured)) {
+  if (!path.isAbsolute(candidate)) {
     throw new Error(
       "DEUNA_EDITORIAL_MEDIA_ROOT debe ser una ruta absoluta."
     );
   }
 
-  const root = path.resolve(configured);
+  const root = path.resolve(candidate);
   const filesystemRoot = path.parse(root).root;
   const applicationRoot = path.resolve(process.cwd());
 
