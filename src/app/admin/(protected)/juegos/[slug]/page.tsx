@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import EditorialHistory from "@/components/admin/EditorialHistory";
 import EditorStateNotice from "@/components/admin/EditorStateNotice";
 import GameDownloadEditor from "@/components/admin/GameDownloadEditor";
+import GamePlatformEditor from "@/components/admin/GamePlatformEditor";
 import {
   getEditorialItem,
 } from "@/lib/admin/content-service";
@@ -80,7 +81,7 @@ export default async function AdminGameEditorPage({
           <span>JUEGO · REVISIÓN {item.revision}</span>
           <h1>{game.title}</h1>
           <p>
-            Edita la ficha, los requisitos, la multimedia y la configuración de descarga desde un único borrador versionado.
+            Edita la ficha, los datos avanzados, los requisitos, la multimedia y la configuración de descarga desde un único borrador versionado.
           </p>
         </div>
         <span className={styles.draftState}>
@@ -207,6 +208,114 @@ export default async function AdminGameEditorPage({
             </p>
             <button type="submit">
               Guardar ficha
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section
+        id="datos-avanzados"
+        className={styles.editorPanel}
+      >
+        <div className={styles.sectionHeading}>
+          <div>
+            <span>DATOS AVANZADOS</span>
+            <h2>Identidad y clasificación</h2>
+          </div>
+          <p>
+            Completa la información que alimenta etiquetas, detalles, filtros y metadatos de cada ficha.
+          </p>
+        </div>
+
+        <form
+          className={styles.editorForm}
+          method="post"
+          action={`/api/admin/content/games/${encodeURIComponent(slug)}/advanced`}
+        >
+          <input
+            type="hidden"
+            name="expectedRevision"
+            value={item.revision}
+          />
+
+          <label>
+            <span>Título corto</span>
+            <input
+              name="shortTitle"
+              defaultValue={game.shortTitle ?? ""}
+              maxLength={140}
+            />
+          </label>
+
+          <label>
+            <span>Parte destacada del título</span>
+            <input
+              name="highlightedTitle"
+              defaultValue={game.highlightedTitle ?? ""}
+              maxLength={140}
+            />
+          </label>
+
+          <label>
+            <span>Desarrollador</span>
+            <input
+              name="developer"
+              defaultValue={game.developer ?? ""}
+              maxLength={160}
+            />
+          </label>
+
+          <label>
+            <span>Editor / publisher</span>
+            <input
+              name="publisher"
+              defaultValue={game.publisher ?? ""}
+              maxLength={160}
+            />
+          </label>
+
+          <label className={styles.fieldWide}>
+            <span>Fecha de lanzamiento</span>
+            <input
+              name="releaseDate"
+              defaultValue={game.releaseDate ?? ""}
+              maxLength={40}
+              placeholder="25/02/2022"
+            />
+          </label>
+
+          <label className={styles.fieldWide}>
+            <span>Géneros — separados por coma o por línea</span>
+            <textarea
+              name="genresText"
+              defaultValue={(game.genres ?? []).join(", ")}
+              maxLength={1800}
+              rows={3}
+              placeholder="RPG, Acción"
+            />
+          </label>
+
+          <label className={styles.fieldWide}>
+            <span>Etiquetas — separadas por coma o por línea</span>
+            <textarea
+              name="tagsText"
+              defaultValue={(game.tags ?? []).join(", ")}
+              maxLength={2600}
+              rows={4}
+              placeholder="Mundo abierto, Fantasía oscura, Un jugador"
+            />
+          </label>
+
+          <GamePlatformEditor
+            initialPlatforms={game.platforms ?? []}
+          />
+
+          <div className={styles.formActions}>
+            <p>
+              La categoría principal sigue funcionando como respaldo cuando un juego no tiene géneros o plataformas específicos configurados.
+            </p>
+            <button type="submit">
+              Guardar datos avanzados
             </button>
           </div>
         </form>
