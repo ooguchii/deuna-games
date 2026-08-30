@@ -1,6 +1,16 @@
 import styles from "../../app/admin/admin.module.css";
 
 const notices = {
+  creado: {
+    kind: "success",
+    message:
+      "Juego creado como borrador privado. Revisa sus datos y pulsa Publicar cuando esté listo para aparecer en la web.",
+  },
+  duplicado: {
+    kind: "warning",
+    message:
+      "Ese slug ya existe. Usa un identificador distinto o edita el juego existente.",
+  },
   guardado: {
     kind: "success",
     message:
