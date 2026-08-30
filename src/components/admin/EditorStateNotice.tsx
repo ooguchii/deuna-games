@@ -6,10 +6,20 @@ const notices = {
     message:
       "Juego creado como borrador privado. Revisa sus datos y pulsa Publicar cuando esté listo para aparecer en la web.",
   },
+  "actualizacion-creada": {
+    kind: "success",
+    message:
+      "Actualización creada como borrador privado. Revisa sus datos y pulsa Publicar cuando deba aparecer en la web.",
+  },
   duplicado: {
     kind: "warning",
     message:
-      "Ese slug ya existe. Usa un identificador distinto o edita el juego existente.",
+      "Ese identificador ya existe. Usa uno distinto o edita el contenido existente.",
+  },
+  "juego-no-encontrado": {
+    kind: "warning",
+    message:
+      "El juego relacionado no existe en el espacio editorial. Créalo o corrige el identificador antes de continuar.",
   },
   guardado: {
     kind: "success",
