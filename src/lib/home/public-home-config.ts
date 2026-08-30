@@ -3,8 +3,10 @@ import "server-only";
 import { cache } from "react";
 
 import {
+  resolveHomeConfig,
   sourceHomeConfig,
   type HomeConfig,
+  type ResolvedHomeConfig,
 } from "@/data/home-config";
 import {
   adminQuery,
@@ -17,18 +19,11 @@ type PublishedHomeConfigRow = {
   published_payload: unknown;
 };
 
-function sourceFallback(): HomeConfig {
-  return {
-    heroSlugs: [...sourceHomeConfig.heroSlugs],
-    popularSlugs: [...sourceHomeConfig.popularSlugs],
-    lowSpecSlugs: [...sourceHomeConfig.lowSpecSlugs],
-    recommendedSlugs: [
-      ...sourceHomeConfig.recommendedSlugs,
-    ],
-  };
+function sourceFallback(): ResolvedHomeConfig {
+  return resolveHomeConfig(sourceHomeConfig);
 }
 
-async function readPublishedHomeConfig() {
+async function readPublishedHomeConfig(): Promise<HomeConfig | null> {
   const result =
     await adminQuery<PublishedHomeConfigRow>(
       `SELECT published_payload
@@ -49,12 +44,12 @@ async function readPublishedHomeConfig() {
 }
 
 export const getPublicHomeConfig = cache(
-  async (): Promise<HomeConfig> => {
+  async (): Promise<ResolvedHomeConfig> => {
     try {
-      return (
-        (await readPublishedHomeConfig()) ??
-        sourceFallback()
-      );
+      const published = await readPublishedHomeConfig();
+      return published
+        ? resolveHomeConfig(published)
+        : sourceFallback();
     } catch {
       return sourceFallback();
     }
