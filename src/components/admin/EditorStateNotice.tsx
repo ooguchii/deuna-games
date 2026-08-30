@@ -36,6 +36,11 @@ const notices = {
     message:
       "No se guardó el cambio porque quitaría o renombraría un término que todavía usa algún juego. Desactívalo si ya no quieres ofrecerlo para nuevas fichas.",
   },
+  clasificacion: {
+    kind: "error",
+    message:
+      "La clasificación no coincide con los Catálogos actuales. Selecciona categorías, géneros y etiquetas activas; los valores antiguos ya asignados se conservan hasta que decidas reemplazarlos.",
+  },
   restaurado: {
     kind: "success",
     message:
