@@ -161,12 +161,39 @@ export function requirementsText(
   ).join(" ");
 }
 
-function classificationText(game: Game) {
-  return [
+export function gameClassifications(
+  game: Game
+) {
+  const values = [
     game.category,
     ...(game.genres ?? []),
+  ];
+  const seen = new Set<string>();
+
+  return values.filter((value) => {
+    const normalized = normalizeCatalogText(value);
+    if (!normalized || seen.has(normalized)) return false;
+    seen.add(normalized);
+    return true;
+  });
+}
+
+function classificationText(game: Game) {
+  return [
+    ...gameClassifications(game),
     ...(game.tags ?? []),
   ].join(" ");
+}
+
+function hasClassification(
+  game: Game,
+  classification: string
+) {
+  const requested = normalizeCatalogText(classification);
+
+  return gameClassifications(game).some(
+    (value) => normalizeCatalogText(value) === requested
+  );
 }
 
 export function matchesCatalogSearch(
@@ -244,8 +271,10 @@ export function filterAndSortGames(
         const categoryOk =
           filters.category ===
             "todos" ||
-          game.category ===
-            filters.category;
+          hasClassification(
+            game,
+            filters.category
+          );
 
         const ratingOk =
           (game.rating ?? 0) >=
@@ -358,17 +387,16 @@ export function getCategoryStats(
       string,
       number
     >();
+  const canonical = new Map<string, string>();
 
-  games.forEach(
-    (game) => {
-      counts.set(
-        game.category,
-        (counts.get(
-          game.category
-        ) ?? 0) + 1
-      );
-    }
-  );
+  games.forEach((game) => {
+    gameClassifications(game).forEach((classification) => {
+      const normalized = normalizeCatalogText(classification);
+      const label = canonical.get(normalized) ?? classification;
+      canonical.set(normalized, label);
+      counts.set(label, (counts.get(label) ?? 0) + 1);
+    });
+  });
 
   return Array.from(
     counts.entries()
@@ -394,7 +422,7 @@ export function parseCategory(
   }
 
   return games.some(
-    (game) => game.category === value
+    (game) => hasClassification(game, value)
   )
     ? value
     : "todos";
