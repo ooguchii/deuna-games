@@ -29,6 +29,8 @@ async function joinSources(relativeDirectory) {
 const [
   rootLayout,
   manifest,
+  openGraphImage,
+  socialImage,
   homePage,
   homeConfig,
   publicHomeReader,
@@ -42,6 +44,8 @@ const [
 ] = await Promise.all([
   source("src/app/layout.tsx"),
   source("src/app/manifest.ts"),
+  source("src/app/opengraph-image.tsx"),
+  source("src/lib/social-image.tsx"),
   source("src/app/page.tsx"),
   source("src/data/home-config.ts"),
   source("src/lib/home/public-home-config.ts"),
@@ -101,6 +105,17 @@ assert(
     manifest.includes("description: config.description") &&
     manifest.includes("theme_color: config.themeColor"),
   "El manifest debe reutilizar la identidad pública publicada en vez de duplicar marca o descripción."
+);
+
+assert(
+  openGraphImage.includes("getPublicHomeConfig") &&
+    openGraphImage.includes("homeConfig.copy.hero.accessibleTitle") &&
+    openGraphImage.includes("headline:") &&
+    socialImage.includes("headline: string") &&
+    socialImage.includes("identity.headline") &&
+    !socialImage.includes("Encuentra juegos para&nbsp;") &&
+    !socialImage.includes(">tu PC<"),
+  "La imagen social debe reutilizar el titular publicado de Portada y no conservar un copy promocional paralelo."
 );
 
 for (const [name, content] of [
