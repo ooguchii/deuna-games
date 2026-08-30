@@ -22,6 +22,9 @@ const [
   service,
   route,
   page,
+  publicationService,
+  publishRoute,
+  restoreRoute,
   navigation,
   createRoute,
   coreRoute,
@@ -46,6 +49,9 @@ const [
   source("src/lib/admin/game-taxonomy-service.ts"),
   source("src/app/api/admin/content/catalogs/games/route.ts"),
   source("src/app/admin/(protected)/catalogos/page.tsx"),
+  source("src/lib/admin/publication-service.ts"),
+  source("src/app/api/admin/content/catalogs/publish/route.ts"),
+  source("src/app/api/admin/content/catalog-publications/[publicationId]/restore/route.ts"),
   source("src/components/admin/AdminNavigation.tsx"),
   source("src/app/api/admin/content/games/route.ts"),
   source("src/app/api/admin/content/games/[slug]/route.ts"),
@@ -89,9 +95,12 @@ assert(
     importer.includes("buildGameTaxonomy") &&
     importer.includes("classifications: taxonomyTerms") &&
     importer.includes("...(game.genres ?? [])") &&
-    importer.includes("public_visible") &&
-    importer.includes("false"),
-  "El importador debe generar una clasificación única a partir de categoría y géneros históricos sin perder datos."
+    importer.includes("published_payload") &&
+    importer.includes("published_checksum") &&
+    importer.includes("public_visible = true") &&
+    importer.includes("current.draft_payload") &&
+    importer.includes("nextPublication"),
+  "El importador debe generar una clasificación única y promover de forma única el estado ya visible a un snapshot publicado sin perder apariencia."
 );
 
 assert(
@@ -122,8 +131,37 @@ assert(
     page.includes('getEditorialItem("game_taxonomy", "games")') &&
     page.includes("classifications") &&
     page.includes("GameTaxonomyEditor") &&
+    page.includes("PublicationPanel") &&
+    page.includes("getGameTaxonomyPublicationState") &&
+    page.includes('"publicacion"') &&
     page.includes("EditorialHistory"),
-  "Catálogos debe permanecer protegido y presentar una sola lista de clasificaciones."
+  "Catálogos debe permanecer protegido y separar edición, publicación e historial de la única clasificación maestra."
+);
+
+assert(
+  publicationService.includes('| "game_taxonomy"') &&
+    publicationService.includes('return getPublicationState("game_taxonomy", "games")') &&
+    publicationService.includes('publishEditorialDraft(\n    "game_taxonomy",\n    "games"') &&
+    publicationService.includes('restoreEditorialPublication(\n    "game_taxonomy"'),
+  "Catálogos debe reutilizar el servicio genérico de snapshots para publicar y restaurar."
+);
+
+for (const [name, content, action] of [
+  ["publicación", publishRoute, "publishGameTaxonomyDraft"],
+  ["restauración", restoreRoute, "restoreGameTaxonomyPublication"],
+]) {
+  assert(
+    content.includes("authorizeAdminFormRequest") &&
+      content.includes(action) &&
+      content.includes('revalidatePath("/")') &&
+      content.includes('revalidatePath("/juegos")'),
+    `La ${name} de Catálogos debe exigir sesión/origen y refrescar Inicio y Juegos.`
+  );
+}
+
+assert(
+  restoreRoute.includes("expectedPublicationNumber"),
+  "Restaurar una publicación de Catálogos debe usar control de concurrencia por número de publicación."
 );
 
 assert(
@@ -178,7 +216,9 @@ assert(
 );
 
 assert(
-  publicTaxonomy.includes("draft_payload") &&
+  publicTaxonomy.includes("published_payload") &&
+    publicTaxonomy.includes("public_visible = true") &&
+    !publicTaxonomy.includes("draft_payload") &&
     publicTaxonomy.includes("taxonomy.classifications") &&
     publicTaxonomy.includes("ensureVisuals") &&
     homeClassifications.includes("getPublicTaxonomyPresentation") &&
@@ -191,7 +231,7 @@ assert(
     !homeClassifications.includes("function orderedClassifications") &&
     !homePage.includes("FeaturedGenres") &&
     !homePage.includes("Explora por género"),
-  "Inicio debe mostrar una sola superficie de clasificación, reutilizar el cálculo compartido y no duplicar géneros."
+  "Inicio debe leer sólo la taxonomía publicada, mostrar una sola superficie de clasificación y reutilizar el cálculo compartido."
 );
 
 assert(
@@ -222,6 +262,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Taxonomía editorial: OK (clasificación única; contador, orden e identidad visual compartidos entre Home y catálogo; sin bloque público duplicado)."
+    "Taxonomía editorial: OK (clasificación única; snapshot publicado separado del borrador; contador, orden e identidad visual compartidos entre Home y catálogo)."
   );
 }
