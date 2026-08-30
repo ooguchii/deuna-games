@@ -36,6 +36,7 @@ const updateSections = [
 const catalogSections = [
   { id: "clasificaciones", label: "Clasificaciones", icon: ListTree },
   { id: "etiquetas", label: "Etiquetas", icon: Tags },
+  { id: "publicacion", label: "Publicación", icon: Rocket },
   { id: "historial", label: "Historial", icon: FileClock },
 ] as const;
 
