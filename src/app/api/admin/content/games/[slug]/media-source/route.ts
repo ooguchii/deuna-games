@@ -96,17 +96,20 @@ export async function POST(
     const image =
       await fetchRemoteEditorialImage(sourceUrl);
 
-    return new NextResponse(image.bytes, {
-      status: 200,
-      headers: {
-        "Cache-Control": "no-store, max-age=0",
-        "Content-Length": String(
-          image.bytes.length
-        ),
-        "Content-Type": image.contentType,
-        "X-Content-Type-Options": "nosniff",
-      },
-    });
+    return new NextResponse(
+      new Uint8Array(image.bytes),
+      {
+        status: 200,
+        headers: {
+          "Cache-Control": "no-store, max-age=0",
+          "Content-Length": String(
+            image.bytes.length
+          ),
+          "Content-Type": image.contentType,
+          "X-Content-Type-Options": "nosniff",
+        },
+      }
+    );
   } catch (error) {
     if (error instanceof Error) {
       return new NextResponse(error.message, {
