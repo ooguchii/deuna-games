@@ -36,17 +36,20 @@ export default async function AdminNewGamePage({
   const state = Array.isArray(parameters.estado)
     ? parameters.estado[0]
     : parameters.estado;
-  const fallbackCategories = [
+  const fallbackClassifications = [
     ...new Set(
-      games
-        .map((game) => game.payload.category.trim())
+      games.flatMap((game) => [
+        game.payload.category,
+        ...(game.payload.genres ?? []),
+      ])
+        .map((value) => value.trim())
         .filter(Boolean)
     ),
   ];
-  const categories = (
-    taxonomyItem?.payload.categories
+  const classifications = (
+    taxonomyItem?.payload.classifications
       .filter((term) => term.active)
-      .map((term) => term.label) ?? fallbackCategories
+      .map((term) => term.label) ?? fallbackClassifications
   ).sort((a, b) => a.localeCompare(b, "es"));
   const existingSlugs = games.map((game) => game.key);
 
@@ -77,7 +80,7 @@ export default async function AdminNewGamePage({
       <EditorStateNotice state={state} />
 
       <NewGameForm
-        categories={categories}
+        categories={classifications}
         existingSlugs={existingSlugs}
       />
     </>
