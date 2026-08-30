@@ -1,15 +1,47 @@
 import { z } from "zod";
 
-import {
-  editorialDownloadSourceSchema,
-} from "./content-validation";
-
 const optionalText = (maximum: number) =>
   z
     .string()
     .trim()
     .max(maximum)
     .transform((value) => value || undefined);
+
+const downloadSourceFormSchema = z
+  .object({
+    id: z
+      .string()
+      .trim()
+      .min(1)
+      .max(160)
+      .regex(/^[a-z0-9][a-z0-9._-]*$/),
+    name: z.string().trim().min(1).max(100),
+    href: z
+      .string()
+      .trim()
+      .max(2_048)
+      .refine((value) => {
+        if (value.startsWith("/")) {
+          return (
+            !value.startsWith("//") &&
+            !value.includes("\\")
+          );
+        }
+
+        try {
+          const url = new URL(value);
+          return (
+            url.protocol === "https:" &&
+            !url.username &&
+            !url.password
+          );
+        } catch {
+          return false;
+        }
+      }),
+    label: optionalText(240),
+  })
+  .strict();
 
 const optionalPositiveNumber = z
   .string()
@@ -60,7 +92,7 @@ const downloadSourcesJsonSchema = z
   })
   .pipe(
     z
-      .array(editorialDownloadSourceSchema)
+      .array(downloadSourceFormSchema)
       .max(6)
       .superRefine((sources, context) => {
         const ids = new Set<string>();
