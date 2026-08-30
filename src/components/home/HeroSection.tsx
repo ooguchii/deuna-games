@@ -21,7 +21,6 @@ import {
   useState,
 } from "react";
 
-import { heroGames as games } from "@/data/home";
 import type { Game } from "@/types/game";
 
 import artworkStyles from "./HeroArtwork.module.css";
@@ -179,19 +178,26 @@ const HeroSlide = forwardRef<HTMLElement, HeroSlideProps>(
   }
 );
 
-function logicalIndexFromPhysical(physicalIndex: number) {
+function logicalIndexFromPhysical(
+  physicalIndex: number,
+  total: number
+) {
   if (physicalIndex === 0) {
-    return games.length - 1;
+    return total - 1;
   }
 
-  if (physicalIndex === games.length + 1) {
+  if (physicalIndex === total + 1) {
     return 0;
   }
 
   return physicalIndex - 1;
 }
 
-export default function HeroSection() {
+export default function HeroSection({
+  games,
+}: {
+  games: Game[];
+}) {
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const trackRef = useRef<HTMLDivElement | null>(null);
   const slideRefs = useRef<(HTMLElement | null)[]>([]);
@@ -223,7 +229,7 @@ export default function HeroSection() {
         clone: true,
       },
     ];
-  }, []);
+  }, [games]);
 
   const [physicalIndex, setPhysicalIndex] = useState(1);
   const [step, setStep] = useState(0);
@@ -234,7 +240,10 @@ export default function HeroSection() {
   const [manualPaused, setManualPaused] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
 
-  const activeIndex = logicalIndexFromPhysical(physicalIndex);
+  const activeIndex = logicalIndexFromPhysical(
+    physicalIndex,
+    games.length
+  );
   const activeGame = games[activeIndex]!;
   const nextGame = games[(activeIndex + 1) % games.length]!;
   const isPaused = paused || manualPaused || reducedMotion;
@@ -313,7 +322,7 @@ export default function HeroSection() {
       observer.disconnect();
       cancelResizeFrames();
     };
-  }, [measureSlides]);
+  }, [games.length, measureSlides]);
 
   useEffect(() => {
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -354,7 +363,7 @@ export default function HeroSection() {
       setAnimating(true);
       setPhysicalIndex(target);
     },
-    [animating, jumping, ready, reducedMotion]
+    [animating, games.length, jumping, ready, reducedMotion]
   );
 
   const nextSlide = useCallback(() => {
