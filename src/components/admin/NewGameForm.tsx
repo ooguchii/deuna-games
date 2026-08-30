@@ -93,9 +93,9 @@ export default function NewGameForm({
             <FilePenLine size={20} aria-hidden="true" />
           </span>
           <div>
-            <strong>Empezá con lo esencial</strong>
+            <strong>Empieza con lo esencial</strong>
             <p>
-              Este paso sólo crea un borrador privado. Después vas a entrar al workspace del juego para completar cada sección antes de publicarlo.
+              Este paso sólo crea un borrador privado. Después entrarás al workspace del juego para completar cada sección antes de publicarlo.
             </p>
           </div>
         </div>
@@ -209,7 +209,7 @@ export default function NewGameForm({
               required
             />
             <small>
-              Lo completamos desde el título; podés hacerlo más descriptivo cuando cargues la portada.
+              Lo completamos desde el título; puedes hacerlo más descriptivo cuando cargues la portada.
             </small>
           </label>
 
@@ -219,7 +219,7 @@ export default function NewGameForm({
               name="description"
               maxLength={2500}
               rows={7}
-              placeholder="Explicá de qué trata el juego, su propuesta y lo más importante para quien abre la ficha."
+              placeholder="Explica de qué trata el juego, su propuesta y lo más importante para quien abre la ficha."
               required
             />
           </label>
@@ -241,13 +241,13 @@ export default function NewGameForm({
           <div>
             <ImageIcon size={17} aria-hidden="true" />
             <span>
-              Después completás desarrollador, plataformas, requisitos, imágenes y descargas en pestañas separadas.
+              Después completas desarrollador, plataformas, requisitos, imágenes y descargas en pestañas separadas.
             </span>
           </div>
           <div>
             <Rocket size={17} aria-hidden="true" />
             <span>
-              Publicación te mostrará un checklist y el estado exacto antes de cambiar la web.
+              Publicación mostrará un checklist y el estado exacto antes de cambiar la web.
             </span>
           </div>
         </div>
