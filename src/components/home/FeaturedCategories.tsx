@@ -1,50 +1,25 @@
 import Link from "next/link";
+import { ChevronRight } from "lucide-react";
+import type { CSSProperties } from "react";
 
-import {
-  Box,
-  Car,
-  ChevronRight,
-  Compass,
-  Puzzle,
-  Shield,
-  Sword,
-  Zap,
-} from "lucide-react";
-
+import TaxonomyIcon from "@/components/taxonomy/TaxonomyIcon";
 import {
   normalizeCatalogText,
 } from "@/lib/games/catalog";
+import {
+  getPublicTaxonomyPresentation,
+} from "@/lib/games/public-taxonomy";
+import {
+  resolveTaxonomyVisual,
+} from "@/lib/games/taxonomy-presentation";
 import type { Game } from "@/types/game";
+import type {
+  GameTaxonomyTerm,
+} from "@/types/game-taxonomy";
 
 import styles from "./FeaturedCategories.module.css";
 
-const tones = [
-  "red",
-  "purple",
-  "violet",
-  "blue",
-  "green",
-  "orange",
-] as const;
-
-function CategoryIcon({
-  category,
-}: {
-  category: string;
-}) {
-  const value = normalizeCatalogText(category);
-
-  if (value.includes("accion")) return Zap;
-  if (value.includes("aventura")) return Compass;
-  if (value.includes("carrera")) return Car;
-  if (value.includes("puzzle")) return Puzzle;
-  if (value.includes("rpg")) return Sword;
-  if (value.includes("sandbox")) return Box;
-
-  return Shield;
-}
-
-function categoryStats(games: readonly Game[]) {
+function categoryCounts(games: readonly Game[]) {
   const counts = new Map<string, number>();
 
   for (const game of games) {
@@ -54,21 +29,73 @@ function categoryStats(games: readonly Game[]) {
     );
   }
 
-  return [...counts.entries()].sort(
-    ([leftName, leftCount], [rightName, rightCount]) =>
-      rightCount - leftCount ||
-      leftName.localeCompare(rightName, "es", {
-        sensitivity: "base",
-      })
-  );
+  return counts;
 }
 
-export default function FeaturedCategories({
+function orderedCategories(
+  games: readonly Game[],
+  terms: readonly GameTaxonomyTerm[]
+) {
+  const counts = categoryCounts(games);
+  const byNormalizedLabel = new Map(
+    [...counts.keys()].map((label) => [
+      normalizeCatalogText(label),
+      label,
+    ])
+  );
+  const used = new Set<string>();
+  const ordered: Array<{
+    term: GameTaxonomyTerm;
+    label: string;
+    count: number;
+  }> = [];
+
+  terms.forEach((term) => {
+    const label = byNormalizedLabel.get(
+      normalizeCatalogText(term.label)
+    );
+    if (!label) return;
+
+    used.add(label);
+    ordered.push({
+      term,
+      label,
+      count: counts.get(label) ?? 0,
+    });
+  });
+
+  [...counts.entries()]
+    .filter(([label]) => !used.has(label))
+    .sort(([left], [right]) =>
+      left.localeCompare(right, "es", {
+        sensitivity: "base",
+      })
+    )
+    .forEach(([label, count]) => {
+      ordered.push({
+        term: {
+          key: normalizeCatalogText(label).replace(/[^a-z0-9]+/g, "-") || "categoria",
+          label,
+          active: true,
+        },
+        label,
+        count,
+      });
+    });
+
+  return ordered;
+}
+
+export default async function FeaturedCategories({
   games,
 }: {
   games: Game[];
 }) {
-  const categories = categoryStats(games);
+  const taxonomy = await getPublicTaxonomyPresentation();
+  const categories = orderedCategories(
+    games,
+    taxonomy.categories
+  );
 
   if (categories.length === 0) return null;
 
@@ -86,25 +113,31 @@ export default function FeaturedCategories({
       </div>
 
       <div className={styles.categories}>
-        {categories.map(([name, count], index) => {
-          const Icon = CategoryIcon({ category: name });
-          const tone = tones[index % tones.length];
+        {categories.map(({ term, label, count }, index) => {
+          const visual = resolveTaxonomyVisual(term, index);
 
           return (
             <Link
-              key={name}
-              href={`/juegos?categoria=${encodeURIComponent(name)}`}
+              key={term.key}
+              href={`/juegos?categoria=${encodeURIComponent(label)}`}
               className={styles.category}
+              style={
+                {
+                  "--taxonomy-accent": visual.color,
+                } as CSSProperties
+              }
             >
-              <div
-                className={`${styles.iconBox} ${styles[tone]}`}
-              >
-                <Icon size={40} strokeWidth={1.8} />
+              <div className={styles.iconBox}>
+                <TaxonomyIcon
+                  icon={visual.icon}
+                  size={40}
+                  strokeWidth={1.8}
+                />
               </div>
 
-              <h3>{name}</h3>
+              <h3>{label}</h3>
 
-              <p className={styles[tone]}>
+              <p>
                 {count} {count === 1 ? "juego" : "juegos"}
               </p>
             </Link>
