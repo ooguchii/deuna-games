@@ -20,6 +20,7 @@ const [
   creationService,
   publicCatalog,
   publicationService,
+  publicationOverview,
   createRoute,
   publishRoute,
   hideRoute,
@@ -36,6 +37,7 @@ const [
   source("src/lib/admin/content-create-service.ts"),
   source("src/lib/games/public-catalog.ts"),
   source("src/lib/admin/publication-service.ts"),
+  source("src/lib/admin/publication-overview.ts"),
   source("src/app/api/admin/content/games/route.ts"),
   source("src/app/api/admin/content/games/[slug]/publish/route.ts"),
   source("src/app/api/admin/content/games/[slug]/hide/route.ts"),
@@ -77,6 +79,15 @@ assert(
 );
 
 assert(
+  publicationOverview.includes("panel_created") &&
+    publicationOverview.includes("ever_published") &&
+    publicationOverview.includes("revision.revision = 1") &&
+    publicationOverview.includes("revision.action = 'draft_saved'") &&
+    publicationOverview.includes("publication.action IN ('published', 'rollback')"),
+  "La clasificación de altas debe derivarse del origen editorial y de publicaciones públicas reales, no sólo del número interno."
+);
+
+assert(
   createRoute.includes("?seccion=datos&estado=creado"),
   "Después de crear un juego, el flujo debe continuar por la siguiente sección editorial."
 );
@@ -98,8 +109,10 @@ for (const [name, route] of [
 assert(
   gamesPage.includes('"unpublished"') &&
     gamesPage.includes("neverPublished") &&
+    gamesPage.includes("publication?.panelCreated") &&
+    gamesPage.includes("!publication.everPublished") &&
     gamesPage.includes("publicationNumber: neverPublished"),
-  "La lista de juegos debe distinguir un alta que nunca fue pública de un juego oculto."
+  "La lista de juegos debe distinguir mediante historial real un alta nunca pública de un juego oculto."
 );
 
 assert(
@@ -164,6 +177,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Flujo editorial de juegos: OK (alta privada, edición por borrador, vista previa sin mutaciones, primera publicación, republicación y restauración protegidas)."
+    "Flujo editorial de juegos: OK (alta privada, estados históricos exactos, edición por borrador, vista previa sin mutaciones, primera publicación, republicación y restauración protegidas)."
   );
 }
