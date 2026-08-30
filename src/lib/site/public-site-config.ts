@@ -30,6 +30,7 @@ async function readPublishedSiteConfig() {
          FROM deuna_admin.editorial_items
         WHERE item_type = 'site_config'
           AND item_key = 'site'
+          AND public_visible = true
         LIMIT 1`
     );
   const row = result.rows[0];
