@@ -1,12 +1,9 @@
 import Link from "next/link";
-import {
-  CheckCircle2,
-  CircleSlash2,
-  Eye,
-  Pencil,
-  Plus,
-} from "lucide-react";
+import { Plus } from "lucide-react";
 
+import AdminGamesCatalog, {
+  type AdminGameCatalogItem,
+} from "@/components/admin/AdminGamesCatalog";
 import EditorStateNotice from "@/components/admin/EditorStateNotice";
 import {
   listEditorialItems,
@@ -39,14 +36,54 @@ export default async function AdminGamesPage({
       searchParams,
     ]);
   const publicationByKey = new Map(
-    (publicationStates ?? []).map((item) => [
-      item.key,
-      item,
-    ])
+    (publicationStates ?? []).map((item) => [item.key, item])
   );
   const state = Array.isArray(parameters.estado)
     ? parameters.estado[0]
     : parameters.estado;
+
+  const catalog: AdminGameCatalogItem[] = items.map((item) => {
+    const publication = publicationByKey.get(item.key);
+    const hidden = Boolean(publication && !publication.publicVisible);
+    const neverPublished = Boolean(
+      hidden &&
+        !item.sourcePresent &&
+        publication?.publicationNumber === 1
+    );
+    const pending = publication
+      ? publication.hasUnpublishedChanges
+      : item.status !== "synced";
+    const status: AdminGameCatalogItem["status"] = hidden
+      ? neverPublished
+        ? "unpublished"
+        : "hidden"
+      : pending
+        ? "pending"
+        : "published";
+
+    return {
+      key: item.key,
+      title: item.payload.title,
+      category: item.payload.category,
+      version: item.payload.version ?? null,
+      revision: item.revision,
+      publicationNumber: publication?.publicationNumber ?? null,
+      status,
+      searchText: [
+        item.payload.title,
+        item.key,
+        item.payload.category,
+        item.payload.version,
+        item.payload.developer,
+        item.payload.publisher,
+        ...(item.payload.genres ?? []),
+        ...(item.payload.tags ?? []),
+        ...(item.payload.platforms ?? []),
+      ]
+        .filter(Boolean)
+        .join(" "),
+    };
+  });
 
   return (
     <>
@@ -55,13 +92,10 @@ export default async function AdminGamesPage({
           <span>CATÁLOGO EDITORIAL</span>
           <h1>Juegos</h1>
           <p>
-            Guardar conserva un borrador versionado. La web pública sólo cambia cuando se crea un snapshot mediante Publicar.
+            Busca, filtra y entra directamente al contenido que necesitas. Guardar conserva borrador; Publicar crea el snapshot visible.
           </p>
         </div>
-        <Link
-          href="/admin/juegos/nuevo"
-          className={styles.tableAction}
-        >
+        <Link href="/admin/juegos/nuevo" className={styles.primaryAction}>
           <Plus size={15} aria-hidden="true" />
           Nuevo juego
         </Link>
@@ -69,116 +103,13 @@ export default async function AdminGamesPage({
 
       <EditorStateNotice state={state} />
 
-      <section className={styles.tablePanel}>
-        <div className={styles.tableSummary}>
-          <strong>{items.length} juegos editoriales</strong>
-          <span>
-            {publicationStates
-              ? "Publicación controlada"
-              : "Edición en borrador"}
-          </span>
-        </div>
-
-        {items.length === 0 ? (
-          <p className={styles.emptyState}>
-            Importa el catálogo fuente o crea un juego nuevo como borrador privado.
-          </p>
-        ) : (
-          <div className={styles.tableWrap}>
-            <table>
-              <thead>
-                <tr>
-                  <th scope="col">Juego</th>
-                  <th scope="col">Categoría</th>
-                  <th scope="col">Versión</th>
-                  <th scope="col">Estado</th>
-                  <th scope="col">Publicación</th>
-                  <th scope="col">Revisión</th>
-                  <th scope="col">Acción</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((item) => {
-                  const publication =
-                    publicationByKey.get(item.key);
-                  const hidden = Boolean(
-                    publication &&
-                      !publication.publicVisible
-                  );
-                  const neverPublished = Boolean(
-                    hidden &&
-                      !item.sourcePresent &&
-                      publication?.publicationNumber === 1
-                  );
-                  const pending = publication
-                    ? publication.hasUnpublishedChanges
-                    : item.status !== "synced";
-
-                  return (
-                    <tr key={item.key}>
-                      <th scope="row">
-                        <strong>{item.payload.title}</strong>
-                        <span>{item.key}</span>
-                      </th>
-                      <td>{item.payload.category}</td>
-                      <td>
-                        {item.payload.version ?? "Sin versión"}
-                      </td>
-                      <td>
-                        {hidden || pending ? (
-                          <span className={styles.statusPending}>
-                            <CircleSlash2 size={14} aria-hidden="true" />
-                            {hidden
-                              ? neverPublished
-                                ? "Sin publicar"
-                                : "Oculto"
-                              : "Cambios sin publicar"}
-                          </span>
-                        ) : (
-                          <span className={styles.statusOk}>
-                            <CheckCircle2 size={14} aria-hidden="true" />
-                            Publicado
-                          </span>
-                        )}
-                      </td>
-                      <td>
-                        {publication
-                          ? `#${publication.publicationNumber}`
-                          : "No disponible"}
-                      </td>
-                      <td>{item.revision}</td>
-                      <td>
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 12,
-                          }}
-                        >
-                          <Link
-                            className={styles.tableAction}
-                            href={`/admin/juegos/${encodeURIComponent(item.key)}`}
-                          >
-                            <Pencil size={13} aria-hidden="true" />
-                            Editar
-                          </Link>
-                          <Link
-                            className={styles.tableAction}
-                            href={`/admin/juegos/${encodeURIComponent(item.key)}/vista-previa`}
-                          >
-                            <Eye size={13} aria-hidden="true" />
-                            Vista previa
-                          </Link>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+      {items.length === 0 ? (
+        <p className={styles.emptyState}>
+          Importa el catálogo fuente o crea un juego nuevo como borrador privado.
+        </p>
+      ) : (
+        <AdminGamesCatalog items={catalog} />
+      )}
     </>
   );
 }
