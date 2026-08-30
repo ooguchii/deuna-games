@@ -190,9 +190,12 @@ export async function POST(
       authorized.adminOrigin,
       `${target}?estado=imagen-subida&seccion=multimedia`
     );
-  } catch {
+  } catch (error) {
     console.error(
-      "No se pudo subir la imagen editorial del juego."
+      "No se pudo subir la imagen editorial del juego:",
+      error instanceof Error
+        ? error.message
+        : "error no identificado"
     );
 
     return adminRedirect(
