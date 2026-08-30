@@ -3,6 +3,7 @@ import {
   Gamepad2,
   Gauge,
   LayoutDashboard,
+  LayoutTemplate,
   LogOut,
   RefreshCcw,
   Settings2,
@@ -30,6 +31,11 @@ const navigation = [
     href: "/admin/actualizaciones",
     label: "Actualizaciones",
     icon: RefreshCcw,
+  },
+  {
+    href: "/admin/portada",
+    label: "Portada",
+    icon: LayoutTemplate,
   },
   {
     href: "/admin/seguridad",
