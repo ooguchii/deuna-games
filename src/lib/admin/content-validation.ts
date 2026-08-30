@@ -1,12 +1,47 @@
 import { z } from "zod";
 
-import {
-  taxonomyIconKeys,
-  taxonomyToneKeys,
-} from "@/lib/games/taxonomy-presentation";
 import type { Game } from "@/types/game";
 import type { GameTaxonomy } from "@/types/game-taxonomy";
 import type { GameUpdate } from "@/types/update";
+
+const taxonomyIconKeys = [
+  "gamepad",
+  "zap",
+  "compass",
+  "sword",
+  "car",
+  "puzzle",
+  "box",
+  "sparkles",
+  "shield",
+  "target",
+  "crosshair",
+  "ghost",
+  "skull",
+  "crown",
+  "rocket",
+  "plane",
+  "ship",
+  "bike",
+  "trophy",
+  "castle",
+  "dices",
+  "users",
+  "hammer",
+  "brain",
+] as const;
+
+const taxonomyToneKeys = [
+  "brand",
+  "purple",
+  "violet",
+  "blue",
+  "green",
+  "orange",
+  "cyan",
+  "gold",
+  "red",
+] as const;
 
 export const editorialItemTypes = [
   "game",
