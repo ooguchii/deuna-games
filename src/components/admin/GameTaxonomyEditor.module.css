@@ -6,7 +6,7 @@
 .summary,
 .panel,
 .actions {
-  border: 1px solid var(--admin-border, #273342);
+  border: 1px solid #273342;
   border-radius: 14px;
   background: rgba(12, 20, 30, 0.72);
 }
