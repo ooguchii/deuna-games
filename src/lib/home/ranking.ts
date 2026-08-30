@@ -197,7 +197,7 @@ export function scoreHomeGame(
   if (target === "lowSpec") {
     const ram = minimumRamGb(game);
     if (ram !== null) {
-      reasons.push(`mínimo ${ram:g} GB RAM`.replace(":g", ""));
+      reasons.push(`mínimo ${ram} GB RAM`);
     }
   }
 
