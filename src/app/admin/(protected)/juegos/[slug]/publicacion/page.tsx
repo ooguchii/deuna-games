@@ -7,6 +7,9 @@ import {
   getEditorialItem,
 } from "@/lib/admin/content-service";
 import {
+  getPublishedGameSnapshot,
+} from "@/lib/admin/game-publication-review";
+import {
   getGamePublicationState,
 } from "@/lib/admin/publication-service";
 import {
@@ -61,6 +64,9 @@ export default async function AdminGamePublicationPage({
           publication.action === "bootstrap"
       )
   );
+  const publishedGame = neverPublished
+    ? null
+    : await getPublishedGameSnapshot(slug);
 
   return (
     <>
@@ -92,6 +98,7 @@ export default async function AdminGamePublicationPage({
 
       <GamePublicationWorkspace
         game={item.payload}
+        publishedGame={publishedGame}
         slug={slug}
         state={publicationState}
         requestState={requestState}
