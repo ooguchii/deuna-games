@@ -43,17 +43,16 @@ function buildUsage(
     GameTaxonomyKind,
     Record<string, number>
   > = {
-    categories: {},
-    genres: {},
+    classifications: {},
     tags: {},
   };
 
   const lookup = {
-    categories: new Map(
-      taxonomy.categories.map((term) => [normalize(term.label), term.key])
-    ),
-    genres: new Map(
-      taxonomy.genres.map((term) => [normalize(term.label), term.key])
+    classifications: new Map(
+      taxonomy.classifications.map((term) => [
+        normalize(term.label),
+        term.key,
+      ])
     ),
     tags: new Map(
       taxonomy.tags.map((term) => [normalize(term.label), term.key])
@@ -70,10 +69,18 @@ function buildUsage(
   }
 
   for (const game of games) {
-    count("categories", game.payload.category);
-    for (const genre of game.payload.genres ?? []) {
-      count("genres", genre);
+    const seenClassifications = new Set<string>();
+
+    for (const value of [
+      game.payload.category,
+      ...(game.payload.genres ?? []),
+    ]) {
+      const normalized = normalize(value);
+      if (!normalized || seenClassifications.has(normalized)) continue;
+      seenClassifications.add(normalized);
+      count("classifications", value);
     }
+
     for (const tag of game.payload.tags ?? []) {
       count("tags", tag);
     }
@@ -102,7 +109,7 @@ export default async function AdminCatalogsPage({
           <span>DATOS MAESTROS</span>
           <h1>Catálogos</h1>
           <p>
-            Administra categorías, géneros y etiquetas reutilizables sin escribir variantes distintas en cada juego.
+            Administra una sola lista de clasificaciones para los juegos y una lista separada de etiquetas descriptivas. No existen categorías y géneros duplicados.
           </p>
         </div>
         <span className={styles.draftState}>
@@ -117,7 +124,7 @@ export default async function AdminCatalogsPage({
         <section className={styles.editorPanel}>
           <h2>Catálogo administrativo pendiente</h2>
           <p>
-            Ejecuta la actualización local para aplicar la migración 007 y generar el catálogo inicial a partir de los juegos existentes.
+            Ejecuta la actualización local para generar el catálogo inicial a partir de los juegos existentes.
           </p>
         </section>
       ) : (
