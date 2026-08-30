@@ -10,6 +10,9 @@ import {
   getPublishedGameSnapshot,
 } from "@/lib/admin/game-publication-review";
 import {
+  getGamePublicationIdentity,
+} from "@/lib/admin/publication-overview";
+import {
   getGamePublicationState,
 } from "@/lib/admin/publication-service";
 import {
@@ -40,29 +43,23 @@ export default async function AdminGamePublicationPage({
 
   if (!item) notFound();
 
-  const publicationState =
-    await getGamePublicationState(slug);
+  const [publicationState, publicationIdentity] =
+    await Promise.all([
+      getGamePublicationState(slug),
+      getGamePublicationIdentity(slug),
+    ]);
 
   if (!publicationState) notFound();
 
   const requestState = Array.isArray(parameters.estado)
     ? parameters.estado[0]
     : parameters.estado;
-  const panelCreated = Boolean(
-    !item.sourcePresent &&
-      item.revisions.some(
-        (revision) =>
-          revision.revision === 1 &&
-          revision.action === "draft_saved"
-      )
-  );
+  const panelCreated =
+    publicationIdentity?.panelCreated ?? false;
   const neverPublished = Boolean(
     panelCreated &&
       !publicationState.publicVisible &&
-      publicationState.publications.every(
-        (publication) =>
-          publication.action === "bootstrap"
-      )
+      !publicationIdentity?.everPublished
   );
   const publishedGame = neverPublished
     ? null
