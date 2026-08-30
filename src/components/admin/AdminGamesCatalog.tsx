@@ -126,26 +126,34 @@ export default function AdminGamesCatalog({
     query !== "" || status !== "all" || category !== "all" || sort !== "title";
 
   return (
-    <section className={styles.panel}>
-      <div className={styles.toolbar}>
+    <section className={styles.panel} aria-labelledby="admin-games-catalog-title">
+      <h2 id="admin-games-catalog-title" className={styles.srOnly}>
+        Catálogo editorial de juegos
+      </h2>
+
+      <div
+        className={styles.toolbar}
+        role="search"
+        aria-label="Buscar, filtrar y ordenar juegos"
+      >
         <div className={styles.searchBox}>
-          <Search size={16} aria-hidden="true" />
+          <Search size={17} aria-hidden="true" />
           <input
             ref={searchRef}
             type="search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Buscar juego, slug, versión, tag..."
+            placeholder="Buscar juego, slug, versión, etiqueta..."
             aria-label="Buscar juegos"
           />
-          <kbd>/</kbd>
+          <kbd aria-hidden="true">/</kbd>
           {query && (
             <button
               type="button"
               onClick={() => setQuery("")}
               aria-label="Limpiar búsqueda"
             >
-              <X size={14} aria-hidden="true" />
+              <X size={16} aria-hidden="true" />
             </button>
           )}
         </div>
@@ -166,9 +174,9 @@ export default function AdminGamesCatalog({
           <select
             value={category}
             onChange={(event) => setCategory(event.target.value)}
-            aria-label="Filtrar por categoría"
+            aria-label="Filtrar por clasificación"
           >
-            <option value="all">Todas las categorías</option>
+            <option value="all">Todas las clasificaciones</option>
             {categories.map((value) => (
               <option key={value} value={value}>
                 {value}
@@ -197,13 +205,18 @@ export default function AdminGamesCatalog({
                 setSort("title");
               }}
             >
-              Limpiar
+              Limpiar filtros
             </button>
           )}
         </div>
       </div>
 
-      <div className={styles.resultBar}>
+      <div
+        className={styles.resultBar}
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      >
         <strong>{filtered.length}</strong>
         <span>de {items.length} juegos</span>
       </div>
@@ -215,10 +228,13 @@ export default function AdminGamesCatalog({
       ) : (
         <div className={styles.tableViewport}>
           <table className={styles.table}>
+            <caption className={styles.srOnly}>
+              Juegos editoriales, clasificación, estado de publicación, revisión y acciones
+            </caption>
             <thead>
               <tr>
                 <th scope="col">Juego</th>
-                <th scope="col">Categoría</th>
+                <th scope="col">Clasificación</th>
                 <th scope="col">Estado</th>
                 <th scope="col">Pub.</th>
                 <th scope="col">Rev.</th>
@@ -239,12 +255,12 @@ export default function AdminGamesCatalog({
                   <td>
                     {item.status === "published" ? (
                       <span className={styles.statusOk}>
-                        <CheckCircle2 size={13} aria-hidden="true" />
+                        <CheckCircle2 size={15} aria-hidden="true" />
                         Publicado
                       </span>
                     ) : (
                       <span className={styles.statusPending}>
-                        <CircleSlash2 size={13} aria-hidden="true" />
+                        <CircleSlash2 size={15} aria-hidden="true" />
                         {item.status === "hidden"
                           ? "Oculto"
                           : item.status === "unpublished"
@@ -263,23 +279,23 @@ export default function AdminGamesCatalog({
                     <div className={styles.actions}>
                       <Link
                         href={`/admin/juegos/${encodeURIComponent(item.key)}`}
-                        title="Editar juego"
+                        title={`Editar ${item.title}`}
                       >
-                        <Pencil size={13} aria-hidden="true" />
+                        <Pencil size={14} aria-hidden="true" />
                         Editar
                       </Link>
                       <Link
                         href={`/admin/juegos/${encodeURIComponent(item.key)}/vista-previa`}
-                        title="Ver borrador"
+                        title={`Ver borrador de ${item.title}`}
                       >
-                        <Eye size={13} aria-hidden="true" />
+                        <Eye size={14} aria-hidden="true" />
                         Previa
                       </Link>
                       <Link
                         href={`/admin/juegos/${encodeURIComponent(item.key)}/publicacion`}
-                        title="Revisar publicación"
+                        title={`Revisar publicación de ${item.title}`}
                       >
-                        <Rocket size={13} aria-hidden="true" />
+                        <Rocket size={14} aria-hidden="true" />
                         {publicationActionLabel(item.status)}
                       </Link>
                     </div>
