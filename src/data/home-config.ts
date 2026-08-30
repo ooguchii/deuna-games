@@ -130,11 +130,16 @@ export type ResolvedHomeConfig = Omit<
   copy: HomeCopy;
 };
 
+/*
+ * Las revisiones antiguas no guardaban `curation`. Hero, Populares y
+ * Recomendados funcionaban como prioridades + relleno automático; por eso se
+ * resuelven como híbridos. Bajos recursos nunca se rellenaba arbitrariamente.
+ */
 const defaultHomeCuration: HomeCurationConfig = {
-  hero: { mode: "manual" },
-  popular: { mode: "manual" },
+  hero: { mode: "hybrid" },
+  popular: { mode: "hybrid" },
   lowSpec: { mode: "manual" },
-  recommended: { mode: "manual" },
+  recommended: { mode: "hybrid" },
 };
 
 export const sourceHomeConfig: ResolvedHomeConfig = {
