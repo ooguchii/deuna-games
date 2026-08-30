@@ -14,6 +14,7 @@ import {
 } from "./content-hash";
 import {
   parseEditorialPayload,
+  type EditorialAboutConfig,
   type EditorialHomeConfig,
   type EditorialItemType,
   type EditorialPayloadByType,
@@ -155,6 +156,24 @@ export type UpdateDraftInput = Pick<
   | "type"
   | "summary"
   | "featured"
+>;
+
+export type AboutHeroDraftInput =
+  EditorialAboutConfig["hero"];
+
+export type AboutPrinciplesDraftInput = Pick<
+  EditorialAboutConfig,
+  "intro" | "principles"
+>;
+
+export type AboutReasonDraftInput = Pick<
+  EditorialAboutConfig,
+  "reason" | "ecosystem"
+>;
+
+export type AboutManifestoDraftInput = Pick<
+  EditorialAboutConfig,
+  "manifesto" | "ctaTitle"
 >;
 
 function compactHardwareRequirements(
@@ -617,6 +636,74 @@ export function saveHomeConfigDraft(
     expectedRevision,
     actorUserId,
     () => input
+  );
+}
+
+export function saveAboutHeroDraft(
+  expectedRevision: number,
+  actorUserId: string,
+  input: AboutHeroDraftInput
+) {
+  return updateEditorialDraft(
+    "about_config",
+    "about",
+    expectedRevision,
+    actorUserId,
+    (current) => ({
+      ...current,
+      hero: input,
+    })
+  );
+}
+
+export function saveAboutPrinciplesDraft(
+  expectedRevision: number,
+  actorUserId: string,
+  input: AboutPrinciplesDraftInput
+) {
+  return updateEditorialDraft(
+    "about_config",
+    "about",
+    expectedRevision,
+    actorUserId,
+    (current) => ({
+      ...current,
+      ...input,
+    })
+  );
+}
+
+export function saveAboutReasonDraft(
+  expectedRevision: number,
+  actorUserId: string,
+  input: AboutReasonDraftInput
+) {
+  return updateEditorialDraft(
+    "about_config",
+    "about",
+    expectedRevision,
+    actorUserId,
+    (current) => ({
+      ...current,
+      ...input,
+    })
+  );
+}
+
+export function saveAboutManifestoDraft(
+  expectedRevision: number,
+  actorUserId: string,
+  input: AboutManifestoDraftInput
+) {
+  return updateEditorialDraft(
+    "about_config",
+    "about",
+    expectedRevision,
+    actorUserId,
+    (current) => ({
+      ...current,
+      ...input,
+    })
   );
 }
 
