@@ -16,6 +16,9 @@ import {
   requestedGameEditorContinuation,
 } from "@/lib/admin/game-editor-flow";
 import {
+  resolveGameTaxonomySelection,
+} from "@/lib/admin/game-taxonomy-service";
+import {
   hasExactAdminFormFields,
 } from "@/lib/admin/request-security";
 
@@ -79,11 +82,27 @@ export async function POST(
 
   try {
     const { expectedRevision, ...input } = parsed.data;
+    const classification =
+      await resolveGameTaxonomySelection({
+        category: input.category,
+        currentGameKey: slug,
+      });
+
+    if (!classification.valid || !classification.category) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        `${target}?estado=clasificacion&seccion=ficha`
+      );
+    }
+
     const result = await saveGameCoreDraft(
       slug,
       expectedRevision,
       authorized.session.userId,
-      input
+      {
+        ...input,
+        category: classification.category,
+      }
     );
 
     if (result.outcome === "not_found") {
