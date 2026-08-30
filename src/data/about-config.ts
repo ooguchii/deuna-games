@@ -2,7 +2,7 @@ export const sourceAboutConfig = {
   hero: {
     title: "Encontrar qué jugar",
     highlight: "debería ser simple.",
-    text: "DeUna Games nace con una idea concreta: ordenar lo que hoy suele estar disperso. Juegos, requisitos, versiones y actualizaciones en una experiencia directa, clara y fácil de usar.",
+    text: "nace con una idea concreta: ordenar lo que hoy suele estar disperso. Juegos, requisitos, versiones y actualizaciones en una experiencia directa, clara y fácil de usar.",
     signals: [
       {
         title: "Encontrar",
@@ -48,7 +48,7 @@ export const sourceAboutConfig = {
     highlight: "te ayuda a decidir.",
     paragraphs: [
       "Buscar un juego no debería significar abrir diez pestañas para descubrir qué versión existe, qué pide o si puede funcionar en tu equipo.",
-      "DeUna intenta reducir esa fricción: presentar lo importante con jerarquía, mantener cada juego ligado a su información y hacer que la navegación tenga una lógica clara de principio a fin.",
+      "intenta reducir esa fricción: presentar lo importante con jerarquía, mantener cada juego ligado a su información y hacer que la navegación tenga una lógica clara de principio a fin.",
     ],
   },
   ecosystem: [
@@ -68,7 +68,7 @@ export const sourceAboutConfig = {
   manifesto: {
     title: "No queremos que pases más tiempo buscando información que",
     highlight: "encontrando tu próximo juego.",
-    text: "Ese es el criterio que queremos mantener a medida que DeUna crezca: claridad, utilidad y una experiencia que no te haga dar vueltas de más.",
+    text: "Ese es el criterio que queremos mantener a medida que el proyecto crezca: claridad, utilidad y una experiencia que no te haga dar vueltas de más.",
   },
   ctaTitle: "Encuentra algo que quieras jugar hoy.",
 } as const;
