@@ -502,7 +502,7 @@ export default function HeroSection({
       }}
     >
       <h1 className={styles.srOnly}>
-        Descubre juegos para PC en DeUna Games
+        Descubre juegos para PC
       </h1>
 
       <div className={styles.ambientBackdrop} aria-hidden="true">
