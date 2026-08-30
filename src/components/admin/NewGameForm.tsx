@@ -48,10 +48,10 @@ function availableSlug(
 }
 
 export default function NewGameForm({
-  categories,
+  classifications,
   existingSlugs,
 }: {
-  categories: string[];
+  classifications: string[];
   existingSlugs: string[];
 }) {
   const [title, setTitle] = useState("");
@@ -233,23 +233,23 @@ export default function NewGameForm({
           </label>
 
           <label>
-            <span>Categoría principal</span>
+            <span>Clasificación principal</span>
             <select
               name="category"
               defaultValue=""
               required
             >
               <option value="" disabled>
-                Selecciona una categoría
+                Selecciona una clasificación
               </option>
-              {categories.map((category) => (
-                <option key={category} value={category}>
-                  {category}
+              {classifications.map((classification) => (
+                <option key={classification} value={classification}>
+                  {classification}
                 </option>
               ))}
             </select>
             <small>
-              Las categorías se administran desde Catálogos. Aquí sólo se pueden usar las que estén activas.
+              Todas las opciones salen de una única lista administrada en Catálogos. Después podrás agregar clasificaciones adicionales al mismo juego.
             </small>
           </label>
 
@@ -311,7 +311,11 @@ export default function NewGameForm({
             </div>
             <button
               type="submit"
-              disabled={slugTaken || !slugValid || categories.length === 0}
+              disabled={
+                slugTaken ||
+                !slugValid ||
+                classifications.length === 0
+              }
             >
               Crear borrador y continuar
             </button>
