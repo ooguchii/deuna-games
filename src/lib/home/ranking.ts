@@ -17,8 +17,21 @@ export type HomeGameRanking = {
   reasons: string[];
 };
 
+const DAY_MS = 86_400_000;
+
 function clamp01(value: number) {
   return Math.max(0, Math.min(1, value));
+}
+
+export function homeRankingDay(
+  now = Date.now()
+) {
+  const date = new Date(now);
+  return Date.UTC(
+    date.getUTCFullYear(),
+    date.getUTCMonth(),
+    date.getUTCDate()
+  );
 }
 
 function ageSignal(
@@ -29,10 +42,18 @@ function ageSignal(
   const timestamp = parseGameDate(value);
   if (!timestamp) return 0;
 
-  const ageDays = Math.max(
-    0,
-    (now - timestamp) / 86_400_000
-  );
+  const referenceDay = homeRankingDay(now);
+  const eventDay = homeRankingDay(timestamp);
+
+  /*
+   * Una fecha futura no debe otorgar actualidad máxima por un error de carga.
+   * Los eventos del día actual sí reciben la señal completa.
+   */
+  if (eventDay > referenceDay) return 0;
+
+  const ageDays =
+    (referenceDay - eventDay) / DAY_MS;
+
   return clamp01(1 - ageDays / horizonDays);
 }
 
@@ -53,12 +74,36 @@ function ratingSignal(game: Game) {
   return clamp01((game.rating ?? 0) / 5);
 }
 
+function hasRequirements(game: Game) {
+  const requirements = game.requirements;
+  if (!requirements) return false;
+
+  const groups = [
+    requirements,
+    requirements.minimum,
+    requirements.recommended,
+  ];
+
+  return groups.some((group) =>
+    Boolean(
+      group &&
+        [
+          group.ram,
+          group.graphics,
+          group.processor,
+          group.storage,
+          group.system,
+        ].some((value) => value?.trim())
+    )
+  );
+}
+
 function completenessSignal(game: Game) {
   const signals = [
     Boolean(game.coverImage),
     Boolean(game.heroImage),
     Boolean(game.version),
-    Boolean(game.requirements),
+    hasRequirements(game),
     game.description.trim().length >= 120,
   ];
   const present = signals.filter(Boolean).length;
@@ -72,12 +117,18 @@ function parseRamGb(value: string | undefined) {
     .replace(",", ".")
     .toLowerCase();
   const match = normalized.match(
-    /(\d+(?:\.\d+)?)\s*(?:gb|gib)\b/
+    /(\d+(?:\.\d+)?)\s*(gb|gib|mb|mib)\b/
   );
 
   if (!match) return null;
+
   const number = Number.parseFloat(match[1]);
-  return Number.isFinite(number) ? number : null;
+  if (!Number.isFinite(number)) return null;
+
+  const unit = match[2];
+  return unit === "mb" || unit === "mib"
+    ? number / 1024
+    : number;
 }
 
 export function minimumRamGb(game: Game) {
@@ -101,6 +152,10 @@ export function isHomeRankingEligible(
   game: Game,
   target: HomeRankingTarget
 ) {
+  if (target === "hero") {
+    return Boolean(game.heroImage || game.coverImage);
+  }
+
   if (target !== "lowSpec") return true;
 
   const ram = minimumRamGb(game);
@@ -125,17 +180,18 @@ export function scoreHomeGame(
   target: HomeRankingTarget,
   now = Date.now()
 ): HomeGameRanking {
+  const referenceDay = homeRankingDay(now);
   const popularity = popularitySignal(game);
   const rating = ratingSignal(game);
   const releaseRecency = ageSignal(
     game.releaseDate,
     1_095,
-    now
+    referenceDay
   );
   const addedRecency = ageSignal(
     game.addedAt,
     365,
-    now
+    referenceDay
   );
   const completeness = completenessSignal(game);
   const heroAsset = game.heroImage ? 1 : 0;
@@ -198,7 +254,8 @@ export function scoreHomeGame(
   if (target === "lowSpec") {
     const ram = minimumRamGb(game);
     if (ram !== null) {
-      reasons.push(`mínimo ${ram} GB RAM`);
+      const shownRam = Math.round(ram * 10) / 10;
+      reasons.push(`mínimo ${shownRam} GB RAM`);
     }
   }
 
@@ -218,11 +275,15 @@ export function rankHomeGames(
   target: HomeRankingTarget,
   now = Date.now()
 ) {
+  const referenceDay = homeRankingDay(now);
+
   return catalog
     .filter((game) =>
       isHomeRankingEligible(game, target)
     )
-    .map((game) => scoreHomeGame(game, target, now))
+    .map((game) =>
+      scoreHomeGame(game, target, referenceDay)
+    )
     .sort(
       (a, b) =>
         b.score - a.score ||
@@ -269,6 +330,7 @@ export function resolveHomeCollectionGames(
   limit: number,
   now = Date.now()
 ) {
+  const referenceDay = homeRankingDay(now);
   const configured = configuredGames(
     catalog,
     slugs,
@@ -282,7 +344,7 @@ export function resolveHomeCollectionGames(
   const ranked = rankHomeGames(
     catalog,
     target,
-    now
+    referenceDay
   ).map((entry) => entry.game);
 
   if (mode === "automatic") {
