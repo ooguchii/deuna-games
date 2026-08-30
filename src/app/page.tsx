@@ -20,8 +20,10 @@ import {
 } from "@/lib/games/public-catalog";
 import {
   absoluteUrl,
-  siteConfig,
 } from "@/lib/site";
+import {
+  getPublicSiteConfig,
+} from "@/lib/site/public-site-config";
 import { safeJsonLd } from "@/lib/safe-json-ld";
 import {
   getPublicResolvedUpdates,
@@ -29,39 +31,44 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  alternates: {
-    canonical: "/",
-  },
-  openGraph: {
-    type: "website",
-    url: "/",
-    siteName: siteConfig.name,
-    title: "DeUna Games | Encuentra juegos para tu PC",
-    description: siteConfig.description,
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const config = await getPublicSiteConfig();
+
+  return {
+    alternates: {
+      canonical: "/",
+    },
+    openGraph: {
+      type: "website",
+      url: "/",
+      siteName: config.name,
+      title: `${config.name} | Encuentra juegos para tu PC`,
+      description: config.description,
+    },
+  };
+}
 
 export default async function Home() {
-  const [games, updates] = await Promise.all([
+  const [games, updates, config] = await Promise.all([
     getPublicGames(),
     getPublicResolvedUpdates(),
+    getPublicSiteConfig(),
   ]);
   const collections =
     buildHomeGameCollections(games);
   const websiteJsonLd = {
     "@context": "https://schema.org",
     "@type": "WebSite",
-    name: siteConfig.name,
+    name: config.name,
     url: absoluteUrl("/"),
-    description: siteConfig.description,
-    inLanguage: siteConfig.language,
+    description: config.description,
+    inLanguage: config.language,
   };
 
   const organizationJsonLd = {
     "@context": "https://schema.org",
     "@type": "Organization",
-    name: siteConfig.name,
+    name: config.name,
     url: absoluteUrl("/"),
   };
 
