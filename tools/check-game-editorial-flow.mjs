@@ -24,6 +24,8 @@ const [
   publicationReview,
   publicationChanges,
   editorFlow,
+  mediaIntegrity,
+  publicRevalidation,
   createRoute,
   coreRoute,
   advancedRoute,
@@ -51,6 +53,8 @@ const [
   source("src/lib/admin/game-publication-review.ts"),
   source("src/lib/admin/game-publication-changes.ts"),
   source("src/lib/admin/game-editor-flow.ts"),
+  source("src/lib/admin/game-media-integrity.ts"),
+  source("src/lib/admin/game-public-revalidation.ts"),
   source("src/app/api/admin/content/games/route.ts"),
   source("src/app/api/admin/content/games/[slug]/route.ts"),
   source("src/app/api/admin/content/games/[slug]/advanced/route.ts"),
@@ -113,9 +117,13 @@ assert(
 assert(
   publicationReview.includes("verifyAdminSession") &&
     publicationReview.includes("SELECT published_payload") &&
-    publicationReview.includes('parseEditorialPayload(\n    "game"') &&
+    publicationReview.includes("getGameDraftPublicationCandidate") &&
+    publicationReview.includes("getHistoricalGamePublicationCandidate") &&
+    publicationReview.includes("draft_payload") &&
+    publicationReview.includes("publication.payload") &&
+    publicationReview.includes('parseEditorialPayload(\n      "game"') &&
     !/\b(?:INSERT|UPDATE|DELETE|TRUNCATE)\b/i.test(publicationReview),
-  "La revisión previa debe leer el snapshot publicado de forma autenticada y estrictamente sin mutaciones."
+  "La revisión previa debe leer snapshots y candidatos de publicación de forma autenticada y estrictamente sin mutaciones."
 );
 
 for (const section of [
@@ -128,6 +136,32 @@ for (const section of [
   assert(
     publicationChanges.includes(section),
     `La comparación previa debe contemplar la sección ${section}.`
+  );
+}
+
+assert(
+  mediaIntegrity.includes("lstat") &&
+    mediaIntegrity.includes("!stats.isSymbolicLink()") &&
+    mediaIntegrity.includes("resolveEditorialMediaDiskPath") &&
+    mediaIntegrity.includes("inspectLocalImageReferences") &&
+    mediaIntegrity.includes("inspectGameMediaIntegrity") &&
+    mediaIntegrity.includes('game.coverImage') &&
+    mediaIntegrity.includes('game.heroImage') &&
+    mediaIntegrity.includes('game.screenshots'),
+  "Guardar o publicar un juego debe verificar que todas las imágenes locales referenciadas existan y no sean enlaces simbólicos."
+);
+
+for (const publicPath of [
+  'revalidatePath("/")',
+  'revalidatePath("/juegos")',
+  'revalidatePath("/actualizaciones")',
+  'revalidatePath("/requisitos")',
+  'revalidatePath(`/juegos/${slug}`)',
+  'revalidatePath(`/juegos/${slug}/descargar`)',
+]) {
+  assert(
+    publicRevalidation.includes(publicPath),
+    `El refresco público compartido debe incluir ${publicPath}.`
   );
 }
 
@@ -166,6 +200,13 @@ for (const [name, route, current] of [
 }
 
 assert(
+  mediaRoute.includes("inspectLocalImageReferences") &&
+    !mediaRoute.includes("resolveEditorialMediaDiskPath") &&
+    !mediaRoute.includes("lstat"),
+  "La edición multimedia debe reutilizar la misma validación de integridad que protege la publicación."
+);
+
+assert(
   formActions.includes("formAction") &&
     formActions.includes("?continuar=") &&
     !formActions.includes('name="continuar"'),
@@ -181,10 +222,26 @@ for (const [name, route] of [
     route.includes("/publicacion") &&
       route.includes("authorizeAdminFormRequest") &&
       route.includes("expected") &&
-      route.includes("revalidatePath"),
-    `La acción de ${name} debe conservar seguridad, concurrencia, revalidación y volver a la estación de publicación.`
+      route.includes("revalidatePublicGameSurfaces"),
+    `La acción de ${name} debe conservar seguridad, concurrencia, refresco público compartido y volver a la estación de publicación.`
   );
 }
+
+assert(
+  publishRoute.includes("getGameDraftPublicationCandidate") &&
+    publishRoute.includes("inspectGameMediaIntegrity") &&
+    publishRoute.includes("candidate.revision !== expected.data") &&
+    publishRoute.includes("asset-publicacion"),
+  "Publicar debe volver a leer la revisión candidata y bloquear el snapshot si alguna multimedia referenciada dejó de existir."
+);
+
+assert(
+  restoreRoute.includes("getHistoricalGamePublicationCandidate") &&
+    restoreRoute.includes("inspectGameMediaIntegrity") &&
+    restoreRoute.includes("currentPublicationNumber !== expected.data") &&
+    restoreRoute.includes("asset-restauracion"),
+  "Restaurar una publicación histórica debe validar su concurrencia y multimedia antes de volverla pública."
+);
 
 assert(
   gamesPage.includes('"unpublished"') &&
@@ -241,11 +298,14 @@ assert(
     publicationWorkspace.includes("Publicar cambios") &&
     publicationWorkspace.includes("Volver a publicar") &&
     publicationWorkspace.includes("Vista previa del borrador") &&
+    publicationWorkspace.includes("asset-publicacion") &&
+    publicationWorkspace.includes("asset-restauracion") &&
+    publicationWorkspace.includes("Abrir Multimedia para corregirlo") &&
     publicationWorkspace.includes("expectedRevision") &&
     publicationWorkspace.includes("expectedPublicationNumber") &&
     publicationWorkspace.includes("Base privada inicial") &&
     !/\bDELETE\b/i.test(publicationWorkspace),
-  "La estación debe mostrar el alcance del cambio y cubrir primera publicación, republicación, ocultar, restaurar y revisión previa sin acciones destructivas."
+  "La estación debe mostrar el alcance del cambio, explicar bloqueos de integridad y cubrir primera publicación, republicación, ocultar, restaurar y revisión previa sin acciones destructivas."
 );
 
 assert(
@@ -275,6 +335,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Flujo editorial de juegos: OK (alta privada con origen permanente, avance guiado seguro, estados públicos exactos, comparación de cambios, borradores, vista previa sin mutaciones, primera publicación, republicación y restauración protegidas)."
+    "Flujo editorial de juegos: OK (alta privada, avance guiado seguro, integridad multimedia al publicar, refresco público uniforme, estados exactos, comparación de cambios, vista previa sin mutaciones, republicación y restauración protegidas)."
   );
 }
