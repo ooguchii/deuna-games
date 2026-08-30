@@ -1,4 +1,7 @@
 import type { Game } from "@/types/game";
+import type {
+  GameTaxonomyTerm,
+} from "@/types/game-taxonomy";
 
 export type SortMode =
   | "popular"
@@ -34,6 +37,12 @@ export type CatalogFilters = {
   minRating: number;
   equipment: EquipmentFilter;
   status: StatusFilter;
+};
+
+export type OrderedClassificationStat = {
+  term: GameTaxonomyTerm;
+  label: string;
+  count: number;
 };
 
 export const MAX_CATALOG_QUERY_LENGTH =
@@ -411,6 +420,58 @@ export function getCategoryStats(
         }
       )
   );
+}
+
+export function getOrderedClassificationStats(
+  games: readonly Game[],
+  terms: readonly GameTaxonomyTerm[]
+): OrderedClassificationStat[] {
+  const byNormalized = new Map(
+    getCategoryStats(games).map(([label, count]) => [
+      normalizeCatalogText(label),
+      { label, count },
+    ])
+  );
+  const used = new Set<string>();
+  const ordered: OrderedClassificationStat[] = [];
+
+  terms.forEach((term) => {
+    const normalized = normalizeCatalogText(term.label);
+    const stat = byNormalized.get(normalized);
+    if (!stat) return;
+
+    used.add(normalized);
+    ordered.push({
+      term,
+      label: stat.label,
+      count: stat.count,
+    });
+  });
+
+  [...byNormalized.entries()]
+    .filter(([normalized]) => !used.has(normalized))
+    .sort(([, left], [, right]) =>
+      left.label.localeCompare(right.label, "es", {
+        sensitivity: "base",
+      })
+    )
+    .forEach(([normalized, stat]) => {
+      ordered.push({
+        term: {
+          key:
+            normalized
+              .replace(/[^a-z0-9]+/g, "-")
+              .replace(/^-+|-+$/g, "") ||
+            "clasificacion",
+          label: stat.label,
+          active: true,
+        },
+        label: stat.label,
+        count: stat.count,
+      });
+    });
+
+  return ordered;
 }
 
 export function parseCategory(
