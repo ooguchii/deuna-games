@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import EditorialHistory from "@/components/admin/EditorialHistory";
 import EditorStateNotice from "@/components/admin/EditorStateNotice";
 import GameDownloadEditor from "@/components/admin/GameDownloadEditor";
+import GameEditorFormActions from "@/components/admin/GameEditorFormActions";
 import GameMediaUploadForm from "@/components/admin/GameMediaUploadForm";
 import GamePlatformEditor from "@/components/admin/GamePlatformEditor";
 import {
@@ -73,6 +74,36 @@ function resolveGameSection(
     : "ficha";
 }
 
+function publicationLabel(
+  identity: Awaited<
+    ReturnType<typeof getGamePublicationIdentity>
+  >,
+  fallbackSynced: boolean
+) {
+  if (!identity) {
+    return fallbackSynced
+      ? "Sin cambios"
+      : "Borrador modificado";
+  }
+
+  if (
+    identity.panelCreated &&
+    !identity.everPublished
+  ) {
+    return "Sin publicar";
+  }
+
+  if (!identity.publicVisible) {
+    return `Oculto · Pub. #${identity.publicationNumber}`;
+  }
+
+  if (identity.hasUnpublishedChanges) {
+    return `Cambios pendientes · Pub. #${identity.publicationNumber}`;
+  }
+
+  return `Publicado · #${identity.publicationNumber}`;
+}
+
 export default async function AdminGameEditorPage({
   params,
   searchParams,
@@ -102,6 +133,12 @@ export default async function AdminGameEditorPage({
     requirements?.minimum ??
     legacyMinimum(requirements);
   const recommended = requirements?.recommended;
+  const coreAction =
+    `/api/admin/content/games/${encodeURIComponent(slug)}`;
+  const advancedAction = `${coreAction}/advanced`;
+  const requirementsAction = `${coreAction}/requirements`;
+  const mediaAction = `${coreAction}/media`;
+  const downloadAction = `${coreAction}/download`;
 
   return (
     <>
@@ -134,11 +171,15 @@ export default async function AdminGameEditorPage({
             <Eye size={14} aria-hidden="true" />
             Vista previa
           </Link>
-          <span className={styles.draftState}>
-            {item.status === "synced"
-              ? "Sin cambios"
-              : "Borrador modificado"}
-          </span>
+          <Link
+            href={`/admin/juegos/${encodeURIComponent(slug)}/publicacion`}
+            className={styles.draftState}
+          >
+            {publicationLabel(
+              publicationIdentity,
+              item.status === "synced"
+            )}
+          </Link>
         </div>
       </header>
 
@@ -165,7 +206,7 @@ export default async function AdminGameEditorPage({
           <form
             className={styles.editorForm}
             method="post"
-            action={`/api/admin/content/games/${encodeURIComponent(slug)}`}
+            action={coreAction}
           >
             <input
               type="hidden"
@@ -254,14 +295,13 @@ export default async function AdminGameEditorPage({
               />
             </label>
 
-            <div className={styles.formActions}>
-              <p>
-                Guardar no publica. La revisión anterior seguirá disponible en Historial.
-              </p>
-              <button type="submit">
-                Guardar ficha
-              </button>
-            </div>
+            <GameEditorFormActions
+              note="Guardar no publica. La revisión anterior seguirá disponible en Historial."
+              action={coreAction}
+              continueTo="datos"
+              saveLabel="Guardar ficha"
+              continueLabel="Guardar y continuar a Datos"
+            />
           </form>
         </section>
       )}
@@ -281,7 +321,7 @@ export default async function AdminGameEditorPage({
           <form
             className={styles.editorForm}
             method="post"
-            action={`/api/admin/content/games/${encodeURIComponent(slug)}/advanced`}
+            action={advancedAction}
           >
             <input
               type="hidden"
@@ -361,14 +401,13 @@ export default async function AdminGameEditorPage({
               initialPlatforms={game.platforms ?? []}
             />
 
-            <div className={styles.formActions}>
-              <p>
-                La categoría principal sigue funcionando como respaldo cuando no hay géneros o plataformas específicos.
-              </p>
-              <button type="submit">
-                Guardar datos avanzados
-              </button>
-            </div>
+            <GameEditorFormActions
+              note="La categoría principal sigue funcionando como respaldo cuando no hay géneros o plataformas específicos."
+              action={advancedAction}
+              continueTo="requisitos"
+              saveLabel="Guardar datos avanzados"
+              continueLabel="Guardar y continuar a Requisitos"
+            />
           </form>
         </section>
       )}
@@ -388,7 +427,7 @@ export default async function AdminGameEditorPage({
           <form
             className={styles.editorForm}
             method="post"
-            action={`/api/admin/content/games/${encodeURIComponent(slug)}/requirements`}
+            action={requirementsAction}
           >
             <input
               type="hidden"
@@ -499,14 +538,13 @@ export default async function AdminGameEditorPage({
               />
             </label>
 
-            <div className={styles.formActions}>
-              <p>
-                Si todos los campos quedan vacíos, el juego quedará sin requisitos editoriales configurados.
-              </p>
-              <button type="submit">
-                Guardar requisitos
-              </button>
-            </div>
+            <GameEditorFormActions
+              note="Si todos los campos quedan vacíos, el juego quedará sin requisitos editoriales configurados."
+              action={requirementsAction}
+              continueTo="multimedia"
+              saveLabel="Guardar requisitos"
+              continueLabel="Guardar y continuar a Multimedia"
+            />
           </form>
         </section>
       )}
@@ -532,7 +570,7 @@ export default async function AdminGameEditorPage({
           <form
             className={styles.editorForm}
             method="post"
-            action={`/api/admin/content/games/${encodeURIComponent(slug)}/media`}
+            action={mediaAction}
           >
             <input
               type="hidden"
@@ -571,14 +609,13 @@ export default async function AdminGameEditorPage({
               />
             </label>
 
-            <div className={styles.formActions}>
-              <p>
-                Se aceptan hasta 8 capturas sin duplicados y las rutas se validan antes de guardar.
-              </p>
-              <button type="submit">
-                Guardar multimedia
-              </button>
-            </div>
+            <GameEditorFormActions
+              note="Se aceptan hasta 8 capturas sin duplicados y las rutas se validan antes de guardar."
+              action={mediaAction}
+              continueTo="descargas"
+              saveLabel="Guardar multimedia"
+              continueLabel="Guardar y continuar a Descargas"
+            />
           </form>
         </section>
       )}
@@ -604,7 +641,7 @@ export default async function AdminGameEditorPage({
           <form
             className={styles.editorForm}
             method="post"
-            action={`/api/admin/content/games/${encodeURIComponent(slug)}/download`}
+            action={downloadAction}
           >
             <input
               type="hidden"
@@ -652,14 +689,13 @@ export default async function AdminGameEditorPage({
               initialSources={download?.sources ?? []}
             />
 
-            <div className={styles.formActions}>
-              <p>
-                Las direcciones se validan antes de guardarse y no se aceptan URLs HTTP inseguras.
-              </p>
-              <button type="submit">
-                Guardar descargas
-              </button>
-            </div>
+            <GameEditorFormActions
+              note="Las direcciones se validan antes de guardarse y no se aceptan URLs HTTP inseguras."
+              action={downloadAction}
+              continueTo="publicacion"
+              saveLabel="Guardar descargas"
+              continueLabel="Guardar y revisar Publicación"
+            />
           </form>
         </section>
       )}
