@@ -30,7 +30,8 @@
 }
 
 .addButton,
-.removeButton {
+.removeButton,
+.sourceToolbar button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -51,8 +52,9 @@
   background: rgba(255, 92, 130, 0.04);
 }
 
-.addButton:disabled {
-  opacity: 0.45;
+.addButton:disabled,
+.sourceToolbar button:disabled {
+  opacity: 0.38;
   cursor: not-allowed;
 }
 
@@ -64,12 +66,23 @@
 .source {
   min-width: 0;
   display: grid;
-  grid-template-columns: minmax(0, 0.75fr) minmax(0, 1fr) auto;
+  grid-template-columns:
+    minmax(0, 0.75fr)
+    minmax(0, 1fr)
+    minmax(150px, 0.65fr);
   gap: 12px;
   padding: 15px;
   border: 1px solid #202b37;
   border-radius: 10px;
   background: #091019;
+  transition:
+    border-color 150ms ease,
+    background 150ms ease;
+}
+
+.source[data-enabled="false"] {
+  border-color: #19232d;
+  background: #080d13;
 }
 
 .source legend {
@@ -81,8 +94,46 @@
   text-transform: uppercase;
 }
 
+.source[data-enabled="false"] legend {
+  color: #5f6975;
+}
+
 .source label {
   min-width: 0;
+}
+
+.sourceToolbar {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  padding-bottom: 9px;
+  border-bottom: 1px solid #18222c;
+}
+
+.sourceToolbar button {
+  width: 34px;
+  min-height: 32px;
+  padding: 0;
+  color: #8d99a7;
+  border: 1px solid #25313d;
+  background: #080d14;
+}
+
+.sourceToolbar button:not(:disabled):hover,
+.sourceToolbar button:not(:disabled):focus-visible {
+  color: #eef2f7;
+  border-color: color-mix(in srgb, var(--brand) 38%, #25313d);
+}
+
+.sourceToolbar .visibilityButton {
+  color: #d7a2af;
+  border-color: rgba(255, 92, 130, 0.2);
+}
+
+.source[data-enabled="false"] .visibilityButton {
+  color: #6f7a87;
+  border-color: #25313d;
 }
 
 .hrefField {
@@ -90,11 +141,18 @@
 }
 
 .removeButton {
-  align-self: end;
+  grid-column: 3;
+  justify-self: end;
   min-width: 92px;
   color: #e99caf;
   border: 1px solid rgba(255, 92, 130, 0.19);
   background: transparent;
+}
+
+.removeButton:hover,
+.removeButton:focus-visible {
+  border-color: rgba(255, 92, 130, 0.38);
+  background: rgba(255, 92, 130, 0.04);
 }
 
 .empty {
@@ -104,6 +162,20 @@
   border-radius: 9px;
   font-size: 9px;
   text-align: center;
+}
+
+@media (max-width: 900px) {
+  .source {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .hrefField {
+    grid-column: 1 / -1;
+  }
+
+  .removeButton {
+    grid-column: 2;
+  }
 }
 
 @media (max-width: 760px) {
@@ -120,7 +192,8 @@
     grid-template-columns: 1fr;
   }
 
-  .hrefField {
+  .hrefField,
+  .removeButton {
     grid-column: auto;
   }
 
