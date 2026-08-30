@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "node ./tools/run-next.mjs dev --hostname 127.0.0.1 --port 3000",
-    "lan": "node ./tools/run-next.mjs dev --hostname 0.0.0.0 --port 3000",
+    "lan": "node ./tools/run-lan.mjs",
     "lan:prod": "npm run build && node ./tools/run-next.mjs start --hostname 0.0.0.0 --port 3000",
     "lan:doctor": "node ./tools/lan-doctor.mjs",
     "mobile": "npm run lan",
