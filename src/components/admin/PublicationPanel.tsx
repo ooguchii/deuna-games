@@ -6,15 +6,17 @@ import {
 } from "lucide-react";
 
 import type {
-  GamePublicationState,
+  EditorialPublicationState,
 } from "@/lib/admin/publication-service";
 
 import styles from "./PublicationPanel.module.css";
 
 type PublicationPanelProps = {
-  slug: string;
-  state: GamePublicationState;
+  state: EditorialPublicationState;
   requestState?: string;
+  slug?: string;
+  publishAction?: string;
+  restoreActionBase?: string;
 };
 
 const actionLabels = {
@@ -91,12 +93,28 @@ export default function PublicationPanel({
   slug,
   state,
   requestState,
+  publishAction,
+  restoreActionBase,
 }: PublicationPanelProps) {
+  const resolvedPublishAction =
+    publishAction ??
+    (slug
+      ? `/api/admin/content/games/${encodeURIComponent(slug)}/publish`
+      : null);
+  const resolvedRestoreActionBase =
+    restoreActionBase ??
+    "/api/admin/content/publications";
   const current = state.publications.find(
     (publication) =>
       publication.publicationNumber ===
       state.publicationNumber
   );
+
+  if (!resolvedPublishAction) {
+    throw new Error(
+      "El panel de publicación requiere una acción de publicación."
+    );
+  }
 
   return (
     <div className={styles.panel}>
@@ -134,7 +152,7 @@ export default function PublicationPanel({
 
       <form
         method="post"
-        action={`/api/admin/content/games/${encodeURIComponent(slug)}/publish`}
+        action={resolvedPublishAction}
         className={styles.publishForm}
       >
         <input
@@ -206,7 +224,7 @@ export default function PublicationPanel({
 
                 <form
                   method="post"
-                  action={`/api/admin/content/publications/${publication.id}/restore`}
+                  action={`${resolvedRestoreActionBase}/${publication.id}/restore`}
                 >
                   <input
                     type="hidden"
