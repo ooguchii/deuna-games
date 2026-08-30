@@ -10,6 +10,9 @@ import {
 
 import { games } from "../../src/data/games.ts";
 import {
+  sourceHomeConfig,
+} from "../../src/data/home-config.ts";
+import {
   gameUpdates,
 } from "../../src/data/update-records.ts";
 import {
@@ -67,6 +70,26 @@ function buildSourceItems(): SourceItem[] {
     }
   }
 
+  const homeConfig = normalizeEditorialPayload(
+    parseEditorialPayload(
+      "home_config",
+      sourceHomeConfig
+    )
+  );
+
+  for (const slug of new Set([
+    ...homeConfig.heroSlugs,
+    ...homeConfig.popularSlugs,
+    ...homeConfig.lowSpecSlugs,
+    ...homeConfig.recommendedSlugs,
+  ])) {
+    if (!gameSlugs.has(slug)) {
+      throw new Error(
+        `La portada fuente referencia el juego inexistente ${slug}.`
+      );
+    }
+  }
+
   const items: SourceItem[] = [
     ...games.map((game) => ({
       type: "game" as const,
@@ -94,6 +117,11 @@ function buildSourceItems(): SourceItem[] {
           siteConfig
         )
       ) as Record<string, unknown>,
+    },
+    {
+      type: "home_config",
+      key: "home",
+      payload: homeConfig as unknown as Record<string, unknown>,
     },
   ];
   const identities = new Set<string>();
@@ -248,6 +276,7 @@ async function markMissingSources(
     "game",
     "game_update",
     "site_config",
+    "home_config",
   ] satisfies EditorialItemType[]) {
     const keys = items
       .filter((item) => item.type === type)
@@ -273,7 +302,7 @@ async function main() {
 
   if (validateOnly) {
     console.log(
-      `Contenido editorial validado: ${games.length} juegos, ${gameUpdates.length} actualizaciones y 1 configuración.`
+      `Contenido editorial validado: ${games.length} juegos, ${gameUpdates.length} actualizaciones, 1 configuración y 1 portada.`
     );
     return;
   }
