@@ -11,10 +11,14 @@ import {
 } from "lucide-react";
 import { notFound } from "next/navigation";
 
+import PublicationPanel from "@/components/admin/PublicationPanel";
 import GameMedia from "@/components/ui/GameMedia";
 import {
   getEditorialItem,
 } from "@/lib/admin/content-service";
+import {
+  getGamePublicationState,
+} from "@/lib/admin/publication-service";
 import {
   verifyAdminSession,
 } from "@/lib/admin/session";
@@ -32,6 +36,7 @@ export const dynamic = "force-dynamic";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ estado?: string }>;
 };
 
 type RequirementRow = {
@@ -105,12 +110,27 @@ function downloadHost(href: string) {
 
 export default async function AdminGamePreviewPage({
   params,
+  searchParams,
 }: PageProps) {
   await verifyAdminSession();
-  const { slug } = await params;
+  const [{ slug }, query] = await Promise.all([
+    params,
+    searchParams,
+  ]);
   const item = await getEditorialItem("game", slug);
 
   if (!item) notFound();
+
+  let publicationState = null;
+
+  try {
+    publicationState =
+      await getGamePublicationState(slug);
+  } catch {
+    console.error(
+      "No se pudo leer el estado de publicación del juego."
+    );
+  }
 
   const game = item.payload;
   const download = resolveGameDownload(game);
@@ -177,9 +197,11 @@ export default async function AdminGamePreviewPage({
         <div className={styles.revisionState}>
           <strong>Revisión {item.revision}</strong>
           <span>
-            {item.status === "synced"
-              ? "Sin cambios"
-              : "Borrador modificado"}
+            {publicationState?.hasUnpublishedChanges
+              ? "Cambios sin publicar"
+              : item.status === "synced"
+                ? "Sin cambios"
+                : "Borrador guardado"}
           </span>
         </div>
       </header>
@@ -302,19 +324,25 @@ export default async function AdminGamePreviewPage({
             <h2>Estado del borrador</h2>
           </div>
 
-          <div className={styles.publishGate}>
-            <strong>
-              {item.status === "synced"
-                ? "El borrador coincide con la fuente importada."
-                : "Hay cambios pendientes de publicación."}
-            </strong>
-            <p>
-              El botón Publicar todavía permanece deshabilitado hasta incorporar un snapshot publicado, auditoría de publicación y mecanismo de reversión.
-            </p>
-            <button type="button" disabled>
-              Publicar borrador
-            </button>
-          </div>
+          {publicationState ? (
+            <PublicationPanel
+              slug={slug}
+              state={publicationState}
+              requestState={query.estado}
+            />
+          ) : (
+            <div className={styles.publishGate}>
+              <strong>
+                La infraestructura de publicación todavía no está disponible en esta base.
+              </strong>
+              <p>
+                El borrador permanece seguro y no se publicará hasta que la migración editorial correspondiente esté aplicada.
+              </p>
+              <button type="button" disabled>
+                Publicar borrador
+              </button>
+            </div>
+          )}
         </article>
       </section>
 
