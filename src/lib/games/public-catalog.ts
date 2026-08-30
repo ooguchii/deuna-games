@@ -1,6 +1,9 @@
 import "server-only";
 
 import { cache } from "react";
+import {
+  connection,
+} from "next/server";
 
 import {
   games as sourceGames,
@@ -99,6 +102,8 @@ async function readPublishedGames() {
 
 export const getPublicGames = cache(
   async (): Promise<Game[]> => {
+    await connection();
+
     try {
       const published = await readPublishedGames();
 
