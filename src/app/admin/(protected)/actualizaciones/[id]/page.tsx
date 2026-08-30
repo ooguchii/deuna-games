@@ -82,11 +82,13 @@ export default async function AdminUpdateEditorPage({
           </p>
         </div>
         <span className={styles.draftState}>
-          {publicationState?.hasUnpublishedChanges
-            ? "Cambios sin publicar"
-            : item.status === "synced"
-              ? "Sin cambios"
-              : "Borrador guardado"}
+          {publicationState?.publicVisible === false
+            ? "Oculta de la web"
+            : publicationState?.hasUnpublishedChanges
+              ? "Cambios sin publicar"
+              : item.status === "synced"
+                ? "Sin cambios"
+                : "Borrador guardado"}
         </span>
       </header>
 
@@ -181,6 +183,7 @@ export default async function AdminUpdateEditorPage({
             requestState={state}
             publishAction={`/api/admin/content/updates/${encodeURIComponent(id)}/publish`}
             restoreActionBase="/api/admin/content/update-publications"
+            hideAction={`/api/admin/content/updates/${encodeURIComponent(id)}/hide`}
           />
         ) : (
           <p>
