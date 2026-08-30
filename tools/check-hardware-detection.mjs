@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 
 import {
+  chooseFreshestConfirmedCpu,
+} from "../src/features/game-finder/cpu-confirmation-storage.ts";
+import {
   cpuModelKey,
   matchCpuName,
   normalizeCpuName,
@@ -174,9 +177,54 @@ assert.equal(
 );
 
 const referenceCpu = findCpuById("ryzen-5-5600x");
+const alternateCpu = findCpuById("i7-12700k");
 const referenceGpu = findGpuById("rtx-3060");
 assert.ok(referenceCpu, "La CPU de referencia debe existir.");
+assert.ok(alternateCpu, "La CPU alternativa debe existir.");
 assert.ok(referenceGpu, "La GPU de referencia debe existir.");
+
+assert.equal(
+  chooseFreshestConfirmedCpu(
+    {
+      cpu: referenceCpu,
+      updatedAt: "2026-08-30T12:00:00.000Z",
+    },
+    {
+      cpu: alternateCpu,
+      updatedAt: "2026-08-30T13:00:00.000Z",
+    }
+  )?.id,
+  alternateCpu.id,
+  "Si el perfil manual cambió después, debe ganar su CPU más reciente."
+);
+assert.equal(
+  chooseFreshestConfirmedCpu(
+    {
+      cpu: referenceCpu,
+      updatedAt: "2026-08-30T14:00:00.000Z",
+    },
+    {
+      cpu: alternateCpu,
+      updatedAt: "2026-08-30T13:00:00.000Z",
+    }
+  )?.id,
+  referenceCpu.id,
+  "Si la confirmación asistida es más reciente, debe reemplazar al perfil anterior."
+);
+assert.equal(
+  chooseFreshestConfirmedCpu(
+    {
+      cpu: referenceCpu,
+      updatedAt: null,
+    },
+    {
+      cpu: alternateCpu,
+      updatedAt: null,
+    }
+  )?.id,
+  alternateCpu.id,
+  "Con fechas ausentes o inválidas, el perfil completo debe ser la fuente autoritativa."
+);
 
 const estimatedCpu = estimateCpuFromLogicalProcessors(16);
 assert.ok(estimatedCpu);
@@ -254,5 +302,5 @@ assert.equal(
 );
 
 console.log(
-  `Detección de hardware: OK (${cpuCatalog.length} CPUs; nombres Windows/Intel/AMD, variantes estrictas, estimación por intervalos y propagación a FPS verificadas).`
+  `Detección de hardware: OK (${cpuCatalog.length} CPUs; nombres Windows/Intel/AMD, variantes estrictas, fuentes recientes, estimación por intervalos y propagación a FPS verificadas).`
 );
