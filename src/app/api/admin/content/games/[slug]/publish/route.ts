@@ -1,6 +1,3 @@
-import {
-  revalidatePath,
-} from "next/cache";
 import type { NextRequest } from "next/server";
 
 import {
@@ -12,6 +9,15 @@ import {
   expectedRevisionSchema,
 } from "@/lib/admin/content-forms";
 import {
+  inspectGameMediaIntegrity,
+} from "@/lib/admin/game-media-integrity";
+import {
+  getGameDraftPublicationCandidate,
+} from "@/lib/admin/game-publication-review";
+import {
+  revalidatePublicGameSurfaces,
+} from "@/lib/admin/game-public-revalidation";
+import {
   publishGameDraft,
 } from "@/lib/admin/publication-service";
 import {
@@ -20,14 +26,6 @@ import {
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-
-function refreshPublishedGame(slug: string) {
-  revalidatePath("/");
-  revalidatePath("/juegos");
-  revalidatePath("/requisitos");
-  revalidatePath(`/juegos/${slug}`);
-  revalidatePath(`/juegos/${slug}/descargar`);
-}
 
 export async function POST(
   request: NextRequest,
@@ -70,6 +68,33 @@ export async function POST(
   }
 
   try {
+    const candidate =
+      await getGameDraftPublicationCandidate(slug);
+
+    if (!candidate) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        "/admin/juegos?estado=no-encontrado"
+      );
+    }
+
+    if (candidate.revision !== expected.data) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        `${target}?estado=conflicto`
+      );
+    }
+
+    const mediaIntegrity =
+      await inspectGameMediaIntegrity(candidate.game);
+
+    if (!mediaIntegrity.ok) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        `${target}?estado=asset-publicacion`
+      );
+    }
+
     const result = await publishGameDraft(
       slug,
       expected.data,
@@ -91,7 +116,7 @@ export async function POST(
     }
 
     if (result.outcome === "published") {
-      refreshPublishedGame(slug);
+      revalidatePublicGameSurfaces(slug);
     }
 
     const state =
