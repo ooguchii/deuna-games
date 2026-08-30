@@ -42,6 +42,11 @@ type ItemPublicationStateRow = {
   ever_published: boolean;
 };
 
+type ItemPublicationIdentityRow = {
+  panel_created: boolean;
+  ever_published: boolean;
+};
+
 export type RecentPublication = {
   id: string;
   type: PublishableType;
@@ -64,6 +69,11 @@ export type ItemPublicationState = {
   publicationNumber: number;
   publicVisible: boolean;
   hasUnpublishedChanges: boolean;
+  panelCreated: boolean;
+  everPublished: boolean;
+};
+
+export type ItemPublicationIdentity = {
   panelCreated: boolean;
   everPublished: boolean;
 };
@@ -217,4 +227,45 @@ export async function listPublicationStates(
     panelCreated: item.panel_created,
     everPublished: item.ever_published,
   }));
+}
+
+export async function getGamePublicationIdentity(
+  key: string
+): Promise<ItemPublicationIdentity | null> {
+  await verifyAdminSession();
+
+  if (!(await publicationWorkspaceAvailable())) {
+    return null;
+  }
+
+  const result =
+    await adminQuery<ItemPublicationIdentityRow>(
+      `SELECT
+         EXISTS (
+           SELECT 1
+           FROM deuna_admin.editorial_revisions AS revision
+           WHERE revision.item_id = item.id
+             AND revision.revision = 1
+             AND revision.action = 'draft_saved'
+         ) AS panel_created,
+         EXISTS (
+           SELECT 1
+           FROM deuna_admin.editorial_publications AS publication
+           WHERE publication.item_id = item.id
+             AND publication.action IN ('published', 'rollback')
+         ) AS ever_published
+       FROM deuna_admin.editorial_items AS item
+       WHERE item.item_type = 'game'
+         AND item.item_key = $1
+       LIMIT 1`,
+      [key]
+    );
+  const identity = result.rows[0];
+
+  if (!identity) return null;
+
+  return {
+    panelCreated: identity.panel_created,
+    everPublished: identity.ever_published,
+  };
 }
