@@ -10,32 +10,25 @@ import {
 
 import CardCarousel from "@/components/ui/CardCarousel";
 import UniversalGameCard from "@/components/ui/UniversalGameCard";
+import type { HomeCopy } from "@/data/home-config";
 import type { Game } from "@/types/game";
 
 import styles from "./GamesForYourPC.module.css";
 
 const catalogOptions = [
   {
-    title: "Bajos recursos",
-    subtitle: "Juegos pensados para equipos modestos",
     href: "/juegos?equipo=lowSpec",
     icon: Cpu,
   },
   {
-    title: "Con requisitos cargados",
-    subtitle: "Compara memoria, gráficos y sistema",
     href: "/requisitos",
     icon: Monitor,
   },
   {
-    title: "Mejor puntuados",
-    subtitle: "Ordenados por valoración",
     href: "/juegos?orden=rating",
     icon: Star,
   },
   {
-    title: "Añadidos recientemente",
-    subtitle: "Los últimos títulos incorporados",
     href: "/juegos?estado=recent&orden=recientes",
     icon: CalendarDays,
   },
@@ -43,36 +36,35 @@ const catalogOptions = [
 
 export default function GamesForYourPC({
   games,
+  copy,
 }: {
   games: Game[];
+  copy: HomeCopy["lowSpec"];
 }) {
   return (
     <section className={styles.section}>
       <div className={styles.mainHeader}>
         <div>
           <span className={styles.eyebrow}>
-            SEGÚN TU EQUIPO
+            {copy.eyebrow}
           </span>
 
           <h2>
-            Encuentra juegos para{" "}
-            <strong>tu PC</strong>
+            {copy.title}{" "}
+            <strong>{copy.highlight}</strong>
           </h2>
 
-          <p>
-            Explora el catálogo usando los requisitos disponibles,
-            el rendimiento esperado y filtros que ya funcionan hoy.
-          </p>
+          <p>{copy.text}</p>
         </div>
 
         <Link href="/requisitos">
-          Probar recomendador
+          {copy.cta}
           <ChevronRight size={18} />
         </Link>
       </div>
 
       <div className={styles.hardwareGrid}>
-        {catalogOptions.map((option) => {
+        {catalogOptions.map((option, index) => {
           const Icon = option.icon;
 
           return (
@@ -86,8 +78,8 @@ export default function GamesForYourPC({
               </div>
 
               <div>
-                <h3>{option.title}</h3>
-                <p>{option.subtitle}</p>
+                <h3>{copy.optionTitles[index]}</h3>
+                <p>{copy.optionSubtitles[index]}</p>
               </div>
 
               <ChevronRight
@@ -103,18 +95,18 @@ export default function GamesForYourPC({
 
       <div className={styles.gamesHeader}>
         <h3>
-          RECOMENDADOS PARA EQUIPOS{" "}
-          <span>DE BAJOS RECURSOS</span>
+          {copy.listTitle}{" "}
+          <span>{copy.listHighlight}</span>
         </h3>
 
         <Link href="/juegos/bajos-recursos">
-          Ver todos
+          {copy.listLinkLabel}
           <ChevronRight size={18} />
         </Link>
       </div>
 
       <CardCarousel
-        ariaLabel="Juegos para equipos de bajos recursos"
+        ariaLabel={`${copy.listTitle} ${copy.listHighlight}`}
         itemsDesktop={5}
       >
         {games.map((game) => (
