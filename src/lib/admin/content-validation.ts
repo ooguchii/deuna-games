@@ -7,6 +7,7 @@ export const editorialItemTypes = [
   "game",
   "game_update",
   "site_config",
+  "home_config",
 ] as const;
 
 export type EditorialItemType =
@@ -122,6 +123,26 @@ const downloadSchema = z
   })
   .strict();
 
+function uniqueIdentifiers(maximum: number) {
+  return z
+    .array(identifierSchema)
+    .max(maximum)
+    .superRefine((values, context) => {
+      const seen = new Set<string>();
+
+      values.forEach((value, index) => {
+        if (seen.has(value)) {
+          context.addIssue({
+            code: "custom",
+            path: [index],
+            message: "Un juego no puede repetirse dentro de la misma colección.",
+          });
+        }
+        seen.add(value);
+      });
+    });
+}
+
 export const editorialGameSchema: z.ZodType<Game> = z
   .object({
     id: identifierSchema,
@@ -201,14 +222,28 @@ export const editorialSiteConfigSchema = z
   })
   .strict();
 
+export const editorialHomeConfigSchema = z
+  .object({
+    heroSlugs: uniqueIdentifiers(8),
+    popularSlugs: uniqueIdentifiers(24),
+    lowSpecSlugs: uniqueIdentifiers(24),
+    recommendedSlugs: uniqueIdentifiers(24),
+  })
+  .strict();
+
 export type EditorialSiteConfig = z.infer<
   typeof editorialSiteConfigSchema
+>;
+
+export type EditorialHomeConfig = z.infer<
+  typeof editorialHomeConfigSchema
 >;
 
 export type EditorialPayloadByType = {
   game: Game;
   game_update: GameUpdate;
   site_config: EditorialSiteConfig;
+  home_config: EditorialHomeConfig;
 };
 
 export function parseEditorialPayload<
@@ -219,7 +254,9 @@ export function parseEditorialPayload<
       ? editorialGameSchema
       : type === "game_update"
         ? editorialUpdateSchema
-        : editorialSiteConfigSchema;
+        : type === "site_config"
+          ? editorialSiteConfigSchema
+          : editorialHomeConfigSchema;
 
   return schema.parse(payload) as EditorialPayloadByType[Type];
 }
