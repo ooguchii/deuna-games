@@ -1,3 +1,5 @@
+export const PUBLIC_PAGES_EDITORIAL_KEY = "public-pages";
+
 export type PublicPagesConfig = {
   games: {
     eyebrow: string;
