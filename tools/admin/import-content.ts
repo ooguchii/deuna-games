@@ -123,11 +123,11 @@ function buildGameTaxonomy(
   sourceGames: readonly Game[]
 ): GameTaxonomy {
   return {
-    categories: taxonomyTerms(
-      sourceGames.map((game) => game.category)
-    ),
-    genres: taxonomyTerms(
-      sourceGames.flatMap((game) => game.genres ?? [])
+    classifications: taxonomyTerms(
+      sourceGames.flatMap((game) => [
+        game.category,
+        ...(game.genres ?? []),
+      ])
     ),
     tags: taxonomyTerms(
       sourceGames.flatMap((game) => game.tags ?? [])
