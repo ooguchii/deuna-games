@@ -38,6 +38,52 @@
   color: #ff8da8;
 }
 
+.contextBar {
+  position: sticky;
+  top: 8px;
+  z-index: 30;
+  width: fit-content;
+  max-width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: -5px 0 12px auto;
+  padding: 5px;
+  overflow-x: auto;
+  border: 1px solid #202b36;
+  border-radius: 9px;
+  background: rgba(7, 12, 18, 0.94);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.24);
+  backdrop-filter: blur(16px);
+  scrollbar-width: none;
+}
+
+.contextBar::-webkit-scrollbar {
+  display: none;
+}
+
+.contextBar a {
+  min-height: 29px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: 0 0 auto;
+  padding: 0 8px;
+  color: #84909e;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-size: 8px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.contextBar a:hover,
+.contextBar a:focus-visible {
+  color: #f2becb;
+  border-color: color-mix(in srgb, var(--brand) 26%, #27323e);
+  background: color-mix(in srgb, var(--brand) 5%, #0a1017);
+}
+
 @media (max-width: 760px) {
   .shell.shell {
     display: block;
@@ -61,5 +107,11 @@
     min-width: auto;
     flex: 0 0 auto;
     padding: 0 10px;
+  }
+
+  .contextBar {
+    top: 4px;
+    width: 100%;
+    margin: -3px 0 10px;
   }
 }
