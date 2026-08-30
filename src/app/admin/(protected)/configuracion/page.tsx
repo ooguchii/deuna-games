@@ -2,9 +2,13 @@ import { notFound } from "next/navigation";
 
 import EditorialHistory from "@/components/admin/EditorialHistory";
 import EditorStateNotice from "@/components/admin/EditorStateNotice";
+import PublicationPanel from "@/components/admin/PublicationPanel";
 import {
   getEditorialItem,
 } from "@/lib/admin/content-service";
+import {
+  getSiteConfigPublicationState,
+} from "@/lib/admin/publication-service";
 import {
   verifyAdminSession,
 } from "@/lib/admin/session";
@@ -30,6 +34,17 @@ export default async function AdminConfigurationPage({
 
   if (!item) notFound();
 
+  let publicationState = null;
+
+  try {
+    publicationState =
+      await getSiteConfigPublicationState();
+  } catch {
+    console.error(
+      "No se pudo leer el estado de publicación de la configuración."
+    );
+  }
+
   const state = Array.isArray(parameters.estado)
     ? parameters.estado[0]
     : parameters.estado;
@@ -42,13 +57,15 @@ export default async function AdminConfigurationPage({
           <span>CONFIGURACIÓN · REVISIÓN {item.revision}</span>
           <h1>Identidad pública</h1>
           <p>
-            Estos valores son borradores. El dominio, secretos, VPN y configuración del servidor no se editan desde la web.
+            Nombre, descripción, idioma y color se guardan primero como borrador. El dominio, secretos, VPN y configuración del servidor permanecen fuera del editor.
           </p>
         </div>
         <span className={styles.draftState}>
-          {item.status === "synced"
-            ? "Sin cambios"
-            : "Borrador modificado"}
+          {publicationState?.hasUnpublishedChanges
+            ? "Cambios sin publicar"
+            : item.status === "synced"
+              ? "Sin cambios"
+              : "Borrador guardado"}
         </span>
       </header>
 
@@ -121,13 +138,28 @@ export default async function AdminConfigurationPage({
 
           <div className={styles.formActions}>
             <p>
-              Las configuraciones operativas y privadas permanecen fuera de PostgreSQL editorial.
+              Guardar no publica. La identidad activa permanece intacta hasta pulsar Publicar.
             </p>
             <button type="submit">
               Guardar borrador
             </button>
           </div>
         </form>
+      </section>
+
+      <section className={styles.editorPanel}>
+        {publicationState ? (
+          <PublicationPanel
+            state={publicationState}
+            requestState={state}
+            publishAction="/api/admin/content/configuration/publish"
+            restoreActionBase="/api/admin/content/configuration-publications"
+          />
+        ) : (
+          <p>
+            La infraestructura de publicación todavía no está disponible en esta base. El borrador permanece intacto hasta aplicar la migración editorial correspondiente.
+          </p>
+        )}
       </section>
 
       <EditorialHistory
