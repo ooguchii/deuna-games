@@ -45,8 +45,8 @@ function stripBoilerplate(value: string) {
     .replace(/\b\d+\s*[- ]\s*core(?:s)?\b/g, " ")
     .replace(/\b\d+\s+core(?:s)?\b/g, " ")
     .replace(/\b\d+(?:st|nd|rd|th)\s+gen(?:eration)?\b/g, " ")
-    .replace(/\b(?:cpu|processor|processors)\b/g, " ")
     .replace(/\bmobile\s+processor\b/g, " ")
+    .replace(/\b(?:cpu|processor|processors)\b/g, " ")
     .replace(/\bwith\s+radeon\s+graphics\b/g, " ")
     .replace(/\bwith\s+radeon\s+\d+[a-z0-9-]*\s+graphics\b/g, " ")
     .replace(/[^a-z0-9+]+/g, " ")
@@ -94,11 +94,11 @@ function compactModel(value: string) {
     return `i${intelCore[1]}-${intelCore[2]}`;
   }
 
-  const ryzen = normalized.match(
-    /\bryzen\s+([3579])\s+(\d{4}[a-z0-9]{0,6})\b/
+  const ryzenAiMax = normalized.match(
+    /\bryzen\s+ai\s+max(?:\+|\s+plus)?\s+(?:pro\s+)?(\d{3})\b/
   );
-  if (ryzen) {
-    return `ryzen-${ryzen[1]}-${ryzen[2]}`;
+  if (ryzenAiMax) {
+    return `ryzen-ai-max-${ryzenAiMax[1]}`;
   }
 
   const ryzenAi = normalized.match(
@@ -108,11 +108,11 @@ function compactModel(value: string) {
     return `ryzen-ai-${ryzenAi[1]}-${ryzenAi[2] ? "hx-" : ""}${ryzenAi[3]}`;
   }
 
-  const ryzenAiMax = normalized.match(
-    /\bryzen\s+ai\s+max(?:\s+|\+|\s+plus\s+)(?:pro\s+)?(\d{3})\b/
+  const ryzen = normalized.match(
+    /\bryzen\s+([3579])\s+(\d{4}[a-z0-9]{0,6})\b/
   );
-  if (ryzenAiMax) {
-    return `ryzen-ai-max-${ryzenAiMax[1]}`;
+  if (ryzen) {
+    return `ryzen-${ryzen[1]}-${ryzen[2]}`;
   }
 
   const fx = normalized.match(/\bfx\s*(\d{4})\b/);
