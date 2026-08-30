@@ -21,6 +21,8 @@ const [
   publicCatalog,
   publicationService,
   publicationOverview,
+  publicationReview,
+  publicationChanges,
   createRoute,
   publishRoute,
   hideRoute,
@@ -38,6 +40,8 @@ const [
   source("src/lib/games/public-catalog.ts"),
   source("src/lib/admin/publication-service.ts"),
   source("src/lib/admin/publication-overview.ts"),
+  source("src/lib/admin/game-publication-review.ts"),
+  source("src/lib/admin/game-publication-changes.ts"),
   source("src/app/api/admin/content/games/route.ts"),
   source("src/app/api/admin/content/games/[slug]/publish/route.ts"),
   source("src/app/api/admin/content/games/[slug]/hide/route.ts"),
@@ -88,6 +92,27 @@ assert(
 );
 
 assert(
+  publicationReview.includes("verifyAdminSession") &&
+    publicationReview.includes("SELECT published_payload") &&
+    publicationReview.includes('parseEditorialPayload(\n    "game"') &&
+    !/\b(?:INSERT|UPDATE|DELETE|TRUNCATE)\b/i.test(publicationReview),
+  "La revisión previa debe leer el snapshot publicado de forma autenticada y estrictamente sin mutaciones."
+);
+
+for (const section of [
+  "Ficha principal",
+  "Datos e identidad",
+  "Requisitos",
+  "Multimedia",
+  "Descargas",
+]) {
+  assert(
+    publicationChanges.includes(section),
+    `La comparación previa debe contemplar la sección ${section}.`
+  );
+}
+
+assert(
   createRoute.includes("?seccion=datos&estado=creado"),
   "Después de crear un juego, el flujo debe continuar por la siguiente sección editorial."
 );
@@ -132,14 +157,19 @@ assert(
 
 assert(
   publicationPage.includes("getGamePublicationState") &&
+    publicationPage.includes("getPublishedGameSnapshot") &&
+    publicationPage.includes("publishedGame={publishedGame}") &&
     publicationPage.includes("neverPublished") &&
     publicationPage.includes("panelCreated") &&
     publicationPage.includes("GamePublicationWorkspace"),
-  "La estación de publicación debe distinguir altas privadas y leer el estado transaccional real."
+  "La estación de publicación debe distinguir altas privadas y comparar el borrador con el snapshot transaccional real."
 );
 
 assert(
-  publicationWorkspace.includes("Publicar por primera vez") &&
+  publicationWorkspace.includes("evaluateGamePublicationChanges") &&
+    publicationWorkspace.includes("CAMBIOS QUE SALDRÁN A LA WEB") &&
+    publicationWorkspace.includes("Se publicará") &&
+    publicationWorkspace.includes("Publicar por primera vez") &&
     publicationWorkspace.includes("Publicar cambios") &&
     publicationWorkspace.includes("Volver a publicar") &&
     publicationWorkspace.includes("Vista previa del borrador") &&
@@ -147,7 +177,7 @@ assert(
     publicationWorkspace.includes("expectedPublicationNumber") &&
     publicationWorkspace.includes("Base privada inicial") &&
     !/\bDELETE\b/i.test(publicationWorkspace),
-  "La estación debe cubrir primera publicación, republicación, ocultar, restaurar y revisión previa sin acciones destructivas."
+  "La estación debe mostrar el alcance del cambio y cubrir primera publicación, republicación, ocultar, restaurar y revisión previa sin acciones destructivas."
 );
 
 assert(
@@ -177,6 +207,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Flujo editorial de juegos: OK (alta privada, estados históricos exactos, edición por borrador, vista previa sin mutaciones, primera publicación, republicación y restauración protegidas)."
+    "Flujo editorial de juegos: OK (alta privada, estados históricos exactos, comparación de cambios, edición por borrador, vista previa sin mutaciones, primera publicación, republicación y restauración protegidas)."
   );
 }
