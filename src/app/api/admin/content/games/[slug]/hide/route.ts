@@ -1,6 +1,3 @@
-import {
-  revalidatePath,
-} from "next/cache";
 import type { NextRequest } from "next/server";
 
 import {
@@ -12,6 +9,9 @@ import {
   expectedRevisionSchema,
 } from "@/lib/admin/content-forms";
 import {
+  revalidatePublicGameSurfaces,
+} from "@/lib/admin/game-public-revalidation";
+import {
   hasExactAdminFormFields,
 } from "@/lib/admin/request-security";
 import {
@@ -20,15 +20,6 @@ import {
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-
-function refreshPublicGame(slug: string) {
-  revalidatePath("/");
-  revalidatePath("/juegos");
-  revalidatePath("/actualizaciones");
-  revalidatePath("/requisitos");
-  revalidatePath(`/juegos/${slug}`);
-  revalidatePath(`/juegos/${slug}/descargar`);
-}
 
 export async function POST(
   request: NextRequest,
@@ -94,7 +85,7 @@ export async function POST(
     }
 
     if (result.outcome === "hidden") {
-      refreshPublicGame(slug);
+      revalidatePublicGameSurfaces(slug);
     }
 
     const state =
