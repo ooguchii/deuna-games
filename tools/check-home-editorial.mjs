@@ -36,7 +36,18 @@ const [
   source("src/lib/home/public-home-config.ts"),
   source("src/components/admin/HomeCurationEditor.tsx"),
   source("src/app/api/admin/content/home/route.ts"),
-  source("src/app/api/admin/content/home/presentation/route.ts"),
+  source(
+    path.join(
+      "src",
+      "app",
+      "api",
+      "admin",
+      "content",
+      "home",
+      "presentation",
+      "route.ts"
+    )
+  ),
   source("src/lib/admin/content-create-service.ts"),
 ]);
 
