@@ -10,12 +10,29 @@ const optionalText = (maximum: number) =>
 const localImagePattern =
   /^\/images\/[A-Za-z0-9/_.,@+() -]+\.(?:avif|gif|jpe?g|png|webp)$/i;
 
+function isSafeLocalImagePath(value: string) {
+  if (
+    !localImagePattern.test(value) ||
+    value.includes("\\") ||
+    value.includes("//")
+  ) {
+    return false;
+  }
+
+  return !value
+    .split("/")
+    .some((segment) =>
+      segment === "." || segment === ".."
+    );
+}
+
 const optionalLocalImage = z
   .string()
   .trim()
   .max(400)
   .refine(
-    (value) => value === "" || localImagePattern.test(value)
+    (value) =>
+      value === "" || isSafeLocalImagePath(value)
   )
   .transform((value) => value || undefined);
 
@@ -34,7 +51,7 @@ const screenshotsTextSchema = z
         z
           .string()
           .max(400)
-          .regex(localImagePattern)
+          .refine(isSafeLocalImagePath)
       )
       .max(8)
       .superRefine((screenshots, context) => {
