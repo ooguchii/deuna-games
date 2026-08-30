@@ -1,6 +1,10 @@
+import type {
+  GamePerformanceCalibration,
+} from "@/types/game";
+
 import {
-  getPerformanceProfile,
   performanceModelReference,
+  resolvePerformanceProfile,
 } from "./performance-data";
 import {
   findCpuById,
@@ -109,9 +113,28 @@ function ramUncertainty(
 export function estimateGamePerformance(
   slug: string,
   hardware: HardwareProfile,
-  settings: EstimateSettings
+  settings: EstimateSettings,
+  calibration?: GamePerformanceCalibration
 ): GameEstimate {
-  const profile = getPerformanceProfile(slug);
+  const profile = resolvePerformanceProfile(
+    slug,
+    calibration
+  );
+
+  if (!profile) {
+    return {
+      slug,
+      fps: 0,
+      minFps: 0,
+      maxFps: 0,
+      tier: "basic",
+      confidence: "low",
+      bottleneck: "balanced",
+      canEstimate: false,
+      reason:
+        "Este juego todavía no tiene una calibración de rendimiento publicada.",
+    };
+  }
 
   if (!hardware.cpu || !hardware.gpu || !hardware.ramGb) {
     return {
