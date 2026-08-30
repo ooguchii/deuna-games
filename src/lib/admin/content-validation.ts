@@ -1,7 +1,10 @@
 import { z } from "zod";
 
 import type { Game } from "@/types/game";
-import type { GameTaxonomy } from "@/types/game-taxonomy";
+import type {
+  GameTaxonomy,
+  GameTaxonomyTerm,
+} from "@/types/game-taxonomy";
 import type { GameUpdate } from "@/types/update";
 
 const taxonomyIconKeys = [
@@ -252,6 +255,35 @@ function taxonomyTerms(maximum: number) {
     });
 }
 
+function mergeLegacyTaxonomyTerms(
+  categories: GameTaxonomyTerm[],
+  genres: GameTaxonomyTerm[]
+) {
+  const merged: GameTaxonomyTerm[] = [];
+  const positions = new Map<string, number>();
+
+  for (const term of [...categories, ...genres]) {
+    const normalized = normalizeTaxonomyLabel(term.label);
+    const existingIndex = positions.get(normalized);
+
+    if (existingIndex === undefined) {
+      positions.set(normalized, merged.length);
+      merged.push(term);
+      continue;
+    }
+
+    const existing = merged[existingIndex];
+    merged[existingIndex] = {
+      ...existing,
+      active: existing.active || term.active,
+      icon: existing.icon ?? term.icon,
+      tone: existing.tone ?? term.tone,
+    };
+  }
+
+  return merged;
+}
+
 const aboutTitle = z.string().trim().min(1).max(180);
 const aboutText = z.string().trim().min(1).max(700);
 const aboutEyebrow = z.string().trim().min(1).max(60);
@@ -398,13 +430,39 @@ export const editorialAboutConfigSchema = z
   })
   .strict();
 
-export const editorialGameTaxonomySchema: z.ZodType<GameTaxonomy> = z
+const unifiedGameTaxonomySchema = z
+  .object({
+    classifications: taxonomyTerms(280),
+    tags: taxonomyTerms(500),
+  })
+  .strict();
+
+const legacyGameTaxonomySchema = z
   .object({
     categories: taxonomyTerms(80),
     genres: taxonomyTerms(200),
     tags: taxonomyTerms(500),
   })
   .strict();
+
+export const editorialGameTaxonomySchema: z.ZodType<GameTaxonomy> = z
+  .union([
+    unifiedGameTaxonomySchema,
+    legacyGameTaxonomySchema,
+  ])
+  .transform((value): GameTaxonomy => {
+    if ("classifications" in value) {
+      return value;
+    }
+
+    return {
+      classifications: mergeLegacyTaxonomyTerms(
+        value.categories,
+        value.genres
+      ),
+      tags: value.tags,
+    };
+  });
 
 export type EditorialSiteConfig = z.infer<
   typeof editorialSiteConfigSchema
