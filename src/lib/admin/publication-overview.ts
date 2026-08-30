@@ -7,14 +7,17 @@ import {
   verifyAdminSession,
 } from "./session";
 
-type PublishableType =
-  | "game"
-  | "game_update"
-  | "site_config"
-  | "home_config"
-  | "about_config"
-  | "game_taxonomy"
-  | "public_pages_config";
+const publishableTypes = [
+  "game",
+  "game_update",
+  "site_config",
+  "home_config",
+  "about_config",
+  "game_taxonomy",
+  "public_pages_config",
+] as const;
+
+type PublishableType = (typeof publishableTypes)[number];
 
 type PublicationTableRow = {
   publication_table: string | null;
@@ -114,16 +117,6 @@ const unavailableOverview: PublicationOverview = {
   recent: [],
 };
 
-const publishableSqlTypes = `
-  'game',
-  'game_update',
-  'site_config',
-  'home_config',
-  'about_config',
-  'game_taxonomy',
-  'public_pages_config'
-`;
-
 async function publicationWorkspaceAvailable() {
   const workspace =
     await adminQuery<PublicationTableRow>(
@@ -171,13 +164,14 @@ export async function getPublicationOverview():
                AND public_visible = true
            )::int AS updates,
            COUNT(*) FILTER (
-             WHERE item_type IN (${publishableSqlTypes})
+             WHERE item_type = ANY($1::text[])
                AND (
                  public_visible = false OR
                  draft_payload IS DISTINCT FROM published_payload
                )
            )::int AS pending
-         FROM deuna_admin.editorial_items`
+         FROM deuna_admin.editorial_items`,
+        [publishableTypes]
       ),
       adminQuery<PendingPublicationRow>(
         `SELECT
@@ -206,7 +200,7 @@ export async function getPublicationOverview():
                AND publication.action IN ('published', 'rollback')
            ) AS ever_published
          FROM deuna_admin.editorial_items AS item
-         WHERE item.item_type IN (${publishableSqlTypes})
+         WHERE item.item_type = ANY($1::text[])
            AND (
              item.public_visible = false OR
              item.draft_payload IS DISTINCT FROM item.published_payload
@@ -215,7 +209,8 @@ export async function getPublicationOverview():
            item.public_visible ASC,
            item.updated_at DESC,
            item.item_key ASC
-         LIMIT 10`
+         LIMIT 10`,
+        [publishableTypes]
       ),
       adminQuery<RecentPublicationRow>(
         `SELECT
@@ -228,11 +223,12 @@ export async function getPublicationOverview():
          FROM deuna_admin.editorial_publications AS publication
          INNER JOIN deuna_admin.editorial_items AS item
            ON item.id = publication.item_id
-         WHERE item.item_type IN (${publishableSqlTypes})
+         WHERE item.item_type = ANY($1::text[])
            AND publication.action IN ('published', 'rollback')
          ORDER BY publication.created_at DESC,
                   publication.id DESC
-         LIMIT 8`
+         LIMIT 8`,
+        [publishableTypes]
       ),
     ]);
   const counts = countsResult.rows[0];
