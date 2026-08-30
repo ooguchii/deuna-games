@@ -44,8 +44,12 @@ function slugs(items) {
 }
 
 assert.equal(
-  homeRankingDay(reference + 1_000),
-  homeRankingDay(reference + 12 * 60 * 60 * 1_000),
+  homeRankingDay(
+    Date.UTC(2026, 7, 30, 0, 1)
+  ),
+  homeRankingDay(
+    Date.UTC(2026, 7, 30, 23, 59)
+  ),
   "El ranking debe usar una referencia diaria estable."
 );
 
