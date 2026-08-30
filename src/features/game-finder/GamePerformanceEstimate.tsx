@@ -12,7 +12,11 @@ import {
   Settings2,
 } from "lucide-react";
 
-import { useMemo } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 import type {
   GamePerformanceCalibration,
@@ -91,6 +95,51 @@ function ramLabel(profile: HardwareProfile | null) {
   return `${profile.ramGb} GB`;
 }
 
+function parsePublishedCalibration(
+  value: unknown
+): GamePerformanceCalibration | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+
+  const candidate = value as Record<string, unknown>;
+  const referenceFps = candidate.referenceFps;
+  const ramGb = candidate.ramGb;
+  const fpsCap = candidate.fpsCap;
+
+  if (
+    typeof referenceFps !== "number" ||
+    !Number.isFinite(referenceFps) ||
+    referenceFps <= 0 ||
+    referenceFps > 1_000 ||
+    typeof ramGb !== "number" ||
+    !Number.isFinite(ramGb) ||
+    ramGb <= 0 ||
+    ramGb > 512
+  ) {
+    return null;
+  }
+
+  if (
+    fpsCap !== undefined &&
+    (
+      typeof fpsCap !== "number" ||
+      !Number.isFinite(fpsCap) ||
+      fpsCap <= 0 ||
+      fpsCap > 1_000 ||
+      fpsCap < referenceFps
+    )
+  ) {
+    return null;
+  }
+
+  return {
+    referenceFps,
+    ramGb,
+    ...(typeof fpsCap === "number" ? { fpsCap } : {}),
+  };
+}
+
 export default function GamePerformanceEstimate({
   slug,
   calibration,
@@ -99,6 +148,64 @@ export default function GamePerformanceEstimate({
     profile: hardware,
     status,
   } = useResolvedHardwareProfile();
+  const [publishedCalibration, setPublishedCalibration] =
+    useState<GamePerformanceCalibration | null>(
+      calibration ?? null
+    );
+  const [calibrationLoading, setCalibrationLoading] =
+    useState(calibration === undefined);
+
+  useEffect(() => {
+    if (calibration !== undefined) {
+      setPublishedCalibration(calibration);
+      setCalibrationLoading(false);
+      return;
+    }
+
+    let active = true;
+    const controller = new AbortController();
+
+    setCalibrationLoading(true);
+
+    fetch(
+      `/api/games/${encodeURIComponent(slug)}/performance`,
+      {
+        cache: "no-store",
+        signal: controller.signal,
+      }
+    )
+      .then(async (response) => {
+        if (!response.ok) return null;
+        const payload = await response.json() as {
+          calibration?: unknown;
+        };
+        return parsePublishedCalibration(payload.calibration);
+      })
+      .then((nextCalibration) => {
+        if (active) {
+          setPublishedCalibration(nextCalibration);
+        }
+      })
+      .catch((error: unknown) => {
+        if (
+          active &&
+          !(error instanceof DOMException && error.name === "AbortError")
+        ) {
+          setPublishedCalibration(null);
+        }
+      })
+      .finally(() => {
+        if (active) setCalibrationLoading(false);
+      });
+
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [calibration, slug]);
+
+  const effectiveCalibration =
+    calibration ?? publishedCalibration ?? undefined;
 
   const estimate = useMemo(
     () =>
@@ -107,10 +214,10 @@ export default function GamePerformanceEstimate({
             slug,
             hardware,
             DEFAULT_SETTINGS,
-            calibration
+            effectiveCalibration
           )
         : null,
-    [calibration, hardware, slug]
+    [effectiveCalibration, hardware, slug]
   );
 
   const missingParts = useMemo(() => {
@@ -126,7 +233,7 @@ export default function GamePerformanceEstimate({
   const configurationHref =
     `/requisitos?juego=${encodeURIComponent(slug)}`;
 
-  if (status === "loading") {
+  if (status === "loading" || calibrationLoading) {
     return (
       <aside className={styles.panel} aria-live="polite">
         <div className={styles.header}>
@@ -146,10 +253,9 @@ export default function GamePerformanceEstimate({
           </span>
 
           <div className={styles.stateCopy}>
-            <strong>Comprobando tu perfil de hardware</strong>
+            <strong>Preparando la estimación</strong>
             <span>
-              Usamos primero tu configuración guardada y, si no existe,
-              intentamos una detección local desde el navegador.
+              Comprobamos la calibración publicada del juego y el perfil de hardware disponible en este navegador.
             </span>
           </div>
         </div>
