@@ -33,8 +33,10 @@ import {
 } from "@/lib/games/public-catalog";
 import {
   absoluteUrl,
-  siteConfig,
 } from "@/lib/site";
+import {
+  getPublicSiteConfig,
+} from "@/lib/site/public-site-config";
 import { safeJsonLd } from "@/lib/safe-json-ld";
 import {
   getPublicUpdatesForGame,
@@ -103,7 +105,10 @@ export async function generateMetadata({
   params,
 }: GameDetailPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const game = await getPublicGameBySlug(slug);
+  const [game, publicSiteConfig] = await Promise.all([
+    getPublicGameBySlug(slug),
+    getPublicSiteConfig(),
+  ]);
 
   if (!game) {
     return {
@@ -126,7 +131,7 @@ export async function generateMetadata({
       canonical: `/juegos/${game.slug}`,
     },
     openGraph: {
-      title: `${title} | ${siteConfig.name}`,
+      title: `${title} | ${publicSiteConfig.name}`,
       description,
       url: `/juegos/${game.slug}`,
       type: "website",
@@ -141,7 +146,7 @@ export async function generateMetadata({
     },
     twitter: {
       card: "summary_large_image",
-      title: `${title} | ${siteConfig.name}`,
+      title: `${title} | ${publicSiteConfig.name}`,
       description,
       images: image ? [image] : undefined,
     },
@@ -152,10 +157,11 @@ export default async function GameDetailPage({
   params,
 }: GameDetailPageProps) {
   const { slug } = await params;
-  const [game, games, gameUpdates] = await Promise.all([
+  const [game, games, gameUpdates, publicSiteConfig] = await Promise.all([
     getPublicGameBySlug(slug),
     getPublicGames(),
     getPublicUpdatesForGame(slug),
+    getPublicSiteConfig(),
   ]);
 
   if (!game) {
@@ -264,7 +270,7 @@ export default async function GameDetailPage({
     operatingSystem:
       minimum?.system ??
       recommended?.system,
-    inLanguage: siteConfig.language,
+    inLanguage: publicSiteConfig.language,
   };
 
   return (
