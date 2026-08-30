@@ -1,80 +1,82 @@
 .panel {
   display: grid;
-  gap: 18px;
+  gap: 20px;
 }
 
 .notice {
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 12px;
-  padding: 12px 14px;
-  background: rgba(255, 255, 255, 0.035);
-  font-size: 0.9rem;
-  line-height: 1.5;
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.045);
+  font-size: 14px;
+  line-height: 1.6;
 }
 
 .noticeSuccess {
-  border-color: rgba(87, 211, 137, 0.34);
-  background: rgba(87, 211, 137, 0.08);
+  border-color: rgba(87, 211, 137, 0.4);
+  background: rgba(87, 211, 137, 0.09);
 }
 
 .noticeWarning {
-  border-color: rgba(255, 190, 92, 0.34);
-  background: rgba(255, 190, 92, 0.08);
+  border-color: rgba(255, 190, 92, 0.4);
+  background: rgba(255, 190, 92, 0.09);
 }
 
 .noticeError {
-  border-color: rgba(255, 102, 102, 0.34);
-  background: rgba(255, 102, 102, 0.08);
+  border-color: rgba(255, 102, 102, 0.4);
+  background: rgba(255, 102, 102, 0.09);
 }
 
 .summary {
   display: grid;
-  gap: 12px;
+  gap: 13px;
 }
 
 .summary strong {
-  font-size: 1rem;
+  font-size: 16px;
 }
 
 .summary p {
   margin: 0;
-  color: rgba(255, 255, 255, 0.7);
-  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.76);
+  font-size: 14px;
+  line-height: 1.6;
 }
 
 .facts {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
+  gap: 11px;
 }
 
 .fact {
   display: grid;
-  gap: 4px;
+  gap: 5px;
   min-width: 0;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 10px;
-  padding: 11px 12px;
-  background: rgba(0, 0, 0, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 11px;
+  padding: 13px 14px;
+  background: rgba(0, 0, 0, 0.15);
 }
 
 .fact span {
-  color: rgba(255, 255, 255, 0.58);
-  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 11px;
+  font-weight: 750;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.055em;
 }
 
 .fact strong {
   overflow-wrap: anywhere;
-  font-size: 0.9rem;
+  font-size: 14px;
 }
 
 .publicationActions {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 13px;
   flex-wrap: wrap;
 }
 
@@ -91,14 +93,15 @@
 .restoreButton {
   border: 0;
   border-radius: 10px;
-  min-height: 42px;
-  padding: 0 16px;
+  min-height: 44px;
+  padding: 0 17px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
   font: inherit;
-  font-weight: 700;
+  font-size: 13px;
+  font-weight: 750;
   cursor: pointer;
 }
 
@@ -108,9 +111,9 @@
 }
 
 .hideButton {
-  border: 1px solid rgba(255, 190, 92, 0.32);
-  background: rgba(255, 190, 92, 0.08);
-  color: #ffd18a;
+  border: 1px solid rgba(255, 190, 92, 0.38);
+  background: rgba(255, 190, 92, 0.09);
+  color: #ffdaa1;
 }
 
 .publishButton:disabled,
@@ -124,14 +127,14 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  color: rgba(255, 255, 255, 0.72);
-  font-size: 0.86rem;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 13px;
 }
 
 .history {
   display: grid;
-  gap: 10px;
-  padding-top: 2px;
+  gap: 11px;
+  padding-top: 3px;
 }
 
 .historyHeading {
@@ -143,37 +146,37 @@
 
 .historyHeading div {
   display: grid;
-  gap: 3px;
+  gap: 4px;
 }
 
 .historyHeading strong {
-  font-size: 0.92rem;
+  font-size: 15px;
 }
 
 .historyHeading span {
-  color: rgba(255, 255, 255, 0.58);
-  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.66);
+  font-size: 12px;
 }
 
 .historyList {
   display: grid;
-  gap: 8px;
+  gap: 9px;
 }
 
 .historyRow {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 10px;
-  padding: 11px 12px;
-  background: rgba(0, 0, 0, 0.1);
+  gap: 15px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 11px;
+  padding: 13px 14px;
+  background: rgba(0, 0, 0, 0.13);
 }
 
 .historyCopy {
   display: grid;
-  gap: 3px;
+  gap: 4px;
   min-width: 0;
 }
 
@@ -185,33 +188,34 @@
 }
 
 .historyTitle strong {
-  font-size: 0.9rem;
+  font-size: 14px;
 }
 
 .currentBadge {
   border-radius: 999px;
-  padding: 2px 7px;
-  background: rgba(87, 211, 137, 0.14);
-  color: #8fe3ae;
-  font-size: 0.68rem;
+  padding: 3px 8px;
+  background: rgba(87, 211, 137, 0.16);
+  color: #9ce9ba;
+  font-size: 11px;
   font-weight: 800;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.045em;
   text-transform: uppercase;
 }
 
 .historyMeta {
-  color: rgba(255, 255, 255, 0.55);
-  font-size: 0.76rem;
+  color: rgba(255, 255, 255, 0.64);
+  font-size: 12px;
+  line-height: 1.45;
   overflow-wrap: anywhere;
 }
 
 .restoreButton {
-  min-height: 36px;
-  padding: 0 12px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(255, 255, 255, 0.06);
-  color: rgba(255, 255, 255, 0.88);
-  font-size: 0.8rem;
+  min-height: 40px;
+  padding: 0 13px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.07);
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 12px;
 }
 
 @media (max-width: 980px) {
