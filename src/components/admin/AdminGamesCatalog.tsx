@@ -6,6 +6,7 @@ import {
   CircleSlash2,
   Eye,
   Pencil,
+  Rocket,
   Search,
   X,
 } from "lucide-react";
@@ -45,6 +46,15 @@ function normalize(value: string) {
     .normalize("NFD")
     .replace(/\p{Diacritic}/gu, "")
     .toLowerCase();
+}
+
+function publicationActionLabel(
+  status: AdminGameCatalogItem["status"]
+) {
+  if (status === "unpublished") return "Publicar";
+  if (status === "pending") return "Publicar cambios";
+  if (status === "hidden") return "Republicar";
+  return "Publicación";
 }
 
 export default function AdminGamesCatalog({
@@ -264,6 +274,13 @@ export default function AdminGamesCatalog({
                       >
                         <Eye size={13} aria-hidden="true" />
                         Previa
+                      </Link>
+                      <Link
+                        href={`/admin/juegos/${encodeURIComponent(item.key)}/publicacion`}
+                        title="Revisar publicación"
+                      >
+                        <Rocket size={13} aria-hidden="true" />
+                        {publicationActionLabel(item.status)}
                       </Link>
                     </div>
                   </td>
