@@ -11,8 +11,6 @@ type OwnerRow = {
   username: string;
   failed_login_count: number;
   locked_until: Date | null;
-  last_login_at: Date | null;
-  password_changed_at: Date;
 };
 
 type EventRow = {
@@ -25,7 +23,7 @@ type SessionCountRow = {
 };
 
 function formatDate(value: Date | null) {
-  return value ? value.toISOString() : "nunca";
+  return value ? value.toISOString() : "no";
 }
 
 async function main() {
@@ -39,13 +37,10 @@ async function main() {
          id,
          username,
          failed_login_count,
-         locked_until,
-         last_login_at,
-         password_changed_at
+         locked_until
        FROM deuna_admin.admin_users
        WHERE active = true
          AND role = 'owner'
-       ORDER BY created_at
        LIMIT 2`
     );
 
@@ -83,13 +78,7 @@ async function main() {
       `[INFO] Intentos fallidos acumulados: ${owner.failed_login_count}`
     );
     console.log(
-      `[INFO] Bloqueada hasta: ${formatDate(owner.locked_until)}`
-    );
-    console.log(
-      `[INFO] Último login correcto: ${formatDate(owner.last_login_at)}`
-    );
-    console.log(
-      `[INFO] Contraseña cambiada: ${formatDate(owner.password_changed_at)}`
+      `[INFO] Bloqueo activo hasta: ${formatDate(owner.locked_until)}`
     );
     console.log(
       `[INFO] Sesiones activas en PostgreSQL: ${sessionsResult.rows[0]?.active_sessions ?? "0"}`
@@ -110,8 +99,8 @@ async function main() {
     console.log("Interpretación rápida:");
     console.log("- login_failed: el navegador llegó a autenticación pero envió credenciales que no coincidieron.");
     console.log("- login_blocked: la cuenta estaba temporalmente bloqueada.");
-    console.log("- login_succeeded: la contraseña fue aceptada y se creó una sesión; si vuelve al login, el problema es cookie/sesión del navegador.");
-    console.log("- ningún evento nuevo: la solicitud fue rechazada antes de autenticarse (origen/formulario). ");
+    console.log("- login_succeeded: se creó una sesión; si vuelve al login, el problema es cookie/sesión del navegador.");
+    console.log("- ningún evento nuevo: la solicitud fue rechazada antes de autenticarse (origen/formulario).");
   } finally {
     await pool.end();
   }
