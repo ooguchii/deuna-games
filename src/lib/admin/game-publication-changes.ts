@@ -4,6 +4,7 @@ export type GamePublicationChangeSection =
   | "ficha"
   | "datos"
   | "requisitos"
+  | "rendimiento"
   | "multimedia"
   | "descargas";
 
@@ -113,6 +114,16 @@ export function evaluateGamePublicationChanges(
       detail:
         "Cambian los requisitos mínimos o recomendados que usa la ficha técnica.",
       section: "requisitos",
+    });
+  }
+
+  if (changed(draft.performance, published.performance)) {
+    changes.push({
+      id: "performance",
+      label: "Rendimiento",
+      detail:
+        "Cambia la calibración usada para estimar FPS según la PC del visitante: FPS de referencia, RAM o límite del juego.",
+      section: "rendimiento",
     });
   }
 
