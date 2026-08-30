@@ -115,6 +115,18 @@ export type GameCoreDraftInput = Pick<
   | "imageAlt"
 >;
 
+export type GameAdvancedDraftInput = Pick<
+  Game,
+  | "shortTitle"
+  | "highlightedTitle"
+  | "developer"
+  | "publisher"
+  | "releaseDate"
+  | "genres"
+  | "tags"
+  | "platforms"
+>;
+
 export type GameDownloadDraftInput = Pick<
   NonNullable<Game["download"]>,
   | "sizeGb"
@@ -431,6 +443,24 @@ export function saveGameCoreDraft(
   expectedRevision: number,
   actorUserId: string,
   input: GameCoreDraftInput
+) {
+  return updateEditorialDraft(
+    "game",
+    key,
+    expectedRevision,
+    actorUserId,
+    (current) => ({
+      ...current,
+      ...input,
+    })
+  );
+}
+
+export function saveGameAdvancedDraft(
+  key: string,
+  expectedRevision: number,
+  actorUserId: string,
+  input: GameAdvancedDraftInput
 ) {
   return updateEditorialDraft(
     "game",
