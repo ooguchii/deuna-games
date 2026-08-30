@@ -1,6 +1,3 @@
-import {
-  revalidatePath,
-} from "next/cache";
 import type { NextRequest } from "next/server";
 
 import {
@@ -13,6 +10,15 @@ import {
   revisionIdSchema,
 } from "@/lib/admin/content-forms";
 import {
+  inspectGameMediaIntegrity,
+} from "@/lib/admin/game-media-integrity";
+import {
+  getHistoricalGamePublicationCandidate,
+} from "@/lib/admin/game-publication-review";
+import {
+  revalidatePublicGameSurfaces,
+} from "@/lib/admin/game-public-revalidation";
+import {
   restoreGamePublication,
 } from "@/lib/admin/publication-service";
 import {
@@ -21,14 +27,6 @@ import {
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-
-function refreshPublishedGame(slug: string) {
-  revalidatePath("/");
-  revalidatePath("/juegos");
-  revalidatePath("/requisitos");
-  revalidatePath(`/juegos/${slug}`);
-  revalidatePath(`/juegos/${slug}/descargar`);
-}
 
 export async function POST(
   request: NextRequest,
@@ -76,6 +74,40 @@ export async function POST(
   }
 
   try {
+    const candidate =
+      await getHistoricalGamePublicationCandidate(
+        parsedPublicationId.data
+      );
+
+    if (!candidate) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        "/admin/juegos?estado=no-encontrado"
+      );
+    }
+
+    const target =
+      `/admin/juegos/${encodeURIComponent(candidate.key)}/publicacion`;
+
+    if (
+      candidate.currentPublicationNumber !== expected.data
+    ) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        `${target}?estado=conflicto-publicacion`
+      );
+    }
+
+    const mediaIntegrity =
+      await inspectGameMediaIntegrity(candidate.game);
+
+    if (!mediaIntegrity.ok) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        `${target}?estado=asset-restauracion`
+      );
+    }
+
     const result = await restoreGamePublication(
       parsedPublicationId.data,
       expected.data,
@@ -89,9 +121,6 @@ export async function POST(
       );
     }
 
-    const target =
-      `/admin/juegos/${encodeURIComponent(result.key)}/publicacion`;
-
     if (result.outcome === "conflict") {
       return adminRedirect(
         authorized.adminOrigin,
@@ -100,7 +129,7 @@ export async function POST(
     }
 
     if (result.outcome === "restored") {
-      refreshPublishedGame(result.key);
+      revalidatePublicGameSurfaces(result.key);
     }
 
     const state =
