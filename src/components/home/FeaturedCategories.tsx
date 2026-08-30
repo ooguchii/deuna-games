@@ -3,6 +3,7 @@ import { ChevronRight } from "lucide-react";
 import type { CSSProperties } from "react";
 
 import TaxonomyIcon from "@/components/taxonomy/TaxonomyIcon";
+import type { HomeCopy } from "@/data/home-config";
 import {
   getCategoryStats,
   normalizeCatalogText,
@@ -79,8 +80,10 @@ function orderedClassifications(
 
 export default async function FeaturedCategories({
   games,
+  copy,
 }: {
   games: Game[];
+  copy: HomeCopy["classifications"];
 }) {
   const taxonomy = await getPublicTaxonomyPresentation();
   const classifications = orderedClassifications(
@@ -94,11 +97,11 @@ export default async function FeaturedCategories({
     <section className={styles.section}>
       <div className={styles.header}>
         <h2>
-          CLASIFICACIONES <span>DESTACADAS</span>
+          {copy.title} <span>{copy.highlight}</span>
         </h2>
 
         <Link href="/juegos">
-          Ver todo el catálogo
+          {copy.linkLabel}
           <ChevronRight size={19} />
         </Link>
       </div>
