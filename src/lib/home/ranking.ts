@@ -4,6 +4,7 @@ import {
 } from "@/lib/games/catalog";
 import type {
   HomeCurationCollectionId,
+  HomeCurationMode,
 } from "@/data/home-config";
 import type { Game } from "@/types/game";
 
@@ -234,4 +235,73 @@ export function rankHomeGames(
           "es"
         )
     );
+}
+
+function configuredGames(
+  catalog: Game[],
+  slugs: readonly string[],
+  limit: number
+) {
+  const bySlug = new Map(
+    catalog.map((game) => [game.slug, game])
+  );
+  const selected: Game[] = [];
+  const seen = new Set<string>();
+
+  for (const slug of slugs) {
+    const game = bySlug.get(slug);
+    if (!game || seen.has(slug)) continue;
+
+    selected.push(game);
+    seen.add(slug);
+
+    if (selected.length === limit) break;
+  }
+
+  return selected;
+}
+
+export function resolveHomeCollectionGames(
+  catalog: Game[],
+  target: HomeRankingTarget,
+  mode: HomeCurationMode,
+  slugs: readonly string[],
+  limit: number,
+  now = Date.now()
+) {
+  const configured = configuredGames(
+    catalog,
+    slugs,
+    limit
+  );
+
+  if (mode === "manual") {
+    return configured;
+  }
+
+  const ranked = rankHomeGames(
+    catalog,
+    target,
+    now
+  ).map((entry) => entry.game);
+
+  if (mode === "automatic") {
+    return ranked.slice(0, limit);
+  }
+
+  const selected = [...configured];
+  const seen = new Set(
+    selected.map((game) => game.slug)
+  );
+
+  for (const game of ranked) {
+    if (seen.has(game.slug)) continue;
+
+    selected.push(game);
+    seen.add(game.slug);
+
+    if (selected.length === limit) break;
+  }
+
+  return selected;
 }
