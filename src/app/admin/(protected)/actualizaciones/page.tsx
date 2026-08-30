@@ -91,7 +91,7 @@ export default async function AdminUpdatesPage({
         </div>
         <Link
           href="/admin/actualizaciones/nueva"
-          className={styles.primaryAction}
+          className={styles.tableAction}
         >
           <Plus size={15} aria-hidden="true" />
           Nueva actualización
