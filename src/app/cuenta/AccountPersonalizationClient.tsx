@@ -19,7 +19,7 @@ import {
   useState,
 } from "react";
 
-import styles from "./account.module.css";
+import styles from "./account-personalization.module.css";
 
 type GameOption = {
   slug: string;
@@ -312,9 +312,10 @@ export default function AccountPersonalizationClient({
 
   async function addGame(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const formElement = event.currentTarget;
     setAddPending(true);
     setAddMessage(null);
-    const form = new FormData(event.currentTarget);
+    const form = new FormData(formElement);
 
     try {
       const data = await postForm("/api/account/games", {
@@ -330,7 +331,7 @@ export default function AccountPersonalizationClient({
       }
 
       setAddMessage("Juego agregado a Mi DeUna.");
-      event.currentTarget.reset();
+      formElement.reset();
       router.refresh();
     } catch {
       setAddMessage("No se pudo conectar con el servicio de cuentas.");
