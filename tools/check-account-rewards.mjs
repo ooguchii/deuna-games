@@ -209,6 +209,16 @@ requirePattern(
 );
 requirePattern(
   panel,
+  /function formatClaimAvailability[\s\S]*timeZone: "UTC"[\s\S]*return `\$\{formatted\} UTC`/s,
+  "La disponibilidad de Rewards debe formatearse con una zona estable para evitar diferencias de hidratación."
+);
+requirePattern(
+  panel,
+  /function formatDate[\s\S]*timeZone: "UTC"/s,
+  "Las fechas del ledger deben usar una zona estable en servidor y navegador."
+);
+requirePattern(
+  panel,
   /href="\/privacidad"/,
   "Rewards debe enlazar su explicación pública de privacidad."
 );
@@ -246,5 +256,5 @@ if (issues.length > 0) {
 }
 
 console.log(
-  "Economía DeUna Rewards: OK (cooldown, racha, ciclo diario, objetivo semanal, hitos, PostgreSQL, resiliencia, transparencia, idempotencia y autoridad del servidor verificados)."
+  "Economía DeUna Rewards: OK (cooldown, racha, ciclo diario, objetivo semanal, hitos, PostgreSQL, resiliencia, transparencia, fechas estables, idempotencia y autoridad del servidor verificados)."
 );
