@@ -14,22 +14,18 @@ export default function GameEditorFormActions({
   continueLabel: string;
 }) {
   return (
-    <div className={adminStyles.formActions}>
+    <div className={`${adminStyles.formActions} admin-form-actions`}>
       <p>{note}</p>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "flex-end",
-          gap: 10,
-          flexWrap: "wrap",
-        }}
-      >
-        <button type="submit">
+      <div className="admin-form-actions__buttons">
+        <button
+          type="submit"
+          className="admin-form-action admin-form-action--secondary"
+        >
           {saveLabel}
         </button>
         <button
           type="submit"
+          className="admin-form-action admin-form-action--primary"
           formAction={`${action}?continuar=${encodeURIComponent(continueTo)}`}
         >
           {continueLabel}
