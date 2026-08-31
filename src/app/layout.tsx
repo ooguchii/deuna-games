@@ -8,6 +8,7 @@ import {
 import {
   siteUrl,
 } from "@/lib/site";
+import { brandForeground } from "@/lib/site/brand-foreground";
 import {
   getPublicSiteConfig,
 } from "@/lib/site/public-site-config";
@@ -95,6 +96,7 @@ export default async function RootLayout({
       style={{
         "--theme-bg": config.themeColor,
         "--theme-brand": config.brandColor,
+        "--theme-on-brand": brandForeground(config.brandColor),
       } as CSSProperties}
     >
       <body className={inter.className}>
