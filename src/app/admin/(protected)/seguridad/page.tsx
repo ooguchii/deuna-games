@@ -16,6 +16,7 @@ export const dynamic = "force-dynamic";
 
 const eventLabels: Record<string, string> = {
   owner_created: "Cuenta propietaria creada",
+  administrator_created: "Cuenta administrativa creada",
   login_succeeded: "Inicio de sesión correcto",
   login_failed: "Intento de acceso rechazado",
   login_blocked: "Acceso bloqueado temporalmente",
@@ -34,7 +35,7 @@ export default async function AdminSecurityPage() {
           <span>SEGURIDAD</span>
           <h1>Sesiones y accesos</h1>
           <p>
-            Este registro contiene únicamente actividad de la cuenta propietaria. No guarda IP, dispositivo, ubicación ni navegación de visitantes.
+            Este registro contiene únicamente actividad de tu propia cuenta administrativa. No guarda IP, dispositivo, ubicación ni navegación de visitantes.
           </p>
         </div>
       </header>
