@@ -3,10 +3,10 @@
   overflow: hidden;
   border: 1px solid #344251;
   border-radius: 14px;
-  background: rgba(9, 14, 21, 0.94);
+  background: rgba(9, 14, 21, 0.96);
   box-shadow:
-    0 18px 44px rgba(0, 0, 0, 0.18),
-    inset 0 1px 0 rgba(255, 255, 255, 0.025);
+    0 18px 44px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
 .toolbar {
@@ -19,7 +19,7 @@
   gap: 14px;
   padding: 14px;
   border-bottom: 1px solid #344251;
-  background: rgba(10, 16, 24, 0.98);
+  background: rgba(10, 16, 24, 0.985);
 }
 
 .searchBox {
@@ -28,20 +28,39 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 0 12px;
-  border: 1px solid #3c4b5b;
+  padding: 0 11px 0 13px;
+  border: 1px solid #3b4a5a;
   border-radius: 10px;
   background: #091019;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.018);
+  transition:
+    border-color 140ms ease,
+    background 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.searchBox:hover {
+  border-color: #4b5b6c;
+  background: #0a121b;
 }
 
 .searchBox:focus-within {
-  border-color: color-mix(in srgb, var(--brand) 68%, #ffffff);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 13%, transparent);
+  border-color: color-mix(in srgb, var(--brand) 56%, #536273);
+  background: color-mix(in srgb, var(--brand) 2.5%, #0a121b);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--brand) 24%, transparent),
+    0 0 0 4px color-mix(in srgb, var(--brand) 7%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.025);
 }
 
 .searchBox > svg {
   flex: 0 0 auto;
   color: #8c9bab;
+  transition: color 140ms ease;
+}
+
+.searchBox:focus-within > svg {
+  color: color-mix(in srgb, var(--brand) 68%, #ffffff);
 }
 
 .searchBox input {
@@ -54,10 +73,22 @@
   color: #f1f5f9;
   font: inherit;
   font-size: 14px;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.searchBox input::-webkit-search-decoration,
+.searchBox input::-webkit-search-cancel-button,
+.searchBox input::-webkit-search-results-button,
+.searchBox input::-webkit-search-results-decoration {
+  display: none;
+  appearance: none;
+  -webkit-appearance: none;
 }
 
 .searchBox input::placeholder {
   color: #718092;
+  opacity: 1;
 }
 
 .searchBox kbd {
@@ -72,6 +103,7 @@
   background: #111923;
   font-size: 11px;
   font-family: inherit;
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.035);
 }
 
 .searchBox button {
@@ -85,12 +117,23 @@
   background: transparent;
   color: #aab5c1;
   cursor: pointer;
+  transition:
+    color 140ms ease,
+    border-color 140ms ease,
+    background 140ms ease;
 }
 
 .searchBox button:hover {
   color: #ffffff;
   border-color: #465463;
   background: #151e28;
+}
+
+.searchBox button:focus-visible {
+  outline: none;
+  color: #fff;
+  border-color: color-mix(in srgb, var(--brand) 58%, #536273);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 12%, transparent);
 }
 
 .filters {
@@ -107,32 +150,58 @@
   color: #d4dce5;
   border: 1px solid #3a4858;
   border-radius: 9px;
+  outline: none;
   background: #0b121a;
   font: inherit;
   font-size: 12px;
   cursor: pointer;
+  transition:
+    color 140ms ease,
+    border-color 140ms ease,
+    background 140ms ease,
+    box-shadow 140ms ease;
 }
 
 .filters select:hover {
+  color: #f2f5f8;
   border-color: #536273;
+  background: #0e1721;
+}
+
+.filters select:focus-visible {
+  border-color: color-mix(in srgb, var(--brand) 55%, #536273);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 10%, transparent);
 }
 
 .resetButton {
-  min-height: 42px;
+  min-height: 46px;
   padding: 0 13px;
-  color: #f1b0bf;
-  border: 1px solid rgba(255, 94, 132, 0.28);
+  color: #e8adb9;
+  border: 1px solid #3c4856;
   border-radius: 9px;
-  background: rgba(255, 94, 132, 0.055);
+  outline: none;
+  background: #0d151e;
   cursor: pointer;
   font: inherit;
   font-size: 12px;
-  font-weight: 750;
+  font-weight: 760;
+  transition:
+    color 140ms ease,
+    border-color 140ms ease,
+    background 140ms ease,
+    box-shadow 140ms ease;
 }
 
 .resetButton:hover {
-  border-color: rgba(255, 115, 149, 0.48);
-  background: rgba(255, 94, 132, 0.09);
+  color: #ffd4de;
+  border-color: color-mix(in srgb, var(--brand) 35%, #4c5968);
+  background: color-mix(in srgb, var(--brand) 5%, #111923);
+}
+
+.resetButton:focus-visible {
+  outline: none;
+  border-color: color-mix(in srgb, var(--brand) 55%, #536273);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 10%, transparent);
 }
 
 .resultBar {
@@ -170,9 +239,9 @@
 
 .table th,
 .table td {
-  min-height: 64px;
-  padding: 14px 12px;
-  border-bottom: 1px solid #2e3a47;
+  height: 66px;
+  padding: 14px 13px;
+  border-bottom: 1px solid #2d3946;
   vertical-align: middle;
 }
 
@@ -180,11 +249,11 @@
   position: sticky;
   top: 0;
   z-index: 8;
-  height: 42px;
+  height: 44px;
   padding-top: 10px;
   padding-bottom: 10px;
-  color: #a1afbd;
-  border-bottom: 1px solid #3a4857;
+  color: #a5b2bf;
+  border-bottom: 1px solid #3b4958;
   background: #0d151e;
   font-size: 11px;
   font-weight: 850;
@@ -292,21 +361,42 @@
   justify-content: center;
   gap: 6px;
   padding: 0 11px;
-  color: #f1b1c0;
-  border: 1px solid #3d4956;
+  color: #d8e0e8;
+  border: 1px solid #3a4755;
   border-radius: 8px;
+  outline: none;
   background: #0d151e;
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 780;
   line-height: 1;
   white-space: nowrap;
+  transition:
+    color 140ms ease,
+    border-color 140ms ease,
+    background 140ms ease,
+    transform 140ms ease,
+    box-shadow 140ms ease;
 }
 
-.actions a:hover,
-.actions a:focus-visible {
+.actions a:first-child {
+  color: #fff;
+  border-color: color-mix(in srgb, var(--brand) 42%, #465463);
+  background: color-mix(in srgb, var(--brand) 10%, #101923);
+}
+
+.actions a:hover {
   color: #ffffff;
-  border-color: color-mix(in srgb, var(--brand) 54%, #4c5864);
-  background: color-mix(in srgb, var(--brand) 8%, #121a23);
+  border-color: color-mix(in srgb, var(--brand) 52%, #52606e);
+  background: color-mix(in srgb, var(--brand) 7%, #141e29);
+  transform: translateY(-1px);
+}
+
+.actions a:focus-visible {
+  color: #fff;
+  border-color: color-mix(in srgb, var(--brand) 58%, #536273);
+  box-shadow:
+    0 0 0 2px #0a1118,
+    0 0 0 4px color-mix(in srgb, var(--brand) 55%, #ffffff);
 }
 
 .actions a svg {
@@ -316,7 +406,7 @@
 }
 
 .empty {
-  padding: 44px 24px;
+  padding: 48px 24px;
   color: #a4b0bc;
   font-size: 14px;
   line-height: 1.6;
@@ -368,6 +458,10 @@
     font-size: 14px;
   }
 
+  .searchBox {
+    height: 48px;
+  }
+
   .searchBox input {
     font-size: 16px;
   }
@@ -383,6 +477,11 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .searchBox,
+  .searchBox > svg,
+  .searchBox button,
+  .filters select,
+  .resetButton,
   .table tbody tr,
   .actions a {
     transition: none;
