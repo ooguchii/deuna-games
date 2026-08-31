@@ -18,6 +18,7 @@ import {
 import { getPublicSiteConfig } from "@/lib/site/public-site-config";
 
 import styles from "../admin.module.css";
+import loginStyles from "./login.module.css";
 
 export const dynamic = "force-dynamic";
 
@@ -73,7 +74,7 @@ export default async function AdminLoginPage({
         className={styles.loginPanel}
         aria-labelledby="admin-login-title"
       >
-        <div className={styles.loginBadge}>
+        <div className={`${styles.loginBadge} ${loginStyles.brandBadge}`}>
           <ShieldCheck size={18} aria-hidden="true" />
           Acceso privado por VPN
         </div>
