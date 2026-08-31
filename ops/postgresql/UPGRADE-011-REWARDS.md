@@ -38,6 +38,8 @@ La ruta normal es `~/.deuna/backups/`. No mover esa copia a una nube, correo, ch
 
 Si falta `pg_dump` o `pg_restore`, si la copia es demasiado pequeña o si no puede verificarse, **no continuar con la migración**.
 
+Un dump verificado con `pg_restore --list` comprueba que el archivo es legible, pero no sustituye una prueba periódica de restauración. Antes de un lanzamiento público conviene practicar una restauración completa sobre una base separada/no productiva y documentar cuánto tarda y qué credenciales/roles deben recrearse.
+
 ## 3. Aplicar 011 y restablecer permisos mínimos
 
 ```bash
@@ -81,4 +83,16 @@ La copia previa existe como punto de recuperación, pero una restauración compl
 
 ## 6. Antes de habilitar cuentas al público
 
-La implementación técnica no sustituye la información jurídica del servicio. Antes del lanzamiento público deben definirse y publicarse, como mínimo, la identificación del responsable, un canal de privacidad, la jurisdicción aplicable y el plazo concreto de retención/rotación de backups. La página `/privacidad` permanece `noindex` mientras esa información esté pendiente.
+La implementación técnica no sustituye la información jurídica del servicio. Antes del lanzamiento público deben definirse y publicarse, como mínimo, la identificación del responsable, un canal de privacidad, la jurisdicción aplicable, el plazo concreto de retención/rotación de backups y los términos aplicables al uso de cuentas.
+
+La página `/privacidad` permanece `noindex` mientras esa información esté pendiente.
+
+Además, producción cierra la creación de nuevas cuentas por defecto. Sólo cuando lo anterior esté resuelto debe configurarse deliberadamente:
+
+```text
+DEUNA_ACCOUNT_REGISTRATION_ENABLED=true
+```
+
+Si la variable falta o se deja en `false` en producción, `/api/account/register` rechaza nuevas altas y `/cuenta` no ofrece la pestaña `Crear cuenta`. Login y recuperación de cuentas existentes continúan funcionando.
+
+No usar el interruptor como sustituto de la revisión jurídica: su función es impedir que un despliegue técnico abra registros accidentalmente antes de tiempo.
