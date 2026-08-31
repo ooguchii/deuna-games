@@ -99,8 +99,11 @@ export default async function AdminGamesPage({
             Busca, filtra y entra directamente al contenido que necesitas. Guardar conserva borrador; Publicar crea el snapshot visible.
           </p>
         </div>
-        <Link href="/admin/juegos/nuevo" className={styles.tableAction}>
-          <Plus size={15} aria-hidden="true" />
+        <Link
+          href="/admin/juegos/nuevo"
+          className={`${styles.tableAction} admin-primary-action`}
+        >
+          <Plus size={17} aria-hidden="true" />
           Nuevo juego
         </Link>
       </header>
