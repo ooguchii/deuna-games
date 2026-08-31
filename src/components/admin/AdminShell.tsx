@@ -39,7 +39,7 @@ export default function AdminShell({
           </div>
         </Link>
 
-        <AdminNavigation />
+        <AdminNavigation role={session.role} />
 
         <div className={styles.privacyNotice}>
           <Gauge size={18} aria-hidden="true" />
@@ -53,7 +53,9 @@ export default function AdminShell({
 
         <div className={styles.ownerBlock}>
           <div>
-            <span>Propietario</span>
+            <span>
+              {session.role === "owner" ? "Propietario" : "Administrador"}
+            </span>
             <strong>{session.username}</strong>
           </div>
 
