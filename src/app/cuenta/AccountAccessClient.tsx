@@ -8,6 +8,7 @@ import {
   ShieldCheck,
   UserRound,
 } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   type FormEvent,
@@ -25,9 +26,14 @@ type ApiResult = {
   recoveryCodes?: string[];
 };
 
-const accountModes: readonly Mode[] = [
+const allAccountModes: readonly Mode[] = [
   "login",
   "register",
+  "recover",
+];
+
+const closedRegistrationModes: readonly Mode[] = [
+  "login",
   "recover",
 ];
 
@@ -57,6 +63,8 @@ function errorMessage(error: string | undefined) {
       return "El usuario o el código de recuperación no coinciden.";
     case "datos":
       return "Revisa los datos ingresados. La contraseña debe tener al menos 12 caracteres.";
+    case "registro_cerrado":
+      return "La creación de nuevas cuentas todavía no está habilitada.";
     case "servicio":
       return "El servicio de cuentas no está disponible en este momento.";
     default:
@@ -64,15 +72,23 @@ function errorMessage(error: string | undefined) {
   }
 }
 
-export default function AccountAccessClient() {
+export default function AccountAccessClient({
+  registrationEnabled,
+}: {
+  registrationEnabled: boolean;
+}) {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>("login");
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [recoveryCodes, setRecoveryCodes] = useState<string[] | null>(null);
   const [copied, setCopied] = useState(false);
+  const accountModes = registrationEnabled
+    ? allAccountModes
+    : closedRegistrationModes;
 
   function selectMode(nextMode: Mode) {
+    if (nextMode === "register" && !registrationEnabled) return;
     setMode(nextMode);
     setMessage(null);
   }
@@ -258,19 +274,21 @@ export default function AccountAccessClient() {
         >
           Entrar
         </button>
-        <button
-          id="account-tab-register"
-          type="button"
-          role="tab"
-          aria-selected={mode === "register"}
-          aria-controls="account-panel-register"
-          tabIndex={mode === "register" ? 0 : -1}
-          data-active={mode === "register"}
-          onKeyDown={handleTabKeyDown}
-          onClick={() => selectMode("register")}
-        >
-          Crear cuenta
-        </button>
+        {registrationEnabled && (
+          <button
+            id="account-tab-register"
+            type="button"
+            role="tab"
+            aria-selected={mode === "register"}
+            aria-controls="account-panel-register"
+            tabIndex={mode === "register" ? 0 : -1}
+            data-active={mode === "register"}
+            onKeyDown={handleTabKeyDown}
+            onClick={() => selectMode("register")}
+          >
+            Crear cuenta
+          </button>
+        )}
         <button
           id="account-tab-recover"
           type="button"
@@ -285,6 +303,12 @@ export default function AccountAccessClient() {
           Recuperar
         </button>
       </div>
+
+      {!registrationEnabled && (
+        <p className={styles.message} role="status">
+          La creación de nuevas cuentas está cerrada durante la preparación del lanzamiento público. Las cuentas existentes pueden entrar y recuperarse normalmente.
+        </p>
+      )}
 
       {mode === "login" && (
         <form
@@ -332,7 +356,7 @@ export default function AccountAccessClient() {
         </form>
       )}
 
-      {mode === "register" && (
+      {mode === "register" && registrationEnabled && (
         <form
           id="account-panel-register"
           className={styles.form}
@@ -412,6 +436,10 @@ export default function AccountAccessClient() {
               <textarea id="account-bio" name="bio" maxLength={500} />
             </div>
           </div>
+
+          <p className={styles.hint}>
+            Antes de crearla puedes revisar qué datos guarda Mi DeUna y cuáles no en <Link href="/privacidad">Privacidad</Link>.
+          </p>
 
           {message && <p className={styles.message} role="status">{message}</p>}
 
