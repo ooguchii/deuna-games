@@ -104,6 +104,12 @@
   line-height: 1.5;
 }
 
+.main.main:focus,
+.main.main:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
 .navigation.navigation {
   gap: 5px;
   margin-top: 18px;
@@ -132,7 +138,7 @@
 }
 
 .activeLink.activeLink svg {
-  color: #ff9bb3;
+  color: color-mix(in srgb, var(--brand) 58%, #ffffff);
 }
 
 /* Escala de lectura común de todo el espacio administrativo. */
@@ -316,15 +322,31 @@
   font-size: 13px;
 }
 
-.main :is(a, button, input, textarea, select):focus-visible,
+/*
+ * Un único sistema de foco para el shell. Los controles de formulario no
+ * reciben outline exterior; los buscadores delegan el foco a su contenedor.
+ */
+.main :is(a, button):focus-visible,
 .sidebar.sidebar :is(a, button):focus-visible {
-  outline: 3px solid color-mix(in srgb, var(--brand) 76%, #ffffff);
-  outline-offset: 3px;
+  outline: none;
+  box-shadow:
+    0 0 0 2px #070b11,
+    0 0 0 4px color-mix(in srgb, var(--brand) 58%, #ffffff);
 }
 
 .main :is(input, textarea, select):focus-visible {
-  border-color: color-mix(in srgb, var(--brand) 70%, #ffffff);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 14%, transparent);
+  outline: none;
+  outline-offset: 0;
+  border-color: color-mix(in srgb, var(--brand) 58%, #536273);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--brand) 22%, transparent),
+    0 0 0 4px color-mix(in srgb, var(--brand) 7%, transparent);
+}
+
+.main input[type="search"]:focus,
+.main input[type="search"]:focus-visible {
+  outline: none;
+  box-shadow: none;
 }
 
 .contextBar {
@@ -377,7 +399,7 @@
 
 .contextBar a:hover,
 .contextBar a:focus-visible {
-  color: #fff0f4;
+  color: color-mix(in srgb, var(--brand) 28%, #ffffff);
   border-color: color-mix(in srgb, var(--brand) 48%, #43515f);
   background: color-mix(in srgb, var(--brand) 8%, #101821);
   transform: translateY(-1px);
