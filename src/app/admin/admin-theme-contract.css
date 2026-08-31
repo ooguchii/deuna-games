@@ -10,6 +10,7 @@
 }
 
 /* Las acciones con fondo de marca usan el color de texto calculado por contraste. */
+.admin-professional [data-brand-action="true"],
 .admin-professional .admin-primary-action,
 .admin-professional .admin-form-action--primary,
 .admin-professional form > div:has(> p):has(> button[type="submit"]) > button[type="submit"],
