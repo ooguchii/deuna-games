@@ -18,6 +18,9 @@ import {
   readTrustedAccountForm,
 } from "@/lib/accounts/request-security";
 import {
+  syncRewardMilestones,
+} from "@/lib/accounts/rewards-service";
+import {
   readAccountSessionToken,
   resolveAccountSession,
 } from "@/lib/accounts/session";
@@ -125,6 +128,7 @@ export async function POST(request: NextRequest) {
       ramGb: Math.round(ramGb * 10) / 10,
       memoryMode: parsed.data.memoryMode,
     });
+    await syncRewardMilestones(session.userId);
 
     return json({ ok: true });
   } catch {
