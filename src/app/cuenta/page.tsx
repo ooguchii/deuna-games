@@ -36,6 +36,7 @@ import {
 
 import AccountAccessClient from "./AccountAccessClient";
 import AccountPersonalizationClient from "./AccountPersonalizationClient";
+import dashboardStyles from "./account-personalization.module.css";
 import styles from "./account.module.css";
 
 export const dynamic = "force-dynamic";
@@ -133,7 +134,7 @@ export default async function AccountPage() {
         : null;
 
       return (
-        <main className={`${styles.page} ${styles.dashboardPage}`}>
+        <main className={`${styles.page} ${dashboardStyles.dashboardPage}`}>
           <AccountPersonalizationClient
             profile={{
               ...profile,
