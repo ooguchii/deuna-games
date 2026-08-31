@@ -25,6 +25,12 @@ import UniversalGameCard from "@/components/ui/UniversalGameCard";
 import GamePerformanceEstimate from "@/features/game-finder/GamePerformanceEstimate";
 import { getPerformanceProfile } from "@/features/game-finder/performance-data";
 import {
+  getAccountGamePreference,
+} from "@/lib/accounts/personalization-service";
+import {
+  readAccountSession,
+} from "@/lib/accounts/session";
+import {
   resolveGameDownload,
 } from "@/lib/games/download";
 import {
@@ -45,6 +51,7 @@ import type {
   GameHardwareRequirements,
 } from "@/types/game";
 
+import GameAccountActions from "./GameAccountActions";
 import GameCompatibilityCard from "./GameCompatibilityCard";
 import styles from "./page.module.css";
 
@@ -157,17 +164,30 @@ export default async function GameDetailPage({
   params,
 }: GameDetailPageProps) {
   const { slug } = await params;
-  const [game, games, gameUpdates, publicSiteConfig] = await Promise.all([
+  const [
+    game,
+    games,
+    gameUpdates,
+    publicSiteConfig,
+    accountSession,
+  ] = await Promise.all([
     getPublicGameBySlug(slug),
     getPublicGames(),
     getPublicUpdatesForGame(slug),
     getPublicSiteConfig(),
+    readAccountSession(),
   ]);
 
   if (!game) {
     notFound();
   }
 
+  const accountPreference = accountSession
+    ? await getAccountGamePreference(
+        accountSession.userId,
+        game.slug
+      )
+    : null;
   const download = resolveGameDownload(game);
   const performanceProfile = getPerformanceProfile(
     game.slug
@@ -386,6 +406,18 @@ export default async function GameDetailPage({
               )}
 
               <GamePerformanceEstimate slug={game.slug} />
+
+              <GameAccountActions
+                gameSlug={game.slug}
+                signedIn={accountSession !== null}
+                preference={accountPreference
+                  ? {
+                      favorite: accountPreference.favorite,
+                      libraryState: accountPreference.libraryState,
+                      followUpdates: accountPreference.followUpdates,
+                    }
+                  : null}
+              />
 
               <div className={styles.actions}>
                 {download ? (
