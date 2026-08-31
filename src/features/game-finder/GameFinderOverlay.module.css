@@ -6,40 +6,413 @@
   display: grid;
   place-items: center;
 
-  overflow: auto;
+  overflow: hidden;
   padding:
-    max(20px, env(safe-area-inset-top))
-    max(20px, env(safe-area-inset-right))
-    max(20px, env(safe-area-inset-bottom))
-    max(20px, env(safe-area-inset-left));
+    max(22px, env(safe-area-inset-top))
+    max(22px, env(safe-area-inset-right))
+    max(22px, env(safe-area-inset-bottom))
+    max(22px, env(safe-area-inset-left));
 
   background:
-    radial-gradient(760px 440px at 72% 12%, rgba(255, 8, 71, 0.11), transparent 72%),
-    rgba(2, 5, 10, 0.78);
+    radial-gradient(760px 440px at 73% 11%, rgba(255, 8, 71, 0.16), transparent 70%),
+    radial-gradient(620px 360px at 24% 84%, rgba(103, 64, 220, 0.09), transparent 72%),
+    rgba(1, 4, 9, 0.86);
 
-  backdrop-filter: blur(16px) saturate(0.9);
+  backdrop-filter: blur(22px) saturate(0.78) brightness(0.74);
   overscroll-behavior: contain;
   animation: backdropIn 180ms ease-out both;
 }
 
 .dialog {
-  width: min(1180px, 100%);
-  max-height: calc(100dvh - 40px);
-  overflow: auto;
-  border-radius: var(--radius-large);
+  position: relative;
+  isolation: isolate;
+
+  width: min(1060px, calc(100vw - 44px));
+  max-height: min(820px, calc(100dvh - 44px));
+  overflow: hidden;
+
+  border: 1px solid rgba(255, 61, 107, 0.3);
+  border-radius: 20px;
   outline: 0;
+
+  background:
+    linear-gradient(180deg, rgba(12, 18, 28, 0.995), rgba(5, 9, 15, 0.995));
+
   box-shadow:
-    0 40px 110px rgba(0, 0, 0, 0.68),
-    0 0 80px rgba(255, 8, 71, 0.075);
-  scrollbar-gutter: stable;
+    0 48px 130px rgba(0, 0, 0, 0.76),
+    0 0 0 1px rgba(255, 255, 255, 0.018),
+    0 0 90px rgba(255, 8, 71, 0.11);
+
   animation: dialogIn 230ms var(--ease-premium) both;
+}
+
+.dialog::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+
+  background:
+    radial-gradient(600px 220px at 88% -6%, rgba(255, 8, 71, 0.12), transparent 72%),
+    radial-gradient(520px 220px at 4% 104%, rgba(121, 75, 255, 0.07), transparent 75%);
 }
 
 .dialog:focus-visible {
   box-shadow:
-    0 0 0 2px rgba(255, 8, 71, 0.42),
-    0 40px 110px rgba(0, 0, 0, 0.68),
-    0 0 80px rgba(255, 8, 71, 0.075);
+    0 0 0 2px rgba(255, 61, 107, 0.46),
+    0 48px 130px rgba(0, 0, 0, 0.76),
+    0 0 90px rgba(255, 8, 71, 0.11);
+}
+
+/* El configurador manual vive dentro de este diálogo. Estas reglas elevan su
+   composición sin acoplarla a la lógica de detección ni al modelo de datos. */
+.dialog > section {
+  max-height: min(820px, calc(100dvh - 44px));
+  overflow: hidden;
+
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: inherit !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.dialog > section > div:first-child {
+  position: relative;
+  z-index: 5;
+
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 28px;
+
+  padding: 27px 30px 23px;
+  border-bottom: 1px solid rgba(166, 184, 207, 0.13);
+
+  background:
+    linear-gradient(180deg, rgba(18, 25, 37, 0.92), rgba(10, 16, 25, 0.76));
+}
+
+.dialog > section > div:first-child::after {
+  content: "CPU  ·  GPU  ·  RAM  ·  SISTEMA";
+  position: absolute;
+  left: 30px;
+  bottom: -11px;
+  z-index: 2;
+
+  min-height: 22px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 9px;
+
+  color: #96a3b4;
+  border: 1px solid rgba(166, 184, 207, 0.15);
+  border-radius: 999px;
+  background: rgba(7, 12, 19, 0.98);
+
+  font-size: 9px;
+  font-weight: 790;
+  letter-spacing: 0.055em;
+}
+
+.dialog > section > div:first-child > div {
+  min-width: 0;
+}
+
+.dialog > section > div:first-child > div > span:first-child {
+  min-height: 25px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 9px;
+
+  color: #ff6c90;
+  border: 1px solid rgba(255, 61, 107, 0.22);
+  border-radius: 999px;
+  background: rgba(255, 8, 71, 0.075);
+
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.105em;
+}
+
+.dialog > section > div:first-child h2 {
+  margin-top: 10px !important;
+
+  color: #f8fafc !important;
+  font-size: clamp(25px, 2.3vw, 34px) !important;
+  font-weight: 880;
+  letter-spacing: -0.045em !important;
+  line-height: 1.08;
+}
+
+.dialog > section > div:first-child p {
+  max-width: 720px !important;
+  margin-top: 8px !important;
+
+  color: #9aa7b8 !important;
+  font-size: 13px !important;
+  line-height: 1.55 !important;
+}
+
+.dialog > section > div:first-child > button {
+  width: 42px !important;
+  height: 42px !important;
+  flex: 0 0 auto;
+
+  color: #9aa7b8 !important;
+  border: 1px solid rgba(166, 184, 207, 0.18) !important;
+  border-radius: 11px !important;
+  background: rgba(4, 9, 15, 0.72) !important;
+
+  transition:
+    color 160ms ease,
+    border-color 160ms ease,
+    background 160ms ease,
+    transform 160ms ease;
+}
+
+.dialog > section > div:first-child > button:hover {
+  color: #fff !important;
+  border-color: rgba(255, 61, 107, 0.44) !important;
+  background: rgba(255, 8, 71, 0.1) !important;
+  transform: rotate(3deg);
+}
+
+.dialog > section > div:nth-child(2) {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  align-content: start;
+  gap: 14px !important;
+
+  margin-top: 0 !important;
+  padding: 31px 30px 25px !important;
+
+  background:
+    radial-gradient(420px 260px at 93% 8%, rgba(255, 8, 71, 0.035), transparent 75%),
+    rgba(4, 8, 14, 0.34);
+}
+
+.dialog > section > div:nth-child(2) > * {
+  min-width: 0;
+  min-height: 108px;
+
+  display: grid;
+  align-content: start;
+  gap: 9px !important;
+
+  padding: 16px 17px !important;
+  border: 1px solid rgba(145, 164, 188, 0.15);
+  border-radius: 13px;
+
+  background:
+    linear-gradient(180deg, rgba(15, 22, 33, 0.9), rgba(7, 12, 19, 0.84));
+
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.018),
+    0 10px 28px rgba(0, 0, 0, 0.12);
+
+  transition:
+    border-color 170ms ease,
+    background 170ms ease,
+    box-shadow 170ms ease,
+    transform 170ms ease;
+}
+
+.dialog > section > div:nth-child(2) > *:hover,
+.dialog > section > div:nth-child(2) > *:focus-within {
+  border-color: rgba(255, 61, 107, 0.3);
+  background:
+    linear-gradient(180deg, rgba(19, 27, 40, 0.95), rgba(8, 14, 22, 0.9));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.025),
+    0 14px 32px rgba(0, 0, 0, 0.18),
+    0 0 24px rgba(255, 8, 71, 0.025);
+}
+
+.dialog > section > div:nth-child(2) > * > span:first-child {
+  min-height: 22px;
+  display: inline-flex;
+  align-items: center;
+
+  color: #c7d0dc !important;
+  font-size: 11px !important;
+  font-weight: 840 !important;
+  letter-spacing: 0.025em;
+}
+
+.dialog button[aria-haspopup="listbox"] {
+  min-height: 48px !important;
+  padding: 0 14px !important;
+
+  color: #edf1f6 !important;
+  border: 1px solid rgba(158, 178, 204, 0.2) !important;
+  border-radius: 10px !important;
+  background:
+    linear-gradient(180deg, rgba(7, 13, 21, 0.96), rgba(4, 9, 15, 0.96)) !important;
+
+  font-size: 12px !important;
+  font-weight: 720;
+
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.018);
+}
+
+.dialog button[aria-haspopup="listbox"]:hover,
+.dialog button[aria-haspopup="listbox"][aria-expanded="true"] {
+  border-color: rgba(255, 61, 107, 0.48) !important;
+  background:
+    linear-gradient(180deg, rgba(16, 23, 34, 0.99), rgba(7, 12, 19, 0.99)) !important;
+  box-shadow:
+    0 0 0 3px rgba(255, 8, 71, 0.045),
+    inset 0 1px 0 rgba(255, 255, 255, 0.022);
+}
+
+.dialog select {
+  min-height: 48px !important;
+  padding-left: 14px !important;
+
+  color: #edf1f6 !important;
+  border-color: rgba(158, 178, 204, 0.2) !important;
+  border-radius: 10px !important;
+  background-color: rgba(5, 10, 17, 0.96) !important;
+
+  font-size: 12px !important;
+}
+
+.dialog button[aria-haspopup="listbox"][aria-expanded="true"] + div {
+  top: calc(100% + 8px) !important;
+  z-index: 300 !important;
+
+  width: 100% !important;
+  min-width: 100% !important;
+  max-width: 100% !important;
+  overflow: hidden;
+
+  border: 1px solid rgba(255, 61, 107, 0.38) !important;
+  border-radius: 12px !important;
+  background: rgba(4, 9, 15, 0.995) !important;
+
+  box-shadow:
+    0 24px 58px rgba(0, 0, 0, 0.68),
+    0 0 0 1px rgba(255, 255, 255, 0.018),
+    0 0 34px rgba(255, 8, 71, 0.055) !important;
+
+  backdrop-filter: blur(18px);
+}
+
+.dialog input[role="combobox"] {
+  min-height: 42px !important;
+  border-radius: 9px !important;
+  border-color: rgba(158, 178, 204, 0.2) !important;
+  background: rgba(2, 6, 11, 0.96) !important;
+  font-size: 12px !important;
+}
+
+.dialog [role="listbox"] {
+  max-height: 218px !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  padding: 5px !important;
+}
+
+.dialog [role="option"] {
+  min-height: 39px !important;
+  padding: 7px 10px !important;
+  border-radius: 8px !important;
+
+  color: #b9c4d1 !important;
+  font-size: 11.5px !important;
+  font-weight: 690 !important;
+}
+
+.dialog [role="option"]:hover,
+.dialog [role="option"]:focus-visible {
+  color: #fff !important;
+  background: rgba(255, 8, 71, 0.09) !important;
+}
+
+.dialog [role="option"][aria-selected="true"] {
+  color: #fff !important;
+  border: 1px solid rgba(255, 61, 107, 0.32) !important;
+  background:
+    linear-gradient(90deg, rgba(255, 8, 71, 0.13), rgba(255, 8, 71, 0.045)) !important;
+}
+
+.dialog > section > div:last-child {
+  position: relative;
+  z-index: 4;
+
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 22px !important;
+
+  margin-top: 0 !important;
+  padding: 18px 30px 19px !important;
+  border-top: 1px solid rgba(166, 184, 207, 0.13);
+
+  background:
+    linear-gradient(180deg, rgba(10, 16, 25, 0.92), rgba(6, 11, 18, 0.98));
+
+  box-shadow: 0 -18px 36px rgba(0, 0, 0, 0.15);
+}
+
+.dialog > section > div:last-child p {
+  max-width: 660px !important;
+  margin: 0 !important;
+
+  color: #8f9cac !important;
+  font-size: 11px !important;
+  line-height: 1.48 !important;
+}
+
+.dialog > section > div:last-child p svg {
+  color: #ffb239 !important;
+}
+
+.dialog > section > div:last-child > button {
+  min-height: 46px !important;
+  padding: 0 19px !important;
+
+  border-radius: 10px !important;
+  border-color: rgba(255, 255, 255, 0.075) !important;
+  background:
+    linear-gradient(135deg, #ff315f, #f40046 58%, #d7003d) !important;
+
+  font-size: 12px !important;
+  font-weight: 850 !important;
+
+  box-shadow:
+    0 12px 28px rgba(255, 8, 71, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+
+  transition:
+    transform 170ms ease,
+    box-shadow 170ms ease,
+    filter 170ms ease;
+}
+
+.dialog > section > div:last-child > button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow:
+    0 16px 34px rgba(255, 8, 71, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.dialog > section > div:last-child > button:disabled {
+  background: rgba(77, 88, 104, 0.25) !important;
+  border-color: rgba(145, 164, 188, 0.13) !important;
+  box-shadow: none !important;
+  filter: none !important;
+  opacity: 0.5 !important;
 }
 
 @keyframes backdropIn {
@@ -55,7 +428,7 @@
 @keyframes dialogIn {
   from {
     opacity: 0;
-    transform: translateY(14px) scale(0.985);
+    transform: translateY(16px) scale(0.982);
   }
 
   to {
@@ -64,20 +437,101 @@
   }
 }
 
-@media (max-width: 760px) {
+@media (max-width: 900px) {
+  .backdrop {
+    padding: 16px;
+  }
+
+  .dialog {
+    width: min(760px, calc(100vw - 32px));
+    max-height: calc(100dvh - 32px);
+  }
+
+  .dialog > section {
+    max-height: calc(100dvh - 32px);
+  }
+
+  .dialog > section > div:first-child {
+    padding: 23px 22px 21px;
+  }
+
+  .dialog > section > div:first-child::after {
+    left: 22px;
+  }
+
+  .dialog > section > div:nth-child(2) {
+    grid-template-columns: 1fr !important;
+    padding: 30px 22px 22px !important;
+  }
+
+  .dialog > section > div:last-child {
+    padding: 16px 22px 17px !important;
+  }
+}
+
+@media (max-width: 640px) {
   .backdrop {
     place-items: end center;
     padding:
-      max(12px, env(safe-area-inset-top))
-      max(12px, env(safe-area-inset-right))
-      max(12px, env(safe-area-inset-bottom))
-      max(12px, env(safe-area-inset-left));
+      max(10px, env(safe-area-inset-top))
+      max(10px, env(safe-area-inset-right))
+      max(10px, env(safe-area-inset-bottom))
+      max(10px, env(safe-area-inset-left));
   }
 
   .dialog {
     width: 100%;
-    max-height: calc(100dvh - 24px);
-    border-radius: 15px;
+    max-height: calc(100dvh - 20px);
+    border-radius: 18px 18px 14px 14px;
+  }
+
+  .dialog > section {
+    max-height: calc(100dvh - 20px);
+  }
+
+  .dialog > section > div:first-child {
+    gap: 14px;
+    padding: 20px 17px 19px;
+  }
+
+  .dialog > section > div:first-child::after {
+    left: 17px;
+    max-width: calc(100% - 34px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .dialog > section > div:first-child h2 {
+    font-size: 25px !important;
+  }
+
+  .dialog > section > div:first-child p {
+    font-size: 12px !important;
+  }
+
+  .dialog > section > div:nth-child(2) {
+    padding: 29px 15px 18px !important;
+  }
+
+  .dialog > section > div:nth-child(2) > * {
+    min-height: 102px;
+    padding: 14px !important;
+  }
+
+  .dialog button[aria-haspopup="listbox"][aria-expanded="true"] + div {
+    min-width: 100% !important;
+  }
+
+  .dialog > section > div:last-child {
+    display: grid !important;
+    grid-template-columns: 1fr;
+    gap: 12px !important;
+    padding: 14px 15px max(14px, env(safe-area-inset-bottom)) !important;
+  }
+
+  .dialog > section > div:last-child > button {
+    width: 100%;
   }
 }
 
@@ -85,5 +539,9 @@
   .backdrop,
   .dialog {
     animation: none;
+  }
+
+  .dialog * {
+    scroll-behavior: auto !important;
   }
 }
