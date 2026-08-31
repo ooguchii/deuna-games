@@ -8,7 +8,7 @@ import process from "node:process";
 const root = process.cwd();
 const scanRoots = [
   path.join(root, "src", "components", "admin"),
-  path.join(root, "src", "app", "admin", "(protected)"),
+  path.join(root, "src", "app", "admin"),
 ];
 const failures = [];
 
