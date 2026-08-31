@@ -65,6 +65,11 @@ export const accountProfileSchema = z.object({
   bio: optionalTrimmedString(500),
 });
 
+export const accountDeletionSchema = z.object({
+  password: z.string().min(1).max(ACCOUNT_PASSWORD_MAX_LENGTH),
+  confirmation: z.literal("ELIMINAR"),
+});
+
 export function normalizeAccountUsername(username: string) {
   return username
     .normalize("NFKC")
