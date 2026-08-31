@@ -78,13 +78,16 @@ function formatClaimAvailability(value: string | null) {
   const date = new Date(value);
   if (!Number.isFinite(date.getTime())) return "más tarde";
 
-  return new Intl.DateTimeFormat("es", {
+  const formatted = new Intl.DateTimeFormat("es", {
     weekday: "short",
     day: "2-digit",
     month: "short",
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: "UTC",
   }).format(date);
+
+  return `${formatted} UTC`;
 }
 
 function formatDate(value: string) {
@@ -94,6 +97,7 @@ function formatDate(value: string) {
   return new Intl.DateTimeFormat("es", {
     day: "2-digit",
     month: "short",
+    timeZone: "UTC",
   }).format(date);
 }
 
