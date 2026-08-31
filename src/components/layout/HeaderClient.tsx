@@ -13,27 +13,11 @@ import {
 
 import HeaderNavigation from "./HeaderNavigation";
 import styles from "./Header.module.css";
+import SiteBrand from "./SiteBrand";
 
 type HeaderClientProps = {
   siteName: string;
 };
-
-function BrandName({
-  value,
-}: {
-  value: string;
-}) {
-  const words = value.trim().split(/\s+/).filter(Boolean);
-  const highlighted = words.pop() ?? value;
-  const leading = words.join(" ");
-
-  return (
-    <>
-      {leading && <>{leading} </>}
-      <strong>{highlighted}</strong>
-    </>
-  );
-}
 
 export default function HeaderClient({
   siteName,
@@ -119,23 +103,7 @@ export default function HeaderClient({
     <>
       <header className={styles.header}>
         <div className={styles.inner}>
-          <Link
-            href="/"
-            className={styles.brand}
-            aria-label={`${siteName} - Inicio`}
-          >
-            <span className={styles.brandIcon}>
-              <Gamepad2
-                size={26}
-                strokeWidth={2}
-                aria-hidden="true"
-              />
-            </span>
-
-            <span className={styles.brandName}>
-              <BrandName value={siteName} />
-            </span>
-          </Link>
+          <SiteBrand siteName={siteName} />
 
           <HeaderNavigation variant="desktop" />
 
