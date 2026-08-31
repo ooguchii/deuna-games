@@ -89,6 +89,7 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const config = await getPublicSiteConfig();
+  const readableBrandText = brandForeground(config.brandColor);
 
   return (
     <html
@@ -96,7 +97,8 @@ export default async function RootLayout({
       style={{
         "--theme-bg": config.themeColor,
         "--theme-brand": config.brandColor,
-        "--theme-on-brand": brandForeground(config.brandColor),
+        "--theme-on-brand": readableBrandText,
+        "--text-on-brand": readableBrandText,
       } as CSSProperties}
     >
       <body className={inter.className}>
