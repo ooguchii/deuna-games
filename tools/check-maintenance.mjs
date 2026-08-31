@@ -1,4 +1,4 @@
-import { access, readFile } from "node:fs/promises";
+import { access, readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 
@@ -20,6 +20,26 @@ async function exists(relativePath) {
 
 async function read(relativePath) {
   return readFile(path.join(root, relativePath), "utf8");
+}
+
+async function walk(directory) {
+  const entries = await readdir(directory, { withFileTypes: true });
+  const files = [];
+
+  for (const entry of entries) {
+    const fullPath = path.join(directory, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...(await walk(fullPath)));
+    } else if (entry.isFile()) {
+      files.push(fullPath);
+    }
+  }
+
+  return files;
+}
+
+function repoRelative(file) {
+  return path.relative(root, file).split(path.sep).join("/");
 }
 
 const packageManifest = JSON.parse(
@@ -54,6 +74,65 @@ for (const temporaryFile of [
   assert(
     !(await exists(temporaryFile)),
     `El diagnóstico temporal ${temporaryFile} no debe quedar versionado.`
+  );
+}
+
+const toolExtensions = new Set([".mjs", ".js", ".cjs", ".ts", ".tsx", ".sh"]);
+const toolFiles = (await walk(path.join(root, "tools")))
+  .filter((file) => toolExtensions.has(path.extname(file)))
+  .map(repoRelative);
+const toolFileSet = new Set(toolFiles);
+const toolRoots = new Set();
+const scriptText = Object.values(scripts).join("\n");
+const toolReferencePattern = /(?:^|[\s"'])(?:\.\/)?(tools\/[A-Za-z0-9_./-]+\.(?:mjs|js|cjs|ts|tsx|sh))/g;
+
+for (const match of scriptText.matchAll(toolReferencePattern)) {
+  if (toolFileSet.has(match[1])) toolRoots.add(match[1]);
+}
+
+function resolveToolImport(importer, specifier) {
+  if (!specifier.startsWith(".")) return null;
+
+  const base = path.posix.normalize(
+    path.posix.join(path.posix.dirname(importer), specifier)
+  );
+  const candidates = path.posix.extname(base)
+    ? [base]
+    : [
+        base,
+        ...[".mjs", ".js", ".cjs", ".ts", ".tsx"].map(
+          (extension) => `${base}${extension}`
+        ),
+        ...[".mjs", ".js", ".cjs", ".ts", ".tsx"].map(
+          (extension) => `${base}/index${extension}`
+        ),
+      ];
+
+  return candidates.find((candidate) => toolFileSet.has(candidate)) ?? null;
+}
+
+const importPattern = /(?:from\s*|import\s*\(\s*|import\s*)["']([^"']+)["']/g;
+const reachableTools = new Set();
+const queue = [...toolRoots];
+
+while (queue.length > 0) {
+  const current = queue.shift();
+  if (!current || reachableTools.has(current)) continue;
+
+  reachableTools.add(current);
+  if (path.posix.extname(current) === ".sh") continue;
+
+  const content = await read(current);
+  for (const match of content.matchAll(importPattern)) {
+    const dependency = resolveToolImport(current, match[1]);
+    if (dependency && !reachableTools.has(dependency)) queue.push(dependency);
+  }
+}
+
+for (const file of toolFiles) {
+  assert(
+    reachableTools.has(file),
+    `${file} no está conectado a ningún comando mantenido de package.json ni a otro tool alcanzable.`
   );
 }
 
@@ -114,11 +193,11 @@ if (failures.length > 0) {
   }
 
   console.error(
-    "\nRetira diagnósticos temporales o restaura las invariantes antes de integrar.\n"
+    "\nRetira diagnósticos, tools huérfanos o restaura las invariantes antes de integrar.\n"
   );
   process.exit(1);
 }
 
 console.log(
-  "Mantenimiento: OK (sin diagnósticos temporales y con invariantes críticas preservadas)."
+  `Mantenimiento: OK (${reachableTools.size} tools alcanzables, sin diagnósticos temporales y con invariantes críticas preservadas).`
 );
