@@ -30,7 +30,13 @@ export default function AdminLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <div className={styles.adminRoot}>
+    <div
+      className={styles.adminRoot}
+      style={{
+        background:
+          "radial-gradient(900px 460px at 82% -12%, color-mix(in srgb, var(--brand) 8%, transparent), transparent 68%), color-mix(in srgb, var(--background) 18%, #05080d)",
+      }}
+    >
       {children}
     </div>
   );
