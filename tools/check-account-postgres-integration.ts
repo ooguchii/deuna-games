@@ -20,20 +20,21 @@ function assert(
 }
 
 function postgresCode(error: unknown) {
-  return
+  return (
     typeof error === "object" &&
     error !== null &&
     "code" in error &&
     typeof error.code === "string"
       ? error.code
-      : "";
+      : ""
+  );
 }
 
 async function expectPrivilegeDenied(
   pool: Pool,
   label: string,
   query: string,
-  values: readonly unknown[] = []
+  values: unknown[] = []
 ) {
   try {
     await pool.query(query, values);
