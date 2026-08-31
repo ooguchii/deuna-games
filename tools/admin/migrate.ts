@@ -61,10 +61,14 @@ async function grantRuntimePrivileges(
 
   await pool.query(`
     REVOKE ALL ON SCHEMA deuna_admin FROM PUBLIC;
+    REVOKE ALL ON SCHEMA deuna_accounts FROM PUBLIC;
     REVOKE ALL ON SCHEMA deuna_admin FROM ${role};
+    REVOKE ALL ON SCHEMA deuna_accounts FROM ${role};
     REVOKE ALL ON ALL TABLES IN SCHEMA deuna_admin FROM ${role};
     REVOKE ALL ON ALL SEQUENCES IN SCHEMA deuna_admin FROM ${role};
-    GRANT USAGE ON SCHEMA deuna_admin TO ${role};
+    REVOKE ALL ON ALL TABLES IN SCHEMA deuna_accounts FROM ${role};
+    REVOKE ALL ON ALL SEQUENCES IN SCHEMA deuna_accounts FROM ${role};
+    GRANT USAGE ON SCHEMA deuna_admin, deuna_accounts TO ${role};
 
     GRANT SELECT (
         id,
@@ -72,17 +76,39 @@ async function grantRuntimePrivileges(
         username_key,
         role,
         password_hash,
+        display_name,
         active,
         failed_login_count,
-        locked_until
+        locked_until,
+        last_login_at,
+        password_changed_at,
+        created_at,
+        updated_at,
+        created_by_user_id
+      )
+      ON deuna_admin.admin_users
+      TO ${role};
+
+    GRANT INSERT (
+        id,
+        username,
+        username_key,
+        role,
+        password_hash,
+        display_name,
+        active,
+        created_by_user_id
       )
       ON deuna_admin.admin_users
       TO ${role};
 
     GRANT UPDATE (
+        password_hash,
+        active,
         failed_login_count,
         locked_until,
         last_login_at,
+        password_changed_at,
         updated_at
       )
       ON deuna_admin.admin_users
@@ -238,6 +264,100 @@ async function grantRuntimePrivileges(
         details
       )
       ON deuna_admin.admin_audit_log
+      TO ${role};
+
+    GRANT SELECT (
+        id,
+        username,
+        username_key,
+        password_hash,
+        display_name,
+        email_encrypted,
+        bio,
+        active,
+        failed_login_count,
+        locked_until,
+        last_login_at,
+        password_changed_at,
+        created_at,
+        updated_at
+      )
+      ON deuna_accounts.users
+      TO ${role};
+
+    GRANT INSERT (
+        id,
+        username,
+        username_key,
+        password_hash,
+        display_name,
+        email_encrypted,
+        bio
+      )
+      ON deuna_accounts.users
+      TO ${role};
+
+    GRANT UPDATE (
+        password_hash,
+        display_name,
+        email_encrypted,
+        bio,
+        failed_login_count,
+        locked_until,
+        last_login_at,
+        password_changed_at,
+        updated_at
+      )
+      ON deuna_accounts.users
+      TO ${role};
+
+    GRANT SELECT (
+        id,
+        user_id,
+        token_hash,
+        expires_at,
+        revoked_at
+      )
+      ON deuna_accounts.sessions
+      TO ${role};
+
+    GRANT INSERT (
+        id,
+        user_id,
+        token_hash,
+        expires_at
+      )
+      ON deuna_accounts.sessions
+      TO ${role};
+
+    GRANT UPDATE (revoked_at)
+      ON deuna_accounts.sessions
+      TO ${role};
+
+    GRANT SELECT (
+        id,
+        user_id,
+        code_hash,
+        created_at,
+        used_at
+      )
+      ON deuna_accounts.recovery_codes
+      TO ${role};
+
+    GRANT INSERT (
+        id,
+        user_id,
+        code_hash
+      )
+      ON deuna_accounts.recovery_codes
+      TO ${role};
+
+    GRANT UPDATE (used_at)
+      ON deuna_accounts.recovery_codes
+      TO ${role};
+
+    GRANT DELETE
+      ON deuna_accounts.recovery_codes
       TO ${role};
 
     GRANT USAGE, SELECT
