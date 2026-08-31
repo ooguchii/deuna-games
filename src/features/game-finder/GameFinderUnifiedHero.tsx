@@ -18,6 +18,7 @@ import {
   Sparkles,
   Target,
 } from "lucide-react";
+import { useState } from "react";
 
 import type { Game } from "@/types/game";
 
@@ -48,13 +49,9 @@ type GameFinderUnifiedHeroProps = {
   detectionHint: string;
   detectionSource: string;
   hasRealAnalysis: boolean;
-  showCpuConfirmation: boolean;
-  logicalProcessors: number | null;
   onAnalyze: () => void;
   onConfigure: () => void;
   onDetect: () => void;
-  onCpuConfirmed: () => void;
-  onCancelCpuConfirmation: () => void;
   onSelectGame: (slug: string) => void;
   onViewAll: () => void;
 };
@@ -76,20 +73,39 @@ export default function GameFinderUnifiedHero({
   detectionHint,
   detectionSource,
   hasRealAnalysis,
-  showCpuConfirmation,
-  logicalProcessors,
   onAnalyze,
   onConfigure,
   onDetect,
-  onCpuConfirmed,
-  onCancelCpuConfirmation,
   onSelectGame,
   onViewAll,
 }: GameFinderUnifiedHeroProps) {
   const copy = usePublicFinderCopy();
+  const [cpuConfirmationRequested, setCpuConfirmationRequested] = useState(false);
   const isDetecting = detectionState === "detecting";
   const isReady = detectionState === "ready";
   const isWarning = detectionState === "partial" || detectionState === "error";
+  const showCpuConfirmation =
+    cpuConfirmationRequested &&
+    !isDetecting &&
+    hardware.cpuKnowledge !== "confirmed";
+
+  function handleDetect() {
+    setCpuConfirmationRequested(true);
+    onDetect();
+  }
+
+  function handleConfigure() {
+    setCpuConfirmationRequested(false);
+    onConfigure();
+  }
+
+  function handleCpuConfirmed() {
+    setCpuConfirmationRequested(false);
+    // La confirmación ya quedó sincronizada en localStorage. Recargar hace que
+    // detector, perfil guardado y estimador de FPS nazcan de la misma fuente
+    // en una sola transición, sin mantener dos estados locales en paralelo.
+    window.location.reload();
+  }
 
   return (
     <section className={styles.hero} aria-labelledby="finder-unified-title">
@@ -135,7 +151,7 @@ export default function GameFinderUnifiedHero({
             )}
           </button>
 
-          <button type="button" className={styles.secondaryAction} onClick={onConfigure}>
+          <button type="button" className={styles.secondaryAction} onClick={handleConfigure}>
             <SlidersHorizontal size={18} aria-hidden="true" />
             Configurar perfil
           </button>
@@ -225,11 +241,11 @@ export default function GameFinderUnifiedHero({
           </dl>
 
           <div className={styles.profileActions}>
-            <button type="button" onClick={onDetect} disabled={isDetecting}>
+            <button type="button" onClick={handleDetect} disabled={isDetecting}>
               <RefreshCw size={14} aria-hidden="true" />
               Detectar otra vez
             </button>
-            <button type="button" className={styles.profileActionPrimary} onClick={onConfigure}>
+            <button type="button" className={styles.profileActionPrimary} onClick={handleConfigure}>
               <SlidersHorizontal size={14} aria-hidden="true" />
               Cambiar configuración
             </button>
@@ -237,9 +253,8 @@ export default function GameFinderUnifiedHero({
 
           {showCpuConfirmation && (
             <CpuIdentificationAssistant
-              logicalProcessors={logicalProcessors}
-              onConfirmed={onCpuConfirmed}
-              onCancel={onCancelCpuConfirmation}
+              onConfirmed={handleCpuConfirmed}
+              onCancel={() => setCpuConfirmationRequested(false)}
             />
           )}
         </article>
