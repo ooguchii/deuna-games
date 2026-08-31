@@ -3,10 +3,8 @@
 import {
   CheckCircle2,
   Clipboard,
-  Cpu,
   Info,
   Search,
-  ShieldCheck,
   X,
 } from "lucide-react";
 import {
@@ -15,7 +13,6 @@ import {
 } from "react";
 
 import {
-  readConfirmedCpu,
   writeConfirmedCpu,
 } from "./cpu-confirmation-storage";
 import {
@@ -31,13 +28,17 @@ import styles from "./CpuIdentificationAssistant.module.css";
 const WINDOWS_CPU_COMMAND =
   "Get-CimInstance Win32_Processor | Select-Object -ExpandProperty Name";
 
-export default function CpuIdentificationAssistant() {
-  const [confirmedCpu, setConfirmedCpu] = useState(
-    () => readConfirmedCpu()
-  );
-  const [editing, setEditing] = useState(
-    () => readConfirmedCpu() === null
-  );
+type CpuIdentificationAssistantProps = {
+  logicalProcessors: number | null;
+  onConfirmed: () => void;
+  onCancel: () => void;
+};
+
+export default function CpuIdentificationAssistant({
+  logicalProcessors,
+  onConfirmed,
+  onCancel,
+}: CpuIdentificationAssistantProps) {
   const [rawName, setRawName] = useState("");
   const [selectedCpuId, setSelectedCpuId] = useState("");
   const [copied, setCopied] = useState(false);
@@ -48,23 +49,16 @@ export default function CpuIdentificationAssistant() {
     [rawName]
   );
   const suggestions = useMemo(
-    () => suggestCpuNames(rawName, 5),
+    () => suggestCpuNames(rawName, 3),
     [rawName]
   );
   const selectedCpu = selectedCpuId
     ? findCpuById(selectedCpuId)
     : exactMatch?.cpu ?? null;
-  const logicalProcessors =
-    typeof navigator !== "undefined" &&
-    Number.isFinite(navigator.hardwareConcurrency)
-      ? navigator.hardwareConcurrency
-      : null;
 
   async function copyWindowsCommand() {
     try {
-      await navigator.clipboard.writeText(
-        WINDOWS_CPU_COMMAND
-      );
+      await navigator.clipboard.writeText(WINDOWS_CPU_COMMAND);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1800);
     } catch {
@@ -81,221 +75,110 @@ export default function CpuIdentificationAssistant() {
     }
 
     setSaveError(false);
-    setConfirmedCpu(selectedCpu);
-    setEditing(false);
-
-    // El detector y el modelo de FPS comparten el perfil resuelto al montar.
-    // Recargar garantiza que todas las superficies usen la CPU confirmada en
-    // la misma operación, sin introducir un segundo estado global paralelo.
-    window.location.reload();
-  }
-
-  if (confirmedCpu && !editing) {
-    return (
-      <section
-        className={styles.confirmedBar}
-        aria-label="Procesador confirmado"
-      >
-        <span className={styles.iconBox}>
-          <Cpu size={21} aria-hidden="true" />
-        </span>
-        <div className={styles.confirmedCopy}>
-          <span>CPU CONFIRMADA</span>
-          <strong>{confirmedCpu.name}</strong>
-          <small>
-            Se usa el modelo exacto para calcular rendimiento.
-          </small>
-        </div>
-        <CheckCircle2
-          className={styles.confirmedIcon}
-          size={20}
-          aria-hidden="true"
-        />
-        <button
-          type="button"
-          className={styles.secondaryButton}
-          onClick={() => {
-            setRawName(confirmedCpu.name);
-            setEditing(true);
-          }}
-        >
-          Cambiar
-        </button>
-      </section>
-    );
+    onConfirmed();
   }
 
   return (
-    <section
+    <div
       className={styles.root}
-      aria-labelledby="cpu-identification-title"
+      role="region"
+      aria-label="Confirmar procesador detectado"
     >
-      <div className={styles.header}>
-        <span className={styles.iconBox}>
-          <Cpu size={22} aria-hidden="true" />
-        </span>
+      <div className={styles.heading}>
+        <Info size={15} aria-hidden="true" />
         <div>
-          <span>IDENTIFICACIÓN DE CPU</span>
-          <h2 id="cpu-identification-title">
-            Confirma el procesador exacto
-          </h2>
-          <p>
-            Los navegadores no exponen el modelo de CPU. DeUna puede ver
+          <strong>Falta confirmar el modelo de CPU</strong>
+          <span>
             {logicalProcessors
-              ? ` ${logicalProcessors} hilos lógicos, pero `
-              : " algunos datos generales, pero "}
-            para FPS precisos conviene confirmar el nombre real una sola vez.
-          </p>
+              ? `El navegador detectó ${logicalProcessors} hilos, pero no puede leer el modelo exacto.`
+              : "El navegador no puede leer el modelo exacto del procesador."}
+          </span>
         </div>
+        <button
+          type="button"
+          className={styles.closeButton}
+          onClick={onCancel}
+          aria-label="Cerrar confirmación de CPU"
+        >
+          <X size={15} aria-hidden="true" />
+        </button>
       </div>
 
-      <div className={styles.grid}>
-        <div className={styles.identifyPanel}>
-          <label htmlFor="cpu-raw-name">
-            Nombre del procesador
-          </label>
-          <div className={styles.searchField}>
-            <Search size={17} aria-hidden="true" />
-            <input
-              id="cpu-raw-name"
-              type="text"
-              value={rawName}
-              onChange={(event) => {
-                setRawName(event.target.value);
-                setSelectedCpuId("");
-                setSaveError(false);
-              }}
-              autoComplete="off"
-              spellCheck={false}
-              placeholder="Ej.: AMD Ryzen 7 5800X3D 8-Core Processor"
-            />
-            {rawName && (
-              <button
-                type="button"
-                onClick={() => {
-                  setRawName("");
-                  setSelectedCpuId("");
-                }}
-                aria-label="Limpiar nombre de CPU"
-              >
-                <X size={16} aria-hidden="true" />
-              </button>
-            )}
-          </div>
+      <div className={styles.inputRow}>
+        <label className={styles.searchField} htmlFor="detected-cpu-name">
+          <Search size={15} aria-hidden="true" />
+          <input
+            id="detected-cpu-name"
+            type="text"
+            value={rawName}
+            onChange={(event) => {
+              setRawName(event.target.value);
+              setSelectedCpuId("");
+              setSaveError(false);
+            }}
+            autoComplete="off"
+            spellCheck={false}
+            placeholder="Pega el nombre exacto del procesador"
+          />
+        </label>
 
-          {rawName.trim() && (
-            <div
-              className={styles.matchArea}
-              aria-live="polite"
-            >
-              {exactMatch ? (
-                <div className={styles.exactMatch}>
-                  <CheckCircle2 size={18} aria-hidden="true" />
-                  <div>
-                    <span>COINCIDENCIA EXACTA</span>
-                    <strong>{exactMatch.cpu.name}</strong>
-                    <small>
-                      Modelo y variante reconocidos con confianza alta.
-                    </small>
-                  </div>
-                </div>
-              ) : suggestions.length ? (
-                <div className={styles.suggestions}>
-                  <div className={styles.suggestionHeading}>
-                    <Info size={16} aria-hidden="true" />
-                    <span>
-                      No hay una coincidencia inequívoca. Elige sólo si ves tu
-                      modelo exacto:
-                    </span>
-                  </div>
-                  {suggestions.map((suggestion) => (
-                    <button
-                      key={suggestion.cpu.id}
-                      type="button"
-                      data-selected={
-                        selectedCpuId === suggestion.cpu.id
-                      }
-                      onClick={() =>
-                        setSelectedCpuId(suggestion.cpu.id)
-                      }
-                    >
-                      <span>{suggestion.cpu.name}</span>
-                      <small>
-                        {Math.round(suggestion.confidence * 100)}% coincidencia
-                      </small>
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <div className={styles.noMatch}>
-                  <Info size={17} aria-hidden="true" />
-                  <span>
-                    No encontramos ese modelo en el catálogo. Puedes seguir
-                    usando el selector manual del perfil sin inventar una
-                    equivalencia.
-                  </span>
-                </div>
-              )}
+        <button
+          type="button"
+          className={styles.confirmButton}
+          disabled={!selectedCpu}
+          onClick={confirmCpu}
+        >
+          <CheckCircle2 size={15} aria-hidden="true" />
+          Confirmar
+        </button>
+      </div>
+
+      {rawName.trim() && (
+        <div className={styles.matchArea} aria-live="polite">
+          {exactMatch ? (
+            <span className={styles.exactMatch}>
+              <CheckCircle2 size={14} aria-hidden="true" />
+              {exactMatch.cpu.name}
+            </span>
+          ) : suggestions.length ? (
+            <div className={styles.suggestions}>
+              <span>¿Es uno de estos?</span>
+              {suggestions.map((suggestion) => (
+                <button
+                  key={suggestion.cpu.id}
+                  type="button"
+                  data-selected={selectedCpuId === suggestion.cpu.id}
+                  onClick={() => setSelectedCpuId(suggestion.cpu.id)}
+                >
+                  {suggestion.cpu.name}
+                </button>
+              ))}
             </div>
-          )}
-
-          <div className={styles.actions}>
-            <button
-              type="button"
-              className={styles.primaryButton}
-              disabled={!selectedCpu}
-              onClick={confirmCpu}
-            >
-              <CheckCircle2 size={17} aria-hidden="true" />
-              Confirmar {selectedCpu?.name ?? "CPU"}
-            </button>
-            {confirmedCpu && (
-              <button
-                type="button"
-                className={styles.secondaryButton}
-                onClick={() => {
-                  setRawName(confirmedCpu.name);
-                  setSelectedCpuId("");
-                  setEditing(false);
-                }}
-              >
-                Cancelar
-              </button>
-            )}
-          </div>
-
-          {saveError && (
-            <p className={styles.error} role="alert">
-              El navegador no permitió guardar la confirmación local.
-            </p>
+          ) : (
+            <span className={styles.noMatch}>
+              No encontramos ese modelo. Puedes elegirlo desde Configurar perfil.
+            </span>
           )}
         </div>
+      )}
 
-        <aside className={styles.helpPanel}>
-          <div className={styles.helpTitle}>
-            <ShieldCheck size={18} aria-hidden="true" />
-            <div>
-              <strong>Obtener el nombre exacto en Windows</strong>
-              <span>
-                Abre PowerShell, ejecuta este comando y pega aquí el resultado.
-              </span>
-            </div>
-          </div>
+      <details className={styles.help}>
+        <summary>¿Dónde veo el nombre exacto?</summary>
+        <div className={styles.helpContent}>
           <code>{WINDOWS_CPU_COMMAND}</code>
-          <button
-            type="button"
-            className={styles.copyButton}
-            onClick={copyWindowsCommand}
-          >
-            <Clipboard size={15} aria-hidden="true" />
+          <button type="button" onClick={copyWindowsCommand}>
+            <Clipboard size={13} aria-hidden="true" />
             {copied ? "Copiado" : "Copiar comando"}
           </button>
-          <p>
-            El texto se procesa en tu navegador. No se envía el modelo de CPU
-            a DeUna ni se usa para rastreo.
-          </p>
-        </aside>
-      </div>
-    </section>
+        </div>
+        <p>Se procesa localmente en tu navegador.</p>
+      </details>
+
+      {saveError && (
+        <p className={styles.error} role="alert">
+          El navegador no permitió guardar la CPU confirmada.
+        </p>
+      )}
+    </div>
   );
 }
