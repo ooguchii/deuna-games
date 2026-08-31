@@ -3,9 +3,9 @@
   padding: 14px;
   overflow-x: hidden;
   background:
-    radial-gradient(circle at 10% 10%, rgba(255, 32, 96, 0.09), transparent 30%),
-    radial-gradient(circle at 92% 16%, rgba(104, 73, 255, 0.08), transparent 32%),
-    #05070d;
+    radial-gradient(circle at 10% 10%, color-mix(in srgb, var(--brand) 9%, transparent), transparent 30%),
+    radial-gradient(circle at 92% 16%, color-mix(in srgb, var(--brand) 5%, var(--background)), transparent 32%),
+    var(--background);
   color: #f7f8fc;
 }
 
@@ -27,7 +27,11 @@
 .dashboardMain {
   border: 1px solid #202a3a;
   border-radius: 18px;
-  background: linear-gradient(180deg, rgba(14, 21, 33, 0.98), rgba(9, 15, 25, 0.98));
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--background) 10%, #0e1521),
+    color-mix(in srgb, var(--background) 12%, #090f19)
+  );
   box-shadow: 0 22px 80px rgba(0, 0, 0, 0.28);
 }
 
@@ -104,9 +108,13 @@
 }
 
 .sidebarNav button[data-active="true"] {
-  background: linear-gradient(90deg, rgba(255, 45, 104, 0.19), rgba(255, 45, 104, 0.08));
-  color: #ff5b88;
-  box-shadow: inset 0 0 0 1px rgba(255, 67, 119, 0.06);
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--brand) 19%, transparent),
+    color-mix(in srgb, var(--brand) 8%, transparent)
+  );
+  color: color-mix(in srgb, var(--brand) 62%, #ffffff);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--brand) 9%, transparent);
 }
 
 .sidebarNav button b {
@@ -115,8 +123,8 @@
   height: 24px;
   place-items: center;
   border-radius: 999px;
-  background: rgba(255, 49, 96, 0.18);
-  color: #ff7b9f;
+  background: color-mix(in srgb, var(--brand) 18%, transparent);
+  color: color-mix(in srgb, var(--brand) 58%, #ffffff);
   font-size: 12px;
 }
 
@@ -139,10 +147,14 @@
   width: 42px;
   height: 42px;
   place-items: center;
-  border: 1px solid rgba(255, 58, 119, 0.25);
+  border: 1px solid color-mix(in srgb, var(--brand) 25%, #364356);
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(108, 77, 255, 0.22), rgba(255, 48, 105, 0.06));
-  color: #dcddff;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--brand) 18%, transparent),
+    color-mix(in srgb, var(--brand) 5%, var(--background))
+  );
+  color: color-mix(in srgb, var(--brand) 46%, #ffffff);
 }
 
 .userIdentity div {
@@ -156,7 +168,7 @@
 }
 
 .userIdentity small {
-  color: #ff6f98;
+  color: color-mix(in srgb, var(--brand) 58%, #ffffff);
   font-size: 12px;
 }
 
@@ -174,10 +186,10 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  border: 1px solid rgba(255, 55, 105, 0.55);
+  border: 1px solid rgba(255, 81, 94, 0.42);
   border-radius: 9px;
-  background: rgba(255, 31, 87, 0.025);
-  color: #ff6b93;
+  background: rgba(255, 65, 79, 0.045);
+  color: #ff7c86;
   font: inherit;
   font-size: 13px;
   font-weight: 800;
@@ -217,14 +229,14 @@
 .sectionHeader > div > span {
   display: block;
   margin-bottom: 8px;
-  color: #ff4f80;
+  color: color-mix(in srgb, var(--brand) 68%, #ffffff);
   font-size: 12px;
   font-weight: 900;
   letter-spacing: 0.12em;
 }
 
 .sectionHeader > strong {
-  color: #ff6a94;
+  color: color-mix(in srgb, var(--brand) 58%, #ffffff);
   font-size: 14px;
 }
 
@@ -246,11 +258,11 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  border: 1px solid #ff3a72;
+  border: 1px solid color-mix(in srgb, var(--brand) 62%, #526173);
   border-radius: 9px;
   padding: 0 16px;
-  background: transparent;
-  color: #ff5c88;
+  background: color-mix(in srgb, var(--brand) 3%, transparent);
+  color: color-mix(in srgb, var(--brand) 62%, #ffffff);
   font-size: 13px;
   font-weight: 800;
 }
@@ -285,8 +297,8 @@
   flex: 0 0 auto;
   place-items: center;
   border-radius: 10px;
-  background: rgba(255, 43, 102, 0.11);
-  color: #ff477a;
+  background: color-mix(in srgb, var(--brand) 11%, transparent);
+  color: color-mix(in srgb, var(--brand) 70%, #ffffff);
 }
 
 .statItem div {
@@ -323,7 +335,11 @@
 .fullPanel {
   border: 1px solid #253044;
   border-radius: 14px;
-  background: linear-gradient(180deg, rgba(14, 22, 35, 0.98), rgba(9, 15, 25, 0.98));
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--background) 9%, #0e1623),
+    color-mix(in srgb, var(--background) 12%, #090f19)
+  );
 }
 
 .dashboardCard {
@@ -347,7 +363,7 @@
   display: flex;
   align-items: center;
   gap: 9px;
-  color: #ff4a7c;
+  color: color-mix(in srgb, var(--brand) 68%, #ffffff);
 }
 
 .cardHeading h2 {
@@ -360,7 +376,7 @@
 .cardHeading > button {
   border: 0;
   background: transparent;
-  color: #ff5b87;
+  color: color-mix(in srgb, var(--brand) 58%, #ffffff);
   font: inherit;
   font-size: 13px;
   font-weight: 800;
@@ -430,7 +446,7 @@
 }
 
 .compactSignals svg[data-active="true"] {
-  color: #ff4a7d;
+  color: color-mix(in srgb, var(--brand) 68%, #ffffff);
 }
 
 .emptyCompact {
@@ -444,10 +460,10 @@
 .cardFooterButton {
   min-height: 38px;
   margin-top: auto;
-  border: 1px solid rgba(255, 61, 116, 0.75);
+  border: 1px solid color-mix(in srgb, var(--brand) 62%, #4a5868);
   border-radius: 8px;
   background: transparent;
-  color: #ff5b87;
+  color: color-mix(in srgb, var(--brand) 60%, #ffffff);
   font-size: 13px;
   font-weight: 850;
 }
@@ -592,7 +608,7 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #ff4375;
+  background: var(--brand);
 }
 
 .recommendationsPanel {
@@ -624,7 +640,7 @@
 
 .recommendationCard:hover,
 .recommendationCard:focus-visible {
-  border-color: rgba(255, 74, 125, 0.52);
+  border-color: color-mix(in srgb, var(--brand) 52%, #536173);
   outline: none;
   transform: translateY(-2px);
 }
@@ -740,7 +756,7 @@
 }
 
 .inlineCheck input {
-  accent-color: #ff376e;
+  accent-color: var(--brand);
 }
 
 .accentButton,
@@ -761,9 +777,10 @@
 
 .accentButton,
 .primaryButton {
-  border: 1px solid #ff3c72;
-  background: linear-gradient(135deg, #ff2f68, #d5144d);
-  color: #ffffff;
+  border: 1px solid color-mix(in srgb, var(--brand) 76%, #ffffff);
+  background: linear-gradient(135deg, var(--brand-light), var(--brand-dark));
+  color: var(--text-on-brand);
+  box-shadow: 0 9px 24px color-mix(in srgb, var(--brand) 15%, transparent);
 }
 
 .ghostButton {
@@ -775,7 +792,7 @@
 .removeButton {
   border: 1px solid transparent;
   background: transparent;
-  color: #ff6a8e;
+  color: #ff7786;
 }
 
 .dangerButton {
@@ -861,9 +878,9 @@
 }
 
 .iconToggle[aria-pressed="true"] {
-  border-color: rgba(255, 60, 113, 0.42);
-  background: rgba(255, 53, 105, 0.08);
-  color: #ff4d7d;
+  border-color: color-mix(in srgb, var(--brand) 42%, #445267);
+  background: color-mix(in srgb, var(--brand) 8%, transparent);
+  color: color-mix(in srgb, var(--brand) 68%, #ffffff);
 }
 
 .pcWorkspace {
@@ -904,7 +921,7 @@
 
 .pcSummaryLarge svg,
 .emptyLarge svg {
-  color: #ff4c7d;
+  color: color-mix(in srgb, var(--brand) 66%, #ffffff);
 }
 
 .pcSummaryLarge span,
@@ -962,7 +979,7 @@
 
 .alertCard span,
 .alertCard small {
-  color: #ff789d;
+  color: color-mix(in srgb, var(--brand) 54%, #ffffff);
   font-size: 12px;
 }
 
@@ -1020,7 +1037,7 @@
   min-height: 46px;
   border: 1px solid #293244;
   border-radius: 10px;
-  background: #080c14;
+  background: color-mix(in srgb, var(--background) 34%, #080c14);
   color: #f7f9fd;
   font: inherit;
   font-size: 14px;
@@ -1040,8 +1057,8 @@
 
 .field input:focus,
 .field textarea:focus {
-  border-color: #ff386f;
-  box-shadow: 0 0 0 3px rgba(255, 48, 106, 0.12);
+  border-color: color-mix(in srgb, var(--brand) 58%, #536273);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 12%, transparent);
 }
 
 .hint {
@@ -1158,8 +1175,14 @@
 .sidebarUser > button:focus-visible,
 .sidebarNav button:focus-visible,
 .backHome:focus-visible {
-  outline: 3px solid rgba(255, 255, 255, 0.16);
+  outline: 3px solid color-mix(in srgb, var(--brand) 32%, #ffffff);
   outline-offset: 2px;
+}
+
+.dangerButton:focus-visible,
+.removeButton:focus-visible,
+.sidebarUser > button:focus-visible {
+  outline-color: rgba(255, 94, 108, 0.58);
 }
 
 .outlineAccentButton:disabled,
