@@ -6,7 +6,7 @@ import {
   adminUnavailableResponse,
 } from "@/lib/admin/admin-route";
 import {
-  authenticateAdminOwner,
+  authenticateAdmin,
 } from "@/lib/admin/auth-service";
 import {
   getAdminOrigin,
@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const result = await authenticateAdminOwner(
+    const result = await authenticateAdmin(
       parsed.data.username,
       parsed.data.password
     );
