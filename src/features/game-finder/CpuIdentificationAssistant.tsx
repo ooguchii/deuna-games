@@ -9,6 +9,7 @@ import {
 import {
   useCallback,
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -35,6 +36,7 @@ type CpuIdentificationAssistantProps = {
   ramLabel: string;
   onConfirmed: () => void;
   onCancel: () => void;
+  showCloseButton?: boolean;
 };
 
 type DropdownPosition = {
@@ -52,7 +54,11 @@ export default function CpuIdentificationAssistant({
   ramLabel,
   onConfirmed,
   onCancel,
+  showCloseButton = true,
 }: CpuIdentificationAssistantProps) {
+  const instanceId = useId();
+  const inputId = `detected-cpu-search-${instanceId}`;
+  const resultsId = `detected-cpu-results-${instanceId}`;
   const searchAreaRef = useRef<HTMLDivElement | null>(null);
   const [query, setQuery] = useState("");
   const [selectedCpuId, setSelectedCpuId] = useState("");
@@ -143,11 +149,12 @@ export default function CpuIdentificationAssistant({
     query.trim() && dropdownPosition && typeof document !== "undefined"
       ? createPortal(
           <div
-            id="detected-cpu-results"
+            id={resultsId}
             className={styles.results}
             role="listbox"
             aria-label="Procesadores coincidentes"
             aria-live="polite"
+            data-cpu-assistant-results="true"
             style={dropdownPosition}
           >
             {searchResult.items.length ? (
@@ -216,22 +223,24 @@ export default function CpuIdentificationAssistant({
               {" "}Busca el procesador en el catálogo y selecciona el correcto.
             </span>
           </div>
-          <button
-            type="button"
-            className={styles.closeButton}
-            onClick={onCancel}
-            aria-label="Cerrar configuración incompleta"
-          >
-            <X size={15} aria-hidden="true" />
-          </button>
+          {showCloseButton && (
+            <button
+              type="button"
+              className={styles.closeButton}
+              onClick={onCancel}
+              aria-label="Cerrar configuración incompleta"
+            >
+              <X size={15} aria-hidden="true" />
+            </button>
+          )}
         </div>
 
         <div className={styles.inputRow}>
           <div ref={searchAreaRef} className={styles.searchArea}>
-            <label className={styles.searchField} htmlFor="detected-cpu-search">
+            <label className={styles.searchField} htmlFor={inputId}>
               <Search size={15} aria-hidden="true" />
               <input
-                id="detected-cpu-search"
+                id={inputId}
                 type="search"
                 role="combobox"
                 value={query}
@@ -247,7 +256,7 @@ export default function CpuIdentificationAssistant({
                 autoComplete="off"
                 spellCheck={false}
                 placeholder="Buscar CPU: i5 12400, Ryzen 5600, 5800X3D..."
-                aria-controls="detected-cpu-results"
+                aria-controls={resultsId}
                 aria-expanded={Boolean(query.trim())}
                 aria-autocomplete="list"
               />
