@@ -43,7 +43,7 @@ export default function AdminShell({
             <SiteLogoMark size={24} strokeWidth={2.1} />
           </span>
           <div>
-            <strong>{compactName}</strong>
+            <strong className={ux.brandName}>{compactName}</strong>
             <small>Administración privada</small>
           </div>
         </Link>
