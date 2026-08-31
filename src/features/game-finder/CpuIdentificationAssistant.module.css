@@ -34,7 +34,7 @@
 .heading span {
   color: var(--text-muted);
   font-size: 10px;
-  line-height: 1.4;
+  line-height: 1.45;
 }
 
 .closeButton {
@@ -105,7 +105,7 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 0 12px;
+  padding: 0 13px;
   color: white;
   border: 1px solid rgba(255, 8, 71, 0.56);
   border-radius: 8px;
@@ -114,6 +114,7 @@
   font-size: 11px;
   font-weight: 800;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .confirmButton:hover:not(:disabled) {
@@ -125,109 +126,89 @@
   cursor: not-allowed;
 }
 
-.matchArea {
+.results {
+  overflow: hidden;
   margin-top: 7px;
+  border: 1px solid rgba(132, 151, 175, 0.16);
+  border-radius: 8px;
+  background: rgba(3, 8, 14, 0.72);
 }
 
-.exactMatch {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: #67e7ac;
-  font-size: 11px;
-  font-weight: 760;
+.resultMeta {
+  padding: 6px 9px;
+  color: #8e99a8;
+  border-bottom: 1px solid rgba(132, 151, 175, 0.11);
+  font-size: 9px;
+  font-weight: 700;
 }
 
-.suggestions {
+.resultList {
+  max-height: 190px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 4px;
+}
+
+.resultList > button {
+  width: 100%;
+  min-height: 34px;
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.suggestions > span {
-  color: var(--text-muted);
-  font-size: 10px;
-}
-
-.suggestions > button {
-  min-height: 30px;
-  padding: 0 8px;
-  color: var(--text-soft);
-  border: 1px solid rgba(132, 151, 175, 0.18);
-  border-radius: 7px;
-  background: rgba(255, 255, 255, 0.025);
+  justify-content: space-between;
+  gap: 9px;
+  padding: 6px 8px;
+  color: #c6cfda;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
   font: inherit;
-  font-size: 10px;
-  font-weight: 700;
+  font-size: 11px;
+  font-weight: 690;
+  text-align: left;
   cursor: pointer;
 }
 
-.suggestions > button:hover,
-.suggestions > button[data-selected="true"] {
+.resultList > button:hover {
   color: white;
-  border-color: rgba(255, 8, 71, 0.38);
-  background: rgba(255, 8, 71, 0.08);
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.resultList > button[data-selected="true"] {
+  color: white;
+  border-color: rgba(255, 8, 71, 0.34);
+  background: rgba(255, 8, 71, 0.09);
+}
+
+.resultList > button svg {
+  flex: 0 0 auto;
+  color: #67e7ac;
 }
 
 .noMatch {
+  margin: 0;
+  padding: 9px 10px;
   color: var(--text-muted);
   font-size: 10px;
+  line-height: 1.45;
 }
 
-.help {
-  margin-top: 8px;
-  color: var(--text-muted);
-  font-size: 10px;
-}
-
-.help summary {
-  width: fit-content;
-  cursor: pointer;
-  color: #aeb9c8;
-  font-weight: 700;
-}
-
-.helpContent {
+.selectedCpu {
   display: flex;
   align-items: center;
-  gap: 7px;
-  margin-top: 7px;
-}
-
-.helpContent code {
-  min-width: 0;
-  overflow: hidden;
-  padding: 7px 8px;
-  color: #c9d2de;
-  border: 1px solid rgba(132, 151, 175, 0.14);
-  border-radius: 7px;
-  background: rgba(0, 0, 0, 0.2);
-  font-size: 9px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.helpContent button {
-  min-height: 30px;
-  display: inline-flex;
-  align-items: center;
   gap: 5px;
-  padding: 0 8px;
-  color: var(--text-soft);
-  border: 1px solid rgba(132, 151, 175, 0.18);
-  border-radius: 7px;
-  background: rgba(255, 255, 255, 0.025);
-  font: inherit;
+  margin-top: 7px;
+  color: #8f9aaa;
   font-size: 10px;
-  font-weight: 700;
-  cursor: pointer;
 }
 
-.help p {
-  margin: 5px 0 0;
-  color: #7f8a99;
-  font-size: 9px;
+.selectedCpu svg {
+  flex: 0 0 auto;
+  color: #67e7ac;
+}
+
+.selectedCpu strong {
+  color: #dfe5ed;
+  font-weight: 760;
 }
 
 .error {
@@ -238,9 +219,7 @@
 
 .closeButton:focus-visible,
 .confirmButton:focus-visible,
-.suggestions > button:focus-visible,
-.helpContent button:focus-visible,
-.help summary:focus-visible {
+.resultList > button:focus-visible {
   outline: 2px solid var(--brand-light);
   outline-offset: 2px;
 }
@@ -254,13 +233,7 @@
     width: 100%;
   }
 
-  .helpContent {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .helpContent code {
-    white-space: normal;
-    overflow-wrap: anywhere;
+  .resultList {
+    max-height: 220px;
   }
 }
