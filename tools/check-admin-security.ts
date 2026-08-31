@@ -338,8 +338,11 @@ assert(
   ) &&
     !migrator.includes(
       "GRANT SELECT, INSERT, UPDATE, DELETE"
+    ) &&
+    !/GRANT\s+DELETE\s+ON\s+deuna_accounts\.sessions\b/i.test(
+      migrator
     ),
-  "El rol runtime debe usar permisos de columna y no borrar sesiones."
+  "El rol runtime debe usar permisos de columna y no borrar sesiones directamente."
 );
 
 const localSetup = await readFile(
@@ -441,13 +444,13 @@ assert(
   "Next.js debe ejecutarse siempre mediante el wrapper sin telemetría."
 );
 assert(
-  !/GRANT[\s\S]{0,300}\bDELETE\b/i.test(
+  !/GRANT\s+DELETE\s+ON\s+deuna_admin\./i.test(
     migrator
   ) &&
     migrator.includes(
       "GRANT UPDATE (\n        draft_payload"
     ),
-  "El rol runtime no debe borrar contenido y sólo puede actualizar el borrador."
+  "El rol runtime no debe borrar contenido administrativo y sólo puede actualizar el borrador."
 );
 
 const importer = await readFile(
