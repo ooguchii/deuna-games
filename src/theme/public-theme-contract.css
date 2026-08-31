@@ -13,3 +13,223 @@
 [data-brand-badge="true"] svg {
   color: currentColor;
 }
+
+/* ================================================================
+   ACTUALIZACIONES DESTACADAS
+
+   Este carrusel conserva arte propio de cada juego, pero su wash, halo,
+   navegación activa y controles de identidad siempre siguen la marca
+   publicada. Los selectores se apoyan en ARIA estable y no en hashes de
+   CSS Modules.
+================================================================ */
+section[aria-label="Actualizaciones destacadas"]::after {
+  background:
+    radial-gradient(
+      circle,
+      color-mix(in srgb, var(--brand) 17%, transparent),
+      color-mix(in srgb, var(--brand) 6%, transparent) 40%,
+      transparent 70%
+    ) !important;
+}
+
+section[aria-label="Actualizaciones destacadas"]
+  article
+  > div[aria-hidden="true"]
+  > div:nth-last-child(2) {
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--background) 98%, #020308) 0%,
+      color-mix(in srgb, var(--background) 94%, #05070d) 28%,
+      color-mix(in srgb, var(--brand) 14%, var(--background)) 52%,
+      color-mix(in srgb, var(--brand) 7%, transparent) 75%,
+      transparent 100%
+    ),
+    radial-gradient(
+      circle at 78% 18%,
+      color-mix(in srgb, var(--brand) 14%, transparent),
+      transparent 42%
+    ) !important;
+}
+
+section[aria-label="Actualizaciones destacadas"]
+  [role="tab"][aria-selected="true"] {
+  background: var(--brand) !important;
+  box-shadow:
+    0 0 15px color-mix(in srgb, var(--brand) 42%, transparent) !important;
+}
+
+section[aria-label="Actualizaciones destacadas"]
+  button[aria-label="Actualización anterior"]:hover,
+section[aria-label="Actualizaciones destacadas"]
+  button[aria-label="Actualización siguiente"]:hover {
+  background:
+    color-mix(in srgb, var(--brand) 8%, var(--surface-control)) !important;
+}
+
+/* ================================================================
+   CONFIGURADOR DE HARDWARE / POR REQUISITOS
+
+   El overlay histórico tenía una segunda paleta rosa/violeta independiente.
+   El diálogo se identifica por su aria-labelledby, de modo que el contrato
+   funciona tanto en desarrollo como en producción sin conocer clases CSS
+   generadas.
+================================================================ */
+div:has(> [role="dialog"][aria-labelledby="config-title"]) {
+  background:
+    radial-gradient(
+      760px 440px at 73% 11%,
+      color-mix(in srgb, var(--brand) 16%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      620px 360px at 24% 84%,
+      color-mix(in srgb, var(--brand) 7%, transparent),
+      transparent 72%
+    ),
+    color-mix(in srgb, var(--background) 86%, transparent) !important;
+}
+
+[role="dialog"][aria-labelledby="config-title"] {
+  border-color:
+    color-mix(in srgb, var(--brand) 30%, var(--border)) !important;
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--background) 10%, #0c121c),
+      color-mix(in srgb, var(--background) 8%, #05090f)
+    ) !important;
+  box-shadow:
+    0 48px 130px rgba(0, 0, 0, 0.76),
+    0 0 0 1px rgba(255, 255, 255, 0.018),
+    0 0 90px color-mix(in srgb, var(--brand) 11%, transparent) !important;
+}
+
+[role="dialog"][aria-labelledby="config-title"]::before {
+  background:
+    radial-gradient(
+      600px 220px at 88% -6%,
+      color-mix(in srgb, var(--brand) 12%, transparent),
+      transparent 72%
+    ),
+    radial-gradient(
+      520px 220px at 4% 104%,
+      color-mix(in srgb, var(--brand) 6%, transparent),
+      transparent 75%
+    ) !important;
+}
+
+[role="dialog"][aria-labelledby="config-title"]:focus-visible {
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--brand) 46%, transparent),
+    0 48px 130px rgba(0, 0, 0, 0.76),
+    0 0 90px color-mix(in srgb, var(--brand) 11%, transparent) !important;
+}
+
+[role="dialog"][aria-labelledby="config-title"]
+  > section
+  > div:first-child
+  > div
+  > span:first-child {
+  color: color-mix(in srgb, var(--brand) 48%, #ffffff) !important;
+  border-color:
+    color-mix(in srgb, var(--brand) 24%, transparent) !important;
+  background:
+    color-mix(in srgb, var(--brand) 7.5%, transparent) !important;
+}
+
+[role="dialog"][aria-labelledby="config-title"]
+  > section
+  > div:first-child
+  > button:hover {
+  color: var(--text) !important;
+  border-color:
+    color-mix(in srgb, var(--brand) 44%, transparent) !important;
+  background:
+    color-mix(in srgb, var(--brand) 10%, var(--surface-control)) !important;
+}
+
+[role="dialog"][aria-labelledby="config-title"]
+  > section
+  > div:nth-child(2) {
+  background:
+    radial-gradient(
+      420px 260px at 93% 8%,
+      color-mix(in srgb, var(--brand) 4%, transparent),
+      transparent 75%
+    ),
+    color-mix(in srgb, var(--background) 34%, transparent) !important;
+}
+
+[role="dialog"][aria-labelledby="config-title"]
+  > section
+  > div:nth-child(2)
+  > *:hover,
+[role="dialog"][aria-labelledby="config-title"]
+  > section
+  > div:nth-child(2)
+  > *:focus-within {
+  border-color:
+    color-mix(in srgb, var(--brand) 30%, transparent) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.025),
+    0 14px 32px rgba(0, 0, 0, 0.18),
+    0 0 24px color-mix(in srgb, var(--brand) 4%, transparent) !important;
+}
+
+[role="dialog"][aria-labelledby="config-title"]
+  button[aria-haspopup="listbox"]:hover,
+[role="dialog"][aria-labelledby="config-title"]
+  button[aria-haspopup="listbox"][aria-expanded="true"] {
+  border-color:
+    color-mix(in srgb, var(--brand) 48%, transparent) !important;
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--brand) 5%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.022) !important;
+}
+
+[role="dialog"][aria-labelledby="config-title"]
+  button[aria-haspopup="listbox"][aria-expanded="true"]
+  + div {
+  border-color:
+    color-mix(in srgb, var(--brand) 38%, transparent) !important;
+  box-shadow:
+    0 24px 58px rgba(0, 0, 0, 0.68),
+    0 0 0 1px rgba(255, 255, 255, 0.018),
+    0 0 34px color-mix(in srgb, var(--brand) 6%, transparent) !important;
+}
+
+[role="dialog"][aria-labelledby="config-title"]
+  [role="option"]:hover,
+[role="dialog"][aria-labelledby="config-title"]
+  [role="option"]:focus-visible {
+  color: var(--text) !important;
+  background:
+    color-mix(in srgb, var(--brand) 9%, transparent) !important;
+}
+
+[role="dialog"][aria-labelledby="config-title"]
+  [role="option"][aria-selected="true"] {
+  color: var(--text) !important;
+  border-color:
+    color-mix(in srgb, var(--brand) 32%, transparent) !important;
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--brand) 13%, transparent),
+      color-mix(in srgb, var(--brand) 4.5%, transparent)
+    ) !important;
+}
+
+[role="dialog"][aria-labelledby="config-title"]
+  > section
+  > div:last-child
+  > button {
+  color: var(--text-on-brand) !important;
+  border-color:
+    color-mix(in srgb, var(--brand) 18%, rgba(255, 255, 255, 0.075)) !important;
+  background: var(--gradient-cta) !important;
+  box-shadow:
+    0 12px 28px color-mix(in srgb, var(--brand) 22%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+}
