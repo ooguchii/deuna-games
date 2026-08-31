@@ -5,6 +5,8 @@ import {
   LogOut,
   Save,
   ShieldCheck,
+  Trash2,
+  X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
@@ -52,6 +54,8 @@ export default function AccountProfileClient({
   const [pending, setPending] = useState(false);
   const [saved, setSaved] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteMessage, setDeleteMessage] = useState<string | null>(null);
 
   async function handleSave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -104,6 +108,39 @@ export default function AccountProfileClient({
       router.refresh();
     } catch {
       setMessage("No se pudo conectar con el servicio de cuentas.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function handleDelete(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setPending(true);
+    setDeleteMessage(null);
+
+    const form = new FormData(event.currentTarget);
+
+    try {
+      const data = await postForm("/api/account/delete", {
+        password: String(form.get("password") ?? ""),
+        confirmation: "ELIMINAR",
+      });
+
+      if (!data.ok) {
+        setDeleteMessage(
+          data.error === "credenciales"
+            ? "La contraseña actual no coincide."
+            : data.error === "sesion"
+              ? "Tu sesión venció. Vuelve a entrar."
+              : "No se pudo eliminar la cuenta."
+        );
+        return;
+      }
+
+      router.replace("/cuenta?modo=entrar&estado=eliminada");
+      router.refresh();
+    } catch {
+      setDeleteMessage("No se pudo conectar con el servicio de cuentas.");
     } finally {
       setPending(false);
     }
@@ -171,7 +208,7 @@ export default function AccountProfileClient({
           <div className={styles.profileActions}>
             <button
               type="button"
-              className={styles.dangerButton}
+              className={styles.secondaryButton}
               onClick={handleLogout}
               disabled={pending}
             >
@@ -185,10 +222,75 @@ export default function AccountProfileClient({
               disabled={pending}
             >
               {saved ? <CheckCircle2 size={17} aria-hidden="true" /> : <Save size={17} aria-hidden="true" />}
-              {saved ? "Guardado" : pending ? "Guardando..." : "Guardar cambios"}
+              {saved ? "Guardado" : pending ? "Procesando..." : "Guardar cambios"}
             </button>
           </div>
         </form>
+
+        <section className={styles.deletePanel} aria-labelledby="account-delete-title">
+          <div className={styles.deleteHeader}>
+            <div>
+              <h2 id="account-delete-title">Eliminar mi cuenta</h2>
+              <p>
+                La eliminación es permanente. Se borran el perfil, el correo cifrado, las sesiones y los códigos de recuperación.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              className={styles.dangerButton}
+              onClick={() => {
+                setDeleteOpen((current) => !current);
+                setDeleteMessage(null);
+              }}
+              disabled={pending}
+              aria-expanded={deleteOpen}
+              aria-controls="account-delete-form"
+            >
+              {deleteOpen ? <X size={17} aria-hidden="true" /> : <Trash2 size={17} aria-hidden="true" />}
+              {deleteOpen ? "Cancelar" : "Eliminar mi cuenta"}
+            </button>
+          </div>
+
+          {deleteOpen && (
+            <form
+              id="account-delete-form"
+              className={styles.deleteForm}
+              onSubmit={handleDelete}
+            >
+              <div className={styles.field}>
+                <label htmlFor="account-delete-password">
+                  Confirma con tu contraseña actual
+                </label>
+                <input
+                  id="account-delete-password"
+                  name="password"
+                  type="password"
+                  autoComplete="current-password"
+                  minLength={1}
+                  maxLength={128}
+                  required
+                  disabled={pending}
+                />
+              </div>
+
+              {deleteMessage && (
+                <p className={styles.message} role="alert">
+                  {deleteMessage}
+                </p>
+              )}
+
+              <button
+                type="submit"
+                className={styles.dangerButton}
+                disabled={pending}
+              >
+                <Trash2 size={17} aria-hidden="true" />
+                {pending ? "Eliminando..." : "Eliminar definitivamente"}
+              </button>
+            </form>
+          )}
+        </section>
       </section>
 
       <aside className={styles.privacyPanel} aria-labelledby="account-privacy-title">
@@ -202,6 +304,7 @@ export default function AccountProfileClient({
           <li><ShieldCheck size={15} aria-hidden="true" /> Sin teléfono, nombre legal, domicilio o ubicación.</li>
           <li><ShieldCheck size={15} aria-hidden="true" /> Correo opcional y cifrado cuando decides agregarlo.</li>
           <li><ShieldCheck size={15} aria-hidden="true" /> Sesión mediante token aleatorio; PostgreSQL guarda sólo su hash.</li>
+          <li><ShieldCheck size={15} aria-hidden="true" /> Puedes eliminar tu cuenta sin solicitar intervención administrativa.</li>
         </ul>
       </aside>
     </div>
