@@ -123,6 +123,31 @@ export async function getAccountGamePreferences(
   return result.rows.map(mapPreference);
 }
 
+export async function getAccountGamePreference(
+  userId: string,
+  gameSlug: string
+): Promise<AccountGamePreference | null> {
+  const result = await accountQuery<GamePreferenceRow>(
+    `SELECT
+       game_slug,
+       favorite,
+       library_state,
+       follow_updates,
+       followed_at,
+       updates_seen_through,
+       updated_at
+     FROM deuna_accounts.game_preferences
+     WHERE user_id = $1
+       AND game_slug = $2
+     LIMIT 1`,
+    [userId, gameSlug]
+  );
+
+  return result.rows[0]
+    ? mapPreference(result.rows[0])
+    : null;
+}
+
 export async function getAccountHardwareSelection(
   userId: string
 ): Promise<AccountHardwareSelection | null> {
