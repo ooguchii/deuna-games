@@ -52,6 +52,67 @@
     0 0 0 4px color-mix(in srgb, var(--brand) 7%, transparent);
 }
 
+.admin-professional input[type="search"] {
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.admin-professional input[type="search"]::-webkit-search-decoration,
+.admin-professional input[type="search"]::-webkit-search-cancel-button,
+.admin-professional input[type="search"]::-webkit-search-results-button,
+.admin-professional input[type="search"]::-webkit-search-results-decoration {
+  display: none;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.admin-professional label:has(> input[type="search"]) {
+  border-color: var(--admin-control-border);
+  background: #091019;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.018);
+  transition:
+    border-color 140ms ease,
+    background 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.admin-professional label:has(> input[type="search"]):hover {
+  border-color: var(--admin-control-border-strong);
+  background: #0b131c;
+}
+
+.admin-professional label:has(> input[type="search"]):focus-within {
+  border-color: color-mix(in srgb, var(--brand) 58%, #536273);
+  background: color-mix(in srgb, var(--brand) 2.5%, #0b131c);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--brand) 22%, transparent),
+    0 0 0 4px color-mix(in srgb, var(--brand) 7%, transparent);
+}
+
+.admin-professional label:has(> input[type="search"]):focus-within > svg {
+  color: color-mix(in srgb, var(--brand) 68%, #ffffff);
+}
+
+.admin-professional section:has(.admin-data-table) > div:first-child:not(:has(table)) {
+  min-height: 50px;
+  padding-bottom: 13px;
+  border-bottom-color: #303d49;
+}
+
+.admin-professional section:has(.admin-data-table) > div:first-child:not(:has(table)) strong {
+  color: #eef2f6;
+  font-size: 13px;
+  font-weight: 780;
+}
+
+.admin-professional section:has(.admin-data-table) > div:first-child:not(:has(table)) span {
+  color: #e8b0bd;
+  border-color: color-mix(in srgb, var(--brand) 24%, #344251);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--brand) 5%, #0b131c);
+  font-size: 11px;
+}
+
 .admin-professional .admin-primary-action {
   min-height: 44px;
   display: inline-flex;
@@ -354,7 +415,8 @@
   .admin-professional .admin-data-table tbody tr,
   .admin-professional label > input,
   .admin-professional label > textarea,
-  .admin-professional label > select {
+  .admin-professional label > select,
+  .admin-professional label:has(> input[type="search"]) {
     transition: none;
   }
 }
