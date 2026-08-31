@@ -193,6 +193,10 @@ const cpuAssistantSource = readFileSync(
   new URL("../src/features/game-finder/CpuIdentificationAssistant.tsx", import.meta.url),
   "utf8"
 );
+const cpuAssistantCss = readFileSync(
+  new URL("../src/features/game-finder/CpuIdentificationAssistant.module.css", import.meta.url),
+  "utf8"
+);
 
 assert.equal(
   requirementsPageSource.includes("CpuIdentificationAssistant"),
@@ -221,7 +225,14 @@ assert.equal(
   false,
   "El flujo de CPU no debe depender de comandos de Windows ni pegar nombres técnicos."
 );
+assert.ok(
+  cpuAssistantSource.includes("createPortal") &&
+    cpuAssistantSource.includes("document.body") &&
+    cpuAssistantCss.includes("position: fixed") &&
+    !cpuAssistantSource.includes("selectedCpu && ("),
+  "La lista de CPUs debe ser un dropdown flotante que no cambie la altura del perfil."
+);
 
 console.log(
-  `Detección de hardware: OK (${cpuCatalog.length} CPUs; búsqueda filtrable del catálogo, selección explícita, fuentes recientes, estimación por intervalos y propagación a FPS verificadas).`
+  `Detección de hardware: OK (${cpuCatalog.length} CPUs; búsqueda filtrable flotante, selección explícita, fuentes recientes, estimación por intervalos y propagación a FPS verificadas).`
 );
