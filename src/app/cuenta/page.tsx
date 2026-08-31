@@ -27,6 +27,7 @@ import {
 } from "@/lib/games/public-catalog";
 import {
   hasRecommendationSignals,
+  rankGamesForSavedHardware,
   rankPersonalizedRecommendations,
 } from "@/lib/home/account-personalization";
 import {
@@ -35,7 +36,6 @@ import {
 
 import AccountAccessClient from "./AccountAccessClient";
 import AccountPersonalizationClient from "./AccountPersonalizationClient";
-import AccountProfileClient from "./AccountProfileClient";
 import styles from "./account.module.css";
 
 export const dynamic = "force-dynamic";
@@ -47,6 +47,22 @@ export const metadata: Metadata = {
     follow: false,
   },
 };
+
+function compatibilityPercent(
+  minFps: number | undefined,
+  canEstimate: boolean | undefined
+) {
+  if (!canEstimate || !minFps) return null;
+  return Math.max(30, Math.min(100, Math.round((minFps / 60) * 100)));
+}
+
+function compatibilityLabel(percent: number | null) {
+  if (percent === null) return "Sin configurar";
+  if (percent >= 85) return "Muy buena";
+  if (percent >= 70) return "Buena";
+  if (percent >= 50) return "Aceptable";
+  return "Básica";
+}
 
 export default async function AccountPage() {
   const session = await readAccountSession();
@@ -93,62 +109,89 @@ export default async function AccountPage() {
             games,
             personalization.preferences,
             personalization.hardware
-          ).slice(0, 5)
+          ).slice(0, 12)
         : [];
+      const hardwareRanking = personalization.hardware
+        ? rankGamesForSavedHardware(
+            games,
+            personalization.hardware
+          )
+        : [];
+      const compatiblePercents = hardwareRanking
+        .map((entry) =>
+          compatibilityPercent(
+            entry.estimate?.minFps,
+            entry.estimate?.canEstimate
+          )
+        )
+        .filter((value): value is number => value !== null);
+      const overallCompatibility = compatiblePercents.length > 0
+        ? Math.round(
+            compatiblePercents.reduce((total, value) => total + value, 0) /
+              compatiblePercents.length
+          )
+        : null;
 
       return (
-        <main className={styles.page}>
-          <div className={styles.shell}>
-            <AccountPersonalizationClient
-              games={games.map((game) => ({
-                slug: game.slug,
-                title: game.title,
-                category: game.category,
-              }))}
-              preferences={personalization.preferences.map((preference) => ({
-                gameSlug: preference.gameSlug,
-                favorite: preference.favorite,
-                libraryState: preference.libraryState,
-                followUpdates: preference.followUpdates,
-              }))}
-              hardware={personalization.hardwareSelection
-                ? {
-                    cpuId: personalization.hardwareSelection.cpuId,
-                    gpuId: personalization.hardwareSelection.gpuId,
-                    ramGb: personalization.hardwareSelection.ramGb,
-                    memoryMode: personalization.hardwareSelection.memoryMode,
-                  }
-                : null}
-              cpus={cpuCatalog.map((cpu) => ({
-                id: cpu.id,
-                name: cpu.name,
-              }))}
-              gpus={gpuCatalog.map((gpu) => ({
-                id: gpu.id,
-                name: gpu.name,
-              }))}
-              notifications={notifications.map((update) => ({
-                id: update.id,
-                gameSlug: update.gameSlug,
-                gameTitle: update.game.title,
-                version: update.version,
-                summary: update.summary,
-                publishedAt: update.publishedAt,
-              }))}
-              recommendations={recommendations.map((entry) => ({
-                slug: entry.game.slug,
-                title: entry.game.title,
-                reasons: entry.reasons,
-              }))}
-            />
-
-            <AccountProfileClient
-              profile={{
-                ...profile,
-                createdAt: profile.createdAt.toISOString(),
-              }}
-            />
-          </div>
+        <main className={`${styles.page} ${styles.dashboardPage}`}>
+          <AccountPersonalizationClient
+            profile={{
+              ...profile,
+              createdAt: profile.createdAt.toISOString(),
+            }}
+            games={games.map((game) => ({
+              slug: game.slug,
+              title: game.title,
+              category: game.category,
+              coverImage: game.coverImage,
+              rating: game.rating,
+            }))}
+            preferences={personalization.preferences.map((preference) => ({
+              gameSlug: preference.gameSlug,
+              favorite: preference.favorite,
+              libraryState: preference.libraryState,
+              followUpdates: preference.followUpdates,
+            }))}
+            hardware={personalization.hardwareSelection
+              ? {
+                  cpuId: personalization.hardwareSelection.cpuId,
+                  gpuId: personalization.hardwareSelection.gpuId,
+                  ramGb: personalization.hardwareSelection.ramGb,
+                  memoryMode: personalization.hardwareSelection.memoryMode,
+                }
+              : null}
+            cpus={cpuCatalog.map((cpu) => ({
+              id: cpu.id,
+              name: cpu.name,
+            }))}
+            gpus={gpuCatalog.map((gpu) => ({
+              id: gpu.id,
+              name: gpu.name,
+            }))}
+            notifications={notifications.map((update) => ({
+              id: update.id,
+              gameSlug: update.gameSlug,
+              gameTitle: update.game.title,
+              gameCoverImage: update.game.coverImage,
+              version: update.version,
+              summary: update.summary,
+              publishedAt: update.publishedAt,
+            }))}
+            recommendations={recommendations.map((entry) => ({
+              slug: entry.game.slug,
+              title: entry.game.title,
+              category: entry.game.category,
+              coverImage: entry.game.coverImage,
+              rating: entry.game.rating,
+              reasons: entry.reasons,
+              compatibilityPercent: compatibilityPercent(
+                entry.estimate?.minFps,
+                entry.estimate?.canEstimate
+              ),
+            }))}
+            compatibilityPercent={overallCompatibility}
+            compatibilityLabel={compatibilityLabel(overallCompatibility)}
+          />
         </main>
       );
     }
