@@ -144,8 +144,13 @@ const forbiddenToolFragments = [
   ["@ts-", "nocheck"].join(""),
   ["eslint-", "disable"].join(""),
 ];
+const toolPolicyDefinitionFiles = new Set([
+  "tools/check-source-hygiene.mjs",
+]);
 
 for (const file of toolFiles) {
+  if (toolPolicyDefinitionFiles.has(file)) continue;
+
   const content = await read(file);
   for (const fragment of forbiddenToolFragments) {
     assert(
