@@ -373,6 +373,48 @@
   padding-top: 10px;
 }
 
+.deletePanel {
+  display: grid;
+  gap: 16px;
+  margin-top: 30px;
+  padding-top: 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.deleteHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.deleteHeader h2 {
+  margin: 0;
+  color: #f4f6fa;
+  font-size: 18px;
+}
+
+.deleteHeader p {
+  max-width: 620px;
+  margin: 7px 0 0;
+  color: #8f99aa;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.deleteForm {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid rgba(255, 68, 93, 0.22);
+  border-radius: 14px;
+  background: rgba(255, 41, 74, 0.045);
+}
+
+.deleteForm > .dangerButton {
+  justify-self: start;
+}
+
 .privacyPanel {
   padding: 26px;
   align-self: start;
@@ -443,7 +485,32 @@
     grid-template-columns: 1fr;
   }
 
-  .profileHeader {
+  .profileHeader,
+  .deleteHeader {
     flex-direction: column;
+  }
+
+  .profileActions,
+  .recoveryActions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .profileActions > button,
+  .recoveryActions > button,
+  .deleteHeader > button,
+  .deleteForm > .dangerButton {
+    width: 100%;
+  }
+
+  .deleteForm {
+    padding: 14px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .field input,
+  .field textarea {
+    transition: none;
   }
 }
