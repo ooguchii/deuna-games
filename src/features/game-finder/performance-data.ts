@@ -144,12 +144,12 @@ export function resolvePerformanceProfile(
 
 export function getPerformanceProfile(slug: string): GamePerformanceProfile {
   /*
-   * Acceso de compatibilidad para vistas antiguas que sólo consultan datos
-   * auxiliares como storageGb. Un slug editorial nuevo no debe derribar la
-   * ficha pública. El motor de FPS usa resolvePerformanceProfile y distingue
-   * explícitamente la ausencia de calibración.
+   * Acceso de compatibilidad para metadatos auxiliares estables de la ficha,
+   * como storageGb. Debe producir exactamente el mismo resultado durante SSR
+   * y la primera hidratación del cliente. Las calibraciones publicadas del DOM
+   * sólo pertenecen al motor de FPS mediante resolvePerformanceProfile().
    */
-  return resolvePerformanceProfile(slug) ?? {
+  return profileMap.get(slug) ?? {
     slug,
     referenceFps: 0,
     ramGb: 1,
