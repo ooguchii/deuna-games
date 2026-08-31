@@ -17,6 +17,9 @@ import {
   getAccountPersonalization,
 } from "@/lib/accounts/personalization-service";
 import {
+  isAccountRegistrationEnabled,
+} from "@/lib/accounts/registration-policy";
+import {
   getAccountRewardSnapshot,
 } from "@/lib/accounts/rewards-service";
 import {
@@ -257,7 +260,9 @@ export default async function AccountPage() {
           </ul>
         </section>
 
-        <AccountAccessClient />
+        <AccountAccessClient
+          registrationEnabled={isAccountRegistrationEnabled()}
+        />
       </div>
     </main>
   );
