@@ -13,7 +13,6 @@ CREATE UNIQUE INDEX admin_one_active_owner
 
 ALTER TABLE deuna_admin.admin_users
   ADD COLUMN IF NOT EXISTS display_name varchar(80),
-  ADD COLUMN IF NOT EXISTS email_encrypted text,
   ADD COLUMN IF NOT EXISTS created_by_user_id uuid
     REFERENCES deuna_admin.admin_users(id) ON DELETE SET NULL;
 
