@@ -3,6 +3,10 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
+  useEffect,
+  useRef,
+} from "react";
+import {
   Download,
   FileClock,
   Gauge,
@@ -75,31 +79,90 @@ const aboutSections = [
   { id: "historial", label: "Historial", icon: History },
 ] as const;
 
+type ContextSection = {
+  id: string;
+  label: string;
+  icon: typeof PanelTop;
+};
+
+function useKeepActiveContextVisible(selected: string) {
+  const navRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      const nav = navRef.current;
+      const active = nav?.querySelector<HTMLElement>(
+        '[aria-current="page"]'
+      );
+
+      if (!nav || !active) return;
+
+      const edgePadding = 10;
+      const visibleLeft = nav.scrollLeft + edgePadding;
+      const visibleRight =
+        nav.scrollLeft + nav.clientWidth - edgePadding;
+      const activeLeft = active.offsetLeft;
+      const activeRight = activeLeft + active.offsetWidth;
+
+      if (
+        activeLeft >= visibleLeft &&
+        activeRight <= visibleRight
+      ) {
+        return;
+      }
+
+      const centered =
+        activeLeft -
+        (nav.clientWidth - active.offsetWidth) / 2;
+      const maximum = Math.max(
+        0,
+        nav.scrollWidth - nav.clientWidth
+      );
+
+      nav.scrollLeft = Math.min(
+        maximum,
+        Math.max(0, centered)
+      );
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [selected]);
+
+  return navRef;
+}
+
 function ContextLinks({
   pathname,
   selected,
   sections,
   label,
+  hrefForSection,
 }: {
   pathname: string;
   selected: string;
-  sections: readonly {
-    id: string;
-    label: string;
-    icon: typeof PanelTop;
-  }[];
+  sections: readonly ContextSection[];
   label: string;
+  hrefForSection?: (sectionId: string) => string;
 }) {
+  const navRef = useKeepActiveContextVisible(selected);
+
   return (
-    <nav className={ux.contextBar} aria-label={label}>
+    <nav
+      ref={navRef}
+      className={ux.contextBar}
+      aria-label={label}
+    >
       {sections.map((section) => {
         const Icon = section.icon;
         const active = selected === section.id;
+        const href = hrefForSection
+          ? hrefForSection(section.id)
+          : `${pathname}?seccion=${section.id}`;
 
         return (
           <Link
             key={section.id}
-            href={`${pathname}?seccion=${section.id}`}
+            href={href}
             className={active ? ux.contextActive : undefined}
             aria-current={active ? "page" : undefined}
           >
@@ -125,27 +188,17 @@ export default function AdminContextBar() {
       : searchParams.get("seccion") ?? "ficha";
 
     return (
-      <nav className={ux.contextBar} aria-label="Secciones del editor de juego">
-        {gameSections.map((section) => {
-          const Icon = section.icon;
-          const active = selected === section.id;
-          const href = section.id === "publicacion"
+      <ContextLinks
+        pathname={gamePath}
+        selected={selected}
+        sections={gameSections}
+        label="Secciones del editor de juego"
+        hrefForSection={(sectionId) =>
+          sectionId === "publicacion"
             ? `${gamePath}/publicacion`
-            : `${gamePath}?seccion=${section.id}`;
-
-          return (
-            <Link
-              key={section.id}
-              href={href}
-              className={active ? ux.contextActive : undefined}
-              aria-current={active ? "page" : undefined}
-            >
-              <Icon size={16} strokeWidth={1.9} aria-hidden="true" />
-              {section.label}
-            </Link>
-          );
-        })}
-      </nav>
+            : `${gamePath}?seccion=${sectionId}`
+        }
+      />
     );
   }
 
