@@ -34,7 +34,7 @@ export default function SiteIdentityPreview({
         <div className={styles.panelHeading}>
           <span>VISTA PREVIA</span>
           <h2 id="identity-preview-title">Identidad del borrador</h2>
-          <p>Representación compacta de la cabecera, portada, panel y pie públicos.</p>
+          <p>Representación compacta de la marca que compartirán la cabecera, el pie público y el panel administrativo al publicar.</p>
         </div>
 
         <div className={styles.preview} style={previewStyle}>
