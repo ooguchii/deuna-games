@@ -8,7 +8,7 @@ Aplicación activa de DeUna Games. La base está pensada para ser reproducible, 
 - React 19
 - TypeScript estricto
 - CSS Modules + tokens globales
-- PostgreSQL para el espacio editorial privado
+- PostgreSQL para el espacio editorial privado y las cuentas
 - lucide-react
 - Node.js 24 o superior
 
@@ -45,11 +45,11 @@ CI ejecuta, entre otras comprobaciones:
 - grafo de arquitectura para impedir módulos fuente huérfanos;
 - mantenimiento del repositorio y alcance de herramientas;
 - higiene de código fuente (`TODO`, `FIXME`, `HACK`, `debugger`, trazas y supresiones quedan bloqueados);
-- privacidad pública;
+- privacidad pública y de cuentas;
 - seguridad administrativa;
 - validación del importador editorial;
 - encoding UTF-8;
-- integridad de catálogo, Home, ranking y detección de hardware;
+- integridad de catálogo, Home, ranking, personalización explícita y detección de hardware;
 - integridad bidireccional de assets;
 - rutas internas;
 - variables CSS y CSS Modules, incluidas clases o módulos sin uso;
@@ -86,26 +86,43 @@ Catálogos mantiene una taxonomía maestra de **Clasificaciones** y una lista se
 
 La Portada dispone de curaduría **Manual**, **Automática** e **Híbrida**. El ranking automático es determinista dentro del día UTC, explicable y usa una única definición de perfiles/pesos compartida entre la vista previa administrativa y la Home pública.
 
+## Mi DeUna y recomendaciones
+
+Una cuenta pública puede guardar de forma explícita:
+
+- juegos favoritos;
+- estado `Quiero jugarlo`, `Lo estoy jugando` o `Terminado`;
+- seguimiento de actualizaciones de un juego;
+- una PC elegida por el usuario mediante IDs del catálogo de CPU/GPU, RAM y modo de memoria.
+
+Estas señales se reutilizan entre `/cuenta`, las fichas de juegos, la Home y `/requisitos`. No existe un historial paralelo de navegación para personalización.
+
+El ranking personalizado parte del ranking editorial existente en lugar de reemplazarlo. Favoritos y estados de biblioteca aportan afinidad por clasificación, géneros y etiquetas; seguir actualizaciones por sí solo no se interpreta como gusto. Cuando existe una PC guardada, la compatibilidad usa el mismo motor de FPS que el Finder. Si faltan señales suficientes, la Home conserva el ranking general.
+
+Los avisos de Mi DeUna se derivan de las actualizaciones públicas reales de cada juego. La cuenta sólo conserva desde cuándo se sigue un juego y hasta qué momento se vieron sus avisos; no duplica una tabla de notificaciones por usuario.
+
 ## Finder de hardware y FPS
 
-`/requisitos` realiza una detección local orientativa usando únicamente lo que el navegador puede exponer.
+`/requisitos` realiza una detección local orientativa usando únicamente lo que el navegador puede exponer cuando no existe un perfil explícito más fiable.
 
 Un navegador web estándar no puede garantizar el modelo exacto de CPU. Por eso DeUna diferencia entre:
 
 - CPU estimada por señales disponibles, con intervalo de capacidad y menor confianza;
-- CPU confirmada por el usuario desde el catálogo local de procesadores.
+- CPU confirmada por el usuario desde el catálogo de procesadores.
 
-El selector no inventa modelos: escribir sólo filtra el catálogo y la confirmación siempre es explícita. Los perfiles confirmados se guardan localmente en el navegador. La detección y la selección no requieren enviar el modelo de CPU al servidor.
+El selector no inventa modelos: escribir sólo filtra el catálogo y la confirmación siempre es explícita. Un perfil confirmado puede guardarse localmente en el navegador. Si el usuario inició sesión y eligió guardar **Mi PC** en su cuenta, esa selección explícita tiene prioridad y se reutiliza en el Finder y en las estimaciones de las fichas.
+
+La detección automática no se convierte en datos de cuenta: DeUna no persiste en PostgreSQL el renderer detectado por el navegador, user-agent, sistema operativo detectado ni otros metadatos del dispositivo. Mi PC guarda sólo los componentes que el usuario selecciona expresamente.
 
 GPU, RAM, sistema y modo de memoria se incorporan según su nivel de certeza. La incertidumbre del hardware se propaga al rango de FPS en lugar de presentarse como una cifra exacta falsa. Los FPS son orientativos y pueden variar por drivers, temperatura, procesos en segundo plano, versión del juego y configuración real.
 
-Las pruebas de datos cubren el catálogo de CPUs, variantes de nombres/modelos, intervalos de CPU, propagación a FPS, búsqueda manual y coherencia de hidratación servidor/cliente.
+Las pruebas de datos cubren el catálogo de CPUs, variantes de nombres/modelos, intervalos de CPU, propagación a FPS, búsqueda manual, personalización de ranking y coherencia de hidratación servidor/cliente.
 
 ## Privacidad pública
 
 El sitio evita analítica de visitantes y no almacena IP, ubicación, user-agent ni huellas de dispositivo como parte del producto actual.
 
-`npm run check:privacy` bloquea huellas regionales configuradas, trackers externos conocidos, campos estructurados de ubicación y otros patrones incompatibles con esta política. El contenido público usa español neutral y UTC.
+`npm run check:privacy` bloquea huellas regionales configuradas, trackers externos conocidos, campos estructurados de ubicación y otros patrones incompatibles con esta política. La barrera de cuentas verifica además que Mi DeUna mantenga únicamente señales explícitas y no incorpore navegación, detección cruda de hardware ni identificadores de seguimiento. El contenido público usa español neutral y UTC.
 
 ## Panel administrativo privado
 
