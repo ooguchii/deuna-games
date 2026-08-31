@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
   Download,
@@ -96,7 +97,7 @@ function ContextLinks({
         const active = selected === section.id;
 
         return (
-          <a
+          <Link
             key={section.id}
             href={`${pathname}?seccion=${section.id}`}
             className={active ? ux.contextActive : undefined}
@@ -104,7 +105,7 @@ function ContextLinks({
           >
             <Icon size={16} strokeWidth={1.9} aria-hidden="true" />
             {section.label}
-          </a>
+          </Link>
         );
       })}
     </nav>
@@ -133,7 +134,7 @@ export default function AdminContextBar() {
             : `${gamePath}?seccion=${section.id}`;
 
           return (
-            <a
+            <Link
               key={section.id}
               href={href}
               className={active ? ux.contextActive : undefined}
@@ -141,7 +142,7 @@ export default function AdminContextBar() {
             >
               <Icon size={16} strokeWidth={1.9} aria-hidden="true" />
               {section.label}
-            </a>
+            </Link>
           );
         })}
       </nav>
