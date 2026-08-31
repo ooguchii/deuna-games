@@ -375,6 +375,45 @@ expectColumns("deuna_accounts", "hardware_profiles", "UPDATE", [
   "memory_mode",
   "updated_at",
 ]);
+expectColumns("deuna_accounts", "reward_profiles", "SELECT", [
+  "user_id",
+  "xp_total",
+  "credits_balance",
+  "streak_days",
+  "best_streak",
+  "last_claim_at",
+  "created_at",
+  "updated_at",
+]);
+expectColumns("deuna_accounts", "reward_profiles", "INSERT", [
+  "user_id",
+]);
+expectColumns("deuna_accounts", "reward_profiles", "UPDATE", [
+  "xp_total",
+  "credits_balance",
+  "streak_days",
+  "best_streak",
+  "last_claim_at",
+  "updated_at",
+]);
+expectColumns("deuna_accounts", "reward_events", "SELECT", [
+  "id",
+  "user_id",
+  "event_type",
+  "event_key",
+  "xp_delta",
+  "credits_delta",
+  "created_at",
+]);
+expectColumns("deuna_accounts", "reward_events", "INSERT", [
+  "id",
+  "user_id",
+  "event_type",
+  "event_key",
+  "xp_delta",
+  "credits_delta",
+  "created_at",
+]);
 
 const expectedSequencePrivileges = new Set([
   "deuna_admin.admin_events_id_seq",
@@ -897,7 +936,6 @@ async function main() {
   const databaseHost = requiredEnvironment(
     "DEUNA_DATABASE_HOST"
   );
-
   assert(
     isLoopbackHost(databaseHost),
     "PostgreSQL debe usar loopback o un socket local en este despliegue."
