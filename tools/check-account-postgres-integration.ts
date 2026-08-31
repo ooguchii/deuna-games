@@ -49,6 +49,33 @@ async function expectPrivilegeDenied(
   }
 }
 
+async function insertPersonalization(
+  pool: Pool,
+  userId: string
+) {
+  await pool.query(
+    `INSERT INTO deuna_accounts.game_preferences
+       (
+         user_id,
+         game_slug,
+         favorite,
+         library_state,
+         follow_updates,
+         followed_at,
+         updated_at
+       )
+     VALUES ($1, 'elden-ring', true, 'playing', true, now(), now())`,
+    [userId]
+  );
+
+  await pool.query(
+    `INSERT INTO deuna_accounts.hardware_profiles
+       (user_id, cpu_id, gpu_id, ram_gb, memory_mode, updated_at)
+     VALUES ($1, 'ryzen-5-5600x', 'rtx-3060', 16, 'dual', now())`,
+    [userId]
+  );
+}
+
 async function main() {
   const pool = new Pool(
     getAdminDatabaseConfig("runtime")
@@ -101,6 +128,27 @@ async function main() {
       ]
     );
 
+    await insertPersonalization(pool, userId);
+
+    await pool.query(
+      `UPDATE deuna_accounts.game_preferences
+       SET updates_seen_through = now(),
+           updated_at = now()
+       WHERE user_id = $1
+         AND game_slug = 'elden-ring'`,
+      [userId]
+    );
+
+    await expectPrivilegeDenied(
+      pool,
+      "Cambio de identidad de una preferencia",
+      `UPDATE deuna_accounts.game_preferences
+       SET game_slug = 'portal-2'
+       WHERE user_id = $1
+         AND game_slug = 'elden-ring'`,
+      [userId]
+    );
+
     await expectPrivilegeDenied(
       pool,
       "Borrado directo de sesiones",
@@ -134,6 +182,25 @@ async function main() {
        )`
     );
 
+    const removedHardware = await pool.query(
+      `DELETE FROM deuna_accounts.hardware_profiles
+       WHERE user_id = $1`,
+      [userId]
+    );
+    const removedPreference = await pool.query(
+      `DELETE FROM deuna_accounts.game_preferences
+       WHERE user_id = $1
+         AND game_slug = 'elden-ring'`,
+      [userId]
+    );
+
+    assert(
+      removedHardware.rowCount === 1 && removedPreference.rowCount === 1,
+      "El rol runtime no pudo retirar datos de personalización elegidos por el usuario."
+    );
+
+    await insertPersonalization(pool, userId);
+
     const rotated = await pool.query(
       `DELETE FROM deuna_accounts.recovery_codes
        WHERE id = $1`,
@@ -160,6 +227,8 @@ async function main() {
       users: number;
       sessions: number;
       recovery_codes: number;
+      game_preferences: number;
+      hardware_profiles: number;
     }>(
       `SELECT
          (SELECT count(*)::integer
@@ -170,7 +239,13 @@ async function main() {
            WHERE user_id = $1) AS sessions,
          (SELECT count(*)::integer
             FROM deuna_accounts.recovery_codes
-           WHERE user_id = $1) AS recovery_codes`,
+           WHERE user_id = $1) AS recovery_codes,
+         (SELECT count(*)::integer
+            FROM deuna_accounts.game_preferences
+           WHERE user_id = $1) AS game_preferences,
+         (SELECT count(*)::integer
+            FROM deuna_accounts.hardware_profiles
+           WHERE user_id = $1) AS hardware_profiles`,
       [userId]
     );
     const counts = remaining.rows[0];
@@ -186,6 +261,14 @@ async function main() {
     assert(
       counts?.recovery_codes === 0,
       "Los códigos de recuperación no fueron eliminados por cascada."
+    );
+    assert(
+      counts?.game_preferences === 0,
+      "Mis juegos no fue eliminado por cascada."
+    );
+    assert(
+      counts?.hardware_profiles === 0,
+      "Mi PC no fue eliminada por cascada."
     );
   } finally {
     await pool
@@ -210,7 +293,7 @@ async function main() {
   }
 
   console.log(
-    "PostgreSQL de cuentas: OK (permisos runtime reales, denegaciones sensibles, rotación y borrado por cascada verificados)."
+    "PostgreSQL de cuentas: OK (permisos runtime reales, personalización explícita, denegaciones sensibles, rotación y borrado por cascada verificados)."
   );
 }
 
