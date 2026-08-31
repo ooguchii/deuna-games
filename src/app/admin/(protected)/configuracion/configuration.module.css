@@ -60,11 +60,23 @@
     transform 140ms ease;
 }
 
-.colorField:hover,
-.colorField:focus-within {
+.colorField:hover {
   border-color: #465769;
   background: linear-gradient(145deg, #0f1822, #0b131c);
-  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--brand) 40%, #ffffff);
+  transform: translateY(-1px);
+}
+
+.colorField:focus-within {
+  border-color: color-mix(in srgb, var(--brand) 52%, #465769);
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--brand) 4%, #0f1822),
+      color-mix(in srgb, var(--brand) 2%, #0b131c)
+    );
+  box-shadow:
+    inset 3px 0 0 color-mix(in srgb, var(--brand) 72%, #ffffff),
+    0 0 0 3px color-mix(in srgb, var(--brand) 6%, transparent);
   transform: translateY(-1px);
 }
 
@@ -88,16 +100,33 @@
 .colorField input[type="color"] {
   width: 58px;
   min-height: 46px;
-  padding: 4px;
+  padding: 0;
+  overflow: hidden;
   border: 1px solid #445365;
   border-radius: 9px;
   outline: none;
-  background: #0b131c;
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
   cursor: pointer;
   transition:
     border-color 140ms ease,
     box-shadow 140ms ease,
     transform 140ms ease;
+}
+
+.colorField input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 3px;
+}
+
+.colorField input[type="color"]::-webkit-color-swatch {
+  border: 0;
+  border-radius: 6px;
+}
+
+.colorField input[type="color"]::-moz-color-swatch {
+  border: 0;
+  border-radius: 6px;
 }
 
 .colorField input[type="color"]:hover {
