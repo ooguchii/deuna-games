@@ -161,13 +161,7 @@ function selectedGameSlugs(
   preferences: readonly AccountGamePreference[]
 ) {
   return new Set(
-    preferences
-      .filter(
-        (preference) =>
-          preference.favorite ||
-          preference.libraryState !== null
-      )
-      .map((preference) => preference.gameSlug)
+    preferences.map((preference) => preference.gameSlug)
   );
 }
 
