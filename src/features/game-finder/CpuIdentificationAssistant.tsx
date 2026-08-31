@@ -71,12 +71,12 @@ export default function CpuIdentificationAssistant({
       <div className={styles.heading}>
         <Info size={15} aria-hidden="true" />
         <div>
-          <strong>Elegí tu procesador</strong>
+          <strong>Elige tu procesador</strong>
           <span>
             {logicalProcessors
               ? `Detectamos ${logicalProcessors} hilos lógicos, pero el navegador no puede ver el modelo exacto de CPU.`
               : "El navegador no puede ver el modelo exacto de CPU."}
-            {" "}Buscalo en el catálogo y seleccioná el correcto.
+            {" "}Búscalo en el catálogo y selecciona el correcto.
           </span>
         </div>
         <button
@@ -162,7 +162,7 @@ export default function CpuIdentificationAssistant({
             </>
           ) : (
             <p className={styles.noMatch} role="status">
-              No encontramos procesadores con esa búsqueda. Probá con menos palabras o sólo con el número del modelo.
+              No encontramos procesadores con esa búsqueda. Prueba con menos palabras o sólo con el número del modelo.
             </p>
           )}
         </div>
