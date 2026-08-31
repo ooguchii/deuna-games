@@ -28,7 +28,7 @@ Las sesiones guardan únicamente el hash del token aleatorio. Los códigos de re
 
 `deuna_accounts.reward_profiles` guarda únicamente el agregado necesario para DeUna Rewards: XP total, saldo de créditos, racha actual, mejor racha y momento del último reclamo. `deuna_accounts.reward_events` es el ledger mínimo de recompensas y conserva sólo tipo de evento, clave idempotente, variación de XP/créditos y fecha. No admite metadata genérica, URL, ruta, referrer, clics, vistas, tiempo de uso, user-agent, dispositivo ni ubicación.
 
-Los eventos de Rewards son apéndice de recompensas, no historial de actividad. El runtime puede insertarlos y consultarlos, pero no editarlos ni borrarlos. Los hitos y bonuses idempotentes usan `UNIQUE (user_id, event_type, event_key)` para impedir una segunda acreditación del mismo premio.
+Los eventos de Rewards son apéndice de recompensas, no historial de actividad. El runtime puede insertarlos y consultarlos, pero no editarlos ni borrarlos. Los hitos y bonuses idempotentes usan `UNIQUE (user_id, event_type, event_key)` para impedir una segunda acreditación del mismo premio. Mientras no exista un sistema de canje, PostgreSQL sólo acepta los tres tipos de premio implementados (`daily_claim`, `weekly_bonus`, `milestone`), no admite descuentos de créditos y valida también las combinaciones de importe definidas por la economía de Rewards.
 
 ## Preparación
 
@@ -43,11 +43,13 @@ Los eventos de Rewards son apéndice de recompensas, no historial de actividad. 
 9. Ejecutar `npm run admin:preflight` y corregir cualquier bloqueo antes de habilitar el panel.
 10. Configurar y probar la VPN y Nginx antes de cambiar `DEUNA_ADMIN_ENABLED` a `true` en producción.
 
-Para un entorno local ya instalado, `npm run admin:update-local` aplica migraciones pendientes, sincroniza el contenido fuente y ejecuta los preflight de sólo lectura.
+Para un entorno local ya instalado, `npm run admin:update-local` aplica migraciones pendientes, sincroniza el contenido fuente y ejecuta los preflight de sólo lectura. Antes de cualquier migración persistente puede generarse una copia verificada fuera del repositorio con `npm run admin:backup-local`.
+
+El salto específico de una instalación `010` a `011_account_rewards.sql` está documentado en [`UPGRADE-011-REWARDS.md`](./UPGRADE-011-REWARDS.md), incluyendo backup, verificación, migración, prueba funcional y conducta ante fallos. No debe aplicarse 011 sin completar primero ese procedimiento.
 
 Next.js no carga `.env.admin-migration.local`. Ese archivo no debe entregarse al proceso web ni copiarse dentro de `deploy/`; puede retirarse del VPS entre operaciones y recuperarse desde un gestor privado de secretos cuando vuelva a ser necesario.
 
-El proceso de migración valida el checksum de cada archivo SQL y falla si una migración aplicada fue alterada. Después de migrar vuelve a establecer los permisos mínimos del rol runtime.
+El proceso de migración valida el checksum de cada archivo SQL y falla si una migración aplicada fue alterada. Después de migrar vuelve a establecer los permisos mínimos del rol runtime. Cada migración SQL se ejecuta dentro de una transacción propia y se registra sólo después del `COMMIT`; ante un error el migrador hace `ROLLBACK`.
 
 El preflight comprueba conexión local, separación de roles, ausencia de privilegios globales, cierre de `PUBLIC`, permisos exactos por tabla/columna/secuencia, migraciones y checksums, exactamente un Owner activo y coherencia del contenido editorial. No muestra contraseñas ni modifica datos.
 
@@ -85,11 +87,15 @@ Las cuentas públicas están diseñadas con minimización por defecto. `DEUNA_AC
 
 DeUna Rewards mantiene esa misma regla: una recompensa puede depender de un reclamo explícito o de hitos derivados de datos que el usuario ya decidió guardar, pero no de clics, tiempo de pantalla, páginas vistas o metadata del dispositivo. La racha usa exclusivamente la fecha del último reclamo de recompensa.
 
-La barrera `npm run check:account-privacy` verifica automáticamente que el esquema y el código no incorporen campos o mecanismos de seguimiento prohibidos y que se mantengan las garantías de cifrado, hashes, recuperación, separación, personalización mínima, Rewards sin telemetría y baja autónoma. La integración PostgreSQL de CI prueba además permisos runtime reales, inmutabilidad del ledger de Rewards y cascadas de borrado en una base limpia con todas las migraciones.
+La página pública `/privacidad` documenta el comportamiento técnico verificable de Mi DeUna y Rewards. Permanece `noindex` antes del lanzamiento porque todavía deben completarse fuera del código la identificación jurídica del responsable, el canal de contacto de privacidad, la jurisdicción aplicable y el plazo concreto de retención de backups.
+
+La barrera `npm run check:account-privacy` verifica automáticamente que el esquema y el código no incorporen campos o mecanismos de seguimiento prohibidos y que se mantengan las garantías de cifrado, hashes, recuperación, separación, personalización mínima, Rewards sin telemetría y baja autónoma. La integración PostgreSQL de CI prueba además permisos runtime reales, inmutabilidad del ledger de Rewards y cascadas de borrado en una base limpia con todas las migraciones. `npm run check:account-rewards` verifica además la economía, la autoridad del servidor, la resiliencia frente a fallos secundarios y la transparencia visible al usuario.
 
 ## Copias de seguridad
 
-La copia debe cifrarse antes de salir del VPS. Debe incluir `deuna_admin` y `deuna_accounts` si se necesita restaurar cuentas, publicaciones, progreso de Rewards e historial. La copia hereda la sensibilidad de los datos cifrados y de los hashes que contiene; nunca debe guardarse dentro del directorio público, el repositorio Git ni el artefacto `deploy/`.
+`npm run admin:backup-local` crea una copia PostgreSQL en formato custom dentro de `~/.deuna/backups/`, fuera del repositorio, fija permisos `0600` y valida el archivo mediante `pg_restore --list`. Si no puede crear y verificar la copia, el comando bloquea el procedimiento.
+
+La copia debe cifrarse antes de salir del VPS o del equipo que la generó. Debe incluir `deuna_admin` y `deuna_accounts` si se necesita restaurar cuentas, publicaciones, progreso de Rewards e historial. La copia hereda la sensibilidad de los datos cifrados y de los hashes que contiene; nunca debe guardarse dentro del directorio público, el repositorio Git ni el artefacto `deploy/`.
 
 `DEUNA_ACCOUNT_DATA_KEY` debe respaldarse por separado en un gestor privado de secretos. Sin esa clave no será posible descifrar los correos opcionales existentes tras una restauración.
 
