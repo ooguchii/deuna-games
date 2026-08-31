@@ -176,7 +176,7 @@
 .resetButton {
   min-height: 46px;
   padding: 0 13px;
-  color: #e8adb9;
+  color: color-mix(in srgb, var(--brand) 38%, #ffffff);
   border: 1px solid #3c4856;
   border-radius: 9px;
   outline: none;
@@ -193,7 +193,7 @@
 }
 
 .resetButton:hover {
-  color: #ffd4de;
+  color: #ffffff;
   border-color: color-mix(in srgb, var(--brand) 35%, #4c5968);
   background: color-mix(in srgb, var(--brand) 5%, #111923);
 }
