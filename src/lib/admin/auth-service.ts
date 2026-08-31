@@ -16,8 +16,11 @@ import {
   normalizeAdminUsername,
 } from "./validation";
 
-type OwnerRow = {
+export type AdminRole = "owner" | "admin";
+
+type AdminUserRow = {
   id: string;
+  role: AdminRole;
   password_hash: string;
   failed_login_count: number;
   locked_until: Date | null;
@@ -28,6 +31,7 @@ export type AdminAuthenticationResult =
       authenticated: true;
       token: string;
       expiresAt: Date;
+      role: AdminRole;
     }
   | {
       authenticated: false;
@@ -46,10 +50,10 @@ function lockDurationSeconds(
 
 async function recordFailedLogin(
   client: PoolClient,
-  owner: OwnerRow
+  user: AdminUserRow
 ) {
   const failures = Math.min(
-    owner.failed_login_count + 1,
+    user.failed_login_count + 1,
     1000
   );
   const lockSeconds =
@@ -64,17 +68,17 @@ async function recordFailedLogin(
          locked_until = $3,
          updated_at = now()
      WHERE id = $1`,
-    [owner.id, failures, lockedUntil]
+    [user.id, failures, lockedUntil]
   );
   await client.query(
     `INSERT INTO deuna_admin.admin_events
        (user_id, event_type)
      VALUES ($1, 'login_failed')`,
-    [owner.id]
+    [user.id]
   );
 }
 
-export async function authenticateAdminOwner(
+export async function authenticateAdmin(
   username: string,
   password: string
 ): Promise<AdminAuthenticationResult> {
@@ -83,23 +87,24 @@ export async function authenticateAdminOwner(
 
   return withAdminTransaction(
     async (client) => {
-      const locked = await client.query<OwnerRow>(
+      const locked = await client.query<AdminUserRow>(
         `SELECT
            id,
+           role,
            password_hash,
            failed_login_count,
            locked_until
          FROM deuna_admin.admin_users
          WHERE username_key = $1
            AND active = true
-           AND role = 'owner'
+           AND role IN ('owner', 'admin')
          LIMIT 1
          FOR UPDATE`,
         [usernameKey]
       );
-      const owner = locked.rows[0];
+      const user = locked.rows[0];
 
-      if (!owner) {
+      if (!user) {
         await consumeDummyPasswordWork(password);
         return { authenticated: false };
       }
@@ -107,22 +112,22 @@ export async function authenticateAdminOwner(
       const passwordMatches =
         await verifyAdminPassword(
           password,
-          owner.password_hash
+          user.password_hash
         );
       const currentlyLocked = Boolean(
-        owner.locked_until &&
-          owner.locked_until.getTime() > Date.now()
+        user.locked_until &&
+          user.locked_until.getTime() > Date.now()
       );
 
       if (!passwordMatches || currentlyLocked) {
         if (!currentlyLocked) {
-          await recordFailedLogin(client, owner);
+          await recordFailedLogin(client, user);
         } else {
           await client.query(
             `INSERT INTO deuna_admin.admin_events
                (user_id, event_type)
              VALUES ($1, 'login_blocked')`,
-            [owner.id]
+            [user.id]
           );
         }
 
@@ -136,32 +141,33 @@ export async function authenticateAdminOwner(
              last_login_at = now(),
              updated_at = now()
          WHERE id = $1`,
-        [owner.id]
+        [user.id]
       );
       await client.query(
         `UPDATE deuna_admin.admin_sessions
          SET revoked_at = COALESCE(revoked_at, now())
          WHERE user_id = $1
            AND expires_at <= now()`,
-        [owner.id]
+        [user.id]
       );
 
       const session = await createAdminSession(
         client,
-        owner.id
+        user.id
       );
 
       await client.query(
         `INSERT INTO deuna_admin.admin_events
            (user_id, event_type)
          VALUES ($1, 'login_succeeded')`,
-        [owner.id]
+        [user.id]
       );
 
       return {
         authenticated: true,
         token: session.token,
         expiresAt: session.expiresAt,
+        role: user.role,
       };
     }
   );
