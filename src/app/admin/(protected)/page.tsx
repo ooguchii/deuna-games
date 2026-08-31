@@ -172,7 +172,7 @@ export default async function AdminDashboardPage() {
           </div>
 
           <div className={styles.tableWrap}>
-            <table aria-label="Contenido editorial que requiere atención">
+            <table className="admin-data-table" aria-label="Contenido editorial que requiere atención">
               <thead>
                 <tr>
                   <th scope="col">Contenido</th>
@@ -199,7 +199,7 @@ export default async function AdminDashboardPage() {
                     <td>
                       <Link
                         href={attentionPath(item)}
-                        className={styles.tableAction}
+                        className={`${styles.tableAction} admin-table-action admin-table-action--attention`}
                       >
                         Resolver
                         <ArrowRight size={14} aria-hidden="true" />
@@ -303,7 +303,7 @@ export default async function AdminDashboardPage() {
           </div>
 
           <div className={styles.tableWrap}>
-            <table aria-label="Publicaciones editoriales recientes">
+            <table className="admin-data-table" aria-label="Publicaciones editoriales recientes">
               <thead>
                 <tr>
                   <th scope="col">Contenido</th>
