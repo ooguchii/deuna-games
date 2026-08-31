@@ -441,6 +441,58 @@ async function grantRuntimePrivileges(
       ON deuna_accounts.hardware_profiles
       TO ${role};
 
+    GRANT SELECT (
+        user_id,
+        xp_total,
+        credits_balance,
+        streak_days,
+        best_streak,
+        last_claim_at,
+        created_at,
+        updated_at
+      )
+      ON deuna_accounts.reward_profiles
+      TO ${role};
+
+    GRANT INSERT (user_id)
+      ON deuna_accounts.reward_profiles
+      TO ${role};
+
+    GRANT UPDATE (
+        xp_total,
+        credits_balance,
+        streak_days,
+        best_streak,
+        last_claim_at,
+        updated_at
+      )
+      ON deuna_accounts.reward_profiles
+      TO ${role};
+
+    GRANT SELECT (
+        id,
+        user_id,
+        event_type,
+        event_key,
+        xp_delta,
+        credits_delta,
+        created_at
+      )
+      ON deuna_accounts.reward_events
+      TO ${role};
+
+    GRANT INSERT (
+        id,
+        user_id,
+        event_type,
+        event_key,
+        xp_delta,
+        credits_delta,
+        created_at
+      )
+      ON deuna_accounts.reward_events
+      TO ${role};
+
     GRANT USAGE, SELECT
       ON SEQUENCE deuna_admin.admin_events_id_seq,
                   deuna_admin.editorial_revisions_id_seq,
