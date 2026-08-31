@@ -141,7 +141,7 @@ jobs:
         image: postgres:17
         env:
           POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: ci-${{ github.run_id }}
+          POSTGRES_HOST_AUTH_METHOD: trust
           POSTGRES_DB: postgres
         ports:
           - 5432:5432
@@ -172,22 +172,20 @@ jobs:
         run: |
           set -euo pipefail
 
-          migration_password="$(openssl rand -hex 32)"
-          runtime_password="$(openssl rand -hex 32)"
+          migration_credential="$(openssl rand -hex 32)"
+          runtime_credential="$(openssl rand -hex 32)"
           account_data_key="$(node -e "console.log(require('node:crypto').randomBytes(32).toString('base64url'))")"
 
-          echo "::add-mask::$migration_password"
-          echo "::add-mask::$runtime_password"
+          echo "::add-mask::$migration_credential"
+          echo "::add-mask::$runtime_credential"
           echo "::add-mask::$account_data_key"
 
-          printf 'DEUNA_DATABASE_MIGRATION_PASSWORD=%s\n' "$migration_password" >> "$GITHUB_ENV"
-          printf 'DEUNA_DATABASE_PASSWORD=%s\n' "$runtime_password" >> "$GITHUB_ENV"
+          printf 'DEUNA_DATABASE_MIGRATION_PASSWORD=%s\n' "$migration_credential" >> "$GITHUB_ENV"
+          printf 'DEUNA_DATABASE_PASSWORD=%s\n' "$runtime_credential" >> "$GITHUB_ENV"
           printf 'DEUNA_ACCOUNT_DATA_KEY=%s\n' "$account_data_key" >> "$GITHUB_ENV"
 
           docker exec -i "${{ job.services.postgres.id }}" \
-            psql -v ON_ERROR_STOP=1 -U postgres \
-            -v migration_password="$migration_password" \
-            -v runtime_password="$runtime_password" <<'SQL'
+            psql -v ON_ERROR_STOP=1 -U postgres <<'SQL'
           CREATE ROLE deuna_migrator
             LOGIN
             NOINHERIT
@@ -195,8 +193,7 @@ jobs:
             NOCREATEDB
             NOCREATEROLE
             NOREPLICATION
-            NOBYPASSRLS
-            PASSWORD :'migration_password';
+            NOBYPASSRLS;
 
           CREATE ROLE deuna_runtime
             LOGIN
@@ -205,8 +202,7 @@ jobs:
             NOCREATEDB
             NOCREATEROLE
             NOREPLICATION
-            NOBYPASSRLS
-            PASSWORD :'runtime_password';
+            NOBYPASSRLS;
 
           CREATE DATABASE deuna_games
             OWNER deuna_migrator
