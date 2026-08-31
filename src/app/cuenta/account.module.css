@@ -2,9 +2,9 @@
   min-height: calc(100vh - 80px);
   padding: clamp(48px, 7vw, 88px) 20px 80px;
   background:
-    radial-gradient(circle at 12% 8%, rgba(255, 32, 96, 0.12), transparent 32%),
-    radial-gradient(circle at 88% 18%, rgba(104, 73, 255, 0.1), transparent 34%),
-    #05070d;
+    radial-gradient(circle at 12% 8%, color-mix(in srgb, var(--brand) 12%, transparent), transparent 32%),
+    radial-gradient(circle at 88% 18%, color-mix(in srgb, var(--brand) 6%, var(--background)), transparent 34%),
+    var(--background);
   color: #f7f8fc;
 }
 
@@ -29,7 +29,7 @@
   align-items: center;
   gap: 8px;
   margin-bottom: 18px;
-  color: #ff3b78;
+  color: color-mix(in srgb, var(--brand) 70%, #ffffff);
   font-size: 13px;
   font-weight: 800;
   letter-spacing: 0.12em;
@@ -77,10 +77,12 @@
 
 .card {
   overflow: hidden;
-  border: 1px solid rgba(255, 66, 124, 0.24);
+  border: 1px solid color-mix(in srgb, var(--brand) 24%, var(--border));
   border-radius: 22px;
-  background: rgba(12, 16, 26, 0.96);
-  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.38);
+  background: color-mix(in srgb, var(--background) 24%, #0c101a);
+  box-shadow:
+    0 28px 90px rgba(0, 0, 0, 0.38),
+    0 0 50px color-mix(in srgb, var(--brand) 5%, transparent);
 }
 
 .tabs {
@@ -112,9 +114,13 @@
 }
 
 .tabs button[data-active="true"] {
-  color: #fff;
-  background: linear-gradient(135deg, rgba(255, 40, 104, 0.22), rgba(255, 40, 104, 0.08));
-  box-shadow: inset 0 0 0 1px rgba(255, 55, 112, 0.26);
+  color: color-mix(in srgb, var(--brand) 42%, #ffffff);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--brand) 22%, transparent),
+    color-mix(in srgb, var(--brand) 8%, transparent)
+  );
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--brand) 26%, transparent);
 }
 
 .form {
@@ -163,7 +169,7 @@
   box-sizing: border-box;
   border: 1px solid #293244;
   border-radius: 12px;
-  background: #080c14;
+  background: color-mix(in srgb, var(--background) 34%, #080c14);
   color: #f7f9fd;
   font: inherit;
   font-size: 15px;
@@ -183,8 +189,8 @@
 
 .field input:focus,
 .field textarea:focus {
-  border-color: #ff386f;
-  box-shadow: 0 0 0 3px rgba(255, 48, 106, 0.12);
+  border-color: color-mix(in srgb, var(--brand) 58%, #526274);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 12%, transparent);
 }
 
 .hint {
@@ -236,15 +242,15 @@
 }
 
 .primaryButton {
-  border: 1px solid #ff2d68;
-  background: linear-gradient(135deg, #ff1f5f, #cf0a45);
-  color: #fff;
-  box-shadow: 0 12px 30px rgba(255, 31, 95, 0.18);
+  border: 1px solid color-mix(in srgb, var(--brand) 78%, #ffffff);
+  background: linear-gradient(135deg, var(--brand-light), var(--brand-dark));
+  color: var(--text-on-brand);
+  box-shadow: 0 12px 30px color-mix(in srgb, var(--brand) 18%, transparent);
 }
 
 .secondaryButton {
   border: 1px solid #2b3547;
-  background: #0b1019;
+  background: color-mix(in srgb, var(--background) 24%, #0b1019);
   color: #dce2ec;
 }
 
@@ -256,7 +262,7 @@
 
 .primaryButton:focus-visible,
 .secondaryButton:focus-visible {
-  outline: 3px solid rgba(255, 255, 255, 0.18);
+  outline: 3px solid color-mix(in srgb, var(--brand) 32%, #ffffff);
   outline-offset: 2px;
 }
 
