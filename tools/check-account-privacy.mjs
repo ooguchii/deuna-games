@@ -78,11 +78,14 @@ const migrations = (
 
 const accountMigration = await read("database/migrations/009_account_foundation.sql");
 const personalizationMigration = await read("database/migrations/010_account_personalization.sql");
+const rewardsMigration = await read("database/migrations/011_account_rewards.sql");
 const usersTable = createTableBlock(accountMigration, "deuna_accounts.users");
 const sessionsTable = createTableBlock(accountMigration, "deuna_accounts.sessions");
 const recoveryTable = createTableBlock(accountMigration, "deuna_accounts.recovery_codes");
 const preferencesTable = createTableBlock(personalizationMigration, "deuna_accounts.game_preferences");
 const hardwareTable = createTableBlock(personalizationMigration, "deuna_accounts.hardware_profiles");
+const rewardProfilesTable = createTableBlock(rewardsMigration, "deuna_accounts.reward_profiles");
+const rewardEventsTable = createTableBlock(rewardsMigration, "deuna_accounts.reward_events");
 const adminUsersTable = createTableBlock(migrations, "deuna_admin.admin_users");
 
 requirePattern(
@@ -125,6 +128,8 @@ for (const [tableName, block] of [
   ["recovery_codes", recoveryTable],
   ["game_preferences", preferencesTable],
   ["hardware_profiles", hardwareTable],
+  ["reward_profiles", rewardProfilesTable],
+  ["reward_events", rewardEventsTable],
 ]) {
   for (const pattern of forbiddenColumnPatterns) {
     if (pattern.test(block)) {
@@ -165,6 +170,8 @@ for (const [name, block] of [
   ["recovery_codes", recoveryTable],
   ["game_preferences", preferencesTable],
   ["hardware_profiles", hardwareTable],
+  ["reward_profiles", rewardProfilesTable],
+  ["reward_events", rewardEventsTable],
 ]) {
   requirePattern(
     block,
@@ -205,6 +212,43 @@ forbidPattern(
   hardwareTable,
   /(?:renderer|vendor|platform|architecture|logical_processors|browser|user_agent|os\s+)/i,
   "Mi PC sólo puede persistir componentes seleccionados, no detección cruda del navegador."
+);
+
+for (const required of [
+  "xp_total",
+  "credits_balance",
+  "streak_days",
+  "best_streak",
+  "last_claim_at",
+]) {
+  requirePattern(
+    rewardProfilesTable,
+    new RegExp(`^\\s*${required}\\s+`, "im"),
+    `Rewards debe contener ${required}.`
+  );
+}
+for (const required of [
+  "event_type",
+  "event_key",
+  "xp_delta",
+  "credits_delta",
+  "created_at",
+]) {
+  requirePattern(
+    rewardEventsTable,
+    new RegExp(`^\\s*${required}\\s+`, "im"),
+    `El ledger de Rewards debe contener ${required}.`
+  );
+}
+forbidPattern(
+  rewardEventsTable,
+  /(?:metadata|payload|url|route|page_path|referrer|referer|click|impression|view|play_time|session_count|user_agent|device|location)/i,
+  "El ledger de Rewards no puede convertirse en telemetría o almacenar metadata genérica."
+);
+requirePattern(
+  rewardEventsTable,
+  /UNIQUE\s*\(user_id,\s*event_type,\s*event_key\)/i,
+  "Rewards debe impedir cobrar dos veces el mismo hito o bonus idempotente."
 );
 
 const privateData = await read("src/lib/accounts/private-data.ts");
@@ -258,6 +302,23 @@ forbidPattern(
   "La personalización de cuenta no debe leer detección cruda ni seguimiento."
 );
 
+const rewardsService = await read("src/lib/accounts/rewards-service.ts");
+requirePattern(
+  rewardsService,
+  /ON\s+CONFLICT\s*\(user_id,\s*event_type,\s*event_key\)\s+DO\s+NOTHING/i,
+  "Los hitos de Rewards deben acreditarse de manera idempotente."
+);
+requirePattern(
+  rewardsService,
+  /FOR\s+UPDATE/i,
+  "El reclamo diario debe bloquear el perfil de Rewards dentro de una transacción."
+);
+forbidPattern(
+  rewardsService,
+  /navigator|headers\.get|user_agent|referrer|referer|click|impression|page_view|play_time/i,
+  "Rewards no debe depender de navegación o metadata del dispositivo."
+);
+
 const recoverRoute = await read("src/app/api/account/recover/route.ts");
 requirePattern(
   recoverRoute,
@@ -286,6 +347,7 @@ const mutatingRoutes = [
   "games",
   "hardware",
   "notifications/seen",
+  "rewards/claim",
 ];
 for (const route of mutatingRoutes) {
   const content = await read(`src/app/api/account/${route}/route.ts`);
@@ -346,8 +408,24 @@ if (
   deleteGrantMatches.length !== expectedDeleteGrants.size ||
   deleteGrantMatches.some((name) => !expectedDeleteGrants.has(name))
 ) {
-  fail("El runtime sólo puede recibir DELETE sobre baja de cuenta, rotación y datos de personalización explícitamente removibles.");
+  fail("El runtime sólo puede recibir DELETE sobre baja de cuenta, rotación y datos de personalización explícitamente removibles. Rewards debe conservar su ledger inmutable.");
 }
+
+requirePattern(
+  migrate,
+  /GRANT\s+SELECT\s*\([\s\S]*?xp_total[\s\S]*?credits_balance[\s\S]*?ON\s+deuna_accounts\.reward_profiles/s,
+  "El runtime debe recibir sólo columnas explícitas del perfil de Rewards."
+);
+requirePattern(
+  migrate,
+  /GRANT\s+INSERT\s*\([\s\S]*?event_type[\s\S]*?event_key[\s\S]*?ON\s+deuna_accounts\.reward_events/s,
+  "El runtime debe poder agregar eventos explícitos al ledger de Rewards."
+);
+forbidPattern(
+  migrate,
+  /GRANT\s+(?:UPDATE|DELETE)\b[\s\S]{0,180}ON\s+deuna_accounts\.reward_events/i,
+  "El runtime no puede editar ni borrar el ledger de Rewards."
+);
 
 const preflight = await read("tools/admin/preflight.ts");
 for (const table of expectedDeleteGrants) {
@@ -355,6 +433,13 @@ for (const table of expectedDeleteGrants) {
     preflight,
     new RegExp(escapeRegExp(`"${table}"`)),
     `El preflight debe verificar explícitamente DELETE sobre ${table}.`
+  );
+}
+for (const table of ["reward_profiles", "reward_events"]) {
+  requirePattern(
+    preflight,
+    new RegExp(`expectColumns\\(\\"deuna_accounts\\", \\"${table}\\"`),
+    `El preflight debe declarar permisos mínimos para deuna_accounts.${table}.`
   );
 }
 
@@ -396,5 +481,5 @@ if (issues.length > 0) {
 }
 
 console.log(
-  `Privacidad de cuentas: OK (${accountSourceFiles.length} archivos de cuenta revisados; minimización, cifrado, separación, personalización explícita, recuperación y baja verificadas).`
+  `Privacidad de cuentas: OK (${accountSourceFiles.length} archivos de cuenta revisados; minimización, cifrado, separación, personalización explícita, Rewards sin telemetría, recuperación y baja verificadas).`
 );
