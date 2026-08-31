@@ -91,7 +91,7 @@
   display: grid;
   place-items: center;
   flex-shrink: 0;
-  color: #ffb2c4;
+  color: color-mix(in srgb, var(--brand) 42%, #ffffff);
   border: 1px solid color-mix(in srgb, var(--brand) 38%, #40505e);
   border-radius: 9px;
   background: color-mix(in srgb, var(--brand) 9%, #111a24);
@@ -178,7 +178,7 @@
   min-height: 46px;
   flex: 0 0 auto;
   padding: 0 14px;
-  color: #e9b5c1;
+  color: color-mix(in srgb, var(--brand) 38%, #ffffff);
   border: 1px solid #40505f;
   border-radius: 9px;
   outline: none;
@@ -333,7 +333,7 @@
 .nextPreview svg {
   flex-shrink: 0;
   margin-top: 1px;
-  color: #e3a4b3;
+  color: color-mix(in srgb, var(--brand) 42%, #ffffff);
 }
 
 @media (max-width: 900px) {
