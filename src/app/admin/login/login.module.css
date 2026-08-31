@@ -8,6 +8,13 @@
   color: color-mix(in srgb, var(--brand) 52%, #ffffff);
 }
 
-.brandButton {
-  color: var(--text-on-brand) !important;
+.brandIcon.brandIcon,
+.brandButton.brandButton {
+  color: var(--text-on-brand);
+}
+
+.footnote.footnote {
+  color: #7f8b99;
+  font-size: 11px;
+  line-height: 1.55;
 }
