@@ -76,7 +76,13 @@ export async function POST(request: NextRequest) {
     }
 
     await saveAccountGamePreference(session.userId, parsed.data);
-    await syncRewardMilestones(session.userId);
+
+    // Rewards es una consecuencia idempotente del dato ya guardado.
+    // Un fallo temporal de Rewards no debe convertir un guardado exitoso
+    // de Mi DeUna en un falso error para el usuario; el dashboard vuelve
+    // a sincronizar los hitos al cargar.
+    await syncRewardMilestones(session.userId).catch(() => {});
+
     return json({ ok: true });
   } catch {
     return json({ ok: false, error: "servicio" }, 503);
