@@ -311,6 +311,10 @@ async function grantRuntimePrivileges(
       ON deuna_accounts.users
       TO ${role};
 
+    GRANT DELETE
+      ON deuna_accounts.users
+      TO ${role};
+
     GRANT SELECT (
         id,
         user_id,
