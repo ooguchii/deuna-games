@@ -1,267 +1,188 @@
 # DeUna Games — baseline técnico
 
-Este repositorio contiene la aplicación activa de DeUna Games. El objetivo de esta base es mantener el producto fácil de revisar, reproducible y libre de snapshots, reparadores y artefactos históricos dentro del código versionado.
+Aplicación activa de DeUna Games. La base está pensada para ser reproducible, auditable y mantenible: el repositorio no conserva diagnósticos temporales, backups, snapshots de reparación ni artefactos históricos dentro del código activo.
 
 ## Stack
 
-- Next.js 16 (App Router)
+- Next.js 16 con App Router
 - React 19
-- TypeScript
+- TypeScript estricto
 - CSS Modules + tokens globales
+- PostgreSQL para el espacio editorial privado
 - lucide-react
-
-## Requisitos
-
-- Node.js 24 o superior, usado también por CI (`.node-version`)
-- npm
+- Node.js 24 o superior
 
 ## Desarrollo
 
-```powershell
-npm.cmd ci
-npm.cmd run dev
+Instala exactamente las dependencias fijadas y levanta el servidor local:
+
+```bash
+npm ci
+npm run dev
 ```
 
-Para probar desde otro dispositivo en la red local:
+Para exponer la web en la red local sin habilitar el panel privado:
 
-```powershell
-npm.cmd run mobile
+```bash
+npm run lan
 ```
+
+El panel administrativo permanece deshabilitado salvo que `DEUNA_ADMIN_ENABLED` sea exactamente `true`.
 
 ## Verificación
 
 Antes de integrar cambios:
 
-```powershell
-npm.cmd run check
-npm.cmd run audit:deps
-npm.cmd run security:scan
+```bash
+npm run check
+npm run audit:deps
+npm run security:scan
 ```
 
-`npm run check` ejecuta lint, TypeScript, arquitectura, invariantes de mantenimiento, higiene del código fuente, privacidad pública, encoding UTF-8, integridad de datos, assets, rutas, variables CSS, CSS Modules, build de producción y smoke test sobre el runtime standalone construido. CI repite estas verificaciones, suma el security scan y audita dependencias en cada Pull Request, independientemente de la rama base.
+CI ejecuta, entre otras comprobaciones:
 
-### Mantenimiento
+- lint y TypeScript estricto, incluidos símbolos y parámetros sin uso;
+- grafo de arquitectura para impedir módulos fuente huérfanos;
+- mantenimiento del repositorio y alcance de herramientas;
+- higiene de código fuente (`TODO`, `FIXME`, `HACK`, `debugger`, trazas y supresiones quedan bloqueados);
+- privacidad pública;
+- seguridad administrativa;
+- validación del importador editorial;
+- encoding UTF-8;
+- integridad de catálogo, Home, ranking y detección de hardware;
+- integridad bidireccional de assets;
+- rutas internas;
+- variables CSS y CSS Modules, incluidas clases o módulos sin uso;
+- security scan;
+- build de producción;
+- smoke test del runtime standalone;
+- auditoría de dependencias.
 
-```powershell
-npm.cmd run check:maintenance
+Los checks específicos también pueden ejecutarse por separado desde los scripts de `package.json`.
+
+## Arquitectura editorial
+
+El panel privado usa PostgreSQL y un flujo explícito de publicación. Guardar y publicar son operaciones distintas:
+
+```text
+editar
+  ↓
+borrador
+  ↓
+revisión inmutable
+  ↓
+publicar
+  ↓
+snapshot público
+  ↓
+web pública
 ```
 
-Bloquea la reaparición de herramientas temporales de diagnóstico y comprueba invariantes que deben conservarse después de la auditoría: protección cross-site compatible con el flujo local, formularios administrativos con campos exactos, staging seguro con los wrappers requeridos y CI desacoplada de ramas temporales.
+La web pública consume `published_payload` visible; no debe leer `draft_payload`.
 
-### Privacidad pública
+El modelo se aplica a las superficies editoriales que correspondan, entre ellas juegos, actualizaciones, Portada, Catálogos, Identidad pública, Quiénes somos y Presentación de páginas públicas. Restaurar una revisión crea una nueva revisión; no destruye el historial.
 
-```powershell
-npm.cmd run check:privacy
-```
+Catálogos mantiene una taxonomía maestra de **Clasificaciones** y una lista separada de **Etiquetas**. Los campos físicos heredados de `Game` se conservan sólo por compatibilidad de almacenamiento; la interfaz pública y editorial trabaja con el modelo unificado.
 
-Bloquea referencias geográficas explícitas, locales regionales, timestamps con offsets de zona, rutas personales, correos personales comunes, campos estructurados de ubicación, trackers externos conocidos y formas lingüísticas regionales configuradas para el contenido público. El sitio usa `es` neutral y UTC para evitar publicar una región técnica de origen.
+La Portada dispone de curaduría **Manual**, **Automática** e **Híbrida**. El ranking automático es determinista dentro del día UTC, explicable y usa una única definición de perfiles/pesos compartida entre la vista previa administrativa y la Home pública.
 
-### Datos del catálogo
+## Finder de hardware y FPS
 
-```powershell
-npm.cmd run check:data
-```
+`/requisitos` realiza una detección local orientativa usando únicamente lo que el navegador puede exponer.
 
-Valida la consistencia estructural de `games.ts` y `updates.ts`: campos obligatorios, IDs y slugs únicos, ratings dentro de rango, formato de reseñas, fechas válidas, destinos de descarga permitidos, referencias entre juegos y actualizaciones y coincidencia entre `game.version` y la actualización más reciente de cada juego.
+Un navegador web estándar no puede garantizar el modelo exacto de CPU. Por eso DeUna diferencia entre:
 
-Este control verifica consistencia interna, no la procedencia editorial de ratings, reseñas, fechas o descripciones. Esos datos deben tener una fuente o metodología definida antes de publicarse como información real.
+- CPU estimada por señales disponibles, con intervalo de capacidad y menor confianza;
+- CPU confirmada por el usuario desde el catálogo local de procesadores.
 
-### Assets
+El selector no inventa modelos: escribir sólo filtra el catálogo y la confirmación siempre es explícita. Los perfiles confirmados se guardan localmente en el navegador. La detección y la selección no requieren enviar el modelo de CPU al servidor.
 
-```powershell
-npm.cmd run check:assets
-```
+GPU, RAM, sistema y modo de memoria se incorporan según su nivel de certeza. La incertidumbre del hardware se propaga al rango de FPS en lugar de presentarse como una cifra exacta falsa. Los FPS son orientativos y pueden variar por drivers, temperatura, procesos en segundo plano, versión del juego y configuración real.
 
-El chequeo es bidireccional: falla si el código referencia una imagen inexistente, si `public/images` contiene una imagen sin referencia directa en `src/`, si una firma/estructura binaria no es válida o si una imagen pública conserva metadata no permitida. WebP rechaza EXIF/XMP; PNG rechaza chunks EXIF/textuales/fecha; JPEG rechaza EXIF/XMP, IPTC/Photoshop y comentarios; GIF rechaza comentarios; AVIF se revisa por metadata EXIF/XMP embebida y SVG por metadata de editores/RDF.
+Las pruebas de datos cubren el catálogo de CPUs, variantes de nombres/modelos, intervalos de CPU, propagación a FPS, búsqueda manual y coherencia de hidratación servidor/cliente.
 
-### Rutas internas
+## Privacidad pública
 
-```powershell
-npm.cmd run check:routes
-```
+El sitio evita analítica de visitantes y no almacena IP, ubicación, user-agent ni huellas de dispositivo como parte del producto actual.
 
-Compara enlaces, acciones, redirects y navegaciones internas detectables contra las páginas reales de App Router, incluyendo rutas dinámicas como `/juegos/[slug]`.
-
-### Variables CSS
-
-```powershell
-npm.cmd run check:css-vars
-```
-
-Falla ante tokens CSS usados sin definición o variables autorreferenciadas. También reconoce custom properties que React inyecta de forma intencional en runtime.
-
-### CSS Modules
-
-```powershell
-npm.cmd run check:css-modules
-```
-
-Comprueba la relación entre clases declaradas y clases usadas en componentes para evitar estilos huérfanos o referencias inexistentes en los módulos que pueden analizarse estáticamente.
-
-### Smoke del runtime
-
-Después de `npm run build` se puede ejecutar:
-
-```powershell
-npm.cmd run smoke
-```
-
-Levanta temporalmente `.next/standalone/server.js` en loopback y comprueba el comportamiento HTTP del build real: Home 200 y canonical correcto, `lang="es"` neutral, ausencia de huellas regionales conocidas en HTML, filtros de `/juegos` con canonical estable + `noindex`, ficha de juego 200 con canonical propio, fallback seguro de descarga, 404 real sin canonical heredado, `robots.txt`, `sitemap.xml`, ausencia de `X-Powered-By` y headers de seguridad/privacidad esenciales. El proceso se apaga automáticamente al terminar.
-
-### Seguridad
-
-```powershell
-npm.cmd run security:scan
-```
-
-El auditor es Node y funciona de forma equivalente en Windows y CI. Revisa los archivos textuales versionados del repositorio, además de `public/`: busca archivos sensibles o históricos trackeados, posibles secretos hardcodeados, rutas personales, credenciales/tokens conocidos, URLs de base de datos con contraseña y archivos riesgosos. También inspecciona imágenes públicas y ejecuta la auditoría de dependencias de producción salvo que se invoque internamente con `--skip-npm-audit`.
-
-Para retirar EXIF/XMP de los WebP sin recomprimirlos y normalizar sus flags `VP8X`:
-
-```powershell
-npm.cmd run images:strip-metadata
-```
-
-### ESLint
-
-El proyecto mantiene ESLint 9 mientras la cadena estable de plugins incluida por `eslint-config-next` no tenga soporte completo y sin conflictos para ESLint 10. No usar `--force`, overrides de peers ni paquetes canary sólo para eliminar el aviso de fin de soporte: la actualización debe hacerse cuando el grafo estable sea compatible y `npm ci` + lint + CI pasen sin excepciones.
-
-## Variables de entorno
-
-Copiar `.env.example` a `.env.local` cuando haga falta configurar el entorno. Nunca versionar `.env.local` ni secretos.
-
-`NEXT_PUBLIC_SITE_URL` es una URL pública usada para metadata, sitemap y URLs absolutas. Debe contener sólo el origen del sitio, sin credenciales, ruta, query ni fragmento. En producción debe configurarse con el dominio HTTPS real.
+`npm run check:privacy` bloquea huellas regionales configuradas, trackers externos conocidos, campos estructurados de ubicación y otros patrones incompatibles con esta política. El contenido público usa español neutral y UTC.
 
 ## Panel administrativo privado
 
-La primera etapa del panel se encuentra en `/admin` e incorpora:
+El área `/admin` incorpora:
 
-- acceso restringido por Nginx a la subred privada de WireGuard;
-- una única cuenta propietaria, creada desde una terminal del servidor;
-- contraseña derivada con `scrypt`, sal aleatoria y comparación constante;
-- sesiones opacas y revocables guardadas en PostgreSQL;
-- cookie `HttpOnly`, `Secure`, `SameSite=Strict`, prioridad alta y vencimiento máximo configurable de 1 a 24 horas;
-- bloqueo progresivo de intentos fallidos y rate limiting adicional en Nginx;
-- rate limiting efímero en memoria, sin access log, error log persistente ni reenvío de IP a Next.js;
-- edición en borrador de juegos, actualizaciones y configuración pública, con validación, control de concurrencia e historial recuperable;
-- `noindex`, `noarchive` y `no-store` en todas las rutas administrativas;
-- ausencia deliberada de IP, user-agent, ubicación, huellas de dispositivo y actividad de visitantes en la base administrativa.
+- una única cuenta propietaria;
+- contraseña derivada con `scrypt` y sal aleatoria;
+- sesiones opacas y revocables en PostgreSQL;
+- cookies `HttpOnly`, `Secure`, `SameSite=Strict` y prioridad alta;
+- bloqueo progresivo y controles de rate limiting;
+- validación estricta de origen y de campos de formulario;
+- revisiones inmutables, publicación explícita, restauración e historial;
+- `noindex`, `noarchive` y `no-store` en rutas administrativas;
+- ausencia deliberada de telemetría de visitantes en la base administrativa.
 
-`DEUNA_ADMIN_ORIGIN` fija el origen exacto aceptado por los formularios y redirects del panel. En producción debe ser el origen HTTPS real accesible mediante la VPN; no se deriva del encabezado `Host` de la solicitud. En desarrollo local la validación conserva el rechazo de solicitudes cross-site y admite las variantes legítimas de cabeceras que algunos navegadores envían bajo políticas de privacidad.
+`DEUNA_ADMIN_ORIGIN` fija el origen exacto aceptado por formularios y redirects del panel. En producción no debe derivarse del encabezado `Host`.
 
-El panel permanece deshabilitado cuando `DEUNA_ADMIN_ENABLED` no es exactamente `true`. El área editorial permite modificar borradores en PostgreSQL, pero no publica esos cambios: la web pública continúa leyendo los archivos versionados hasta que se implemente y audite una transición explícita. Cada guardado crea una revisión inmutable y una entrada mínima de auditoría administrativa; restaurar una versión genera otra revisión y no elimina el historial.
+### Entorno local seguro
 
-La instalación se realiza en este orden:
-
-```powershell
-Copy-Item .env.example .env.local
-Copy-Item ops/postgresql/admin-migration.env.example .env.admin-migration.local
-npm.cmd run db:migrate
-npm.cmd run admin:import-content
-npm.cmd run admin:create-owner
-npm.cmd run admin:preflight
-```
-
-`admin:preflight` ejecuta dos comprobaciones de sólo lectura: una con el rol migrador y otra con el rol runtime. Antes de permitir el encendido verifica conexión local, roles sin privilegios globales, cierre de acceso para `PUBLIC`, permisos exactos por columna y secuencia, checksums de migraciones, una sola cuenta propietaria y las cantidades importadas. No imprime contraseñas ni altera registros.
-
-Antes de habilitar el panel se debe adaptar y probar `ops/nginx/deuna-games.conf.example`, configurar `DEUNA_ADMIN_ORIGIN`, confirmar que `/admin` responde únicamente dentro de la VPN y que PostgreSQL escucha sólo en loopback o en una interfaz privada. Las instrucciones de roles y base están en `ops/postgresql/README.md`.
-
-`ops/systemd/deuna-games.service.example` mantiene Next.js en `127.0.0.1`, carga el entorno runtime desde `/etc/deuna-games/runtime.env`, aplica aislamiento del proceso y bloquea conexiones de red fuera de loopback. Deben adaptarse el usuario y las rutas antes de instalarlo. El archivo de entorno debe ser propiedad de `root`, modo `0600`, y no debe contener las credenciales del migrador.
-
-Las migraciones usan checksum y no admiten que un archivo SQL ya aplicado sea reescrito. `deuna_migrator` conserva la capacidad de modificar el esquema; el proceso web usa `deuna_runtime` con permisos mínimos. Sus credenciales están separadas: `.env.local` contiene únicamente el acceso runtime, mientras `.env.admin-migration.local` contiene el acceso privilegiado y no es cargado por Next.js.
-
-Los scripts de migración, importación y creación del propietario no forman parte del runtime público `deploy/`. Se ejecutan desde una copia privada del repositorio en el VPS antes de sustituir el artefacto de la aplicación; así el proceso web no recibe herramientas ni credenciales de migración. Cuando no haya una operación pendiente, el archivo de migración puede retirarse del servidor y restaurarse desde el gestor privado de secretos.
-
-### Servidor local seguro en WSL2
-
-Para probar el panel en una computadora Windows se recomienda ejecutar Next.js y PostgreSQL directamente dentro de Ubuntu sobre WSL2. Docker no es necesario para este entorno: WSL2 ya aporta el límite Linux y PostgreSQL permanece escuchando únicamente en loopback.
-
-Requisitos comprobados por el instalador:
-
-- Node.js 24 o superior instalado dentro de Linux;
-- PostgreSQL 18 o superior con `data_checksums=on`;
-- PostgreSQL limitado a `localhost`;
-- `systemd`, `sudo`, OpenSSL y Git disponibles;
-- repositorio ubicado en el sistema de archivos Linux, no bajo `/mnt/c`.
-
-Desde la raíz del repositorio ejecutar:
+El flujo local soportado usa WSL2/Ubuntu con PostgreSQL en loopback. El instalador repetible es:
 
 ```bash
 npm run local:setup
 ```
 
-El instalador es repetible y realiza las siguientes acciones:
+Para actualizar un entorno ya instalado después de traer cambios editoriales/migraciones:
 
-- desactiva la telemetría de Next.js;
-- instala exactamente las dependencias fijadas en `package-lock.json`;
-- genera contraseñas PostgreSQL aleatorias sin mostrarlas;
-- guarda cada credencial únicamente en el archivo privado que la necesita, con modo `0600`;
-- crea `deuna_migrator`, `deuna_runtime` y `deuna_games` con privilegios separados;
-- aplica migraciones, importa el contenido y ejecuta los preflight;
-- pide de forma interactiva el nombre y la contraseña de la única cuenta propietaria.
+```bash
+npm run admin:update-local
+```
 
-La contraseña propietaria no muestra letras, puntos ni asteriscos mientras se escribe. Debe tener entre 16 y 128 caracteres e incluir una letra, un número y un símbolo. No debe compartirse ni guardarse en el repositorio.
-
-Para reemplazarla desde la terminal privada, detener primero el servidor y ejecutar:
+Para rotar la contraseña propietaria:
 
 ```bash
 npm run admin:change-password
 ```
 
-El comando vuelve a aplicar la política, guarda únicamente el hash `scrypt`, elimina el bloqueo por intentos fallidos, revoca todas las sesiones anteriores y registra el cambio sin conservar la contraseña.
+Las credenciales runtime y migrador permanecen separadas. `.env.local` no debe contener credenciales del migrador y ningún archivo `.env.local` se versiona.
 
-El flujo local de PostgreSQL, rotación de contraseña, verificación de credenciales, creación de sesión y acceso al panel desde navegador fue validado sobre WSL2. Las herramientas temporales utilizadas durante ese diagnóstico no forman parte del proyecto mantenido.
-
-Al finalizar, iniciar el servidor limitado al equipo local:
-
-```bash
-npm run dev
-```
-
-La web queda en `http://localhost:3000` y el panel en `http://localhost:3000/admin`. No ejecutar `npm run lan` mientras `.env.local` tenga `DEUNA_ADMIN_ENABLED=true`, porque ese comando escucha en todas las interfaces. El modo HTTP y la habilitación directa del panel se reservan exclusivamente para desarrollo local; el despliegue real conserva `DEUNA_ADMIN_ENABLED=false` hasta completar VPN, Nginx y HTTPS.
-
-La secuencia completa de instalación, prueba externa/interna y vuelta atrás está en `ops/deploy/README.md`. El archivo `ops/systemd/runtime.env.example` sirve sólo como plantilla sin secretos para `/etc/deuna-games/runtime.env`.
+La configuración de PostgreSQL está documentada en `ops/postgresql/README.md` y el despliegue en `ops/deploy/README.md`.
 
 ## Build seguro de deploy
 
-`build:secure` genera el artefacto desde un staging neutral y usa la misma cadena de build + smoke que CI. Antes de ejecutarlo debe existir un `NEXT_PUBLIC_SITE_URL` HTTPS público real; el comando rechaza localhost, loopback, `.invalid`, `.test`, `.example`, `.localhost` y los hosts reservados `example.com`, `example.net` y `example.org` para evitar publicar canonicals de prueba.
+`NEXT_PUBLIC_SITE_URL` debe ser un origen absoluto válido. En producción debe apuntar al dominio HTTPS real, sin credenciales, ruta, query ni fragmento.
 
-En PowerShell, reemplaza el marcador por el origen HTTPS real antes de ejecutar:
+El artefacto endurecido se genera con:
 
-```powershell
-$env:NEXT_PUBLIC_SITE_URL="https://<TU-DOMINIO-HTTPS-REAL>"
-npm.cmd run build:secure
+```bash
+npm run build:secure
 ```
 
-El resultado final queda en:
-
-```text
-deploy/
-```
-
-Subir únicamente el contenido de `deploy/`. El proceso vuelve a auditar datos, código, privacidad, runtime construido y artefacto final, y falla si detecta inconsistencias del catálogo, errores de runtime/SEO/headers, archivos prohibidos, secretos conocidos, rutas locales reales o huellas geográficas configuradas.
+`build:secure` prepara un staging neutral, ejecuta las mismas barreras relevantes de CI y genera `deploy/`. Los scripts y credenciales de migración no forman parte del runtime público.
 
 ## Estructura
 
 ```text
-src/app/          rutas y metadata de Next.js
-src/components/   componentes visuales y funcionales
-src/data/         catálogo y datos de contenido
-src/lib/          lógica reutilizable
-src/theme/        Theme System V2
+src/app/          rutas, metadata y endpoints de Next.js
+src/components/   componentes compartidos
+src/data/         contenido fuente y fallbacks editoriales
+src/features/     features encapsuladas, incluido game-finder
+src/lib/          lógica reutilizable y lectores públicos
+src/theme/        sistema visual
 src/types/        tipos compartidos
-public/           assets públicos
-ops/              ejemplos de infraestructura/deploy
-tools/            herramientas mantenidas de build, seguridad e integridad
+public/           assets públicos validados
+ops/              infraestructura y deploy
+tools/            build, seguridad, migración e integridad mantenidos
 ```
 
 ## Convenciones
 
 - `src/theme/deuna-theme.css` es la fuente activa de la paleta visual.
-- `UniversalGameCard` concentra las variantes de tarjetas de juegos.
-- No guardar paquetes de auditoría, snapshots, ZIPs, backups ni scripts de reparación consumidos dentro del repositorio.
-- Las páginas con filtros/query deben mantener una URL canónica estable y evitar indexar combinaciones arbitrarias.
+- `UniversalGameCard` concentra las variantes generales de tarjetas de juegos.
+- No versionar snapshots, backups, ZIPs, dumps, diagnósticos consumidos ni scripts de reparación temporales.
+- No dejar `TODO`, `FIXME`, `HACK`, `debugger`, supresiones de lint/TypeScript ni trazas de diagnóstico en `src/`.
+- No agregar módulos fuente, CSS Modules o herramientas mantenidas sin un consumidor real.
+- Las páginas con filtros/query deben mantener canonical estable y evitar indexar combinaciones arbitrarias.
 - No agregar enlaces internos a rutas inexistentes ni assets públicos sin referencia real.
 - Una actualización sólo puede aparecer como descargable si el juego tiene un destino de descarga real y validado.
-- Los ratings, reseñas, fechas y demás métricas editoriales deben tener una fuente o metodología definida antes de tratarlos como datos públicos reales.
-- Los cambios estructurales deben pasar por una rama/PR y mantener CI verde antes de llegar a `master`.
+- Ratings, reseñas, fechas y demás métricas editoriales deben tener una fuente o metodología definida antes de tratarse como datos públicos reales.
+- Los cambios estructurales deben pasar por rama/PR y mantener CI verde antes de llegar a `master`.
