@@ -2,7 +2,6 @@
 
 import {
   CheckCircle2,
-  Clipboard,
   Info,
   Search,
   X,
@@ -16,58 +15,73 @@ import {
   writeConfirmedCpu,
 } from "./cpu-confirmation-storage";
 import {
-  matchCpuName,
-  suggestCpuNames,
-} from "./cpu-matcher";
-import {
-  findCpuById,
+  cpuCatalog,
 } from "./hardware-catalog";
 
 import styles from "./CpuIdentificationAssistant.module.css";
-
-const WINDOWS_CPU_COMMAND =
-  "Get-CimInstance Win32_Processor | Select-Object -ExpandProperty Name";
 
 type CpuIdentificationAssistantProps = {
   onConfirmed: () => void;
   onCancel: () => void;
 };
 
+function normalizeCpuSearch(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function cpuMatchesSearch(cpuName: string, query: string) {
+  const terms = normalizeCpuSearch(query).split(/\s+/).filter(Boolean);
+  if (!terms.length) return false;
+
+  const searchable = normalizeCpuSearch(cpuName);
+  return terms.every((term) => searchable.includes(term));
+}
+
+function cpuSearchPriority(cpuName: string, query: string) {
+  const searchable = normalizeCpuSearch(cpuName);
+  const normalizedQuery = normalizeCpuSearch(query);
+
+  if (searchable === normalizedQuery) return 0;
+  if (searchable.includes(normalizedQuery)) return 1;
+  return 2;
+}
+
 export default function CpuIdentificationAssistant({
   onConfirmed,
   onCancel,
 }: CpuIdentificationAssistantProps) {
-  const [rawName, setRawName] = useState("");
+  const [query, setQuery] = useState("");
   const [selectedCpuId, setSelectedCpuId] = useState("");
-  const [copied, setCopied] = useState(false);
   const [saveError, setSaveError] = useState(false);
 
-  const exactMatch = useMemo(
-    () => matchCpuName(rawName),
-    [rawName]
-  );
-  const suggestions = useMemo(
-    () => suggestCpuNames(rawName, 3),
-    [rawName]
-  );
-  const selectedCpu = selectedCpuId
-    ? findCpuById(selectedCpuId)
-    : exactMatch?.cpu ?? null;
   const logicalProcessors =
     typeof navigator !== "undefined" &&
     Number.isFinite(navigator.hardwareConcurrency)
       ? navigator.hardwareConcurrency
       : null;
 
-  async function copyWindowsCommand() {
-    try {
-      await navigator.clipboard.writeText(WINDOWS_CPU_COMMAND);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1800);
-    } catch {
-      setCopied(false);
-    }
-  }
+  const matchingCpus = useMemo(() => {
+    if (!query.trim()) return [];
+
+    return cpuCatalog
+      .filter((cpu) => cpuMatchesSearch(cpu.name, query))
+      .sort((a, b) => {
+        const priorityDifference =
+          cpuSearchPriority(a.name, query) - cpuSearchPriority(b.name, query);
+        if (priorityDifference !== 0) return priorityDifference;
+        return a.name.localeCompare(b.name, "es", { numeric: true });
+      });
+  }, [query]);
+
+  const visibleCpus = matchingCpus.slice(0, 10);
+  const selectedCpu = selectedCpuId
+    ? cpuCatalog.find((cpu) => cpu.id === selectedCpuId) ?? null
+    : null;
 
   function confirmCpu() {
     if (!selectedCpu) return;
@@ -85,43 +99,45 @@ export default function CpuIdentificationAssistant({
     <div
       className={styles.root}
       role="region"
-      aria-label="Confirmar procesador detectado"
+      aria-label="Elegir procesador exacto"
     >
       <div className={styles.heading}>
         <Info size={15} aria-hidden="true" />
         <div>
-          <strong>Falta confirmar el modelo de CPU</strong>
+          <strong>Elegí tu procesador</strong>
           <span>
             {logicalProcessors
-              ? `El navegador detectó ${logicalProcessors} hilos, pero no puede leer el modelo exacto.`
-              : "El navegador no puede leer el modelo exacto del procesador."}
+              ? `Detectamos ${logicalProcessors} hilos lógicos, pero el navegador no puede ver el modelo exacto de CPU.`
+              : "El navegador no puede ver el modelo exacto de CPU."}
+            {" "}Buscalo en el catálogo y seleccioná el correcto.
           </span>
         </div>
         <button
           type="button"
           className={styles.closeButton}
           onClick={onCancel}
-          aria-label="Cerrar confirmación de CPU"
+          aria-label="Cerrar selección de CPU"
         >
           <X size={15} aria-hidden="true" />
         </button>
       </div>
 
       <div className={styles.inputRow}>
-        <label className={styles.searchField} htmlFor="detected-cpu-name">
+        <label className={styles.searchField} htmlFor="detected-cpu-search">
           <Search size={15} aria-hidden="true" />
           <input
-            id="detected-cpu-name"
-            type="text"
-            value={rawName}
+            id="detected-cpu-search"
+            type="search"
+            value={query}
             onChange={(event) => {
-              setRawName(event.target.value);
+              setQuery(event.target.value);
               setSelectedCpuId("");
               setSaveError(false);
             }}
             autoComplete="off"
             spellCheck={false}
-            placeholder="Pega el nombre exacto del procesador"
+            placeholder="Buscar CPU: i5 12400, Ryzen 5600, 5800X3D..."
+            aria-controls="detected-cpu-results"
           />
         </label>
 
@@ -132,50 +148,65 @@ export default function CpuIdentificationAssistant({
           onClick={confirmCpu}
         >
           <CheckCircle2 size={15} aria-hidden="true" />
-          Confirmar
+          Confirmar CPU
         </button>
       </div>
 
-      {rawName.trim() && (
-        <div className={styles.matchArea} aria-live="polite">
-          {exactMatch ? (
-            <span className={styles.exactMatch}>
-              <CheckCircle2 size={14} aria-hidden="true" />
-              {exactMatch.cpu.name}
-            </span>
-          ) : suggestions.length ? (
-            <div className={styles.suggestions}>
-              <span>¿Es uno de estos?</span>
-              {suggestions.map((suggestion) => (
-                <button
-                  key={suggestion.cpu.id}
-                  type="button"
-                  data-selected={selectedCpuId === suggestion.cpu.id}
-                  onClick={() => setSelectedCpuId(suggestion.cpu.id)}
-                >
-                  {suggestion.cpu.name}
-                </button>
-              ))}
-            </div>
+      {query.trim() && (
+        <div
+          id="detected-cpu-results"
+          className={styles.results}
+          role="listbox"
+          aria-label="Procesadores coincidentes"
+          aria-live="polite"
+        >
+          {visibleCpus.length ? (
+            <>
+              <div className={styles.resultMeta}>
+                {matchingCpus.length} coincidencia{matchingCpus.length === 1 ? "" : "s"}
+                {matchingCpus.length > visibleCpus.length
+                  ? ` · mostrando las primeras ${visibleCpus.length}`
+                  : ""}
+              </div>
+
+              <div className={styles.resultList}>
+                {visibleCpus.map((cpu) => {
+                  const selected = selectedCpuId === cpu.id;
+                  return (
+                    <button
+                      key={cpu.id}
+                      type="button"
+                      role="option"
+                      aria-selected={selected}
+                      data-selected={selected}
+                      onClick={() => {
+                        setSelectedCpuId(cpu.id);
+                        setSaveError(false);
+                      }}
+                    >
+                      <span>{cpu.name}</span>
+                      {selected && (
+                        <CheckCircle2 size={15} aria-hidden="true" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </>
           ) : (
-            <span className={styles.noMatch}>
-              No encontramos ese modelo. Puedes elegirlo desde Configurar perfil.
-            </span>
+            <p className={styles.noMatch} role="status">
+              No encontramos procesadores con esa búsqueda. Probá con menos palabras o sólo con el número del modelo.
+            </p>
           )}
         </div>
       )}
 
-      <details className={styles.help}>
-        <summary>¿Dónde veo el nombre exacto?</summary>
-        <div className={styles.helpContent}>
-          <code>{WINDOWS_CPU_COMMAND}</code>
-          <button type="button" onClick={copyWindowsCommand}>
-            <Clipboard size={13} aria-hidden="true" />
-            {copied ? "Copiado" : "Copiar comando"}
-          </button>
+      {selectedCpu && (
+        <div className={styles.selectedCpu} aria-live="polite">
+          <CheckCircle2 size={14} aria-hidden="true" />
+          Seleccionado: <strong>{selectedCpu.name}</strong>
         </div>
-        <p>Se procesa localmente en tu navegador.</p>
-      </details>
+      )}
 
       {saveError && (
         <p className={styles.error} role="alert">
