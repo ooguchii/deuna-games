@@ -7,6 +7,7 @@ import {
 } from "@/features/game-finder/hardware-catalog";
 import {
   clearAccountHardwareProfile,
+  getAccountHardwareSelection,
   saveAccountHardwareProfile,
 } from "@/lib/accounts/personalization-service";
 import {
@@ -40,6 +41,35 @@ function json(
     status,
     headers: { "Cache-Control": "no-store" },
   });
+}
+
+export async function GET() {
+  const session = await resolveAccountSession(
+    await readAccountSessionToken()
+  );
+
+  if (!session) {
+    return json({ ok: false, error: "sesion" }, 401);
+  }
+
+  try {
+    const hardware = await getAccountHardwareSelection(session.userId);
+
+    return json({
+      ok: true,
+      hardware: hardware
+        ? {
+            cpuId: hardware.cpuId,
+            gpuId: hardware.gpuId,
+            ramGb: hardware.ramGb,
+            memoryMode: hardware.memoryMode,
+            updatedAt: hardware.updatedAt.toISOString(),
+          }
+        : null,
+    });
+  } catch {
+    return json({ ok: false, error: "servicio" }, 503);
+  }
 }
 
 export async function POST(request: NextRequest) {
