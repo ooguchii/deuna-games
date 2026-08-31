@@ -7,6 +7,8 @@ const accountDir = path.join(root, "src", "app", "cuenta");
 const paths = {
   dashboard: path.join(accountDir, "AccountDashboardClient.tsx"),
   dashboardCss: path.join(accountDir, "account-dashboard.module.css"),
+  rewards: path.join(accountDir, "AccountRewardsPanel.tsx"),
+  rewardsCss: path.join(accountDir, "account-rewards.module.css"),
   access: path.join(accountDir, "AccountAccessClient.tsx"),
   accessCss: path.join(accountDir, "account.module.css"),
   page: path.join(accountDir, "page.tsx"),
@@ -64,6 +66,33 @@ function compareClasses(label, cssSource, jsxSources) {
   }
 }
 
+function checkCleanCss(label, source) {
+  const forbidden = [
+    [!/!important/.test(source), "!important"],
+    [!/:global\(/.test(source), ":global(...)"],
+    [!/visibility\s*:\s*hidden/i.test(source), "visibility: hidden"],
+    [!/dashboardChrome|brandOverlay|brandMark/.test(source), "clases de parche/overlay"],
+  ];
+
+  for (const [ok, item] of forbidden) {
+    if (!ok) errors.push(`${label}: no se permite ${item}.`);
+  }
+
+  for (const match of source.matchAll(/font-size\s*:\s*([0-9.]+)px/gi)) {
+    const value = Number(match[1]);
+    if (Number.isFinite(value) && value < 12) {
+      errors.push(`${label}: font-size ${value}px es menor al mínimo de 12px.`);
+    }
+  }
+
+  for (const match of source.matchAll(/font-size\s*:\s*([0-9.]+)rem/gi)) {
+    const value = Number(match[1]);
+    if (Number.isFinite(value) && value < 0.75) {
+      errors.push(`${label}: font-size ${value}rem es menor al mínimo de 0.75rem.`);
+    }
+  }
+}
+
 for (const legacyPath of legacyPaths) {
   if (fs.existsSync(legacyPath)) {
     errors.push(
@@ -74,6 +103,8 @@ for (const legacyPath of legacyPaths) {
 
 const dashboard = read(paths.dashboard);
 const dashboardCss = read(paths.dashboardCss);
+const rewards = read(paths.rewards);
+const rewardsCss = read(paths.rewardsCss);
 const access = read(paths.access);
 const accessCss = read(paths.accessCss);
 const page = read(paths.page);
@@ -81,38 +112,19 @@ const header = read(paths.header);
 const siteBrand = read(paths.siteBrand);
 
 compareClasses("Dashboard de cuenta", dashboardCss, [dashboard]);
+compareClasses("Rewards de cuenta", rewardsCss, [rewards]);
 compareClasses("Acceso de cuenta", accessCss, [access, page]);
-
-const forbiddenDashboardCss = [
-  [!/!important/.test(dashboardCss), "!important"],
-  [!/:global\(/.test(dashboardCss), ":global(...)"],
-  [!/visibility\s*:\s*hidden/i.test(dashboardCss), "visibility: hidden"],
-  [!/dashboardChrome|brandOverlay|brandMark/.test(dashboardCss), "clases de parche/overlay"],
-];
-
-for (const [ok, label] of forbiddenDashboardCss) {
-  if (!ok) errors.push(`Dashboard de cuenta: no se permite ${label}.`);
-}
-
-for (const match of dashboardCss.matchAll(/font-size\s*:\s*([0-9.]+)px/gi)) {
-  const value = Number(match[1]);
-  if (Number.isFinite(value) && value < 12) {
-    errors.push(`Dashboard de cuenta: font-size ${value}px es menor al mínimo de 12px.`);
-  }
-}
-
-for (const match of dashboardCss.matchAll(/font-size\s*:\s*([0-9.]+)rem/gi)) {
-  const value = Number(match[1]);
-  if (Number.isFinite(value) && value < 0.75) {
-    errors.push(`Dashboard de cuenta: font-size ${value}rem es menor al mínimo de 0.75rem.`);
-  }
-}
+checkCleanCss("Dashboard de cuenta", dashboardCss);
+checkCleanCss("Rewards de cuenta", rewardsCss);
 
 if (/account\.module\.css/.test(dashboard)) {
   errors.push("AccountDashboardClient no debe depender del CSS del acceso.");
 }
 if (/Header\.module\.css/.test(dashboard)) {
   errors.push("AccountDashboardClient no debe importar directamente el CSS del Header.");
+}
+if (!/AccountRewardsPanel/.test(dashboard)) {
+  errors.push("AccountDashboardClient debe integrar Rewards mediante su componente dedicado.");
 }
 if (!/SiteBrand/.test(dashboard) || !/SiteBrand/.test(header)) {
   errors.push("Header y dashboard deben compartir SiteBrand como única marca visual.");
@@ -141,5 +153,5 @@ if (errors.length) {
 }
 
 console.log(
-  `Dashboard de cuenta: OK (${cssClasses(dashboardCss).size} clases de dashboard y ${cssClasses(accessCss).size} clases de acceso, sin overlays, !important, microtexto ni CSS huérfano).`
+  `Dashboard de cuenta: OK (${cssClasses(dashboardCss).size} clases de dashboard, ${cssClasses(rewardsCss).size} de Rewards y ${cssClasses(accessCss).size} de acceso, sin overlays, !important, microtexto ni CSS huérfano).`
 );
