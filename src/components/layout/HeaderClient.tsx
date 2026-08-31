@@ -131,6 +131,7 @@ export default function HeaderClient({
             <Link
               href="/requisitos"
               className={styles.gameFinder}
+              data-brand-action="true"
             >
               <Gamepad2
                 size={18}
@@ -235,6 +236,7 @@ export default function HeaderClient({
           <Link
             href="/requisitos"
             className={styles.mobileFinder}
+            data-brand-action="true"
           >
             <Gamepad2 size={19} aria-hidden="true" />
             Por requisitos
@@ -243,6 +245,7 @@ export default function HeaderClient({
           <Link
             href="/cuenta"
             className={styles.mobileFinder}
+            data-brand-action="true"
           >
             <UserRound size={19} aria-hidden="true" />
             Cuenta
