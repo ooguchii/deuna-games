@@ -111,21 +111,24 @@ assert(
   "La configuración pública de portada debe leer sólo el snapshot visible y nunca el borrador."
 );
 
-assert(
+const publicHomeUsesPublishedConfig =
   homePage.includes("getPublicHomeConfig") &&
-    homePage.includes(
-      "buildHomeGameCollections(games, homeConfig)"
-    ) &&
-    homePage.includes(
-      "collections.heroGames.length > 0"
-    ) &&
-    homePage.includes(
-      "collections.popularGames.length > 0"
-    ) &&
-    homePage.includes(
-      "collections.recommendedGames.length > 0"
-    ),
-  "La portada pública debe consumir la configuración publicada y tolerar colecciones vacías."
+  /buildHomeGameCollections\(\s*games,\s*homeConfig,/.test(homePage);
+const publicHomeUsesOptionalPersonalization =
+  homePage.includes("getAccountPersonalization") &&
+  homePage.includes("preferences: personalization.preferences") &&
+  homePage.includes("hardware: personalization.hardware") &&
+  homePage.includes(": undefined");
+const publicHomeToleratesEmptyCollections =
+  homePage.includes("collections.heroGames.length > 0") &&
+  homePage.includes("collections.popularGames.length > 0") &&
+  homePage.includes("collections.recommendedGames.length > 0");
+
+assert(
+  publicHomeUsesPublishedConfig &&
+    publicHomeUsesOptionalPersonalization &&
+    publicHomeToleratesEmptyCollections,
+  "La portada pública debe consumir la configuración publicada, aplicar sólo personalización opcional de cuenta y tolerar colecciones vacías."
 );
 
 assert(
@@ -181,6 +184,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Home editorial: OK (curaduría profesional, perfiles centralizados, preview con snapshots públicos, ranking explicable, estabilidad diaria y compatibilidad histórica)."
+    "Home editorial: OK (curaduría profesional, perfiles centralizados, preview con snapshots públicos, personalización opcional, ranking explicable, estabilidad diaria y compatibilidad histórica)."
   );
 }
