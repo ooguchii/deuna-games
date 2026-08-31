@@ -107,6 +107,11 @@
 .navigation.navigation {
   gap: 5px;
   margin-top: 18px;
+  scroll-padding-inline: 10px;
+}
+
+.navigation.navigation::-webkit-scrollbar {
+  display: none;
 }
 
 .navigation.navigation a {
@@ -476,6 +481,8 @@
     display: flex;
     gap: 7px;
     overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scrollbar-width: none;
   }
 
   .navigation.navigation a {
