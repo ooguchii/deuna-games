@@ -5,16 +5,16 @@ La aplicación usa la base `deuna_games`. PostgreSQL debe escuchar sólo en loop
 Se mantienen dos roles separados:
 
 - `deuna_migrator`: propietario de la base y de los esquemas privados; es el único rol con capacidad de aplicar migraciones y restablecer permisos.
-- `deuna_runtime`: conexión utilizada por Next.js con permisos mínimos y explícitos para autenticación, sesiones, cuentas públicas, personalización explícita y las operaciones editoriales que ejecuta la aplicación.
+- `deuna_runtime`: conexión utilizada por Next.js con permisos mínimos y explícitos para autenticación, sesiones, cuentas públicas, personalización explícita, Rewards y las operaciones editoriales que ejecuta la aplicación.
 
 El rol runtime no recibe privilegios globales ni capacidad de crear, migrar o alterar tablas.
 
 ## Esquemas privados
 
-Las migraciones `001` a `010` mantienen dos límites distintos dentro de PostgreSQL:
+Las migraciones `001` a `011` mantienen dos límites distintos dentro de PostgreSQL:
 
 - `deuna_admin`: Owner, administradores, sesiones administrativas, auditoría mínima e información editorial.
-- `deuna_accounts`: cuentas públicas, sesiones públicas, códigos de recuperación, preferencias explícitas de juegos y Mi PC.
+- `deuna_accounts`: cuentas públicas, sesiones públicas, códigos de recuperación, preferencias explícitas de juegos, Mi PC y progreso de DeUna Rewards.
 
 No existe una FK ni una operación de aplicación que transforme una cuenta pública en administrativa. El acceso administrativo conserva su propio flujo de autenticación y autorización.
 
@@ -25,6 +25,10 @@ Las sesiones guardan únicamente el hash del token aleatorio. Los códigos de re
 `deuna_accounts.game_preferences` guarda únicamente decisiones explícitas por juego: favorito, estado de biblioteca y seguimiento de actualizaciones. Para el seguimiento conserva desde cuándo se sigue el título y hasta qué momento el usuario marcó sus avisos como vistos; los avisos se derivan de las actualizaciones editoriales publicadas y no se duplican por usuario.
 
 `deuna_accounts.hardware_profiles` guarda sólo IDs de CPU y GPU seleccionados desde el catálogo, RAM y modo de memoria. No almacena renderer detectado, sistema operativo detectado, navegador ni otros metadatos del dispositivo. El perfil se usa con el mismo motor de FPS que el Finder.
+
+`deuna_accounts.reward_profiles` guarda únicamente el agregado necesario para DeUna Rewards: XP total, saldo de créditos, racha actual, mejor racha y momento del último reclamo. `deuna_accounts.reward_events` es el ledger mínimo de recompensas y conserva sólo tipo de evento, clave idempotente, variación de XP/créditos y fecha. No admite metadata genérica, URL, ruta, referrer, clics, vistas, tiempo de uso, user-agent, dispositivo ni ubicación.
+
+Los eventos de Rewards son apéndice de recompensas, no historial de actividad. El runtime puede insertarlos y consultarlos, pero no editarlos ni borrarlos. Los hitos y bonuses idempotentes usan `UNIQUE (user_id, event_type, event_key)` para impedir una segunda acreditación del mismo premio.
 
 ## Preparación
 
@@ -54,7 +58,9 @@ El runtime recibe `DELETE` sólo donde una operación autónoma de la cuenta lo 
 - `deuna_accounts.game_preferences`, para quitar un juego o todas sus señales de Mi DeUna;
 - `deuna_accounts.hardware_profiles`, para eliminar la PC guardada.
 
-El borrado del usuario elimina por `ON DELETE CASCADE` sus sesiones, códigos de recuperación, preferencias de juegos y hardware guardado. No se concede `DELETE` sobre sesiones, tablas administrativas ni contenido editorial, y el preflight bloquea cualquier permiso de tabla adicional no previsto. Los permisos de `INSERT` y `UPDATE` de personalización siguen limitados a las columnas exactas que necesita la aplicación; el runtime no puede reasignar una preferencia o un perfil a otra cuenta.
+No se concede `DELETE` sobre `reward_profiles` ni `reward_events`, y tampoco `UPDATE` sobre `reward_events`. El ledger de Rewards sólo desaparece cuando el usuario elimina físicamente su cuenta y PostgreSQL ejecuta la cascada.
+
+El borrado del usuario elimina por `ON DELETE CASCADE` sus sesiones, códigos de recuperación, preferencias de juegos, hardware guardado, perfil de Rewards y ledger de recompensas. No se concede `DELETE` sobre sesiones, tablas administrativas ni contenido editorial, y el preflight bloquea cualquier permiso de tabla adicional no previsto. Los permisos de `INSERT` y `UPDATE` siguen limitados a las columnas exactas que necesita la aplicación; el runtime no puede reasignar datos a otra cuenta.
 
 ## Modelo editorial
 
@@ -77,11 +83,13 @@ Las tablas administrativas no contienen correo, IP, ubicación, user-agent, iden
 
 Las cuentas públicas están diseñadas con minimización por defecto. `DEUNA_ACCOUNT_DATA_KEY` protege el correo opcional y debe permanecer fuera de Git. La personalización de Mi DeUna usa sólo elecciones expresas de biblioteca, seguimiento y hardware; no crea un historial de navegación ni copia la detección cruda del navegador a PostgreSQL.
 
-La barrera `npm run check:account-privacy` verifica automáticamente que el esquema y el código no incorporen campos o mecanismos de seguimiento prohibidos y que se mantengan las garantías de cifrado, hashes, recuperación, separación, personalización mínima y baja autónoma. La integración PostgreSQL de CI prueba además los permisos runtime reales y las cascadas de borrado en una base limpia con todas las migraciones.
+DeUna Rewards mantiene esa misma regla: una recompensa puede depender de un reclamo explícito o de hitos derivados de datos que el usuario ya decidió guardar, pero no de clics, tiempo de pantalla, páginas vistas o metadata del dispositivo. La racha usa exclusivamente la fecha del último reclamo de recompensa.
+
+La barrera `npm run check:account-privacy` verifica automáticamente que el esquema y el código no incorporen campos o mecanismos de seguimiento prohibidos y que se mantengan las garantías de cifrado, hashes, recuperación, separación, personalización mínima, Rewards sin telemetría y baja autónoma. La integración PostgreSQL de CI prueba además permisos runtime reales, inmutabilidad del ledger de Rewards y cascadas de borrado en una base limpia con todas las migraciones.
 
 ## Copias de seguridad
 
-La copia debe cifrarse antes de salir del VPS. Debe incluir `deuna_admin` y `deuna_accounts` si se necesita restaurar cuentas, publicaciones e historial. La copia hereda la sensibilidad de los datos cifrados y de los hashes que contiene; nunca debe guardarse dentro del directorio público, el repositorio Git ni el artefacto `deploy/`.
+La copia debe cifrarse antes de salir del VPS. Debe incluir `deuna_admin` y `deuna_accounts` si se necesita restaurar cuentas, publicaciones, progreso de Rewards e historial. La copia hereda la sensibilidad de los datos cifrados y de los hashes que contiene; nunca debe guardarse dentro del directorio público, el repositorio Git ni el artefacto `deploy/`.
 
 `DEUNA_ACCOUNT_DATA_KEY` debe respaldarse por separado en un gestor privado de secretos. Sin esa clave no será posible descifrar los correos opcionales existentes tras una restauración.
 
