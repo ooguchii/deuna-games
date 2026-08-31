@@ -19,6 +19,7 @@ import {
   getAdminSessionHours,
   isAdminEnabled,
 } from "./database-config";
+import type { AdminRole } from "./roles";
 import {
   createAdminSessionToken,
   hashAdminSessionToken,
@@ -29,7 +30,7 @@ type SessionRow = {
   session_id: string;
   user_id: string;
   username: string;
-  role: "owner";
+  role: AdminRole;
   expires_at: Date;
 };
 
@@ -37,7 +38,7 @@ export type AdminSession = {
   sessionId: string;
   userId: string;
   username: string;
-  role: "owner";
+  role: AdminRole;
   expiresAt: Date;
 };
 
@@ -130,18 +131,18 @@ export async function resolveAdminSession(
   const result = await adminQuery<SessionRow>(
     `SELECT
        session.id AS session_id,
-       owner.id AS user_id,
-       owner.username,
-       owner.role,
+       account.id AS user_id,
+       account.username,
+       account.role,
        session.expires_at
      FROM deuna_admin.admin_sessions AS session
-     INNER JOIN deuna_admin.admin_users AS owner
-       ON owner.id = session.user_id
+     INNER JOIN deuna_admin.admin_users AS account
+       ON account.id = session.user_id
      WHERE session.token_hash = $1
        AND session.revoked_at IS NULL
        AND session.expires_at > now()
-       AND owner.active = true
-       AND owner.role = 'owner'
+       AND account.active = true
+       AND account.role IN ('owner', 'admin')
      LIMIT 1`,
     [hashAdminSessionToken(token)]
   );
@@ -178,6 +179,18 @@ export const verifyAdminSession = cache(
 
     if (!session) {
       redirect("/admin/login");
+    }
+
+    return session;
+  }
+);
+
+export const verifyAdminOwnerSession = cache(
+  async () => {
+    const session = await verifyAdminSession();
+
+    if (session.role !== "owner") {
+      notFound();
     }
 
     return session;
