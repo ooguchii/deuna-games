@@ -98,6 +98,16 @@ const followingOnly = {
   followUpdates: true,
   followedAt: new Date("2026-08-31T00:00:00Z"),
 };
+const followedOther = {
+  ...followingOnly,
+  gameSlug: "other-puzzle",
+};
+const mixedRanking = rankPersonalizedRecommendations(
+  syntheticGames,
+  [preference, followedOther],
+  null,
+  Date.UTC(2026, 7, 31)
+);
 
 assert(
   !hasRecommendationSignals([followingOnly], null),
@@ -106,6 +116,14 @@ assert(
 assert(
   hasRecommendationSignals([preference], null),
   "Favoritos/estado de biblioteca deben activar recomendaciones explícitas."
+);
+assert(
+  !mixedRanking.some((entry) => entry.game.slug === "other-puzzle"),
+  "Un juego seguido debe quedar fuera de descubrimientos aunque el seguimiento no sume afinidad."
+);
+assert(
+  mixedRanking[0]?.game.slug === "match-action",
+  "Excluir un seguimiento no debe alterar la afinidad construida con elecciones de gusto reales."
 );
 
 const cpu = findCpuById("ryzen-5-5600x");
@@ -165,5 +183,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  "Personalización de cuentas: OK (afinidad explícita, seguimiento no inferido como gusto, exclusión de biblioteca, razones públicas y ranking por el motor real de FPS verificados)."
+  "Personalización de cuentas: OK (afinidad explícita, seguimiento no inferido como gusto, exclusión de Mi DeUna, razones públicas y ranking por el motor real de FPS verificados)."
 );
