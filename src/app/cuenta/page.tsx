@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import {
-  ArrowLeft,
   BellRing,
   Cpu,
   Gamepad2,
@@ -11,7 +9,6 @@ import {
   UserRound,
 } from "lucide-react";
 
-import headerStyles from "../../components/layout/Header.module.css";
 import {
   cpuCatalog,
   gpuCatalog,
@@ -41,8 +38,7 @@ import {
 } from "@/lib/updates/public-updates";
 
 import AccountAccessClient from "./AccountAccessClient";
-import AccountDashboardClient from "./AccountProfileClient";
-import polishStyles from "./account-dashboard-polish.module.css";
+import AccountDashboardClient from "./AccountDashboardClient";
 import styles from "./account.module.css";
 
 export const dynamic = "force-dynamic";
@@ -54,19 +50,6 @@ export const metadata: Metadata = {
     follow: false,
   },
 };
-
-function BrandName({ value }: { value: string }) {
-  const words = value.trim().split(/\s+/).filter(Boolean);
-  const highlighted = words.pop() ?? value;
-  const leading = words.join(" ");
-
-  return (
-    <>
-      {leading && <>{leading} </>}
-      <strong>{highlighted}</strong>
-    </>
-  );
-}
 
 function compatibilityPercent(
   minFps: number | undefined,
@@ -154,90 +137,65 @@ export default async function AccountPage() {
         : null;
 
       return (
-        <main className={styles.page} style={{ padding: "14px" }}>
-          <div className={polishStyles.dashboardChrome}>
-            <Link
-              href="/"
-              className={`${headerStyles.brand} ${polishStyles.brandOverlay}`}
-              aria-label={`${siteConfig.name} - Inicio`}
-            >
-              <span className={headerStyles.brandIcon}>
-                <Gamepad2
-                  size={26}
-                  strokeWidth={2}
-                  aria-hidden="true"
-                />
-              </span>
-              <span className={headerStyles.brandName}>
-                <BrandName value={siteConfig.name} />
-              </span>
-            </Link>
-
-            <Link href="/" className={polishStyles.backHome}>
-              <ArrowLeft size={17} aria-hidden="true" />
-              Volver a DeUna
-            </Link>
-
-            <AccountDashboardClient
-              profile={{
-                ...profile,
-                createdAt: profile.createdAt.toISOString(),
-              }}
-              games={games.map((game) => ({
-                slug: game.slug,
-                title: game.title,
-                category: game.category,
-                coverImage: game.coverImage,
-                rating: game.rating,
-              }))}
-              preferences={personalization.preferences.map((preference) => ({
-                gameSlug: preference.gameSlug,
-                favorite: preference.favorite,
-                libraryState: preference.libraryState,
-                followUpdates: preference.followUpdates,
-              }))}
-              hardware={personalization.hardwareSelection
-                ? {
-                    cpuId: personalization.hardwareSelection.cpuId,
-                    gpuId: personalization.hardwareSelection.gpuId,
-                    ramGb: personalization.hardwareSelection.ramGb,
-                    memoryMode: personalization.hardwareSelection.memoryMode,
-                  }
-                : null}
-              cpus={cpuCatalog.map((cpu) => ({
-                id: cpu.id,
-                name: cpu.name,
-              }))}
-              gpus={gpuCatalog.map((gpu) => ({
-                id: gpu.id,
-                name: gpu.name,
-              }))}
-              notifications={notifications.map((update) => ({
-                id: update.id,
-                gameSlug: update.gameSlug,
-                gameTitle: update.game.title,
-                gameCoverImage: update.game.coverImage,
-                version: update.version,
-                summary: update.summary,
-                publishedAt: update.publishedAt,
-              }))}
-              recommendations={recommendations.map((entry) => ({
-                slug: entry.game.slug,
-                title: entry.game.title,
-                category: entry.game.category,
-                coverImage: entry.game.coverImage,
-                rating: entry.game.rating,
-                reasons: entry.reasons,
-                compatibilityPercent: compatibilityPercent(
-                  entry.estimate?.minFps,
-                  entry.estimate?.canEstimate
-                ),
-              }))}
-              compatibilityPercent={overallCompatibility}
-              compatibilityLabel={compatibilityLabel(overallCompatibility)}
-            />
-          </div>
-        </main>
+        <AccountDashboardClient
+          siteName={siteConfig.name}
+          profile={{
+            ...profile,
+            createdAt: profile.createdAt.toISOString(),
+          }}
+          games={games.map((game) => ({
+            slug: game.slug,
+            title: game.title,
+            category: game.category,
+            coverImage: game.coverImage,
+            rating: game.rating,
+          }))}
+          preferences={personalization.preferences.map((preference) => ({
+            gameSlug: preference.gameSlug,
+            favorite: preference.favorite,
+            libraryState: preference.libraryState,
+            followUpdates: preference.followUpdates,
+          }))}
+          hardware={personalization.hardwareSelection
+            ? {
+                cpuId: personalization.hardwareSelection.cpuId,
+                gpuId: personalization.hardwareSelection.gpuId,
+                ramGb: personalization.hardwareSelection.ramGb,
+                memoryMode: personalization.hardwareSelection.memoryMode,
+              }
+            : null}
+          cpus={cpuCatalog.map((cpu) => ({
+            id: cpu.id,
+            name: cpu.name,
+          }))}
+          gpus={gpuCatalog.map((gpu) => ({
+            id: gpu.id,
+            name: gpu.name,
+          }))}
+          notifications={notifications.map((update) => ({
+            id: update.id,
+            gameSlug: update.gameSlug,
+            gameTitle: update.game.title,
+            gameCoverImage: update.game.coverImage,
+            version: update.version,
+            summary: update.summary,
+            publishedAt: update.publishedAt,
+          }))}
+          recommendations={recommendations.map((entry) => ({
+            slug: entry.game.slug,
+            title: entry.game.title,
+            category: entry.game.category,
+            coverImage: entry.game.coverImage,
+            rating: entry.game.rating,
+            reasons: entry.reasons,
+            compatibilityPercent: compatibilityPercent(
+              entry.estimate?.minFps,
+              entry.estimate?.canEstimate
+            ),
+          }))}
+          compatibilityPercent={overallCompatibility}
+          compatibilityLabel={compatibilityLabel(overallCompatibility)}
+        />
       );
     }
   }
