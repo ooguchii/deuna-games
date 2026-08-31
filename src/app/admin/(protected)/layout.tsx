@@ -3,6 +3,8 @@ import {
   verifyAdminSession,
 } from "@/lib/admin/session";
 
+import "../admin-professional.css";
+
 export default async function ProtectedAdminLayout({
   children,
 }: Readonly<{
@@ -12,7 +14,9 @@ export default async function ProtectedAdminLayout({
 
   return (
     <AdminShell session={session}>
-      {children}
+      <div className="admin-professional">
+        {children}
+      </div>
     </AdminShell>
   );
 }
