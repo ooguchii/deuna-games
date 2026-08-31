@@ -47,6 +47,13 @@
   font-size: 14px;
 }
 
+.brandName {
+  max-width: 162px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .sidebar.sidebar nav a {
   min-height: 46px;
   padding: 0 12px;
@@ -444,6 +451,10 @@
     grid-template-columns: 220px minmax(0, 1fr);
   }
 
+  .brandName {
+    max-width: 132px;
+  }
+
   .sidebar.sidebar nav a {
     font-size: 13px;
   }
@@ -458,6 +469,10 @@
     position: relative;
     height: auto;
     padding: 14px;
+  }
+
+  .brandName {
+    max-width: min(62vw, 360px);
   }
 
   .main.main {
