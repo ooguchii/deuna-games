@@ -227,7 +227,7 @@ export function rankPersonalizedRecommendations(
       const reasons = [
         affinityReason(game, affinityWeights),
         hardwareReason(estimate),
-        base.reasons[0] ?? null,
+        base.components[0]?.detail ?? null,
       ].filter((reason): reason is string => Boolean(reason));
 
       return {
@@ -262,7 +262,7 @@ export function rankGamesForSavedHardware(
         ) / 10,
         reasons: [
           hardwareReason(estimate),
-          base.reasons[0] ?? null,
+          base.components[0]?.detail ?? null,
         ].filter((reason): reason is string => Boolean(reason)),
         estimate,
       };
