@@ -6,6 +6,7 @@ import {
   Save,
   ShieldCheck,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import {
   type FormEvent,
   useState,
@@ -38,9 +39,8 @@ async function postForm(
     body: new URLSearchParams(fields).toString(),
     credentials: "same-origin",
   });
-  const data = (await response.json()) as ApiResult;
 
-  return { response, data };
+  return (await response.json()) as ApiResult;
 }
 
 export default function AccountProfileClient({
@@ -48,6 +48,7 @@ export default function AccountProfileClient({
 }: {
   profile: Profile;
 }) {
+  const router = useRouter();
   const [pending, setPending] = useState(false);
   const [saved, setSaved] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -61,7 +62,7 @@ export default function AccountProfileClient({
     const form = new FormData(event.currentTarget);
 
     try {
-      const { data } = await postForm("/api/account/profile", {
+      const data = await postForm("/api/account/profile", {
         displayName: String(form.get("displayName") ?? ""),
         email: String(form.get("email") ?? ""),
         bio: String(form.get("bio") ?? ""),
@@ -90,7 +91,7 @@ export default function AccountProfileClient({
     setMessage(null);
 
     try {
-      const { data } = await postForm("/api/account/logout", {
+      const data = await postForm("/api/account/logout", {
         intent: "logout",
       });
 
@@ -99,7 +100,8 @@ export default function AccountProfileClient({
         return;
       }
 
-      window.location.assign("/");
+      router.replace("/");
+      router.refresh();
     } catch {
       setMessage("No se pudo conectar con el servicio de cuentas.");
     } finally {
