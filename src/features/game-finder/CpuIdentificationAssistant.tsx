@@ -24,10 +24,15 @@ import {
 import {
   cpuCatalog,
 } from "./hardware-catalog";
+import type {
+  HardwareProfile,
+} from "./types";
 
 import styles from "./CpuIdentificationAssistant.module.css";
 
 type CpuIdentificationAssistantProps = {
+  hardware: HardwareProfile;
+  ramLabel: string;
   onConfirmed: () => void;
   onCancel: () => void;
 };
@@ -43,6 +48,8 @@ const DROPDOWN_GAP = 6;
 const DROPDOWN_ESTIMATED_HEIGHT = 226;
 
 export default function CpuIdentificationAssistant({
+  hardware,
+  ramLabel,
   onConfirmed,
   onCancel,
 }: CpuIdentificationAssistantProps) {
@@ -58,6 +65,21 @@ export default function CpuIdentificationAssistant({
     Number.isFinite(navigator.hardwareConcurrency)
       ? navigator.hardwareConcurrency
       : null;
+
+  const systemDetected =
+    Boolean(hardware.os) && hardware.os !== "Sistema sin confirmar";
+  const detectedParts = [
+    hardware.gpu?.name ? `GPU ${hardware.gpu.name}` : null,
+    hardware.ramGb ? `RAM ${ramLabel}` : null,
+    systemDetected ? hardware.os : null,
+    logicalProcessors ? `${logicalProcessors} hilos lógicos` : null,
+  ].filter((value): value is string => Boolean(value));
+  const missingParts = [
+    hardware.cpuKnowledge !== "confirmed" ? "modelo exacto de CPU" : null,
+    !hardware.gpu ? "GPU" : null,
+    !hardware.ramGb ? "RAM" : null,
+    !systemDetected ? "sistema" : null,
+  ].filter((value): value is string => Boolean(value));
 
   const searchResult = useMemo(
     () => searchCpuCatalog(query, 10),
@@ -176,24 +198,29 @@ export default function CpuIdentificationAssistant({
       <div
         className={styles.root}
         role="region"
-        aria-label="Elegir procesador exacto"
+        aria-label="Completar configuración del equipo"
       >
         <div className={styles.heading}>
           <Info size={15} aria-hidden="true" />
           <div>
-            <strong>Elige tu procesador</strong>
+            <strong>Configuración incompleta</strong>
             <span>
-              {logicalProcessors
-                ? `Detectamos ${logicalProcessors} hilos lógicos, pero el navegador no puede ver el modelo exacto de CPU.`
-                : "El navegador no puede ver el modelo exacto de CPU."}
-              {" "}Búscalo en el catálogo y selecciona el correcto.
+              {detectedParts.length
+                ? `Detectado: ${detectedParts.join(" · ")}.`
+                : "La detección automática quedó incompleta."}
+            </span>
+            <span>
+              {missingParts.length
+                ? `Falta: ${missingParts.join(", ")}.`
+                : "No quedan componentes pendientes."}
+              {" "}Busca el procesador en el catálogo y selecciona el correcto.
             </span>
           </div>
           <button
             type="button"
             className={styles.closeButton}
             onClick={onCancel}
-            aria-label="Cerrar selección de CPU"
+            aria-label="Cerrar configuración incompleta"
           >
             <X size={15} aria-hidden="true" />
           </button>
