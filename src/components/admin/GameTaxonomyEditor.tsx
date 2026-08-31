@@ -334,6 +334,7 @@ export default function GameTaxonomyEditor({
           />
           <button
             type="button"
+            data-brand-action="true"
             onClick={() => addTerm(currentSection)}
           >
             <Plus size={15} aria-hidden="true" />
@@ -398,7 +399,7 @@ export default function GameTaxonomyEditor({
                           className={styles.visualPreview}
                           style={
                             {
-                              "--taxonomy-accent": tone?.color ?? "#ff1554",
+                              "--taxonomy-accent": tone?.color ?? "var(--brand)",
                             } as CSSProperties
                           }
                         >
@@ -522,7 +523,7 @@ export default function GameTaxonomyEditor({
             ? "El orden de esta ventana es el mismo orden que se reutiliza públicamente. El contador considera cada juego una sola vez por clasificación."
             : "Las etiquetas usadas no se eliminan para proteger las fichas existentes; puedes desactivarlas y mantener el historial editorial."}
         </p>
-        <button type="submit">
+        <button type="submit" data-brand-action="true">
           Guardar {hasVisuals ? "clasificaciones" : "etiquetas"}
         </button>
       </div>
