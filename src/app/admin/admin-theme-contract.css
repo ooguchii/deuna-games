@@ -127,6 +127,14 @@
   color: var(--admin-brand-text-strong) !important;
 }
 
+/* Los resultados de curaduría usan la marca para score/fijado, no un rosa fijo. */
+.admin-professional ol li:has(> svg[aria-label="Fijado manualmente"], > svg[aria-label="Elegido por algoritmo"]) > div > span,
+.admin-professional details b,
+.admin-professional svg[aria-label="Fijado manualmente"],
+.admin-professional svg[aria-label="Elegido por algoritmo"] {
+  color: var(--admin-brand-text) !important;
+}
+
 /* El destino del skip-link no debe dibujar un marco alrededor de todo el main. */
 main#main-content:focus,
 main#main-content:focus-visible {
@@ -134,9 +142,13 @@ main#main-content:focus-visible {
   box-shadow: none !important;
 }
 
-/* La navegación lateral también debe reflejar el color publicado. */
+/* Navegación y skip-link raíz reflejan la marca publicada. */
 aside nav a[aria-current="page"] svg {
   color: color-mix(in srgb, var(--brand) 58%, #ffffff) !important;
+}
+
+.skip-link {
+  border-color: color-mix(in srgb, var(--brand) 55%, #ffffff) !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
