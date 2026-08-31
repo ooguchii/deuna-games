@@ -127,6 +127,25 @@
   color: var(--admin-brand-text-strong) !important;
 }
 
+/* Acciones editoriales auxiliares también siguen la marca. */
+.admin-professional > a:first-child {
+  color: var(--admin-brand-text) !important;
+}
+
+.admin-professional > a:first-child:hover,
+.admin-professional > a:first-child:focus-visible {
+  color: var(--admin-brand-text-strong) !important;
+}
+
+.admin-professional [role="search"] > div:last-child > button {
+  color: var(--admin-brand-text) !important;
+}
+
+.admin-professional [role="search"] > div:last-child > button:hover,
+.admin-professional [role="search"] > div:last-child > button:focus-visible {
+  color: var(--admin-brand-text-strong) !important;
+}
+
 /* Los resultados de curaduría usan la marca para score/fijado, no un rosa fijo. */
 .admin-professional ol li:has(> svg[aria-label="Fijado manualmente"], > svg[aria-label="Elegido por algoritmo"]) > div > span,
 .admin-professional details b,
