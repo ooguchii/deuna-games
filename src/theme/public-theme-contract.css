@@ -1,0 +1,15 @@
+/*
+ * Contrato visual público para elementos que usan el color de marca como
+ * superficie completa. El texto se calcula en el layout mediante WCAG y se
+ * publica como --text-on-brand, por lo que una marca clara no queda con texto
+ * blanco ilegible.
+ */
+[data-brand-action="true"],
+[data-brand-badge="true"] {
+  color: var(--text-on-brand) !important;
+}
+
+[data-brand-action="true"] svg,
+[data-brand-badge="true"] svg {
+  color: currentColor;
+}
