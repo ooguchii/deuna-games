@@ -21,6 +21,7 @@ import {
 
 import type { Game } from "@/types/game";
 
+import CpuIdentificationAssistant from "./CpuIdentificationAssistant";
 import { usePublicFinderCopy } from "./PublicFinderCopyContext";
 import type {
   GameEstimate,
@@ -47,9 +48,13 @@ type GameFinderUnifiedHeroProps = {
   detectionHint: string;
   detectionSource: string;
   hasRealAnalysis: boolean;
+  showCpuConfirmation: boolean;
+  logicalProcessors: number | null;
   onAnalyze: () => void;
   onConfigure: () => void;
   onDetect: () => void;
+  onCpuConfirmed: () => void;
+  onCancelCpuConfirmation: () => void;
   onSelectGame: (slug: string) => void;
   onViewAll: () => void;
 };
@@ -71,9 +76,13 @@ export default function GameFinderUnifiedHero({
   detectionHint,
   detectionSource,
   hasRealAnalysis,
+  showCpuConfirmation,
+  logicalProcessors,
   onAnalyze,
   onConfigure,
   onDetect,
+  onCpuConfirmed,
+  onCancelCpuConfirmation,
   onSelectGame,
   onViewAll,
 }: GameFinderUnifiedHeroProps) {
@@ -225,6 +234,14 @@ export default function GameFinderUnifiedHero({
               Cambiar configuración
             </button>
           </div>
+
+          {showCpuConfirmation && (
+            <CpuIdentificationAssistant
+              logicalProcessors={logicalProcessors}
+              onConfirmed={onCpuConfirmed}
+              onCancel={onCancelCpuConfirmation}
+            />
+          )}
         </article>
 
         <article className={styles.recommendationsPanel}>
