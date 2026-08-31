@@ -136,7 +136,7 @@
   box-shadow:
     0 11px 24px color-mix(in srgb, var(--brand) 16%, transparent),
     inset 0 1px 0 rgba(255, 255, 255, 0.12);
-  color: #fff;
+  color: var(--text-on-brand);
 }
 
 .primaryButton:hover {
