@@ -109,7 +109,7 @@ export default async function AdminPagesPage({
           </p>
         ) : (
           <div className={styles.tableWrap}>
-            <table>
+            <table className="admin-data-table">
               <thead>
                 <tr>
                   <th scope="col">Página</th>
@@ -138,27 +138,21 @@ export default async function AdminPagesPage({
                     </td>
                     <td>{aboutItem.revision}</td>
                     <td>
-                      <div
-                        style={{
-                          display: "flex",
-                          gap: 12,
-                          flexWrap: "wrap",
-                        }}
-                      >
+                      <div className="admin-table-actions">
                         <Link
-                          className={styles.tableAction}
+                          className={`${styles.tableAction} admin-table-action admin-table-action--attention`}
                           href="/admin/paginas/quienes-somos"
                         >
-                          <Pencil size={13} aria-hidden="true" />
+                          <Pencil size={14} aria-hidden="true" />
                           Editar
                         </Link>
                         <Link
-                          className={styles.tableAction}
+                          className={`${styles.tableAction} admin-table-action`}
                           href="/quienes-somos"
                           target="_blank"
                           rel="noreferrer"
                         >
-                          <ExternalLink size={13} aria-hidden="true" />
+                          <ExternalLink size={14} aria-hidden="true" />
                           Ver pública
                         </Link>
                       </div>
@@ -184,27 +178,21 @@ export default async function AdminPagesPage({
                     </td>
                     <td>{publicItem.revision}</td>
                     <td>
-                      <div
-                        style={{
-                          display: "flex",
-                          gap: 12,
-                          flexWrap: "wrap",
-                        }}
-                      >
+                      <div className="admin-table-actions">
                         <Link
-                          className={styles.tableAction}
+                          className={`${styles.tableAction} admin-table-action admin-table-action--attention`}
                           href="/admin/paginas/presentacion"
                         >
-                          <Pencil size={13} aria-hidden="true" />
+                          <Pencil size={14} aria-hidden="true" />
                           Editar
                         </Link>
                         <Link
-                          className={styles.tableAction}
+                          className={`${styles.tableAction} admin-table-action`}
                           href="/juegos"
                           target="_blank"
                           rel="noreferrer"
                         >
-                          <ExternalLink size={13} aria-hidden="true" />
+                          <ExternalLink size={14} aria-hidden="true" />
                           Ver pública
                         </Link>
                       </div>
