@@ -17,6 +17,9 @@ import {
   getAccountPersonalization,
 } from "@/lib/accounts/personalization-service";
 import {
+  getAccountRewardSnapshot,
+} from "@/lib/accounts/rewards-service";
+import {
   getAccountProfile,
 } from "@/lib/accounts/service";
 import {
@@ -71,9 +74,17 @@ export default async function AccountPage() {
   const session = await readAccountSession();
 
   if (session) {
-    const [profile, personalization, games, updates, siteConfig] = await Promise.all([
+    const [
+      profile,
+      personalization,
+      rewards,
+      games,
+      updates,
+      siteConfig,
+    ] = await Promise.all([
       getAccountProfile(session.userId),
       getAccountPersonalization(session.userId),
+      getAccountRewardSnapshot(session.userId),
       getPublicGames(),
       getPublicResolvedUpdates(),
       getPublicSiteConfig(),
@@ -195,6 +206,7 @@ export default async function AccountPage() {
           }))}
           compatibilityPercent={overallCompatibility}
           compatibilityLabel={compatibilityLabel(overallCompatibility)}
+          rewards={rewards}
         />
       );
     }
@@ -210,7 +222,7 @@ export default async function AccountPage() {
           </span>
           <h1>Tu DeUna cambia cuando sabe lo que eliges guardar.</h1>
           <p>
-            La cuenta sirve para guardar tus juegos, recordar tu PC, seguir actualizaciones y ordenar recomendaciones para ti. No hace falta convertir tu navegación en seguimiento para personalizar la experiencia.
+            La cuenta sirve para guardar tus juegos, recordar tu PC, seguir actualizaciones, ordenar recomendaciones y progresar con DeUna Rewards. No hace falta convertir tu navegación en seguimiento para personalizar la experiencia.
           </p>
 
           <ul className={styles.privacyList}>
@@ -227,8 +239,12 @@ export default async function AccountPage() {
               Sigue juegos y recibe avisos internos cuando tengan nuevas actualizaciones publicadas.
             </li>
             <li>
+              <Sparkles size={18} aria-hidden="true" />
+              Rewards: reclama recompensas, construye tu nivel y obtiene créditos por hitos útiles dentro de Mi DeUna.
+            </li>
+            <li>
               <ShieldCheck size={18} aria-hidden="true" />
-              Las recomendaciones usan esas elecciones explícitas, no IP, ubicación ni historial de navegación.
+              Las recomendaciones y recompensas usan elecciones explícitas, no IP, ubicación ni historial de navegación.
             </li>
             <li>
               <UserRound size={18} aria-hidden="true" />
