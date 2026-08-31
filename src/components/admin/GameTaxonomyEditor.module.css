@@ -68,7 +68,7 @@
 }
 
 .panelHeader span {
-  color: #ff6a93;
+  color: var(--brand);
   font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.08em;
