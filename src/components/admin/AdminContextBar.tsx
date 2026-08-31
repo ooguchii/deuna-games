@@ -98,11 +98,14 @@ function useKeepActiveContextVisible(selected: string) {
       if (!nav || !active) return;
 
       const edgePadding = 10;
+      const navRect = nav.getBoundingClientRect();
+      const activeRect = active.getBoundingClientRect();
+      const activeLeft =
+        nav.scrollLeft + activeRect.left - navRect.left;
+      const activeRight = activeLeft + activeRect.width;
       const visibleLeft = nav.scrollLeft + edgePadding;
       const visibleRight =
         nav.scrollLeft + nav.clientWidth - edgePadding;
-      const activeLeft = active.offsetLeft;
-      const activeRight = activeLeft + active.offsetWidth;
 
       if (
         activeLeft >= visibleLeft &&
@@ -113,7 +116,7 @@ function useKeepActiveContextVisible(selected: string) {
 
       const centered =
         activeLeft -
-        (nav.clientWidth - active.offsetWidth) / 2;
+        (nav.clientWidth - activeRect.width) / 2;
       const maximum = Math.max(
         0,
         nav.scrollWidth - nav.clientWidth
