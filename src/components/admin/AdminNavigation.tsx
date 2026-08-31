@@ -2,6 +2,10 @@
 
 import Link from "next/link";
 import {
+  useEffect,
+  useRef,
+} from "react";
+import {
   FileText,
   Gamepad2,
   LayoutDashboard,
@@ -43,9 +47,51 @@ export default function AdminNavigation({
   role: AdminRole;
 }) {
   const pathname = usePathname();
+  const navRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      const nav = navRef.current;
+      const active = nav?.querySelector<HTMLElement>(
+        '[aria-current="page"]'
+      );
+
+      if (!nav || !active) return;
+
+      const edgePadding = 10;
+      const visibleLeft = nav.scrollLeft + edgePadding;
+      const visibleRight =
+        nav.scrollLeft + nav.clientWidth - edgePadding;
+      const activeLeft = active.offsetLeft;
+      const activeRight = activeLeft + active.offsetWidth;
+
+      if (
+        activeLeft >= visibleLeft &&
+        activeRight <= visibleRight
+      ) {
+        return;
+      }
+
+      const centered =
+        activeLeft -
+        (nav.clientWidth - active.offsetWidth) / 2;
+      const maximum = Math.max(
+        0,
+        nav.scrollWidth - nav.clientWidth
+      );
+
+      nav.scrollLeft = Math.min(
+        maximum,
+        Math.max(0, centered)
+      );
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [pathname]);
 
   return (
     <nav
+      ref={navRef}
       className={`${styles.adminNavigation} ${ux.navigation}`}
       aria-label="Navegación administrativa"
     >
