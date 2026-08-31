@@ -81,8 +81,8 @@
 }
 
 .searchField:focus-within {
-  border-color: rgba(255, 8, 71, 0.52);
-  box-shadow: 0 0 0 2px rgba(255, 8, 71, 0.08);
+  border-color: color-mix(in srgb, var(--brand) 52%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand) 8%, transparent);
 }
 
 .searchField svg {
@@ -113,10 +113,10 @@
   justify-content: center;
   gap: 6px;
   padding: 0 13px;
-  color: white;
-  border: 1px solid rgba(255, 8, 71, 0.56);
+  color: var(--text);
+  border: 1px solid color-mix(in srgb, var(--brand) 56%, transparent);
   border-radius: 8px;
-  background: rgba(255, 8, 71, 0.16);
+  background: color-mix(in srgb, var(--brand) 16%, transparent);
   font: inherit;
   font-size: 11px;
   font-weight: 800;
@@ -125,7 +125,7 @@
 }
 
 .confirmButton:hover:not(:disabled) {
-  background: rgba(255, 8, 71, 0.24);
+  background: color-mix(in srgb, var(--brand) 24%, transparent);
 }
 
 .confirmButton:disabled {
@@ -144,7 +144,7 @@
   box-shadow:
     0 22px 54px rgba(0, 0, 0, 0.58),
     0 0 0 1px rgba(255, 255, 255, 0.02),
-    0 0 28px rgba(255, 8, 71, 0.06);
+    0 0 28px color-mix(in srgb, var(--brand) 6%, transparent);
 }
 
 .resultMeta {
@@ -183,14 +183,14 @@
 }
 
 .resultList > button:hover {
-  color: white;
+  color: var(--text);
   background: rgba(255, 255, 255, 0.055);
 }
 
 .resultList > button[data-selected="true"] {
-  color: white;
-  border-color: rgba(255, 8, 71, 0.42);
-  background: rgba(255, 8, 71, 0.11);
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--brand) 42%, transparent);
+  background: color-mix(in srgb, var(--brand) 11%, transparent);
 }
 
 .resultList > button svg {
