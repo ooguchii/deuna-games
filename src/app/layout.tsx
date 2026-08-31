@@ -8,7 +8,10 @@ import {
 import {
   siteUrl,
 } from "@/lib/site";
-import { brandForeground } from "@/lib/site/brand-foreground";
+import {
+  brandForeground,
+  safeThemeBackground,
+} from "@/lib/site/brand-foreground";
 import {
   getPublicSiteConfig,
 } from "@/lib/site/public-site-config";
@@ -78,7 +81,7 @@ export async function generateViewport(): Promise<Viewport> {
   return {
     width: "device-width",
     initialScale: 1,
-    themeColor: config.themeColor,
+    themeColor: safeThemeBackground(config.themeColor),
     colorScheme: "dark",
   };
 }
@@ -90,12 +93,13 @@ export default async function RootLayout({
 }>) {
   const config = await getPublicSiteConfig();
   const readableBrandText = brandForeground(config.brandColor);
+  const readableThemeBackground = safeThemeBackground(config.themeColor);
 
   return (
     <html
       lang={config.language}
       style={{
-        "--theme-bg": config.themeColor,
+        "--theme-bg": readableThemeBackground,
         "--theme-brand": config.brandColor,
         "--theme-on-brand": readableBrandText,
         "--text-on-brand": readableBrandText,
