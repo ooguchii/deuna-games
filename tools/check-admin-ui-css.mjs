@@ -57,6 +57,25 @@ function relative(filePath) {
     .join("/");
 }
 
+function directBrandWhiteSelectors(css) {
+  const selectors = [];
+
+  for (const match of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    const selector = match[1].trim();
+    const body = match[2];
+    const paintsDirectBrand =
+      /background(?:-color)?:\s*[^;]*(?:var\(--brand\)|linear-gradient\([^;]*var\(--brand\)[^;]*var\(--brand-dark\))/i.test(body);
+    const fixesWhiteText =
+      /(?:^|[;\s])color:\s*(?:#fff(?:fff)?|white)\s*;/i.test(body);
+
+    if (paintsDirectBrand && fixesWhiteText) {
+      selectors.push(selector.replace(/\s+/g, " "));
+    }
+  }
+
+  return selectors;
+}
+
 const files = (
   await Promise.all(scanRoots.map(collectCssModules))
 ).flat();
@@ -86,6 +105,14 @@ for (const filePath of files) {
       `${file}: conserva acentos históricos de identidad (${legacyHits.join(", ")}); usa tokens de marca o un color semántico explícito.`
     );
   }
+
+  const unsafeBrandSelectors = directBrandWhiteSelectors(css);
+
+  if (unsafeBrandSelectors.length > 0) {
+    failures.push(
+      `${file}: acciones con fondo directo de marca fuerzan texto blanco (${unsafeBrandSelectors.join(" | ")}); usa var(--text-on-brand).`
+    );
+  }
 }
 
 if (failures.length > 0) {
@@ -94,6 +121,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    `UI administrativa: OK (${files.length} módulos CSS revisados recursivamente; escala mínima y marca dinámica protegidas).`
+    `UI administrativa: OK (${files.length} módulos CSS revisados recursivamente; escala mínima, marca dinámica y contraste de CTA protegidos).`
   );
 }
