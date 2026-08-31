@@ -268,9 +268,9 @@
 }
 
 .badge {
-  border: 1px solid rgba(255, 64, 118, 0.23);
-  background: rgba(255, 56, 111, 0.08);
-  color: #ff789e;
+  border: 1px solid color-mix(in srgb, var(--brand) 34%, #354252);
+  background: color-mix(in srgb, var(--brand) 9%, #0a1118);
+  color: color-mix(in srgb, var(--brand) 38%, #ffffff);
 }
 
 .activeBadge {
