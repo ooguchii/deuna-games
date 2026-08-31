@@ -18,6 +18,7 @@ import {
 
 import "./globals.css";
 import "@/theme/deuna-theme.css";
+import "@/theme/public-theme-contract.css";
 
 const inter = Inter({
   subsets: ["latin"],
