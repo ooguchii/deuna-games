@@ -7,6 +7,7 @@ import styles from "./SiteIdentityPreview.module.css";
 
 type SiteIdentityPreviewProps = {
   name: string;
+  shortName: string;
   description: string;
   footerTagline: string;
   themeColor: string;
@@ -15,6 +16,7 @@ type SiteIdentityPreviewProps = {
 
 export default function SiteIdentityPreview({
   name,
+  shortName,
   description,
   footerTagline,
   themeColor,
@@ -24,6 +26,7 @@ export default function SiteIdentityPreview({
     "--preview-bg": themeColor,
     "--preview-brand": brandColor,
   } as CSSProperties;
+  const compactName = shortName.trim() || name;
 
   return (
     <div className={styles.stack}>
@@ -31,14 +34,14 @@ export default function SiteIdentityPreview({
         <div className={styles.panelHeading}>
           <span>VISTA PREVIA</span>
           <h2 id="identity-preview-title">Identidad del borrador</h2>
-          <p>Representación compacta de la cabecera, portada y pie públicos.</p>
+          <p>Representación compacta de la cabecera, portada, panel y pie públicos.</p>
         </div>
 
         <div className={styles.preview} style={previewStyle}>
           <div className={styles.previewHeader}>
-            <div className={styles.previewBrand}>
+            <div className={styles.previewBrand} title={name}>
               <SiteLogoMark size={20} />
-              <strong>{name}</strong>
+              <strong>{compactName}</strong>
             </div>
             <div className={styles.previewNav} aria-hidden="true">
               <span>Inicio</span>
@@ -49,9 +52,9 @@ export default function SiteIdentityPreview({
           <p>{description}</p>
           <div className={styles.previewFooter}>
             <small>{footerTagline}</small>
-            <div className={styles.previewBrand}>
+            <div className={styles.previewBrand} title={name}>
               <SiteLogoMark size={18} />
-              <strong>{name}</strong>
+              <strong>{compactName}</strong>
             </div>
           </div>
         </div>
