@@ -1,3 +1,9 @@
+import {
+  AlertTriangle,
+  CheckCircle2,
+  CircleAlert,
+} from "lucide-react";
+
 import styles from "../../app/admin/admin.module.css";
 
 const notices = {
@@ -104,13 +110,22 @@ export default function EditorStateNotice({
       : notice.kind === "warning"
         ? styles.editorNoticeWarning
         : styles.editorNoticeError;
+  const Icon =
+    notice.kind === "success"
+      ? CheckCircle2
+      : notice.kind === "warning"
+        ? AlertTriangle
+        : CircleAlert;
 
   return (
     <div
-      className={`${styles.editorNotice} ${variant}`}
+      className={`${styles.editorNotice} ${variant} admin-editor-notice`}
+      data-kind={notice.kind}
       role={notice.kind === "error" ? "alert" : "status"}
+      aria-atomic="true"
     >
-      {notice.message}
+      <Icon size={18} strokeWidth={2} aria-hidden="true" />
+      <span>{notice.message}</span>
     </div>
   );
 }
