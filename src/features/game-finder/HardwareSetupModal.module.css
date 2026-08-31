@@ -9,7 +9,7 @@
 
   padding: 24px;
 
-  background: rgba(2, 5, 10, 0.82);
+  background: color-mix(in srgb, var(--background) 82%, transparent);
   backdrop-filter: blur(12px) saturate(0.86);
 }
 
@@ -22,25 +22,37 @@
   padding: clamp(22px, 3vw, 32px);
 
   color: var(--text);
-  border: 1px solid rgba(255, 61, 107, 0.34);
+  border: 1px solid color-mix(in srgb, var(--brand) 34%, var(--border));
   border-radius: 18px;
   outline: none;
   background:
-    radial-gradient(520px 220px at 92% 0%, rgba(255, 8, 71, 0.12), transparent 74%),
-    radial-gradient(420px 220px at 0% 100%, rgba(114, 77, 255, 0.09), transparent 75%),
-    linear-gradient(180deg, rgba(12, 18, 28, 0.995), rgba(6, 10, 17, 0.995));
+    radial-gradient(
+      520px 220px at 92% 0%,
+      color-mix(in srgb, var(--brand) 12%, transparent),
+      transparent 74%
+    ),
+    radial-gradient(
+      420px 220px at 0% 100%,
+      color-mix(in srgb, var(--brand) 7%, transparent),
+      transparent 75%
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--background) 10%, #0c121c),
+      color-mix(in srgb, var(--background) 8%, #060a11)
+    );
   box-shadow:
     0 34px 100px rgba(0, 0, 0, 0.72),
     0 0 0 1px rgba(255, 255, 255, 0.025),
-    0 0 60px rgba(255, 8, 71, 0.08),
+    0 0 60px color-mix(in srgb, var(--brand) 8%, transparent),
     inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .dialog:focus-visible {
   box-shadow:
     0 34px 100px rgba(0, 0, 0, 0.72),
-    0 0 0 2px rgba(255, 61, 107, 0.32),
-    0 0 60px rgba(255, 8, 71, 0.08);
+    0 0 0 2px color-mix(in srgb, var(--brand) 32%, transparent),
+    0 0 60px color-mix(in srgb, var(--brand) 8%, transparent);
 }
 
 .closeButton {
@@ -63,8 +75,8 @@
 
 .closeButton:hover {
   color: var(--text);
-  border-color: rgba(255, 61, 107, 0.34);
-  background: rgba(255, 8, 71, 0.08);
+  border-color: color-mix(in srgb, var(--brand) 34%, transparent);
+  background: color-mix(in srgb, var(--brand) 8%, transparent);
 }
 
 .closeButton:focus-visible,
@@ -81,10 +93,10 @@
   place-items: center;
 
   color: var(--brand-light);
-  border: 1px solid rgba(255, 8, 71, 0.32);
+  border: 1px solid color-mix(in srgb, var(--brand) 32%, transparent);
   border-radius: 14px;
-  background: rgba(255, 8, 71, 0.09);
-  box-shadow: inset 0 0 24px rgba(255, 8, 71, 0.04);
+  background: color-mix(in srgb, var(--brand) 9%, transparent);
+  box-shadow: inset 0 0 24px color-mix(in srgb, var(--brand) 4%, transparent);
 }
 
 .heading {
@@ -101,7 +113,7 @@
 
 .heading h2 {
   margin: 7px 0 0;
-  color: #fff;
+  color: var(--text);
   font-size: clamp(27px, 4vw, 38px);
   font-weight: 900;
   letter-spacing: -0.04em;
@@ -182,16 +194,23 @@
 }
 
 .primary {
-  color: #fff;
-  border: 1px solid rgba(255, 8, 71, 0.52);
-  background: rgba(255, 8, 71, 0.15);
+  color: var(--text-on-brand);
+  border: 1px solid color-mix(in srgb, var(--brand) 52%, transparent);
+  background: var(--gradient-cta);
+  box-shadow: 0 9px 22px color-mix(in srgb, var(--brand) 16%, transparent);
 }
 
-.secondary:hover,
+.secondary:hover {
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--brand) 38%, var(--border));
+  background: color-mix(in srgb, var(--brand) 7%, var(--surface-control));
+}
+
 .primary:hover {
-  color: #fff;
-  border-color: rgba(255, 61, 107, 0.54);
-  background: rgba(255, 8, 71, 0.12);
+  color: var(--text-on-brand);
+  border-color: color-mix(in srgb, var(--brand) 62%, transparent);
+  background: var(--gradient-cta);
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--brand) 24%, transparent);
 }
 
 @media (max-width: 700px) {
