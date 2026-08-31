@@ -220,7 +220,7 @@
   border: 1px solid var(--brand);
   border-radius: var(--radius-medium);
   background: var(--brand);
-  color: white;
+  color: var(--text-on-brand);
   font-size: 13px;
   font-weight: 850;
 }
