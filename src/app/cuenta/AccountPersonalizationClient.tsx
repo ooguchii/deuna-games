@@ -362,7 +362,7 @@ export default function AccountPersonalizationClient({
         <span className={styles.eyebrow}>PERSONALIZACIÓN EXPLÍCITA</span>
         <h2 id="mi-deuna-title">Mi DeUna</h2>
         <p>
-          Guardá sólo lo que te sirve: tus juegos y tu PC. DeUna usa esas elecciones para ordenar recomendaciones y avisarte de cambios, sin convertir tu navegación en una señal de seguimiento.
+          Guarda sólo lo que te resulte útil: tus juegos y tu PC. DeUna usa esas elecciones para ordenar recomendaciones y avisarte de cambios, sin convertir tu navegación en una señal de seguimiento.
         </p>
       </div>
 
@@ -403,7 +403,7 @@ export default function AccountPersonalizationClient({
             </>
           ) : (
             <p className={styles.emptyState}>
-              No hay avisos nuevos. Seguí un juego para que sus próximas actualizaciones aparezcan acá.
+              No hay avisos nuevos. Sigue un juego para que sus próximas actualizaciones aparezcan aquí.
             </p>
           )}
         </section>
@@ -418,14 +418,14 @@ export default function AccountPersonalizationClient({
           </div>
 
           <p className={styles.panelCopy}>
-            Sólo guardamos los componentes que elegís. Se usan en el mismo motor de FPS de DeUna para ordenar juegos compatibles.
+            Sólo guardamos los componentes que eliges. Se usan en el mismo motor de FPS de DeUna para ordenar juegos compatibles.
           </p>
 
           <form className={styles.hardwareForm} onSubmit={handleHardware}>
             <label>
               Procesador
               <select name="cpuId" defaultValue={hardware?.cpuId ?? ""} required>
-                <option value="" disabled>Elegí tu CPU</option>
+                <option value="" disabled>Elige tu CPU</option>
                 {cpus.map((cpu) => (
                   <option key={cpu.id} value={cpu.id}>{cpu.name}</option>
                 ))}
@@ -435,7 +435,7 @@ export default function AccountPersonalizationClient({
             <label>
               Gráfica
               <select name="gpuId" defaultValue={hardware?.gpuId ?? ""} required>
-                <option value="" disabled>Elegí tu GPU</option>
+                <option value="" disabled>Elige tu GPU</option>
                 {gpus.map((gpu) => (
                   <option key={gpu.id} value={gpu.id}>{gpu.name}</option>
                 ))}
@@ -494,7 +494,7 @@ export default function AccountPersonalizationClient({
           <label>
             Juego
             <select name="gameSlug" defaultValue="" required>
-              <option value="" disabled>Elegí un juego</option>
+              <option value="" disabled>Elige un juego</option>
               {games.map((game) => (
                 <option key={game.slug} value={game.slug}>{game.title}</option>
               ))}
@@ -537,7 +537,7 @@ export default function AccountPersonalizationClient({
           </div>
         ) : (
           <p className={styles.emptyState}>
-            Todavía no guardaste juegos. Tus favoritos y estados sirven como señales explícitas para recomendarte otros títulos parecidos.
+            Todavía no has guardado juegos. Tus favoritos y estados sirven como señales explícitas para recomendarte otros títulos parecidos.
           </p>
         )}
       </section>
@@ -546,7 +546,7 @@ export default function AccountPersonalizationClient({
         <div className={styles.dashboardHeading}>
           <div>
             <Sparkles size={20} aria-hidden="true" />
-            <h3 id="account-recommendations-title">Recomendados para vos</h3>
+            <h3 id="account-recommendations-title">Recomendados para ti</h3>
           </div>
         </div>
 
@@ -565,7 +565,7 @@ export default function AccountPersonalizationClient({
           </div>
         ) : (
           <p className={styles.emptyState}>
-            Guardá al menos un juego o tu PC para activar recomendaciones personales. La navegación por sí sola no cuenta como señal.
+            Guarda al menos un juego o tu PC para activar recomendaciones personales. La navegación por sí sola no cuenta como señal.
           </p>
         )}
       </section>
