@@ -79,7 +79,7 @@ export default async function AdminLoginPage({
           Acceso privado por VPN
         </div>
 
-        <span className={styles.loginIcon}>
+        <span className={`${styles.loginIcon} ${loginStyles.brandIcon}`}>
           <LockKeyhole size={30} aria-hidden="true" />
         </span>
 
@@ -137,7 +137,7 @@ export default async function AdminLoginPage({
           </button>
         </form>
 
-        <small className={styles.loginFootnote}>
+        <small className={`${styles.loginFootnote} ${loginStyles.footnote}`}>
           La sesión dura como máximo el tiempo configurado en el servidor y puede revocarse desde PostgreSQL.
         </small>
       </section>
