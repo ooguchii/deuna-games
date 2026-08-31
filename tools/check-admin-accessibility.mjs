@@ -25,10 +25,14 @@ const [
   dashboard,
   publicationOverview,
   protectedLayout,
+  adminLayout,
+  loginPage,
+  identityPreview,
   themeContract,
   taxonomySelectCss,
   platformCss,
   newGameCss,
+  accountsCss,
 ] = await Promise.all([
   source("src/components/admin/AdminShell.tsx"),
   source("src/components/admin/AdminShellUx.module.css"),
@@ -38,10 +42,14 @@ const [
   source("src/app/admin/(protected)/page.tsx"),
   source("src/lib/admin/publication-overview.ts"),
   source("src/app/admin/(protected)/layout.tsx"),
+  source("src/app/admin/layout.tsx"),
+  source("src/app/admin/login/page.tsx"),
+  source("src/components/admin/SiteIdentityPreview.tsx"),
   source("src/app/admin/admin-theme-contract.css"),
   source("src/components/admin/GameTaxonomyMultiSelect.module.css"),
   source("src/components/admin/GamePlatformEditor.module.css"),
   source("src/components/admin/NewGameForm.module.css"),
+  source("src/app/admin/(protected)/cuentas/accounts.module.css"),
 ]);
 
 assert(
@@ -72,13 +80,50 @@ assert(
 );
 
 assert(
+  !shell.includes("DeUna Games") &&
+    shell.includes("siteName") &&
+    shell.includes("siteShortName") &&
+    shell.includes("compactName") &&
+    shell.includes("aria-label={`Panel administrativo de ${siteName}`}") &&
+    shellUx.includes(".brandName") &&
+    shellUx.includes("text-overflow: ellipsis"),
+  "La marca del shell debe usar la identidad publicada y tolerar nombres configurables largos."
+);
+
+assert(
   protectedLayout.includes('import "../admin-theme-contract.css"') &&
+    protectedLayout.includes("getPublicSiteConfig") &&
+    protectedLayout.includes("siteName={siteConfig.name}") &&
+    protectedLayout.includes("siteShortName={siteConfig.shortName}") &&
     themeContract.includes(':has(> input[type="search"]):focus-within') &&
     themeContract.includes('input[type="search"]:focus-visible') &&
     themeContract.includes('button[aria-pressed="true"]') &&
     themeContract.includes('main#main-content:focus-visible') &&
     themeContract.includes("var(--admin-brand-text-strong)"),
-  "El área protegida debe cargar el contrato de tema adaptativo para foco, búsqueda y selección."
+  "El área protegida debe cargar identidad publicada y el contrato adaptativo de tema para foco, búsqueda y selección."
+);
+
+assert(
+  adminLayout.includes("getPublicSiteConfig") &&
+    adminLayout.includes("generateMetadata") &&
+    adminLayout.includes("config.name") &&
+    !adminLayout.includes("DeUna Games"),
+  "La metadata administrativa debe derivar la identidad del sitio publicado y no contener la marca fija."
+);
+
+assert(
+  loginPage.includes("getPublicSiteConfig") &&
+    loginPage.includes("config.shortName") &&
+    loginPage.includes("config.name") &&
+    !loginPage.includes("DeUna Games"),
+  "El login administrativo debe reflejar la identidad publicada."
+);
+
+assert(
+  identityPreview.includes("shortName: string") &&
+    identityPreview.includes("const compactName = shortName.trim() || name") &&
+    identityPreview.includes("{compactName}"),
+  "La vista previa de identidad debe representar también el Nombre corto configurado."
 );
 
 assert(
@@ -110,8 +155,19 @@ assert(
     catalogCss.includes("border-bottom: 1px solid #2e3a47") &&
     catalogCss.includes("nth-child(even)") &&
     catalogCss.includes(":focus-within") &&
-    catalogCss.includes("min-height: 38px"),
-  "Los catálogos administrativos deben distinguir filas, jerarquía de texto, foco y acciones legibles."
+    catalogCss.includes("min-height: 38px") &&
+    !catalogCss.includes("#e8adb9") &&
+    !catalogCss.includes("#ffd4de"),
+  "Los catálogos administrativos deben distinguir filas, jerarquía de texto, foco, acciones legibles y color de marca dinámico."
+);
+
+assert(
+  accountsCss.includes(".badge") &&
+    accountsCss.includes("color-mix(in srgb, var(--brand)") &&
+    !accountsCss.includes("rgba(255, 64, 118") &&
+    !accountsCss.includes("rgba(255, 56, 111") &&
+    !accountsCss.includes("#ff789e"),
+  "Las insignias de rol administrativas deben derivar de la marca; sólo peligro/error puede conservar rojo semántico."
 );
 
 for (const [name, content] of [
@@ -182,6 +238,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    `Accesibilidad administrativa: OK (${adminCssFiles.length} módulos revisados; escala legible, foco único, tema adaptativo, teclado, movimiento reducido y catálogos semánticos).`
+    `Accesibilidad administrativa: OK (${adminCssFiles.length} módulos revisados; identidad dinámica, escala legible, foco único, tema adaptativo, teclado, movimiento reducido y catálogos semánticos).`
   );
 }
