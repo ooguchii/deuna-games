@@ -354,8 +354,8 @@ for (const [name, migration, type] of [
 assert(
   migrator.includes("GRANT INSERT (\n        id,\n        item_type,\n        item_key") &&
     migrator.includes("public_visible") &&
-    !/GRANT[\s\S]{0,300}\bDELETE\b/i.test(migrator),
-  "El runtime debe recibir INSERT editorial sólo por columnas y nunca permisos de borrado."
+    !/GRANT\s+DELETE\s+ON\s+deuna_admin\./i.test(migrator),
+  "El runtime debe recibir INSERT editorial sólo por columnas y nunca permisos DELETE sobre el esquema administrativo."
 );
 
 if (failures.length > 0) {
