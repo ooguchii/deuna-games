@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
 import {
   chooseFreshestConfirmedCpu,
@@ -301,6 +302,31 @@ assert.equal(
   "Un CPU guardado por ID exacto debe recuperarse como confirmado."
 );
 
+const requirementsPageSource = readFileSync(
+  new URL("../src/app/requisitos/page.tsx", import.meta.url),
+  "utf8"
+);
+const unifiedHeroSource = readFileSync(
+  new URL("../src/features/game-finder/GameFinderUnifiedHero.tsx", import.meta.url),
+  "utf8"
+);
+
+assert.equal(
+  requirementsPageSource.includes("CpuIdentificationAssistant"),
+  false,
+  "La página /requisitos no debe volver a montar una ventana independiente de identificación de CPU."
+);
+assert.ok(
+  unifiedHeroSource.includes("cpuConfirmationRequested") &&
+    unifiedHeroSource.includes("handleDetect") &&
+    unifiedHeroSource.includes("<CpuIdentificationAssistant"),
+  "La confirmación exacta de CPU debe permanecer integrada al flujo del botón Detectar."
+);
+assert.ok(
+  unifiedHeroSource.includes('hardware.cpuKnowledge !== "confirmed"'),
+  "Una CPU ya confirmada no debe volver a pedir identificación después de detectar."
+);
+
 console.log(
-  `Detección de hardware: OK (${cpuCatalog.length} CPUs; nombres Windows/Intel/AMD, variantes estrictas, fuentes recientes, estimación por intervalos y propagación a FPS verificadas).`
+  `Detección de hardware: OK (${cpuCatalog.length} CPUs; nombres Windows/Intel/AMD, variantes estrictas, fuentes recientes, confirmación integrada, estimación por intervalos y propagación a FPS verificadas).`
 );
