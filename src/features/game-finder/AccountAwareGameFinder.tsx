@@ -41,12 +41,17 @@ export default function AccountAwareGameFinder({
 
   useEffect(() => {
     if (!accountHardware) {
-      setReady(true);
       return;
     }
 
     storeExplicitHardwareProfile(accountHardware);
-    setReady(true);
+    const frame = window.requestAnimationFrame(() => {
+      setReady(true);
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+    };
   }, [accountHardware]);
 
   if (!ready) {
