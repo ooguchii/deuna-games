@@ -115,6 +115,17 @@
   padding: 10px 12px;
   outline: none;
   font-size: 14px;
+  transition:
+    border-color 140ms ease,
+    background 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.addRow input:hover,
+.termMain input:hover,
+.visualEditor select:hover {
+  border-color: #516176;
+  background: #0b1520;
 }
 
 .addRow input:focus-visible,
@@ -130,21 +141,58 @@
 }
 
 .addRow button,
+.actions > button,
+.orderButtons button,
+.activeButton,
+.inactiveButton,
+.removeButton {
+  outline: none;
+  font: inherit;
+  transition:
+    color 140ms ease,
+    border-color 140ms ease,
+    background 140ms ease,
+    transform 140ms ease,
+    filter 140ms ease,
+    box-shadow 140ms ease,
+    opacity 140ms ease;
+}
+
+.addRow button,
 .actions > button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 7px;
   min-height: 44px;
-  border: 0;
+  border: 1px solid color-mix(in srgb, var(--brand) 76%, #ffffff);
   border-radius: 9px;
   background: linear-gradient(135deg, var(--brand), var(--brand-dark));
-  box-shadow: 0 10px 24px color-mix(in srgb, var(--brand) 15%, transparent);
+  box-shadow:
+    0 10px 24px color-mix(in srgb, var(--brand) 15%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.11);
   color: white;
   padding: 0 17px;
   font-size: 13px;
   font-weight: 800;
   cursor: pointer;
+}
+
+.addRow button:hover,
+.actions > button:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+.addRow button:focus-visible,
+.actions > button:focus-visible,
+.orderButtons button:focus-visible,
+.activeButton:focus-visible,
+.inactiveButton:focus-visible,
+.removeButton:focus-visible {
+  box-shadow:
+    0 0 0 2px #0a1118,
+    0 0 0 4px color-mix(in srgb, var(--brand) 58%, #ffffff);
 }
 
 .columnHeader,
@@ -183,12 +231,17 @@
   border-radius: 11px;
   padding: 12px;
   background: rgba(8, 15, 24, 0.82);
+  transition:
+    border-color 140ms ease,
+    background 140ms ease,
+    box-shadow 140ms ease;
 }
 
 .termRow:hover,
 .termRow:focus-within {
   border-color: #4b5c6e;
   background: #0d1722;
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--brand) 40%, #ffffff);
 }
 
 .termMain {
@@ -273,9 +326,17 @@
   color: #b3c0cf;
 }
 
+.orderButtons button:hover:not(:disabled) {
+  color: #fff;
+  border-color: #57687b;
+  background: #111d29;
+  transform: translateY(-1px);
+}
+
 .orderButtons button:disabled {
   opacity: 0.35;
   cursor: not-allowed;
+  transform: none;
 }
 
 .activeButton {
@@ -284,10 +345,24 @@
   color: #82e9ba;
 }
 
+.activeButton:hover {
+  border-color: rgba(66, 211, 146, 0.6);
+  background: rgba(66, 211, 146, 0.14);
+  color: #a7f2d0;
+  transform: translateY(-1px);
+}
+
 .inactiveButton {
   border: 1px solid #485665;
   background: #131c26;
   color: #b0bdca;
+}
+
+.inactiveButton:hover {
+  color: #e4eaf0;
+  border-color: #5a6979;
+  background: #17222e;
+  transform: translateY(-1px);
 }
 
 .removeButton {
@@ -298,9 +373,23 @@
   color: #ff94aa;
 }
 
+.removeButton:hover:not(:disabled) {
+  color: #ffc1ce;
+  border-color: rgba(255, 91, 124, 0.56);
+  background: rgba(255, 75, 110, 0.13);
+  transform: translateY(-1px);
+}
+
+.removeButton:focus-visible {
+  box-shadow:
+    0 0 0 2px #0a1118,
+    0 0 0 4px rgba(255, 91, 124, 0.54);
+}
+
 .removeButton:disabled {
   cursor: not-allowed;
   opacity: 0.35;
+  transform: none;
 }
 
 .empty {
@@ -381,5 +470,20 @@
 
   .removeButton {
     width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .addRow input,
+  .termMain input,
+  .visualEditor select,
+  .addRow button,
+  .actions > button,
+  .termRow,
+  .orderButtons button,
+  .activeButton,
+  .inactiveButton,
+  .removeButton {
+    transition: none;
   }
 }
