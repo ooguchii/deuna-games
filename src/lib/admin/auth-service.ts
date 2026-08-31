@@ -9,14 +9,13 @@ import {
   consumeDummyPasswordWork,
   verifyAdminPassword,
 } from "./password";
+import type { AdminRole } from "./roles";
 import {
   createAdminSession,
 } from "./session";
 import {
   normalizeAdminUsername,
 } from "./validation";
-
-export type AdminRole = "owner" | "admin";
 
 type AdminUserRow = {
   id: string;
