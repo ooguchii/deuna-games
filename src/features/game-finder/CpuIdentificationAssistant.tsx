@@ -12,6 +12,9 @@ import {
 } from "react";
 
 import {
+  searchCpuCatalog,
+} from "./cpu-catalog-search";
+import {
   writeConfirmedCpu,
 } from "./cpu-confirmation-storage";
 import {
@@ -24,32 +27,6 @@ type CpuIdentificationAssistantProps = {
   onConfirmed: () => void;
   onCancel: () => void;
 };
-
-function normalizeCpuSearch(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
-}
-
-function cpuMatchesSearch(cpuName: string, query: string) {
-  const terms = normalizeCpuSearch(query).split(/\s+/).filter(Boolean);
-  if (!terms.length) return false;
-
-  const searchable = normalizeCpuSearch(cpuName);
-  return terms.every((term) => searchable.includes(term));
-}
-
-function cpuSearchPriority(cpuName: string, query: string) {
-  const searchable = normalizeCpuSearch(cpuName);
-  const normalizedQuery = normalizeCpuSearch(query);
-
-  if (searchable === normalizedQuery) return 0;
-  if (searchable.includes(normalizedQuery)) return 1;
-  return 2;
-}
 
 export default function CpuIdentificationAssistant({
   onConfirmed,
@@ -65,20 +42,10 @@ export default function CpuIdentificationAssistant({
       ? navigator.hardwareConcurrency
       : null;
 
-  const matchingCpus = useMemo(() => {
-    if (!query.trim()) return [];
-
-    return cpuCatalog
-      .filter((cpu) => cpuMatchesSearch(cpu.name, query))
-      .sort((a, b) => {
-        const priorityDifference =
-          cpuSearchPriority(a.name, query) - cpuSearchPriority(b.name, query);
-        if (priorityDifference !== 0) return priorityDifference;
-        return a.name.localeCompare(b.name, "es", { numeric: true });
-      });
-  }, [query]);
-
-  const visibleCpus = matchingCpus.slice(0, 10);
+  const searchResult = useMemo(
+    () => searchCpuCatalog(query, 10),
+    [query]
+  );
   const selectedCpu = selectedCpuId
     ? cpuCatalog.find((cpu) => cpu.id === selectedCpuId) ?? null
     : null;
@@ -160,17 +127,17 @@ export default function CpuIdentificationAssistant({
           aria-label="Procesadores coincidentes"
           aria-live="polite"
         >
-          {visibleCpus.length ? (
+          {searchResult.items.length ? (
             <>
               <div className={styles.resultMeta}>
-                {matchingCpus.length} coincidencia{matchingCpus.length === 1 ? "" : "s"}
-                {matchingCpus.length > visibleCpus.length
-                  ? ` · mostrando las primeras ${visibleCpus.length}`
+                {searchResult.total} coincidencia{searchResult.total === 1 ? "" : "s"}
+                {searchResult.total > searchResult.items.length
+                  ? ` · mostrando las primeras ${searchResult.items.length}`
                   : ""}
               </div>
 
               <div className={styles.resultList}>
-                {visibleCpus.map((cpu) => {
+                {searchResult.items.map((cpu) => {
                   const selected = selectedCpuId === cpu.id;
                   return (
                     <button
