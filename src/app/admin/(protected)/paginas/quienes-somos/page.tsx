@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import { notFound } from "next/navigation";
 
+import AdminPageHeader from "@/components/admin/AdminPageHeader";
 import EditorialHistory from "@/components/admin/EditorialHistory";
 import EditorStateNotice from "@/components/admin/EditorStateNotice";
 import PublicationPanel from "@/components/admin/PublicationPanel";
@@ -22,8 +23,29 @@ export const dynamic = "force-dynamic";
 type PageProps = {
   searchParams: Promise<{
     estado?: string | string[];
+    seccion?: string | string[];
   }>;
 };
+
+const sections = [
+  "encabezado",
+  "principios",
+  "proposito",
+  "cierre",
+  "publicacion",
+  "historial",
+] as const;
+
+type AboutSection = (typeof sections)[number];
+
+function resolveSection(
+  value: string | string[] | undefined
+): AboutSection {
+  const candidate = Array.isArray(value) ? value[0] : value;
+  return sections.includes(candidate as AboutSection)
+    ? (candidate as AboutSection)
+    : "encabezado";
+}
 
 export default async function AdminAboutEditorPage({
   searchParams,
@@ -50,6 +72,7 @@ export default async function AdminAboutEditorPage({
   const state = Array.isArray(parameters.estado)
     ? parameters.estado[0]
     : parameters.estado;
+  const section = resolveSection(parameters.seccion);
   const about = item.payload;
 
   return (
@@ -78,26 +101,22 @@ export default async function AdminAboutEditorPage({
         </Link>
       </div>
 
-      <header className={styles.pageHeader}>
-        <div>
-          <span>PÁGINA · REVISIÓN {item.revision}</span>
-          <h1>Quiénes somos</h1>
-          <p>
-            Edita los textos institucionales sin modificar HTML, scripts, enlaces ni estructura visual. Cada formulario guarda una revisión privada; publicar es una acción separada.
-          </p>
-        </div>
-        <span className={styles.draftState}>
+      <AdminPageHeader
+        eyebrow={<>PÁGINA · REVISIÓN {item.revision}</>}
+        title="Quiénes somos"
+        description="Edita los textos institucionales sin modificar HTML, scripts, enlaces ni estructura visual. Cada formulario guarda una revisión privada; publicar es una acción separada."
+        action={<span className={styles.draftState}>
           {publicationState?.hasUnpublishedChanges
             ? "Cambios sin publicar"
             : item.status === "synced"
               ? "Sin cambios"
               : "Borrador guardado"}
-        </span>
-      </header>
+        </span>}
+      />
 
       <EditorStateNotice state={state} />
 
-      <section className={styles.editorPanel}>
+      {section === "encabezado" && <section className={styles.editorPanel}>
         <div className={styles.sectionHeading}>
           <div>
             <span>ENCABEZADO</span>
@@ -157,9 +176,9 @@ export default async function AdminAboutEditorPage({
             <button type="submit">Guardar hero</button>
           </div>
         </form>
-      </section>
+      </section>}
 
-      <section className={styles.editorPanel}>
+      {section === "principios" && <section className={styles.editorPanel}>
         <div className={styles.sectionHeading}>
           <div>
             <span>INTRODUCCIÓN</span>
@@ -215,9 +234,9 @@ export default async function AdminAboutEditorPage({
             <button type="submit">Guardar introducción</button>
           </div>
         </form>
-      </section>
+      </section>}
 
-      <section className={styles.editorPanel}>
+      {section === "proposito" && <section className={styles.editorPanel}>
         <div className={styles.sectionHeading}>
           <div>
             <span>PROPÓSITO</span>
@@ -269,9 +288,9 @@ export default async function AdminAboutEditorPage({
             <button type="submit">Guardar propósito</button>
           </div>
         </form>
-      </section>
+      </section>}
 
-      <section className={styles.editorPanel}>
+      {section === "cierre" && <section className={styles.editorPanel}>
         <div className={styles.sectionHeading}>
           <div>
             <span>CIERRE</span>
@@ -308,9 +327,9 @@ export default async function AdminAboutEditorPage({
             <button type="submit">Guardar cierre</button>
           </div>
         </form>
-      </section>
+      </section>}
 
-      <section className={styles.editorPanel}>
+      {section === "publicacion" && <section className={styles.editorPanel}>
         {publicationState ? (
           <PublicationPanel
             state={publicationState}
@@ -323,12 +342,12 @@ export default async function AdminAboutEditorPage({
             La infraestructura de publicación todavía no está disponible. Aplica las migraciones e importa el contenido editorial antes de publicar.
           </p>
         )}
-      </section>
+      </section>}
 
-      <EditorialHistory
+      {section === "historial" && <EditorialHistory
         revisions={item.revisions}
         currentRevision={item.revision}
-      />
+      />}
     </>
   );
 }

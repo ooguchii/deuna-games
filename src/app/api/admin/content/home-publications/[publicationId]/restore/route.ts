@@ -77,14 +77,14 @@ export async function POST(
     if (result.outcome === "not_found") {
       return adminRedirect(
         authorized.adminOrigin,
-        "/admin/portada?estado=no-encontrado"
+        "/admin/portada?seccion=publicacion&estado=no-encontrado"
       );
     }
 
     if (result.outcome === "conflict") {
       return adminRedirect(
         authorized.adminOrigin,
-        "/admin/portada?estado=conflicto-publicacion"
+        "/admin/portada?seccion=publicacion&estado=conflicto-publicacion"
       );
     }
 
@@ -94,7 +94,7 @@ export async function POST(
 
     return adminRedirect(
       authorized.adminOrigin,
-      `/admin/portada?estado=${
+      `/admin/portada?seccion=publicacion&estado=${
         result.outcome === "restored"
           ? "publicacion-restaurada"
           : "sin-cambios"

@@ -1,0 +1,81 @@
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(360px, 0.92fr);
+  align-items: start;
+  gap: 18px;
+  margin-top: 18px;
+}
+
+.formPanel {
+  margin-top: 0;
+}
+
+.sectionIntro {
+  margin-bottom: 18px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid var(--admin-border-soft, #263341);
+}
+
+.sectionIntro span {
+  color: var(--brand);
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0.1em;
+}
+
+.sectionIntro h2 {
+  margin-top: 5px;
+  color: #f2f5f8;
+  font-size: 20px;
+}
+
+.sectionIntro p {
+  margin-top: 6px;
+  color: #93a1af;
+  font-size: 12px;
+}
+
+.colorFields {
+  display: grid;
+  gap: 14px;
+}
+
+.colorField {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid #2f3e4d;
+  border-radius: 10px;
+  background: #090f17;
+}
+
+.colorField div {
+  display: grid;
+  gap: 4px;
+}
+
+.colorField strong {
+  color: #e6ebf0;
+  font-size: 13px;
+}
+
+.colorField span {
+  color: #8795a4;
+  font-size: 11px;
+}
+
+.colorField input[type="color"] {
+  width: 54px;
+  min-height: 42px;
+  padding: 4px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+@media (max-width: 1040px) {
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+}

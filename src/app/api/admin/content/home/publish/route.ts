@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     return authorized.response;
   }
 
-  const target = "/admin/portada";
+  const target = "/admin/portada?seccion=publicacion";
 
   if (
     !hasExactAdminFormFields(
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
   ) {
     return adminRedirect(
       authorized.adminOrigin,
-      `${target}?estado=solicitud`
+      `${target}&estado=solicitud`
     );
   }
 
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
   if (!expected.success) {
     return adminRedirect(
       authorized.adminOrigin,
-      `${target}?estado=datos`
+      `${target}&estado=datos`
     );
   }
 
@@ -63,14 +63,14 @@ export async function POST(request: NextRequest) {
     if (result.outcome === "not_found") {
       return adminRedirect(
         authorized.adminOrigin,
-        `${target}?estado=no-encontrado`
+        `${target}&estado=no-encontrado`
       );
     }
 
     if (result.outcome === "conflict") {
       return adminRedirect(
         authorized.adminOrigin,
-        `${target}?estado=conflicto`
+        `${target}&estado=conflicto`
       );
     }
 
@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
 
     return adminRedirect(
       authorized.adminOrigin,
-      `${target}?estado=${
+      `${target}&estado=${
         result.outcome === "published"
           ? "publicado"
           : "sin-cambios"

@@ -25,10 +25,16 @@ const fields = [
   "description",
   "language",
   "themeColor",
+  "brandColor",
   "footerTagline",
 ] as const;
 
 export async function POST(request: NextRequest) {
+  const section = request.nextUrl.searchParams.get("seccion") === "apariencia"
+    ? "apariencia"
+    : "identidad";
+  const redirectPath = (state: string) =>
+    `/admin/configuracion?seccion=${section}&estado=${state}`;
   const authorized =
     await authorizeAdminFormRequest(request);
 
@@ -44,7 +50,7 @@ export async function POST(request: NextRequest) {
   ) {
     return adminRedirect(
       authorized.adminOrigin,
-      "/admin/configuracion?estado=solicitud"
+      redirectPath("solicitud")
     );
   }
 
@@ -55,7 +61,7 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) {
     return adminRedirect(
       authorized.adminOrigin,
-      "/admin/configuracion?estado=datos"
+      redirectPath("datos")
     );
   }
 
@@ -70,7 +76,7 @@ export async function POST(request: NextRequest) {
     if (result.outcome === "not_found") {
       return adminRedirect(
         authorized.adminOrigin,
-        "/admin/configuracion?estado=no-encontrado"
+        redirectPath("no-encontrado")
       );
     }
 
@@ -81,7 +87,7 @@ export async function POST(request: NextRequest) {
 
     return adminRedirect(
       authorized.adminOrigin,
-      `/admin/configuracion?estado=${state}`
+      redirectPath(state)
     );
   } catch {
     console.error(

@@ -19,9 +19,10 @@ type PublishedSiteConfigRow = {
 
 export type PublicSiteConfig = Omit<
   EditorialSiteConfig,
-  "footerTagline"
+  "footerTagline" | "brandColor"
 > & {
   footerTagline: string;
+  brandColor: string;
 };
 
 function sourceFallback(): PublicSiteConfig {

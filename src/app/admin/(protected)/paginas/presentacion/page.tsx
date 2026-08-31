@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import { notFound } from "next/navigation";
 
+import AdminPageHeader from "@/components/admin/AdminPageHeader";
 import EditorialHistory from "@/components/admin/EditorialHistory";
 import EditorStateNotice from "@/components/admin/EditorStateNotice";
 import PublicationPanel from "@/components/admin/PublicationPanel";
@@ -84,24 +85,18 @@ export default async function AdminPublicPresentationPage({
 
   return (
     <>
-      <header className={styles.pageHeader}>
-        <div>
-          <span>
-            PRESENTACIÓN PÚBLICA · REVISIÓN {item.revision}
-          </span>
-          <h1>Textos y cabeceras públicas</h1>
-          <p>
-            Administra el contenido editorial de Juegos, Actualizaciones y ¿Qué puedo jugar? sin exponer filtros, rutas, estados técnicos ni lógica del producto.
-          </p>
-        </div>
-        <span className={styles.draftState}>
+      <AdminPageHeader
+        eyebrow={<>PRESENTACIÓN PÚBLICA · REVISIÓN {item.revision}</>}
+        title="Textos y cabeceras públicas"
+        description="Administra el contenido editorial de Juegos, Actualizaciones y ¿Qué puedo jugar? sin exponer filtros, rutas, estados técnicos ni lógica del producto."
+        action={<span className={styles.draftState}>
           {publicationState?.hasUnpublishedChanges
             ? "Cambios sin publicar"
             : item.status === "synced"
               ? "Sin cambios"
               : "Borrador guardado"}
-        </span>
-      </header>
+        </span>}
+      />
 
       <div
         style={{

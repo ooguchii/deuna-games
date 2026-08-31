@@ -35,8 +35,8 @@ La idea:
   --theme-text-muted: #7d8898;
 
   --theme-brand: #ff0847;
-  --theme-brand-light: #ff416f;
-  --theme-brand-dark: #d9003c;
+  --theme-brand-light: color-mix(in srgb, var(--theme-brand) 78%, white);
+  --theme-brand-dark: color-mix(in srgb, var(--theme-brand) 82%, black);
 
   --theme-gold: #ffc43d;
   --theme-gold-light: #ffdc72;

@@ -21,7 +21,7 @@ import {
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const target = "/admin/paginas/quienes-somos";
+const target = "/admin/paginas/quienes-somos?seccion=publicacion";
 
 export async function POST(request: NextRequest) {
   const authorized =
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
   ) {
     return adminRedirect(
       authorized.adminOrigin,
-      `${target}?estado=solicitud`
+      `${target}&estado=solicitud`
     );
   }
 
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
   if (!expected.success) {
     return adminRedirect(
       authorized.adminOrigin,
-      `${target}?estado=datos`
+      `${target}&estado=datos`
     );
   }
 
@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
     if (result.outcome === "conflict") {
       return adminRedirect(
         authorized.adminOrigin,
-        `${target}?estado=conflicto`
+        `${target}&estado=conflicto`
       );
     }
 
@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
 
     return adminRedirect(
       authorized.adminOrigin,
-      `${target}?estado=${
+      `${target}&estado=${
         result.outcome === "published"
           ? "publicado"
           : "sin-cambios"

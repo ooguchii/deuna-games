@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { Gamepad2 } from "lucide-react";
+import SiteLogoMark from "@/components/brand/SiteLogoMark";
 
 import {
   getPublicSiteConfig,
@@ -22,7 +22,7 @@ export default async function Footer() {
             aria-label={`${config.name} - Inicio`}
           >
             <div className={styles.logo}>
-              <Gamepad2 size={25} aria-hidden="true" />
+              <SiteLogoMark size={25} />
             </div>
 
             <strong>{config.name}</strong>

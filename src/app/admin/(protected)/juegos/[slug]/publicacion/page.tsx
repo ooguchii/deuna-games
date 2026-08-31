@@ -3,6 +3,7 @@ import { ArrowLeft, Eye } from "lucide-react";
 import { notFound } from "next/navigation";
 
 import GamePublicationWorkspace from "@/components/admin/GamePublicationWorkspace";
+import AdminPageHeader from "@/components/admin/AdminPageHeader";
 import {
   getEditorialItem,
 } from "@/lib/admin/content-service";
@@ -75,23 +76,18 @@ export default async function AdminGamePublicationPage({
         Volver a juegos
       </Link>
 
-      <header className={styles.pageHeader}>
-        <div>
-          <span>PUBLICACIÓN · REVISIÓN {item.revision}</span>
-          <h1>{item.payload.title}</h1>
-          <p>
-            Revisa el borrador, comprueba la preparación editorial y decide cuándo debe cambiar la web pública.
-          </p>
-        </div>
-
-        <Link
+      <AdminPageHeader
+        eyebrow={<>PUBLICACIÓN · REVISIÓN {item.revision}</>}
+        title={item.payload.title}
+        description="Revisa el borrador, comprueba la preparación editorial y decide cuándo debe cambiar la web pública."
+        action={<Link
           href={`/admin/juegos/${encodeURIComponent(slug)}/vista-previa`}
           className={styles.tableAction}
         >
           <Eye size={15} aria-hidden="true" />
           Vista previa
-        </Link>
-      </header>
+        </Link>}
+      />
 
       <GamePublicationWorkspace
         game={item.payload}

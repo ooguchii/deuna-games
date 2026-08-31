@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 
 import EditorialHistory from "@/components/admin/EditorialHistory";
 import EditorStateNotice from "@/components/admin/EditorStateNotice";
+import AdminPageHeader from "@/components/admin/AdminPageHeader";
 import PublicationPanel from "@/components/admin/PublicationPanel";
 import {
   getEditorialItem,
@@ -95,15 +96,11 @@ export default async function AdminUpdateEditorPage({
         Volver a actualizaciones
       </Link>
 
-      <header className={styles.pageHeader}>
-        <div>
-          <span>ACTUALIZACIÓN · REVISIÓN {item.revision}</span>
-          <h1>{update.version}</h1>
-          <p>
-            Juego relacionado: {update.gameSlug}. Edita, publica o revisa el historial como tareas separadas.
-          </p>
-        </div>
-        <span className={styles.draftState}>
+      <AdminPageHeader
+        eyebrow={<>ACTUALIZACIÓN · REVISIÓN {item.revision}</>}
+        title={update.version}
+        description={<>Juego relacionado: {update.gameSlug}. Edita, publica o revisa el historial como tareas separadas.</>}
+        action={<span className={styles.draftState}>
           {publicationState?.publicVisible === false
             ? "Oculta de la web"
             : publicationState?.hasUnpublishedChanges
@@ -111,8 +108,8 @@ export default async function AdminUpdateEditorPage({
               : item.status === "synced"
                 ? "Sin cambios"
                 : "Borrador guardado"}
-        </span>
-      </header>
+        </span>}
+      />
 
       <EditorStateNotice state={state} />
 

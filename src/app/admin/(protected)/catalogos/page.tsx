@@ -2,6 +2,7 @@ import {
   BookOpenCheck,
 } from "lucide-react";
 
+import AdminPageHeader from "@/components/admin/AdminPageHeader";
 import EditorStateNotice from "@/components/admin/EditorStateNotice";
 import EditorialHistory from "@/components/admin/EditorialHistory";
 import GameTaxonomyEditor from "@/components/admin/GameTaxonomyEditor";
@@ -142,23 +143,19 @@ export default async function AdminCatalogsPage({
 
   return (
     <>
-      <header className={styles.pageHeader}>
-        <div>
-          <span>DATOS MAESTROS</span>
-          <h1>Catálogos</h1>
-          <p>
-            Trabaja clasificaciones y etiquetas en borrador. La misma definición maestra alimenta toda la web únicamente después de publicar su snapshot.
-          </p>
-        </div>
-        <span className={styles.draftState}>
+      <AdminPageHeader
+        eyebrow="DATOS MAESTROS"
+        title="Catálogos"
+        description="Trabaja clasificaciones y etiquetas en borrador. La misma definición maestra alimenta toda la web únicamente después de publicar su snapshot."
+        action={<span className={styles.draftState}>
           <BookOpenCheck size={15} aria-hidden="true" />
           {publicationState?.hasUnpublishedChanges
             ? "Cambios sin publicar"
             : item?.status === "synced"
               ? "Sin cambios"
               : "Borrador guardado"}
-        </span>
-      </header>
+        </span>}
+      />
 
       <EditorStateNotice state={state} />
 

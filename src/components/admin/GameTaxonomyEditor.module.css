@@ -1,5 +1,5 @@
 .root {
-  --taxonomy-accent: #ff1554;
+  --taxonomy-accent: var(--brand);
   display: grid;
   gap: 20px;
 }
@@ -138,7 +138,8 @@
   min-height: 44px;
   border: 0;
   border-radius: 9px;
-  background: #ff1554;
+  background: linear-gradient(135deg, var(--brand), var(--brand-dark));
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--brand) 15%, transparent);
   color: white;
   padding: 0 17px;
   font-size: 13px;

@@ -18,7 +18,7 @@ import {
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const target = "/admin/paginas/quienes-somos";
+const target = "/admin/paginas/quienes-somos?seccion=encabezado";
 const fields = [
   "expectedRevision",
   "heroTitle",
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
   if (!hasExactAdminFormFields(authorized.form, fields)) {
     return adminRedirect(
       authorized.adminOrigin,
-      `${target}?estado=solicitud`
+      `${target}&estado=solicitud`
     );
   }
 
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) {
     return adminRedirect(
       authorized.adminOrigin,
-      `${target}?estado=datos`
+      `${target}&estado=datos`
     );
   }
 
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
 
     return adminRedirect(
       authorized.adminOrigin,
-      `${target}?estado=${
+      `${target}&estado=${
         result.outcome === "conflict"
           ? "conflicto"
           : "guardado"

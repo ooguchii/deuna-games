@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Gamepad2 } from "lucide-react";
+
+import SiteLogoMark from "@/components/brand/SiteLogoMark";
 
 import styles from "./Header.module.css";
 
@@ -34,10 +35,9 @@ export default function SiteBrand({
       aria-label={`${siteName} - Inicio`}
     >
       <span className={styles.brandIcon}>
-        <Gamepad2
+        <SiteLogoMark
           size={26}
           strokeWidth={2}
-          aria-hidden="true"
         />
       </span>
 

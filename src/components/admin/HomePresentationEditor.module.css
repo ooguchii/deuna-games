@@ -207,7 +207,8 @@
   min-height: 44px;
   border: 0;
   border-radius: 9px;
-  background: #ff1554;
+  background: linear-gradient(135deg, var(--brand), var(--brand-dark));
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--brand) 15%, transparent);
   color: #fff;
   padding: 0 19px;
   font-size: 13px;

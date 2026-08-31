@@ -472,6 +472,10 @@ export const editorialSiteConfigFormSchema = z.object({
     .string()
     .trim()
     .regex(/^#[0-9a-f]{6}$/i),
+  brandColor: z
+    .string()
+    .trim()
+    .regex(/^#[0-9a-f]{6}$/i),
 });
 
 export const revisionIdSchema = z

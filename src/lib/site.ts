@@ -5,6 +5,7 @@ export const siteConfig = {
     "Descubre juegos para PC, consulta requisitos, versiones, actualizaciones y encuentra juegos compatibles con tu equipo.",
   language: "es",
   themeColor: "#05060b",
+  brandColor: "#ff0847",
   footerTagline: "Hecho para encontrar tu próximo juego.",
 } as const;
 

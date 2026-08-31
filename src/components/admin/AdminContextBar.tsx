@@ -5,13 +5,16 @@ import {
   Download,
   FileClock,
   Gauge,
+  History,
   ImageIcon,
   ListTree,
   MonitorCog,
+  Palette,
   PanelTop,
   Rocket,
   SquarePen,
   Tags,
+  UserRound,
 } from "lucide-react";
 
 import ux from "./AdminShellUx.module.css";
@@ -53,6 +56,22 @@ const publicPageSections = [
   { id: "compatibilidad", label: "¿Qué puedo jugar?", icon: MonitorCog },
   { id: "publicacion", label: "Publicación", icon: Rocket },
   { id: "historial", label: "Historial", icon: FileClock },
+] as const;
+
+const configurationSections = [
+  { id: "identidad", label: "Identidad", icon: UserRound },
+  { id: "apariencia", label: "Apariencia", icon: Palette },
+  { id: "publicacion", label: "Publicación", icon: Rocket },
+  { id: "historial", label: "Historial", icon: History },
+] as const;
+
+const aboutSections = [
+  { id: "encabezado", label: "Encabezado", icon: PanelTop },
+  { id: "principios", label: "Principios", icon: ListTree },
+  { id: "proposito", label: "Propósito", icon: SquarePen },
+  { id: "cierre", label: "Cierre", icon: FileClock },
+  { id: "publicacion", label: "Publicación", icon: Rocket },
+  { id: "historial", label: "Historial", icon: History },
 ] as const;
 
 function ContextLinks({
@@ -169,6 +188,28 @@ export default function AdminContextBar() {
         selected={searchParams.get("seccion") ?? "juegos"}
         sections={publicPageSections}
         label="Secciones de presentación pública"
+      />
+    );
+  }
+
+  if (pathname === "/admin/paginas/quienes-somos") {
+    return (
+      <ContextLinks
+        pathname={pathname}
+        selected={searchParams.get("seccion") ?? "encabezado"}
+        sections={aboutSections}
+        label="Secciones de Quiénes somos"
+      />
+    );
+  }
+
+  if (pathname === "/admin/configuracion") {
+    return (
+      <ContextLinks
+        pathname={pathname}
+        selected={searchParams.get("seccion") ?? "identidad"}
+        sections={configurationSections}
+        label="Secciones de Configuración"
       />
     );
   }

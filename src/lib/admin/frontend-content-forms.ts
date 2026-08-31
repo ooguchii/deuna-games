@@ -45,6 +45,7 @@ function addIssues(
 
 const siteFields = editorialSiteConfigSchema.extend({
   footerTagline: z.string().trim().min(1).max(180),
+  brandColor: z.string().regex(/^#[0-9a-f]{6}$/i),
 });
 
 export const frontendSiteConfigFormSchema = z

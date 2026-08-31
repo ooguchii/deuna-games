@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 
@@ -89,7 +90,13 @@ export default async function RootLayout({
   const config = await getPublicSiteConfig();
 
   return (
-    <html lang={config.language}>
+    <html
+      lang={config.language}
+      style={{
+        "--theme-bg": config.themeColor,
+        "--theme-brand": config.brandColor,
+      } as CSSProperties}
+    >
       <body className={inter.className}>
         <a
           href="#main-content"

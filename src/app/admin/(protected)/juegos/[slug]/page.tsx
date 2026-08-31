@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 
 import EditorialHistory from "@/components/admin/EditorialHistory";
 import EditorStateNotice from "@/components/admin/EditorStateNotice";
+import AdminPageHeader from "@/components/admin/AdminPageHeader";
 import GameDownloadEditor from "@/components/admin/GameDownloadEditor";
 import GameEditorFormActions from "@/components/admin/GameEditorFormActions";
 import GameMediaUploadForm from "@/components/admin/GameMediaUploadForm";
@@ -200,15 +201,11 @@ export default async function AdminGameEditorPage({
         Volver a juegos
       </Link>
 
-      <header className={styles.pageHeader}>
-        <div>
-          <span>JUEGO · REVISIÓN {item.revision}</span>
-          <h1>{game.title}</h1>
-          <p>
-            Trabaja una sección a la vez. Guardar conserva el borrador y Publicar sigue siendo una acción separada.
-          </p>
-        </div>
-        <div
+      <AdminPageHeader
+        eyebrow={<>JUEGO · REVISIÓN {item.revision}</>}
+        title={game.title}
+        description="Trabaja una sección a la vez. Guardar conserva el borrador y Publicar sigue siendo una acción separada."
+        action={<div
           style={{
             display: "flex",
             alignItems: "center",
@@ -233,8 +230,8 @@ export default async function AdminGameEditorPage({
               item.status === "synced"
             )}
           </Link>
-        </div>
-      </header>
+        </div>}
+      />
 
       <EditorStateNotice state={state} />
 

@@ -36,14 +36,14 @@ function itemPath(
   }
 
   if (type === "home_config") {
-    return `/admin/portada?estado=${state}`;
+    return `/admin/portada?seccion=historial&estado=${state}`;
   }
 
   if (type === "about_config") {
-    return `/admin/paginas/quienes-somos?estado=${state}`;
+    return `/admin/paginas/quienes-somos?seccion=historial&estado=${state}`;
   }
 
-  return `/admin/configuracion?estado=${state}`;
+  return `/admin/configuracion?seccion=historial&estado=${state}`;
 }
 
 export async function POST(

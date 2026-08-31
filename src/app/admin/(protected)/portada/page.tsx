@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 
+import AdminPageHeader from "@/components/admin/AdminPageHeader";
 import EditorialHistory from "@/components/admin/EditorialHistory";
 import EditorStateNotice from "@/components/admin/EditorStateNotice";
 import HomeCurationEditor from "@/components/admin/HomeCurationEditor";
@@ -108,22 +109,18 @@ export default async function AdminHomeEditorPage({
 
   return (
     <>
-      <header className={styles.pageHeader}>
-        <div>
-          <span>PORTADA · REVISIÓN {item.revision}</span>
-          <h1>Inicio</h1>
-          <p>
-            Administra curaduría, automatización, orden, visibilidad y textos de Inicio sin mezclar contenido con la lógica de los componentes. Todo queda en borrador hasta publicar.
-          </p>
-        </div>
-        <span className={styles.draftState}>
+      <AdminPageHeader
+        eyebrow={<>PORTADA · REVISIÓN {item.revision}</>}
+        title="Inicio"
+        description="Administra curaduría, automatización, orden, visibilidad y textos de Inicio sin mezclar contenido con la lógica de los componentes. Todo queda en borrador hasta publicar."
+        action={<span className={styles.draftState}>
           {publicationState?.hasUnpublishedChanges
             ? "Cambios sin publicar"
             : item.status === "synced"
               ? "Sin cambios"
               : "Borrador guardado"}
-        </span>
-      </header>
+        </span>}
+      />
 
       <EditorStateNotice state={state} />
 

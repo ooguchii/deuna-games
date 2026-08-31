@@ -544,6 +544,7 @@ export const editorialSiteConfigSchema = z
     description: z.string().trim().min(1).max(500),
     language: z.literal("es"),
     themeColor: z.string().regex(/^#[0-9a-f]{6}$/i),
+    brandColor: z.string().regex(/^#[0-9a-f]{6}$/i).optional(),
     footerTagline: z.string().trim().min(1).max(180).optional(),
   })
   .strict();

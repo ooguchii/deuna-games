@@ -626,6 +626,14 @@
   font-weight: 750;
 }
 
+.tableAction {
+  min-height: 38px;
+  padding: 0 11px;
+  border: 1px solid color-mix(in srgb, var(--brand) 25%, #263341);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--brand) 5%, #0a1119);
+}
+
 .tableAction:hover,
 .tableAction:focus-visible,
 .backLink:hover,

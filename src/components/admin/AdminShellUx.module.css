@@ -80,6 +80,17 @@
 }
 
 .main.main {
+  --admin-page: #070b11;
+  --admin-surface: linear-gradient(160deg, #0d141e 0%, #0a1119 100%);
+  --admin-surface-solid: #0a1119;
+  --admin-surface-raised: #0d151f;
+  --admin-control: #090f17;
+  --admin-border: #344252;
+  --admin-border-soft: #263442;
+  --admin-text: #f2f5f8;
+  --admin-text-soft: #a0adba;
+  --admin-text-muted: #8290a0;
+  --admin-shadow: 0 14px 34px rgba(0, 0, 0, 0.15);
   padding: 28px clamp(24px, 3.2vw, 48px) 54px;
   color: #dfe5ec;
   background:
@@ -154,11 +165,10 @@
 }
 
 .main > section {
-  border-color: #344252;
-  background:
-    linear-gradient(160deg, #0d141e 0%, #0a1119 100%);
+  border-color: var(--admin-border);
+  background: var(--admin-surface);
   box-shadow:
-    0 14px 34px rgba(0, 0, 0, 0.15),
+    var(--admin-shadow),
     inset 0 1px 0 rgba(255, 255, 255, 0.025);
 }
 
@@ -258,12 +268,33 @@
 }
 
 .main table {
+  width: 100%;
+  overflow: hidden;
+  border: 1px solid var(--admin-border-soft);
+  border-radius: 10px;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: var(--admin-surface-solid);
   font-size: 13px;
 }
 
 .main table thead th {
   color: #a1adba;
+  border-bottom: 1px solid var(--admin-border);
+  background: var(--admin-surface-raised);
   font-size: 11px;
+}
+
+.main table tbody tr {
+  transition: background 150ms ease;
+}
+
+.main table tbody tr:hover {
+  background: color-mix(in srgb, var(--brand) 4%, #0c141e);
+}
+
+.main table tbody tr:last-child > * {
+  border-bottom: 0;
 }
 
 .main table tbody th strong {
@@ -300,15 +331,15 @@
   position: sticky;
   top: 10px;
   z-index: 30;
-  width: fit-content;
+  width: 100%;
   max-width: 100%;
   display: flex;
   align-items: center;
   gap: 7px;
-  margin: -4px 0 18px auto;
+  margin: 16px 0 0;
   padding: 7px;
   overflow-x: auto;
-  border: 1px solid #3b4a59;
+  border: 1px solid var(--admin-border, #3b4a59);
   border-radius: 12px;
   background:
     linear-gradient(180deg, rgba(15, 23, 33, 0.98), rgba(9, 15, 23, 0.98));
@@ -367,7 +398,7 @@
 }
 
 .contextActive.contextActive svg {
-  color: #ffadc0;
+  color: color-mix(in srgb, var(--brand) 54%, white);
 }
 
 @media (prefers-reduced-motion: reduce) {

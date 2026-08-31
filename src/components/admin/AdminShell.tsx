@@ -4,8 +4,8 @@ import {
   LogOut,
 } from "lucide-react";
 
-import AdminContextBar from "@/components/admin/AdminContextBar";
 import AdminNavigation from "@/components/admin/AdminNavigation";
+import SiteLogoMark from "@/components/brand/SiteLogoMark";
 import type {
   AdminSession,
 } from "@/lib/admin/session";
@@ -32,7 +32,9 @@ export default function AdminShell({
           className={styles.adminBrand}
           aria-label="Panel DeUna Games"
         >
-          <span>DG</span>
+          <span>
+            <SiteLogoMark size={24} strokeWidth={2.1} />
+          </span>
           <div>
             <strong>DeUna Games</strong>
             <small>Administración privada</small>
@@ -81,7 +83,6 @@ export default function AdminShell({
         tabIndex={-1}
         className={`${styles.adminMain} ${ux.main}`}
       >
-        <AdminContextBar />
         {children}
       </main>
     </div>

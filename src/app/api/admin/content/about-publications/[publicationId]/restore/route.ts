@@ -22,7 +22,7 @@ import {
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const target = "/admin/paginas/quienes-somos";
+const target = "/admin/paginas/quienes-somos?seccion=publicacion";
 
 export async function POST(
   request: NextRequest,
@@ -86,7 +86,7 @@ export async function POST(
     if (result.outcome === "conflict") {
       return adminRedirect(
         authorized.adminOrigin,
-        `${target}?estado=conflicto-publicacion`
+        `${target}&estado=conflicto-publicacion`
       );
     }
 
@@ -96,7 +96,7 @@ export async function POST(
 
     return adminRedirect(
       authorized.adminOrigin,
-      `${target}?estado=${
+      `${target}&estado=${
         result.outcome === "restored"
           ? "publicacion-restaurada"
           : "sin-cambios"
