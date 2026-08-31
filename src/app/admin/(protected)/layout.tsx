@@ -4,6 +4,7 @@ import {
 } from "@/lib/admin/session";
 
 import "../admin-professional.css";
+import "../admin-professional-details.css";
 
 export default async function ProtectedAdminLayout({
   children,
