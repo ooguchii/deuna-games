@@ -50,21 +50,43 @@
   background: #09121c;
   padding: 0 12px;
   color: #91a5bb;
+  transition:
+    color 140ms ease,
+    border-color 140ms ease,
+    background 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.search:hover {
+  border-color: #4b5b6d;
+  background: #0b1520;
 }
 
 .search:focus-within {
-  border-color: color-mix(in srgb, var(--brand) 68%, #ffffff);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 13%, transparent);
+  color: color-mix(in srgb, var(--brand) 68%, #ffffff);
+  border-color: color-mix(in srgb, var(--brand) 58%, #536273);
+  background: color-mix(in srgb, var(--brand) 2.5%, #0b131c);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--brand) 22%, transparent),
+    0 0 0 4px color-mix(in srgb, var(--brand) 7%, transparent);
 }
 
 .search input {
   width: 100%;
   min-height: 46px;
-  border: 0;
-  outline: 0;
-  background: transparent;
+  border: 0 !important;
+  outline: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
   color: #f4f7fb;
   font-size: 14px;
+}
+
+.search input:focus,
+.search input:focus-visible {
+  border: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
 }
 
 .options {
@@ -82,9 +104,16 @@
   min-height: 40px;
   border-radius: 9px;
   padding: 8px 12px;
+  outline: none;
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
+  transition:
+    color 140ms ease,
+    border-color 140ms ease,
+    background 140ms ease,
+    transform 140ms ease,
+    box-shadow 140ms ease;
 }
 
 .option {
@@ -94,16 +123,30 @@
 }
 
 .selected {
-  border: 1px solid rgba(255, 21, 84, 0.58);
-  background: rgba(255, 21, 84, 0.11);
-  color: #ff9bb7;
+  border: 1px solid color-mix(in srgb, var(--brand) 58%, #445363);
+  background: color-mix(in srgb, var(--brand) 11%, #0c151f);
+  color: color-mix(in srgb, var(--brand) 35%, #ffffff);
 }
 
 .option:hover,
+.option:focus-visible {
+  color: #ffffff;
+  border-color: color-mix(in srgb, var(--brand) 44%, #536273);
+  background: color-mix(in srgb, var(--brand) 5%, #111b26);
+}
+
 .selected:hover,
+.selected:focus-visible {
+  color: #ffffff;
+  border-color: color-mix(in srgb, var(--brand) 72%, #536273);
+  background: color-mix(in srgb, var(--brand) 15%, #111b26);
+}
+
 .option:focus-visible,
 .selected:focus-visible {
-  border-color: rgba(255, 80, 126, 0.78);
+  box-shadow:
+    0 0 0 2px #0a1118,
+    0 0 0 4px color-mix(in srgb, var(--brand) 58%, #ffffff);
 }
 
 .option small,
@@ -129,5 +172,13 @@
 
   .search input {
     font-size: 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .search,
+  .option,
+  .selected {
+    transition: none;
   }
 }
