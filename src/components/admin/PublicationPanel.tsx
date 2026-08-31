@@ -192,6 +192,7 @@ export default function PublicationPanel({
           <button
             type="submit"
             className={styles.publishButton}
+            data-brand-action="true"
             disabled={!state.hasUnpublishedChanges}
           >
             <Send size={16} aria-hidden="true" />
