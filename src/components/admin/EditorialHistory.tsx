@@ -22,7 +22,7 @@ export default function EditorialHistory({
   currentRevision: number;
 }) {
   return (
-    <section className={styles.historyPanel}>
+    <section className={`${styles.historyPanel} admin-editorial-history`}>
       <div className={styles.sectionHeading}>
         <div>
           <span>RECUPERACIÓN</span>
@@ -33,7 +33,7 @@ export default function EditorialHistory({
         </p>
       </div>
 
-      <ol className={styles.historyList}>
+      <ol className={`${styles.historyList} admin-editorial-history__list`}>
         {revisions.map((revision) => {
           const current =
             revision.revision === currentRevision;
@@ -69,7 +69,10 @@ export default function EditorialHistory({
                     name="expectedRevision"
                     value={currentRevision}
                   />
-                  <button type="submit">
+                  <button
+                    type="submit"
+                    className="admin-history-action"
+                  >
                     Restaurar
                   </button>
                 </form>
