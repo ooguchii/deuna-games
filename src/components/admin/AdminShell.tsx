@@ -28,10 +28,6 @@ export default function AdminShell({
 
   return (
     <div className={`${styles.shell} ${ux.shell}`}>
-      <a href="#main-content" className={ux.skipLink}>
-        Saltar al contenido principal
-      </a>
-
       <aside className={`${styles.sidebar} ${ux.sidebar}`}>
         <Link
           href="/admin"
