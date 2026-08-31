@@ -58,7 +58,7 @@ export default function GameAccountActions({
       <div className={styles.signedOut}>
         <span>
           <ListPlus size={16} aria-hidden="true" />
-          Guardá este juego en Mi DeUna
+          Guarda este juego en Mi DeUna
         </span>
         <Link href="/cuenta?modo=entrar">
           Entrar para guardar
