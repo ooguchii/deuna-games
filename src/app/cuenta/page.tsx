@@ -99,13 +99,6 @@ export default async function AccountPage() {
       return (
         <main className={styles.page}>
           <div className={styles.shell}>
-            <AccountProfileClient
-              profile={{
-                ...profile,
-                createdAt: profile.createdAt.toISOString(),
-              }}
-            />
-
             <AccountPersonalizationClient
               games={games.map((game) => ({
                 slug: game.slug,
@@ -147,6 +140,13 @@ export default async function AccountPage() {
                 title: entry.game.title,
                 reasons: entry.reasons,
               }))}
+            />
+
+            <AccountProfileClient
+              profile={{
+                ...profile,
+                createdAt: profile.createdAt.toISOString(),
+              }}
             />
           </div>
         </main>
