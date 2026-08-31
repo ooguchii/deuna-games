@@ -11,6 +11,7 @@ import {
 import { useRouter } from "next/navigation";
 import {
   type FormEvent,
+  type KeyboardEvent,
   useState,
 } from "react";
 
@@ -23,6 +24,12 @@ type ApiResult = {
   error?: string;
   recoveryCodes?: string[];
 };
+
+const accountModes: readonly Mode[] = [
+  "login",
+  "register",
+  "recover",
+];
 
 async function postForm(
   url: string,
@@ -64,6 +71,40 @@ export default function AccountAccessClient() {
   const [message, setMessage] = useState<string | null>(null);
   const [recoveryCodes, setRecoveryCodes] = useState<string[] | null>(null);
   const [copied, setCopied] = useState(false);
+
+  function selectMode(nextMode: Mode) {
+    setMode(nextMode);
+    setMessage(null);
+  }
+
+  function handleTabKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
+    let nextIndex: number | null = null;
+    const currentIndex = accountModes.indexOf(mode);
+
+    switch (event.key) {
+      case "ArrowRight":
+      case "ArrowDown":
+        nextIndex = (currentIndex + 1) % accountModes.length;
+        break;
+      case "ArrowLeft":
+      case "ArrowUp":
+        nextIndex = (currentIndex - 1 + accountModes.length) % accountModes.length;
+        break;
+      case "Home":
+        nextIndex = 0;
+        break;
+      case "End":
+        nextIndex = accountModes.length - 1;
+        break;
+      default:
+        return;
+    }
+
+    event.preventDefault();
+    const nextMode = accountModes[nextIndex]!;
+    selectMode(nextMode);
+    document.getElementById(`account-tab-${nextMode}`)?.focus();
+  }
 
   function openProfile() {
     router.replace("/cuenta");
@@ -205,45 +246,54 @@ export default function AccountAccessClient() {
     <section className={styles.card} aria-label="Acceso a cuenta">
       <div className={styles.tabs} role="tablist" aria-label="Opciones de cuenta">
         <button
+          id="account-tab-login"
           type="button"
           role="tab"
           aria-selected={mode === "login"}
+          aria-controls="account-panel-login"
+          tabIndex={mode === "login" ? 0 : -1}
           data-active={mode === "login"}
-          onClick={() => {
-            setMode("login");
-            setMessage(null);
-          }}
+          onKeyDown={handleTabKeyDown}
+          onClick={() => selectMode("login")}
         >
           Entrar
         </button>
         <button
+          id="account-tab-register"
           type="button"
           role="tab"
           aria-selected={mode === "register"}
+          aria-controls="account-panel-register"
+          tabIndex={mode === "register" ? 0 : -1}
           data-active={mode === "register"}
-          onClick={() => {
-            setMode("register");
-            setMessage(null);
-          }}
+          onKeyDown={handleTabKeyDown}
+          onClick={() => selectMode("register")}
         >
           Crear cuenta
         </button>
         <button
+          id="account-tab-recover"
           type="button"
           role="tab"
           aria-selected={mode === "recover"}
+          aria-controls="account-panel-recover"
+          tabIndex={mode === "recover" ? 0 : -1}
           data-active={mode === "recover"}
-          onClick={() => {
-            setMode("recover");
-            setMessage(null);
-          }}
+          onKeyDown={handleTabKeyDown}
+          onClick={() => selectMode("recover")}
         >
           Recuperar
         </button>
       </div>
 
       {mode === "login" && (
-        <form className={styles.form} onSubmit={handleLogin}>
+        <form
+          id="account-panel-login"
+          className={styles.form}
+          role="tabpanel"
+          aria-labelledby="account-tab-login"
+          onSubmit={handleLogin}
+        >
           <div className={styles.formHeader}>
             <h2>Tu cuenta DeUna</h2>
             <p>Entra sólo con usuario y contraseña. No necesitas correo.</p>
@@ -283,7 +333,13 @@ export default function AccountAccessClient() {
       )}
 
       {mode === "register" && (
-        <form className={styles.form} onSubmit={handleRegister}>
+        <form
+          id="account-panel-register"
+          className={styles.form}
+          role="tabpanel"
+          aria-labelledby="account-tab-register"
+          onSubmit={handleRegister}
+        >
           <div className={styles.formHeader}>
             <h2>Crea una cuenta mínima</h2>
             <p>Sólo usuario y contraseña son obligatorios. El resto lo decides tú.</p>
@@ -367,7 +423,13 @@ export default function AccountAccessClient() {
       )}
 
       {mode === "recover" && (
-        <form className={styles.form} onSubmit={handleRecover}>
+        <form
+          id="account-panel-recover"
+          className={styles.form}
+          role="tabpanel"
+          aria-labelledby="account-tab-recover"
+          onSubmit={handleRecover}
+        >
           <div className={styles.formHeader}>
             <h2>Recupera sin correo</h2>
             <p>Usa uno de los códigos que recibiste al crear la cuenta.</p>
