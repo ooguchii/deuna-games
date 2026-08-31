@@ -55,7 +55,7 @@
 
 .addButton {
   flex-shrink: 0;
-  color: #ffd0db;
+  color: color-mix(in srgb, var(--brand) 34%, #ffffff);
   border: 1px solid color-mix(in srgb, var(--brand) 38%, #465463);
   background: color-mix(in srgb, var(--brand) 7%, #0d151e);
 }
@@ -160,13 +160,15 @@
 }
 
 .sourceToolbar .visibilityButton {
-  color: #efb5c3;
-  border-color: rgba(255, 92, 130, 0.28);
+  color: color-mix(in srgb, var(--brand) 38%, #ffffff);
+  border-color: color-mix(in srgb, var(--brand) 36%, #354250);
+  background: color-mix(in srgb, var(--brand) 6%, #0b1118);
 }
 
 .source[data-enabled="false"] .visibilityButton {
   color: #8b96a2;
   border-color: #354250;
+  background: #0b1118;
 }
 
 .hrefField {
