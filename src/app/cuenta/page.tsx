@@ -35,7 +35,7 @@ import {
 } from "@/lib/updates/public-updates";
 
 import AccountAccessClient from "./AccountAccessClient";
-import AccountPersonalizationClient from "./AccountPersonalizationClient";
+import AccountDashboardClient from "./AccountProfileClient";
 import styles from "./account.module.css";
 
 export const dynamic = "force-dynamic";
@@ -134,7 +134,7 @@ export default async function AccountPage() {
 
       return (
         <main className={styles.page} style={{ padding: "14px" }}>
-          <AccountPersonalizationClient
+          <AccountDashboardClient
             profile={{
               ...profile,
               createdAt: profile.createdAt.toISOString(),
