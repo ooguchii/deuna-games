@@ -1,25 +1,47 @@
 import type { Metadata } from "next";
 import {
+  BellRing,
+  Cpu,
+  Gamepad2,
   LockKeyhole,
   ShieldCheck,
+  Sparkles,
   UserRound,
 } from "lucide-react";
 
+import {
+  cpuCatalog,
+  gpuCatalog,
+} from "@/features/game-finder/hardware-catalog";
+import {
+  getAccountPersonalization,
+} from "@/lib/accounts/personalization-service";
 import {
   getAccountProfile,
 } from "@/lib/accounts/service";
 import {
   readAccountSession,
 } from "@/lib/accounts/session";
+import {
+  getPublicGames,
+} from "@/lib/games/public-catalog";
+import {
+  hasRecommendationSignals,
+  rankPersonalizedRecommendations,
+} from "@/lib/home/account-personalization";
+import {
+  getPublicResolvedUpdates,
+} from "@/lib/updates/public-updates";
 
 import AccountAccessClient from "./AccountAccessClient";
+import AccountPersonalizationClient from "./AccountPersonalizationClient";
 import AccountProfileClient from "./AccountProfileClient";
 import styles from "./account.module.css";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Cuenta",
+  title: "Mi DeUna",
   robots: {
     index: false,
     follow: false,
@@ -30,9 +52,50 @@ export default async function AccountPage() {
   const session = await readAccountSession();
 
   if (session) {
-    const profile = await getAccountProfile(session.userId);
+    const [profile, personalization, games, updates] = await Promise.all([
+      getAccountProfile(session.userId),
+      getAccountPersonalization(session.userId),
+      getPublicGames(),
+      getPublicResolvedUpdates(),
+    ]);
 
     if (profile) {
+      const preferenceBySlug = new Map(
+        personalization.preferences.map((preference) => [
+          preference.gameSlug,
+          preference,
+        ])
+      );
+      const notifications = updates.filter((update) => {
+        const preference = preferenceBySlug.get(update.gameSlug);
+
+        if (
+          !preference?.followUpdates ||
+          !preference.followedAt
+        ) {
+          return false;
+        }
+
+        const boundary =
+          preference.updatesSeenThrough ?? preference.followedAt;
+        const publishedAt = Date.parse(update.publishedAt);
+
+        return (
+          Number.isFinite(publishedAt) &&
+          publishedAt > boundary.getTime()
+        );
+      });
+      const recommendations = hasRecommendationSignals(
+        personalization.preferences,
+        personalization.hardware
+      )
+        ? rankPersonalizedRecommendations(
+            games,
+            personalization.preferences,
+            personalization.hardware
+          ).slice(0, 5)
+        : [];
+
       return (
         <main className={styles.page}>
           <div className={styles.shell}>
@@ -41,6 +104,49 @@ export default async function AccountPage() {
                 ...profile,
                 createdAt: profile.createdAt.toISOString(),
               }}
+            />
+
+            <AccountPersonalizationClient
+              games={games.map((game) => ({
+                slug: game.slug,
+                title: game.title,
+                category: game.category,
+              }))}
+              preferences={personalization.preferences.map((preference) => ({
+                gameSlug: preference.gameSlug,
+                favorite: preference.favorite,
+                libraryState: preference.libraryState,
+                followUpdates: preference.followUpdates,
+              }))}
+              hardware={personalization.hardwareSelection
+                ? {
+                    cpuId: personalization.hardwareSelection.cpuId,
+                    gpuId: personalization.hardwareSelection.gpuId,
+                    ramGb: personalization.hardwareSelection.ramGb,
+                    memoryMode: personalization.hardwareSelection.memoryMode,
+                  }
+                : null}
+              cpus={cpuCatalog.map((cpu) => ({
+                id: cpu.id,
+                name: cpu.name,
+              }))}
+              gpus={gpuCatalog.map((gpu) => ({
+                id: gpu.id,
+                name: gpu.name,
+              }))}
+              notifications={notifications.map((update) => ({
+                id: update.id,
+                gameSlug: update.gameSlug,
+                gameTitle: update.game.title,
+                version: update.version,
+                summary: update.summary,
+                publishedAt: update.publishedAt,
+              }))}
+              recommendations={recommendations.map((entry) => ({
+                slug: entry.game.slug,
+                title: entry.game.title,
+                reasons: entry.reasons,
+              }))}
             />
           </div>
         </main>
@@ -53,26 +159,38 @@ export default async function AccountPage() {
       <div className={`${styles.shell} ${styles.hero}`}>
         <section className={styles.intro}>
           <span className={styles.eyebrow}>
-            <ShieldCheck size={16} aria-hidden="true" />
-            CUENTA PRIVADA
+            <Sparkles size={16} aria-hidden="true" />
+            MI DEUNA
           </span>
-          <h1>Una cuenta sin entregar tu identidad.</h1>
+          <h1>Tu DeUna cambia cuando sabe lo que vos elegís guardar.</h1>
           <p>
-            DeUna sólo necesita un nombre de usuario y una contraseña. Puedes completar un perfil si quieres, pero no necesitas correo, teléfono ni datos reales para usar tu cuenta.
+            La cuenta sirve para guardar tus juegos, recordar tu PC, seguir actualizaciones y ordenar recomendaciones para vos. No hace falta convertir tu navegación en seguimiento para personalizar la experiencia.
           </p>
 
           <ul className={styles.privacyList}>
             <li>
-              <UserRound size={18} aria-hidden="true" />
-              Usuario y contraseña son los únicos datos obligatorios.
+              <Gamepad2 size={18} aria-hidden="true" />
+              Mis juegos: favoritos, quiero jugarlo, jugando y terminado.
             </li>
             <li>
-              <LockKeyhole size={18} aria-hidden="true" />
-              El correo es opcional y, si lo agregas, se guarda cifrado.
+              <Cpu size={18} aria-hidden="true" />
+              Mi PC: guardá CPU, GPU y RAM para usar el mismo motor de FPS de DeUna sin configurarlo cada vez.
+            </li>
+            <li>
+              <BellRing size={18} aria-hidden="true" />
+              Seguí juegos y recibí avisos internos cuando tengan nuevas actualizaciones publicadas.
             </li>
             <li>
               <ShieldCheck size={18} aria-hidden="true" />
-              No asociamos IP, ubicación, dispositivo ni historial de navegación a tu cuenta.
+              Las recomendaciones usan esas elecciones explícitas, no IP, ubicación ni historial de navegación.
+            </li>
+            <li>
+              <UserRound size={18} aria-hidden="true" />
+              Para crear la cuenta siguen alcanzando usuario y contraseña; el resto es opcional.
+            </li>
+            <li>
+              <LockKeyhole size={18} aria-hidden="true" />
+              El correo continúa siendo opcional y se cifra si decidís agregarlo.
             </li>
           </ul>
         </section>
