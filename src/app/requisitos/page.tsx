@@ -3,10 +3,16 @@ import type { Metadata } from "next";
 import Footer from "@/components/layout/Footer";
 import Header from "@/components/layout/Header";
 import PublicBreadcrumb from "@/components/layout/PublicBreadcrumb";
-import GameFinderClient from "@/features/game-finder/GameFinderClient";
+import AccountAwareGameFinder from "@/features/game-finder/AccountAwareGameFinder";
 import {
   PublicFinderCopyProvider,
 } from "@/features/game-finder/PublicFinderCopyContext";
+import {
+  getAccountHardwareSelection,
+} from "@/lib/accounts/personalization-service";
+import {
+  readAccountSession,
+} from "@/lib/accounts/session";
 import {
   getPublicGames,
 } from "@/lib/games/public-catalog";
@@ -89,12 +95,17 @@ export default async function RequirementsPage({
     games,
     config,
     publicPages,
+    accountSession,
   ] = await Promise.all([
     searchParams,
     getPublicGames(),
     getPublicSiteConfig(),
     getPublicPagesConfig(),
+    readAccountSession(),
   ]);
+  const accountHardware = accountSession
+    ? await getAccountHardwareSelection(accountSession.userId)
+    : null;
   const page = publicPages.finder;
   const pageTitle = `${page.title} ${page.highlight}`;
   const focusedSlug =
@@ -161,9 +172,18 @@ export default async function RequirementsPage({
         />
 
         <PublicFinderCopyProvider copy={page}>
-          <GameFinderClient
+          <AccountAwareGameFinder
             games={games}
             focusedSlug={focusedSlug}
+            accountHardware={accountHardware
+              ? {
+                  cpuId: accountHardware.cpuId,
+                  gpuId: accountHardware.gpuId,
+                  ramGb: accountHardware.ramGb,
+                  memoryMode: accountHardware.memoryMode,
+                  updatedAt: accountHardware.updatedAt.toISOString(),
+                }
+              : null}
           />
         </PublicFinderCopyProvider>
       </main>
