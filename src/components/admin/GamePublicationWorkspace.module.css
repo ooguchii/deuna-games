@@ -121,7 +121,7 @@
 
 .quickActions a:hover {
   border-color: color-mix(in srgb, var(--brand) 50%, #4d5c6b);
-  color: #fff0f4;
+  color: #ffffff;
   background: color-mix(in srgb, var(--brand) 6%, #111b26);
   transform: translateY(-1px);
 }
@@ -383,7 +383,7 @@
 }
 
 .publishButton {
-  color: #fff;
+  color: var(--text-on-brand);
   border: 1px solid color-mix(in srgb, var(--brand) 76%, #ffffff);
   background: linear-gradient(135deg, var(--brand), var(--brand-dark));
   box-shadow:
