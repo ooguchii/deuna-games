@@ -22,9 +22,7 @@ import {
   getAdminSessionHours,
 } from "../../src/lib/admin/database-config.ts";
 
-type PreflightPurpose =
-  | "migration"
-  | "runtime";
+type PreflightPurpose = "migration" | "runtime";
 
 type RoleRow = {
   rolname: string;
@@ -393,18 +391,12 @@ function assert(
 }
 
 function parsePurpose(): PreflightPurpose {
-  const argument = process.argv.find(
-    (value) =>
-      value.startsWith("--purpose=")
+  const argument = process.argv.find((value) =>
+    value.startsWith("--purpose=")
   );
-  const purpose = argument?.slice(
-    "--purpose=".length
-  );
+  const purpose = argument?.slice("--purpose=".length);
 
-  if (
-    purpose !== "migration" &&
-    purpose !== "runtime"
-  ) {
+  if (purpose !== "migration" && purpose !== "runtime") {
     throw new Error(
       "Usa --purpose=migration o --purpose=runtime."
     );
@@ -413,15 +405,11 @@ function parsePurpose(): PreflightPurpose {
   return purpose;
 }
 
-function requiredEnvironment(
-  name: string
-) {
+function requiredEnvironment(name: string) {
   const value = process.env[name]?.trim();
 
   if (!value) {
-    throw new Error(
-      `Falta configurar ${name}.`
-    );
+    throw new Error(`Falta configurar ${name}.`);
   }
 
   return value;
@@ -456,10 +444,7 @@ async function getLocalMigrations() {
       name,
       checksum: checksum(
         await readFile(
-          path.join(
-            migrationsDirectory,
-            name
-          ),
+          path.join(migrationsDirectory, name),
           "utf8"
         )
       ),
@@ -502,7 +487,9 @@ function validateRuntimeEnvironment() {
     process.env.DEUNA_ACCOUNT_SESSION_DAYS?.trim() || "30"
   );
   assert(
-    Number.isInteger(accountDays) && accountDays >= 1 && accountDays <= 90,
+    Number.isInteger(accountDays) &&
+      accountDays >= 1 &&
+      accountDays <= 90,
     "DEUNA_ACCOUNT_SESSION_DAYS debe estar entre 1 y 90."
   );
 
@@ -625,32 +612,32 @@ async function checkPublicBoundary(
          AS runtime_accounts_usage,
        EXISTS (
          SELECT 1
-           FROM pg_database database,
-                LATERAL aclexplode(
-                  COALESCE(
-                    database.datacl,
-                    acldefault('d', database.datdba)
-                  )
-                ) acl
+           FROM pg_database AS database
+           CROSS JOIN LATERAL aclexplode(
+             COALESCE(
+               database.datacl,
+               acldefault('d', database.datdba)
+             )
+           ) AS acl
           WHERE database.datname = current_database()
             AND acl.grantee = 0
        ) AS public_database_access,
        EXISTS (
          SELECT 1
-           FROM pg_namespace namespace,
-                LATERAL aclexplode(
-                  COALESCE(
-                    namespace.nspacl,
-                    acldefault('n', namespace.nspowner)
-                  )
-                ) acl
+           FROM pg_namespace AS namespace
+           CROSS JOIN LATERAL aclexplode(
+             COALESCE(
+               namespace.nspacl,
+               acldefault('n', namespace.nspowner)
+             )
+           ) AS acl
           WHERE namespace.nspname = ANY($2::text[])
             AND acl.grantee = 0
        ) AS public_schema_access,
        EXISTS (
          SELECT 1
-           FROM pg_class object
-           JOIN pg_namespace namespace
+           FROM pg_class AS object
+           JOIN pg_namespace AS namespace
              ON namespace.oid = object.relnamespace
            CROSS JOIN LATERAL aclexplode(
              COALESCE(
@@ -663,7 +650,8 @@ async function checkPublicBoundary(
                  END,
                  object.relowner
                )
-             ) acl
+             )
+           ) AS acl
           WHERE namespace.nspname = ANY($2::text[])
             AND object.relkind IN ('r', 'p', 'S')
             AND acl.grantee = 0
@@ -703,15 +691,14 @@ async function checkRuntimePrivileges(
             has_table_privilege($1, object.oid, 'TRUNCATE') AS can_truncate,
             has_table_privilege($1, object.oid, 'REFERENCES') AS can_references,
             has_table_privilege($1, object.oid, 'TRIGGER') AS can_trigger
-       FROM pg_class object
-       JOIN pg_namespace namespace
+       FROM pg_class AS object
+       JOIN pg_namespace AS namespace
          ON namespace.oid = object.relnamespace
       WHERE namespace.nspname = ANY($2::text[])
         AND object.relkind IN ('r', 'p')
       ORDER BY namespace.nspname, object.relname`,
     [runtimeRole, [...managedSchemas]]
   );
-
   const expectedDeletes = new Set([
     "deuna_accounts.users",
     "deuna_accounts.recovery_codes",
@@ -720,7 +707,8 @@ async function checkRuntimePrivileges(
   ]);
 
   for (const privilege of tablePrivileges.rows) {
-    const objectKey = `${privilege.schema_name}.${privilege.object_name}`;
+    const objectKey =
+      `${privilege.schema_name}.${privilege.object_name}`;
     const deleteExpected = expectedDeletes.has(objectKey);
 
     assert(
@@ -777,8 +765,8 @@ async function checkRuntimePrivileges(
             has_sequence_privilege($1, object.oid, 'USAGE') AS can_usage,
             has_sequence_privilege($1, object.oid, 'SELECT') AS can_select,
             has_sequence_privilege($1, object.oid, 'UPDATE') AS can_update
-       FROM pg_class object
-       JOIN pg_namespace namespace
+       FROM pg_class AS object
+       JOIN pg_namespace AS namespace
          ON namespace.oid = object.relnamespace
       WHERE namespace.nspname = ANY($2::text[])
         AND object.relkind = 'S'
@@ -787,20 +775,20 @@ async function checkRuntimePrivileges(
   );
 
   for (const sequence of sequences.rows) {
-    const key = `${sequence.schema_name}.${sequence.object_name}`;
+    const key =
+      `${sequence.schema_name}.${sequence.object_name}`;
     const expected = expectedSequencePrivileges.has(key);
 
     assert(
-      expected === (sequence.can_usage && sequence.can_select) &&
+      expected ===
+        (sequence.can_usage && sequence.can_select) &&
         !sequence.can_update,
       `Los permisos de la secuencia ${key} no son mínimos.`
     );
   }
 }
 
-async function checkMigrations(
-  pool: Pool
-) {
+async function checkMigrations(pool: Pool) {
   const local = await getLocalMigrations();
   const applied = await pool.query<MigrationRow>(
     `SELECT name, checksum
@@ -829,9 +817,7 @@ async function checkMigrations(
   }
 }
 
-async function checkApplicationState(
-  pool: Pool
-) {
+async function checkApplicationState(pool: Pool) {
   const owner = await pool.query<{
     active_count: number;
   }>(
@@ -874,9 +860,7 @@ async function checkApplicationState(
   );
 }
 
-function safeDatabaseError(
-  error: unknown
-) {
+function safeDatabaseError(error: unknown) {
   const code =
     typeof error === "object" &&
     error !== null &&
@@ -979,10 +963,7 @@ main().catch((error: unknown) => {
     }
   } else if (
     error instanceof Error &&
-    !(
-      typeof error === "object" &&
-      "code" in error
-    )
+    !("code" in error)
   ) {
     console.error(error.message);
   } else {
