@@ -65,6 +65,12 @@ function validateLocalEnvironment() {
   const databaseHost = requiredEnvironment(
     "DEUNA_DATABASE_HOST"
   );
+  const accountDataKey = requiredEnvironment(
+    "DEUNA_ACCOUNT_DATA_KEY"
+  );
+  const accountSessionDays = Number(
+    process.env.DEUNA_ACCOUNT_SESSION_DAYS?.trim() || "30"
+  );
 
   assert(
     siteUrl.origin === "http://localhost:3000" &&
@@ -86,6 +92,17 @@ function validateLocalEnvironment() {
       databaseHost === "::1" ||
       databaseHost.startsWith("/"),
     "PostgreSQL local debe permanecer en loopback o socket local."
+  );
+  assert(
+    /^[A-Za-z0-9_-]{43}$/.test(accountDataKey) &&
+      Buffer.from(accountDataKey, "base64url").length === 32,
+    "DEUNA_ACCOUNT_DATA_KEY debe ser una clave base64url aleatoria de 32 bytes."
+  );
+  assert(
+    Number.isInteger(accountSessionDays) &&
+      accountSessionDays >= 1 &&
+      accountSessionDays <= 90,
+    "DEUNA_ACCOUNT_SESSION_DAYS debe estar entre 1 y 90."
   );
 }
 
@@ -117,12 +134,37 @@ async function checkOwner(pool: Pool) {
   }>(
     `SELECT count(id)::integer AS active_count
        FROM deuna_admin.admin_users
-      WHERE active = true`
+      WHERE active = true
+        AND role = 'owner'`
   );
 
   assert(
     result.rows[0]?.active_count === 1,
     "Debe existir exactamente una cuenta propietaria activa."
+  );
+}
+
+async function checkAccountSchema(pool: Pool) {
+  const result = await pool.query<{
+    schema_name: string | null;
+    users_table: string | null;
+    sessions_table: string | null;
+    recovery_table: string | null;
+  }>(
+    `SELECT
+       to_regnamespace('deuna_accounts')::text AS schema_name,
+       to_regclass('deuna_accounts.users')::text AS users_table,
+       to_regclass('deuna_accounts.sessions')::text AS sessions_table,
+       to_regclass('deuna_accounts.recovery_codes')::text AS recovery_table`
+  );
+  const state = result.rows[0];
+
+  assert(
+    state?.schema_name === "deuna_accounts" &&
+      state.users_table === "deuna_accounts.users" &&
+      state.sessions_table === "deuna_accounts.sessions" &&
+      state.recovery_table === "deuna_accounts.recovery_codes",
+    "La base local no contiene la fundación completa de cuentas privadas."
   );
 }
 
@@ -241,24 +283,23 @@ async function checkPublishedWorkspace(pool: Pool) {
     }
   }
 
-  const history =
-    await pool.query<PublicationCountRow>(
-      `SELECT item.item_type,
-              item.item_key,
-              count(publication.id)::integer AS count
-         FROM deuna_admin.editorial_items AS item
-         LEFT JOIN deuna_admin.editorial_publications AS publication
-           ON publication.item_id = item.id
-        WHERE (item.item_type, item.item_key) IN (
-          ('site_config', 'site'),
-          ('home_config', 'home'),
-          ('about_config', 'about'),
-          ('game_taxonomy', 'games'),
-          ('public_pages_config', 'public-pages')
-        )
-        GROUP BY item.item_type,
-                 item.item_key`
-    );
+  const history = await pool.query<PublicationCountRow>(
+    `SELECT item.item_type,
+            item.item_key,
+            count(publication.id)::integer AS count
+       FROM deuna_admin.editorial_items AS item
+       LEFT JOIN deuna_admin.editorial_publications AS publication
+         ON publication.item_id = item.id
+      WHERE (item.item_type, item.item_key) IN (
+        ('site_config', 'site'),
+        ('home_config', 'home'),
+        ('about_config', 'about'),
+        ('game_taxonomy', 'games'),
+        ('public_pages_config', 'public-pages')
+      )
+      GROUP BY item.item_type,
+               item.item_key`
+  );
 
   for (const [type, key] of expected) {
     const row = history.rows.find(
@@ -313,6 +354,7 @@ async function main() {
   try {
     await checkRuntimeIdentity(pool);
     await checkOwner(pool);
+    await checkAccountSchema(pool);
     await checkSourceContent(pool);
     await checkPublishedWorkspace(pool);
   } finally {
@@ -329,7 +371,7 @@ async function main() {
   }
 
   console.log(
-    `Preflight local: OK (${games.length} juegos, ${gameUpdates.length} actualizaciones, identidad, Portada, Quiénes somos, Catálogos y superficies públicas con snapshots publicados e historial verificados sin modificar datos).`
+    `Preflight local: OK (${games.length} juegos, ${gameUpdates.length} actualizaciones, cuentas privadas, identidad, Portada, Quiénes somos, Catálogos y superficies públicas con snapshots publicados e historial verificados sin modificar datos).`
   );
 }
 
