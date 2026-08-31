@@ -1,0 +1,9 @@
+.brandBadge {
+  color: color-mix(in srgb, var(--brand) 38%, #ffffff);
+  border-color: color-mix(in srgb, var(--brand) 30%, #263442);
+  background: color-mix(in srgb, var(--brand) 7%, transparent);
+}
+
+.brandBadge svg {
+  color: color-mix(in srgb, var(--brand) 52%, #ffffff);
+}
