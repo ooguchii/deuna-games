@@ -232,7 +232,7 @@ export default function AccountProfileClient({
             <div>
               <h2 id="account-delete-title">Eliminar mi cuenta</h2>
               <p>
-                La eliminación es permanente. Se borran el perfil, el correo cifrado, las sesiones y los códigos de recuperación.
+                La eliminación es permanente. Se borran el perfil, el correo cifrado, las sesiones, los códigos de recuperación, Mis juegos y Mi PC.
               </p>
             </div>
 
