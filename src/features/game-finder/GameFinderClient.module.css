@@ -1,5 +1,9 @@
 .finderRoot {
-  --finder-panel: linear-gradient(180deg, rgba(13, 19, 29, 0.95), rgba(7, 11, 17, 0.92));
+  --finder-panel: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--background) 8%, #0d131d),
+    color-mix(in srgb, var(--background) 10%, #070b11)
+  );
   --finder-line: rgba(132, 151, 175, 0.16);
   --finder-line-strong: rgba(166, 184, 207, 0.24);
   --excellent: #19d987;
@@ -21,10 +25,14 @@
 
 .configPanel {
   padding: 26px;
-  border: 1px solid rgba(255, 8, 71, 0.25);
+  border: 1px solid color-mix(in srgb, var(--brand) 25%, transparent);
   border-radius: var(--radius-large);
   background:
-    radial-gradient(520px 240px at 94% 0%, rgba(255, 8, 71, 0.09), transparent 72%),
+    radial-gradient(
+      520px 240px at 94% 0%,
+      color-mix(in srgb, var(--brand) 9%, transparent),
+      transparent 72%
+    ),
     var(--finder-panel);
   box-shadow:
     0 22px 56px rgba(0, 0, 0, 0.28),
@@ -115,8 +123,8 @@
 .configGrid select:focus-visible,
 .filterField select:focus-visible,
 .sortControl select:focus-visible {
-  border-color: rgba(255, 8, 71, 0.48);
-  box-shadow: 0 0 0 3px rgba(255, 8, 71, 0.05);
+  border-color: color-mix(in srgb, var(--brand) 48%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 5%, transparent);
 }
 
 .configField {
@@ -150,13 +158,13 @@
 
 .configPickerTrigger:hover,
 .configPickerTriggerOpen {
-  border-color: rgba(255, 8, 71, 0.36);
-  background: rgba(13, 19, 29, 0.96);
+  border-color: color-mix(in srgb, var(--brand) 36%, transparent);
+  background: color-mix(in srgb, var(--background) 8%, #0d131d);
 }
 
 .configPickerTrigger:focus-visible {
-  border-color: rgba(255, 8, 71, 0.48);
-  box-shadow: 0 0 0 3px rgba(255, 8, 71, 0.05);
+  border-color: color-mix(in srgb, var(--brand) 48%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 5%, transparent);
 }
 
 .configPickerTrigger > svg {
@@ -190,10 +198,12 @@
   width: 100%;
   min-width: min(420px, calc(100vw - 56px));
   overflow: hidden;
-  border: 1px solid rgba(255, 8, 71, 0.28);
+  border: 1px solid color-mix(in srgb, var(--brand) 28%, transparent);
   border-radius: 11px;
-  background: rgba(7, 11, 18, 0.985);
-  box-shadow: 0 22px 55px rgba(0, 0, 0, 0.55), 0 0 42px rgba(255, 8, 71, 0.06);
+  background: color-mix(in srgb, var(--background) 9%, #070b12);
+  box-shadow:
+    0 22px 55px rgba(0, 0, 0, 0.55),
+    0 0 42px color-mix(in srgb, var(--brand) 6%, transparent);
   backdrop-filter: blur(18px);
 }
 
@@ -223,7 +233,7 @@
   border: 1px solid var(--finder-line);
   border-radius: 8px;
   outline: 0;
-  background: rgba(3, 7, 12, 0.9);
+  background: color-mix(in srgb, var(--background) 7%, #03070c);
   font-size: var(--font-xs);
 }
 
@@ -232,8 +242,8 @@
 }
 
 .configPickerSearch input:focus-visible {
-  border-color: rgba(255, 8, 71, 0.5);
-  box-shadow: 0 0 0 3px rgba(255, 8, 71, 0.055);
+  border-color: color-mix(in srgb, var(--brand) 50%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 5.5%, transparent);
 }
 
 .configPickerSearch > span {
@@ -275,12 +285,12 @@
 .configPickerOption:focus-visible {
   color: #fff;
   outline: 0;
-  background: rgba(255, 8, 71, 0.09);
+  background: color-mix(in srgb, var(--brand) 9%, transparent);
 }
 
 .configPickerOptionSelected {
   color: #fff;
-  background: rgba(255, 8, 71, 0.12);
+  background: color-mix(in srgb, var(--brand) 12%, transparent);
 }
 
 .configPickerOption > span {
@@ -362,7 +372,11 @@
   overflow: hidden;
   border: 1px solid var(--finder-line);
   border-radius: var(--radius-large);
-  background: linear-gradient(180deg, rgba(14, 20, 31, 0.94), rgba(5, 9, 15, 0.94));
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--background) 8%, #0e141f),
+    color-mix(in srgb, var(--background) 10%, #05090f)
+  );
   box-shadow: 0 28px 74px rgba(0, 0, 0, 0.22);
 }
 
@@ -423,7 +437,7 @@
   padding: 3px;
   border: 1px solid var(--finder-line);
   border-radius: 9px;
-  background: rgba(6, 10, 16, 0.74);
+  background: color-mix(in srgb, var(--background) 8%, #060a10);
 }
 
 .viewToggle button {
@@ -444,7 +458,7 @@
 
 .viewToggle .viewActive {
   color: var(--brand);
-  background: rgba(255, 8, 71, 0.09);
+  background: color-mix(in srgb, var(--brand) 9%, transparent);
 }
 
 .sortControl {
@@ -469,7 +483,7 @@
   padding: 19px 16px;
   border: 1px solid var(--finder-line);
   border-radius: 11px;
-  background: rgba(6, 10, 16, 0.76);
+  background: color-mix(in srgb, var(--background) 8%, #060a10);
 }
 
 .filtersPanel h3 {
@@ -584,7 +598,7 @@
   color: var(--text-soft);
   border: 1px solid var(--finder-line);
   border-radius: 8px;
-  background: rgba(5, 9, 14, 0.54);
+  background: color-mix(in srgb, var(--background) 7%, #05090e);
   cursor: pointer;
   font-size: 11px;
   font-weight: 760;
@@ -652,7 +666,7 @@
   overflow: visible;
   border: 1px solid var(--finder-line);
   border-radius: 11px;
-  background: rgba(5, 9, 14, 0.92);
+  background: color-mix(in srgb, var(--background) 7%, #05090e);
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.16);
   transform:
     perspective(900px)
@@ -672,7 +686,11 @@
   inset: 0;
   z-index: -1;
   border-radius: inherit;
-  background: radial-gradient(280px circle at var(--pointer-x) var(--pointer-y), rgba(255, 8, 71, 0.2), transparent 58%);
+  background: radial-gradient(
+    280px circle at var(--pointer-x) var(--pointer-y),
+    color-mix(in srgb, var(--brand) 20%, transparent),
+    transparent 58%
+  );
   opacity: 0;
   filter: blur(6px);
   transition: opacity 180ms ease;
@@ -680,11 +698,11 @@
 }
 
 .gameCard:hover {
-  border-color: rgba(255, 8, 71, 0.4);
+  border-color: color-mix(in srgb, var(--brand) 40%, transparent);
   box-shadow:
     0 22px 46px rgba(0, 0, 0, 0.34),
-    0 0 0 1px rgba(255, 8, 71, 0.04),
-    0 0 32px rgba(255, 8, 71, 0.06);
+    0 0 0 1px color-mix(in srgb, var(--brand) 4%, transparent),
+    0 0 32px color-mix(in srgb, var(--brand) 6%, transparent);
 }
 
 .gameCard:hover::before {
@@ -692,10 +710,10 @@
 }
 
 .gameCardSelected {
-  border-color: rgba(255, 8, 71, 0.74);
+  border-color: color-mix(in srgb, var(--brand) 74%, transparent);
   box-shadow:
     0 18px 42px rgba(0, 0, 0, 0.3),
-    0 0 0 1px rgba(255, 8, 71, 0.08);
+    0 0 0 1px color-mix(in srgb, var(--brand) 8%, transparent);
 }
 
 .gameCardMain {
@@ -737,7 +755,11 @@
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(circle at 30% 20%, rgba(255, 8, 71, 0.14), transparent 50%),
+    radial-gradient(
+      circle at 30% 20%,
+      color-mix(in srgb, var(--brand) 14%, transparent),
+      transparent 50%
+    ),
     linear-gradient(135deg, var(--surface-3), var(--surface));
 }
 
@@ -751,7 +773,11 @@
 .gameCardSpotlight {
   position: absolute;
   inset: 0;
-  background: radial-gradient(170px circle at var(--pointer-x) var(--pointer-y), rgba(255, 255, 255, 0.16), transparent 60%);
+  background: radial-gradient(
+    170px circle at var(--pointer-x) var(--pointer-y),
+    rgba(255, 255, 255, 0.16),
+    transparent 60%
+  );
   opacity: 0;
   mix-blend-mode: screen;
   transition: opacity 180ms ease;
@@ -858,7 +884,7 @@
   display: grid;
   place-items: center;
   color: var(--brand-light);
-  border: 1px solid rgba(255, 8, 71, 0.24);
+  border: 1px solid color-mix(in srgb, var(--brand) 24%, transparent);
   border-radius: 8px;
   background: rgba(6, 9, 13, 0.78);
   cursor: pointer;
@@ -872,14 +898,14 @@
 
 .favoriteButton:hover {
   transform: translateY(-1px) scale(1.04);
-  border-color: rgba(255, 8, 71, 0.48);
-  background: rgba(255, 8, 71, 0.12);
+  border-color: color-mix(in srgb, var(--brand) 48%, transparent);
+  background: color-mix(in srgb, var(--brand) 12%, transparent);
 }
 
 .favoriteButtonActive {
   color: var(--brand-light) !important;
-  border-color: rgba(255, 8, 71, 0.5) !important;
-  background: rgba(255, 8, 71, 0.12) !important;
+  border-color: color-mix(in srgb, var(--brand) 50%, transparent) !important;
+  background: color-mix(in srgb, var(--brand) 12%, transparent) !important;
 }
 
 .gameCardList .gameCardMain {
@@ -906,7 +932,7 @@
   color: var(--text-muted);
   border: 1px dashed var(--finder-line);
   border-radius: 10px;
-  background: rgba(6, 10, 16, 0.4);
+  background: color-mix(in srgb, var(--background) 6%, #060a10);
   text-align: center;
 }
 
@@ -939,7 +965,7 @@
   overflow: hidden;
   border: 1px solid var(--finder-line-strong);
   border-radius: 11px;
-  background: rgba(5, 9, 14, 0.94);
+  background: color-mix(in srgb, var(--background) 7%, #05090e);
   box-shadow: 0 18px 44px rgba(0, 0, 0, 0.24);
 }
 
@@ -957,7 +983,7 @@
 .detailShade {
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, transparent 48%, rgba(5, 9, 14, 0.97) 100%);
+  background: linear-gradient(180deg, transparent 48%, color-mix(in srgb, var(--background) 15%, #05090e) 100%);
 }
 
 .detailFavorite {
@@ -970,7 +996,7 @@
   display: grid;
   place-items: center;
   color: var(--brand-light);
-  border: 1px solid rgba(255, 8, 71, 0.3);
+  border: 1px solid color-mix(in srgb, var(--brand) 30%, transparent);
   border-radius: 8px;
   background: rgba(6, 9, 13, 0.8);
   cursor: pointer;
@@ -1021,7 +1047,7 @@
   padding: 0 11px;
   border: 1px solid var(--finder-line);
   border-radius: 7px;
-  background: rgba(8, 13, 20, 0.76);
+  background: color-mix(in srgb, var(--background) 8%, #080d14);
 }
 
 .detailEstimate > span {
@@ -1110,22 +1136,22 @@
 
 .detailPrimaryLink {
   margin-top: 15px;
-  color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-on-brand);
+  border: 1px solid color-mix(in srgb, var(--brand) 76%, #ffffff);
   background: linear-gradient(135deg, var(--brand-light), var(--brand));
-  box-shadow: 0 10px 26px rgba(255, 8, 71, 0.18);
+  box-shadow: 0 10px 26px color-mix(in srgb, var(--brand) 18%, transparent);
 }
 
 .detailPrimaryLink:hover {
   transform: translateY(-1px);
-  box-shadow: 0 14px 32px rgba(255, 8, 71, 0.24);
+  box-shadow: 0 14px 32px color-mix(in srgb, var(--brand) 24%, transparent);
 }
 
 .detailSecondaryLink {
   margin-top: 8px;
   color: var(--text-soft);
   border: 1px solid var(--finder-line);
-  background: rgba(7, 11, 17, 0.65);
+  background: color-mix(in srgb, var(--background) 7%, #070b11);
 }
 
 .detailSecondaryLink:hover {
