@@ -86,6 +86,10 @@ assert(
   ranking[0]?.reasons.some((reason) => reason.startsWith("Coincide con tus gustos:")),
   "El ranking personalizado debe explicar la señal explícita que influyó."
 );
+assert(
+  ranking.every((entry) => entry.reasons.every((reason) => !/\(\+\d/.test(reason))),
+  "Las razones públicas no deben exponer puntos internos del algoritmo."
+);
 
 const followingOnly = {
   ...preference,
@@ -143,6 +147,10 @@ if (cpu && gpu) {
     "El ranking por hardware debe explicar el rango FPS que utilizó."
   );
   assert(
+    hardwareRanking.every((entry) => entry.reasons.every((reason) => !/\(\+\d/.test(reason))),
+    "El ranking de Mi PC tampoco debe exponer puntos internos del algoritmo."
+  );
+  assert(
     hasRecommendationSignals([], hardware),
     "Una PC guardada debe poder personalizar recomendaciones aun sin biblioteca."
   );
@@ -157,5 +165,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  "Personalización de cuentas: OK (afinidad explícita, seguimiento no inferido como gusto, exclusión de biblioteca y ranking por el motor real de FPS verificados)."
+  "Personalización de cuentas: OK (afinidad explícita, seguimiento no inferido como gusto, exclusión de biblioteca, razones públicas y ranking por el motor real de FPS verificados)."
 );
