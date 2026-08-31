@@ -5,10 +5,10 @@ import {
   Copy,
   KeyRound,
   LockKeyhole,
-  Mail,
   ShieldCheck,
   UserRound,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import {
   type FormEvent,
   useState,
@@ -36,9 +36,8 @@ async function postForm(
     body: new URLSearchParams(fields).toString(),
     credentials: "same-origin",
   });
-  const data = (await response.json()) as ApiResult;
 
-  return { response, data };
+  return (await response.json()) as ApiResult;
 }
 
 function errorMessage(error: string | undefined) {
@@ -59,11 +58,17 @@ function errorMessage(error: string | undefined) {
 }
 
 export default function AccountAccessClient() {
+  const router = useRouter();
   const [mode, setMode] = useState<Mode>("login");
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [recoveryCodes, setRecoveryCodes] = useState<string[] | null>(null);
   const [copied, setCopied] = useState(false);
+
+  function openProfile() {
+    router.replace("/cuenta");
+    router.refresh();
+  }
 
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -73,7 +78,7 @@ export default function AccountAccessClient() {
     const form = new FormData(event.currentTarget);
 
     try {
-      const { data } = await postForm("/api/account/login", {
+      const data = await postForm("/api/account/login", {
         username: String(form.get("username") ?? ""),
         password: String(form.get("password") ?? ""),
       });
@@ -83,7 +88,7 @@ export default function AccountAccessClient() {
         return;
       }
 
-      window.location.assign("/cuenta");
+      openProfile();
     } catch {
       setMessage("No se pudo conectar con el servicio de cuentas.");
     } finally {
@@ -99,7 +104,7 @@ export default function AccountAccessClient() {
     const form = new FormData(event.currentTarget);
 
     try {
-      const { data } = await postForm("/api/account/register", {
+      const data = await postForm("/api/account/register", {
         username: String(form.get("username") ?? ""),
         password: String(form.get("password") ?? ""),
         displayName: String(form.get("displayName") ?? ""),
@@ -128,7 +133,7 @@ export default function AccountAccessClient() {
     const form = new FormData(event.currentTarget);
 
     try {
-      const { data } = await postForm("/api/account/recover", {
+      const data = await postForm("/api/account/recover", {
         username: String(form.get("username") ?? ""),
         recoveryCode: String(form.get("recoveryCode") ?? ""),
         newPassword: String(form.get("newPassword") ?? ""),
@@ -186,7 +191,7 @@ export default function AccountAccessClient() {
             <button
               type="button"
               className={styles.primaryButton}
-              onClick={() => window.location.assign("/cuenta")}
+              onClick={openProfile}
             >
               Ya los guardé
             </button>
