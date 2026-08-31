@@ -189,7 +189,7 @@ requirePattern(
 );
 requirePattern(
   panel,
-  /no vencen por inactividad mientras la cuenta exista/,
+  /no vencen por inactividad mientras la cuenta exista/i,
   "Rewards debe explicar que el saldo actual no caduca por inactividad."
 );
 requirePattern(
