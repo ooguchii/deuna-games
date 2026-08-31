@@ -28,7 +28,7 @@ const legacyBrandColors = [
   "#ff789e",
 ];
 
-async function collectCssModules(directory) {
+async function collectCssFiles(directory) {
   const entries = await readdir(directory, { withFileTypes: true });
   const files = [];
 
@@ -36,11 +36,11 @@ async function collectCssModules(directory) {
     const fullPath = path.join(directory, entry.name);
 
     if (entry.isDirectory()) {
-      files.push(...await collectCssModules(fullPath));
+      files.push(...await collectCssFiles(fullPath));
       continue;
     }
 
-    if (entry.isFile() && entry.name.endsWith(".module.css")) {
+    if (entry.isFile() && entry.name.endsWith(".css")) {
       files.push(fullPath);
     }
   }
@@ -84,7 +84,7 @@ function directBrandWhiteSelectors(css) {
 }
 
 const files = (
-  await Promise.all(scanRoots.map(collectCssModules))
+  await Promise.all(scanRoots.map(collectCssFiles))
 ).flat();
 
 for (const filePath of files) {
@@ -126,6 +126,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    `UI administrativa: OK (${files.length} módulos CSS revisados recursivamente; escala mínima, marca dinámica y contraste de CTA protegidos).`
+    `UI administrativa: OK (${files.length} hojas CSS revisadas recursivamente; escala mínima, marca dinámica y contraste de CTA protegidos).`
   );
 }
