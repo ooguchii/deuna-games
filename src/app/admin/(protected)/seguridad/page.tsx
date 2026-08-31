@@ -40,7 +40,7 @@ export default async function AdminSecurityPage() {
         </div>
       </header>
 
-      <section className={styles.securityGrid}>
+      <section className={`${styles.securityGrid} admin-security-grid`}>
         <article>
           <span><KeyRound size={22} aria-hidden="true" /></span>
           <div>
@@ -63,7 +63,7 @@ export default async function AdminSecurityPage() {
         </article>
       </section>
 
-      <section className={styles.eventPanel}>
+      <section className={`${styles.eventPanel} admin-event-panel`}>
         <div className={styles.sectionHeading}>
           <div>
             <span>EVENTOS RECIENTES</span>
@@ -72,7 +72,7 @@ export default async function AdminSecurityPage() {
         </div>
 
         {security.events.length > 0 ? (
-          <ol className={styles.eventList}>
+          <ol className={`${styles.eventList} admin-event-list`}>
             {security.events.map((event) => (
               <li key={event.id}>
                 <span aria-hidden="true" />
@@ -98,7 +98,7 @@ export default async function AdminSecurityPage() {
             ))}
           </ol>
         ) : (
-          <p className={styles.emptyState}>
+          <p className={`${styles.emptyState} admin-empty-state`}>
             Todavía no hay eventos administrativos registrados.
           </p>
         )}
