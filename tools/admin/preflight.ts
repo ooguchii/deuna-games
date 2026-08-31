@@ -326,6 +326,57 @@ expectColumns("deuna_accounts", "recovery_codes", "INSERT", [
 expectColumns("deuna_accounts", "recovery_codes", "UPDATE", [
   "used_at",
 ]);
+expectColumns("deuna_accounts", "game_preferences", "SELECT", [
+  "user_id",
+  "game_slug",
+  "favorite",
+  "library_state",
+  "follow_updates",
+  "followed_at",
+  "updates_seen_through",
+  "updated_at",
+]);
+expectColumns("deuna_accounts", "game_preferences", "INSERT", [
+  "user_id",
+  "game_slug",
+  "favorite",
+  "library_state",
+  "follow_updates",
+  "followed_at",
+  "updates_seen_through",
+  "updated_at",
+]);
+expectColumns("deuna_accounts", "game_preferences", "UPDATE", [
+  "favorite",
+  "library_state",
+  "follow_updates",
+  "followed_at",
+  "updates_seen_through",
+  "updated_at",
+]);
+expectColumns("deuna_accounts", "hardware_profiles", "SELECT", [
+  "user_id",
+  "cpu_id",
+  "gpu_id",
+  "ram_gb",
+  "memory_mode",
+  "updated_at",
+]);
+expectColumns("deuna_accounts", "hardware_profiles", "INSERT", [
+  "user_id",
+  "cpu_id",
+  "gpu_id",
+  "ram_gb",
+  "memory_mode",
+  "updated_at",
+]);
+expectColumns("deuna_accounts", "hardware_profiles", "UPDATE", [
+  "cpu_id",
+  "gpu_id",
+  "ram_gb",
+  "memory_mode",
+  "updated_at",
+]);
 
 const expectedSequencePrivileges = new Set([
   "deuna_admin.admin_events_id_seq",
@@ -612,8 +663,7 @@ async function checkPublicBoundary(
                  END,
                  object.relowner
                )
-             )
-           ) acl
+             ) acl
           WHERE namespace.nspname = ANY($2::text[])
             AND object.relkind IN ('r', 'p', 'S')
             AND acl.grantee = 0
@@ -662,11 +712,16 @@ async function checkRuntimePrivileges(
     [runtimeRole, [...managedSchemas]]
   );
 
+  const expectedDeletes = new Set([
+    "deuna_accounts.users",
+    "deuna_accounts.recovery_codes",
+    "deuna_accounts.game_preferences",
+    "deuna_accounts.hardware_profiles",
+  ]);
+
   for (const privilege of tablePrivileges.rows) {
     const objectKey = `${privilege.schema_name}.${privilege.object_name}`;
-    const deleteExpected =
-      objectKey === "deuna_accounts.users" ||
-      objectKey === "deuna_accounts.recovery_codes";
+    const deleteExpected = expectedDeletes.has(objectKey);
 
     assert(
       privilege.can_delete === deleteExpected &&
