@@ -5,11 +5,11 @@
   align-items: center;
   margin-top: 20px;
   padding: 16px 18px;
-  border: 1px solid rgba(255, 73, 124, 0.28);
+  border: 1px solid color-mix(in srgb, var(--brand) 28%, #344052);
   border-radius: 14px;
   background:
-    radial-gradient(circle at 8% 15%, rgba(255, 52, 111, 0.12), transparent 34%),
-    linear-gradient(135deg, rgba(17, 25, 39, 0.98), rgba(10, 17, 28, 0.98));
+    radial-gradient(circle at 8% 15%, color-mix(in srgb, var(--brand) 12%, transparent), transparent 34%),
+    linear-gradient(135deg, color-mix(in srgb, var(--background) 10%, #111927), color-mix(in srgb, var(--background) 14%, #0a111c));
 }
 
 .todayIdentity {
@@ -26,8 +26,8 @@
   flex: 0 0 auto;
   place-items: center;
   border-radius: 12px;
-  background: rgba(255, 50, 105, 0.13);
-  color: #ff517f;
+  background: color-mix(in srgb, var(--brand) 13%, transparent);
+  color: color-mix(in srgb, var(--brand) 68%, #ffffff);
 }
 
 .todayIdentity > div {
@@ -38,7 +38,7 @@
 
 .todayIdentity small,
 .rankBadge small {
-  color: #ff668f;
+  color: color-mix(in srgb, var(--brand) 62%, #ffffff);
   font-size: 12px;
   font-weight: 900;
   letter-spacing: 0.08em;
@@ -88,7 +88,8 @@
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #ff2f6c, #ff6a94);
+  background: linear-gradient(90deg, var(--brand-dark), var(--brand-light));
+  box-shadow: 0 0 14px color-mix(in srgb, var(--brand) 18%, transparent);
 }
 
 .todayBalances {
@@ -103,7 +104,7 @@
 }
 
 .todayBalances svg {
-  color: #ff5a86;
+  color: color-mix(in srgb, var(--brand) 66%, #ffffff);
 }
 
 .todayBalances strong {
@@ -137,9 +138,10 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  border: 1px solid #ff3d73;
-  background: linear-gradient(135deg, #ff2f69, #d81750);
-  color: #fff;
+  border: 1px solid color-mix(in srgb, var(--brand) 76%, #ffffff);
+  background: linear-gradient(135deg, var(--brand-light), var(--brand-dark));
+  color: var(--text-on-brand);
+  box-shadow: 0 9px 24px color-mix(in srgb, var(--brand) 16%, transparent);
 }
 
 .claimButton:disabled {
@@ -155,7 +157,7 @@
 
 .claimButton:focus-visible,
 .openRewards:focus-visible {
-  outline: 3px solid rgba(255, 255, 255, 0.16);
+  outline: 3px solid color-mix(in srgb, var(--brand) 30%, #ffffff);
   outline-offset: 2px;
 }
 
@@ -171,7 +173,7 @@
   padding: 22px;
   border: 1px solid #253044;
   border-radius: 14px;
-  background: linear-gradient(180deg, rgba(14, 22, 35, 0.98), rgba(9, 15, 25, 0.98));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--background) 9%, #0e1623), color-mix(in srgb, var(--background) 12%, #091019));
 }
 
 .rewardsHeader {
@@ -184,7 +186,7 @@
 .rewardsHeader > div:first-child > span {
   display: block;
   margin-bottom: 7px;
-  color: #ff4f80;
+  color: color-mix(in srgb, var(--brand) 68%, #ffffff);
   font-size: 12px;
   font-weight: 900;
   letter-spacing: 0.14em;
@@ -211,10 +213,10 @@
   gap: 10px;
   min-width: 170px;
   padding: 12px 14px;
-  border: 1px solid rgba(255, 74, 125, 0.27);
+  border: 1px solid color-mix(in srgb, var(--brand) 27%, #344052);
   border-radius: 11px;
-  background: rgba(255, 47, 105, 0.06);
-  color: #ff5d88;
+  background: color-mix(in srgb, var(--brand) 6%, transparent);
+  color: color-mix(in srgb, var(--brand) 68%, #ffffff);
 }
 
 .rankBadge > div {
@@ -242,7 +244,7 @@
   border: 1px solid #263146;
   border-radius: 11px;
   background: #0a111c;
-  color: #ff4f7d;
+  color: color-mix(in srgb, var(--brand) 68%, #ffffff);
 }
 
 .rewardStats article > div {
@@ -292,7 +294,7 @@
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  color: #ff4e7e;
+  color: color-mix(in srgb, var(--brand) 68%, #ffffff);
 }
 
 .cardTitle h2 {
@@ -311,7 +313,7 @@
 }
 
 .cardTitle > strong {
-  color: #ff6c94;
+  color: color-mix(in srgb, var(--brand) 62%, #ffffff);
   font-size: 14px;
 }
 
@@ -335,9 +337,9 @@
 }
 
 .dailyDay[data-active="true"] {
-  border-color: rgba(255, 69, 121, 0.72);
-  background: rgba(255, 44, 102, 0.08);
-  box-shadow: inset 0 0 0 1px rgba(255, 74, 124, 0.1);
+  border-color: color-mix(in srgb, var(--brand) 72%, #405064);
+  background: color-mix(in srgb, var(--brand) 8%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--brand) 10%, transparent);
 }
 
 .dailyDay span,
@@ -358,7 +360,7 @@
 }
 
 .dailyDay i {
-  color: #ff628d;
+  color: color-mix(in srgb, var(--brand) 64%, #ffffff);
 }
 
 .rewardColumns {
@@ -397,7 +399,7 @@
 }
 
 .weeklyProgress i[data-complete="true"] {
-  background: linear-gradient(90deg, #ff2f6b, #ff6a94);
+  background: linear-gradient(90deg, var(--brand-dark), var(--brand-light));
 }
 
 .weeklyProgress strong {
@@ -439,8 +441,8 @@
   flex: 0 0 auto;
   place-items: center;
   border-radius: 9px;
-  background: rgba(255, 54, 107, 0.1);
-  color: #ff5c88;
+  background: color-mix(in srgb, var(--brand) 10%, transparent);
+  color: color-mix(in srgb, var(--brand) 64%, #ffffff);
 }
 
 .milestoneGrid article[data-complete="true"] .milestoneCheck {
@@ -467,7 +469,7 @@
 }
 
 .milestoneGrid small {
-  color: #ff6a93;
+  color: color-mix(in srgb, var(--brand) 60%, #ffffff);
   font-size: 12px;
 }
 
@@ -496,8 +498,8 @@
   height: 34px;
   place-items: center;
   border-radius: 9px;
-  background: rgba(255, 52, 105, 0.09);
-  color: #ff5b87;
+  background: color-mix(in srgb, var(--brand) 9%, transparent);
+  color: color-mix(in srgb, var(--brand) 64%, #ffffff);
 }
 
 .activityList > div > div {
@@ -516,7 +518,7 @@
 }
 
 .activityList b {
-  color: #ff6a93;
+  color: color-mix(in srgb, var(--brand) 60%, #ffffff);
   font-size: 12px;
   font-weight: 800;
 }
