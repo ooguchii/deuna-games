@@ -1,0 +1,124 @@
+.dashboardChrome {
+  position: relative;
+}
+
+/* El dashboard conserva el espacio de su marca interna, pero la marca visible
+   reutiliza exactamente la identidad del Header. */
+.dashboardChrome :global(aside > div:first-child) {
+  visibility: hidden;
+}
+
+.brandOverlay {
+  position: absolute;
+  z-index: 5;
+  top: 25px;
+  left: 25px;
+}
+
+.backHome {
+  position: absolute;
+  z-index: 5;
+  top: 82px;
+  left: 25px;
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border-radius: 9px;
+  color: #aeb8c8;
+  font-size: 14px;
+  font-weight: 750;
+  text-decoration: none;
+  transition: color 160ms ease, background 160ms ease;
+}
+
+.backHome:hover,
+.backHome:focus-visible {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.055);
+  outline: none;
+}
+
+.dashboardChrome :global(aside nav) {
+  margin-top: 38px;
+}
+
+/* Escala tipográfica: mantiene la misma densidad visual, pero evita microtexto. */
+.dashboardChrome :global(aside nav button) {
+  min-height: 49px !important;
+  font-size: 15px !important;
+}
+
+.dashboardChrome :global(aside nav button b) {
+  font-size: 12px !important;
+}
+
+.dashboardChrome :global(aside > div:last-child strong) {
+  font-size: 14px !important;
+}
+
+.dashboardChrome :global(aside > div:last-child small),
+.dashboardChrome :global(aside > div:last-child span) {
+  font-size: 12px !important;
+}
+
+.dashboardChrome :global(aside > div:last-child button) {
+  font-size: 13px !important;
+}
+
+.dashboardChrome :global(main h1) {
+  font-size: clamp(32px, 3vw, 40px) !important;
+}
+
+.dashboardChrome :global(main h2) {
+  font-size: 17px !important;
+}
+
+.dashboardChrome :global(main p) {
+  font-size: 14px !important;
+}
+
+.dashboardChrome :global(main button) {
+  font-size: 13px !important;
+}
+
+.dashboardChrome :global(main small) {
+  font-size: 12px !important;
+  line-height: 1.45;
+}
+
+.dashboardChrome :global(main a strong) {
+  font-size: 14px !important;
+}
+
+.dashboardChrome :global(main a span) {
+  font-size: 12px !important;
+}
+
+.dashboardChrome :global(main dt),
+.dashboardChrome :global(main dd) {
+  font-size: 12px !important;
+}
+
+.dashboardChrome :global(main label),
+.dashboardChrome :global(main select),
+.dashboardChrome :global(main input),
+.dashboardChrome :global(main textarea) {
+  font-size: 14px !important;
+}
+
+@media (max-width: 980px) {
+  .brandOverlay,
+  .backHome {
+    display: none;
+  }
+
+  .dashboardChrome :global(aside > div:first-child) {
+    visibility: visible;
+  }
+
+  .dashboardChrome :global(aside nav) {
+    margin-top: 0;
+  }
+}
