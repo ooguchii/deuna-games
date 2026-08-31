@@ -1,7 +1,7 @@
 .steps {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 9px;
+  gap: 10px;
   margin: 22px 0 0;
   padding: 0;
   list-style: none;
@@ -18,12 +18,15 @@
   border: 1px solid #354250;
   border-radius: 11px;
   background: #0b121a;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.018);
 }
 
 .steps li[data-active="true"] {
-  border-color: color-mix(in srgb, var(--brand) 55%, #3e4c5a);
-  background: color-mix(in srgb, var(--brand) 9%, #0d151e);
-  box-shadow: inset 0 -3px 0 var(--brand);
+  border-color: color-mix(in srgb, var(--brand) 58%, #3e4c5a);
+  background: color-mix(in srgb, var(--brand) 8%, #0d151e);
+  box-shadow:
+    inset 0 -3px 0 var(--brand),
+    0 8px 22px color-mix(in srgb, var(--brand) 7%, transparent);
 }
 
 .steps li > span {
@@ -31,6 +34,7 @@
   height: 34px;
   display: grid;
   place-items: center;
+  flex-shrink: 0;
   color: #a2afbc;
   border: 1px solid #425060;
   border-radius: 8px;
@@ -41,8 +45,9 @@
 
 .steps li[data-active="true"] > span {
   color: #fff;
-  border-color: var(--brand);
-  background: var(--brand);
+  border-color: color-mix(in srgb, var(--brand) 78%, #fff);
+  background: linear-gradient(135deg, var(--brand), var(--brand-dark));
+  box-shadow: 0 7px 16px color-mix(in srgb, var(--brand) 17%, transparent);
 }
 
 .steps strong,
@@ -53,6 +58,7 @@
 .steps strong {
   color: #e8edf2;
   font-size: 14px;
+  line-height: 1.3;
 }
 
 .steps small {
@@ -64,6 +70,8 @@
 
 .panel {
   margin-top: 16px !important;
+  border-color: #344251 !important;
+  border-radius: 14px !important;
 }
 
 .intro {
@@ -101,12 +109,52 @@
   line-height: 1.6;
 }
 
+.form label > span {
+  color: #c6d0db !important;
+  font-size: 12px !important;
+}
+
 .form label small {
   display: block;
   margin-top: 7px;
   color: #91a0af;
   font-size: 12px;
   line-height: 1.5;
+}
+
+.form input,
+.form textarea,
+.form select {
+  border-color: #354352 !important;
+  border-radius: 10px !important;
+  background: #091019 !important;
+  font-size: 13px !important;
+  transition:
+    border-color 140ms ease,
+    background 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.form input,
+.form select {
+  min-height: 46px !important;
+}
+
+.form input:hover,
+.form textarea:hover,
+.form select:hover {
+  border-color: #465668 !important;
+  background: #0b131c !important;
+}
+
+.form input:focus-visible,
+.form textarea:focus-visible,
+.form select:focus-visible {
+  border-color: color-mix(in srgb, var(--brand) 58%, #536273) !important;
+  background: #0b131c !important;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--brand) 22%, transparent),
+    0 0 0 4px color-mix(in srgb, var(--brand) 7%, transparent) !important;
 }
 
 .titleField,
@@ -127,17 +175,36 @@
 }
 
 .slugControl button {
-  flex: 0 0 auto;
   min-height: 46px;
+  flex: 0 0 auto;
   padding: 0 14px;
-  color: #f2bfcc;
+  color: #e9b5c1;
   border: 1px solid #40505f;
-  border-radius: 8px;
+  border-radius: 9px;
+  outline: none;
   background: #0d161f;
   cursor: pointer;
   font: inherit;
   font-size: 12px !important;
   font-weight: 800;
+  transition:
+    color 140ms ease,
+    border-color 140ms ease,
+    background 140ms ease,
+    transform 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.slugControl button:hover {
+  color: #fff;
+  border-color: color-mix(in srgb, var(--brand) 42%, #52606e);
+  background: color-mix(in srgb, var(--brand) 6%, #121c27);
+  transform: translateY(-1px);
+}
+
+.slugControl button:focus-visible {
+  border-color: color-mix(in srgb, var(--brand) 58%, #536273);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 10%, transparent);
 }
 
 .slugStatusOk,
@@ -179,12 +246,46 @@
 
 .formActions {
   align-items: center;
+  margin-top: 2px;
+  padding-top: 20px !important;
+}
+
+.formActions button {
+  min-height: 46px !important;
+  padding: 0 18px !important;
+  border: 1px solid color-mix(in srgb, var(--brand) 78%, #fff) !important;
+  border-radius: 10px !important;
+  background: linear-gradient(135deg, var(--brand), var(--brand-dark)) !important;
+  box-shadow:
+    0 12px 28px color-mix(in srgb, var(--brand) 17%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  font-size: 13px !important;
+  font-weight: 850 !important;
+  transition:
+    transform 140ms ease,
+    filter 140ms ease,
+    box-shadow 140ms ease,
+    opacity 140ms ease;
+}
+
+.formActions button:hover:not(:disabled) {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+.formActions button:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px #0a1118,
+    0 0 0 4px color-mix(in srgb, var(--brand) 60%, #ffffff),
+    0 12px 28px color-mix(in srgb, var(--brand) 17%, transparent);
 }
 
 .formActions button:disabled {
   cursor: not-allowed;
   filter: grayscale(0.35);
   opacity: 0.45;
+  transform: none;
 }
 
 .safetyNote {
@@ -202,6 +303,8 @@
 
 .safetyNote p {
   margin: 0;
+  color: #8e9bab !important;
+  font-size: 11.5px !important;
 }
 
 .nextPreview {
@@ -249,7 +352,23 @@
     flex-direction: column;
   }
 
-  .slugControl button {
+  .slugControl button,
+  .formActions button {
     width: 100%;
+  }
+
+  .formActions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .form input,
+  .form textarea,
+  .form select,
+  .slugControl button,
+  .formActions button {
+    transition: none;
   }
 }
