@@ -2,6 +2,9 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
 import {
+  isAccountRegistrationEnabled,
+} from "@/lib/accounts/registration-policy";
+import {
   hasExactAccountFormFields,
   readTrustedAccountForm,
 } from "@/lib/accounts/request-security";
@@ -40,6 +43,10 @@ function json(
 }
 
 export async function POST(request: NextRequest) {
+  if (!isAccountRegistrationEnabled()) {
+    return json({ ok: false, error: "registro_cerrado" }, 503);
+  }
+
   const form = await readTrustedAccountForm(request);
 
   if (!form || !hasExactAccountFormFields(form, fields)) {
