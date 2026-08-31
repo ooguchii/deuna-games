@@ -190,19 +190,18 @@ export default function HeaderClient({
               />
             </button>
 
-            <button
-              type="button"
+            <Link
+              href="/cuenta"
               className={styles.profileButton}
-              aria-label="Perfil (próximamente)"
-              title="Perfil próximamente"
-              disabled
+              aria-label="Cuenta"
+              title="Cuenta"
             >
               <UserRound
                 size={21}
                 strokeWidth={1.8}
                 aria-hidden="true"
               />
-            </button>
+            </Link>
 
             <button
               ref={menuButtonRef}
@@ -271,6 +270,14 @@ export default function HeaderClient({
           >
             <Gamepad2 size={19} aria-hidden="true" />
             Por requisitos
+          </Link>
+
+          <Link
+            href="/cuenta"
+            className={styles.mobileFinder}
+          >
+            <UserRound size={19} aria-hidden="true" />
+            Cuenta
           </Link>
         </div>
       </div>
