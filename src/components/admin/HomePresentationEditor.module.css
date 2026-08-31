@@ -71,12 +71,17 @@
   border-radius: 10px;
   padding: 12px 14px;
   background: rgba(8, 15, 24, 0.82);
+  transition:
+    border-color 140ms ease,
+    background 140ms ease,
+    box-shadow 140ms ease;
 }
 
 .sectionRow:hover,
 .sectionRow:focus-within {
   border-color: #4b5b6d;
   background: #0e1722;
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--brand) 38%, #ffffff);
 }
 
 .sectionIdentity {
@@ -109,6 +114,21 @@
 }
 
 .orderButtons button,
+.visibilityButton,
+.actions button {
+  outline: none;
+  font: inherit;
+  transition:
+    color 140ms ease,
+    border-color 140ms ease,
+    background 140ms ease,
+    transform 140ms ease,
+    filter 140ms ease,
+    box-shadow 140ms ease,
+    opacity 140ms ease;
+}
+
+.orderButtons button,
 .visibilityButton {
   min-height: 40px;
   border: 1px solid #40516a;
@@ -124,15 +144,38 @@
   place-items: center;
 }
 
+.orderButtons button:hover:not(:disabled),
+.visibilityButton:hover {
+  color: #fff;
+  border-color: #58697c;
+  background: #111d29;
+  transform: translateY(-1px);
+}
+
+.orderButtons button:focus-visible,
+.visibilityButton:focus-visible,
+.actions button:focus-visible {
+  box-shadow:
+    0 0 0 2px #0a1118,
+    0 0 0 4px color-mix(in srgb, var(--brand) 58%, #ffffff);
+}
+
 .orderButtons button:disabled {
   cursor: not-allowed;
   opacity: 0.35;
+  transform: none;
 }
 
 .visibilityButton[data-visible="true"] {
   border-color: rgba(66, 211, 146, 0.42);
   background: rgba(66, 211, 146, 0.1);
   color: #82e9ba;
+}
+
+.visibilityButton[data-visible="true"]:hover {
+  border-color: rgba(66, 211, 146, 0.62);
+  background: rgba(66, 211, 146, 0.14);
+  color: #a8f1d1;
 }
 
 .copyGroups {
@@ -145,6 +188,15 @@
   border: 1px solid #344252;
   border-radius: 10px;
   background: rgba(8, 15, 24, 0.7);
+  transition:
+    border-color 140ms ease,
+    background 140ms ease;
+}
+
+.copyGroup:hover,
+.copyGroup:focus-within {
+  border-color: #455668;
+  background: rgba(11, 20, 30, 0.88);
 }
 
 .copyGroup summary {
@@ -153,6 +205,11 @@
   color: #f0f4f8;
   font-size: 14px;
   font-weight: 800;
+}
+
+.copyGroup summary:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--brand) 52%, #ffffff);
 }
 
 .copyFields {
@@ -188,6 +245,16 @@
   padding: 10px 12px;
   outline: none;
   font-size: 14px;
+  transition:
+    border-color 140ms ease,
+    background 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.copyFields input:hover,
+.copyFields textarea:hover {
+  border-color: #516176;
+  background: #0b1520;
 }
 
 .copyFields input:focus-visible,
@@ -205,15 +272,22 @@
 .actions button {
   flex: 0 0 auto;
   min-height: 44px;
-  border: 0;
+  border: 1px solid color-mix(in srgb, var(--brand) 76%, #ffffff);
   border-radius: 9px;
   background: linear-gradient(135deg, var(--brand), var(--brand-dark));
-  box-shadow: 0 10px 24px color-mix(in srgb, var(--brand) 15%, transparent);
+  box-shadow:
+    0 10px 24px color-mix(in srgb, var(--brand) 15%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.11);
   color: #fff;
   padding: 0 19px;
   font-size: 13px;
   font-weight: 800;
   cursor: pointer;
+}
+
+.actions button:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
 }
 
 @media (max-width: 780px) {
@@ -235,5 +309,21 @@
   .copyFields input,
   .copyFields textarea {
     font-size: 16px;
+  }
+
+  .actions button {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sectionRow,
+  .orderButtons button,
+  .visibilityButton,
+  .copyGroup,
+  .copyFields input,
+  .copyFields textarea,
+  .actions button {
+    transition: none;
   }
 }
