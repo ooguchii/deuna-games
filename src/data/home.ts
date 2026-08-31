@@ -6,15 +6,11 @@ import {
 } from "@/lib/home/ranking";
 import type { Game } from "@/types/game";
 
-import { games } from "./games";
 import {
   resolveHomeConfig,
   sourceHomeConfig,
   type HomeConfig,
 } from "./home-config";
-import {
-  resolvedGameUpdates,
-} from "./updates";
 
 export function buildHomeGameCollections(
   catalog: Game[],
@@ -61,25 +57,3 @@ export function buildHomeGameCollections(
     ),
   };
 }
-
-const sourceCollections =
-  buildHomeGameCollections(games);
-
-/*
- * Exportaciones estáticas conservadas durante la migración.
- * La Home pública usa buildHomeGameCollections con el catálogo publicado.
- */
-export const heroGames = sourceCollections.heroGames;
-export const popularGames = sourceCollections.popularGames;
-export const recentGames = sourceCollections.recentGames;
-export const lowSpecGames = sourceCollections.lowSpecGames;
-export const recommendedGames =
-  sourceCollections.recommendedGames;
-
-export const latestUpdates =
-  resolvedGameUpdates.slice(
-    0,
-    3
-  );
-
-export { games };
