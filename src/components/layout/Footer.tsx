@@ -56,6 +56,7 @@ export default async function Footer() {
           <h3>{config.shortName}</h3>
 
           <Link href="/quienes-somos">Quiénes somos</Link>
+          <Link href="/privacidad">Privacidad</Link>
         </div>
       </div>
 
