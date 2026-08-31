@@ -2,6 +2,7 @@ import AdminShell from "@/components/admin/AdminShell";
 import {
   verifyAdminSession,
 } from "@/lib/admin/session";
+import { getPublicSiteConfig } from "@/lib/site/public-site-config";
 
 import "../admin-professional.css";
 import "../admin-professional-details.css";
@@ -12,10 +13,17 @@ export default async function ProtectedAdminLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const session = await verifyAdminSession();
+  const [session, siteConfig] = await Promise.all([
+    verifyAdminSession(),
+    getPublicSiteConfig(),
+  ]);
 
   return (
-    <AdminShell session={session}>
+    <AdminShell
+      session={session}
+      siteName={siteConfig.name}
+      siteShortName={siteConfig.shortName}
+    >
       <div className="admin-professional">
         {children}
       </div>
