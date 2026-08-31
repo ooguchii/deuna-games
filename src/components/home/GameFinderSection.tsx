@@ -56,6 +56,7 @@ export default function GameFinderSection({
       <Link
         href="/requisitos"
         className={styles.button}
+        data-brand-action="true"
       >
         {copy.cta}
         <ChevronRight size={21} />
