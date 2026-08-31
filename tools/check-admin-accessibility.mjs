@@ -24,6 +24,11 @@ const [
   updatesCatalog,
   dashboard,
   publicationOverview,
+  protectedLayout,
+  themeContract,
+  taxonomySelectCss,
+  platformCss,
+  newGameCss,
 ] = await Promise.all([
   source("src/components/admin/AdminShell.tsx"),
   source("src/components/admin/AdminShellUx.module.css"),
@@ -32,6 +37,11 @@ const [
   source("src/components/admin/AdminUpdatesCatalog.tsx"),
   source("src/app/admin/(protected)/page.tsx"),
   source("src/lib/admin/publication-overview.ts"),
+  source("src/app/admin/(protected)/layout.tsx"),
+  source("src/app/admin/admin-theme-contract.css"),
+  source("src/components/admin/GameTaxonomyMultiSelect.module.css"),
+  source("src/components/admin/GamePlatformEditor.module.css"),
+  source("src/components/admin/NewGameForm.module.css"),
 ]);
 
 assert(
@@ -49,6 +59,49 @@ assert(
     shellUx.includes("min-height: 44px") &&
     shellUx.includes("font-size: 14px"),
   "El shell administrativo debe conservar foco visible, reducción de movimiento y una escala legible de controles."
+);
+
+assert(
+  shellUx.includes('.main :is(a, button):focus-visible') &&
+    shellUx.includes('.main :is(input, textarea, select):focus-visible') &&
+    shellUx.includes('.main input[type="search"]:focus-visible') &&
+    shellUx.includes("outline: none;") &&
+    shellUx.includes("box-shadow: none;") &&
+    !shellUx.includes("#ff9bb3"),
+  "El shell debe usar un único sistema de foco y los estados activos deben derivar de la marca."
+);
+
+assert(
+  protectedLayout.includes('import "../admin-theme-contract.css"') &&
+    themeContract.includes(':has(> input[type="search"]):focus-within') &&
+    themeContract.includes('input[type="search"]:focus-visible') &&
+    themeContract.includes('button[aria-pressed="true"]') &&
+    themeContract.includes('main#main-content:focus-visible') &&
+    themeContract.includes("var(--admin-brand-text-strong)"),
+  "El área protegida debe cargar el contrato de tema adaptativo para foco, búsqueda y selección."
+);
+
+assert(
+  taxonomySelectCss.includes("color-mix(in srgb, var(--brand)") &&
+    taxonomySelectCss.includes(".search input:focus-visible") &&
+    !taxonomySelectCss.includes("rgba(255, 21, 84") &&
+    !taxonomySelectCss.includes("rgba(255, 80, 126") &&
+    !taxonomySelectCss.includes("#ff9bb7"),
+  "Las selecciones de taxonomía y su buscador deben adaptarse a la marca sin conservar el rojo histórico."
+);
+
+assert(
+  platformCss.includes("color-mix(in srgb, var(--brand)") &&
+    !platformCss.includes("#ffe1e8"),
+  "Las plataformas activas deben derivar su color del tema publicado."
+);
+
+assert(
+  newGameCss.includes("color-mix(in srgb, var(--brand)") &&
+    !newGameCss.includes("#ffb2c4") &&
+    !newGameCss.includes("#e9b5c1") &&
+    !newGameCss.includes("#e3a4b3"),
+  "El flujo Nuevo juego no debe conservar acentos rosados fijos en acciones de marca."
 );
 
 assert(
@@ -129,6 +182,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    `Accesibilidad administrativa: OK (${adminCssFiles.length} módulos revisados; escala legible, foco visible, teclado, movimiento reducido y catálogos semánticos).`
+    `Accesibilidad administrativa: OK (${adminCssFiles.length} módulos revisados; escala legible, foco único, tema adaptativo, teclado, movimiento reducido y catálogos semánticos).`
   );
 }
