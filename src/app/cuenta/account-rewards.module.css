@@ -1,0 +1,591 @@
+.todayPanel {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.2fr) minmax(220px, 1fr) minmax(190px, 0.8fr) auto;
+  gap: 18px;
+  align-items: center;
+  margin-top: 20px;
+  padding: 16px 18px;
+  border: 1px solid rgba(255, 73, 124, 0.28);
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 8% 15%, rgba(255, 52, 111, 0.12), transparent 34%),
+    linear-gradient(135deg, rgba(17, 25, 39, 0.98), rgba(10, 17, 28, 0.98));
+}
+
+.todayIdentity {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 12px;
+}
+
+.todayIcon {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 12px;
+  background: rgba(255, 50, 105, 0.13);
+  color: #ff517f;
+}
+
+.todayIdentity > div {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.todayIdentity small,
+.rankBadge small {
+  color: #ff668f;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.todayIdentity strong {
+  overflow: hidden;
+  color: #f8fafc;
+  font-size: 15px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.todayIdentity span,
+.levelProgress span,
+.todayBalances span,
+.claimMessage {
+  color: #96a2b5;
+  font-size: 12px;
+}
+
+.levelProgress {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+}
+
+.levelProgress > div:first-child {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.progressTrack,
+.bigProgress {
+  overflow: hidden;
+  border-radius: 999px;
+  background: #202a3a;
+}
+
+.progressTrack {
+  height: 7px;
+}
+
+.progressTrack i,
+.bigProgress i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #ff2f6c, #ff6a94);
+}
+
+.todayBalances {
+  display: grid;
+  gap: 8px;
+}
+
+.todayBalances span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.todayBalances svg {
+  color: #ff5a86;
+}
+
+.todayBalances strong {
+  color: #fff;
+}
+
+.todayActions {
+  display: grid;
+  gap: 7px;
+  justify-items: stretch;
+}
+
+.claimAction {
+  display: grid;
+  gap: 5px;
+}
+
+.claimButton,
+.openRewards {
+  min-height: 40px;
+  border-radius: 9px;
+  padding: 0 14px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.claimButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid #ff3d73;
+  background: linear-gradient(135deg, #ff2f69, #d81750);
+  color: #fff;
+}
+
+.claimButton:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.openRewards {
+  border: 1px solid #313c50;
+  background: transparent;
+  color: #b7c0cf;
+}
+
+.claimButton:focus-visible,
+.openRewards:focus-visible {
+  outline: 3px solid rgba(255, 255, 255, 0.16);
+  outline-offset: 2px;
+}
+
+.claimMessage {
+  max-width: 220px;
+  line-height: 1.35;
+}
+
+.rewardsView {
+  display: grid;
+  gap: 18px;
+  min-height: calc(100vh - 76px);
+  padding: 22px;
+  border: 1px solid #253044;
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(14, 22, 35, 0.98), rgba(9, 15, 25, 0.98));
+}
+
+.rewardsHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.rewardsHeader > div:first-child > span {
+  display: block;
+  margin-bottom: 7px;
+  color: #ff4f80;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+}
+
+.rewardsHeader h1 {
+  margin: 0;
+  color: #f8fafc;
+  font-size: clamp(28px, 3vw, 36px);
+  letter-spacing: -0.04em;
+}
+
+.rewardsHeader p {
+  max-width: 720px;
+  margin: 8px 0 0;
+  color: #8e99ac;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.rankBadge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 170px;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 74, 125, 0.27);
+  border-radius: 11px;
+  background: rgba(255, 47, 105, 0.06);
+  color: #ff5d88;
+}
+
+.rankBadge > div {
+  display: grid;
+  gap: 2px;
+}
+
+.rankBadge strong {
+  color: #fff;
+  font-size: 14px;
+}
+
+.rewardStats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.rewardStats article {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-height: 72px;
+  padding: 12px 14px;
+  border: 1px solid #263146;
+  border-radius: 11px;
+  background: #0a111c;
+  color: #ff4f7d;
+}
+
+.rewardStats article > div {
+  display: grid;
+  gap: 2px;
+}
+
+.rewardStats strong {
+  color: #fff;
+  font-size: 20px;
+}
+
+.rewardStats span {
+  color: #8995a8;
+  font-size: 12px;
+}
+
+.dailyCard,
+.weeklyCard,
+.levelCard,
+.milestonesCard,
+.activityCard {
+  border: 1px solid #263146;
+  border-radius: 12px;
+  background: #0a111b;
+}
+
+.dailyCard,
+.milestonesCard,
+.activityCard {
+  padding: 18px;
+}
+
+.weeklyCard,
+.levelCard {
+  padding: 16px;
+}
+
+.cardTitle {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.cardTitle > div:first-child {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: #ff4e7e;
+}
+
+.cardTitle h2 {
+  margin: 0;
+  color: #f8fafc;
+  font-size: 16px;
+}
+
+.cardTitle p,
+.weeklyReward,
+.levelCard > p {
+  margin: 5px 0 0;
+  color: #8591a4;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.cardTitle > strong {
+  color: #ff6c94;
+  font-size: 14px;
+}
+
+.dailySchedule {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.dailyDay {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+  place-items: center;
+  padding: 12px 6px;
+  border: 1px solid #293447;
+  border-radius: 9px;
+  background: #080e17;
+  text-align: center;
+}
+
+.dailyDay[data-active="true"] {
+  border-color: rgba(255, 69, 121, 0.72);
+  background: rgba(255, 44, 102, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(255, 74, 124, 0.1);
+}
+
+.dailyDay span,
+.dailyDay small,
+.dailyDay i {
+  font-size: 12px;
+  font-style: normal;
+}
+
+.dailyDay span,
+.dailyDay small {
+  color: #8490a4;
+}
+
+.dailyDay strong {
+  color: #fff;
+  font-size: 18px;
+}
+
+.dailyDay i {
+  color: #ff628d;
+}
+
+.rewardColumns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.completedTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #55db8d;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.weeklyProgress {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.weeklyProgress > div {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 7px;
+  flex: 1;
+}
+
+.weeklyProgress i {
+  height: 9px;
+  border-radius: 999px;
+  background: #263144;
+}
+
+.weeklyProgress i[data-complete="true"] {
+  background: linear-gradient(90deg, #ff2f6b, #ff6a94);
+}
+
+.weeklyProgress strong {
+  color: #fff;
+  font-size: 13px;
+}
+
+.levelCard .bigProgress {
+  height: 10px;
+  margin-top: 20px;
+}
+
+.milestoneGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.milestoneGrid article {
+  display: flex;
+  min-width: 0;
+  gap: 11px;
+  padding: 13px;
+  border: 1px solid #273247;
+  border-radius: 10px;
+  background: #080e17;
+}
+
+.milestoneGrid article[data-complete="true"] {
+  border-color: rgba(80, 219, 139, 0.28);
+  background: rgba(72, 218, 130, 0.045);
+}
+
+.milestoneCheck {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 9px;
+  background: rgba(255, 54, 107, 0.1);
+  color: #ff5c88;
+}
+
+.milestoneGrid article[data-complete="true"] .milestoneCheck {
+  background: rgba(74, 219, 134, 0.1);
+  color: #54dd8c;
+}
+
+.milestoneGrid article > div {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.milestoneGrid strong {
+  color: #f4f7fb;
+  font-size: 13px;
+}
+
+.milestoneGrid p {
+  margin: 0;
+  color: #8591a3;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.milestoneGrid small {
+  color: #ff6a93;
+  font-size: 12px;
+}
+
+.activityList {
+  display: grid;
+  gap: 0;
+  margin-top: 12px;
+}
+
+.activityList > div {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.activityList > div:last-child {
+  border-bottom: 0;
+}
+
+.activityList > div > span {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 9px;
+  background: rgba(255, 52, 105, 0.09);
+  color: #ff5b87;
+}
+
+.activityList > div > div {
+  display: grid;
+  gap: 2px;
+}
+
+.activityList strong {
+  color: #eef2f8;
+  font-size: 13px;
+}
+
+.activityList small {
+  color: #7f8a9d;
+  font-size: 12px;
+}
+
+.activityList b {
+  color: #ff6a93;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.emptyActivity {
+  margin: 0;
+  padding: 18px 0 4px;
+  color: #7e899c;
+  font-size: 12px;
+}
+
+@media (max-width: 1180px) {
+  .todayPanel {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .todayActions {
+    justify-items: start;
+  }
+
+  .rewardStats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .dailySchedule {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .rewardColumns,
+  .milestoneGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 620px) {
+  .todayPanel,
+  .rewardStats,
+  .dailySchedule {
+    grid-template-columns: 1fr;
+  }
+
+  .todayActions,
+  .todayActions > *,
+  .claimButton,
+  .openRewards {
+    width: 100%;
+  }
+
+  .rewardsView {
+    min-height: auto;
+    padding: 16px;
+  }
+
+  .rewardsHeader,
+  .cardTitle {
+    display: grid;
+  }
+
+  .rankBadge {
+    width: fit-content;
+  }
+
+  .activityList > div {
+    grid-template-columns: 34px minmax(0, 1fr);
+  }
+
+  .activityList b {
+    grid-column: 2;
+  }
+}
