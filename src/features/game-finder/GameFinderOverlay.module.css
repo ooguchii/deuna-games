@@ -28,8 +28,8 @@
   isolation: isolate;
 
   width: min(1060px, calc(100vw - 44px));
-  max-height: min(820px, calc(100dvh - 44px));
-  overflow: hidden;
+  max-height: none;
+  overflow: visible;
 
   border: 1px solid rgba(255, 61, 107, 0.3);
   border-radius: 20px;
@@ -65,14 +65,15 @@
     0 0 90px rgba(255, 8, 71, 0.11);
 }
 
-/* El configurador manual vive dentro de este diálogo. Estas reglas elevan su
-   composición sin acoplarla a la lógica de detección ni al modelo de datos. */
+/* El configurador manual vive dentro de este diálogo. En escritorio usa altura
+   natural y overflow visible para que los pickers puedan atravesar el marco
+   sin convertir el modal en una segunda zona de scroll. */
 .dialog > section {
-  max-height: min(820px, calc(100dvh - 44px));
-  overflow: hidden;
+  max-height: none;
+  overflow: visible;
 
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto auto;
 
   padding: 0 !important;
   border: 0 !important;
@@ -184,9 +185,7 @@
 
 .dialog > section > div:nth-child(2) {
   min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-gutter: stable;
+  overflow: visible;
 
   display: grid !important;
   grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
@@ -445,10 +444,13 @@
   .dialog {
     width: min(760px, calc(100vw - 32px));
     max-height: calc(100dvh - 32px);
+    overflow: hidden;
   }
 
   .dialog > section {
     max-height: calc(100dvh - 32px);
+    overflow: hidden;
+    grid-template-rows: auto minmax(0, 1fr) auto;
   }
 
   .dialog > section > div:first-child {
@@ -460,12 +462,34 @@
   }
 
   .dialog > section > div:nth-child(2) {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
     grid-template-columns: 1fr !important;
     padding: 30px 22px 22px !important;
   }
 
   .dialog > section > div:last-child {
     padding: 16px 22px 17px !important;
+  }
+}
+
+@media (min-width: 901px) and (max-height: 760px) {
+  .dialog {
+    max-height: calc(100dvh - 32px);
+    overflow: hidden;
+  }
+
+  .dialog > section {
+    max-height: calc(100dvh - 32px);
+    overflow: hidden;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+  }
+
+  .dialog > section > div:nth-child(2) {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
   }
 }
 
