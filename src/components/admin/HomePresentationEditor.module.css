@@ -278,7 +278,7 @@
   box-shadow:
     0 10px 24px color-mix(in srgb, var(--brand) 15%, transparent),
     inset 0 1px 0 rgba(255, 255, 255, 0.11);
-  color: #fff;
+  color: var(--text-on-brand);
   padding: 0 19px;
   font-size: 13px;
   font-weight: 800;
