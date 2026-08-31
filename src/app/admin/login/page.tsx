@@ -132,7 +132,7 @@ export default async function AdminLoginPage({
             required
           />
 
-          <button type="submit">
+          <button type="submit" className={loginStyles.brandButton}>
             Entrar de forma segura
           </button>
         </form>
