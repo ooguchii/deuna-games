@@ -97,6 +97,7 @@
   color: #a9b4c0;
   border: 1px solid #314050;
   border-radius: 10px;
+  outline: none;
   background: #0a1119;
   cursor: pointer;
   font: inherit;
@@ -104,14 +105,23 @@
     color 150ms ease,
     border-color 150ms ease,
     background 150ms ease,
-    transform 150ms ease;
+    transform 150ms ease,
+    box-shadow 150ms ease;
 }
 
-.collectionTabs button:hover,
-.collectionTabs button:focus-visible {
+.collectionTabs button:hover {
   color: #f4f7fa;
   border-color: #48596a;
   background: #0d151e;
+}
+
+.collectionTabs button:focus-visible {
+  color: #f4f7fa;
+  border-color: color-mix(in srgb, var(--brand) 58%, #536273);
+  background: #0d151e;
+  box-shadow:
+    0 0 0 2px #070b11,
+    0 0 0 4px color-mix(in srgb, var(--brand) 58%, #ffffff);
 }
 
 .collectionTabs button[data-active="true"] {
@@ -143,7 +153,7 @@
 }
 
 .collectionTabs button[data-active="true"] small {
-  color: #ffb4c6;
+  color: color-mix(in srgb, var(--brand) 42%, #ffffff);
 }
 
 .workspace {
@@ -200,20 +210,29 @@
   color: #b8c3ce;
   border: 1px solid #303e4d;
   border-radius: 11px;
+  outline: none;
   background: #091119;
   cursor: pointer;
   font: inherit;
   transition:
     border-color 150ms ease,
     background 150ms ease,
-    transform 150ms ease;
+    transform 150ms ease,
+    box-shadow 150ms ease;
 }
 
-.modeCard:hover,
-.modeCard:focus-visible {
+.modeCard:hover {
   border-color: #4a5b6c;
   background: #0d151e;
   transform: translateY(-1px);
+}
+
+.modeCard:focus-visible {
+  border-color: color-mix(in srgb, var(--brand) 58%, #536273);
+  background: #0d151e;
+  box-shadow:
+    0 0 0 2px #070b11,
+    0 0 0 4px color-mix(in srgb, var(--brand) 58%, #ffffff);
 }
 
 .modeCard[data-active="true"] {
@@ -241,7 +260,7 @@
 }
 
 .modeCard[data-active="true"] .modeIcon {
-  color: #ffd3de;
+  color: color-mix(in srgb, var(--brand) 42%, #ffffff);
   border-color: color-mix(in srgb, var(--brand) 45%, #344454);
   background: color-mix(in srgb, var(--brand) 10%, #111a24);
 }
@@ -264,7 +283,7 @@
 }
 
 .modeCheck {
-  color: #ff9db5;
+  color: color-mix(in srgb, var(--brand) 48%, #ffffff);
 }
 
 .algorithmNote {
@@ -478,6 +497,7 @@
   min-height: 38px;
   border: 1px solid #354454;
   border-radius: 8px;
+  outline: none;
   background: #0c151e;
   color: #a9b6c4;
   cursor: pointer;
@@ -494,12 +514,20 @@
 }
 
 .rowActions button:hover:not(:disabled),
-.rowActions button:focus-visible:not(:disabled),
-.candidateRow > button:hover:not(:disabled),
-.candidateRow > button:focus-visible:not(:disabled) {
+.candidateRow > button:hover:not(:disabled) {
   color: #ffffff;
   border-color: #536579;
   background: #111d29;
+}
+
+.rowActions button:focus-visible:not(:disabled),
+.candidateRow > button:focus-visible:not(:disabled) {
+  color: #ffffff;
+  border-color: color-mix(in srgb, var(--brand) 58%, #536273);
+  background: #111d29;
+  box-shadow:
+    0 0 0 2px #070b11,
+    0 0 0 4px color-mix(in srgb, var(--brand) 58%, #ffffff);
 }
 
 .rowActions button:disabled,
@@ -571,6 +599,25 @@
   border: 1px solid #354555;
   border-radius: 9px;
   background: #081019;
+  transition:
+    color 140ms ease,
+    border-color 140ms ease,
+    background 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.searchBox:hover {
+  border-color: #46586a;
+  background: #0b131c;
+}
+
+.searchBox:focus-within {
+  color: color-mix(in srgb, var(--brand) 68%, #ffffff);
+  border-color: color-mix(in srgb, var(--brand) 58%, #536273);
+  background: color-mix(in srgb, var(--brand) 2.5%, #0b131c);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--brand) 22%, transparent),
+    0 0 0 4px color-mix(in srgb, var(--brand) 7%, transparent);
 }
 
 .searchBox input {
@@ -578,11 +625,18 @@
   min-height: 44px;
   padding: 0;
   border: 0 !important;
-  outline: 0;
+  outline: 0 !important;
   background: transparent !important;
   box-shadow: none !important;
   color: #f4f7fa;
   font-size: 14px;
+}
+
+.searchBox input:focus,
+.searchBox input:focus-visible {
+  border: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
 }
 
 .candidateList {
@@ -658,7 +712,7 @@
 
 .previewCopy span {
   margin-top: 3px;
-  color: #ff9eb5;
+  color: color-mix(in srgb, var(--brand) 42%, #ffffff);
   font-size: 12px;
   font-weight: 750;
 }
@@ -671,7 +725,7 @@
 }
 
 .previewList li > svg {
-  color: #e6a1b2;
+  color: color-mix(in srgb, var(--brand) 46%, #ffffff);
 }
 
 .rankingDetails {
@@ -719,7 +773,7 @@
 }
 
 .rankingTable b {
-  color: #ff9eb5;
+  color: color-mix(in srgb, var(--brand) 42%, #ffffff);
   text-align: right;
 }
 
@@ -782,7 +836,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .collectionTabs button,
-  .modeCard {
+  .modeCard,
+  .searchBox {
     transition: none;
   }
 
