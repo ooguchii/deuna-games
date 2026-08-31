@@ -355,6 +355,8 @@
   margin: 16px 0 0;
   padding: 7px;
   overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scroll-padding-inline: 10px;
   border: 1px solid var(--admin-border, #3b4a59);
   border-radius: 12px;
   background:
