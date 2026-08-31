@@ -32,6 +32,7 @@ const [
   adminBaseCss,
   loginCss,
   identityPreview,
+  identityPreviewCss,
   themeContract,
   taxonomySelectCss,
   platformCss,
@@ -54,6 +55,7 @@ const [
   source("src/app/admin/admin.module.css"),
   source("src/app/admin/login/login.module.css"),
   source("src/components/admin/SiteIdentityPreview.tsx"),
+  source("src/components/admin/SiteIdentityPreview.module.css"),
   source("src/app/admin/admin-theme-contract.css"),
   source("src/components/admin/GameTaxonomyMultiSelect.module.css"),
   source("src/components/admin/GamePlatformEditor.module.css"),
@@ -161,8 +163,13 @@ assert(
 assert(
   identityPreview.includes("shortName: string") &&
     identityPreview.includes("const compactName = shortName.trim() || name") &&
-    identityPreview.includes("{compactName}"),
-  "La vista previa de identidad debe representar también el Nombre corto configurado."
+    identityPreview.includes("brandForeground(brandColor)") &&
+    identityPreview.includes('"--preview-on-brand"') &&
+    identityPreview.includes("{compactName}") &&
+    identityPreviewCss.includes("color: var(--preview-on-brand)") &&
+    identityPreviewCss.includes("background: var(--preview-brand)") &&
+    identityPreviewCss.includes("box-shadow: inset 0 -2px 0 var(--preview-brand)"),
+  "La vista previa de identidad debe representar el Nombre corto y mantener contraste seguro para cualquier color de marca."
 );
 
 assert(
@@ -277,6 +284,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    `Accesibilidad administrativa: OK (${adminCssFiles.length} módulos revisados; identidad dinámica, login accesible, skip-link único, contraste adaptable, escala legible, foco único, tema adaptativo, teclado, movimiento reducido y catálogos semánticos).`
+    `Accesibilidad administrativa: OK (${adminCssFiles.length} módulos revisados; identidad dinámica y contrastada, login accesible, skip-link único, contraste adaptable, escala legible, foco único, tema adaptativo, teclado, movimiento reducido y catálogos semánticos).`
   );
 }
