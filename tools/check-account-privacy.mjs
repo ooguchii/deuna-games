@@ -77,9 +77,12 @@ const migrations = (
 ).join("\n\n");
 
 const accountMigration = await read("database/migrations/009_account_foundation.sql");
+const personalizationMigration = await read("database/migrations/010_account_personalization.sql");
 const usersTable = createTableBlock(accountMigration, "deuna_accounts.users");
 const sessionsTable = createTableBlock(accountMigration, "deuna_accounts.sessions");
 const recoveryTable = createTableBlock(accountMigration, "deuna_accounts.recovery_codes");
+const preferencesTable = createTableBlock(personalizationMigration, "deuna_accounts.game_preferences");
+const hardwareTable = createTableBlock(personalizationMigration, "deuna_accounts.hardware_profiles");
 const adminUsersTable = createTableBlock(migrations, "deuna_admin.admin_users");
 
 requirePattern(
@@ -113,13 +116,15 @@ const forbiddenColumnPatterns = [
   /^\s*(?:user_agent|device|device_id|device_fingerprint|fingerprint)\s+/im,
   /^\s*(?:location|latitude|longitude|postal_code|address|address_line)\s+/im,
   /^\s*(?:phone|telephone|legal_name|document|document_id|date_of_birth|birth_date|gender)\s+/im,
-  /^\s*(?:referrer|referer|navigation_history|browsing_history)\s+/im,
+  /^\s*(?:referrer|referer|navigation_history|browsing_history|view_history|last_viewed_at)\s+/im,
 ];
 
 for (const [tableName, block] of [
   ["users", usersTable],
   ["sessions", sessionsTable],
   ["recovery_codes", recoveryTable],
+  ["game_preferences", preferencesTable],
+  ["hardware_profiles", hardwareTable],
 ]) {
   for (const pattern of forbiddenColumnPatterns) {
     if (pattern.test(block)) {
@@ -154,15 +159,52 @@ forbidPattern(
   /^\s*code\s+(?:text|varchar|char)\b/im,
   "Los códigos de recuperación no pueden persistirse en texto plano."
 );
+
+for (const [name, block] of [
+  ["sessions", sessionsTable],
+  ["recovery_codes", recoveryTable],
+  ["game_preferences", preferencesTable],
+  ["hardware_profiles", hardwareTable],
+]) {
+  requirePattern(
+    block,
+    /REFERENCES\s+deuna_accounts\.users\(id\)\s+ON\s+DELETE\s+CASCADE/i,
+    `deuna_accounts.${name} debe eliminarse por cascada al borrar la cuenta.`
+  );
+}
+
 requirePattern(
-  sessionsTable,
-  /REFERENCES\s+deuna_accounts\.users\(id\)\s+ON\s+DELETE\s+CASCADE/i,
-  "Las sesiones deben eliminarse por cascada al borrar la cuenta."
+  preferencesTable,
+  /^\s*game_slug\s+varchar\(160\)\s+NOT\s+NULL/im,
+  "Mis juegos debe persistir sólo una identidad de catálogo estable."
 );
 requirePattern(
-  recoveryTable,
-  /REFERENCES\s+deuna_accounts\.users\(id\)\s+ON\s+DELETE\s+CASCADE/i,
-  "Los códigos de recuperación deben eliminarse por cascada al borrar la cuenta."
+  preferencesTable,
+  /^\s*favorite\s+boolean\s+NOT\s+NULL/im,
+  "Favoritos debe ser una elección explícita booleana."
+);
+requirePattern(
+  preferencesTable,
+  /^\s*follow_updates\s+boolean\s+NOT\s+NULL/im,
+  "Seguir actualizaciones debe ser una elección explícita booleana."
+);
+forbidPattern(
+  preferencesTable,
+  /(?:click|impression|view_count|play_time|session_count|last_opened)/i,
+  "Mis juegos no puede convertirse en telemetría de uso."
+);
+
+for (const required of ["cpu_id", "gpu_id", "ram_gb", "memory_mode"]) {
+  requirePattern(
+    hardwareTable,
+    new RegExp(`^\\s*${required}\\s+`, "im"),
+    `Mi PC debe contener ${required}.`
+  );
+}
+forbidPattern(
+  hardwareTable,
+  /(?:renderer|vendor|platform|architecture|logical_processors|browser|user_agent|os\s+)/i,
+  "Mi PC sólo puede persistir componentes seleccionados, no detección cruda del navegador."
 );
 
 const privateData = await read("src/lib/accounts/private-data.ts");
@@ -204,6 +246,18 @@ requirePattern(
   "La baja debe exigir verificación de la contraseña actual."
 );
 
+const personalizationService = await read("src/lib/accounts/personalization-service.ts");
+requirePattern(
+  personalizationService,
+  /resolveSavedHardwareProfile[\s\S]*cpuKnowledge:\s*"confirmed"[\s\S]*ramKnowledge:\s*"confirmed"/s,
+  "Mi PC guardada debe resolverse como selección explícitamente confirmada."
+);
+forbidPattern(
+  personalizationService,
+  /user_agent|navigator|geolocation|renderer|logicalProcessors/i,
+  "La personalización de cuenta no debe leer detección cruda ni seguimiento."
+);
+
 const recoverRoute = await read("src/app/api/account/recover/route.ts");
 requirePattern(
   recoverRoute,
@@ -229,6 +283,9 @@ const mutatingRoutes = [
   "recover",
   "register",
   "delete",
+  "games",
+  "hardware",
+  "notifications/seen",
 ];
 for (const route of mutatingRoutes) {
   const content = await read(`src/app/api/account/${route}/route.ts`);
@@ -281,23 +338,42 @@ const deleteGrantMatches = [...migrate.matchAll(
 const expectedDeleteGrants = new Set([
   "deuna_accounts.users",
   "deuna_accounts.recovery_codes",
+  "deuna_accounts.game_preferences",
+  "deuna_accounts.hardware_profiles",
 ]);
 
 if (
   deleteGrantMatches.length !== expectedDeleteGrants.size ||
   deleteGrantMatches.some((name) => !expectedDeleteGrants.has(name))
 ) {
-  fail("El runtime sólo puede recibir DELETE sobre users y recovery_codes de deuna_accounts.");
+  fail("El runtime sólo puede recibir DELETE sobre baja de cuenta, rotación y datos de personalización explícitamente removibles.");
 }
 
 const preflight = await read("tools/admin/preflight.ts");
 for (const table of expectedDeleteGrants) {
   requirePattern(
     preflight,
-    new RegExp(`objectKey\\s*===\\s*"${escapeRegExp(table)}"`),
+    new RegExp(escapeRegExp(`"${table}"`)),
     `El preflight debe verificar explícitamente DELETE sobre ${table}.`
   );
 }
+
+const ranking = await read("src/lib/home/account-personalization.ts");
+requirePattern(
+  ranking,
+  /scoreHomeGame\([\s\S]*"recommended"/s,
+  "Las recomendaciones de cuenta deben reutilizar el ranking editorial existente como base."
+);
+requirePattern(
+  ranking,
+  /estimateGamePerformance\(/,
+  "Las recomendaciones de cuenta deben reutilizar el motor de FPS existente."
+);
+forbidPattern(
+  ranking,
+  /cookie|localStorage|sessionStorage|history|navigator|userAgent/i,
+  "El ranking personalizado sólo puede usar elecciones explícitas y hardware guardado."
+);
 
 const envExamples = [
   await read(".env.example"),
@@ -320,5 +396,5 @@ if (issues.length > 0) {
 }
 
 console.log(
-  `Privacidad de cuentas: OK (${accountSourceFiles.length} archivos de cuenta revisados; minimización, cifrado, separación, recuperación y baja verificadas).`
+  `Privacidad de cuentas: OK (${accountSourceFiles.length} archivos de cuenta revisados; minimización, cifrado, separación, personalización explícita, recuperación y baja verificadas).`
 );
