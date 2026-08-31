@@ -93,10 +93,7 @@ export default function CpuIdentificationAssistant({
   }, []);
 
   useEffect(() => {
-    if (!query.trim()) {
-      setDropdownPosition(null);
-      return;
-    }
+    if (!query.trim()) return;
 
     updateDropdownPosition();
     window.addEventListener("resize", updateDropdownPosition);
@@ -209,17 +206,23 @@ export default function CpuIdentificationAssistant({
               <input
                 id="detected-cpu-search"
                 type="search"
+                role="combobox"
                 value={query}
                 onChange={(event) => {
-                  setQuery(event.target.value);
+                  const nextQuery = event.target.value;
+                  setQuery(nextQuery);
                   setSelectedCpuId("");
                   setSaveError(false);
+                  if (!nextQuery.trim()) {
+                    setDropdownPosition(null);
+                  }
                 }}
                 autoComplete="off"
                 spellCheck={false}
                 placeholder="Buscar CPU: i5 12400, Ryzen 5600, 5800X3D..."
                 aria-controls="detected-cpu-results"
                 aria-expanded={Boolean(query.trim())}
+                aria-autocomplete="list"
               />
             </label>
           </div>
