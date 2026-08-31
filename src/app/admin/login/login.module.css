@@ -7,3 +7,7 @@
 .brandBadge svg {
   color: color-mix(in srgb, var(--brand) 52%, #ffffff);
 }
+
+.brandButton {
+  color: var(--text-on-brand) !important;
+}
