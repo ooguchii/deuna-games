@@ -1,0 +1,286 @@
+.grid {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.72fr) minmax(0, 1.28fr);
+  gap: 22px;
+  align-items: start;
+}
+
+.panel {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  background: rgba(10, 14, 23, 0.92);
+  overflow: hidden;
+}
+
+.panelHeader {
+  padding: 22px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.panelHeader span {
+  color: #ff4a7e;
+  font-size: 12px;
+  font-weight: 850;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.panelHeader h2 {
+  margin: 6px 0 0;
+  font-size: 22px;
+}
+
+.panelHeader p {
+  margin: 8px 0 0;
+  color: #8893a6;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.createForm {
+  display: grid;
+  gap: 16px;
+  padding: 22px;
+}
+
+.field {
+  display: grid;
+  gap: 7px;
+}
+
+.field label {
+  color: #dce1ea;
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.field input {
+  min-height: 44px;
+  box-sizing: border-box;
+  border: 1px solid #2a3344;
+  border-radius: 11px;
+  padding: 0 13px;
+  background: #080c13;
+  color: #f6f8fc;
+  font: inherit;
+  font-size: 14px;
+  outline: none;
+}
+
+.field input:focus {
+  border-color: #ff386f;
+  box-shadow: 0 0 0 3px rgba(255, 56, 111, 0.12);
+}
+
+.field small {
+  color: #737e91;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.optional {
+  margin-left: 5px;
+  color: #6f798c;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.primaryButton,
+.secondaryButton,
+.dangerButton {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 10px;
+  padding: 0 14px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.primaryButton {
+  border: 1px solid #ff2d68;
+  background: #d8134e;
+  color: #fff;
+}
+
+.secondaryButton {
+  border: 1px solid #30394b;
+  background: #0d121c;
+  color: #dce1ea;
+}
+
+.dangerButton {
+  border: 1px solid rgba(255, 77, 99, 0.34);
+  background: rgba(255, 53, 79, 0.08);
+  color: #ff768b;
+}
+
+.primaryButton:focus-visible,
+.secondaryButton:focus-visible,
+.dangerButton:focus-visible {
+  outline: 3px solid rgba(255, 255, 255, 0.18);
+  outline-offset: 2px;
+}
+
+.notice {
+  margin: 0 0 22px;
+  padding: 13px 15px;
+  border: 1px solid rgba(79, 216, 155, 0.24);
+  border-radius: 12px;
+  background: rgba(44, 190, 124, 0.07);
+  color: #9ee5c4;
+  font-size: 13px;
+}
+
+.errorNotice {
+  border-color: rgba(255, 74, 107, 0.28);
+  background: rgba(255, 55, 87, 0.07);
+  color: #ff9aae;
+}
+
+.accountList {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.accountItem {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px;
+  padding: 20px 22px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.065);
+}
+
+.accountItem:last-child {
+  border-bottom: 0;
+}
+
+.accountIdentity {
+  min-width: 0;
+}
+
+.accountTitle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.accountTitle strong {
+  overflow: hidden;
+  color: #f5f7fb;
+  font-size: 15px;
+  text-overflow: ellipsis;
+}
+
+.badge,
+.activeBadge,
+.inactiveBadge {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.badge {
+  border: 1px solid rgba(255, 64, 118, 0.23);
+  background: rgba(255, 56, 111, 0.08);
+  color: #ff7098;
+}
+
+.activeBadge {
+  border: 1px solid rgba(52, 211, 153, 0.22);
+  background: rgba(52, 211, 153, 0.07);
+  color: #72dfb2;
+}
+
+.inactiveBadge {
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(148, 163, 184, 0.06);
+  color: #9ca7b8;
+}
+
+.accountMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px 16px;
+  margin-top: 9px;
+  color: #778296;
+  font-size: 12px;
+}
+
+.accountActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  align-content: start;
+}
+
+.passwordForm {
+  display: flex;
+  gap: 8px;
+}
+
+.passwordForm input {
+  width: 180px;
+  min-height: 42px;
+  box-sizing: border-box;
+  border: 1px solid #2c3547;
+  border-radius: 10px;
+  padding: 0 11px;
+  background: #080c13;
+  color: #f4f6fb;
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+}
+
+.passwordForm input:focus {
+  border-color: #ff386f;
+}
+
+.ownerNote {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #8b96a8;
+  font-size: 12px;
+}
+
+@media (max-width: 980px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .accountItem {
+    grid-template-columns: 1fr;
+  }
+
+  .accountActions {
+    justify-content: flex-start;
+  }
+
+  .passwordForm {
+    width: 100%;
+  }
+
+  .passwordForm input {
+    min-width: 0;
+    flex: 1;
+  }
+}
