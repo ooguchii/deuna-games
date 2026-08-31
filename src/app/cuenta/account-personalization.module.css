@@ -1,0 +1,422 @@
+.personalizationArea {
+  display: grid;
+  gap: 24px;
+  margin-top: 28px;
+}
+
+.personalizationIntro,
+.dashboardPanel {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  background: rgba(12, 16, 26, 0.95);
+}
+
+.personalizationIntro {
+  padding: clamp(24px, 4vw, 36px);
+  background:
+    radial-gradient(circle at 92% 12%, rgba(255, 45, 104, 0.12), transparent 34%),
+    rgba(12, 16, 26, 0.95);
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  color: #ff3b78;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.personalizationIntro h2 {
+  margin: 0;
+  font-size: clamp(28px, 4vw, 42px);
+  letter-spacing: -0.035em;
+}
+
+.personalizationIntro p {
+  max-width: 820px;
+  margin: 12px 0 0;
+  color: #a6afbf;
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.personalizationGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  gap: 24px;
+}
+
+.dashboardPanel {
+  min-width: 0;
+  padding: clamp(20px, 3vw, 28px);
+}
+
+.dashboardHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.dashboardHeading > div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dashboardHeading svg {
+  color: #ff4a7d;
+}
+
+.dashboardHeading h3 {
+  margin: 0;
+  font-size: 18px;
+  letter-spacing: -0.015em;
+}
+
+.counterBadge,
+.successBadge {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.counterBadge {
+  border: 1px solid rgba(255, 66, 124, 0.26);
+  background: rgba(255, 50, 110, 0.08);
+  color: #ff7ca0;
+}
+
+.successBadge {
+  border: 1px solid rgba(46, 217, 143, 0.26);
+  background: rgba(46, 217, 143, 0.08);
+  color: #63e5ae;
+}
+
+.panelCopy,
+.emptyState {
+  margin: 0;
+  color: #8f99aa;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.notificationList,
+.libraryList,
+.recommendationList {
+  display: grid;
+  gap: 10px;
+}
+
+.notificationList {
+  margin-bottom: 16px;
+}
+
+.notificationItem,
+.recommendationItem {
+  display: grid;
+  gap: 5px;
+  padding: 13px 14px;
+  border: 1px solid #222c3b;
+  border-radius: 12px;
+  background: #090e17;
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 160ms ease, transform 160ms ease;
+}
+
+.notificationItem:hover,
+.recommendationItem:hover,
+.notificationItem:focus-visible,
+.recommendationItem:focus-visible {
+  border-color: rgba(255, 61, 116, 0.42);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.notificationItem strong,
+.recommendationItem strong {
+  color: #f4f7fb;
+  font-size: 13px;
+}
+
+.notificationItem span,
+.recommendationItem span {
+  color: #929cac;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.notificationItem time {
+  color: #657085;
+  font-size: 10px;
+}
+
+.hardwareForm,
+.addGameForm {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.hardwareForm {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.addGameForm {
+  grid-template-columns: minmax(180px, 1.2fr) minmax(160px, 0.8fr) auto auto auto;
+  align-items: end;
+  margin-bottom: 20px;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.018);
+}
+
+.hardwareForm label,
+.addGameForm label,
+.preferenceControls label {
+  display: grid;
+  gap: 7px;
+  color: #cfd6e2;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.hardwareForm select,
+.hardwareForm input,
+.addGameForm select,
+.preferenceControls select {
+  width: 100%;
+  min-height: 44px;
+  box-sizing: border-box;
+  border: 1px solid #293244;
+  border-radius: 11px;
+  padding: 0 12px;
+  background: #080c14;
+  color: #f7f9fd;
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+}
+
+.hardwareForm select:focus,
+.hardwareForm input:focus,
+.addGameForm select:focus,
+.preferenceControls select:focus {
+  border-color: #ff386f;
+  box-shadow: 0 0 0 3px rgba(255, 48, 106, 0.12);
+}
+
+.checkControl {
+  display: flex !important;
+  min-height: 44px;
+  align-items: center;
+  gap: 8px !important;
+  cursor: pointer;
+}
+
+.checkControl input {
+  width: 17px;
+  height: 17px;
+  accent-color: #ff2d68;
+}
+
+.dashboardActions,
+.libraryActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.hardwareForm .dashboardActions {
+  grid-column: 1 / -1;
+}
+
+.primaryButton,
+.secondaryButton,
+.textDangerButton,
+.iconButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 11px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.primaryButton,
+.secondaryButton,
+.textDangerButton {
+  min-height: 42px;
+  padding: 0 14px;
+}
+
+.primaryButton {
+  border: 1px solid #ff2d68;
+  background: linear-gradient(135deg, #ff1f5f, #cf0a45);
+  color: #fff;
+}
+
+.secondaryButton {
+  border: 1px solid #2b3547;
+  background: #0b1019;
+  color: #dce2ec;
+}
+
+.textDangerButton {
+  border: 1px solid transparent;
+  background: transparent;
+  color: #ff758d;
+}
+
+.iconButton {
+  width: 38px;
+  height: 38px;
+  border: 1px solid #2b3547;
+  background: #0b1019;
+  color: #8f99aa;
+}
+
+.iconButton[aria-pressed="true"] {
+  border-color: rgba(255, 61, 116, 0.38);
+  color: #ff4a7d;
+  background: rgba(255, 46, 103, 0.08);
+}
+
+.primaryButton:disabled,
+.secondaryButton:disabled,
+.textDangerButton:disabled,
+.iconButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.primaryButton:focus-visible,
+.secondaryButton:focus-visible,
+.textDangerButton:focus-visible,
+.iconButton:focus-visible {
+  outline: 3px solid rgba(255, 255, 255, 0.18);
+  outline-offset: 2px;
+}
+
+.inlineStatus {
+  color: #8ea0b7;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.hardwareForm > .inlineStatus {
+  grid-column: 1 / -1;
+}
+
+.libraryItem {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid #222c3b;
+  border-radius: 14px;
+  background: #090e17;
+}
+
+.libraryTitle {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.libraryTitle > div {
+  display: grid;
+  gap: 4px;
+}
+
+.libraryTitle a {
+  color: #f4f7fb;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.libraryTitle span {
+  color: #758196;
+  font-size: 11px;
+}
+
+.preferenceControls {
+  display: grid;
+  grid-template-columns: minmax(150px, 220px) minmax(220px, 1fr);
+  gap: 14px;
+  align-items: end;
+}
+
+.recommendationList {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 960px) {
+  .personalizationGrid,
+  .recommendationList {
+    grid-template-columns: 1fr;
+  }
+
+  .addGameForm {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .personalizationArea {
+    gap: 18px;
+    margin-top: 20px;
+  }
+
+  .personalizationIntro,
+  .dashboardPanel {
+    padding: 20px;
+    border-radius: 16px;
+  }
+
+  .hardwareForm,
+  .addGameForm,
+  .preferenceControls {
+    grid-template-columns: 1fr;
+  }
+
+  .hardwareForm .dashboardActions,
+  .hardwareForm > .inlineStatus {
+    grid-column: auto;
+  }
+
+  .dashboardActions,
+  .libraryActions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .dashboardActions > button,
+  .libraryActions > button,
+  .addGameForm > button {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .notificationItem,
+  .recommendationItem {
+    transition: none;
+  }
+}
