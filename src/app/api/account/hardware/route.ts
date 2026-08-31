@@ -128,7 +128,11 @@ export async function POST(request: NextRequest) {
       ramGb: Math.round(ramGb * 10) / 10,
       memoryMode: parsed.data.memoryMode,
     });
-    await syncRewardMilestones(session.userId);
+
+    // El premio es una consecuencia idempotente del perfil ya guardado.
+    // Un fallo temporal de Rewards no debe convertir un guardado correcto
+    // de Mi PC en un falso error; la carga de Mi DeUna vuelve a sincronizar.
+    await syncRewardMilestones(session.userId).catch(() => {});
 
     return json({ ok: true });
   } catch {
