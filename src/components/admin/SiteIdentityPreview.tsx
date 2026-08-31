@@ -2,7 +2,10 @@ import type { CSSProperties } from "react";
 import { CheckCircle2 } from "lucide-react";
 
 import SiteLogoMark from "@/components/brand/SiteLogoMark";
-import { safeThemeBackground } from "@/lib/site/brand-foreground";
+import {
+  brandForeground,
+  safeThemeBackground,
+} from "@/lib/site/brand-foreground";
 
 import styles from "./SiteIdentityPreview.module.css";
 
@@ -27,6 +30,7 @@ export default function SiteIdentityPreview({
   const previewStyle = {
     "--preview-bg": appliedThemeColor,
     "--preview-brand": brandColor,
+    "--preview-on-brand": brandForeground(brandColor),
   } as CSSProperties;
   const compactName = shortName.trim() || name;
   const backgroundWasAdapted =
@@ -44,7 +48,9 @@ export default function SiteIdentityPreview({
         <div className={styles.preview} style={previewStyle}>
           <div className={styles.previewHeader}>
             <div className={styles.previewBrand} title={name}>
-              <SiteLogoMark size={20} />
+              <span className={styles.previewLogo} aria-hidden="true">
+                <SiteLogoMark size={18} />
+              </span>
               <strong>{compactName}</strong>
             </div>
             <div className={styles.previewNav} aria-hidden="true">
@@ -57,7 +63,9 @@ export default function SiteIdentityPreview({
           <div className={styles.previewFooter}>
             <small>{footerTagline}</small>
             <div className={styles.previewBrand} title={name}>
-              <SiteLogoMark size={18} />
+              <span className={styles.previewLogo} aria-hidden="true">
+                <SiteLogoMark size={16} />
+              </span>
               <strong>{compactName}</strong>
             </div>
           </div>
