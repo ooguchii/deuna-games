@@ -109,3 +109,43 @@ export function readStoredHardwareProfile() {
     getStoredHardwareSnapshot()
   );
 }
+
+export function storeExplicitHardwareProfile(input: {
+  cpuId: string;
+  gpuId: string;
+  ramGb: number;
+  memoryMode: MemoryMode;
+  updatedAt?: string;
+}) {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  if (
+    !findCpuById(input.cpuId) ||
+    !findGpuById(input.gpuId) ||
+    !Number.isFinite(input.ramGb) ||
+    input.ramGb < 1 ||
+    input.ramGb > 256
+  ) {
+    return false;
+  }
+
+  try {
+    window.localStorage.setItem(
+      PROFILE_STORAGE_KEY,
+      JSON.stringify({
+        cpuId: input.cpuId,
+        gpuId: input.gpuId,
+        ramGb: input.ramGb,
+        os: "Sistema sin confirmar",
+        osConfirmed: false,
+        memoryMode: input.memoryMode,
+        updatedAt: input.updatedAt ?? nowIso(),
+      })
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
