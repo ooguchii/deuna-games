@@ -80,13 +80,17 @@ export default function GameFinderUnifiedHero({
   onViewAll,
 }: GameFinderUnifiedHeroProps) {
   const copy = usePublicFinderCopy();
-  const [cpuConfirmationRequested, setCpuConfirmationRequested] = useState(false);
+  const [cpuConfirmationRequested, setCpuConfirmationRequested] = useState(true);
   const isDetecting = detectionState === "detecting";
   const isReady = detectionState === "ready";
   const isWarning = detectionState === "partial" || detectionState === "error";
+  const detectionFinished =
+    detectionState === "ready" ||
+    detectionState === "partial" ||
+    detectionState === "error";
   const showCpuConfirmation =
     cpuConfirmationRequested &&
-    !isDetecting &&
+    detectionFinished &&
     hardware.cpuKnowledge !== "confirmed";
 
   function handleDetect() {
@@ -253,6 +257,8 @@ export default function GameFinderUnifiedHero({
 
           {showCpuConfirmation && (
             <CpuIdentificationAssistant
+              hardware={hardware}
+              ramLabel={ramLabel}
               onConfirmed={handleCpuConfirmed}
               onCancel={() => setCpuConfirmationRequested(false)}
             />
