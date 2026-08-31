@@ -664,7 +664,9 @@ async function checkRuntimePrivileges(
 
   for (const privilege of tablePrivileges.rows) {
     const objectKey = `${privilege.schema_name}.${privilege.object_name}`;
-    const deleteExpected = objectKey === "deuna_accounts.recovery_codes";
+    const deleteExpected =
+      objectKey === "deuna_accounts.users" ||
+      objectKey === "deuna_accounts.recovery_codes";
 
     assert(
       privilege.can_delete === deleteExpected &&
