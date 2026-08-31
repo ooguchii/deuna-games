@@ -5,6 +5,7 @@ import {
 
 import "../admin-professional.css";
 import "../admin-professional-details.css";
+import "../admin-theme-contract.css";
 
 export default async function ProtectedAdminLayout({
   children,
