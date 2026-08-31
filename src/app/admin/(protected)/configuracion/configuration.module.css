@@ -12,7 +12,7 @@
 
 .sectionIntro {
   margin-bottom: 18px;
-  padding-bottom: 15px;
+  padding-bottom: 16px;
   border-bottom: 1px solid var(--admin-border-soft, #263341);
 }
 
@@ -26,13 +26,16 @@
 .sectionIntro h2 {
   margin-top: 5px;
   color: #f2f5f8;
-  font-size: 20px;
+  font-size: 21px;
+  letter-spacing: -0.015em;
 }
 
 .sectionIntro p {
-  margin-top: 6px;
-  color: #93a1af;
-  font-size: 12px;
+  max-width: 680px;
+  margin-top: 7px;
+  color: #9aa8b6;
+  font-size: 13px;
+  line-height: 1.55;
 }
 
 .colorFields {
@@ -45,37 +48,94 @@
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 14px;
-  padding: 14px;
-  border: 1px solid #2f3e4d;
-  border-radius: 10px;
-  background: #090f17;
+  min-height: 76px;
+  padding: 15px;
+  border: 1px solid #334252;
+  border-radius: 11px;
+  background: linear-gradient(145deg, #0b131c, #091019);
+  transition:
+    border-color 140ms ease,
+    background 140ms ease,
+    box-shadow 140ms ease,
+    transform 140ms ease;
+}
+
+.colorField:hover,
+.colorField:focus-within {
+  border-color: #465769;
+  background: linear-gradient(145deg, #0f1822, #0b131c);
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--brand) 40%, #ffffff);
+  transform: translateY(-1px);
 }
 
 .colorField div {
   display: grid;
-  gap: 4px;
+  gap: 5px;
 }
 
 .colorField strong {
-  color: #e6ebf0;
-  font-size: 13px;
+  color: #edf2f6;
+  font-size: 14px;
+  font-weight: 780;
 }
 
 .colorField span {
-  color: #8795a4;
-  font-size: 11px;
+  color: #8f9dad;
+  font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
 .colorField input[type="color"] {
-  width: 54px;
-  min-height: 42px;
+  width: 58px;
+  min-height: 46px;
   padding: 4px;
-  border-radius: 8px;
+  border: 1px solid #445365;
+  border-radius: 9px;
+  outline: none;
+  background: #0b131c;
   cursor: pointer;
+  transition:
+    border-color 140ms ease,
+    box-shadow 140ms ease,
+    transform 140ms ease;
+}
+
+.colorField input[type="color"]:hover {
+  border-color: color-mix(in srgb, var(--brand) 44%, #58697a);
+}
+
+.colorField input[type="color"]:focus-visible {
+  border-color: color-mix(in srgb, var(--brand) 58%, #ffffff);
+  box-shadow:
+    0 0 0 2px #0a1118,
+    0 0 0 4px color-mix(in srgb, var(--brand) 56%, #ffffff);
 }
 
 @media (max-width: 1040px) {
   .workspace {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .colorField {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .colorField input[type="color"] {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .colorField,
+  .colorField input[type="color"] {
+    transition: none;
+  }
+
+  .colorField:hover,
+  .colorField:focus-within {
+    transform: none;
   }
 }
