@@ -15,6 +15,7 @@ import {
 import {
   resolveDevelopmentAdminRedirect,
 } from "@/lib/admin/local-origin";
+import { getPublicSiteConfig } from "@/lib/site/public-site-config";
 
 import styles from "../admin.module.css";
 
@@ -31,7 +32,11 @@ export default async function AdminLoginPage({
 }: LoginPageProps) {
   if (!isAdminEnabled()) notFound();
 
-  const parameters = await searchParams;
+  const [parameters, config, requestHeaders] = await Promise.all([
+    searchParams,
+    getPublicSiteConfig(),
+    headers(),
+  ]);
   const state = Array.isArray(parameters.estado)
     ? parameters.estado[0]
     : parameters.estado;
@@ -44,7 +49,7 @@ export default async function AdminLoginPage({
         state === "solicitud"
           ? `/admin/login?estado=${state}`
           : "/admin/login",
-      requestHost: (await headers()).get("host"),
+      requestHost: requestHeaders.get("host"),
     });
 
   if (canonicalRedirect) {
@@ -57,6 +62,7 @@ export default async function AdminLoginPage({
       : state === "solicitud"
         ? "La solicitud fue rechazada por seguridad. Vuelve a abrir esta página e inténtalo otra vez."
         : null;
+  const compactName = config.shortName.trim() || config.name;
 
   return (
     <main
@@ -77,10 +83,10 @@ export default async function AdminLoginPage({
         </span>
 
         <h1 id="admin-login-title">
-          Panel de administración
+          Panel de {compactName}
         </h1>
         <p>
-          Esta zona requiere la VPN privada y la cuenta propietaria. No utiliza rastreadores ni servicios externos de autenticación.
+          Esta zona administra {config.name} y requiere la VPN privada y la cuenta propietaria. No utiliza rastreadores ni servicios externos de autenticación.
         </p>
 
         {message && (
