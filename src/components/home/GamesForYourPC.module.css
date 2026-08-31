@@ -59,6 +59,23 @@
   font-size: 12px;
 }
 
+.personalizedNote {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  max-width: 720px;
+  margin-top: 10px;
+  color: var(--text-soft);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.personalizedNote svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: var(--brand);
+}
+
 .mainHeader > a,
 .gamesHeader > a {
   display: flex;
@@ -280,6 +297,10 @@
 
   .hardwareGrid {
     grid-template-columns: 1fr;
+  }
+
+  .personalizedNote {
+    max-width: 100%;
   }
 }
 /* ==================================================
