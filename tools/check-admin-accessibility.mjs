@@ -24,6 +24,8 @@ const [
   updatesCatalog,
   dashboard,
   publicationOverview,
+  rootLayout,
+  globalCss,
   protectedLayout,
   adminLayout,
   loginPage,
@@ -33,6 +35,7 @@ const [
   platformCss,
   newGameCss,
   accountsCss,
+  brandForegroundSource,
 ] = await Promise.all([
   source("src/components/admin/AdminShell.tsx"),
   source("src/components/admin/AdminShellUx.module.css"),
@@ -41,6 +44,8 @@ const [
   source("src/components/admin/AdminUpdatesCatalog.tsx"),
   source("src/app/admin/(protected)/page.tsx"),
   source("src/lib/admin/publication-overview.ts"),
+  source("src/app/layout.tsx"),
+  source("src/app/globals.css"),
   source("src/app/admin/(protected)/layout.tsx"),
   source("src/app/admin/layout.tsx"),
   source("src/app/admin/login/page.tsx"),
@@ -50,19 +55,30 @@ const [
   source("src/components/admin/GamePlatformEditor.module.css"),
   source("src/components/admin/NewGameForm.module.css"),
   source("src/app/admin/(protected)/cuentas/accounts.module.css"),
+  source("src/lib/site/brand-foreground.ts"),
 ]);
 
 assert(
-  shell.includes('href="#main-content"') &&
-    shell.includes("Saltar al contenido principal") &&
+  rootLayout.includes('href="#main-content"') &&
+    rootLayout.includes('className="skip-link"') &&
+    rootLayout.includes("Saltar al contenido principal") &&
     shell.includes('id="main-content"') &&
-    shell.includes("tabIndex={-1}"),
-  "El shell administrativo debe conservar un salto de teclado al contenido principal."
+    shell.includes("tabIndex={-1}") &&
+    !shell.includes('href="#main-content"'),
+  "Debe existir un único salto global de teclado al contenido principal; el shell no debe duplicarlo."
+);
+
+assert(
+  globalCss.includes(".skip-link") &&
+    globalCss.includes("color-mix(in srgb, var(--brand)") &&
+    !globalCss.includes("rgba(255, 8, 71, 0.55)") &&
+    !globalCss.includes("rgba(255, 8, 71, 0.095)") &&
+    !globalCss.includes("rgba(255, 8, 71, 0.025)"),
+  "El skip-link y el ambiente global deben derivar de la marca configurable y no del rojo histórico."
 );
 
 assert(
   shellUx.includes(":focus-visible") &&
-    shellUx.includes("outline: 3px solid") &&
     shellUx.includes("@media (prefers-reduced-motion: reduce)") &&
     shellUx.includes("min-height: 44px") &&
     shellUx.includes("font-size: 14px"),
@@ -101,6 +117,15 @@ assert(
     themeContract.includes('main#main-content:focus-visible') &&
     themeContract.includes("var(--admin-brand-text-strong)"),
   "El área protegida debe cargar identidad publicada y el contrato adaptativo de tema para foco, búsqueda y selección."
+);
+
+assert(
+  rootLayout.includes("brandForeground") &&
+    rootLayout.includes('"--theme-on-brand": readableBrandText') &&
+    rootLayout.includes('"--text-on-brand": readableBrandText') &&
+    brandForegroundSource.includes("contrastRatio") &&
+    brandForegroundSource.includes("relativeLuminance"),
+  "El texto sobre acciones de marca debe calcularse por contraste y publicarse como token global."
 );
 
 assert(
@@ -238,6 +263,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    `Accesibilidad administrativa: OK (${adminCssFiles.length} módulos revisados; identidad dinámica, escala legible, foco único, tema adaptativo, teclado, movimiento reducido y catálogos semánticos).`
+    `Accesibilidad administrativa: OK (${adminCssFiles.length} módulos revisados; identidad dinámica, skip-link único, contraste adaptable, escala legible, foco único, tema adaptativo, teclado, movimiento reducido y catálogos semánticos).`
   );
 }
