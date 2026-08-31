@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import { CheckCircle2 } from "lucide-react";
 
 import SiteLogoMark from "@/components/brand/SiteLogoMark";
+import { safeThemeBackground } from "@/lib/site/brand-foreground";
 
 import styles from "./SiteIdentityPreview.module.css";
 
@@ -22,11 +23,14 @@ export default function SiteIdentityPreview({
   themeColor,
   brandColor,
 }: SiteIdentityPreviewProps) {
+  const appliedThemeColor = safeThemeBackground(themeColor);
   const previewStyle = {
-    "--preview-bg": themeColor,
+    "--preview-bg": appliedThemeColor,
     "--preview-brand": brandColor,
   } as CSSProperties;
   const compactName = shortName.trim() || name;
+  const backgroundWasAdapted =
+    appliedThemeColor.toLowerCase() !== themeColor.toLowerCase();
 
   return (
     <div className={styles.stack}>
@@ -68,9 +72,13 @@ export default function SiteIdentityPreview({
         <dl className={styles.colorList}>
           <div>
             <dt>Fondo y navegador</dt>
-            <dd>
-              <i style={{ background: themeColor }} />
-              <code>{themeColor}</code>
+            <dd title={backgroundWasAdapted ? "El tono elegido se oscurece automáticamente para mantener contraste seguro." : undefined}>
+              <i style={{ background: appliedThemeColor }} />
+              <code>
+                {backgroundWasAdapted
+                  ? `${themeColor} → ${appliedThemeColor}`
+                  : themeColor}
+              </code>
             </dd>
           </div>
           <div>
@@ -82,7 +90,7 @@ export default function SiteIdentityPreview({
           </div>
         </dl>
         <p className={styles.appearanceHint}>
-          El color de marca unifica botones, enlaces, foco, barra contextual y marca pública.
+          La marca adapta automáticamente el texto de los botones; un fondo demasiado claro conserva su tono y se oscurece hasta mantener contraste seguro.
         </p>
         <div className={styles.activeState}>
           <CheckCircle2 size={15} aria-hidden="true" />
