@@ -19,6 +19,7 @@ async function source(relativePath) {
 const [
   shell,
   shellUx,
+  contextBar,
   catalogCss,
   gamesCatalog,
   updatesCatalog,
@@ -42,6 +43,7 @@ const [
 ] = await Promise.all([
   source("src/components/admin/AdminShell.tsx"),
   source("src/components/admin/AdminShellUx.module.css"),
+  source("src/components/admin/AdminContextBar.tsx"),
   source("src/components/admin/AdminCatalog.module.css"),
   source("src/components/admin/AdminGamesCatalog.tsx"),
   source("src/components/admin/AdminUpdatesCatalog.tsx"),
@@ -99,6 +101,16 @@ assert(
     shellUx.includes("box-shadow: none;") &&
     !shellUx.includes("#ff9bb3"),
   "El shell debe usar un único sistema de foco y los estados activos deben derivar de la marca."
+);
+
+assert(
+  contextBar.includes("useKeepActiveContextVisible") &&
+    contextBar.includes("window.requestAnimationFrame") &&
+    contextBar.includes("nav.scrollLeft") &&
+    contextBar.includes('aria-current={active ? "page" : undefined}') &&
+    shellUx.includes("overscroll-behavior-inline: contain") &&
+    shellUx.includes("scroll-padding-inline: 10px"),
+  "La navegación contextual debe mantener visible la sección activa en barras horizontales y contener el overscroll móvil."
 );
 
 assert(
@@ -284,6 +296,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    `Accesibilidad administrativa: OK (${adminCssFiles.length} módulos revisados; identidad dinámica y contrastada, login accesible, skip-link único, contraste adaptable, escala legible, foco único, tema adaptativo, teclado, movimiento reducido y catálogos semánticos).`
+    `Accesibilidad administrativa: OK (${adminCssFiles.length} módulos revisados; identidad dinámica y contrastada, navegación contextual móvil, login accesible, skip-link único, contraste adaptable, escala legible, foco único, tema adaptativo, teclado, movimiento reducido y catálogos semánticos).`
   );
 }
