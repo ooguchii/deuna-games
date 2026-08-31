@@ -29,13 +29,11 @@ const WINDOWS_CPU_COMMAND =
   "Get-CimInstance Win32_Processor | Select-Object -ExpandProperty Name";
 
 type CpuIdentificationAssistantProps = {
-  logicalProcessors: number | null;
   onConfirmed: () => void;
   onCancel: () => void;
 };
 
 export default function CpuIdentificationAssistant({
-  logicalProcessors,
   onConfirmed,
   onCancel,
 }: CpuIdentificationAssistantProps) {
@@ -55,6 +53,11 @@ export default function CpuIdentificationAssistant({
   const selectedCpu = selectedCpuId
     ? findCpuById(selectedCpuId)
     : exactMatch?.cpu ?? null;
+  const logicalProcessors =
+    typeof navigator !== "undefined" &&
+    Number.isFinite(navigator.hardwareConcurrency)
+      ? navigator.hardwareConcurrency
+      : null;
 
   async function copyWindowsCommand() {
     try {
