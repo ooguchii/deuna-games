@@ -39,23 +39,47 @@
   min-height: 42px;
   padding: 0 13px;
   border-radius: 8px;
+  outline: none;
   cursor: pointer;
   font: inherit;
   font-size: 12px;
   font-weight: 800;
+  transition:
+    color 140ms ease,
+    border-color 140ms ease,
+    background 140ms ease,
+    transform 140ms ease,
+    box-shadow 140ms ease,
+    opacity 140ms ease;
 }
 
 .addButton {
   flex-shrink: 0;
   color: #ffd0db;
-  border: 1px solid rgba(255, 92, 130, 0.34);
-  background: rgba(255, 92, 130, 0.07);
+  border: 1px solid color-mix(in srgb, var(--brand) 38%, #465463);
+  background: color-mix(in srgb, var(--brand) 7%, #0d151e);
+}
+
+.addButton:hover:not(:disabled) {
+  color: #fff;
+  border-color: color-mix(in srgb, var(--brand) 54%, #536273);
+  background: color-mix(in srgb, var(--brand) 10%, #111b26);
+  transform: translateY(-1px);
+}
+
+.addButton:focus-visible,
+.removeButton:focus-visible,
+.sourceToolbar button:focus-visible {
+  box-shadow:
+    0 0 0 2px #0a1118,
+    0 0 0 4px color-mix(in srgb, var(--brand) 58%, #ffffff);
 }
 
 .addButton:disabled,
 .sourceToolbar button:disabled {
   opacity: 0.38;
   cursor: not-allowed;
+  transform: none;
 }
 
 .list {
@@ -77,7 +101,15 @@
   background: #0a1119;
   transition:
     border-color 150ms ease,
-    background 150ms ease;
+    background 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.source:hover,
+.source:focus-within {
+  border-color: #435364;
+  background: #0d161f;
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--brand) 38%, #ffffff);
 }
 
 .source[data-enabled="false"] {
@@ -120,10 +152,11 @@
   background: #0b1118;
 }
 
-.sourceToolbar button:not(:disabled):hover,
-.sourceToolbar button:not(:disabled):focus-visible {
+.sourceToolbar button:not(:disabled):hover {
   color: #ffffff;
   border-color: color-mix(in srgb, var(--brand) 45%, #465260);
+  background: color-mix(in srgb, var(--brand) 5%, #111b26);
+  transform: translateY(-1px);
 }
 
 .sourceToolbar .visibilityButton {
@@ -149,10 +182,17 @@
   background: transparent;
 }
 
-.removeButton:hover,
-.removeButton:focus-visible {
+.removeButton:hover {
+  color: #ffd0d9;
   border-color: rgba(255, 92, 130, 0.48);
   background: rgba(255, 92, 130, 0.06);
+  transform: translateY(-1px);
+}
+
+.removeButton:focus-visible {
+  box-shadow:
+    0 0 0 2px #0a1118,
+    0 0 0 4px rgba(255, 92, 130, 0.48);
 }
 
 .empty {
@@ -204,7 +244,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .source {
+  .source,
+  .addButton,
+  .removeButton,
+  .sourceToolbar button {
     transition: none;
   }
 }
