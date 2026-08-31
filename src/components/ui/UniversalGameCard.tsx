@@ -343,6 +343,11 @@ export default function UniversalGameCard({
                   ? styles.mediaBadgeBrand
                   : ""
               }`}
+              data-brand-badge={
+                mediaBadge.tone === "brand"
+                  ? "true"
+                  : undefined
+              }
             >
               {mediaBadge.label}
             </span>
