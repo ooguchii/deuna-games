@@ -29,9 +29,7 @@ const legacyBrandColors = [
 ];
 
 async function collectCssModules(directory) {
-  const entries = await readdir(directory, {
-    withFileTypes: true,
-  });
+  const entries = await readdir(directory, { withFileTypes: true });
   const files = [];
 
   for (const entry of entries) {
@@ -51,10 +49,7 @@ async function collectCssModules(directory) {
 }
 
 function relative(filePath) {
-  return path
-    .relative(root, filePath)
-    .split(path.sep)
-    .join("/");
+  return path.relative(root, filePath).split(path.sep).join("/");
 }
 
 function directBrandWhiteSelectors(css) {
@@ -62,13 +57,25 @@ function directBrandWhiteSelectors(css) {
 
   for (const match of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
     const selector = match[1].trim();
-    const body = match[2];
-    const paintsDirectBrand =
-      /background(?:-color)?:\s*[^;]*(?:var\(--brand\)|linear-gradient\([^;]*var\(--brand\)[^;]*var\(--brand-dark\))/i.test(body);
+    const compact = match[2].toLowerCase().replace(/\s+/g, "");
+    const directSolid =
+      compact.includes("background:var(--brand);") ||
+      compact.includes("background-color:var(--brand);");
+    const hasGradient =
+      compact.includes("background:linear-gradient(") ||
+      compact.includes("background-image:linear-gradient(");
+    const directGradient =
+      hasGradient &&
+      (
+        compact.includes("var(--brand),var(--brand-dark)") ||
+        compact.includes("var(--brand-dark),var(--brand)")
+      );
     const fixesWhiteText =
-      /(?:^|[;\s])color:\s*(?:#fff(?:fff)?|white)\s*;/i.test(body);
+      compact.includes("color:#fff;") ||
+      compact.includes("color:#ffffff;") ||
+      compact.includes("color:white;");
 
-    if (paintsDirectBrand && fixesWhiteText) {
+    if ((directSolid || directGradient) && fixesWhiteText) {
       selectors.push(selector.replace(/\s+/g, " "));
     }
   }
@@ -96,9 +103,7 @@ for (const filePath of files) {
   }
 
   const normalized = css.toLowerCase();
-  const legacyHits = legacyBrandColors.filter((color) =>
-    normalized.includes(color)
-  );
+  const legacyHits = legacyBrandColors.filter((color) => normalized.includes(color));
 
   if (legacyHits.length > 0) {
     failures.push(
