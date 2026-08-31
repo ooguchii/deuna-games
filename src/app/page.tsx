@@ -16,6 +16,12 @@ import {
   buildHomeGameCollections,
 } from "@/data/home";
 import {
+  getAccountPersonalization,
+} from "@/lib/accounts/personalization-service";
+import {
+  readAccountSession,
+} from "@/lib/accounts/session";
+import {
   getPublicGames,
 } from "@/lib/games/public-catalog";
 import {
@@ -57,14 +63,26 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function Home() {
-  const [games, updates, config, homeConfig] = await Promise.all([
+  const [games, updates, config, homeConfig, session] = await Promise.all([
     getPublicGames(),
     getPublicResolvedUpdates(),
     getPublicSiteConfig(),
     getPublicHomeConfig(),
+    readAccountSession(),
   ]);
-  const collections =
-    buildHomeGameCollections(games, homeConfig);
+  const personalization = session
+    ? await getAccountPersonalization(session.userId)
+    : undefined;
+  const collections = buildHomeGameCollections(
+    games,
+    homeConfig,
+    personalization
+      ? {
+          preferences: personalization.preferences,
+          hardware: personalization.hardware,
+        }
+      : undefined
+  );
   const copy = homeConfig.copy;
   const websiteJsonLd = {
     "@context": "https://schema.org",
@@ -147,6 +165,8 @@ export default async function Home() {
             key={section.id}
             games={collections.lowSpecGames}
             copy={copy.lowSpec}
+            personalized={collections.pcPersonalized}
+            reasons={collections.pcReasons}
           />
         ) : null;
 
@@ -156,6 +176,8 @@ export default async function Home() {
             key={section.id}
             games={collections.recommendedGames}
             copy={copy.recommended}
+            personalized={collections.recommendedPersonalized}
+            reasons={collections.recommendationReasons}
           />
         ) : null;
 
