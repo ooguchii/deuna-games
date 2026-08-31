@@ -11,6 +11,7 @@ import type {
 } from "@/lib/admin/session";
 
 import styles from "../../app/admin/admin.module.css";
+import brand from "./AdminShellBrand.module.css";
 import ux from "./AdminShellUx.module.css";
 
 export default function AdminShell({
@@ -35,7 +36,7 @@ export default function AdminShell({
           aria-label={`Panel administrativo de ${siteName}`}
           title={siteName}
         >
-          <span>
+          <span className={brand.brandMark}>
             <SiteLogoMark size={24} strokeWidth={2.1} />
           </span>
           <div>
