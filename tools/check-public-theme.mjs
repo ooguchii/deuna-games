@@ -193,8 +193,8 @@ requireIncludes(
 );
 requireIncludes(
   gamesHero,
-  "var(--games-hero-tint, var(--brand))",
-  "Juegos Hero: el tono de la imagen debe derivarse de la marca configurada."
+  "background:\n    var(--brand);",
+  "Juegos Hero: el tono de la imagen debe derivarse directamente de la marca configurada."
 );
 requireIncludes(
   gamesHero,
