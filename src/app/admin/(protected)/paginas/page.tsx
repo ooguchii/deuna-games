@@ -98,7 +98,7 @@ export default async function AdminPagesPage({
       <EditorStateNotice state={state} />
 
       <section className={styles.tablePanel}>
-        <div className={styles.tableSummary}>
+        <div className={`${styles.tableSummary} admin-table-summary`}>
           <strong>2 grupos editoriales</strong>
           <span>Edición estructurada y publicación explícita</span>
         </div>
