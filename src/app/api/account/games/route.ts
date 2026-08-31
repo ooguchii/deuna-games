@@ -12,6 +12,9 @@ import {
   readTrustedAccountForm,
 } from "@/lib/accounts/request-security";
 import {
+  syncRewardMilestones,
+} from "@/lib/accounts/rewards-service";
+import {
   readAccountSessionToken,
   resolveAccountSession,
 } from "@/lib/accounts/session";
@@ -73,6 +76,7 @@ export async function POST(request: NextRequest) {
     }
 
     await saveAccountGamePreference(session.userId, parsed.data);
+    await syncRewardMilestones(session.userId);
     return json({ ok: true });
   } catch {
     return json({ ok: false, error: "servicio" }, 503);
