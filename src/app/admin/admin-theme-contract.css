@@ -9,6 +9,15 @@
   --admin-focus-ring-strong: color-mix(in srgb, var(--brand) 58%, #ffffff);
 }
 
+/* Las acciones con fondo de marca usan el color de texto calculado por contraste. */
+.admin-professional .admin-primary-action,
+.admin-professional .admin-form-action--primary,
+.admin-professional form > div:has(> p):has(> button[type="submit"]) > button[type="submit"],
+.admin-professional form > footer:last-child > button[type="submit"],
+.admin-professional form[action*="/publish"] button[type="submit"] {
+  color: var(--text-on-brand) !important;
+}
+
 /*
  * Contrato de foco del panel:
  * - botones/enlaces reciben un solo anillo exterior;
