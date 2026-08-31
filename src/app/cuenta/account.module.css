@@ -221,8 +221,7 @@
 }
 
 .primaryButton,
-.secondaryButton,
-.dangerButton {
+.secondaryButton {
   display: inline-flex;
   min-height: 46px;
   align-items: center;
@@ -249,22 +248,14 @@
   color: #dce2ec;
 }
 
-.dangerButton {
-  border: 1px solid rgba(255, 68, 93, 0.35);
-  background: rgba(255, 41, 74, 0.08);
-  color: #ff718a;
-}
-
 .primaryButton:disabled,
-.secondaryButton:disabled,
-.dangerButton:disabled {
+.secondaryButton:disabled {
   cursor: not-allowed;
   opacity: 0.55;
 }
 
 .primaryButton:focus-visible,
-.secondaryButton:focus-visible,
-.dangerButton:focus-visible {
+.secondaryButton:focus-visible {
   outline: 3px solid rgba(255, 255, 255, 0.18);
   outline-offset: 2px;
 }
@@ -320,94 +311,6 @@
   gap: 10px;
 }
 
-.profileForm {
-  display: grid;
-  gap: 18px;
-}
-
-.deletePanel {
-  display: grid;
-  gap: 16px;
-  margin-top: 30px;
-  padding-top: 24px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.deleteHeader {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 18px;
-}
-
-.deleteHeader h2 {
-  margin: 0;
-  color: #f4f6fa;
-  font-size: 18px;
-}
-
-.deleteHeader p {
-  max-width: 620px;
-  margin: 7px 0 0;
-  color: #8f99aa;
-  font-size: 13px;
-  line-height: 1.55;
-}
-
-.deleteForm {
-  display: grid;
-  gap: 14px;
-  padding: 18px;
-  border: 1px solid rgba(255, 68, 93, 0.22);
-  border-radius: 14px;
-  background: rgba(255, 41, 74, 0.045);
-}
-
-.deleteForm > .dangerButton {
-  justify-self: start;
-}
-
-.privacyPanel {
-  padding: 26px;
-  align-self: start;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 20px;
-  background: rgba(12, 16, 26, 0.95);
-}
-
-.privacyPanel h2 {
-  margin: 12px 0 8px;
-  font-size: 22px;
-}
-
-.privacyPanel p {
-  margin: 0;
-  color: #98a2b3;
-  font-size: 13px;
-  line-height: 1.6;
-}
-
-.privacyPanel ul {
-  display: grid;
-  gap: 10px;
-  margin: 20px 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.privacyPanel li {
-  display: flex;
-  gap: 9px;
-  color: #c4cbd7;
-  font-size: 13px;
-  line-height: 1.45;
-}
-
-.privacyPanel li svg {
-  flex: 0 0 auto;
-  color: #2ed98f;
-}
-
 @media (max-width: 880px) {
   .hero {
     grid-template-columns: 1fr;
@@ -429,8 +332,7 @@
   }
 
   .form,
-  .recoveryPanel,
-  .privacyPanel {
+  .recoveryPanel {
     padding: 20px;
   }
 
@@ -438,23 +340,13 @@
     grid-template-columns: 1fr;
   }
 
-  .deleteHeader {
-    flex-direction: column;
-  }
-
   .recoveryActions {
     display: grid;
     grid-template-columns: 1fr;
   }
 
-  .recoveryActions > button,
-  .deleteHeader > button,
-  .deleteForm > .dangerButton {
+  .recoveryActions > button {
     width: 100%;
-  }
-
-  .deleteForm {
-    padding: 14px;
   }
 }
 
