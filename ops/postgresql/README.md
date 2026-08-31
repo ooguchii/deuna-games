@@ -5,22 +5,26 @@ La aplicación usa la base `deuna_games`. PostgreSQL debe escuchar sólo en loop
 Se mantienen dos roles separados:
 
 - `deuna_migrator`: propietario de la base y de los esquemas privados; es el único rol con capacidad de aplicar migraciones y restablecer permisos.
-- `deuna_runtime`: conexión utilizada por Next.js con permisos mínimos y explícitos para autenticación, sesiones, cuentas públicas y las operaciones editoriales que ejecuta la aplicación.
+- `deuna_runtime`: conexión utilizada por Next.js con permisos mínimos y explícitos para autenticación, sesiones, cuentas públicas, personalización explícita y las operaciones editoriales que ejecuta la aplicación.
 
 El rol runtime no recibe privilegios globales ni capacidad de crear, migrar o alterar tablas.
 
 ## Esquemas privados
 
-Las migraciones `001` a `009` mantienen dos límites distintos dentro de PostgreSQL:
+Las migraciones `001` a `010` mantienen dos límites distintos dentro de PostgreSQL:
 
 - `deuna_admin`: Owner, administradores, sesiones administrativas, auditoría mínima e información editorial.
-- `deuna_accounts`: cuentas públicas, sesiones públicas y códigos de recuperación.
+- `deuna_accounts`: cuentas públicas, sesiones públicas, códigos de recuperación, preferencias explícitas de juegos y Mi PC.
 
 No existe una FK ni una operación de aplicación que transforme una cuenta pública en administrativa. El acceso administrativo conserva su propio flujo de autenticación y autorización.
 
 En `deuna_accounts.users` sólo son obligatorios el nombre de usuario y el hash de la contraseña. Nombre visible, biografía y correo son opcionales. El correo, cuando el usuario decide agregarlo, se cifra en la aplicación con AES-256-GCM antes de persistirse como `email_encrypted`.
 
 Las sesiones guardan únicamente el hash del token aleatorio. Los códigos de recuperación guardan únicamente su hash. No se persisten IP, ubicación, user-agent, huellas de dispositivo ni historial de navegación asociado a la cuenta.
+
+`deuna_accounts.game_preferences` guarda únicamente decisiones explícitas por juego: favorito, estado de biblioteca y seguimiento de actualizaciones. Para el seguimiento conserva desde cuándo se sigue el título y hasta qué momento el usuario marcó sus avisos como vistos; los avisos se derivan de las actualizaciones editoriales publicadas y no se duplican por usuario.
+
+`deuna_accounts.hardware_profiles` guarda sólo IDs de CPU y GPU seleccionados desde el catálogo, RAM y modo de memoria. No almacena renderer detectado, sistema operativo detectado, navegador ni otros metadatos del dispositivo. El perfil se usa con el mismo motor de FPS que el Finder.
 
 ## Preparación
 
@@ -43,12 +47,14 @@ El proceso de migración valida el checksum de cada archivo SQL y falla si una m
 
 El preflight comprueba conexión local, separación de roles, ausencia de privilegios globales, cierre de `PUBLIC`, permisos exactos por tabla/columna/secuencia, migraciones y checksums, exactamente un Owner activo y coherencia del contenido editorial. No muestra contraseñas ni modifica datos.
 
-El runtime sólo recibe `DELETE` sobre dos tablas de cuentas:
+El runtime recibe `DELETE` sólo donde una operación autónoma de la cuenta lo necesita:
 
 - `deuna_accounts.recovery_codes`, porque la rotación invalida el paquete anterior antes de generar uno nuevo;
-- `deuna_accounts.users`, para permitir que el propio usuario elimine físicamente su cuenta.
+- `deuna_accounts.users`, para permitir que el propio usuario elimine físicamente su cuenta;
+- `deuna_accounts.game_preferences`, para quitar un juego o todas sus señales de Mi DeUna;
+- `deuna_accounts.hardware_profiles`, para eliminar la PC guardada.
 
-El borrado del usuario elimina por `ON DELETE CASCADE` sus sesiones y códigos de recuperación. No se concede `DELETE` sobre sesiones, tablas administrativas ni contenido editorial, y el preflight bloquea cualquier permiso de tabla adicional no previsto.
+El borrado del usuario elimina por `ON DELETE CASCADE` sus sesiones, códigos de recuperación, preferencias de juegos y hardware guardado. No se concede `DELETE` sobre sesiones, tablas administrativas ni contenido editorial, y el preflight bloquea cualquier permiso de tabla adicional no previsto. Los permisos de `INSERT` y `UPDATE` de personalización siguen limitados a las columnas exactas que necesita la aplicación; el runtime no puede reasignar una preferencia o un perfil a otra cuenta.
 
 ## Modelo editorial
 
@@ -69,7 +75,9 @@ Si la fuente cambia mientras existe un borrador modificado, la importación actu
 
 Las tablas administrativas no contienen correo, IP, ubicación, user-agent, identificadores de publicidad ni navegación de visitantes. Los eventos y registros de auditoría corresponden exclusivamente a la operación administrativa mínima necesaria.
 
-Las cuentas públicas están diseñadas con minimización por defecto. `DEUNA_ACCOUNT_DATA_KEY` protege el correo opcional y debe permanecer fuera de Git. La barrera `npm run check:account-privacy` verifica automáticamente que el esquema y el código no incorporen campos o mecanismos de seguimiento prohibidos y que se mantengan las garantías de cifrado, hashes, recuperación, separación y baja autónoma.
+Las cuentas públicas están diseñadas con minimización por defecto. `DEUNA_ACCOUNT_DATA_KEY` protege el correo opcional y debe permanecer fuera de Git. La personalización de Mi DeUna usa sólo elecciones expresas de biblioteca, seguimiento y hardware; no crea un historial de navegación ni copia la detección cruda del navegador a PostgreSQL.
+
+La barrera `npm run check:account-privacy` verifica automáticamente que el esquema y el código no incorporen campos o mecanismos de seguimiento prohibidos y que se mantengan las garantías de cifrado, hashes, recuperación, separación, personalización mínima y baja autónoma. La integración PostgreSQL de CI prueba además los permisos runtime reales y las cascadas de borrado en una base limpia con todas las migraciones.
 
 ## Copias de seguridad
 
