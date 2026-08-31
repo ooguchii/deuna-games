@@ -123,15 +123,13 @@
   padding: 26px;
 }
 
-.formHeader h2,
-.profileHeader h1 {
+.formHeader h2 {
   margin: 0;
   font-size: clamp(26px, 3vw, 34px);
   letter-spacing: -0.025em;
 }
 
-.formHeader p,
-.profileHeader p {
+.formHeader p {
   margin: 8px 0 0;
   color: #8f99aa;
   font-size: 14px;
@@ -322,55 +320,9 @@
   gap: 10px;
 }
 
-.profileLayout {
-  display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(300px, 0.6fr);
-  gap: 24px;
-}
-
-.profilePanel,
-.privacyPanel {
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 20px;
-  background: rgba(12, 16, 26, 0.95);
-}
-
-.profilePanel {
-  padding: clamp(24px, 4vw, 36px);
-}
-
-.profileHeader {
-  display: flex;
-  justify-content: space-between;
-  gap: 20px;
-  align-items: flex-start;
-  margin-bottom: 28px;
-}
-
-.usernameBadge {
-  display: inline-flex;
-  min-height: 32px;
-  align-items: center;
-  padding: 0 11px;
-  border: 1px solid rgba(255, 61, 116, 0.25);
-  border-radius: 999px;
-  background: rgba(255, 46, 103, 0.08);
-  color: #ff6b96;
-  font-size: 12px;
-  font-weight: 800;
-}
-
 .profileForm {
   display: grid;
   gap: 18px;
-}
-
-.profileActions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 12px;
-  padding-top: 10px;
 }
 
 .deletePanel {
@@ -418,6 +370,9 @@
 .privacyPanel {
   padding: 26px;
   align-self: start;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  background: rgba(12, 16, 26, 0.95);
 }
 
 .privacyPanel h2 {
@@ -454,8 +409,7 @@
 }
 
 @media (max-width: 880px) {
-  .hero,
-  .profileLayout {
+  .hero {
     grid-template-columns: 1fr;
   }
 
@@ -476,7 +430,6 @@
 
   .form,
   .recoveryPanel,
-  .profilePanel,
   .privacyPanel {
     padding: 20px;
   }
@@ -485,18 +438,15 @@
     grid-template-columns: 1fr;
   }
 
-  .profileHeader,
   .deleteHeader {
     flex-direction: column;
   }
 
-  .profileActions,
   .recoveryActions {
     display: grid;
     grid-template-columns: 1fr;
   }
 
-  .profileActions > button,
   .recoveryActions > button,
   .deleteHeader > button,
   .deleteForm > .dangerButton {
