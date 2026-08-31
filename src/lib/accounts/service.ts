@@ -89,6 +89,16 @@ export type AccountRecoveryResult =
       recovered: false;
     };
 
+export type AccountDeletionResult =
+  | {
+      deleted: true;
+    }
+  | {
+      deleted: false;
+    };
+
+const DUMMY_RECOVERY_USER_ID = "00000000-0000-0000-0000-000000000000";
+
 function lockDurationSeconds(failureCount: number) {
   if (failureCount < 5) return 0;
   return Math.min(15 * 60, 30 * 2 ** Math.min(failureCount - 5, 5));
@@ -136,6 +146,23 @@ async function replaceRecoveryCodes(
   }
 
   return codes.map((code) => code.plain);
+}
+
+async function findUnusedRecoveryCode(
+  client: PoolClient,
+  userId: string,
+  recoveryCodeHash: string
+) {
+  return client.query<{ id: string }>(
+    `SELECT id
+     FROM deuna_accounts.recovery_codes
+     WHERE user_id = $1
+       AND code_hash = $2
+       AND used_at IS NULL
+     LIMIT 1
+     FOR UPDATE`,
+    [userId, recoveryCodeHash]
+  );
 }
 
 export async function registerAccount(
@@ -281,18 +308,18 @@ export async function recoverAccount(
     const user = result.rows[0];
 
     if (!user) {
+      await findUnusedRecoveryCode(
+        client,
+        DUMMY_RECOVERY_USER_ID,
+        recoveryCodeHash
+      );
       return { recovered: false };
     }
 
-    const recovery = await client.query<{ id: string }>(
-      `SELECT id
-       FROM deuna_accounts.recovery_codes
-       WHERE user_id = $1
-         AND code_hash = $2
-         AND used_at IS NULL
-       LIMIT 1
-       FOR UPDATE`,
-      [user.id, recoveryCodeHash]
+    const recovery = await findUnusedRecoveryCode(
+      client,
+      user.id,
+      recoveryCodeHash
     );
 
     if (!recovery.rows[0]) {
@@ -383,4 +410,49 @@ export async function updateAccountProfile(
       input.bio ?? null,
     ]
   );
+}
+
+export async function deleteAccount(
+  userId: string,
+  password: string
+): Promise<AccountDeletionResult> {
+  return withAccountTransaction(async (client) => {
+    const result = await client.query<AccountUserRow>(
+      `SELECT
+         id,
+         password_hash,
+         failed_login_count,
+         locked_until
+       FROM deuna_accounts.users
+       WHERE id = $1
+         AND active = true
+       LIMIT 1
+       FOR UPDATE`,
+      [userId]
+    );
+    const user = result.rows[0];
+
+    if (!user) {
+      await consumeDummyAccountPasswordWork(password);
+      return { deleted: false };
+    }
+
+    const passwordMatches = await verifyAccountPassword(
+      password,
+      user.password_hash
+    );
+
+    if (!passwordMatches) {
+      await recordFailedLogin(client, user);
+      return { deleted: false };
+    }
+
+    await client.query(
+      `DELETE FROM deuna_accounts.users
+       WHERE id = $1`,
+      [user.id]
+    );
+
+    return { deleted: true };
+  });
 }
