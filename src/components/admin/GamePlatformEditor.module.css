@@ -31,6 +31,7 @@
   color: #b1bdc9;
   border: 1px solid #394756;
   border-radius: 9px;
+  outline: none;
   background: #0b121a;
   cursor: pointer;
   font: inherit;
@@ -39,17 +40,28 @@
   transition:
     color 150ms ease,
     border-color 150ms ease,
-    background 150ms ease;
+    background 150ms ease,
+    transform 150ms ease,
+    box-shadow 150ms ease;
 }
 
-.grid button:hover,
-.grid button:focus-visible {
+.grid button:hover {
   color: #ffffff;
   border-color: color-mix(in srgb, var(--brand) 48%, #4b5866);
+  background: color-mix(in srgb, var(--brand) 5%, #111b26);
+  transform: translateY(-1px);
+}
+
+.grid button:focus-visible {
+  color: #ffffff;
+  border-color: color-mix(in srgb, var(--brand) 58%, #536273);
+  box-shadow:
+    0 0 0 2px #0a1118,
+    0 0 0 4px color-mix(in srgb, var(--brand) 58%, #ffffff);
 }
 
 .grid button.active {
-  color: #ffe1e8;
+  color: color-mix(in srgb, var(--brand) 34%, #ffffff);
   border-color: color-mix(in srgb, var(--brand) 66%, #3e4c59);
   background: color-mix(in srgb, var(--brand) 10%, #0b121a);
 }
