@@ -39,6 +39,7 @@ const strictThemeFiles = [
   "src/app/cuenta/account-dashboard.module.css",
   "src/app/cuenta/account-rewards.module.css",
   "src/app/actualizaciones/page.module.css",
+  "src/app/juegos/page.module.css",
   "src/app/not-found.module.css",
   "src/components/home/HeroSection.module.css",
   "src/features/game-finder/GameFinderClient.module.css",
@@ -63,6 +64,7 @@ const theme = await read("src/theme/deuna-theme.css");
 const contract = await read("src/theme/public-theme-contract.css");
 const routeContract = await read("src/theme/public-route-theme-contract.css");
 const hero = await read("src/components/home/HeroSection.module.css");
+const gamesHero = await read("src/app/juegos/page.module.css");
 
 requireIncludes(
   layout,
@@ -184,12 +186,28 @@ requireIncludes(
   "HeroSection: el ambiente debe responder a la marca configurada."
 );
 
+requireIncludes(
+  gamesHero,
+  ".heroImage::after",
+  "Juegos Hero: falta la capa de recoloración de la imagen."
+);
+requireIncludes(
+  gamesHero,
+  "var(--games-hero-tint, var(--brand))",
+  "Juegos Hero: el tono de la imagen debe derivarse de la marca configurada."
+);
+requireIncludes(
+  gamesHero,
+  "mix-blend-mode: hue",
+  "Juegos Hero: la recoloración debe preservar luminosidad y detalle de la imagen."
+);
+
 if (failures.length > 0) {
   console.error("\nTema público: BLOQUEADO\n");
   failures.forEach((failure) => console.error(`- ${failure}`));
   process.exitCode = 1;
 } else {
   console.log(
-    "Tema público: OK (marca/fondo dinámicos, contraste adaptable, Hero ambiental y contratos heredados protegidos)."
+    "Tema público: OK (marca/fondo dinámicos, contraste adaptable, Heroes integrados y contratos heredados protegidos)."
   );
 }
