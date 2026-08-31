@@ -162,9 +162,9 @@ export default async function AccountPage() {
             <Sparkles size={16} aria-hidden="true" />
             MI DEUNA
           </span>
-          <h1>Tu DeUna cambia cuando sabe lo que vos elegís guardar.</h1>
+          <h1>Tu DeUna cambia cuando sabe lo que eliges guardar.</h1>
           <p>
-            La cuenta sirve para guardar tus juegos, recordar tu PC, seguir actualizaciones y ordenar recomendaciones para vos. No hace falta convertir tu navegación en seguimiento para personalizar la experiencia.
+            La cuenta sirve para guardar tus juegos, recordar tu PC, seguir actualizaciones y ordenar recomendaciones para ti. No hace falta convertir tu navegación en seguimiento para personalizar la experiencia.
           </p>
 
           <ul className={styles.privacyList}>
@@ -174,11 +174,11 @@ export default async function AccountPage() {
             </li>
             <li>
               <Cpu size={18} aria-hidden="true" />
-              Mi PC: guardá CPU, GPU y RAM para usar el mismo motor de FPS de DeUna sin configurarlo cada vez.
+              Mi PC: guarda CPU, GPU y RAM para usar el mismo motor de FPS de DeUna sin configurarlo cada vez.
             </li>
             <li>
               <BellRing size={18} aria-hidden="true" />
-              Seguí juegos y recibí avisos internos cuando tengan nuevas actualizaciones publicadas.
+              Sigue juegos y recibe avisos internos cuando tengan nuevas actualizaciones publicadas.
             </li>
             <li>
               <ShieldCheck size={18} aria-hidden="true" />
@@ -186,11 +186,11 @@ export default async function AccountPage() {
             </li>
             <li>
               <UserRound size={18} aria-hidden="true" />
-              Para crear la cuenta siguen alcanzando usuario y contraseña; el resto es opcional.
+              Para crear la cuenta sólo se necesitan usuario y contraseña; el resto es opcional.
             </li>
             <li>
               <LockKeyhole size={18} aria-hidden="true" />
-              El correo continúa siendo opcional y se cifra si decidís agregarlo.
+              El correo continúa siendo opcional y se cifra si decides agregarlo.
             </li>
           </ul>
         </section>
