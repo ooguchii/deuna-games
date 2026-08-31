@@ -29,6 +29,8 @@ const [
   protectedLayout,
   adminLayout,
   loginPage,
+  adminBaseCss,
+  loginCss,
   identityPreview,
   themeContract,
   taxonomySelectCss,
@@ -49,6 +51,8 @@ const [
   source("src/app/admin/(protected)/layout.tsx"),
   source("src/app/admin/layout.tsx"),
   source("src/app/admin/login/page.tsx"),
+  source("src/app/admin/admin.module.css"),
+  source("src/app/admin/login/login.module.css"),
   source("src/components/admin/SiteIdentityPreview.tsx"),
   source("src/app/admin/admin-theme-contract.css"),
   source("src/components/admin/GameTaxonomyMultiSelect.module.css"),
@@ -142,6 +146,16 @@ assert(
     loginPage.includes("config.name") &&
     !loginPage.includes("DeUna Games"),
   "El login administrativo debe reflejar la identidad publicada."
+);
+
+assert(
+  adminBaseCss.includes(".loginForm input:focus-visible") &&
+    adminBaseCss.includes(".loginForm button:focus-visible") &&
+    adminBaseCss.includes("color: var(--text-on-brand);") &&
+    adminBaseCss.includes("font-size: 16px;") &&
+    loginCss.includes("color: var(--text-on-brand);") &&
+    loginCss.includes("font-size: 11px;"),
+  "El login debe conservar foco visible, contraste adaptable, controles móviles legibles y texto auxiliar de al menos 11px."
 );
 
 assert(
@@ -263,6 +277,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    `Accesibilidad administrativa: OK (${adminCssFiles.length} módulos revisados; identidad dinámica, skip-link único, contraste adaptable, escala legible, foco único, tema adaptativo, teclado, movimiento reducido y catálogos semánticos).`
+    `Accesibilidad administrativa: OK (${adminCssFiles.length} módulos revisados; identidad dinámica, login accesible, skip-link único, contraste adaptable, escala legible, foco único, tema adaptativo, teclado, movimiento reducido y catálogos semánticos).`
   );
 }
