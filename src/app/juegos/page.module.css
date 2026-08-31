@@ -49,6 +49,8 @@
 
   inset: 0;
 
+  overflow: hidden;
+
   background-image:
     url(
       "/images/catalog/juegos-reference-hero-v2.webp"
@@ -67,6 +69,23 @@
 
   transform:
     scale(1.012);
+
+  isolation: isolate;
+}
+
+.heroImage::after {
+  content: "";
+
+  position: absolute;
+  inset: 0;
+
+  background:
+    var(--games-hero-tint, var(--brand));
+
+  mix-blend-mode: hue;
+  opacity: 0.92;
+
+  pointer-events: none;
 }
 
 .heroShade {
