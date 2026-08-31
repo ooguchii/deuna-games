@@ -1,22 +1,28 @@
 import type { Metadata } from "next";
 
+import { getPublicSiteConfig } from "@/lib/site/public-site-config";
+
 import styles from "./admin.module.css";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Administración privada",
-  description:
-    "Panel privado de administración de DeUna Games.",
-  robots: {
-    index: false,
-    follow: false,
-    noarchive: true,
-    nosnippet: true,
-    noimageindex: true,
-  },
-  referrer: "no-referrer",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const config = await getPublicSiteConfig();
+
+  return {
+    title: "Administración privada",
+    description:
+      `Panel privado de administración de ${config.name}.`,
+    robots: {
+      index: false,
+      follow: false,
+      noarchive: true,
+      nosnippet: true,
+      noimageindex: true,
+    },
+    referrer: "no-referrer",
+  };
+}
 
 export default function AdminLayout({
   children,
