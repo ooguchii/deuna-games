@@ -1,0 +1,100 @@
+.admin-professional header > div > span {
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+.admin-professional header > div > p {
+  color: #94a2b1;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.admin-professional .admin-security-grid {
+  gap: 16px;
+}
+
+.admin-professional .admin-security-grid article {
+  min-height: 92px;
+  padding: 20px;
+  border-color: #303e4c;
+  border-radius: 12px;
+  background: linear-gradient(145deg, #0d151e, #0a1118);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
+}
+
+.admin-professional .admin-security-grid article > span {
+  width: 46px;
+  height: 46px;
+  border-radius: 11px;
+}
+
+.admin-professional .admin-security-grid strong {
+  color: #f0f4f8;
+  font-size: 17px;
+  font-weight: 780;
+}
+
+.admin-professional .admin-security-grid p {
+  margin-top: 5px;
+  color: #91a0af;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.admin-professional .admin-event-panel {
+  border-color: #303e4c;
+  border-radius: 14px;
+  background: linear-gradient(155deg, #0d151e, #091018);
+  box-shadow:
+    0 16px 38px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.02);
+}
+
+.admin-professional .admin-event-list {
+  margin-top: 20px;
+}
+
+.admin-professional .admin-event-list li {
+  min-height: 66px;
+  align-items: center;
+  padding: 14px 4px;
+  border-top-color: #2c3844;
+}
+
+.admin-professional .admin-event-list li > span {
+  width: 10px;
+  height: 10px;
+  margin-top: 0;
+  border-width: 2px;
+}
+
+.admin-professional .admin-event-list strong {
+  color: #e4eaf0;
+  font-size: 13px;
+  font-weight: 760;
+}
+
+.admin-professional .admin-event-list time {
+  margin-top: 5px;
+  color: #8997a6;
+  font-size: 11px;
+}
+
+.admin-professional .admin-empty-state {
+  min-height: 92px;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  color: #95a3b2;
+  border-color: #3a4755;
+  border-radius: 11px;
+  background: rgba(10, 17, 25, 0.55);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+@media (max-width: 760px) {
+  .admin-professional .admin-security-grid article {
+    min-height: 86px;
+  }
+}
