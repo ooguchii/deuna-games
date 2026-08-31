@@ -11,7 +11,7 @@ import {
   UserRound,
 } from "lucide-react";
 
-import headerStyles from "@/components/layout/Header.module.css";
+import headerStyles from "../../components/layout/Header.module.css";
 import {
   cpuCatalog,
   gpuCatalog,
