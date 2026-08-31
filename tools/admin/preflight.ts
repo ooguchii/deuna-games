@@ -47,6 +47,7 @@ type ContentCountRow = {
 };
 
 type PrivilegeRow = {
+  schema_name: string;
   object_name: string;
   can_delete: boolean;
   can_truncate: boolean;
@@ -55,12 +56,14 @@ type PrivilegeRow = {
 };
 
 type ColumnPrivilegeRow = {
+  table_schema: string;
   table_name: string;
   column_name: string;
   privilege_type: string;
 };
 
 type SequencePrivilegeRow = {
+  schema_name: string;
   object_name: string;
   can_usage: boolean;
   can_select: boolean;
@@ -73,119 +76,262 @@ const migrationsDirectory = path.join(
   "migrations"
 );
 const failures: string[] = [];
+const managedSchemas = [
+  "deuna_admin",
+  "deuna_accounts",
+] as const;
 
-const expectedColumnPrivileges = new Set([
-  "admin_users.id.SELECT",
-  "admin_users.username.SELECT",
-  "admin_users.username_key.SELECT",
-  "admin_users.role.SELECT",
-  "admin_users.password_hash.SELECT",
-  "admin_users.active.SELECT",
-  "admin_users.failed_login_count.SELECT",
-  "admin_users.locked_until.SELECT",
-  "admin_users.failed_login_count.UPDATE",
-  "admin_users.locked_until.UPDATE",
-  "admin_users.last_login_at.UPDATE",
-  "admin_users.updated_at.UPDATE",
-  "admin_sessions.id.SELECT",
-  "admin_sessions.user_id.SELECT",
-  "admin_sessions.token_hash.SELECT",
-  "admin_sessions.expires_at.SELECT",
-  "admin_sessions.revoked_at.SELECT",
-  "admin_sessions.id.INSERT",
-  "admin_sessions.user_id.INSERT",
-  "admin_sessions.token_hash.INSERT",
-  "admin_sessions.expires_at.INSERT",
-  "admin_sessions.revoked_at.UPDATE",
-  "admin_events.id.SELECT",
-  "admin_events.user_id.SELECT",
-  "admin_events.event_type.SELECT",
-  "admin_events.occurred_at.SELECT",
-  "admin_events.user_id.INSERT",
-  "admin_events.event_type.INSERT",
-  "editorial_items.id.SELECT",
-  "editorial_items.item_type.SELECT",
-  "editorial_items.item_key.SELECT",
-  "editorial_items.source_payload.SELECT",
-  "editorial_items.source_checksum.SELECT",
-  "editorial_items.source_present.SELECT",
-  "editorial_items.draft_payload.SELECT",
-  "editorial_items.draft_status.SELECT",
-  "editorial_items.revision.SELECT",
-  "editorial_items.published_payload.SELECT",
-  "editorial_items.published_checksum.SELECT",
-  "editorial_items.published_from_revision.SELECT",
-  "editorial_items.publication_number.SELECT",
-  "editorial_items.published_at.SELECT",
-  "editorial_items.published_by.SELECT",
-  "editorial_items.public_visible.SELECT",
-  "editorial_items.source_imported_at.SELECT",
-  "editorial_items.updated_at.SELECT",
-  "editorial_items.updated_by.SELECT",
-  "editorial_items.id.INSERT",
-  "editorial_items.item_type.INSERT",
-  "editorial_items.item_key.INSERT",
-  "editorial_items.source_payload.INSERT",
-  "editorial_items.source_checksum.INSERT",
-  "editorial_items.source_present.INSERT",
-  "editorial_items.draft_payload.INSERT",
-  "editorial_items.draft_status.INSERT",
-  "editorial_items.published_payload.INSERT",
-  "editorial_items.published_checksum.INSERT",
-  "editorial_items.public_visible.INSERT",
-  "editorial_items.updated_by.INSERT",
-  "editorial_items.draft_payload.UPDATE",
-  "editorial_items.draft_status.UPDATE",
-  "editorial_items.revision.UPDATE",
-  "editorial_items.published_payload.UPDATE",
-  "editorial_items.published_checksum.UPDATE",
-  "editorial_items.published_from_revision.UPDATE",
-  "editorial_items.publication_number.UPDATE",
-  "editorial_items.published_at.UPDATE",
-  "editorial_items.published_by.UPDATE",
-  "editorial_items.public_visible.UPDATE",
-  "editorial_items.updated_at.UPDATE",
-  "editorial_items.updated_by.UPDATE",
-  "editorial_revisions.id.SELECT",
-  "editorial_revisions.item_id.SELECT",
-  "editorial_revisions.revision.SELECT",
-  "editorial_revisions.payload.SELECT",
-  "editorial_revisions.action.SELECT",
-  "editorial_revisions.actor_user_id.SELECT",
-  "editorial_revisions.created_at.SELECT",
-  "editorial_revisions.item_id.INSERT",
-  "editorial_revisions.revision.INSERT",
-  "editorial_revisions.payload.INSERT",
-  "editorial_revisions.action.INSERT",
-  "editorial_revisions.actor_user_id.INSERT",
-  "editorial_publications.id.SELECT",
-  "editorial_publications.item_id.SELECT",
-  "editorial_publications.publication_number.SELECT",
-  "editorial_publications.payload.SELECT",
-  "editorial_publications.checksum.SELECT",
-  "editorial_publications.source_revision.SELECT",
-  "editorial_publications.action.SELECT",
-  "editorial_publications.actor_user_id.SELECT",
-  "editorial_publications.created_at.SELECT",
-  "editorial_publications.item_id.INSERT",
-  "editorial_publications.publication_number.INSERT",
-  "editorial_publications.payload.INSERT",
-  "editorial_publications.checksum.INSERT",
-  "editorial_publications.source_revision.INSERT",
-  "editorial_publications.action.INSERT",
-  "editorial_publications.actor_user_id.INSERT",
-  "admin_audit_log.user_id.INSERT",
-  "admin_audit_log.action.INSERT",
-  "admin_audit_log.entity_type.INSERT",
-  "admin_audit_log.entity_id.INSERT",
-  "admin_audit_log.details.INSERT",
+function privilegeKey(
+  schema: string,
+  table: string,
+  column: string,
+  privilege: string
+) {
+  return `${schema}.${table}.${column}.${privilege}`;
+}
+
+const expectedColumnPrivileges = new Set<string>();
+
+function expectColumns(
+  schema: string,
+  table: string,
+  privilege: "SELECT" | "INSERT" | "UPDATE",
+  columns: readonly string[]
+) {
+  for (const column of columns) {
+    expectedColumnPrivileges.add(
+      privilegeKey(schema, table, column, privilege)
+    );
+  }
+}
+
+expectColumns("deuna_admin", "admin_users", "SELECT", [
+  "id",
+  "username",
+  "username_key",
+  "role",
+  "password_hash",
+  "display_name",
+  "active",
+  "failed_login_count",
+  "locked_until",
+  "last_login_at",
+  "password_changed_at",
+  "created_at",
+  "updated_at",
+  "created_by_user_id",
+]);
+expectColumns("deuna_admin", "admin_users", "INSERT", [
+  "id",
+  "username",
+  "username_key",
+  "role",
+  "password_hash",
+  "display_name",
+  "active",
+  "created_by_user_id",
+]);
+expectColumns("deuna_admin", "admin_users", "UPDATE", [
+  "password_hash",
+  "active",
+  "failed_login_count",
+  "locked_until",
+  "last_login_at",
+  "password_changed_at",
+  "updated_at",
+]);
+expectColumns("deuna_admin", "admin_sessions", "SELECT", [
+  "id",
+  "user_id",
+  "token_hash",
+  "expires_at",
+  "revoked_at",
+]);
+expectColumns("deuna_admin", "admin_sessions", "INSERT", [
+  "id",
+  "user_id",
+  "token_hash",
+  "expires_at",
+]);
+expectColumns("deuna_admin", "admin_sessions", "UPDATE", [
+  "revoked_at",
+]);
+expectColumns("deuna_admin", "admin_events", "SELECT", [
+  "id",
+  "user_id",
+  "event_type",
+  "occurred_at",
+]);
+expectColumns("deuna_admin", "admin_events", "INSERT", [
+  "user_id",
+  "event_type",
+]);
+expectColumns("deuna_admin", "editorial_items", "SELECT", [
+  "id",
+  "item_type",
+  "item_key",
+  "source_payload",
+  "source_checksum",
+  "source_present",
+  "draft_payload",
+  "draft_status",
+  "revision",
+  "published_payload",
+  "published_checksum",
+  "published_from_revision",
+  "publication_number",
+  "published_at",
+  "published_by",
+  "public_visible",
+  "source_imported_at",
+  "updated_at",
+  "updated_by",
+]);
+expectColumns("deuna_admin", "editorial_items", "INSERT", [
+  "id",
+  "item_type",
+  "item_key",
+  "source_payload",
+  "source_checksum",
+  "source_present",
+  "draft_payload",
+  "draft_status",
+  "published_payload",
+  "published_checksum",
+  "public_visible",
+  "updated_by",
+]);
+expectColumns("deuna_admin", "editorial_items", "UPDATE", [
+  "draft_payload",
+  "draft_status",
+  "revision",
+  "published_payload",
+  "published_checksum",
+  "published_from_revision",
+  "publication_number",
+  "published_at",
+  "published_by",
+  "public_visible",
+  "updated_at",
+  "updated_by",
+]);
+expectColumns("deuna_admin", "editorial_revisions", "SELECT", [
+  "id",
+  "item_id",
+  "revision",
+  "payload",
+  "action",
+  "actor_user_id",
+  "created_at",
+]);
+expectColumns("deuna_admin", "editorial_revisions", "INSERT", [
+  "item_id",
+  "revision",
+  "payload",
+  "action",
+  "actor_user_id",
+]);
+expectColumns("deuna_admin", "editorial_publications", "SELECT", [
+  "id",
+  "item_id",
+  "publication_number",
+  "payload",
+  "checksum",
+  "source_revision",
+  "action",
+  "actor_user_id",
+  "created_at",
+]);
+expectColumns("deuna_admin", "editorial_publications", "INSERT", [
+  "item_id",
+  "publication_number",
+  "payload",
+  "checksum",
+  "source_revision",
+  "action",
+  "actor_user_id",
+]);
+expectColumns("deuna_admin", "admin_audit_log", "INSERT", [
+  "user_id",
+  "action",
+  "entity_type",
+  "entity_id",
+  "details",
+]);
+
+expectColumns("deuna_accounts", "users", "SELECT", [
+  "id",
+  "username",
+  "username_key",
+  "password_hash",
+  "display_name",
+  "email_encrypted",
+  "bio",
+  "active",
+  "failed_login_count",
+  "locked_until",
+  "last_login_at",
+  "password_changed_at",
+  "created_at",
+  "updated_at",
+]);
+expectColumns("deuna_accounts", "users", "INSERT", [
+  "id",
+  "username",
+  "username_key",
+  "password_hash",
+  "display_name",
+  "email_encrypted",
+  "bio",
+]);
+expectColumns("deuna_accounts", "users", "UPDATE", [
+  "password_hash",
+  "display_name",
+  "email_encrypted",
+  "bio",
+  "failed_login_count",
+  "locked_until",
+  "last_login_at",
+  "password_changed_at",
+  "updated_at",
+]);
+expectColumns("deuna_accounts", "sessions", "SELECT", [
+  "id",
+  "user_id",
+  "token_hash",
+  "expires_at",
+  "revoked_at",
+]);
+expectColumns("deuna_accounts", "sessions", "INSERT", [
+  "id",
+  "user_id",
+  "token_hash",
+  "expires_at",
+]);
+expectColumns("deuna_accounts", "sessions", "UPDATE", [
+  "revoked_at",
+]);
+expectColumns("deuna_accounts", "recovery_codes", "SELECT", [
+  "id",
+  "user_id",
+  "code_hash",
+  "created_at",
+  "used_at",
+]);
+expectColumns("deuna_accounts", "recovery_codes", "INSERT", [
+  "id",
+  "user_id",
+  "code_hash",
+]);
+expectColumns("deuna_accounts", "recovery_codes", "UPDATE", [
+  "used_at",
 ]);
 
 const expectedSequencePrivileges = new Set([
-  "admin_events_id_seq",
-  "editorial_revisions_id_seq",
-  "editorial_publications_id_seq",
-  "admin_audit_log_id_seq",
+  "deuna_admin.admin_events_id_seq",
+  "deuna_admin.editorial_revisions_id_seq",
+  "deuna_admin.editorial_publications_id_seq",
+  "deuna_admin.admin_audit_log_id_seq",
 ]);
 
 function assert(
@@ -254,7 +400,7 @@ async function getLocalMigrations() {
     )
     .sort();
 
-  const entries = await Promise.all(
+  return Promise.all(
     names.map(async (name) => ({
       name,
       checksum: checksum(
@@ -268,8 +414,6 @@ async function getLocalMigrations() {
       ),
     }))
   );
-
-  return entries;
 }
 
 function validateRuntimeEnvironment() {
@@ -278,17 +422,13 @@ function validateRuntimeEnvironment() {
     "NODE_ENV debe ser production en el preflight del runtime."
   );
   assert(
-    process.env.DEUNA_ADMIN_ENABLED ===
-      "false" ||
-      process.env.DEUNA_ADMIN_ENABLED ===
-        "true",
+    process.env.DEUNA_ADMIN_ENABLED === "false" ||
+      process.env.DEUNA_ADMIN_ENABLED === "true",
     "DEUNA_ADMIN_ENABLED debe usar exactamente true o false."
   );
 
   const siteUrl = new URL(
-    requiredEnvironment(
-      "NEXT_PUBLIC_SITE_URL"
-    )
+    requiredEnvironment("NEXT_PUBLIC_SITE_URL")
   );
 
   assert(
@@ -300,13 +440,29 @@ function validateRuntimeEnvironment() {
       !siteUrl.password &&
       !siteUrl.search &&
       !siteUrl.hash &&
-      (siteUrl.pathname === "/" ||
-        siteUrl.pathname === ""),
+      (siteUrl.pathname === "/" || siteUrl.pathname === ""),
     "NEXT_PUBLIC_SITE_URL debe contener sólo el origen HTTPS."
   );
 
   getAdminOrigin();
   getAdminSessionHours();
+
+  const accountDays = Number(
+    process.env.DEUNA_ACCOUNT_SESSION_DAYS?.trim() || "30"
+  );
+  assert(
+    Number.isInteger(accountDays) && accountDays >= 1 && accountDays <= 90,
+    "DEUNA_ACCOUNT_SESSION_DAYS debe estar entre 1 y 90."
+  );
+
+  const accountDataKey = requiredEnvironment(
+    "DEUNA_ACCOUNT_DATA_KEY"
+  );
+  assert(
+    /^[A-Za-z0-9_-]{43}$/.test(accountDataKey) &&
+      Buffer.from(accountDataKey, "base64url").length === 32,
+    "DEUNA_ACCOUNT_DATA_KEY debe ser una clave base64url aleatoria de 32 bytes."
+  );
 }
 
 async function checkRoles(
@@ -329,14 +485,11 @@ async function checkRoles(
 
   assert(
     current.rows[0]?.database_name ===
-      requiredEnvironment(
-        "DEUNA_DATABASE_NAME"
-      ),
+      requiredEnvironment("DEUNA_DATABASE_NAME"),
     "La conexión no apunta a la base configurada."
   );
   assert(
-    current.rows[0]?.user_name ===
-      expectedCurrentRole,
+    current.rows[0]?.user_name === expectedCurrentRole,
     `La conexión ${purpose} no usa el rol esperado.`
   );
   assert(
@@ -386,8 +539,7 @@ async function checkRoles(
   );
 
   assert(
-    databaseOwner.rows[0]?.owner_name ===
-      migrationRole,
+    databaseOwner.rows[0]?.owner_name === migrationRole,
     "El rol migrador debe ser propietario de la base administrativa."
   );
 }
@@ -399,47 +551,37 @@ async function checkPublicBoundary(
   const result = await pool.query<{
     runtime_database_create: boolean;
     runtime_database_temp: boolean;
-    runtime_schema_create: boolean;
-    runtime_schema_usage: boolean;
+    runtime_admin_create: boolean;
+    runtime_admin_usage: boolean;
+    runtime_accounts_create: boolean;
+    runtime_accounts_usage: boolean;
     public_database_access: boolean;
     public_schema_access: boolean;
     public_table_access: boolean;
   }>(
     `SELECT
-       has_database_privilege(
-         $1,
-         current_database(),
-         'CREATE'
-       ) AS runtime_database_create,
-       has_database_privilege(
-         $1,
-         current_database(),
-         'TEMP'
-       ) AS runtime_database_temp,
-       has_schema_privilege(
-         $1,
-         'deuna_admin',
-         'CREATE'
-       ) AS runtime_schema_create,
-       has_schema_privilege(
-         $1,
-         'deuna_admin',
-         'USAGE'
-       ) AS runtime_schema_usage,
+       has_database_privilege($1, current_database(), 'CREATE')
+         AS runtime_database_create,
+       has_database_privilege($1, current_database(), 'TEMP')
+         AS runtime_database_temp,
+       has_schema_privilege($1, 'deuna_admin', 'CREATE')
+         AS runtime_admin_create,
+       has_schema_privilege($1, 'deuna_admin', 'USAGE')
+         AS runtime_admin_usage,
+       has_schema_privilege($1, 'deuna_accounts', 'CREATE')
+         AS runtime_accounts_create,
+       has_schema_privilege($1, 'deuna_accounts', 'USAGE')
+         AS runtime_accounts_usage,
        EXISTS (
          SELECT 1
            FROM pg_database database,
                 LATERAL aclexplode(
                   COALESCE(
                     database.datacl,
-                    acldefault(
-                      'd',
-                      database.datdba
-                    )
+                    acldefault('d', database.datdba)
                   )
                 ) acl
-          WHERE database.datname =
-                current_database()
+          WHERE database.datname = current_database()
             AND acl.grantee = 0
        ) AS public_database_access,
        EXISTS (
@@ -448,22 +590,17 @@ async function checkPublicBoundary(
                 LATERAL aclexplode(
                   COALESCE(
                     namespace.nspacl,
-                    acldefault(
-                      'n',
-                      namespace.nspowner
-                    )
+                    acldefault('n', namespace.nspowner)
                   )
                 ) acl
-          WHERE namespace.nspname =
-                'deuna_admin'
+          WHERE namespace.nspname = ANY($2::text[])
             AND acl.grantee = 0
        ) AS public_schema_access,
        EXISTS (
          SELECT 1
            FROM pg_class object
            JOIN pg_namespace namespace
-             ON namespace.oid =
-                object.relnamespace
+             ON namespace.oid = object.relnamespace
            CROSS JOIN LATERAL aclexplode(
              COALESCE(
                object.relacl,
@@ -477,34 +614,31 @@ async function checkPublicBoundary(
                )
              )
            ) acl
-          WHERE namespace.nspname =
-                'deuna_admin'
-            AND object.relkind IN (
-              'r',
-              'p',
-              'S'
-            )
+          WHERE namespace.nspname = ANY($2::text[])
+            AND object.relkind IN ('r', 'p', 'S')
             AND acl.grantee = 0
        ) AS public_table_access`,
-    [runtimeRole]
+    [runtimeRole, [...managedSchemas]]
   );
   const boundary = result.rows[0];
 
   assert(
-    boundary?.runtime_schema_usage,
-    "El rol runtime necesita USAGE sobre el esquema administrativo."
+    boundary?.runtime_admin_usage &&
+      boundary.runtime_accounts_usage,
+    "El rol runtime necesita USAGE sobre ambos esquemas privados."
   );
   assert(
     !boundary?.runtime_database_create &&
       !boundary?.runtime_database_temp &&
-      !boundary?.runtime_schema_create,
+      !boundary?.runtime_admin_create &&
+      !boundary?.runtime_accounts_create,
     "El rol runtime puede crear objetos fuera de sus permisos mínimos."
   );
   assert(
     !boundary?.public_database_access &&
       !boundary?.public_schema_access &&
       !boundary?.public_table_access,
-    "PUBLIC conserva acceso a la base o al esquema administrativo."
+    "PUBLIC conserva acceso a la base o a un esquema privado."
   );
 }
 
@@ -512,67 +646,57 @@ async function checkRuntimePrivileges(
   pool: Pool,
   runtimeRole: string
 ) {
-  const tablePrivileges =
-    await pool.query<PrivilegeRow>(
-      `SELECT object.relname AS object_name,
-              has_table_privilege(
-                $1,
-                object.oid,
-                'DELETE'
-              ) AS can_delete,
-              has_table_privilege(
-                $1,
-                object.oid,
-                'TRUNCATE'
-              ) AS can_truncate,
-              has_table_privilege(
-                $1,
-                object.oid,
-                'REFERENCES'
-              ) AS can_references,
-              has_table_privilege(
-                $1,
-                object.oid,
-                'TRIGGER'
-              ) AS can_trigger
-         FROM pg_class object
-         JOIN pg_namespace namespace
-           ON namespace.oid =
-              object.relnamespace
-        WHERE namespace.nspname =
-              'deuna_admin'
-          AND object.relkind IN ('r', 'p')
-        ORDER BY object.relname`,
-      [runtimeRole]
-    );
+  const tablePrivileges = await pool.query<PrivilegeRow>(
+    `SELECT namespace.nspname AS schema_name,
+            object.relname AS object_name,
+            has_table_privilege($1, object.oid, 'DELETE') AS can_delete,
+            has_table_privilege($1, object.oid, 'TRUNCATE') AS can_truncate,
+            has_table_privilege($1, object.oid, 'REFERENCES') AS can_references,
+            has_table_privilege($1, object.oid, 'TRIGGER') AS can_trigger
+       FROM pg_class object
+       JOIN pg_namespace namespace
+         ON namespace.oid = object.relnamespace
+      WHERE namespace.nspname = ANY($2::text[])
+        AND object.relkind IN ('r', 'p')
+      ORDER BY namespace.nspname, object.relname`,
+    [runtimeRole, [...managedSchemas]]
+  );
 
   for (const privilege of tablePrivileges.rows) {
+    const objectKey = `${privilege.schema_name}.${privilege.object_name}`;
+    const deleteExpected = objectKey === "deuna_accounts.recovery_codes";
+
     assert(
-      !privilege.can_delete &&
+      privilege.can_delete === deleteExpected &&
         !privilege.can_truncate &&
         !privilege.can_references &&
         !privilege.can_trigger,
-      `El rol runtime tiene un permiso peligroso sobre ${privilege.object_name}.`
+      `Los permisos de tabla sobre ${objectKey} no son mínimos.`
     );
   }
 
-  const columns =
-    await pool.query<ColumnPrivilegeRow>(
-      `SELECT table_name,
-              column_name,
-              privilege_type
-         FROM information_schema.column_privileges
-        WHERE grantee = $1
-          AND table_schema = 'deuna_admin'
-        ORDER BY table_name,
-                 column_name,
-                 privilege_type`,
-      [runtimeRole]
-    );
+  const columns = await pool.query<ColumnPrivilegeRow>(
+    `SELECT table_schema,
+            table_name,
+            column_name,
+            privilege_type
+       FROM information_schema.column_privileges
+      WHERE grantee = $1
+        AND table_schema = ANY($2::text[])
+      ORDER BY table_schema,
+               table_name,
+               column_name,
+               privilege_type`,
+    [runtimeRole, [...managedSchemas]]
+  );
   const actualColumns = new Set(
-    columns.rows.map(
-      (row) =>
-        `${row.table_name}.${row.column_name}.${row.privilege_type}`
+    columns.rows.map((row) =>
+      privilegeKey(
+        row.table_schema,
+        row.table_name,
+        row.column_name,
+        row.privilege_type
+      )
     )
   );
 
@@ -590,47 +714,29 @@ async function checkRuntimePrivileges(
     );
   }
 
-  const sequences =
-    await pool.query<SequencePrivilegeRow>(
-      `SELECT object.relname AS object_name,
-              has_sequence_privilege(
-                $1,
-                object.oid,
-                'USAGE'
-              ) AS can_usage,
-              has_sequence_privilege(
-                $1,
-                object.oid,
-                'SELECT'
-              ) AS can_select,
-              has_sequence_privilege(
-                $1,
-                object.oid,
-                'UPDATE'
-              ) AS can_update
-         FROM pg_class object
-         JOIN pg_namespace namespace
-           ON namespace.oid =
-              object.relnamespace
-        WHERE namespace.nspname =
-              'deuna_admin'
-          AND object.relkind = 'S'
-        ORDER BY object.relname`,
-      [runtimeRole]
-    );
+  const sequences = await pool.query<SequencePrivilegeRow>(
+    `SELECT namespace.nspname AS schema_name,
+            object.relname AS object_name,
+            has_sequence_privilege($1, object.oid, 'USAGE') AS can_usage,
+            has_sequence_privilege($1, object.oid, 'SELECT') AS can_select,
+            has_sequence_privilege($1, object.oid, 'UPDATE') AS can_update
+       FROM pg_class object
+       JOIN pg_namespace namespace
+         ON namespace.oid = object.relnamespace
+      WHERE namespace.nspname = ANY($2::text[])
+        AND object.relkind = 'S'
+      ORDER BY namespace.nspname, object.relname`,
+    [runtimeRole, [...managedSchemas]]
+  );
 
   for (const sequence of sequences.rows) {
-    const expected =
-      expectedSequencePrivileges.has(
-        sequence.object_name
-      );
+    const key = `${sequence.schema_name}.${sequence.object_name}`;
+    const expected = expectedSequencePrivileges.has(key);
 
     assert(
-      expected ===
-        (sequence.can_usage &&
-          sequence.can_select) &&
+      expected === (sequence.can_usage && sequence.can_select) &&
         !sequence.can_update,
-      `Los permisos de la secuencia ${sequence.object_name} no son mínimos.`
+      `Los permisos de la secuencia ${key} no son mínimos.`
     );
   }
 }
@@ -638,8 +744,7 @@ async function checkRuntimePrivileges(
 async function checkMigrations(
   pool: Pool
 ) {
-  const local =
-    await getLocalMigrations();
+  const local = await getLocalMigrations();
   const applied = await pool.query<MigrationRow>(
     `SELECT name, checksum
        FROM deuna_admin.schema_migrations
@@ -656,15 +761,12 @@ async function checkMigrations(
   );
 
   for (const migration of local) {
-    const databaseMigration =
-      applied.rows.find(
-        (row) =>
-          row.name === migration.name
-      );
+    const databaseMigration = applied.rows.find(
+      (row) => row.name === migration.name
+    );
 
     assert(
-      databaseMigration?.checksum ===
-        migration.checksum,
+      databaseMigration?.checksum === migration.checksum,
       `La migración ${migration.name} falta o tiene un checksum diferente.`
     );
   }
@@ -678,7 +780,8 @@ async function checkApplicationState(
   }>(
     `SELECT count(id)::integer AS active_count
        FROM deuna_admin.admin_users
-      WHERE active = true`
+      WHERE active = true
+        AND role = 'owner'`
   );
 
   assert(
@@ -686,14 +789,13 @@ async function checkApplicationState(
     "Debe existir exactamente una cuenta propietaria activa."
   );
 
-  const content =
-    await pool.query<ContentCountRow>(
-      `SELECT item_type,
-              count(id)::integer AS count
-         FROM deuna_admin.editorial_items
-        WHERE source_present = true
-        GROUP BY item_type`
-    );
+  const content = await pool.query<ContentCountRow>(
+    `SELECT item_type,
+            count(id)::integer AS count
+       FROM deuna_admin.editorial_items
+      WHERE source_present = true
+      GROUP BY item_type`
+  );
   const counts = new Map(
     content.rows.map((row) => [
       row.item_type,
@@ -706,8 +808,7 @@ async function checkApplicationState(
     `La base debe contener ${games.length} juegos activos importados.`
   );
   assert(
-    counts.get("game_update") ===
-      gameUpdates.length,
+    counts.get("game_update") === gameUpdates.length,
     `La base debe contener ${gameUpdates.length} actualizaciones activas importadas.`
   );
   assert(
@@ -743,23 +844,18 @@ function safeDatabaseError(
 
 async function main() {
   const purpose = parsePurpose();
-  const runtimeRole =
-    assertSafePostgresRole(
-      getAdminRuntimeDatabaseRole()
-    );
-  const migrationRole =
-    assertSafePostgresRole(
-      purpose === "migration"
-        ? requiredEnvironment(
-            "DEUNA_DATABASE_MIGRATION_USER"
-          )
-        : process.env.DEUNA_DATABASE_MIGRATION_USER?.trim() ||
-            "deuna_migrator"
-    );
-  const databaseHost =
-    requiredEnvironment(
-      "DEUNA_DATABASE_HOST"
-    );
+  const runtimeRole = assertSafePostgresRole(
+    getAdminRuntimeDatabaseRole()
+  );
+  const migrationRole = assertSafePostgresRole(
+    purpose === "migration"
+      ? requiredEnvironment("DEUNA_DATABASE_MIGRATION_USER")
+      : process.env.DEUNA_DATABASE_MIGRATION_USER?.trim() ||
+          "deuna_migrator"
+  );
+  const databaseHost = requiredEnvironment(
+    "DEUNA_DATABASE_HOST"
+  );
 
   assert(
     isLoopbackHost(databaseHost),
@@ -787,14 +883,8 @@ async function main() {
       runtimeRole,
       migrationRole
     );
-    await checkPublicBoundary(
-      pool,
-      runtimeRole
-    );
-    await checkRuntimePrivileges(
-      pool,
-      runtimeRole
-    );
+    await checkPublicBoundary(pool, runtimeRole);
+    await checkRuntimePrivileges(pool, runtimeRole);
     if (purpose === "migration") {
       await checkMigrations(pool);
     }
@@ -817,7 +907,7 @@ async function main() {
   }
 
   console.log(
-    `Preflight ${purpose}: OK (PostgreSQL local, roles mínimos, migraciones, propietario y contenido verificados sin modificar datos).`
+    `Preflight ${purpose}: OK (PostgreSQL local, roles mínimos, cuentas, migraciones, propietario y contenido verificados sin modificar datos).`
   );
 }
 
