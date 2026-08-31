@@ -136,6 +136,25 @@ for (const file of toolFiles) {
   );
 }
 
+const forbiddenToolFragments = [
+  ["TO", "DO"].join(""),
+  ["FIX", "ME"].join(""),
+  ["HA", "CK"].join(""),
+  ["@ts-", "ignore"].join(""),
+  ["@ts-", "nocheck"].join(""),
+  ["eslint-", "disable"].join(""),
+];
+
+for (const file of toolFiles) {
+  const content = await read(file);
+  for (const fragment of forbiddenToolFragments) {
+    assert(
+      !content.includes(fragment),
+      `${file} contiene un marcador pendiente o una supresión no permitida.`
+    );
+  }
+}
+
 const requestSecurity = await read(
   "src/lib/admin/request-security.ts"
 );
@@ -199,5 +218,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  `Mantenimiento: OK (${reachableTools.size} tools alcanzables, sin diagnósticos temporales y con invariantes críticas preservadas).`
+  `Mantenimiento: OK (${reachableTools.size} tools alcanzables, sin diagnósticos temporales ni marcadores pendientes y con invariantes críticas preservadas).`
 );
