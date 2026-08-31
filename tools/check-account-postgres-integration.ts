@@ -76,6 +76,37 @@ async function insertPersonalization(
   );
 }
 
+async function insertRewards(
+  pool: Pool,
+  userId: string,
+  eventId: string
+) {
+  await pool.query(
+    `INSERT INTO deuna_accounts.reward_profiles (user_id)
+     VALUES ($1)`,
+    [userId]
+  );
+
+  await pool.query(
+    `UPDATE deuna_accounts.reward_profiles
+        SET xp_total = 10,
+            credits_balance = 5,
+            streak_days = 1,
+            best_streak = 1,
+            last_claim_at = now(),
+            updated_at = now()
+      WHERE user_id = $1`,
+    [userId]
+  );
+
+  await pool.query(
+    `INSERT INTO deuna_accounts.reward_events
+       (id, user_id, event_type, event_key, xp_delta, credits_delta, created_at)
+     VALUES ($1, $2, 'daily_claim', 'ci:claim:1', 10, 5, now())`,
+    [eventId, userId]
+  );
+}
+
 async function main() {
   const pool = new Pool(
     getAdminDatabaseConfig("runtime")
@@ -84,6 +115,7 @@ async function main() {
   const sessionId = randomUUID();
   const recoveryId = randomUUID();
   const recoveryCascadeId = randomUUID();
+  const rewardEventId = randomUUID();
   const username = `ci_${randomUUID().replaceAll("-", "").slice(0, 16)}`;
   const sessionHash = createHash("sha256")
     .update(randomUUID(), "utf8")
@@ -129,6 +161,7 @@ async function main() {
     );
 
     await insertPersonalization(pool, userId);
+    await insertRewards(pool, userId, rewardEventId);
 
     await pool.query(
       `UPDATE deuna_accounts.game_preferences
@@ -146,6 +179,31 @@ async function main() {
        SET game_slug = 'portal-2'
        WHERE user_id = $1
          AND game_slug = 'elden-ring'`,
+      [userId]
+    );
+
+    await expectPrivilegeDenied(
+      pool,
+      "Reescritura del ledger de Rewards",
+      `UPDATE deuna_accounts.reward_events
+       SET credits_delta = 500
+       WHERE id = $1`,
+      [rewardEventId]
+    );
+
+    await expectPrivilegeDenied(
+      pool,
+      "Borrado del ledger de Rewards",
+      `DELETE FROM deuna_accounts.reward_events
+       WHERE id = $1`,
+      [rewardEventId]
+    );
+
+    await expectPrivilegeDenied(
+      pool,
+      "Borrado directo del perfil de Rewards",
+      `DELETE FROM deuna_accounts.reward_profiles
+       WHERE user_id = $1`,
       [userId]
     );
 
@@ -229,6 +287,8 @@ async function main() {
       recovery_codes: number;
       game_preferences: number;
       hardware_profiles: number;
+      reward_profiles: number;
+      reward_events: number;
     }>(
       `SELECT
          (SELECT count(*)::integer
@@ -245,7 +305,13 @@ async function main() {
            WHERE user_id = $1) AS game_preferences,
          (SELECT count(*)::integer
             FROM deuna_accounts.hardware_profiles
-           WHERE user_id = $1) AS hardware_profiles`,
+           WHERE user_id = $1) AS hardware_profiles,
+         (SELECT count(*)::integer
+            FROM deuna_accounts.reward_profiles
+           WHERE user_id = $1) AS reward_profiles,
+         (SELECT count(*)::integer
+            FROM deuna_accounts.reward_events
+           WHERE user_id = $1) AS reward_events`,
       [userId]
     );
     const counts = remaining.rows[0];
@@ -270,6 +336,10 @@ async function main() {
       counts?.hardware_profiles === 0,
       "Mi PC no fue eliminada por cascada."
     );
+    assert(
+      counts?.reward_profiles === 0 && counts?.reward_events === 0,
+      "Rewards no fue eliminado por cascada junto con la cuenta."
+    );
   } finally {
     await pool
       .query(
@@ -293,7 +363,7 @@ async function main() {
   }
 
   console.log(
-    "PostgreSQL de cuentas: OK (permisos runtime reales, personalización explícita, denegaciones sensibles, rotación y borrado por cascada verificados)."
+    "PostgreSQL de cuentas: OK (permisos runtime reales, personalización y Rewards explícitos, ledger inmutable, denegaciones sensibles, rotación y borrado por cascada verificados)."
   );
 }
 
