@@ -199,12 +199,12 @@ export async function saveAccountGamePreference(
     const keepFollowState =
       input.followUpdates && current?.follow_updates === true;
     const followedAt = input.followUpdates
-      ? keepFollowState && current.followed_at
+      ? keepFollowState && current?.followed_at
         ? current.followed_at
         : new Date()
       : null;
     const updatesSeenThrough = input.followUpdates && keepFollowState
-      ? current.updates_seen_through
+      ? current?.updates_seen_through ?? null
       : null;
 
     await client.query(
