@@ -82,6 +82,18 @@ async function postForm(
   return (await response.json()) as ApiResult;
 }
 
+function formatNotificationDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  return new Intl.DateTimeFormat("es", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(date);
+}
+
 function PreferenceEditor({
   game,
   preference,
@@ -359,10 +371,10 @@ export default function AccountPersonalizationClient({
   return (
     <section className={styles.personalizationArea} aria-labelledby="mi-deuna-title">
       <div className={styles.personalizationIntro}>
-        <span className={styles.eyebrow}>PERSONALIZACIÓN EXPLÍCITA</span>
+        <span className={styles.eyebrow}>TU EXPERIENCIA</span>
         <h2 id="mi-deuna-title">Mi DeUna</h2>
         <p>
-          Guarda sólo lo que te resulte útil: tus juegos y tu PC. DeUna usa esas elecciones para ordenar recomendaciones y avisarte de cambios, sin convertir tu navegación en una señal de seguimiento.
+          Reúne tus juegos, tu PC y tus avisos en un solo lugar. DeUna adapta las recomendaciones con lo que tú decides guardar, no con tu historial de navegación.
         </p>
       </div>
 
@@ -387,7 +399,9 @@ export default function AccountPersonalizationClient({
                   >
                     <strong>{notification.gameTitle} · {notification.version}</strong>
                     <span>{notification.summary}</span>
-                    <time dateTime={notification.publishedAt}>{notification.publishedAt}</time>
+                    <time dateTime={notification.publishedAt}>
+                      {formatNotificationDate(notification.publishedAt)}
+                    </time>
                   </Link>
                 ))}
               </div>
