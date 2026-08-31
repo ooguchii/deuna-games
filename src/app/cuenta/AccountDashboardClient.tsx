@@ -11,6 +11,7 @@ import {
   Cpu,
   Gamepad2,
   Gauge,
+  Gift,
   Heart,
   LibraryBig,
   LogOut,
@@ -34,10 +35,16 @@ import {
 import SiteBrand from "@/components/layout/SiteBrand";
 import GameMedia from "@/components/ui/GameMedia";
 
+import {
+  AccountRewardSummary,
+  AccountRewardsView,
+  type AccountRewardsSnapshot,
+} from "./AccountRewardsPanel";
 import styles from "./account-dashboard.module.css";
 
 type DashboardView =
   | "overview"
+  | "rewards"
   | "games"
   | "pc"
   | "alerts"
@@ -117,6 +124,7 @@ type DashboardProps = {
   recommendations: Recommendation[];
   compatibilityPercent: number | null;
   compatibilityLabel: string;
+  rewards: AccountRewardsSnapshot;
 };
 
 const libraryLabels: Record<NonNullable<Preference["libraryState"]>, string> = {
@@ -258,6 +266,7 @@ export default function AccountDashboardClient({
   recommendations,
   compatibilityPercent,
   compatibilityLabel,
+  rewards,
 }: DashboardProps) {
   const router = useRouter();
   const [view, setView] = useState<DashboardView>("overview");
@@ -303,6 +312,12 @@ export default function AccountDashboardClient({
     badge?: number;
   }> = [
     { id: "overview", label: "Mi DeUna", icon: Gamepad2 },
+    {
+      id: "rewards",
+      label: "Recompensas",
+      icon: Gift,
+      badge: rewards.daily.available ? 1 : undefined,
+    },
     { id: "games", label: "Mis juegos", icon: LibraryBig },
     { id: "pc", label: "Mi PC", icon: MonitorCog },
     { id: "alerts", label: "Avisos", icon: Bell, badge: notifications.length },
@@ -528,7 +543,7 @@ export default function AccountDashboardClient({
         <header className={styles.welcomeHeader}>
           <div>
             <h1>¡Bienvenido, {displayName}!</h1>
-            <p>Todo lo que importa sobre tus juegos y tu PC, en un solo lugar.</p>
+            <p>Todo lo que importa sobre tus juegos, tu PC y tu progreso, en un solo lugar.</p>
           </div>
           <button
             type="button"
@@ -539,6 +554,11 @@ export default function AccountDashboardClient({
             Personalizar DeUna
           </button>
         </header>
+
+        <AccountRewardSummary
+          rewards={rewards}
+          onOpen={() => setView("rewards")}
+        />
 
         <section className={styles.statsStrip} aria-label="Resumen de Mi DeUna">
           <div className={styles.statItem}>
@@ -1161,6 +1181,7 @@ export default function AccountDashboardClient({
               <li><ShieldCheck size={16} /> Sin teléfono, nombre legal, domicilio o ubicación.</li>
               <li><ShieldCheck size={16} /> Correo opcional y cifrado si decides agregarlo.</li>
               <li><ShieldCheck size={16} /> Mi PC guarda sólo componentes que eliges explícitamente.</li>
+              <li><ShieldCheck size={16} /> Rewards registra premios e hitos, no clics, vistas ni tiempo de navegación.</li>
             </ul>
           </section>
 
@@ -1169,7 +1190,7 @@ export default function AccountDashboardClient({
               <div>
                 <h2>Eliminar mi cuenta</h2>
                 <p>
-                  La eliminación es permanente. Se borran perfil, correo cifrado, sesiones, códigos de recuperación, Mis juegos y Mi PC.
+                  La eliminación es permanente. Se borran perfil, correo cifrado, sesiones, códigos de recuperación, Mis juegos, Mi PC y todo tu progreso de Rewards.
                 </p>
               </div>
             </div>
@@ -1208,17 +1229,19 @@ export default function AccountDashboardClient({
   const content =
     view === "overview"
       ? renderOverview()
-      : view === "games"
-        ? renderGames()
-        : view === "pc"
-          ? renderPc()
-          : view === "alerts"
-            ? renderAlerts()
-            : view === "discover"
-              ? renderDiscover()
-              : view === "profile"
-                ? renderProfile()
-                : renderSettings();
+      : view === "rewards"
+        ? <AccountRewardsView rewards={rewards} />
+        : view === "games"
+          ? renderGames()
+          : view === "pc"
+            ? renderPc()
+            : view === "alerts"
+              ? renderAlerts()
+              : view === "discover"
+                ? renderDiscover()
+                : view === "profile"
+                  ? renderProfile()
+                  : renderSettings();
 
   return (
     <main className={styles.dashboardPage}>
@@ -1257,12 +1280,12 @@ export default function AccountDashboardClient({
               <span><CircleUserRound size={25} /></span>
               <div>
                 <strong>{profile.username}</strong>
-                <small>Perfil privado</small>
+                <small>Nivel {rewards.level.level} · {rewards.level.rank}</small>
               </div>
             </div>
             <div className={styles.userMiniStats}>
-              <span>{saved.length} juegos</span>
-              <span>{favoriteCount} favoritos</span>
+              <span>{rewards.xpTotal} XP</span>
+              <span>{rewards.creditsBalance} créditos</span>
             </div>
             <button
               type="button"
