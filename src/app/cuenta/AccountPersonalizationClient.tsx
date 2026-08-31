@@ -5,26 +5,58 @@ import {
   Bell,
   BellRing,
   Check,
+  CircleUserRound,
+  Compass,
   Cpu,
   Gamepad2,
+  Gauge,
   Heart,
+  LibraryBig,
+  LogOut,
   MonitorCog,
   Save,
+  Settings,
+  ShieldCheck,
+  SlidersHorizontal,
   Sparkles,
   Trash2,
+  UserRound,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
   type FormEvent,
+  useMemo,
   useState,
 } from "react";
 
+import GameMedia from "@/components/ui/GameMedia";
+
+import accountStyles from "./account.module.css";
 import styles from "./account-personalization.module.css";
+
+type DashboardView =
+  | "overview"
+  | "games"
+  | "pc"
+  | "alerts"
+  | "discover"
+  | "profile"
+  | "settings";
+
+type Profile = {
+  username: string;
+  displayName: string | null;
+  email: string | null;
+  bio: string | null;
+  createdAt: string;
+};
 
 type GameOption = {
   slug: string;
   title: string;
   category: string;
+  coverImage?: string;
+  rating?: number;
 };
 
 type Preference = {
@@ -50,6 +82,7 @@ type Notification = {
   id: string;
   gameSlug: string;
   gameTitle: string;
+  gameCoverImage?: string;
   version: string;
   summary: string;
   publishedAt: string;
@@ -58,12 +91,41 @@ type Notification = {
 type Recommendation = {
   slug: string;
   title: string;
+  category: string;
+  coverImage?: string;
+  rating?: number;
   reasons: string[];
+  compatibilityPercent: number | null;
 };
 
 type ApiResult = {
   ok?: boolean;
   error?: string;
+};
+
+type DashboardProps = {
+  profile: Profile;
+  games: GameOption[];
+  preferences: Preference[];
+  hardware: HardwareSelection;
+  cpus: HardwareOption[];
+  gpus: HardwareOption[];
+  notifications: Notification[];
+  recommendations: Recommendation[];
+  compatibilityPercent: number | null;
+  compatibilityLabel: string;
+};
+
+const libraryLabels: Record<NonNullable<Preference["libraryState"]>, string> = {
+  want_to_play: "Quiero jugarlo",
+  playing: "Lo estoy jugando",
+  completed: "Terminado",
+};
+
+const memoryLabels: Record<NonNullable<HardwareSelection>["memoryMode"], string> = {
+  unknown: "No especificada",
+  single: "Single channel",
+  dual: "Dual channel",
 };
 
 async function postForm(
@@ -82,9 +144,9 @@ async function postForm(
   return (await response.json()) as ApiResult;
 }
 
-function formatNotificationDate(value: string) {
+function formatAlertDate(value: string) {
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
+  if (!Number.isFinite(date.getTime())) return value;
 
   return new Intl.DateTimeFormat("es", {
     day: "2-digit",
@@ -94,148 +156,87 @@ function formatNotificationDate(value: string) {
   }).format(date);
 }
 
-function PreferenceEditor({
+function preferenceStatus(preference: Preference) {
+  if (preference.libraryState) {
+    return libraryLabels[preference.libraryState];
+  }
+  if (preference.favorite) return "Favorito";
+  if (preference.followUpdates) return "Siguiendo actualizaciones";
+  return "Guardado";
+}
+
+function DashboardGameRow({
   game,
   preference,
-  onSaved,
 }: {
   game: GameOption;
   preference: Preference;
-  onSaved: () => void;
 }) {
-  const [favorite, setFavorite] = useState(preference.favorite);
-  const [libraryState, setLibraryState] = useState(
-    preference.libraryState ?? "none"
-  );
-  const [followUpdates, setFollowUpdates] = useState(
-    preference.followUpdates
-  );
-  const [pending, setPending] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-
-  async function save(next?: {
-    favorite: boolean;
-    libraryState: string;
-    followUpdates: boolean;
-  }) {
-    setPending(true);
-    setMessage(null);
-    const values = next ?? {
-      favorite,
-      libraryState,
-      followUpdates,
-    };
-
-    try {
-      const data = await postForm("/api/account/games", {
-        gameSlug: game.slug,
-        favorite: String(values.favorite),
-        libraryState: values.libraryState,
-        followUpdates: String(values.followUpdates),
-      });
-
-      if (!data.ok) {
-        setMessage("No se pudo guardar este juego.");
-        return;
-      }
-
-      setFavorite(values.favorite);
-      setLibraryState(values.libraryState);
-      setFollowUpdates(values.followUpdates);
-      setMessage("Guardado");
-      onSaved();
-    } catch {
-      setMessage("No se pudo conectar con el servicio de cuentas.");
-    } finally {
-      setPending(false);
-    }
-  }
-
   return (
-    <article className={styles.libraryItem}>
-      <div className={styles.libraryTitle}>
-        <div>
-          <Link href={`/juegos/${game.slug}`}>{game.title}</Link>
-          <span>{game.category}</span>
+    <Link href={`/juegos/${game.slug}`} className={styles.compactGameRow}>
+      <div className={styles.compactCover}>
+        <GameMedia
+          src={game.coverImage}
+          alt=""
+          sizes="64px"
+          fallbackClassName={styles.mediaFallback}
+        />
+      </div>
+      <div className={styles.compactGameCopy}>
+        <strong>{game.title}</strong>
+        <span>{preferenceStatus(preference)}</span>
+      </div>
+      <div className={styles.compactSignals} aria-label="Señales guardadas">
+        <Heart
+          size={16}
+          fill={preference.favorite ? "currentColor" : "none"}
+          data-active={preference.favorite}
+          aria-hidden="true"
+        />
+        <Bell
+          size={16}
+          data-active={preference.followUpdates}
+          aria-hidden="true"
+        />
+      </div>
+    </Link>
+  );
+}
+
+function RecommendationCard({ recommendation }: { recommendation: Recommendation }) {
+  return (
+    <Link
+      href={`/juegos/${recommendation.slug}`}
+      className={styles.recommendationCard}
+    >
+      <div className={styles.recommendationMedia}>
+        <GameMedia
+          src={recommendation.coverImage}
+          alt=""
+          sizes="(max-width: 720px) 78vw, 280px"
+          fallbackClassName={styles.mediaFallback}
+        />
+        <span className={styles.recommendationHeart} aria-hidden="true">
+          <Heart size={15} />
+        </span>
+      </div>
+      <div className={styles.recommendationBody}>
+        <strong>{recommendation.title}</strong>
+        <span>{recommendation.category}</span>
+        <div className={styles.recommendationMeta}>
+          <span>{recommendation.rating ? `★ ${recommendation.rating.toFixed(1)}/5` : "Selección DeUna"}</span>
+          {recommendation.compatibilityPercent !== null && (
+            <b>{recommendation.compatibilityPercent}% compatible</b>
+          )}
         </div>
-        <button
-          type="button"
-          className={styles.iconButton}
-          aria-pressed={favorite}
-          aria-label={favorite ? "Quitar de favoritos" : "Agregar a favoritos"}
-          title={favorite ? "Quitar de favoritos" : "Agregar a favoritos"}
-          disabled={pending}
-          onClick={() => save({
-            favorite: !favorite,
-            libraryState,
-            followUpdates,
-          })}
-        >
-          <Heart
-            size={18}
-            fill={favorite ? "currentColor" : "none"}
-            aria-hidden="true"
-          />
-        </button>
+        <small>{recommendation.reasons[0] ?? "Recomendado para ti"}</small>
       </div>
-
-      <div className={styles.preferenceControls}>
-        <label>
-          Estado
-          <select
-            value={libraryState}
-            disabled={pending}
-            onChange={(event) => setLibraryState(event.target.value)}
-          >
-            <option value="none">Sin lista</option>
-            <option value="want_to_play">Quiero jugarlo</option>
-            <option value="playing">Lo estoy jugando</option>
-            <option value="completed">Terminado</option>
-          </select>
-        </label>
-
-        <label className={styles.checkControl}>
-          <input
-            type="checkbox"
-            checked={followUpdates}
-            disabled={pending}
-            onChange={(event) => setFollowUpdates(event.target.checked)}
-          />
-          <Bell size={16} aria-hidden="true" />
-          Avisarme de actualizaciones
-        </label>
-      </div>
-
-      <div className={styles.libraryActions}>
-        <button
-          type="button"
-          className={styles.secondaryButton}
-          disabled={pending}
-          onClick={() => save()}
-        >
-          <Save size={16} aria-hidden="true" />
-          {pending ? "Guardando..." : "Guardar"}
-        </button>
-        <button
-          type="button"
-          className={styles.textDangerButton}
-          disabled={pending}
-          onClick={() => save({
-            favorite: false,
-            libraryState: "none",
-            followUpdates: false,
-          })}
-        >
-          <Trash2 size={15} aria-hidden="true" />
-          Quitar de Mi DeUna
-        </button>
-        {message && <span className={styles.inlineStatus} role="status">{message}</span>}
-      </div>
-    </article>
+    </Link>
   );
 }
 
 export default function AccountPersonalizationClient({
+  profile,
   games,
   preferences,
   hardware,
@@ -243,89 +244,84 @@ export default function AccountPersonalizationClient({
   gpus,
   notifications,
   recommendations,
-}: {
-  games: GameOption[];
-  preferences: Preference[];
-  hardware: HardwareSelection;
-  cpus: HardwareOption[];
-  gpus: HardwareOption[];
-  notifications: Notification[];
-  recommendations: Recommendation[];
-}) {
+  compatibilityPercent,
+  compatibilityLabel,
+}: DashboardProps) {
   const router = useRouter();
-  const [hardwarePending, setHardwarePending] = useState(false);
+  const [view, setView] = useState<DashboardView>("overview");
+  const [pending, setPending] = useState(false);
+  const [profileSaved, setProfileSaved] = useState(false);
+  const [profileMessage, setProfileMessage] = useState<string | null>(null);
+  const [deleteMessage, setDeleteMessage] = useState<string | null>(null);
   const [hardwareMessage, setHardwareMessage] = useState<string | null>(null);
-  const [notificationPending, setNotificationPending] = useState(false);
-  const [addPending, setAddPending] = useState(false);
   const [addMessage, setAddMessage] = useState<string | null>(null);
-  const gamesBySlug = new Map(games.map((game) => [game.slug, game]));
+  const [notificationPending, setNotificationPending] = useState(false);
+
+  const gamesBySlug = useMemo(
+    () => new Map(games.map((game) => [game.slug, game])),
+    [games]
+  );
+  const cpuById = useMemo(
+    () => new Map(cpus.map((cpu) => [cpu.id, cpu.name])),
+    [cpus]
+  );
+  const gpuById = useMemo(
+    () => new Map(gpus.map((gpu) => [gpu.id, gpu.name])),
+    [gpus]
+  );
+
   const saved = preferences
     .map((preference) => ({
       preference,
       game: gamesBySlug.get(preference.gameSlug),
     }))
     .filter((entry): entry is { preference: Preference; game: GameOption } => Boolean(entry.game));
+  const favoriteCount = preferences.filter((preference) => preference.favorite).length;
+  const displayName = profile.displayName?.trim() || profile.username;
 
-  async function handleHardware(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setHardwarePending(true);
-    setHardwareMessage(null);
-    const form = new FormData(event.currentTarget);
+  const navItems: Array<{
+    id: DashboardView;
+    label: string;
+    icon: typeof Gamepad2;
+    badge?: number;
+  }> = [
+    { id: "overview", label: "Mi DeUna", icon: Gamepad2 },
+    { id: "games", label: "Mis juegos", icon: LibraryBig },
+    { id: "pc", label: "Mi PC", icon: MonitorCog },
+    { id: "alerts", label: "Avisos", icon: Bell, badge: notifications.length },
+    { id: "discover", label: "Descubrimientos", icon: Compass },
+    { id: "profile", label: "Perfil privado", icon: UserRound },
+    { id: "settings", label: "Configuración", icon: Settings },
+  ];
 
-    try {
-      const data = await postForm("/api/account/hardware", {
-        intent: "save",
-        cpuId: String(form.get("cpuId") ?? ""),
-        gpuId: String(form.get("gpuId") ?? ""),
-        ramGb: String(form.get("ramGb") ?? ""),
-        memoryMode: String(form.get("memoryMode") ?? "unknown"),
-      });
-
-      if (!data.ok) {
-        setHardwareMessage("Revisa CPU, GPU y RAM.");
-        return;
-      }
-
-      setHardwareMessage("PC guardada. Tus recomendaciones ya pueden usarla.");
-      router.refresh();
-    } catch {
-      setHardwareMessage("No se pudo conectar con el servicio de cuentas.");
-    } finally {
-      setHardwarePending(false);
+  async function savePreference(
+    gameSlug: string,
+    values: {
+      favorite: boolean;
+      libraryState: string;
+      followUpdates: boolean;
     }
-  }
-
-  async function clearHardware() {
-    setHardwarePending(true);
-    setHardwareMessage(null);
-
+  ) {
+    setPending(true);
     try {
-      const data = await postForm("/api/account/hardware", {
-        intent: "clear",
-        cpuId: "",
-        gpuId: "",
-        ramGb: "",
-        memoryMode: "unknown",
+      const data = await postForm("/api/account/games", {
+        gameSlug,
+        favorite: String(values.favorite),
+        libraryState: values.libraryState,
+        followUpdates: String(values.followUpdates),
       });
-
-      if (!data.ok) {
-        setHardwareMessage("No se pudo quitar la PC guardada.");
-        return;
-      }
-
-      setHardwareMessage("PC eliminada de tu cuenta.");
+      if (!data.ok) return false;
       router.refresh();
-    } catch {
-      setHardwareMessage("No se pudo conectar con el servicio de cuentas.");
+      return true;
     } finally {
-      setHardwarePending(false);
+      setPending(false);
     }
   }
 
   async function addGame(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const formElement = event.currentTarget;
-    setAddPending(true);
+    setPending(true);
     setAddMessage(null);
     const form = new FormData(formElement);
 
@@ -348,160 +344,329 @@ export default function AccountPersonalizationClient({
     } catch {
       setAddMessage("No se pudo conectar con el servicio de cuentas.");
     } finally {
-      setAddPending(false);
+      setPending(false);
+    }
+  }
+
+  async function handleHardware(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setPending(true);
+    setHardwareMessage(null);
+    const form = new FormData(event.currentTarget);
+
+    try {
+      const data = await postForm("/api/account/hardware", {
+        intent: "save",
+        cpuId: String(form.get("cpuId") ?? ""),
+        gpuId: String(form.get("gpuId") ?? ""),
+        ramGb: String(form.get("ramGb") ?? ""),
+        memoryMode: String(form.get("memoryMode") ?? "unknown"),
+      });
+
+      if (!data.ok) {
+        setHardwareMessage("Revisa CPU, GPU y RAM.");
+        return;
+      }
+
+      setHardwareMessage("PC guardada. DeUna ya puede usarla para ordenar compatibilidad.");
+      router.refresh();
+    } catch {
+      setHardwareMessage("No se pudo conectar con el servicio de cuentas.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function clearHardware() {
+    setPending(true);
+    setHardwareMessage(null);
+
+    try {
+      const data = await postForm("/api/account/hardware", {
+        intent: "clear",
+        cpuId: "",
+        gpuId: "",
+        ramGb: "",
+        memoryMode: "unknown",
+      });
+
+      if (!data.ok) {
+        setHardwareMessage("No se pudo quitar la PC guardada.");
+        return;
+      }
+
+      setHardwareMessage("PC eliminada de tu cuenta.");
+      router.refresh();
+    } catch {
+      setHardwareMessage("No se pudo conectar con el servicio de cuentas.");
+    } finally {
+      setPending(false);
     }
   }
 
   async function markNotificationsSeen() {
     setNotificationPending(true);
-
     try {
       const data = await postForm("/api/account/notifications/seen", {
         intent: "seen",
       });
-
-      if (data.ok) {
-        router.refresh();
-      }
+      if (data.ok) router.refresh();
     } finally {
       setNotificationPending(false);
     }
   }
 
-  return (
-    <section className={styles.personalizationArea} aria-labelledby="mi-deuna-title">
-      <div className={styles.personalizationIntro}>
-        <span className={styles.eyebrow}>TU EXPERIENCIA</span>
-        <h2 id="mi-deuna-title">Mi DeUna</h2>
-        <p>
-          Reúne tus juegos, tu PC y tus avisos en un solo lugar. DeUna adapta las recomendaciones con lo que tú decides guardar, no con tu historial de navegación.
-        </p>
-      </div>
+  async function handleProfileSave(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setPending(true);
+    setProfileSaved(false);
+    setProfileMessage(null);
+    const form = new FormData(event.currentTarget);
 
-      <div className={styles.personalizationGrid}>
-        <section className={styles.dashboardPanel} aria-labelledby="account-notifications-title">
-          <div className={styles.dashboardHeading}>
-            <div>
-              <BellRing size={20} aria-hidden="true" />
-              <h3 id="account-notifications-title">Avisos de tus juegos</h3>
-            </div>
-            <span className={styles.counterBadge}>{notifications.length}</span>
+    try {
+      const data = await postForm("/api/account/profile", {
+        displayName: String(form.get("displayName") ?? ""),
+        email: String(form.get("email") ?? ""),
+        bio: String(form.get("bio") ?? ""),
+      });
+
+      if (!data.ok) {
+        setProfileMessage(
+          data.error === "sesion"
+            ? "Tu sesión venció. Vuelve a entrar."
+            : "No se pudieron guardar los cambios."
+        );
+        return;
+      }
+
+      setProfileSaved(true);
+      router.refresh();
+      window.setTimeout(() => setProfileSaved(false), 2500);
+    } catch {
+      setProfileMessage("No se pudo conectar con el servicio de cuentas.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function handleLogout() {
+    setPending(true);
+    try {
+      const data = await postForm("/api/account/logout", { intent: "logout" });
+      if (data.ok) {
+        router.replace("/");
+        router.refresh();
+      }
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function handleDelete(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setPending(true);
+    setDeleteMessage(null);
+    const form = new FormData(event.currentTarget);
+
+    try {
+      const data = await postForm("/api/account/delete", {
+        password: String(form.get("password") ?? ""),
+        confirmation: "ELIMINAR",
+      });
+
+      if (!data.ok) {
+        setDeleteMessage(
+          data.error === "credenciales"
+            ? "La contraseña actual no coincide."
+            : data.error === "sesion"
+              ? "Tu sesión venció. Vuelve a entrar."
+              : "No se pudo eliminar la cuenta."
+        );
+        return;
+      }
+
+      router.replace("/cuenta?modo=entrar&estado=eliminada");
+      router.refresh();
+    } catch {
+      setDeleteMessage("No se pudo conectar con el servicio de cuentas.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  function renderOverview() {
+    const overviewGames = saved.slice(0, 4);
+    const overviewAlerts = notifications.slice(0, 2);
+
+    return (
+      <>
+        <header className={styles.welcomeHeader}>
+          <div>
+            <h1>¡Bienvenido, {displayName}!</h1>
+            <p>Todo lo que importa sobre tus juegos y tu PC, en un solo lugar.</p>
           </div>
+          <button
+            type="button"
+            className={styles.outlineAccentButton}
+            onClick={() => setView("games")}
+          >
+            <SlidersHorizontal size={16} aria-hidden="true" />
+            Personalizar DeUna
+          </button>
+        </header>
 
-          {notifications.length > 0 ? (
-            <>
-              <div className={styles.notificationList}>
-                {notifications.slice(0, 8).map((notification) => (
+        <section className={styles.statsStrip} aria-label="Resumen de Mi DeUna">
+          <div className={styles.statItem}>
+            <span className={styles.statIcon}><Gamepad2 size={21} /></span>
+            <div><strong>{saved.length}</strong><small>Juegos guardados</small></div>
+          </div>
+          <div className={styles.statItem}>
+            <span className={styles.statIcon}><Heart size={21} /></span>
+            <div><strong>{favoriteCount}</strong><small>Favoritos</small></div>
+          </div>
+          <div className={styles.statItem}>
+            <span className={styles.statIcon}><BellRing size={21} /></span>
+            <div><strong>{notifications.length}</strong><small>Avisos nuevos</small></div>
+          </div>
+          <div className={styles.statItem}>
+            <span className={styles.statIcon}><MonitorCog size={21} /></span>
+            <div><strong>Mi PC</strong><small>{hardware ? "Configurada" : "Sin configurar"}</small></div>
+          </div>
+          <div className={styles.statItem}>
+            <span className={styles.statIcon}><Gauge size={21} /></span>
+            <div><strong>{compatibilityLabel}</strong><small>Compatibilidad general</small></div>
+          </div>
+        </section>
+
+        <div className={styles.overviewGrid}>
+          <section className={styles.dashboardCard}>
+            <div className={styles.cardHeading}>
+              <div><Gamepad2 size={18} /><h2>Mis juegos</h2></div>
+              <button type="button" onClick={() => setView("games")}>Ver todos →</button>
+            </div>
+            <div className={styles.compactGameList}>
+              {overviewGames.length > 0 ? (
+                overviewGames.map(({ game, preference }) => (
+                  <DashboardGameRow key={game.slug} game={game} preference={preference} />
+                ))
+              ) : (
+                <p className={styles.emptyCompact}>Todavía no guardaste juegos.</p>
+              )}
+            </div>
+            <button type="button" className={styles.cardFooterButton} onClick={() => setView("games")}>
+              Ver todos mis juegos
+            </button>
+          </section>
+
+          <section className={styles.dashboardCard}>
+            <div className={styles.cardHeading}>
+              <div><MonitorCog size={18} /><h2>Mi PC</h2></div>
+              <button type="button" onClick={() => setView("pc")}>{hardware ? "Editar" : "Configurar"}</button>
+            </div>
+            {hardware ? (
+              <>
+                <dl className={styles.pcSpecs}>
+                  <div><dt>CPU</dt><dd>{cpuById.get(hardware.cpuId) ?? hardware.cpuId}</dd></div>
+                  <div><dt>GPU</dt><dd>{gpuById.get(hardware.gpuId) ?? hardware.gpuId}</dd></div>
+                  <div><dt>RAM</dt><dd>{hardware.ramGb} GB</dd></div>
+                  <div><dt>Memoria</dt><dd>{memoryLabels[hardware.memoryMode]}</dd></div>
+                </dl>
+                <div className={styles.performanceBox}>
+                  <div>
+                    <span>Rendimiento promedio en juegos</span>
+                    <strong>{compatibilityLabel}</strong>
+                    <small>Basado en tu configuración actual</small>
+                  </div>
+                  {compatibilityPercent !== null && (
+                    <div
+                      className={styles.performanceGauge}
+                      style={{ "--gauge": `${compatibilityPercent * 3.6}deg` } as React.CSSProperties}
+                    >
+                      <span>{compatibilityPercent}%</span>
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className={styles.pcEmpty}>
+                <Cpu size={28} />
+                <strong>Configura tu PC una sola vez</strong>
+                <span>DeUna reutilizará esos componentes en el motor de FPS y en tus recomendaciones.</span>
+              </div>
+            )}
+            <button type="button" className={styles.cardFooterButton} onClick={() => setView("pc")}>
+              {hardware ? "Ver detalles de rendimiento" : "Configurar Mi PC"}
+            </button>
+          </section>
+
+          <section className={styles.dashboardCard}>
+            <div className={styles.cardHeading}>
+              <div><Bell size={18} /><h2>Avisos recientes</h2></div>
+              <button type="button" onClick={() => setView("alerts")}>Ver todos →</button>
+            </div>
+            <div className={styles.alertPreviewList}>
+              {overviewAlerts.length > 0 ? (
+                overviewAlerts.map((notification) => (
                   <Link
                     key={notification.id}
                     href={`/juegos/${notification.gameSlug}#versions`}
-                    className={styles.notificationItem}
+                    className={styles.alertPreview}
                   >
-                    <strong>{notification.gameTitle} · {notification.version}</strong>
-                    <span>{notification.summary}</span>
-                    <time dateTime={notification.publishedAt}>
-                      {formatNotificationDate(notification.publishedAt)}
-                    </time>
+                    <div className={styles.alertCover}>
+                      <GameMedia
+                        src={notification.gameCoverImage}
+                        alt=""
+                        sizes="64px"
+                        fallbackClassName={styles.mediaFallback}
+                      />
+                    </div>
+                    <div>
+                      <strong>{notification.gameTitle}</strong>
+                      <span>{notification.version}</span>
+                      <small>{formatAlertDate(notification.publishedAt)}</small>
+                    </div>
+                    <i aria-hidden="true" />
                   </Link>
-                ))}
-              </div>
-              <button
-                type="button"
-                className={styles.secondaryButton}
-                disabled={notificationPending}
-                onClick={markNotificationsSeen}
-              >
-                <Check size={16} aria-hidden="true" />
-                {notificationPending ? "Actualizando..." : "Marcar como vistos"}
-              </button>
-            </>
-          ) : (
-            <p className={styles.emptyState}>
-              No hay avisos nuevos. Sigue un juego para que sus próximas actualizaciones aparezcan aquí.
-            </p>
-          )}
-        </section>
-
-        <section id="mi-pc" className={styles.dashboardPanel} aria-labelledby="account-hardware-title">
-          <div className={styles.dashboardHeading}>
-            <div>
-              <MonitorCog size={20} aria-hidden="true" />
-              <h3 id="account-hardware-title">Mi PC</h3>
-            </div>
-            {hardware && <span className={styles.successBadge}>Guardada</span>}
-          </div>
-
-          <p className={styles.panelCopy}>
-            Sólo guardamos los componentes que eliges. Se usan en el mismo motor de FPS de DeUna para ordenar juegos compatibles.
-          </p>
-
-          <form className={styles.hardwareForm} onSubmit={handleHardware}>
-            <label>
-              Procesador
-              <select name="cpuId" defaultValue={hardware?.cpuId ?? ""} required>
-                <option value="" disabled>Elige tu CPU</option>
-                {cpus.map((cpu) => (
-                  <option key={cpu.id} value={cpu.id}>{cpu.name}</option>
-                ))}
-              </select>
-            </label>
-
-            <label>
-              Gráfica
-              <select name="gpuId" defaultValue={hardware?.gpuId ?? ""} required>
-                <option value="" disabled>Elige tu GPU</option>
-                {gpus.map((gpu) => (
-                  <option key={gpu.id} value={gpu.id}>{gpu.name}</option>
-                ))}
-              </select>
-            </label>
-
-            <label>
-              RAM (GB)
-              <input
-                name="ramGb"
-                type="number"
-                min="1"
-                max="256"
-                step="0.5"
-                defaultValue={hardware?.ramGb ?? 16}
-                required
-              />
-            </label>
-
-            <label>
-              Memoria
-              <select name="memoryMode" defaultValue={hardware?.memoryMode ?? "unknown"}>
-                <option value="unknown">No sé / no importa</option>
-                <option value="single">Single channel</option>
-                <option value="dual">Dual channel</option>
-              </select>
-            </label>
-
-            <div className={styles.dashboardActions}>
-              <button type="submit" className={styles.primaryButton} disabled={hardwarePending}>
-                <Cpu size={16} aria-hidden="true" />
-                {hardwarePending ? "Guardando..." : "Guardar Mi PC"}
-              </button>
-              {hardware && (
-                <button type="button" className={styles.secondaryButton} disabled={hardwarePending} onClick={clearHardware}>
-                  <Trash2 size={16} aria-hidden="true" />
-                  Quitar PC guardada
-                </button>
+                ))
+              ) : (
+                <p className={styles.emptyCompact}>No hay avisos nuevos.</p>
               )}
             </div>
-            {hardwareMessage && <p className={styles.inlineStatus} role="status">{hardwareMessage}</p>}
-          </form>
-        </section>
-      </div>
+            <button type="button" className={styles.cardFooterButton} onClick={() => setView("alerts")}>
+              Ir a avisos
+            </button>
+          </section>
+        </div>
 
-      <section className={styles.dashboardPanel} aria-labelledby="account-library-title">
-        <div className={styles.dashboardHeading}>
-          <div>
-            <Gamepad2 size={20} aria-hidden="true" />
-            <h3 id="account-library-title">Mis juegos</h3>
+        <section className={styles.recommendationsPanel}>
+          <div className={styles.cardHeading}>
+            <div><Sparkles size={18} /><h2>Recomendados para ti</h2></div>
+            <button type="button" onClick={() => setView("discover")}>Ver todos →</button>
           </div>
-          <span className={styles.counterBadge}>{saved.length}</span>
+          <div className={styles.recommendationRail}>
+            {recommendations.length > 0 ? (
+              recommendations.slice(0, 6).map((recommendation) => (
+                <RecommendationCard key={recommendation.slug} recommendation={recommendation} />
+              ))
+            ) : (
+              <p className={styles.emptyCompact}>Guarda juegos o configura tu PC para activar recomendaciones personales.</p>
+            )}
+          </div>
+        </section>
+      </>
+    );
+  }
+
+  function renderGames() {
+    return (
+      <section className={styles.fullPanel}>
+        <div className={styles.sectionHeader}>
+          <div>
+            <span>MI BIBLIOTECA</span>
+            <h1>Mis juegos</h1>
+            <p>Favoritos, estados y seguimiento en una única lista compacta.</p>
+          </div>
+          <strong>{saved.length} guardados</strong>
         </div>
 
         <form className={styles.addGameForm} onSubmit={addGame}>
@@ -509,9 +674,7 @@ export default function AccountPersonalizationClient({
             Juego
             <select name="gameSlug" defaultValue="" required>
               <option value="" disabled>Elige un juego</option>
-              {games.map((game) => (
-                <option key={game.slug} value={game.slug}>{game.title}</option>
-              ))}
+              {games.map((game) => <option key={game.slug} value={game.slug}>{game.title}</option>)}
             </select>
           </label>
           <label>
@@ -523,66 +686,267 @@ export default function AccountPersonalizationClient({
               <option value="completed">Terminado</option>
             </select>
           </label>
-          <label className={styles.checkControl}>
-            <input name="favorite" type="checkbox" />
-            <Heart size={16} aria-hidden="true" /> Favorito
-          </label>
-          <label className={styles.checkControl}>
-            <input name="followUpdates" type="checkbox" />
-            <Bell size={16} aria-hidden="true" /> Seguir actualizaciones
-          </label>
-          <button type="submit" className={styles.primaryButton} disabled={addPending}>
-            <Gamepad2 size={16} aria-hidden="true" />
-            {addPending ? "Agregando..." : "Agregar"}
-          </button>
-          {addMessage && <span className={styles.inlineStatus} role="status">{addMessage}</span>}
+          <label className={styles.inlineCheck}><input name="favorite" type="checkbox" /> <Heart size={15} /> Favorito</label>
+          <label className={styles.inlineCheck}><input name="followUpdates" type="checkbox" /> <Bell size={15} /> Seguir</label>
+          <button type="submit" className={styles.accentButton} disabled={pending}>Agregar</button>
+          {addMessage && <span className={styles.inlineStatus}>{addMessage}</span>}
         </form>
 
-        {saved.length > 0 ? (
-          <div className={styles.libraryList}>
-            {saved.map(({ game, preference }) => (
-              <PreferenceEditor
-                key={game.slug}
-                game={game}
-                preference={preference}
-                onSaved={() => router.refresh()}
-              />
-            ))}
-          </div>
-        ) : (
-          <p className={styles.emptyState}>
-            Todavía no has guardado juegos. Tus favoritos y estados sirven como señales explícitas para recomendarte otros títulos parecidos.
-          </p>
-        )}
+        <div className={styles.libraryScroller}>
+          {saved.map(({ game, preference }) => (
+            <article key={game.slug} className={styles.libraryRow}>
+              <Link href={`/juegos/${game.slug}`} className={styles.libraryIdentity}>
+                <div className={styles.libraryCover}>
+                  <GameMedia src={game.coverImage} alt="" sizes="72px" fallbackClassName={styles.mediaFallback} />
+                </div>
+                <div><strong>{game.title}</strong><span>{game.category}</span></div>
+              </Link>
+              <select
+                aria-label={`Estado de ${game.title}`}
+                defaultValue={preference.libraryState ?? "none"}
+                disabled={pending}
+                onChange={(event) => {
+                  void savePreference(game.slug, {
+                    favorite: preference.favorite,
+                    libraryState: event.target.value,
+                    followUpdates: preference.followUpdates,
+                  });
+                }}
+              >
+                <option value="none">Sin lista</option>
+                <option value="want_to_play">Quiero jugarlo</option>
+                <option value="playing">Lo estoy jugando</option>
+                <option value="completed">Terminado</option>
+              </select>
+              <button
+                type="button"
+                className={styles.iconToggle}
+                aria-pressed={preference.favorite}
+                aria-label={preference.favorite ? "Quitar favorito" : "Agregar favorito"}
+                disabled={pending}
+                onClick={() => void savePreference(game.slug, {
+                  favorite: !preference.favorite,
+                  libraryState: preference.libraryState ?? "none",
+                  followUpdates: preference.followUpdates,
+                })}
+              >
+                <Heart size={17} fill={preference.favorite ? "currentColor" : "none"} />
+              </button>
+              <button
+                type="button"
+                className={styles.iconToggle}
+                aria-pressed={preference.followUpdates}
+                aria-label={preference.followUpdates ? "Dejar de seguir actualizaciones" : "Seguir actualizaciones"}
+                disabled={pending}
+                onClick={() => void savePreference(game.slug, {
+                  favorite: preference.favorite,
+                  libraryState: preference.libraryState ?? "none",
+                  followUpdates: !preference.followUpdates,
+                })}
+              >
+                <Bell size={17} />
+              </button>
+              <button
+                type="button"
+                className={styles.removeButton}
+                disabled={pending}
+                onClick={() => void savePreference(game.slug, {
+                  favorite: false,
+                  libraryState: "none",
+                  followUpdates: false,
+                })}
+              >
+                <Trash2 size={15} /> Quitar
+              </button>
+            </article>
+          ))}
+        </div>
       </section>
+    );
+  }
 
-      <section className={styles.dashboardPanel} aria-labelledby="account-recommendations-title">
-        <div className={styles.dashboardHeading}>
+  function renderPc() {
+    return (
+      <section className={styles.fullPanel}>
+        <div className={styles.sectionHeader}>
           <div>
-            <Sparkles size={20} aria-hidden="true" />
-            <h3 id="account-recommendations-title">Recomendados para ti</h3>
+            <span>RENDIMIENTO</span>
+            <h1>Mi PC</h1>
+            <p>Configúrala una vez y DeUna reutiliza esos datos explícitos en FPS y recomendaciones.</p>
           </div>
+          {hardware && <strong>{compatibilityLabel}</strong>}
         </div>
 
-        {recommendations.length > 0 ? (
-          <div className={styles.recommendationList}>
-            {recommendations.map((recommendation) => (
-              <Link
-                key={recommendation.slug}
-                href={`/juegos/${recommendation.slug}`}
-                className={styles.recommendationItem}
-              >
-                <strong>{recommendation.title}</strong>
-                <span>{recommendation.reasons.join(" · ")}</span>
-              </Link>
-            ))}
+        <div className={styles.pcWorkspace}>
+          <form className={styles.hardwareForm} onSubmit={handleHardware}>
+            <label>Procesador<select name="cpuId" defaultValue={hardware?.cpuId ?? ""} required><option value="" disabled>Elige tu CPU</option>{cpus.map((cpu) => <option key={cpu.id} value={cpu.id}>{cpu.name}</option>)}</select></label>
+            <label>Gráfica<select name="gpuId" defaultValue={hardware?.gpuId ?? ""} required><option value="" disabled>Elige tu GPU</option>{gpus.map((gpu) => <option key={gpu.id} value={gpu.id}>{gpu.name}</option>)}</select></label>
+            <label>RAM (GB)<input name="ramGb" type="number" min="1" max="256" step="0.5" defaultValue={hardware?.ramGb ?? 16} required /></label>
+            <label>Memoria<select name="memoryMode" defaultValue={hardware?.memoryMode ?? "unknown"}><option value="unknown">No sé / no importa</option><option value="single">Single channel</option><option value="dual">Dual channel</option></select></label>
+            <div className={styles.formActions}>
+              <button type="submit" className={styles.accentButton} disabled={pending}><Cpu size={16} /> {pending ? "Guardando..." : "Guardar Mi PC"}</button>
+              {hardware && <button type="button" className={styles.ghostButton} disabled={pending} onClick={clearHardware}><Trash2 size={15} /> Quitar PC guardada</button>}
+            </div>
+            {hardwareMessage && <p className={styles.inlineStatus}>{hardwareMessage}</p>}
+          </form>
+
+          <div className={styles.pcSummaryLarge}>
+            <MonitorCog size={28} />
+            <span>Compatibilidad general</span>
+            <strong>{compatibilityLabel}</strong>
+            {compatibilityPercent !== null && <b>{compatibilityPercent}%</b>}
+            <small>Estimación orientativa con el mismo motor de FPS de DeUna.</small>
           </div>
-        ) : (
-          <p className={styles.emptyState}>
-            Guarda al menos un juego o tu PC para activar recomendaciones personales. La navegación por sí sola no cuenta como señal.
-          </p>
-        )}
+        </div>
       </section>
-    </section>
+    );
+  }
+
+  function renderAlerts() {
+    return (
+      <section className={styles.fullPanel}>
+        <div className={styles.sectionHeader}>
+          <div><span>SEGUIMIENTO</span><h1>Avisos de tus juegos</h1><p>Sólo aparecen cambios publicados después de que decidiste seguir cada juego.</p></div>
+          <strong>{notifications.length} nuevos</strong>
+        </div>
+        {notifications.length > 0 ? (
+          <>
+            <div className={styles.alertsGrid}>
+              {notifications.map((notification) => (
+                <Link key={notification.id} href={`/juegos/${notification.gameSlug}#versions`} className={styles.alertCard}>
+                  <div className={styles.alertLargeCover}><GameMedia src={notification.gameCoverImage} alt="" sizes="96px" fallbackClassName={styles.mediaFallback} /></div>
+                  <div><strong>{notification.gameTitle}</strong><span>{notification.version}</span><p>{notification.summary}</p><small>{formatAlertDate(notification.publishedAt)}</small></div>
+                </Link>
+              ))}
+            </div>
+            <button type="button" className={styles.ghostButton} disabled={notificationPending} onClick={markNotificationsSeen}><Check size={16} /> {notificationPending ? "Actualizando..." : "Marcar todos como vistos"}</button>
+          </>
+        ) : <div className={styles.emptyLarge}><Bell size={28} /><strong>Estás al día</strong><span>No hay avisos nuevos de los juegos que sigues.</span></div>}
+      </section>
+    );
+  }
+
+  function renderDiscover() {
+    return (
+      <section className={styles.fullPanel}>
+        <div className={styles.sectionHeader}>
+          <div><span>PARA TI</span><h1>Descubrimientos</h1><p>Ordenados por tus elecciones explícitas y por la compatibilidad de Mi PC cuando está configurada.</p></div>
+          <strong>{recommendations.length} sugerencias</strong>
+        </div>
+        <div className={styles.discoveryGrid}>
+          {recommendations.map((recommendation) => <RecommendationCard key={recommendation.slug} recommendation={recommendation} />)}
+        </div>
+      </section>
+    );
+  }
+
+  function renderProfile() {
+    return (
+      <section className={styles.fullPanel}>
+        <div className={styles.sectionHeader}>
+          <div><span>TU CUENTA</span><h1>Perfil privado</h1><p>Tu usuario es la única identidad obligatoria. Todo lo demás sigue siendo opcional.</p></div>
+          <strong>@{profile.username}</strong>
+        </div>
+        <form className={`${accountStyles.profileForm} ${styles.profileCompactForm}`} onSubmit={handleProfileSave}>
+          <div className={accountStyles.field}><label htmlFor="dashboard-display-name">Nombre visible <span className={accountStyles.optional}>Opcional</span></label><input id="dashboard-display-name" name="displayName" defaultValue={profile.displayName ?? ""} maxLength={80} autoComplete="nickname" /></div>
+          <div className={accountStyles.field}><label htmlFor="dashboard-email">Correo <span className={accountStyles.optional}>Opcional</span></label><input id="dashboard-email" name="email" type="email" defaultValue={profile.email ?? ""} maxLength={254} autoComplete="email" /><p className={accountStyles.hint}>Se cifra antes de guardarlo. Déjalo vacío para eliminarlo.</p></div>
+          <div className={accountStyles.field}><label htmlFor="dashboard-bio">Bio <span className={accountStyles.optional}>Opcional</span></label><textarea id="dashboard-bio" name="bio" defaultValue={profile.bio ?? ""} maxLength={500} /></div>
+          {profileMessage && <p className={accountStyles.message}>{profileMessage}</p>}
+          <button type="submit" className={accountStyles.primaryButton} disabled={pending}><Save size={16} /> {profileSaved ? "Guardado" : pending ? "Procesando..." : "Guardar cambios"}</button>
+        </form>
+      </section>
+    );
+  }
+
+  function renderSettings() {
+    return (
+      <section className={styles.fullPanel}>
+        <div className={styles.sectionHeader}>
+          <div><span>CONTROL Y PRIVACIDAD</span><h1>Configuración</h1><p>Privacidad por defecto y control directo sobre tu cuenta.</p></div>
+          <ShieldCheck size={28} />
+        </div>
+
+        <div className={styles.settingsGrid}>
+          <section className={`${accountStyles.privacyPanel} ${styles.embeddedPrivacy}`}>
+            <ShieldCheck size={26} aria-hidden="true" />
+            <h2>Privacidad por defecto</h2>
+            <p>La cuenta funciona sin convertir tus datos personales o tu navegación en requisito.</p>
+            <ul>
+              <li><ShieldCheck size={15} /> Sin IP ni historial de navegación asociado a tu cuenta.</li>
+              <li><ShieldCheck size={15} /> Sin teléfono, nombre legal, domicilio o ubicación.</li>
+              <li><ShieldCheck size={15} /> Correo opcional y cifrado si decides agregarlo.</li>
+              <li><ShieldCheck size={15} /> Mi PC guarda sólo componentes que eliges explícitamente.</li>
+            </ul>
+          </section>
+
+          <section className={`${accountStyles.deletePanel} ${styles.embeddedDelete}`}>
+            <div className={accountStyles.deleteHeader}>
+              <div><h2>Eliminar mi cuenta</h2><p>La eliminación es permanente. Se borran perfil, correo cifrado, sesiones, códigos de recuperación, Mis juegos y Mi PC.</p></div>
+            </div>
+            <form className={accountStyles.deleteForm} onSubmit={handleDelete}>
+              <div className={accountStyles.field}><label htmlFor="dashboard-delete-password">Confirma con tu contraseña actual</label><input id="dashboard-delete-password" name="password" type="password" autoComplete="current-password" required disabled={pending} /></div>
+              {deleteMessage && <p className={accountStyles.message}>{deleteMessage}</p>}
+              <button type="submit" className={accountStyles.dangerButton} disabled={pending}><Trash2 size={16} /> {pending ? "Eliminando..." : "Eliminar definitivamente"}</button>
+            </form>
+          </section>
+        </div>
+      </section>
+    );
+  }
+
+  const content =
+    view === "overview" ? renderOverview() :
+      view === "games" ? renderGames() :
+        view === "pc" ? renderPc() :
+          view === "alerts" ? renderAlerts() :
+            view === "discover" ? renderDiscover() :
+              view === "profile" ? renderProfile() :
+                renderSettings();
+
+  return (
+    <div className={styles.dashboardShell}>
+      <aside className={styles.sidebar}>
+        <div className={styles.brand}>
+          <span className={styles.brandMark}>D</span>
+          <strong>DeUna</strong>
+        </div>
+
+        <nav className={styles.sidebarNav} aria-label="Secciones de Mi DeUna">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                data-active={view === item.id}
+                onClick={() => setView(item.id)}
+              >
+                <Icon size={18} aria-hidden="true" />
+                <span>{item.label}</span>
+                {item.badge !== undefined && item.badge > 0 && <b>{item.badge}</b>}
+              </button>
+            );
+          })}
+        </nav>
+
+        <div className={styles.sidebarUser}>
+          <div className={styles.userIdentity}>
+            <span><CircleUserRound size={24} /></span>
+            <div><strong>{profile.username}</strong><small>Perfil privado</small></div>
+          </div>
+          <div className={styles.userMiniStats}>
+            <span>{saved.length} juegos</span>
+            <span>{favoriteCount} favoritos</span>
+          </div>
+          <button type="button" onClick={handleLogout} disabled={pending}>
+            <LogOut size={17} /> Cerrar sesión
+          </button>
+        </div>
+      </aside>
+
+      <main className={styles.dashboardMain}>
+        {content}
+      </main>
+    </div>
   );
 }
