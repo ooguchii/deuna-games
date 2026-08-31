@@ -25,7 +25,7 @@
 .admin-professional form > div:has(> p):has(> button[type="submit"]) > button[type="submit"] {
   min-height: 44px;
   padding: 0 16px;
-  color: #fff;
+  color: var(--text-on-brand);
   border: 1px solid color-mix(in srgb, var(--brand) 76%, #ffffff);
   border-radius: 9px;
   outline: none;
@@ -43,6 +43,7 @@
 }
 
 .admin-professional form > div:has(> p):has(> button[type="submit"]) > button[type="submit"]:hover:not(:disabled) {
+  color: var(--text-on-brand);
   filter: brightness(1.08);
   transform: translateY(-1px);
 }
@@ -74,7 +75,7 @@
   color: #dce4ec;
   border: 1px solid #3c4a59;
   border-radius: 7px;
-  background: #111a24;
+  background: var(--admin-control-bg-hover);
   cursor: pointer;
   font: inherit;
   font-size: 12px;
@@ -88,7 +89,7 @@
 .admin-professional input[type="file"]::file-selector-button:hover {
   color: #fff;
   border-color: color-mix(in srgb, var(--brand) 38%, #536273);
-  background: color-mix(in srgb, var(--brand) 5%, #151f2a);
+  background: color-mix(in srgb, var(--brand) 5%, var(--admin-control-bg-hover));
 }
 
 .admin-professional input[type="range"] {
@@ -104,7 +105,7 @@
   padding: 20px;
   border-color: #303e4c;
   border-radius: 12px;
-  background: linear-gradient(145deg, #0d151e, #0a1118);
+  background: linear-gradient(145deg, var(--admin-row-alt), var(--admin-row));
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
 }
 
@@ -130,7 +131,7 @@
 .admin-professional .admin-event-panel {
   border-color: #303e4c;
   border-radius: 14px;
-  background: linear-gradient(155deg, #0d151e, #091018);
+  background: linear-gradient(155deg, var(--admin-row-alt), var(--admin-row));
   box-shadow:
     0 16px 38px rgba(0, 0, 0, 0.15),
     inset 0 1px 0 rgba(255, 255, 255, 0.02);
@@ -174,7 +175,7 @@
   color: #95a3b2;
   border-color: #3a4755;
   border-radius: 11px;
-  background: rgba(10, 17, 25, 0.55);
+  background: color-mix(in srgb, var(--background) 6%, rgba(10, 17, 25, 0.55));
   font-size: 13px;
   line-height: 1.55;
 }
@@ -182,7 +183,7 @@
 .admin-professional .admin-editorial-history {
   border-color: #303e4c;
   border-radius: 14px;
-  background: linear-gradient(155deg, #0d151e, #091018);
+  background: linear-gradient(155deg, var(--admin-row-alt), var(--admin-row));
   box-shadow:
     0 16px 38px rgba(0, 0, 0, 0.14),
     inset 0 1px 0 rgba(255, 255, 255, 0.02);
@@ -228,7 +229,7 @@
   border: 1px solid #3c4a59;
   border-radius: 8px;
   outline: none;
-  background: #0d151e;
+  background: var(--admin-control-bg);
   cursor: pointer;
   font: inherit;
   font-size: 12px;
@@ -244,7 +245,7 @@
 .admin-professional .admin-history-action:hover {
   color: #fff;
   border-color: color-mix(in srgb, var(--brand) 38%, #536273);
-  background: color-mix(in srgb, var(--brand) 5%, #111b26);
+  background: color-mix(in srgb, var(--brand) 5%, var(--admin-control-bg-hover));
   transform: translateY(-1px);
 }
 
