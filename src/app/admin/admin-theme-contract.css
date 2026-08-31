@@ -1,0 +1,120 @@
+.admin-professional {
+  --admin-brand-text: color-mix(in srgb, var(--brand) 48%, #ffffff);
+  --admin-brand-text-strong: color-mix(in srgb, var(--brand) 30%, #ffffff);
+  --admin-brand-border: color-mix(in srgb, var(--brand) 58%, #435364);
+  --admin-brand-surface: color-mix(in srgb, var(--brand) 10%, #0d151e);
+  --admin-brand-surface-soft: color-mix(in srgb, var(--brand) 6%, #0b131c);
+  --admin-focus-border: color-mix(in srgb, var(--brand) 58%, #536273);
+  --admin-focus-ring: color-mix(in srgb, var(--brand) 16%, transparent);
+  --admin-focus-ring-strong: color-mix(in srgb, var(--brand) 58%, #ffffff);
+}
+
+/*
+ * Contrato de foco del panel:
+ * - botones/enlaces reciben un solo anillo exterior;
+ * - campos reciben borde + halo, nunca outline adicional;
+ * - los buscadores delegan el foco visual a su contenedor.
+ */
+.admin-professional :is(a, button, input, textarea, select):focus-visible {
+  outline: none !important;
+  outline-offset: 0 !important;
+}
+
+.admin-professional :is(a, button):focus-visible {
+  box-shadow:
+    0 0 0 2px #070b11,
+    0 0 0 4px var(--admin-focus-ring-strong) !important;
+}
+
+.admin-professional :is(input, textarea, select):focus-visible {
+  border-color: var(--admin-focus-border) !important;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--brand) 22%, transparent),
+    0 0 0 4px color-mix(in srgb, var(--brand) 7%, transparent) !important;
+}
+
+.admin-professional input[type="search"] {
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.admin-professional input[type="search"]:focus-visible {
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+.admin-professional input[type="search"]::-webkit-search-decoration,
+.admin-professional input[type="search"]::-webkit-search-cancel-button,
+.admin-professional input[type="search"]::-webkit-search-results-button,
+.admin-professional input[type="search"]::-webkit-search-results-decoration {
+  display: none;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.admin-professional :is(label, div):has(> input[type="search"]) {
+  transition:
+    border-color 140ms ease,
+    background 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.admin-professional :is(label, div):has(> input[type="search"]):hover {
+  border-color: var(--admin-control-border-strong, #46586a);
+}
+
+.admin-professional :is(label, div):has(> input[type="search"]):focus-within {
+  border-color: var(--admin-focus-border) !important;
+  background: color-mix(in srgb, var(--brand) 2.5%, #0b131c) !important;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--brand) 22%, transparent),
+    0 0 0 4px color-mix(in srgb, var(--brand) 7%, transparent) !important;
+}
+
+.admin-professional :is(label, div):has(> input[type="search"]):focus-within > svg {
+  color: color-mix(in srgb, var(--brand) 68%, #ffffff) !important;
+}
+
+/* Selecciones interactivas siempre siguen la marca publicada. */
+.admin-professional button[aria-pressed="true"] {
+  color: var(--admin-brand-text-strong) !important;
+  border-color: var(--admin-brand-border) !important;
+  background: var(--admin-brand-surface) !important;
+}
+
+.admin-professional button[aria-pressed="true"]:hover {
+  color: #ffffff !important;
+  border-color: color-mix(in srgb, var(--brand) 72%, #536273) !important;
+  background: color-mix(in srgb, var(--brand) 14%, #101a25) !important;
+}
+
+.admin-professional button[aria-pressed="true"] svg {
+  color: currentColor !important;
+}
+
+.admin-professional button[data-active="true"] {
+  border-color: var(--admin-brand-border) !important;
+}
+
+.admin-professional button[data-active="true"] svg {
+  color: var(--admin-brand-text) !important;
+}
+
+/* Eyebrows y labels de sección son identidad, no un rojo fijo. */
+.admin-professional :is(section, article) div:has(> h2) > span,
+.admin-professional :is(section, article) div:has(> h3) > span {
+  color: var(--brand) !important;
+}
+
+/* El destino del skip-link no debe dibujar un marco alrededor de todo el main. */
+main#main-content:focus,
+main#main-content:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-professional :is(label, div):has(> input[type="search"]) {
+    transition: none;
+  }
+}
