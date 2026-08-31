@@ -22,7 +22,7 @@
   line-height: 1.5;
 }
 
-.admin-professional label > input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+.admin-professional label > input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="search"]),
 .admin-professional label > textarea,
 .admin-professional label > select {
   border-color: var(--admin-control-border);
@@ -34,14 +34,14 @@
     box-shadow 140ms ease;
 }
 
-.admin-professional label > input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="color"]):hover,
+.admin-professional label > input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="search"]):hover,
 .admin-professional label > textarea:hover,
 .admin-professional label > select:hover {
   border-color: var(--admin-control-border-strong);
   background: #0b131c;
 }
 
-.admin-professional label > input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="color"]):focus-visible,
+.admin-professional label > input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="search"]):focus-visible,
 .admin-professional label > textarea:focus-visible,
 .admin-professional label > select:focus-visible {
   outline: none;
@@ -106,7 +106,7 @@
 }
 
 .admin-professional section:has(.admin-data-table) > div:first-child:not(:has(table)) span {
-  color: #e8b0bd;
+  color: color-mix(in srgb, var(--brand) 45%, #ffffff);
   border-color: color-mix(in srgb, var(--brand) 24%, #344251);
   border-radius: 7px;
   background: color-mix(in srgb, var(--brand) 5%, #0b131c);
@@ -240,7 +240,7 @@
 
 .admin-professional .admin-table-summary span {
   padding: 6px 9px;
-  color: #e8b0bd;
+  color: color-mix(in srgb, var(--brand) 45%, #ffffff);
   border-color: color-mix(in srgb, var(--brand) 24%, #344251);
   border-radius: 7px;
   background: color-mix(in srgb, var(--brand) 5%, #0b131c);
@@ -375,7 +375,7 @@
 }
 
 .admin-professional .admin-table-action--attention {
-  color: #ffd6df;
+  color: color-mix(in srgb, var(--brand) 34%, #ffffff);
   border-color: color-mix(in srgb, var(--brand) 36%, var(--admin-control-border));
   background: color-mix(in srgb, var(--brand) 7%, var(--admin-control-bg));
 }
@@ -401,9 +401,10 @@
     width: 100%;
   }
 
-  .admin-professional label > input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+  .admin-professional label > input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="search"]),
   .admin-professional label > textarea,
-  .admin-professional label > select {
+  .admin-professional label > select,
+  .admin-professional input[type="search"] {
     font-size: 16px;
   }
 }
