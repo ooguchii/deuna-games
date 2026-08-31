@@ -15,11 +15,17 @@ import ux from "./AdminShellUx.module.css";
 
 export default function AdminShell({
   session,
+  siteName,
+  siteShortName,
   children,
 }: {
   session: AdminSession;
+  siteName: string;
+  siteShortName: string;
   children: React.ReactNode;
 }) {
+  const compactName = siteShortName.trim() || siteName;
+
   return (
     <div className={`${styles.shell} ${ux.shell}`}>
       <a href="#main-content" className={ux.skipLink}>
@@ -30,13 +36,14 @@ export default function AdminShell({
         <Link
           href="/admin"
           className={styles.adminBrand}
-          aria-label="Panel DeUna Games"
+          aria-label={`Panel administrativo de ${siteName}`}
+          title={siteName}
         >
           <span>
             <SiteLogoMark size={24} strokeWidth={2.1} />
           </span>
           <div>
-            <strong>DeUna Games</strong>
+            <strong>{compactName}</strong>
             <small>Administración privada</small>
           </div>
         </Link>
