@@ -34,7 +34,7 @@ CREATE TABLE deuna_accounts.reward_events (
   credits_delta integer NOT NULL DEFAULT 0,
   created_at timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT reward_events_type_check CHECK (
-    event_type ~ '^[a-z][a-z0-9_]{0,63}$'
+    event_type IN ('daily_claim', 'weekly_bonus', 'milestone')
   ),
   CONSTRAINT reward_events_key_check CHECK (
     event_key ~ '^[A-Za-z0-9][A-Za-z0-9:._-]{0,159}$'
@@ -43,10 +43,36 @@ CREATE TABLE deuna_accounts.reward_events (
     xp_delta >= 0 AND xp_delta <= 1000000
   ),
   CONSTRAINT reward_events_credits_check CHECK (
-    credits_delta >= -1000000 AND credits_delta <= 1000000
+    credits_delta >= 0 AND credits_delta <= 1000000
   ),
   CONSTRAINT reward_events_nonzero_check CHECK (
     xp_delta <> 0 OR credits_delta <> 0
+  ),
+  CONSTRAINT reward_events_economy_check CHECK (
+    (
+      event_type = 'daily_claim'
+      AND (xp_delta, credits_delta) IN (
+        (10, 5),
+        (12, 7),
+        (15, 10),
+        (35, 25)
+      )
+    )
+    OR (
+      event_type = 'weekly_bonus'
+      AND xp_delta = 25
+      AND credits_delta = 15
+    )
+    OR (
+      event_type = 'milestone'
+      AND (event_key, xp_delta, credits_delta) IN (
+        ('first_game', 20, 10),
+        ('library_5', 60, 30),
+        ('favorites_3', 40, 20),
+        ('follow_2', 40, 20),
+        ('pc_configured', 50, 25)
+      )
+    )
   ),
   UNIQUE (user_id, event_type, event_key)
 );
