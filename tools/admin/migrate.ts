@@ -364,6 +364,83 @@ async function grantRuntimePrivileges(
       ON deuna_accounts.recovery_codes
       TO ${role};
 
+    GRANT SELECT (
+        user_id,
+        game_slug,
+        favorite,
+        library_state,
+        follow_updates,
+        followed_at,
+        updates_seen_through,
+        updated_at
+      )
+      ON deuna_accounts.game_preferences
+      TO ${role};
+
+    GRANT INSERT (
+        user_id,
+        game_slug,
+        favorite,
+        library_state,
+        follow_updates,
+        followed_at,
+        updates_seen_through,
+        updated_at
+      )
+      ON deuna_accounts.game_preferences
+      TO ${role};
+
+    GRANT UPDATE (
+        favorite,
+        library_state,
+        follow_updates,
+        followed_at,
+        updates_seen_through,
+        updated_at
+      )
+      ON deuna_accounts.game_preferences
+      TO ${role};
+
+    GRANT DELETE
+      ON deuna_accounts.game_preferences
+      TO ${role};
+
+    GRANT SELECT (
+        user_id,
+        cpu_id,
+        gpu_id,
+        ram_gb,
+        memory_mode,
+        updated_at
+      )
+      ON deuna_accounts.hardware_profiles
+      TO ${role};
+
+    GRANT INSERT (
+        user_id,
+        cpu_id,
+        gpu_id,
+        ram_gb,
+        memory_mode,
+        updated_at
+      )
+      ON deuna_accounts.hardware_profiles
+      TO ${role};
+
+    GRANT UPDATE (
+        cpu_id,
+        gpu_id,
+        ram_gb,
+        memory_mode,
+        updated_at
+      )
+      ON deuna_accounts.hardware_profiles
+      TO ${role};
+
+    GRANT DELETE
+      ON deuna_accounts.hardware_profiles
+      TO ${role};
+
     GRANT USAGE, SELECT
       ON SEQUENCE deuna_admin.admin_events_id_seq,
                   deuna_admin.editorial_revisions_id_seq,
