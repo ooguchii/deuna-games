@@ -19,8 +19,12 @@ function forbidPattern(content, pattern, message) {
 const service = read("src/lib/accounts/rewards-service.ts");
 const migration = read("database/migrations/011_account_rewards.sql");
 const route = read("src/app/api/account/rewards/claim/route.ts");
+const gamesRoute = read("src/app/api/account/games/route.ts");
+const hardwareRoute = read("src/app/api/account/hardware/route.ts");
 const validation = read("src/lib/accounts/rewards-validation.ts");
 const panel = read("src/app/cuenta/AccountRewardsPanel.tsx");
+const privacyPage = read("src/app/privacidad/page.tsx");
+const footer = read("src/components/layout/Footer.tsx");
 
 requirePattern(
   service,
@@ -107,11 +111,34 @@ requirePattern(
   /ON CONFLICT \(user_id, event_type, event_key\) DO NOTHING/g,
   "Los premios repetibles por clave deben ser idempotentes."
 );
+
 requirePattern(
   migration,
   /UNIQUE \(user_id, event_type, event_key\)/,
   "El ledger debe reforzar la idempotencia también en PostgreSQL."
 );
+requirePattern(
+  migration,
+  /event_type IN \('daily_claim', 'weekly_bonus', 'milestone'\)/,
+  "PostgreSQL debe aceptar únicamente los tipos de evento Rewards implementados."
+);
+requirePattern(
+  migration,
+  /credits_delta >= 0 AND credits_delta <= 1000000/,
+  "Mientras no exista canje, el ledger no debe admitir descuentos de créditos."
+);
+requirePattern(
+  migration,
+  /CONSTRAINT reward_events_economy_check CHECK \([\s\S]*event_type = 'daily_claim'[\s\S]*event_type = 'weekly_bonus'[\s\S]*event_type = 'milestone'/s,
+  "PostgreSQL debe reforzar también la forma de la economía de Rewards."
+);
+for (const milestone of expectedMilestones.keys()) {
+  requirePattern(
+    migration,
+    new RegExp(`\\('${milestone}',`),
+    `El contrato PostgreSQL debe reconocer el hito ${milestone}.`
+  );
+}
 
 requirePattern(
   validation,
@@ -129,6 +156,17 @@ forbidPattern(
   "El cliente no puede indicar valores económicos al reclamar Rewards."
 );
 
+for (const [label, source] of [
+  ["Mis juegos", gamesRoute],
+  ["Mi PC", hardwareRoute],
+]) {
+  requirePattern(
+    source,
+    /syncRewardMilestones\(session\.userId\)\.catch\(\(\) => \{\}\)/,
+    `${label} debe tratar Rewards como consecuencia idempotente y no convertir un guardado correcto en falso error.`
+  );
+}
+
 requirePattern(
   panel,
   /No premiamos tiempo de pantalla, clics ni navegación\./,
@@ -144,6 +182,62 @@ requirePattern(
   /rewards\.creditsBalance/,
   "Rewards debe mostrar el saldo real de Créditos DeUna."
 );
+requirePattern(
+  panel,
+  /Los créditos no son dinero/,
+  "Rewards debe aclarar que los créditos no son dinero."
+);
+requirePattern(
+  panel,
+  /no vencen por inactividad mientras la cuenta exista/,
+  "Rewards debe explicar que el saldo actual no caduca por inactividad."
+);
+requirePattern(
+  panel,
+  /el canje todavía no está habilitado/,
+  "Rewards no debe insinuar un canje que todavía no existe."
+);
+requirePattern(
+  panel,
+  /Sin premios aleatorios/,
+  "Rewards debe declarar que la economía actual es determinista."
+);
+requirePattern(
+  panel,
+  /La semana reinicia cada lunes a las 00:00 UTC\./,
+  "La interfaz debe hacer visible el límite temporal real del objetivo semanal."
+);
+requirePattern(
+  panel,
+  /href="\/privacidad"/,
+  "Rewards debe enlazar su explicación pública de privacidad."
+);
+
+requirePattern(
+  privacyPage,
+  /index: false[\s\S]*follow: false/s,
+  "El aviso técnico de privacidad debe permanecer no indexado hasta completar los datos legales previos al lanzamiento."
+);
+requirePattern(
+  privacyPage,
+  /identificación jurídica del responsable[\s\S]*canal de contacto[\s\S]*plazo concreto de[\s\S]*retención de copias de seguridad/s,
+  "El aviso debe identificar claramente la información legal todavía pendiente."
+);
+requirePattern(
+  privacyPage,
+  /no persiste IP,[\s\S]*ubicación,[\s\S]*user-agent,[\s\S]*historial de[\s\S]*navegación/s,
+  "El aviso de privacidad debe describir la minimización de Mi DeUna."
+);
+requirePattern(
+  privacyPage,
+  /Los Créditos DeUna son un[\s\S]*saldo interno sin valor monetario ni conversión a efectivo/s,
+  "El aviso de privacidad debe explicar la naturaleza no monetaria de los créditos."
+);
+requirePattern(
+  footer,
+  /<Link href="\/privacidad">Privacidad<\/Link>/,
+  "El aviso de privacidad debe ser accesible desde el footer público."
+);
 
 if (issues.length > 0) {
   console.error("\nEconomía DeUna Rewards: ERROR\n");
@@ -152,5 +246,5 @@ if (issues.length > 0) {
 }
 
 console.log(
-  "Economía DeUna Rewards: OK (cooldown, racha, ciclo diario, objetivo semanal, hitos, idempotencia y autoridad del servidor verificados)."
+  "Economía DeUna Rewards: OK (cooldown, racha, ciclo diario, objetivo semanal, hitos, PostgreSQL, resiliencia, transparencia, idempotencia y autoridad del servidor verificados)."
 );
