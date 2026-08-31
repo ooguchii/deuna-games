@@ -38,8 +38,17 @@
   -webkit-appearance: none;
 }
 
+.admin-professional :is(label, div):has(> input[type="search"]) > input[type="search"] {
+  border: 0 !important;
+  outline: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.admin-professional input[type="search"]:focus,
 .admin-professional input[type="search"]:focus-visible {
   border-color: transparent !important;
+  outline: 0 !important;
   box-shadow: none !important;
 }
 
@@ -88,11 +97,13 @@
   background: color-mix(in srgb, var(--brand) 14%, #101a25) !important;
 }
 
-.admin-professional button[aria-pressed="true"] svg {
+.admin-professional button[aria-pressed="true"] :is(svg, small),
+.admin-professional button[data-active="true"] :is(svg, small) {
   color: currentColor !important;
 }
 
 .admin-professional button[data-active="true"] {
+  color: var(--admin-brand-text-strong) !important;
   border-color: var(--admin-brand-border) !important;
 }
 
@@ -106,11 +117,26 @@
   color: var(--brand) !important;
 }
 
+/* Resúmenes y acciones de atención derivan de la marca, no de un rosa histórico. */
+.admin-professional .admin-table-summary span,
+.admin-professional section:has(.admin-data-table) > div:first-child:not(:has(table)) span {
+  color: var(--admin-brand-text) !important;
+}
+
+.admin-professional .admin-table-action--attention {
+  color: var(--admin-brand-text-strong) !important;
+}
+
 /* El destino del skip-link no debe dibujar un marco alrededor de todo el main. */
 main#main-content:focus,
 main#main-content:focus-visible {
   outline: none !important;
   box-shadow: none !important;
+}
+
+/* La navegación lateral también debe reflejar el color publicado. */
+aside nav a[aria-current="page"] svg {
+  color: color-mix(in srgb, var(--brand) 58%, #ffffff) !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
