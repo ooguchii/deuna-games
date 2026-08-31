@@ -107,15 +107,30 @@
   color: #e6ebf0;
   border: 1px solid #415060;
   border-radius: 9px;
+  outline: none;
   background: #0b121a;
   font-size: 13px;
   font-weight: 750;
+  transition:
+    color 140ms ease,
+    border-color 140ms ease,
+    background 140ms ease,
+    transform 140ms ease,
+    box-shadow 140ms ease;
 }
 
-.quickActions a:hover,
-.quickActions a:focus-visible {
+.quickActions a:hover {
   border-color: color-mix(in srgb, var(--brand) 50%, #4d5c6b);
   color: #fff0f4;
+  background: color-mix(in srgb, var(--brand) 6%, #111b26);
+  transform: translateY(-1px);
+}
+
+.quickActions a:focus-visible {
+  border-color: color-mix(in srgb, var(--brand) 55%, #536273);
+  box-shadow:
+    0 0 0 2px #0a1118,
+    0 0 0 4px color-mix(in srgb, var(--brand) 58%, #ffffff);
 }
 
 .summaryGrid {
@@ -209,18 +224,27 @@
   padding: 14px;
   border: 1px solid #344250;
   border-radius: 11px;
+  outline: none;
   background: #0a1119;
   transition:
     border-color 150ms ease,
     background 150ms ease,
-    transform 150ms ease;
+    transform 150ms ease,
+    box-shadow 150ms ease;
 }
 
-.checklist > a:hover,
-.checklist > a:focus-visible {
+.checklist > a:hover {
   border-color: #526171;
   background: #101a24;
   transform: translateY(-1px);
+}
+
+.checklist > a:focus-visible {
+  border-color: color-mix(in srgb, var(--brand) 48%, #526171);
+  background: #101a24;
+  box-shadow:
+    0 0 0 2px #0a1118,
+    0 0 0 4px color-mix(in srgb, var(--brand) 52%, #ffffff);
 }
 
 .checkComplete {
@@ -343,29 +367,67 @@
   gap: 8px;
   padding: 0 16px;
   border-radius: 9px;
+  outline: none;
   cursor: pointer;
   font: inherit;
   font-size: 13px;
   font-weight: 800;
+  transition:
+    color 140ms ease,
+    border-color 140ms ease,
+    background 140ms ease,
+    transform 140ms ease,
+    filter 140ms ease,
+    box-shadow 140ms ease,
+    opacity 140ms ease;
 }
 
 .publishButton {
   color: #fff;
-  border: 0;
+  border: 1px solid color-mix(in srgb, var(--brand) 76%, #ffffff);
   background: linear-gradient(135deg, var(--brand), var(--brand-dark));
-  box-shadow: 0 12px 26px color-mix(in srgb, var(--brand) 14%, transparent);
+  box-shadow:
+    0 12px 26px color-mix(in srgb, var(--brand) 14%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.11);
+}
+
+.publishButton:hover:not(:disabled) {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+.publishButton:focus-visible,
+.hideButton:focus-visible,
+.historyAction button:focus-visible {
+  box-shadow:
+    0 0 0 2px #0a1118,
+    0 0 0 4px color-mix(in srgb, var(--brand) 58%, #ffffff);
 }
 
 .publishButton:disabled {
   cursor: not-allowed;
   opacity: 0.45;
   box-shadow: none;
+  transform: none;
 }
 
 .hideButton {
   color: #f7d498;
   border: 1px solid rgba(255, 190, 92, 0.32);
   background: rgba(255, 190, 92, 0.07);
+}
+
+.hideButton:hover:not(:disabled) {
+  color: #ffe5b8;
+  border-color: rgba(255, 190, 92, 0.52);
+  background: rgba(255, 190, 92, 0.12);
+  transform: translateY(-1px);
+}
+
+.hideButton:focus-visible {
+  box-shadow:
+    0 0 0 2px #0a1118,
+    0 0 0 4px rgba(255, 190, 92, 0.5);
 }
 
 .historyList {
@@ -384,6 +446,17 @@
   border: 1px solid #354250;
   border-radius: 11px;
   background: #0a1119;
+  transition:
+    border-color 140ms ease,
+    background 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.historyRow:hover,
+.historyRow:focus-within {
+  border-color: #435262;
+  background: #0d161f;
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--brand) 42%, #ffffff);
 }
 
 .historyRow > div:first-child {
@@ -427,6 +500,20 @@
   border: 1px solid #41505f;
   background: #0e1720;
   font-size: 12px;
+}
+
+.historyAction button:hover:not(:disabled) {
+  color: #fff;
+  border-color: color-mix(in srgb, var(--brand) 38%, #536273);
+  background: color-mix(in srgb, var(--brand) 5%, #111b26);
+  transform: translateY(-1px);
+}
+
+.historyAction button:disabled,
+.hideButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+  transform: none;
 }
 
 @media (max-width: 1100px) {
@@ -485,12 +572,20 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .checklist > a {
+  .quickActions a,
+  .checklist > a,
+  .publishButton,
+  .hideButton,
+  .historyRow,
+  .historyAction button {
     transition: none;
   }
 
+  .quickActions a:hover,
   .checklist > a:hover,
-  .checklist > a:focus-visible {
+  .publishButton:hover,
+  .hideButton:hover,
+  .historyAction button:hover {
     transform: none;
   }
 }
