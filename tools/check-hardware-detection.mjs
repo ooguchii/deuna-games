@@ -214,6 +214,26 @@ assert.ok(
   "Una CPU ya confirmada no debe volver a pedir selección."
 );
 assert.ok(
+  unifiedHeroSource.includes("useState(true)") &&
+    unifiedHeroSource.includes('detectionState === "ready"') &&
+    unifiedHeroSource.includes('detectionState === "partial"') &&
+    unifiedHeroSource.includes('detectionState === "error"'),
+  "La detección inicial incompleta debe abrir automáticamente el resumen al terminar."
+);
+assert.ok(
+  unifiedHeroSource.includes("setCpuConfirmationRequested(true);") &&
+    unifiedHeroSource.includes("onDetect();"),
+  "Detectar otra vez debe volver a solicitar el resumen si la detección sigue incompleta."
+);
+assert.ok(
+  unifiedHeroSource.includes("hardware={hardware}") &&
+    unifiedHeroSource.includes("ramLabel={ramLabel}") &&
+    cpuAssistantSource.includes("Detectado:") &&
+    cpuAssistantSource.includes("Falta:") &&
+    cpuAssistantSource.includes("modelo exacto de CPU"),
+  "El aviso debe resumir qué detectó el navegador y qué falta antes de elegir la CPU."
+);
+assert.ok(
   cpuAssistantSource.includes("searchCpuCatalog") &&
     cpuAssistantSource.includes("Confirmar CPU"),
   "La confirmación debe elegir explícitamente una CPU filtrada desde el catálogo."
@@ -234,5 +254,5 @@ assert.ok(
 );
 
 console.log(
-  `Detección de hardware: OK (${cpuCatalog.length} CPUs; búsqueda filtrable flotante, selección explícita, fuentes recientes, estimación por intervalos y propagación a FPS verificadas).`
+  `Detección de hardware: OK (${cpuCatalog.length} CPUs; resumen automático de detección incompleta, búsqueda filtrable flotante, selección explícita, fuentes recientes, estimación por intervalos y propagación a FPS verificadas).`
 );
