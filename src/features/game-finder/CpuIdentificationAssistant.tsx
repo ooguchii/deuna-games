@@ -90,90 +90,87 @@ export default function CpuIdentificationAssistant({
       </div>
 
       <div className={styles.inputRow}>
-        <label className={styles.searchField} htmlFor="detected-cpu-search">
-          <Search size={15} aria-hidden="true" />
-          <input
-            id="detected-cpu-search"
-            type="search"
-            value={query}
-            onChange={(event) => {
-              setQuery(event.target.value);
-              setSelectedCpuId("");
-              setSaveError(false);
-            }}
-            autoComplete="off"
-            spellCheck={false}
-            placeholder="Buscar CPU: i5 12400, Ryzen 5600, 5800X3D..."
-            aria-controls="detected-cpu-results"
-          />
-        </label>
+        <div className={styles.searchArea}>
+          <label className={styles.searchField} htmlFor="detected-cpu-search">
+            <Search size={15} aria-hidden="true" />
+            <input
+              id="detected-cpu-search"
+              type="search"
+              value={query}
+              onChange={(event) => {
+                setQuery(event.target.value);
+                setSelectedCpuId("");
+                setSaveError(false);
+              }}
+              autoComplete="off"
+              spellCheck={false}
+              placeholder="Buscar CPU: i5 12400, Ryzen 5600, 5800X3D..."
+              aria-controls="detected-cpu-results"
+              aria-expanded={Boolean(query.trim())}
+            />
+          </label>
+
+          {query.trim() && (
+            <div
+              id="detected-cpu-results"
+              className={styles.results}
+              role="listbox"
+              aria-label="Procesadores coincidentes"
+              aria-live="polite"
+            >
+              {searchResult.items.length ? (
+                <>
+                  <div className={styles.resultMeta}>
+                    {searchResult.total} coincidencia{searchResult.total === 1 ? "" : "s"}
+                    {searchResult.total > searchResult.items.length
+                      ? ` · mostrando las primeras ${searchResult.items.length}`
+                      : ""}
+                  </div>
+
+                  <div className={styles.resultList}>
+                    {searchResult.items.map((cpu) => {
+                      const selected = selectedCpuId === cpu.id;
+                      return (
+                        <button
+                          key={cpu.id}
+                          type="button"
+                          role="option"
+                          aria-selected={selected}
+                          data-selected={selected}
+                          onClick={() => {
+                            setSelectedCpuId(cpu.id);
+                            setSaveError(false);
+                          }}
+                        >
+                          <span>{cpu.name}</span>
+                          {selected && (
+                            <CheckCircle2 size={15} aria-hidden="true" />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
+              ) : (
+                <p className={styles.noMatch} role="status">
+                  No encontramos procesadores con esa búsqueda. Prueba con menos palabras o sólo con el número del modelo.
+                </p>
+              )}
+            </div>
+          )}
+        </div>
 
         <button
           type="button"
           className={styles.confirmButton}
           disabled={!selectedCpu}
           onClick={confirmCpu}
+          title={selectedCpu ? `Confirmar ${selectedCpu.name}` : undefined}
         >
           <CheckCircle2 size={15} aria-hidden="true" />
           Confirmar CPU
         </button>
       </div>
-
-      {query.trim() && (
-        <div
-          id="detected-cpu-results"
-          className={styles.results}
-          role="listbox"
-          aria-label="Procesadores coincidentes"
-          aria-live="polite"
-        >
-          {searchResult.items.length ? (
-            <>
-              <div className={styles.resultMeta}>
-                {searchResult.total} coincidencia{searchResult.total === 1 ? "" : "s"}
-                {searchResult.total > searchResult.items.length
-                  ? ` · mostrando las primeras ${searchResult.items.length}`
-                  : ""}
-              </div>
-
-              <div className={styles.resultList}>
-                {searchResult.items.map((cpu) => {
-                  const selected = selectedCpuId === cpu.id;
-                  return (
-                    <button
-                      key={cpu.id}
-                      type="button"
-                      role="option"
-                      aria-selected={selected}
-                      data-selected={selected}
-                      onClick={() => {
-                        setSelectedCpuId(cpu.id);
-                        setSaveError(false);
-                      }}
-                    >
-                      <span>{cpu.name}</span>
-                      {selected && (
-                        <CheckCircle2 size={15} aria-hidden="true" />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </>
-          ) : (
-            <p className={styles.noMatch} role="status">
-              No encontramos procesadores con esa búsqueda. Prueba con menos palabras o sólo con el número del modelo.
-            </p>
-          )}
-        </div>
-      )}
-
-      {selectedCpu && (
-        <div className={styles.selectedCpu} aria-live="polite">
-          <CheckCircle2 size={14} aria-hidden="true" />
-          Seleccionado: <strong>{selectedCpu.name}</strong>
-        </div>
-      )}
 
       {saveError && (
         <p className={styles.error} role="alert">
