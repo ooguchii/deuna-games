@@ -1,6 +1,6 @@
 .shell.shell {
   grid-template-columns: 248px minmax(0, 1fr);
-  background: #060a10;
+  background: color-mix(in srgb, var(--background) 12%, #060a10);
 }
 
 .skipLink {
@@ -12,7 +12,7 @@
   color: #ffffff;
   border: 2px solid #ffffff;
   border-radius: 9px;
-  background: #0b1119;
+  background: color-mix(in srgb, var(--background) 12%, #0b1119);
   font-size: 14px;
   font-weight: 800;
   transform: translateY(-180%);
@@ -29,7 +29,12 @@
   padding: 19px 15px 16px;
   border-right-color: #2b3745;
   background:
-    linear-gradient(180deg, #0b1119 0%, #070c12 62%, #070b10 100%);
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--background) 13%, #0b1119) 0%,
+      color-mix(in srgb, var(--background) 10%, #070c12) 62%,
+      color-mix(in srgb, var(--background) 8%, #070b10) 100%
+    );
 }
 
 .sidebar.sidebar a,
@@ -87,11 +92,15 @@
 }
 
 .main.main {
-  --admin-page: #070b11;
-  --admin-surface: linear-gradient(160deg, #0d141e 0%, #0a1119 100%);
-  --admin-surface-solid: #0a1119;
-  --admin-surface-raised: #0d151f;
-  --admin-control: #090f17;
+  --admin-page: color-mix(in srgb, var(--background) 14%, #070b11);
+  --admin-surface: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--background) 10%, #0d141e) 0%,
+    color-mix(in srgb, var(--background) 8%, #0a1119) 100%
+  );
+  --admin-surface-solid: color-mix(in srgb, var(--background) 8%, #0a1119);
+  --admin-surface-raised: color-mix(in srgb, var(--background) 9%, #0d151f);
+  --admin-control: color-mix(in srgb, var(--background) 7%, #090f17);
   --admin-border: #344252;
   --admin-border-soft: #263442;
   --admin-text: #f2f5f8;
@@ -106,7 +115,7 @@
       color-mix(in srgb, var(--brand) 5%, transparent),
       transparent 70%
     ),
-    #070b11;
+    var(--admin-page);
   font-size: 14px;
   line-height: 1.5;
 }
@@ -137,7 +146,7 @@
     linear-gradient(
       90deg,
       color-mix(in srgb, var(--brand) 17%, #111922),
-      #0d141d
+      color-mix(in srgb, var(--background) 7%, #0d141d)
     );
   box-shadow:
     inset 3px 0 0 var(--brand),
@@ -236,7 +245,7 @@
 .main select {
   color: #f5f7fa;
   border-color: #3d4d5e;
-  background: #090f17;
+  background: var(--admin-control);
   font-size: 14px;
 }
 
@@ -256,7 +265,7 @@
 
 .main fieldset {
   border-color: #3a4958;
-  background: #0a1119;
+  background: var(--admin-surface-solid);
 }
 
 .main fieldset legend {
@@ -303,7 +312,7 @@
 }
 
 .main table tbody tr:hover {
-  background: color-mix(in srgb, var(--brand) 4%, #0c141e);
+  background: color-mix(in srgb, var(--brand) 4%, var(--admin-surface-raised));
 }
 
 .main table tbody tr:last-child > * {
@@ -371,7 +380,11 @@
   border: 1px solid var(--admin-border, #3b4a59);
   border-radius: 12px;
   background:
-    linear-gradient(180deg, rgba(15, 23, 33, 0.98), rgba(9, 15, 23, 0.98));
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--background) 8%, rgba(15, 23, 33, 0.98)),
+      color-mix(in srgb, var(--background) 6%, rgba(9, 15, 23, 0.98))
+    );
   box-shadow:
     0 14px 34px rgba(0, 0, 0, 0.3),
     inset 0 1px 0 rgba(255, 255, 255, 0.035);
@@ -393,7 +406,7 @@
   color: #b4bfca;
   border: 1px solid #32404e;
   border-radius: 8px;
-  background: #0b121b;
+  background: color-mix(in srgb, var(--background) 6%, #0b121b);
   font-size: 13px;
   font-weight: 760;
   white-space: nowrap;
