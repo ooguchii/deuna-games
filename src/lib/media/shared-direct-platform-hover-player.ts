@@ -131,15 +131,22 @@ function sendTikTokStart(preview: GameDirectPreview) {
       {
         type: "seekTo",
         value: preview.startSeconds,
+        "x-tiktok-player": true,
       },
       "https://www.tiktok.com"
     );
     target.postMessage(
-      { type: "mute" },
+      {
+        type: "mute",
+        "x-tiktok-player": true,
+      },
       "https://www.tiktok.com"
     );
     target.postMessage(
-      { type: "play" },
+      {
+        type: "play",
+        "x-tiktok-player": true,
+      },
       "https://www.tiktok.com"
     );
   }, 300);
