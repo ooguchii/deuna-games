@@ -147,7 +147,6 @@ export async function POST(
         previewClip: upload.publicPath,
         previewMode: "webm",
         youtubePreview: undefined,
-        directPreview: undefined,
       }
     );
 
