@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-YTDLP_BIN="${DEUNA_YTDLP_BINARY:-}"
-NODE_BIN="${DEUNA_NODE_BINARY:-}"
+YTDLP_BIN="${DEUNA_YTDLP_BINARY:-/usr/bin/yt-dlp}"
+NODE_BIN="${DEUNA_NODE_BINARY:-/usr/bin/node}"
 COOKIES_FILE="${DEUNA_YTDLP_COOKIES_FILE:-}"
 YOUTUBE_CLIENTS="${DEUNA_YTDLP_YOUTUBE_CLIENTS:-}"
 
-if [[ -z "${YTDLP_BIN}" ]]; then
+if [[ ! -x "${YTDLP_BIN}" ]]; then
   YTDLP_BIN="$(command -v yt-dlp 2>/dev/null || true)"
 fi
 
@@ -32,11 +32,18 @@ fi
 # override explícito distinto mediante DEUNA_YTDLP_YOUTUBE_CLIENTS.
 args=()
 youtube_url=0
+skip_next=0
 while (( $# > 0 )); do
+  if (( skip_next )); then
+    skip_next=0
+    shift
+    continue
+  fi
+
   case "$1" in
     --js-runtimes|--remote-components)
+      skip_next=1
       shift
-      if (( $# > 0 )); then shift; fi
       ;;
     --js-runtimes=*|--remote-components=*)
       shift
@@ -90,7 +97,7 @@ done
 
 YOUTUBE_ARGS=()
 if (( youtube_url )); then
-  if [[ -z "${NODE_BIN}" ]]; then
+  if [[ ! -x "${NODE_BIN}" ]]; then
     NODE_BIN="$(command -v node 2>/dev/null || true)"
   fi
 
