@@ -83,6 +83,12 @@ const bundledImagePattern =
   /^\/images\/[A-Za-z0-9/_.,@+() -]+\.(?:avif|gif|jpe?g|png|webp)$/i;
 const editorialMediaPattern =
   /^\/media\/editorial\/[a-z0-9][a-z0-9._-]{0,159}\/[a-f0-9]{64}\.webp$/;
+const taxonomyIconAssetSchema = z
+  .string()
+  .max(400)
+  .regex(
+    /^\/media\/editorial\/taxonomy-icons\/[a-f0-9]{64}\.(?:svg|webp)$/
+  );
 
 function isSafeLocalImagePath(value: string) {
   if (editorialMediaPattern.test(value)) {
@@ -277,6 +283,7 @@ const taxonomyTermSchema = z
     label: z.string().trim().min(1).max(80),
     active: z.boolean(),
     icon: z.enum(taxonomyIconKeys).optional(),
+    iconAsset: taxonomyIconAssetSchema.optional(),
     tone: z.enum(taxonomyToneKeys).optional(),
   })
   .strict();
@@ -334,6 +341,7 @@ function mergeLegacyTaxonomyTerms(
       ...existing,
       active: existing.active || term.active,
       icon: existing.icon ?? term.icon,
+      iconAsset: existing.iconAsset ?? term.iconAsset,
       tone: existing.tone ?? term.tone,
     };
   }
