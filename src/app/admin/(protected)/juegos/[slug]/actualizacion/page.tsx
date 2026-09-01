@@ -20,6 +20,9 @@ import {
 import {
   verifyAdminSession,
 } from "@/lib/admin/session";
+import {
+  getPublicGameBySlug,
+} from "@/lib/games/public-catalog";
 import type {
   GameDownloadSource,
 } from "@/types/game";
@@ -58,12 +61,17 @@ export default async function AdminGameUpdatePage({
     params,
     searchParams,
   ]);
-  const [item, publicationIdentity, allUpdates] =
-    await Promise.all([
-      getEditorialItem("game", slug),
-      getGamePublicationIdentity(slug),
-      listEditorialItems("game_update"),
-    ]);
+  const [
+    item,
+    publicationIdentity,
+    publicGame,
+    allUpdates,
+  ] = await Promise.all([
+    getEditorialItem("game", slug),
+    getGamePublicationIdentity(slug),
+    getPublicGameBySlug(slug),
+    listEditorialItems("game_update"),
+  ]);
 
   if (!item) notFound();
 
@@ -71,7 +79,8 @@ export default async function AdminGameUpdatePage({
     ? parameters.estado[0]
     : parameters.estado;
   const game = item.payload;
-  const download = game.download;
+  const publicBaseline = publicGame ?? game;
+  const download = publicBaseline.download;
   const initialSources = download?.sources?.length
     ? download.sources
     : download?.href
@@ -141,7 +150,7 @@ export default async function AdminGameUpdatePage({
           >
             <ShieldCheck size={18} aria-hidden="true" />
             <span>
-              Hay otros cambios pendientes en el borrador de este juego. Por seguridad, DeUna no los publicará accidentalmente junto con una actualización. Publica o restaura esos cambios antes de continuar.
+              Hay otros cambios pendientes en el borrador de este juego. Por seguridad, DeUna no los publicará accidentalmente junto con una actualización. Publica o restaura esos cambios antes de continuar. Los datos mostrados abajo corresponden a la versión que realmente está visible en la web.
             </span>
           </div>
         )}
@@ -158,11 +167,13 @@ export default async function AdminGameUpdatePage({
         </div>
 
         <div className={styles.tableSummary}>
-          <strong>Versión actual</strong>
-          <span>{game.version?.trim() || "Sin versión registrada"}</span>
+          <strong>Versión pública actual</strong>
+          <span>
+            {publicBaseline.version?.trim() || "Sin versión registrada"}
+          </span>
         </div>
         <div className={styles.tableSummary}>
-          <strong>Fuentes configuradas</strong>
+          <strong>Fuentes públicas configuradas</strong>
           <span>{initialSources.length}</span>
         </div>
         <div className={styles.tableSummary}>
