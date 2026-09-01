@@ -116,6 +116,14 @@ for (const [platform, url] of directCases) {
 }
 
 assert(
+  parseDirectPlatformVideo(
+    "streamable",
+    "https://streamable.com/o/abc123"
+  )?.resourceId === "abc123",
+  "Streamable debe aceptar también su URL oEmbed /o/{id}."
+);
+
+assert(
   parseDirectPlatformPreview(
     "facebook",
     directCases[0][1],
@@ -168,13 +176,24 @@ const twitchEmbed = buildDirectPlatformEmbedUrl(
     parentHostname: "example.invalid",
   }
 );
+const streamableEmbed = buildDirectPlatformEmbedUrl(
+  {
+    platform: "streamable",
+    url: "https://streamable.com/abc123",
+    startSeconds: 0,
+    endSeconds: 20,
+  },
+  { autoplay: true, muted: true }
+);
 assert(
   vimeoEmbed?.startsWith("https://player.vimeo.com/video/") &&
-    vimeoEmbed.includes("#t=8s") &&
+    vimeoEmbed.includes("start_time=8") &&
+    vimeoEmbed.includes("end_time=20") &&
     twitchEmbed?.includes("player.twitch.tv") &&
     twitchEmbed.includes("parent=example.invalid") &&
-    twitchEmbed.includes("time=8s"),
-  "Vimeo y Twitch VOD deben construir embeds directos con inicio y Twitch debe fijar parent."
+    twitchEmbed.includes("time=8s") &&
+    streamableEmbed?.includes("streamable.com/o/abc123"),
+  "Vimeo debe usar segmento IN/OUT, Twitch VOD debe fijar parent/IN y Streamable debe usar su embed oEmbed actual."
 );
 
 const [
@@ -294,9 +313,10 @@ assert(
     directEditor.includes("Probar recorte") &&
     directEditor.includes("MAX_PREVIEW_DURATION_SECONDS") &&
     directEditor.includes('type: "seekTo"') &&
+    directEditor.includes('"x-tiktok-player": true') &&
     directEditor.includes('type: "mute"') &&
     directEditor.includes('type: "play"'),
-  "El editor directo debe distinguir capacidades reales y usar seek de TikTok sin fingirlo en las demás redes."
+  "El editor directo debe distinguir capacidades reales y usar el protocolo documentado de TikTok sin fingirlo en las demás redes."
 );
 assert(
   youtubeEditor.includes("youtube-nocookie.com") &&
@@ -314,7 +334,7 @@ for (const signature of [
   "player.twitch.tv",
   "clips.twitch.tv/embed",
   "geo.dailymotion.com/player.html",
-  "streamable.com/e/",
+  "streamable.com/o/",
   "player.kick.com",
 ]) {
   assert(
@@ -344,8 +364,9 @@ assert(
     directHover.includes("about:blank") &&
     directHover.includes("durationMs") &&
     directHover.includes('type: "seekTo"') &&
+    directHover.includes('"x-tiktok-player": true') &&
     directHover.includes("window.location.hostname"),
-  "Las redes directas deben compartir un único iframe, detenerse en OUT y resolver Twitch parent en runtime."
+  "Las redes directas deben compartir un único iframe, detenerse en OUT, usar el protocolo TikTok actual y resolver Twitch parent en runtime."
 );
 assert(
   youtubeHover.includes("youtube-nocookie.com") &&
@@ -373,7 +394,7 @@ assert(
   "El modelo debe representar la plataforma directa de forma discriminada."
 );
 assert(
-  validation.includes("parseDirectPlatformPreview") &&
+  validation.includes("validateDirectPreviewEditorialValue") &&
     validation.includes("directPreview") &&
     validationCore.includes("editorialGameSchema"),
   "La validación editorial debe conservar el núcleo previo y validar la extensión directa antes de persistirla."
