@@ -252,7 +252,7 @@ assert(
     calibrationHook.includes("pending = new Map") &&
     calibrationHook.includes("/performance") &&
     calibrationHook.includes("parsePublishedCalibration") &&
-    calibrationHook.includes("cache: \"no-store\""),
+    calibrationHook.includes('cache: "no-store"'),
   "Los bloques públicos de rendimiento deben compartir una lectura validada y deduplicada de la calibración publicada."
 );
 
@@ -389,12 +389,14 @@ assert(
 );
 
 assert(
-  contextBar.includes('id: "rendimiento"') &&
+  contextBar.includes('key: "compatibilidad"') &&
+    contextBar.includes('key: "rendimiento"') &&
     contextBar.includes('label: "Rendimiento"') &&
-    contextBar.includes('id: "publicacion"') &&
-    contextBar.includes("/publicacion") &&
+    contextBar.includes('href: `${gamePath}?seccion=rendimiento`') &&
+    contextBar.includes('key: "publicacion"') &&
+    contextBar.includes('href: `${gamePath}/publicacion`') &&
     contextBar.includes("Publicación"),
-  "Rendimiento y Publicación deben ser pestañas principales del workspace del juego."
+  "Rendimiento debe permanecer accesible dentro de Compatibilidad y Publicación como estación principal del workspace del juego."
 );
 
 assert(
