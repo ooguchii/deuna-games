@@ -132,18 +132,6 @@ export default function YouTubeTrimEditor({
   );
 
   useEffect(() => {
-    initialApplied.current = false;
-    setDuration(0);
-    setCurrentTime(0);
-    setStartSeconds(initialTrim?.startSeconds ?? 0);
-    setEndSeconds(initialTrim?.endSeconds ?? 0);
-    setPlaying(false);
-    setLoopSelection(false);
-    setReady(false);
-    setMediaError(null);
-  }, [videoId, initialTrim]);
-
-  useEffect(() => {
     onTrimChange(trim);
   }, [onTrimChange, trim]);
 
