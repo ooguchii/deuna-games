@@ -18,12 +18,16 @@ import {
   isEditorialMediaSlug,
 } from "./editorial-media";
 import {
+  downloadRemoteEditorialVideo,
+} from "./remote-video-source";
+import {
   inspectSafeEditorialWebm,
   MAX_EDITORIAL_PREVIEW_BYTES,
 } from "./safe-webm";
 
 export const MAX_PREVIEW_SOURCE_BYTES = 64 * 1024 * 1024;
 export const MAX_PREVIEW_DURATION_SECONDS = 30;
+export const MAX_PREVIEW_SOURCE_POSITION_SECONDS = 86_400;
 
 const PREFERRED_PREVIEW_BYTES = 1_572_864;
 const FFMPEG_TIMEOUT_MS = 90_000;
@@ -52,6 +56,12 @@ type PreviewPreset = {
   width: number;
   fps: number;
   crf: number;
+};
+
+export type PreviewTrimWindow = {
+  startSeconds: number;
+  endSeconds: number;
+  durationSeconds: number;
 };
 
 const presets: PreviewPreset[] = [
@@ -90,6 +100,71 @@ export function isAcceptedPreviewSource(file: File) {
   );
 }
 
+export function parsePreviewTrimWindow(
+  startValue: string | null,
+  endValue: string | null
+): PreviewTrimWindow | null {
+  if (
+    startValue === null ||
+    endValue === null ||
+    startValue.trim() === "" ||
+    endValue.trim() === ""
+  ) {
+    return null;
+  }
+
+  const rawStart = Number(startValue);
+  const rawEnd = Number(endValue);
+
+  if (
+    !Number.isFinite(rawStart) ||
+    !Number.isFinite(rawEnd) ||
+    rawStart < 0 ||
+    rawEnd <= rawStart ||
+    rawStart > MAX_PREVIEW_SOURCE_POSITION_SECONDS ||
+    rawEnd > MAX_PREVIEW_SOURCE_POSITION_SECONDS
+  ) {
+    return null;
+  }
+
+  const startMilliseconds = Math.round(rawStart * 1_000);
+  const endMilliseconds = Math.round(rawEnd * 1_000);
+  const durationMilliseconds =
+    endMilliseconds - startMilliseconds;
+
+  if (
+    durationMilliseconds <= 0 ||
+    durationMilliseconds >
+      MAX_PREVIEW_DURATION_SECONDS * 1_000
+  ) {
+    return null;
+  }
+
+  return {
+    startSeconds: startMilliseconds / 1_000,
+    endSeconds: endMilliseconds / 1_000,
+    durationSeconds: durationMilliseconds / 1_000,
+  };
+}
+
+function assertPreviewTrimWindow(
+  trim: PreviewTrimWindow
+) {
+  const normalized = parsePreviewTrimWindow(
+    String(trim.startSeconds),
+    String(trim.endSeconds)
+  );
+
+  if (
+    !normalized ||
+    normalized.durationSeconds !== trim.durationSeconds
+  ) {
+    throw new Error(
+      "El recorte del preview no es válido. El tramo debe durar como máximo 30 segundos."
+    );
+  }
+}
+
 async function assertWritableDirectory(
   directory: string,
   mode: number
@@ -112,10 +187,15 @@ function ffmpegExecutable() {
   return process.env.DEUNA_FFMPEG_PATH?.trim() || "ffmpeg";
 }
 
+function formatFfmpegSeconds(value: number) {
+  return value.toFixed(3).replace(/0+$/, "").replace(/\.$/, "");
+}
+
 function runFfmpeg(
   inputPath: string,
   outputPath: string,
-  preset: PreviewPreset
+  preset: PreviewPreset,
+  trim: PreviewTrimWindow
 ) {
   return new Promise<void>((resolve, reject) => {
     const filter =
@@ -128,11 +208,17 @@ function runFfmpeg(
       "error",
       "-nostdin",
       "-y",
+      "-ss",
+      formatFfmpegSeconds(trim.startSeconds),
       "-i",
       inputPath,
       "-t",
-      String(MAX_PREVIEW_DURATION_SECONDS),
+      formatFfmpegSeconds(trim.durationSeconds),
+      "-map",
+      "0:v:0",
       "-an",
+      "-sn",
+      "-dn",
       "-map_metadata",
       "-1",
       "-map_chapters",
@@ -237,8 +323,11 @@ function isAlreadyExistsError(error: unknown) {
 
 async function transcodePreview(
   inputPath: string,
-  temporaryDirectory: string
+  temporaryDirectory: string,
+  trim: PreviewTrimWindow
 ) {
+  assertPreviewTrimWindow(trim);
+
   for (let index = 0; index < presets.length; index += 1) {
     const preset = presets[index]!;
     const outputPath = path.join(
@@ -246,7 +335,12 @@ async function transcodePreview(
       `preview-${index}.webm`
     );
 
-    await runFfmpeg(inputPath, outputPath, preset);
+    await runFfmpeg(
+      inputPath,
+      outputPath,
+      preset,
+      trim
+    );
 
     const output = await readFile(outputPath);
     const inspection = inspectSafeEditorialWebm(output);
@@ -279,9 +373,85 @@ async function transcodePreview(
   );
 }
 
+async function persistConvertedPreview(
+  slug: string,
+  converted: Awaited<ReturnType<typeof transcodePreview>>
+): Promise<EditorialPreviewUploadResult> {
+  const filename = `${converted.inspection.digest}.webm`;
+  const root = getEditorialMediaRoot();
+  const gameDirectory = path.join(root, slug);
+  const filePath = path.join(gameDirectory, filename);
+
+  await assertWritableDirectory(root, 0o750);
+  await assertWritableDirectory(gameDirectory, 0o750);
+
+  let reused = false;
+
+  try {
+    await writeFile(filePath, converted.buffer, {
+      flag: "wx",
+      mode: 0o640,
+    });
+  } catch (error) {
+    if (!isAlreadyExistsError(error)) {
+      throw error;
+    }
+
+    const stats = await lstat(filePath);
+
+    if (!stats.isFile() || stats.isSymbolicLink()) {
+      throw new Error(
+        "La ruta multimedia existente no es un archivo seguro."
+      );
+    }
+
+    const existing = await readFile(filePath);
+    const inspection = inspectSafeEditorialWebm(existing);
+
+    if (
+      !inspection ||
+      inspection.digest !== converted.inspection.digest
+    ) {
+      throw new Error(
+        "El archivo multimedia existente no coincide con su hash."
+      );
+    }
+
+    reused = true;
+  }
+
+  return {
+    publicPath: buildEditorialMediaPublicPath(
+      slug,
+      filename
+    ),
+    digest: converted.inspection.digest,
+    bytes: converted.inspection.bytes,
+    reused,
+    widthLimit: converted.preset.width,
+    fps: converted.preset.fps,
+  };
+}
+
+async function convertTemporarySource(
+  slug: string,
+  inputPath: string,
+  temporaryDirectory: string,
+  trim: PreviewTrimWindow
+) {
+  const converted = await transcodePreview(
+    inputPath,
+    temporaryDirectory,
+    trim
+  );
+
+  return persistConvertedPreview(slug, converted);
+}
+
 export async function storeEditorialPreviewVideo(
   slug: string,
-  file: File
+  file: File,
+  trim: PreviewTrimWindow
 ): Promise<EditorialPreviewUploadResult> {
   if (!isEditorialMediaSlug(slug)) {
     throw new Error(
@@ -294,6 +464,8 @@ export async function storeEditorialPreviewVideo(
       "Usa MP4, WebM, MOV, M4V, MKV o AVI de hasta 64 MB."
     );
   }
+
+  assertPreviewTrimWindow(trim);
 
   const temporaryDirectory = await mkdtemp(
     path.join(os.tmpdir(), "deuna-preview-")
@@ -310,64 +482,54 @@ export async function storeEditorialPreviewVideo(
       { flag: "wx", mode: 0o600 }
     );
 
-    const converted = await transcodePreview(
+    return await convertTemporarySource(
+      slug,
       inputPath,
-      temporaryDirectory
+      temporaryDirectory,
+      trim
     );
-    const filename = `${converted.inspection.digest}.webm`;
-    const root = getEditorialMediaRoot();
-    const gameDirectory = path.join(root, slug);
-    const filePath = path.join(gameDirectory, filename);
+  } finally {
+    await rm(temporaryDirectory, {
+      recursive: true,
+      force: true,
+    });
+  }
+}
 
-    await assertWritableDirectory(root, 0o750);
-    await assertWritableDirectory(gameDirectory, 0o750);
+export async function storeRemoteEditorialPreviewVideo(
+  slug: string,
+  sourceUrl: string,
+  trim: PreviewTrimWindow
+): Promise<EditorialPreviewUploadResult> {
+  if (!isEditorialMediaSlug(slug)) {
+    throw new Error(
+      "La identidad del juego no es válida para multimedia."
+    );
+  }
 
-    let reused = false;
+  assertPreviewTrimWindow(trim);
 
-    try {
-      await writeFile(filePath, converted.buffer, {
-        flag: "wx",
-        mode: 0o640,
-      });
-    } catch (error) {
-      if (!isAlreadyExistsError(error)) {
-        throw error;
-      }
+  const temporaryDirectory = await mkdtemp(
+    path.join(os.tmpdir(), "deuna-preview-remote-")
+  );
 
-      const stats = await lstat(filePath);
+  try {
+    const inputPath = path.join(
+      temporaryDirectory,
+      "source.video"
+    );
 
-      if (!stats.isFile() || stats.isSymbolicLink()) {
-        throw new Error(
-          "La ruta multimedia existente no es un archivo seguro."
-        );
-      }
+    await downloadRemoteEditorialVideo(
+      sourceUrl,
+      inputPath
+    );
 
-      const existing = await readFile(filePath);
-      const inspection = inspectSafeEditorialWebm(existing);
-
-      if (
-        !inspection ||
-        inspection.digest !== converted.inspection.digest
-      ) {
-        throw new Error(
-          "El archivo multimedia existente no coincide con su hash."
-        );
-      }
-
-      reused = true;
-    }
-
-    return {
-      publicPath: buildEditorialMediaPublicPath(
-        slug,
-        filename
-      ),
-      digest: converted.inspection.digest,
-      bytes: converted.inspection.bytes,
-      reused,
-      widthLimit: converted.preset.width,
-      fps: converted.preset.fps,
-    };
+    return await convertTemporarySource(
+      slug,
+      inputPath,
+      temporaryDirectory,
+      trim
+    );
   } finally {
     await rm(temporaryDirectory, {
       recursive: true,
