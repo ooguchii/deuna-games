@@ -139,7 +139,7 @@ export default async function AdminPagesPage({
           <span>CONTENIDO PÚBLICO</span>
           <h1>Páginas públicas</h1>
           <p>
-            Elige directamente la página que querés editar. La estructura técnica compartida queda oculta para que el trabajo se organice por destino público, no por implementación interna.
+            Elige directamente la página que quieres editar. La estructura técnica compartida queda oculta para que el trabajo se organice por destino público, no por implementación interna.
           </p>
         </div>
       </header>
@@ -155,7 +155,7 @@ export default async function AdminPagesPage({
           <div className={styles.sectionHeading}>
             <div>
               <span>DESTINOS EDITABLES</span>
-              <h2>Elegí una página</h2>
+              <h2>Elige una página</h2>
             </div>
             <p>
               Cada tarjeta abre exactamente la sección correspondiente. La publicación sigue siendo explícita y versionada.
