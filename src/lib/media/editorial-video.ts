@@ -18,16 +18,21 @@ import {
   isEditorialMediaSlug,
 } from "./editorial-media";
 import {
-  downloadRemoteEditorialVideo,
-} from "./remote-video-source";
+  MAX_PREVIEW_SOURCE_BYTES,
+  parsePreviewTrimWindow,
+  type PreviewTrimWindow,
+} from "./preview-video-policy";
 import {
   inspectSafeEditorialWebm,
   MAX_EDITORIAL_PREVIEW_BYTES,
 } from "./safe-webm";
 
-export const MAX_PREVIEW_SOURCE_BYTES = 64 * 1024 * 1024;
-export const MAX_PREVIEW_DURATION_SECONDS = 30;
-export const MAX_PREVIEW_SOURCE_POSITION_SECONDS = 86_400;
+export {
+  MAX_PREVIEW_DURATION_SECONDS,
+  MAX_PREVIEW_SOURCE_BYTES,
+  MAX_PREVIEW_SOURCE_POSITION_SECONDS,
+} from "./preview-video-policy";
+export type { PreviewTrimWindow } from "./preview-video-policy";
 
 const PREFERRED_PREVIEW_BYTES = 1_572_864;
 const FFMPEG_TIMEOUT_MS = 90_000;
@@ -56,12 +61,6 @@ type PreviewPreset = {
   width: number;
   fps: number;
   crf: number;
-};
-
-export type PreviewTrimWindow = {
-  startSeconds: number;
-  endSeconds: number;
-  durationSeconds: number;
 };
 
 const presets: PreviewPreset[] = [
@@ -100,53 +99,6 @@ export function isAcceptedPreviewSource(file: File) {
   );
 }
 
-export function parsePreviewTrimWindow(
-  startValue: string | null,
-  endValue: string | null
-): PreviewTrimWindow | null {
-  if (
-    startValue === null ||
-    endValue === null ||
-    startValue.trim() === "" ||
-    endValue.trim() === ""
-  ) {
-    return null;
-  }
-
-  const rawStart = Number(startValue);
-  const rawEnd = Number(endValue);
-
-  if (
-    !Number.isFinite(rawStart) ||
-    !Number.isFinite(rawEnd) ||
-    rawStart < 0 ||
-    rawEnd <= rawStart ||
-    rawStart > MAX_PREVIEW_SOURCE_POSITION_SECONDS ||
-    rawEnd > MAX_PREVIEW_SOURCE_POSITION_SECONDS
-  ) {
-    return null;
-  }
-
-  const startMilliseconds = Math.round(rawStart * 1_000);
-  const endMilliseconds = Math.round(rawEnd * 1_000);
-  const durationMilliseconds =
-    endMilliseconds - startMilliseconds;
-
-  if (
-    durationMilliseconds <= 0 ||
-    durationMilliseconds >
-      MAX_PREVIEW_DURATION_SECONDS * 1_000
-  ) {
-    return null;
-  }
-
-  return {
-    startSeconds: startMilliseconds / 1_000,
-    endSeconds: endMilliseconds / 1_000,
-    durationSeconds: durationMilliseconds / 1_000,
-  };
-}
-
 function assertPreviewTrimWindow(
   trim: PreviewTrimWindow
 ) {
@@ -179,6 +131,21 @@ async function assertWritableDirectory(
   if (!stats.isDirectory() || stats.isSymbolicLink()) {
     throw new Error(
       "El almacén multimedia no es un directorio seguro."
+    );
+  }
+}
+
+async function assertSafeSourcePath(inputPath: string) {
+  const stats = await lstat(inputPath);
+
+  if (
+    !stats.isFile() ||
+    stats.isSymbolicLink() ||
+    stats.size <= 0 ||
+    stats.size > MAX_PREVIEW_SOURCE_BYTES
+  ) {
+    throw new Error(
+      "El video fuente temporal no es válido."
     );
   }
 }
@@ -327,6 +294,7 @@ async function transcodePreview(
   trim: PreviewTrimWindow
 ) {
   assertPreviewTrimWindow(trim);
+  await assertSafeSourcePath(inputPath);
 
   for (let index = 0; index < presets.length; index += 1) {
     const preset = presets[index]!;
@@ -433,7 +401,7 @@ async function persistConvertedPreview(
   };
 }
 
-async function convertTemporarySource(
+async function convertSourcePath(
   slug: string,
   inputPath: string,
   temporaryDirectory: string,
@@ -446,6 +414,39 @@ async function convertTemporarySource(
   );
 
   return persistConvertedPreview(slug, converted);
+}
+
+export async function storeEditorialPreviewVideoFromPath(
+  slug: string,
+  inputPath: string,
+  trim: PreviewTrimWindow
+): Promise<EditorialPreviewUploadResult> {
+  if (!isEditorialMediaSlug(slug)) {
+    throw new Error(
+      "La identidad del juego no es válida para multimedia."
+    );
+  }
+
+  assertPreviewTrimWindow(trim);
+  await assertSafeSourcePath(inputPath);
+
+  const temporaryDirectory = await mkdtemp(
+    path.join(os.tmpdir(), "deuna-preview-convert-")
+  );
+
+  try {
+    return await convertSourcePath(
+      slug,
+      inputPath,
+      temporaryDirectory,
+      trim
+    );
+  } finally {
+    await rm(temporaryDirectory, {
+      recursive: true,
+      force: true,
+    });
+  }
 }
 
 export async function storeEditorialPreviewVideo(
@@ -482,49 +483,7 @@ export async function storeEditorialPreviewVideo(
       { flag: "wx", mode: 0o600 }
     );
 
-    return await convertTemporarySource(
-      slug,
-      inputPath,
-      temporaryDirectory,
-      trim
-    );
-  } finally {
-    await rm(temporaryDirectory, {
-      recursive: true,
-      force: true,
-    });
-  }
-}
-
-export async function storeRemoteEditorialPreviewVideo(
-  slug: string,
-  sourceUrl: string,
-  trim: PreviewTrimWindow
-): Promise<EditorialPreviewUploadResult> {
-  if (!isEditorialMediaSlug(slug)) {
-    throw new Error(
-      "La identidad del juego no es válida para multimedia."
-    );
-  }
-
-  assertPreviewTrimWindow(trim);
-
-  const temporaryDirectory = await mkdtemp(
-    path.join(os.tmpdir(), "deuna-preview-remote-")
-  );
-
-  try {
-    const inputPath = path.join(
-      temporaryDirectory,
-      "source.video"
-    );
-
-    await downloadRemoteEditorialVideo(
-      sourceUrl,
-      inputPath
-    );
-
-    return await convertTemporarySource(
+    return await convertSourcePath(
       slug,
       inputPath,
       temporaryDirectory,
