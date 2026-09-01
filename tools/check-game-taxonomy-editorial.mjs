@@ -176,13 +176,14 @@ assert(
 
 assert(
   navigation.includes('href: "/admin/catalogos"') &&
-    navigation.includes('label: "Catálogos"') &&
+    navigation.includes('label: "Clasificaciones y etiquetas"') &&
+    contextBar.includes("const catalogSections") &&
     contextBar.includes('id: "clasificaciones"') &&
     contextBar.includes('id: "etiquetas"') &&
     contextBar.includes('id: "publicacion"') &&
     contextBar.includes('id: "historial"') &&
-    contextBar.includes('label="Secciones del panel de catálogos"'),
-  "Catálogos debe estar en la navegación principal y mostrar ventanas de Clasificaciones, Etiquetas, Publicación e Historial."
+    contextBar.includes('label="Secciones de Clasificaciones y etiquetas"'),
+  "Clasificaciones y etiquetas debe estar en la navegación principal y conservar sus secciones de edición, publicación e historial."
 );
 
 assert(
