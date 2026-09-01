@@ -16,6 +16,9 @@ import {
   requestedGameEditorContinuation,
 } from "@/lib/admin/game-editor-flow";
 import {
+  getGamePublicationIdentity,
+} from "@/lib/admin/publication-overview";
+import {
   hasExactAdminFormFields,
 } from "@/lib/admin/request-security";
 
@@ -74,6 +77,16 @@ export async function POST(
   }
 
   try {
+    const publicationIdentity =
+      await getGamePublicationIdentity(slug);
+
+    if (publicationIdentity?.publicVisible) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        `${target}/actualizacion?estado=descargas-por-actualizacion`
+      );
+    }
+
     const {
       expectedRevision,
       sourcesJson,
