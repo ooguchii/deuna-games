@@ -54,7 +54,7 @@ const contentSecurityPolicy = [
   "media-src 'self'",
   "manifest-src 'self'",
   "worker-src 'self' blob:",
-  "frame-src 'none'",
+  "frame-src https://www.youtube-nocookie.com",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
