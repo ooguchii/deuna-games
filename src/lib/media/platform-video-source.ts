@@ -41,7 +41,7 @@ const YTDLP_COOKIES_FILE =
   process.env.DEUNA_YTDLP_COOKIES_FILE?.trim() || "";
 const YOUTUBE_PUBLIC_CLIENTS =
   process.env.DEUNA_YTDLP_YOUTUBE_CLIENTS?.trim() ||
-  "default,web_embedded";
+  "web_embedded,default";
 const YTDLP_DIAGNOSTICS =
   process.env.DEUNA_YTDLP_DIAGNOSTICS?.trim() === "1" ||
   process.env.NODE_ENV !== "production";
@@ -104,7 +104,7 @@ function classifyYtDlpFailure(
     return new Error(
       YTDLP_COOKIES_FILE
         ? "YouTube rechazó incluso la sesión configurada por su verificación anti-bot. Actualiza las cookies de YouTube o cambia de IP antes de volver a intentarlo."
-        : "YouTube activó una verificación anti-bot para esta conexión. El video puede ser público y aun así YouTube bloquear a yt-dlp por IP. DeUna ya usa Node, EJS y el cliente web embebido; si el bloqueo persiste, cambia de IP o configura DEUNA_YTDLP_COOKIES_FILE con una sesión válida."
+        : "YouTube rechazó la adquisición incluso priorizando el cliente web embebido sin PO Token. Si el video es público y embebible, mantén yt-dlp actualizado; si YouTube exige prueba de origen para esta IP, la alternativa estable es configurar un PO Token Provider para yt-dlp."
     );
   }
 
@@ -113,7 +113,7 @@ function classifyYtDlpFailure(
     normalized.includes("login_required")
   ) {
     return new Error(
-      "YouTube devolvió LOGIN_REQUIRED incluso usando clientes públicos. En 2026 esto suele indicar un bloqueo anti-bot/IP, aunque el video sea público; también puede ser una restricción real del video. Prueba primero tras unos minutos o con otra IP."
+      "YouTube devolvió LOGIN_REQUIRED incluso priorizando el cliente web embebido. Si el video es público y embebible, actualiza yt-dlp; si el bloqueo persiste, esta IP necesita una sesión válida o un PO Token Provider."
     );
   }
 
@@ -157,7 +157,7 @@ function classifyYtDlpFailure(
   ) {
     return new Error(
       youtube
-        ? "YouTube exige una sesión o rechazó los clientes públicos para este video. Si el video abre normalmente en el navegador, la causa más probable es un bloqueo anti-bot/IP de YouTube sobre yt-dlp."
+        ? "YouTube no entregó un stream descargable para este video. DeUna prioriza web_embedded —que no requiere PO Token en videos embebibles— y deja los clientes automáticos como fallback. Si el video abre y se puede embeber en el navegador, actualiza yt-dlp; si persiste, YouTube está exigiendo sesión o PO Token para esta conexión."
         : "La plataforma exige una sesión o el contenido no es público."
     );
   }
@@ -190,11 +190,13 @@ function platformSpecificArgs(
 ) {
   if (platform.platform !== "youtube") return [];
 
+  const configured = YOUTUBE_PUBLIC_CLIENTS.toLowerCase();
+
+  if (configured === "auto") return [];
+
   return [
     "--extractor-args",
     `youtube:player_client=${YOUTUBE_PUBLIC_CLIENTS}`,
-    "--sleep-requests",
-    "1",
   ];
 }
 
