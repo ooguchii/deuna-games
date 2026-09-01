@@ -15,8 +15,12 @@ import {
   hasExactAdminFormFields,
 } from "@/lib/admin/request-security";
 import {
-  storeRemoteEditorialPreviewVideo,
+  storeEditorialPreviewVideoFromPath,
 } from "@/lib/media/editorial-video";
+import {
+  removeStagedEditorialPreviewSource,
+  resolveStagedEditorialPreviewSource,
+} from "@/lib/media/editorial-video-staging";
 import {
   parsePreviewTrimWindow,
 } from "@/lib/media/preview-video-policy";
@@ -26,17 +30,10 @@ export const runtime = "nodejs";
 
 const fields = [
   "expectedRevision",
-  "url",
+  "sourceToken",
   "startSeconds",
   "endSeconds",
 ] as const;
-
-function readSingleString(
-  form: URLSearchParams,
-  field: string
-) {
-  return form.get(field);
-}
 
 function errorState(error: unknown) {
   const message =
@@ -55,15 +52,6 @@ function errorState(error: unknown) {
 
   if (message.includes("recorte")) {
     return "preview-recorte-invalido";
-  }
-
-  if (
-    message.includes("URL") ||
-    message.includes("remoto") ||
-    message.includes("descarga") ||
-    message.includes("HTTPS")
-  ) {
-    return "preview-url-invalida";
   }
 
   return "video-invalido";
@@ -98,22 +86,13 @@ export async function POST(
   }
 
   const revision = expectedRevisionSchema.safeParse(
-    readSingleString(
-      authorized.form,
-      "expectedRevision"
-    )
+    authorized.form.get("expectedRevision")
   );
-  const sourceUrl =
-    readSingleString(authorized.form, "url")?.trim() ?? "";
+  const sourceToken =
+    authorized.form.get("sourceToken")?.trim() ?? "";
   const trim = parsePreviewTrimWindow(
-    readSingleString(
-      authorized.form,
-      "startSeconds"
-    ),
-    readSingleString(
-      authorized.form,
-      "endSeconds"
-    )
+    authorized.form.get("startSeconds"),
+    authorized.form.get("endSeconds")
   );
 
   if (!trim) {
@@ -125,12 +104,11 @@ export async function POST(
 
   if (
     !revision.success ||
-    sourceUrl.length < 8 ||
-    sourceUrl.length > 2_048
+    !/^[a-f0-9]{48}$/.test(sourceToken)
   ) {
     return adminRedirect(
       authorized.adminOrigin,
-      `${target}?estado=preview-url-invalida&seccion=multimedia`
+      `${target}?estado=preview-source-expirada&seccion=multimedia`
     );
   }
 
@@ -154,10 +132,24 @@ export async function POST(
       );
     }
 
-    const upload =
-      await storeRemoteEditorialPreviewVideo(
+    const source =
+      await resolveStagedEditorialPreviewSource(
         slug,
-        sourceUrl,
+        authorized.session.userId,
+        sourceToken
+      );
+
+    if (!source) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        `${target}?estado=preview-source-expirada&seccion=multimedia`
+      );
+    }
+
+    const upload =
+      await storeEditorialPreviewVideoFromPath(
+        slug,
+        source.filePath,
         trim
       );
     const result = await saveGameMediaDraft(
@@ -183,13 +175,17 @@ export async function POST(
       );
     }
 
+    await removeStagedEditorialPreviewSource(
+      sourceToken
+    );
+
     return adminRedirect(
       authorized.adminOrigin,
       `${target}?estado=preview-subido&seccion=multimedia`
     );
   } catch (error) {
     console.error(
-      "No se pudo importar el preview remoto:",
+      "No se pudo preparar el preview remoto:",
       error instanceof Error
         ? error.message
         : "error no identificado"
