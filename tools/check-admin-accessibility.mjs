@@ -106,19 +106,16 @@ assert(
 );
 
 assert(
-  contextBar.includes("useKeepActiveContextVisible") &&
-    contextBar.includes("window.requestAnimationFrame") &&
-    contextBar.includes("getBoundingClientRect") &&
-    contextBar.includes("nav.scrollLeft") &&
-    contextBar.includes('aria-current={active ? "page" : undefined}') &&
-    navigation.includes("window.requestAnimationFrame") &&
-    navigation.includes("getBoundingClientRect") &&
-    navigation.includes("nav.scrollLeft") &&
+  navigation.includes("<details") &&
+    navigation.includes("activeItem?.label") &&
     navigation.includes('aria-current={active ? "page" : undefined}') &&
-    shellUx.includes("overscroll-behavior-inline: contain") &&
-    shellUx.includes("scroll-padding-inline: 10px") &&
-    shellUx.includes("scrollbar-width: none"),
-  "Las navegaciones horizontales deben mantener visible la opción activa, conservar aria-current y contener el overscroll móvil."
+    navigation.includes("mobileNavPanel") &&
+    contextBar.includes("<details") &&
+    contextBar.includes("mobileLabel") &&
+    contextBar.includes('aria-current={item.active ? "page" : undefined}') &&
+    contextBar.includes('aria-current={child.active ? "page" : undefined}') &&
+    contextBar.includes("contextMobilePanel"),
+  "Las navegaciones móviles deben exponer la opción activa, conservar aria-current y ofrecer una estructura desplegable accesible."
 );
 
 assert(
@@ -309,6 +306,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    `Accesibilidad administrativa: OK (${adminCssFiles.length} módulos revisados; identidad dinámica y contrastada, navegaciones móviles autocentradas, login accesible, skip-link único, contraste adaptable, escala legible, foco único, tema adaptativo, teclado, movimiento reducido y catálogos semánticos).`
+    `Accesibilidad administrativa: OK (${adminCssFiles.length} módulos revisados; identidad dinámica y contrastada, navegación móvil desplegable, login accesible, skip-link único, contraste adaptable, escala legible, foco único, tema adaptativo, teclado, movimiento reducido y catálogos semánticos).`
   );
 }
