@@ -43,7 +43,7 @@ const formSchema = z.object({
 });
 
 function redirectPath(state: string) {
-  return `/admin/configuracion?seccion=apariencia&estado=${state}`;
+  return `/admin/configuracion?seccion=apariencia&panel=hero&estado=${state}`;
 }
 
 export async function POST(request: NextRequest) {
