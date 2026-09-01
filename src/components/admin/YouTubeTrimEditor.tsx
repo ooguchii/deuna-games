@@ -11,6 +11,7 @@ import {
   type PointerEvent,
   useCallback,
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -99,15 +100,14 @@ export default function YouTubeTrimEditor({
   initialTrim,
   onTrimChange,
 }: YouTubeTrimEditorProps) {
-  const playerId = useRef(
-    `deuna-youtube-trim-${Math.random()
-      .toString(36)
-      .slice(2)}`
-  );
+  const reactId = useId();
+  const playerId = `deuna-youtube-trim-${reactId.replace(
+    /[^A-Za-z0-9_-]/g,
+    ""
+  )}`;
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const timelineRef = useRef<HTMLDivElement>(null);
   const initialApplied = useRef(false);
-  const [browserOrigin, setBrowserOrigin] = useState("");
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [startSeconds, setStartSeconds] = useState(
@@ -131,10 +131,6 @@ export default function YouTubeTrimEditor({
   );
 
   useEffect(() => {
-    setBrowserOrigin(window.location.origin);
-  }, []);
-
-  useEffect(() => {
     onTrimChange(trim);
   }, [onTrimChange, trim]);
 
@@ -154,10 +150,10 @@ export default function YouTubeTrimEditor({
         event: "command",
         func,
         args,
-        id: playerId.current,
+        id: playerId,
       });
     },
-    [sendPlayerMessage]
+    [playerId, sendPlayerMessage]
   );
 
   useEffect(() => {
@@ -267,7 +263,7 @@ export default function YouTubeTrimEditor({
   function initializePlayerChannel() {
     sendPlayerMessage({
       event: "listening",
-      id: playerId.current,
+      id: playerId,
     });
 
     for (const eventName of [
@@ -452,27 +448,24 @@ export default function YouTubeTrimEditor({
   const playheadPercent = duration > 0
     ? (currentTime / duration) * 100
     : 0;
-  const embedSrc = browserOrigin
-    ? `${PLAYER_ORIGIN}/embed/${encodeURIComponent(videoId)}` +
-      `?enablejsapi=1&playsinline=1&controls=1&rel=0&origin=${encodeURIComponent(browserOrigin)}`
-    : "";
+  const embedSrc =
+    `${PLAYER_ORIGIN}/embed/${encodeURIComponent(videoId)}` +
+    "?enablejsapi=1&playsinline=1&controls=1&rel=0";
 
   return (
     <div className={styles.editor}>
       <div className={styles.previewStage}>
-        {embedSrc ? (
-          <iframe
-            ref={iframeRef}
-            id={playerId.current}
-            src={embedSrc}
-            title="Vista previa de YouTube para recortar"
-            loading="lazy"
-            allow="autoplay; encrypted-media; picture-in-picture"
-            allowFullScreen
-            referrerPolicy="strict-origin-when-cross-origin"
-            onLoad={initializePlayerChannel}
-          />
-        ) : null}
+        <iframe
+          ref={iframeRef}
+          id={playerId}
+          src={embedSrc}
+          title="Vista previa de YouTube para recortar"
+          loading="lazy"
+          allow="autoplay; encrypted-media; picture-in-picture"
+          allowFullScreen
+          referrerPolicy="strict-origin-when-cross-origin"
+          onLoad={initializePlayerChannel}
+        />
       </div>
 
       <div className={styles.sourceRow}>
