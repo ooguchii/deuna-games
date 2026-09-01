@@ -39,9 +39,23 @@ const YTDLP_REMOTE_COMPONENT =
   process.env.DEUNA_YTDLP_REMOTE_COMPONENT?.trim() || "ejs:github";
 const YTDLP_COOKIES_FILE =
   process.env.DEUNA_YTDLP_COOKIES_FILE?.trim() || "";
-const YOUTUBE_PUBLIC_CLIENTS =
-  process.env.DEUNA_YTDLP_YOUTUBE_CLIENTS?.trim() ||
-  "web_embedded,default";
+
+function configuredYouTubeClients() {
+  const configured =
+    process.env.DEUNA_YTDLP_YOUTUBE_CLIENTS?.trim() ?? "";
+
+  if (
+    !configured ||
+    configured.toLowerCase() === "auto" ||
+    configured.toLowerCase() === "default,web_embedded"
+  ) {
+    return "web_embedded,default";
+  }
+
+  return configured;
+}
+
+const YOUTUBE_PUBLIC_CLIENTS = configuredYouTubeClients();
 const YTDLP_DIAGNOSTICS =
   process.env.DEUNA_YTDLP_DIAGNOSTICS?.trim() === "1" ||
   process.env.NODE_ENV !== "production";
@@ -189,10 +203,6 @@ function platformSpecificArgs(
   platform: SupportedPlatformVideoUrl
 ) {
   if (platform.platform !== "youtube") return [];
-
-  const configured = YOUTUBE_PUBLIC_CLIENTS.toLowerCase();
-
-  if (configured === "auto") return [];
 
   return [
     "--extractor-args",

@@ -179,12 +179,14 @@ assert(
 );
 
 assert(
-  platformSource.includes('"web_embedded,default"') &&
-    !platformSource.includes('"default,web_embedded"') &&
+  platformSource.includes("configuredYouTubeClients") &&
+    platformSource.includes('configured.toLowerCase() === "auto"') &&
+    platformSource.includes('configured.toLowerCase() === "default,web_embedded"') &&
+    platformSource.includes('return "web_embedded,default"') &&
     !platformSource.includes('"--sleep-requests"') &&
     wrapper.includes("web_embedded,default") &&
     wrapper.includes("ejs:github"),
-  "YouTube debe priorizar el cliente web embebido sin PO Token, conservar los clientes automáticos como fallback y usar la misma política en desarrollo/producción."
+  "YouTube debe normalizar configuración vacía, auto o legado a web_embedded primero y usar la misma política en desarrollo/producción."
 );
 
 assert(
