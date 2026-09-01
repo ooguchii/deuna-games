@@ -113,11 +113,12 @@ server {
         proxy_read_timeout 30s;
     }
 
-    # Única excepción de carga grande: el administrador puede enviar un video
-    # fuente de hasta 1 GiB. Nginx no almacena el body completo antes de pasarlo
-    # a Next: el endpoint lo escribe por streaming en un archivo temporal 0600,
-    # FFmpeg toma sólo el tramo IN/OUT y luego el temporal se elimina.
-    location ~ "^/api/admin/content/games/[a-z0-9][a-z0-9._-]{0,159}/preview-upload$" {
+    # Únicas excepciones de carga grande: el administrador puede enviar un video
+    # fuente de hasta 1 GiB para guardarlo directamente o para crear el proxy de
+    # edición cuando el navegador no entiende el códec. Nginx no almacena el body
+    # completo antes de pasarlo a Next: ambos endpoints escriben por streaming en
+    # un archivo temporal 0600 y eliminan los temporales al terminar.
+    location ~ "^/api/admin/content/games/[a-z0-9][a-z0-9._-]{0,159}/(preview-upload|preview-source-upload)$" {
         allow 10.8.0.0/24;
         deny all;
 
@@ -140,7 +141,7 @@ server {
         proxy_read_timeout 600s;
     }
 
-    # No usar ^~ aquí: necesitamos que la excepción regex de preview-upload
+    # No usar ^~ aquí: necesitamos que la excepción regex de cargas multimedia
     # anterior pueda ganar antes de aplicar el límite pequeño general.
     location /api/admin/ {
         allow 10.8.0.0/24;

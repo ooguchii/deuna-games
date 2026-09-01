@@ -180,6 +180,239 @@ aside nav a[aria-current="page"] svg {
   border-color: color-mix(in srgb, var(--brand) 55%, #ffffff) !important;
 }
 
+/*
+ * Guardado persistente de todo el workspace administrativo.
+ * expectedRevision identifica formularios que editan un borrador/configuración.
+ * Publicar, ocultar, restaurar y los subflujos de carga quedan fuera. Nuevo juego
+ * es la única excepción porque crea la revisión inicial y todavía no tiene una.
+ */
+.admin-professional:has(
+  form:has(> input[name="expectedRevision"]):not(:is(
+    [action*="/publish"],
+    [action*="/hide"],
+    [action*="/restore"],
+    [action*="/media-upload"],
+    [action*="/preview-upload"],
+    [action*="/preview-import"],
+    [action*="/background-upload"],
+    [action*="/icon-upload"]
+  )) > :is(div, footer):last-child:has(button[type="submit"])
+),
+.admin-professional:has(
+  form[action="/api/admin/content/games"]
+    > :is(div, footer):last-child:has(button[type="submit"])
+) {
+  padding-bottom: 92px;
+}
+
+.admin-professional
+  form:has(> input[name="expectedRevision"]):not(:is(
+    [action*="/publish"],
+    [action*="/hide"],
+    [action*="/restore"],
+    [action*="/media-upload"],
+    [action*="/preview-upload"],
+    [action*="/preview-import"],
+    [action*="/background-upload"],
+    [action*="/icon-upload"]
+  )) > :is(div, footer):last-child:has(button[type="submit"]),
+.admin-professional
+  form[action="/api/admin/content/games"]
+  > :is(div, footer):last-child:has(button[type="submit"]) {
+  position: fixed !important;
+  z-index: 80;
+  left: 248px;
+  right: 0;
+  bottom: 0;
+  min-height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin: 0 !important;
+  padding:
+    10px clamp(24px, 3.2vw, 48px)
+    calc(10px + env(safe-area-inset-bottom)) !important;
+  border-top: 1px solid color-mix(in srgb, var(--brand) 18%, #334150) !important;
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--background) 8%, rgba(13, 20, 29, 0.97)),
+      color-mix(in srgb, var(--background) 5%, rgba(7, 12, 18, 0.985))
+    ) !important;
+  box-shadow:
+    0 -14px 34px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.035);
+  backdrop-filter: blur(18px);
+}
+
+.admin-professional
+  form:has(> input[name="expectedRevision"]):not(:is(
+    [action*="/publish"],
+    [action*="/hide"],
+    [action*="/restore"],
+    [action*="/media-upload"],
+    [action*="/preview-upload"],
+    [action*="/preview-import"],
+    [action*="/background-upload"],
+    [action*="/icon-upload"]
+  )) > :is(div, footer):last-child:has(button[type="submit"]) > p,
+.admin-professional
+  form[action="/api/admin/content/games"]
+  > :is(div, footer):last-child:has(button[type="submit"]) > p {
+  max-width: 640px;
+  margin: 0;
+}
+
+.admin-professional .admin-form-actions__buttons {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.admin-professional
+  form:has(> input[name="expectedRevision"]):not(:is(
+    [action*="/publish"],
+    [action*="/hide"],
+    [action*="/restore"],
+    [action*="/media-upload"],
+    [action*="/preview-upload"],
+    [action*="/preview-import"],
+    [action*="/background-upload"],
+    [action*="/icon-upload"]
+  )) > :is(div, footer):last-child:has(button[type="submit"])
+  > button[type="submit"],
+.admin-professional
+  form[action="/api/admin/content/games"]
+  > :is(div, footer):last-child:has(button[type="submit"])
+  > button[type="submit"],
+.admin-professional .admin-form-actions__buttons > button[type="submit"] {
+  min-height: 44px;
+  flex: 0 0 auto;
+}
+
+@media (max-width: 1100px) {
+  .admin-professional
+    form:has(> input[name="expectedRevision"]):not(:is(
+      [action*="/publish"],
+      [action*="/hide"],
+      [action*="/restore"],
+      [action*="/media-upload"],
+      [action*="/preview-upload"],
+      [action*="/preview-import"],
+      [action*="/background-upload"],
+      [action*="/icon-upload"]
+    )) > :is(div, footer):last-child:has(button[type="submit"]),
+  .admin-professional
+    form[action="/api/admin/content/games"]
+    > :is(div, footer):last-child:has(button[type="submit"]) {
+    left: 220px;
+  }
+}
+
+@media (max-width: 760px) {
+  .admin-professional:has(
+    form:has(> input[name="expectedRevision"]):not(:is(
+      [action*="/publish"],
+      [action*="/hide"],
+      [action*="/restore"],
+      [action*="/media-upload"],
+      [action*="/preview-upload"],
+      [action*="/preview-import"],
+      [action*="/background-upload"],
+      [action*="/icon-upload"]
+    )) > :is(div, footer):last-child:has(button[type="submit"])
+  ),
+  .admin-professional:has(
+    form[action="/api/admin/content/games"]
+      > :is(div, footer):last-child:has(button[type="submit"])
+  ) {
+    padding-bottom: 112px;
+  }
+
+  .admin-professional
+    form:has(> input[name="expectedRevision"]):not(:is(
+      [action*="/publish"],
+      [action*="/hide"],
+      [action*="/restore"],
+      [action*="/media-upload"],
+      [action*="/preview-upload"],
+      [action*="/preview-import"],
+      [action*="/background-upload"],
+      [action*="/icon-upload"]
+    )) > :is(div, footer):last-child:has(button[type="submit"]),
+  .admin-professional
+    form[action="/api/admin/content/games"]
+    > :is(div, footer):last-child:has(button[type="submit"]) {
+    left: 0;
+    min-height: 0;
+    gap: 8px;
+    padding:
+      9px 12px
+      calc(9px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .admin-professional
+    form:has(> input[name="expectedRevision"]):not(:is(
+      [action*="/publish"],
+      [action*="/hide"],
+      [action*="/restore"],
+      [action*="/media-upload"],
+      [action*="/preview-upload"],
+      [action*="/preview-import"],
+      [action*="/background-upload"],
+      [action*="/icon-upload"]
+    )) > :is(div, footer):last-child:has(button[type="submit"])
+    > :is(p, div):not(.admin-form-actions__buttons),
+  .admin-professional
+    form[action="/api/admin/content/games"]
+    > :is(div, footer):last-child:has(button[type="submit"])
+    > :is(p, div):not(.admin-form-actions__buttons) {
+    display: none;
+  }
+
+  .admin-professional .admin-form-actions__buttons {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-left: 0;
+  }
+
+  .admin-professional
+    form:has(> input[name="expectedRevision"]):not(:is(
+      [action*="/publish"],
+      [action*="/hide"],
+      [action*="/restore"],
+      [action*="/media-upload"],
+      [action*="/preview-upload"],
+      [action*="/preview-import"],
+      [action*="/background-upload"],
+      [action*="/icon-upload"]
+    )) > :is(div, footer):last-child:has(button[type="submit"])
+    > button[type="submit"],
+  .admin-professional
+    form[action="/api/admin/content/games"]
+    > :is(div, footer):last-child:has(button[type="submit"])
+    > button[type="submit"],
+  .admin-professional .admin-form-actions__buttons > button[type="submit"] {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 520px) {
+  .admin-professional:has(.admin-form-actions__buttons) {
+    padding-bottom: 132px;
+  }
+
+  .admin-professional .admin-form-actions__buttons {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .admin-professional :is(label, div):has(> input[type="search"]) {
     transition: none;

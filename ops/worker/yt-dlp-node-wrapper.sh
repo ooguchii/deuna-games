@@ -25,10 +25,32 @@ if [[ -n "${COOKIES_FILE}" ]]; then
   COOKIE_ARGS=(--cookies "${COOKIES_FILE}")
 fi
 
+# El worker también puede declarar --js-runtimes. Eliminamos cualquier
+# declaración entrante para fijar una sola ruta absoluta a Node bajo systemd.
+args=()
+skip_next=0
+for arg in "$@"; do
+  if (( skip_next )); then
+    skip_next=0
+    continue
+  fi
+
+  if [[ "${arg}" == "--js-runtimes" ]]; then
+    skip_next=1
+    continue
+  fi
+
+  if [[ "${arg}" == --js-runtimes=* ]]; then
+    continue
+  fi
+
+  args+=("${arg}")
+done
+
 exec "${YTDLP_BIN}" \
   --js-runtimes "node:${NODE_BIN}" \
   --remote-components "ejs:github" \
   --extractor-args "youtube:player_client=${YOUTUBE_CLIENTS}" \
   --sleep-requests 1 \
   "${COOKIE_ARGS[@]}" \
-  "$@"
+  "${args[@]}"

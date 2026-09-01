@@ -2,6 +2,7 @@ import "server-only";
 
 import { lookup } from "node:dns/promises";
 import { createWriteStream } from "node:fs";
+import { request as httpRequest } from "node:http";
 import { request as httpsRequest } from "node:https";
 import { BlockList, isIP } from "node:net";
 import { Transform } from "node:stream";
@@ -30,6 +31,8 @@ const allowedContentTypes = new Set([
   "video/x-matroska",
   "video/avi",
   "video/x-msvideo",
+  "application/octet-stream",
+  "binary/octet-stream",
 ]);
 
 const blockedAddresses = new BlockList();
@@ -137,23 +140,35 @@ async function resolvePublicAddress(
 }
 
 function parseRemoteVideoUrl(value: string) {
+  const raw = value.trim();
+  const candidate = /^[a-z][a-z0-9+.-]*:\/\//i.test(raw)
+    ? raw
+    : `https://${raw}`;
   let url: URL;
 
   try {
-    url = new URL(value);
+    url = new URL(candidate);
   } catch {
     throw new Error("La URL del video no es válida.");
   }
 
+  const isHttp = url.protocol === "http:";
+  const isHttps = url.protocol === "https:";
+  const validPort =
+    !url.port ||
+    (isHttp && url.port === "80") ||
+    (isHttps && url.port === "443");
+
   if (
-    url.protocol !== "https:" ||
+    (!isHttp && !isHttps) ||
     url.username ||
     url.password ||
     !url.hostname ||
-    (url.port && url.port !== "443")
+    !validPort ||
+    url.toString().length > 2_048
   ) {
     throw new Error(
-      "El video remoto debe usar una URL HTTPS pública sin credenciales ni puertos alternativos."
+      "El video remoto debe usar una URL HTTP o HTTPS pública sin credenciales ni puertos alternativos."
     );
   }
 
@@ -201,14 +216,16 @@ function requestRemoteVideo(
   destinationPath: string
 ): Promise<RemoteRequestResult> {
   return new Promise((resolve, reject) => {
-    const request = httpsRequest(
+    const requestFn =
+      url.protocol === "http:" ? httpRequest : httpsRequest;
+    const request = requestFn(
       url,
       {
         method: "GET",
         headers: {
           Accept:
-            "video/webm,video/mp4,video/quicktime,video/x-m4v,video/x-matroska,video/x-msvideo;q=0.9",
-          "User-Agent": "DeUnaGames-EditorialPreview/1.0",
+            "video/webm,video/mp4,video/quicktime,video/x-m4v,video/x-matroska,video/x-msvideo,application/octet-stream;q=0.8,*/*;q=0.1",
+          "User-Agent": "DeUnaGames-EditorialPreview/2.0",
         },
         lookup: (_hostname, _options, callback) => {
           callback(
@@ -259,7 +276,7 @@ function requestRemoteVideo(
           response.resume();
           reject(
             new Error(
-              "La URL debe apuntar directamente a un MP4, WebM, MOV, M4V, MKV o AVI."
+              "La URL directa debe devolver un archivo de video o un flujo binario; no una página web."
             )
           );
           return;

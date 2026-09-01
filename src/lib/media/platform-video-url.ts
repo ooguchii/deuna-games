@@ -36,12 +36,12 @@ const platformRules: readonly PlatformRule[] = [
   {
     platform: "facebook",
     label: "Facebook",
-    hosts: ["facebook.com", "fb.watch"],
+    hosts: ["facebook.com", "fb.watch", "fb.com"],
   },
   {
     platform: "instagram",
     label: "Instagram",
-    hosts: ["instagram.com"],
+    hosts: ["instagram.com", "instagr.am"],
   },
   {
     platform: "tiktok",
@@ -94,23 +94,39 @@ function hostnameMatches(
   );
 }
 
+function normalizedUrlInput(value: string) {
+  const raw = value.trim();
+  if (!raw) return raw;
+
+  return /^[a-z][a-z0-9+.-]*:\/\//i.test(raw)
+    ? raw
+    : `https://${raw}`;
+}
+
 export function parseSupportedPlatformVideoUrl(
   value: string
 ): SupportedPlatformVideoUrl | null {
   let parsed: URL;
 
   try {
-    parsed = new URL(value.trim());
+    parsed = new URL(normalizedUrlInput(value));
   } catch {
     return null;
   }
 
+  const isHttp = parsed.protocol === "http:";
+  const isHttps = parsed.protocol === "https:";
+  const validPort =
+    !parsed.port ||
+    (isHttp && parsed.port === "80") ||
+    (isHttps && parsed.port === "443");
+
   if (
-    parsed.protocol !== "https:" ||
+    (!isHttp && !isHttps) ||
     parsed.username ||
     parsed.password ||
     !parsed.hostname ||
-    (parsed.port && parsed.port !== "443") ||
+    !validPort ||
     parsed.toString().length > 2_048
   ) {
     return null;

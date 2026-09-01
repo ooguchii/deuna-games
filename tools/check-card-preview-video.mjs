@@ -76,9 +76,13 @@ const [
   platformSource,
   workerClient,
   staging,
+  streamingAuth,
   uploadRoute,
+  localStagingRoute,
   stagingRoute,
   stagedPlaybackRoute,
+  proxyRoute,
+  stagedHttp,
   importRoute,
   removeRoute,
   publicRoute,
@@ -86,6 +90,7 @@ const [
   universalCard,
   previewAdminForm,
   trimEditor,
+  proxyGenerator,
   adminEditor,
   integrity,
   publicationChanges,
@@ -94,6 +99,7 @@ const [
   envExample,
   packageJson,
   workerScript,
+  workerWrapper,
   workerService,
   workerEnv,
 ] = await Promise.all([
@@ -105,9 +111,13 @@ const [
   source("src/lib/media/platform-video-source.ts"),
   source("src/lib/media/media-import-worker-client.ts"),
   source("src/lib/media/editorial-video-staging.ts"),
+  source("src/lib/admin/streaming-media-admin-route.ts"),
   source("src/app/api/admin/content/games/[slug]/preview-upload/route.ts"),
+  source("src/app/api/admin/content/games/[slug]/preview-source-upload/route.ts"),
   source("src/app/api/admin/content/games/[slug]/preview-source/route.ts"),
   source("src/app/api/admin/content/games/[slug]/preview-source/[token]/route.ts"),
+  source("src/app/api/admin/content/games/[slug]/preview-source/[token]/proxy/route.ts"),
+  source("src/lib/media/staged-preview-http.ts"),
   source("src/app/api/admin/content/games/[slug]/preview-import/route.ts"),
   source("src/app/api/admin/content/games/[slug]/preview-remove/route.ts"),
   source("src/app/media/editorial/[slug]/[filename]/route.ts"),
@@ -115,6 +125,7 @@ const [
   source("src/components/ui/UniversalGameCard.tsx"),
   source("src/components/admin/GamePreviewClipUploadForm.tsx"),
   source("src/components/admin/VideoTrimEditor.tsx"),
+  source("src/lib/media/editorial-preview-proxy.ts"),
   source("src/app/admin/(protected)/juegos/[slug]/page.tsx"),
   source("src/lib/admin/game-media-integrity.ts"),
   source("src/lib/admin/game-publication-changes.ts"),
@@ -123,6 +134,7 @@ const [
   source(".env.example"),
   source("package.json"),
   source("ops/worker/media-import-worker.mjs"),
+  source("ops/worker/yt-dlp-node-wrapper.sh"),
   source("ops/systemd/deuna-games-media-import.service.example"),
   source("ops/systemd/media-import.env.example"),
 ]);
@@ -147,7 +159,17 @@ assert(
     transcoder.includes("spawn(ffmpegExecutable()") &&
     transcoder.includes("shell: false") &&
     transcoder.includes("inspectSafeEditorialWebm"),
-  "La conversión debe seguir recortando una sola vez y generando WebM/VP9 ligero."
+  "La conversión final debe recortar desde el original y generar WebM/VP9 ligero y validado."
+);
+
+assert(
+  proxyGenerator.includes('"libvpx-vp9"') &&
+    proxyGenerator.includes('"-an"') &&
+    proxyGenerator.includes("MAX_EDITORIAL_EDIT_PROXY_BYTES") &&
+    proxyGenerator.includes("PROXY_TIMEOUT_MS") &&
+    proxyGenerator.includes("spawn(ffmpegExecutable()") &&
+    proxyGenerator.includes("shell: false"),
+  "Los códecs que el navegador no reproduce deben usar un proxy WebM privado y acotado sólo para editar."
 );
 
 assert(
@@ -156,14 +178,22 @@ assert(
     streamedSource.includes("pipeline") &&
     streamedSource.includes("createWriteStream") &&
     streamedSource.includes('mode: 0o600') &&
+    streamedSource.includes("expectedBytes: number | null") &&
     streamedSource.includes("MAX_PREVIEW_SOURCE_BYTES") &&
     !streamedSource.includes("arrayBuffer"),
-  "La subida local grande debe ir por streaming a disco temporal y nunca materializarse completa en RAM."
+  "La subida local grande debe ir por streaming a disco temporal, incluso sin Content-Length, y nunca materializarse completa en RAM."
 );
 
 assert(
-  uploadRoute.includes("hasTrustedAdminOrigin") &&
-    uploadRoute.includes("resolveAdminSession") &&
+  streamingAuth.includes("hasTrustedAdminOrigin") &&
+    streamingAuth.includes("resolveAdminSession") &&
+    streamingAuth.includes("getAdminSessionCookieName") &&
+    streamingAuth.includes("adminRedirect"),
+  "Las rutas de streaming deben compartir autenticación de sesión y origen confiable."
+);
+
+assert(
+  uploadRoute.includes("authorizeAdminStreamingMediaRequest") &&
     uploadRoute.includes('request.headers.get("content-length")') &&
     uploadRoute.includes("x-deuna-expected-revision") &&
     uploadRoute.includes("x-deuna-trim-start") &&
@@ -171,23 +201,34 @@ assert(
     uploadRoute.includes("stageStreamedPreviewSource") &&
     uploadRoute.includes("storeEditorialPreviewVideoFromPath") &&
     uploadRoute.includes("previewClip: upload.publicPath") &&
-    uploadRoute.includes("previewMode: undefined") &&
-    uploadRoute.includes("youtubePreview: undefined") &&
     !uploadRoute.includes("request.formData()") &&
-    !uploadRoute.includes("storeEditorialPreviewVideo("),
-  "La ruta local de 1 GiB debe autenticar, validar IN/OUT, transmitir a disco y convertir desde path."
+    !uploadRoute.includes("arrayBuffer"),
+  "El guardado local debe autenticar, validar IN/OUT, transmitir hasta 1 GiB a disco y convertir desde path."
 );
 
 assert(
-  remoteSource.includes("httpsRequest") &&
+  localStagingRoute.includes("authorizeAdminStreamingMediaRequest") &&
+    localStagingRoute.includes("createStagedUploadedPreviewSource") &&
+    localStagingRoute.includes("ensureStagedEditorialPreviewProxy") &&
+    localStagingRoute.includes("x-deuna-source-extension") &&
+    localStagingRoute.includes('request.headers.get("content-length")') &&
+    !localStagingRoute.includes("request.formData()") &&
+    !localStagingRoute.includes("arrayBuffer"),
+  "El fallback local debe subir por streaming, conservar el original y crear un proxy de edición compatible."
+);
+
+assert(
+  remoteSource.includes("httpRequest") &&
+    remoteSource.includes("httpsRequest") &&
     remoteSource.includes("BlockList") &&
     remoteSource.includes("MAX_REDIRECTS = 3") &&
     remoteSource.includes("MAX_REMOTE_PREVIEW_BYTES") &&
-    remoteSource.includes("MAX_PREVIEW_SOURCE_BYTES") &&
-    remoteSource.includes("pipeline") &&
+    remoteSource.includes("application/octet-stream") &&
+    remoteSource.includes("binary/octet-stream") &&
+    remoteSource.includes("lookup:") &&
     remoteSource.includes("mediaImportWorkerConfigured") &&
     remoteSource.includes('kind: "direct"'),
-  "La URL directa debe usar el mismo techo de 1 GiB conservando SSRF, DNS, streaming y aislamiento de producción."
+  "La URL directa debe admitir HTTP/HTTPS públicos y CDNs binarios manteniendo SSRF, DNS pinning, redirecciones validadas y streaming de 1 GiB."
 );
 
 assert(
@@ -201,9 +242,12 @@ assert(
     platformUrl.includes('platform: "dailymotion"') &&
     platformUrl.includes('platform: "streamable"') &&
     platformUrl.includes('platform: "kick"') &&
-    platformUrl.includes('parsed.protocol !== "https:"') &&
+    platformUrl.includes('"fb.com"') &&
+    platformUrl.includes('"instagr.am"') &&
+    platformUrl.includes('parsed.protocol === "http:"') &&
+    platformUrl.includes('parsed.protocol === "https:"') &&
     platformUrl.includes("hostnameMatches"),
-  "Los enlaces de plataforma deben limitarse a HTTPS y a una allowlist explícita de proveedores públicos."
+  "Los enlaces de plataforma deben aceptar HTTP/HTTPS por puertos estándar y quedar limitados a una allowlist explícita."
 );
 
 assert(
@@ -213,9 +257,12 @@ assert(
     platformSource.includes("512 * 1024 * 1024") &&
     platformSource.includes("mediaImportWorkerConfigured") &&
     platformSource.includes('kind: "platform"') &&
+    platformSource.includes("--js-runtimes") &&
+    platformSource.includes("DEUNA_YTDLP_JS_RUNTIME") &&
+    platformSource.includes("vcodec^=avc1") &&
     platformSource.includes("--no-playlist") &&
     platformSource.includes("--max-filesize"),
-  "Las plataformas deben preparar una copia visual liviana mediante yt-dlp sin shell, playlists ni descargas ilimitadas."
+  "Las plataformas deben usar yt-dlp sin shell, runtime JavaScript explícito, formato reproducible y límites de descarga."
 );
 
 assert(
@@ -233,14 +280,30 @@ assert(
   workerScript.includes('const HOST = "127.0.0.1"') &&
     workerScript.includes("timingSafeEqual") &&
     workerScript.includes("BlockList") &&
+    workerScript.includes("httpRequest") &&
+    workerScript.includes("httpsRequest") &&
+    workerScript.includes("application/octet-stream") &&
     workerScript.includes("platformHosts") &&
+    workerScript.includes('"fb.com"') &&
+    workerScript.includes('"instagr.am"') &&
+    workerScript.includes('"--js-runtimes"') &&
+    workerScript.includes("DEUNA_YTDLP_JS_RUNTIME") &&
+    workerScript.includes("vcodec^=avc1") &&
     workerScript.includes('"--no-playlist"') &&
     workerScript.includes('"--max-filesize"') &&
     workerScript.includes('"512M"') &&
     workerScript.includes("activeJob") &&
     workerScript.includes("createReadStream") &&
     workerScript.includes("pipeline"),
-  "El worker debe quedar autenticado, limitado a loopback, con SSRF protegido, allowlist de plataformas y una sola importación concurrente."
+  "El worker de producción debe tener la misma compatibilidad HTTP/plataformas que desarrollo sin perder aislamiento ni límites."
+);
+
+assert(
+  workerWrapper.includes('NODE_BIN="${DEUNA_NODE_BINARY:-/usr/bin/node}"') &&
+    workerWrapper.includes('"--js-runtimes"') &&
+    workerWrapper.includes("skip_next") &&
+    workerWrapper.includes('node:${NODE_BIN}'),
+  "El wrapper de yt-dlp debe fijar una única ruta absoluta a Node y eliminar declaraciones duplicadas del runtime."
 );
 
 assert(
@@ -259,18 +322,34 @@ assert(
     staging.includes("removeStagedEditorialPreviewSource") &&
     staging.includes("parseSupportedPlatformVideoUrl") &&
     staging.includes("downloadPlatformEditorialVideo") &&
+    staging.includes("createStagedUploadedPreviewSource") &&
+    staging.includes("ensureStagedEditorialPreviewProxy") &&
+    staging.includes("resolveStagedEditorialPreviewProxy") &&
     stagingRoute.includes("createStagedRemotePreviewSource") &&
-    stagedPlaybackRoute.includes('"Accept-Ranges": "bytes"') &&
-    stagedPlaybackRoute.includes("removeStagedEditorialPreviewSource"),
-  "URL directa y plataformas deben compartir staging privado, temporal y reproducible por Range."
+    stagedPlaybackRoute.includes("serveStagedPreviewFile") &&
+    stagedPlaybackRoute.includes("removeStagedEditorialPreviewSource") &&
+    stagedHttp.includes('"Accept-Ranges": "bytes"') &&
+    stagedHttp.includes('status: 206') &&
+    stagedHttp.includes('status: 416'),
+  "Archivo local, URL directa y plataformas deben compartir staging privado con limpieza y reproducción Range."
+);
+
+assert(
+  proxyRoute.includes("resolveStagedEditorialPreviewProxy") &&
+    proxyRoute.includes("ensureStagedEditorialPreviewProxy") &&
+    proxyRoute.includes("resolveStagedEditorialPreviewSource") &&
+    proxyRoute.includes("serveStagedPreviewFile") &&
+    proxyRoute.includes("expectedRevision"),
+  "El proxy de edición debe quedar privado, ligado a sesión/juego/revisión y servirse por Range."
 );
 
 assert(
   importRoute.includes("parsePreviewTrimWindow") &&
+    importRoute.includes("resolveStagedEditorialPreviewSource") &&
     importRoute.includes("storeEditorialPreviewVideoFromPath") &&
     importRoute.includes("previewClip: upload.publicPath") &&
     importRoute.includes("removeStagedEditorialPreviewSource"),
-  "Toda fuente remota debe terminar como WebM recortado local y limpiar su staging."
+  "Toda fuente staged, incluido un archivo local con proxy, debe recortarse desde el original y limpiar el staging."
 );
 
 assert(
@@ -311,16 +390,22 @@ assert(
 assert(
   previewAdminForm.includes('type SourceMode = "file" | "url"') &&
     previewAdminForm.includes("VideoTrimEditor") &&
-    previewAdminForm.includes("1 GB") &&
+    previewAdminForm.includes("probeBrowserPlayback") &&
+    previewAdminForm.includes("prepareLocalCodecFallback") &&
+    previewAdminForm.includes("preview-source-upload") &&
+    previewAdminForm.includes("createProxyForStagedToken") &&
+    previewAdminForm.includes("parsePublicVideoUrl") &&
+    previewAdminForm.includes('parsedUrl.protocol === "http:"') &&
+    previewAdminForm.includes('parsedUrl.protocol === "https:"') &&
     previewAdminForm.includes("X-Deuna-Expected-Revision") &&
     previewAdminForm.includes("X-Deuna-Trim-Start") &&
     previewAdminForm.includes("X-Deuna-Trim-End") &&
     previewAdminForm.includes("body = preparedSource.file") &&
+    previewAdminForm.includes("/preview-import") &&
     !previewAdminForm.includes("new FormData()") &&
     previewAdminForm.includes("URL / YouTube / redes") &&
-    previewAdminForm.includes("Cargar video o enlace para recortar") &&
     previewAdminForm.includes("Crear preview WebM con este recorte"),
-  "Multimedia debe permitir 1 GiB local/directo y enlaces de plataforma sin perder streaming ni recorte visual."
+  "La UI debe cubrir archivo local, fallback de códec, URL HTTP/HTTPS y plataformas con un único editor visual de recorte."
 );
 
 assert(
@@ -328,8 +413,9 @@ assert(
     trimEditor.includes("Marcar IN aquí") &&
     trimEditor.includes("Marcar OUT aquí") &&
     trimEditor.includes("Reproducir recorte") &&
-    trimEditor.includes('role="slider"'),
-  "El editor debe conservar timeline, IN/OUT, playhead y recorte accesible."
+    trimEditor.includes('role="slider"') &&
+    trimEditor.includes("MAX_PREVIEW_DURATION_SECONDS"),
+  "El editor debe conservar timeline, IN/OUT, playhead, teclado y la política única de 30 segundos."
 );
 
 assert(
@@ -359,12 +445,12 @@ assert(
 );
 
 assert(
-  nginx.includes("preview-upload$") &&
+  nginx.includes("(preview-upload|preview-source-upload)$") &&
     nginx.includes("client_max_body_size 1024m") &&
     nginx.includes("proxy_request_buffering off") &&
     nginx.includes("proxy_send_timeout 600s") &&
     nginx.includes("client_max_body_size 8k"),
-  "Sólo preview-upload debe admitir 1 GiB de request y debe transmitirlo sin buffering en Nginx."
+  "Las dos rutas locales de streaming deben admitir 1 GiB sin buffering; el resto del API admin debe conservar el límite pequeño."
 );
 
 assert(
@@ -372,7 +458,7 @@ assert(
     envExample.includes("DEUNA_YTDLP_PATH") &&
     envExample.includes("DEUNA_MEDIA_IMPORT_WORKER_URL") &&
     envExample.includes("DEUNA_MEDIA_IMPORT_WORKER_TOKEN") &&
-    !packageJson.includes("yt-dlp"),
+    !packageJson.includes('"yt-dlp"'),
   "FFmpeg debe seguir siendo el conversor final y yt-dlp una herramienta editorial externa/aislada, no una dependencia del frontend ni del WebM público."
 );
 
@@ -401,5 +487,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  "Preview de video en tarjetas: OK (archivo/URL/plataforma pública → staging privado → recorte IN/OUT <= 30 s → WebM local <= 3 MB)."
+  "Preview de video en tarjetas: OK (local directo/fallback + URL HTTP/HTTPS + plataformas → staging privado → recorte IN/OUT <= 30 s desde original → WebM local <= 3 MB)."
 );

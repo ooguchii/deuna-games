@@ -14,15 +14,25 @@ import os from "node:os";
 import path from "node:path";
 
 import {
+  createEditorialPreviewProxy,
+  MAX_EDITORIAL_EDIT_PROXY_BYTES,
+} from "./editorial-preview-proxy";
+import {
   downloadPlatformEditorialVideo,
 } from "./platform-video-source";
 import {
   parseSupportedPlatformVideoUrl,
 } from "./platform-video-url";
 import {
+  MAX_PREVIEW_SOURCE_BYTES,
+} from "./preview-video-policy";
+import {
   downloadRemoteEditorialVideo,
   MAX_REMOTE_PREVIEW_BYTES,
 } from "./remote-video-source";
+import {
+  stageStreamedPreviewSource,
+} from "./streamed-preview-source";
 
 const STAGING_TTL_MS = 30 * 60 * 1_000;
 const MAX_STAGED_SOURCES = 8;
@@ -30,6 +40,12 @@ const TOKEN_PATTERN = /^[a-f0-9]{48}$/;
 const METADATA_SUFFIX = ".json";
 const SOURCE_SUFFIX = ".video";
 const PART_SUFFIX = `${SOURCE_SUFFIX}.part`;
+const PROXY_SUFFIX = ".proxy.webm";
+const PROXY_PART_SUFFIX = `${PROXY_SUFFIX}.part`;
+const proxyJobs = new Map<
+  string,
+  Promise<StagedEditorialPreviewProxy>
+>();
 
 export type StagedEditorialPreviewSource = {
   token: string;
@@ -40,6 +56,13 @@ export type StagedEditorialPreviewSource = {
   contentType: string;
   sourceUrl: string;
   expiresAt: number;
+};
+
+export type StagedEditorialPreviewProxy = {
+  token: string;
+  filePath: string;
+  bytes: number;
+  contentType: "video/webm";
 };
 
 type StagedMetadata = Omit<
@@ -68,6 +91,13 @@ function sourcePath(token: string) {
   );
 }
 
+function proxyPath(token: string) {
+  return path.join(
+    stagingRoot(),
+    `${token}${PROXY_SUFFIX}`
+  );
+}
+
 function validToken(token: string) {
   return TOKEN_PATTERN.test(token);
 }
@@ -77,6 +107,8 @@ function tokenFromArtifact(entry: string) {
     METADATA_SUFFIX,
     SOURCE_SUFFIX,
     PART_SUFFIX,
+    PROXY_SUFFIX,
+    PROXY_PART_SUFFIX,
   ]) {
     if (!entry.endsWith(suffix)) continue;
 
@@ -139,10 +171,14 @@ export async function removeStagedEditorialPreviewSource(
 ) {
   if (!validToken(token)) return;
 
+  proxyJobs.delete(token);
+
   await Promise.all([
     rm(metadataPath(token), { force: true }),
     rm(sourcePath(token), { force: true }),
     rm(`${sourcePath(token)}.part`, { force: true }),
+    rm(proxyPath(token), { force: true }),
+    rm(`${proxyPath(token)}.part`, { force: true }),
   ]);
 }
 
@@ -191,12 +227,12 @@ async function cleanupExpiredSources() {
       const artifacts = [
         `${token}${SOURCE_SUFFIX}`,
         `${token}${PART_SUFFIX}`,
+        `${token}${PROXY_SUFFIX}`,
+        `${token}${PROXY_PART_SUFFIX}`,
       ].filter((entry) => entries.includes(entry));
 
       if (artifacts.length === 0) {
-        await rm(metadataPath(token), {
-          force: true,
-        });
+        await rm(metadataPath(token), { force: true });
         return;
       }
 
@@ -222,6 +258,27 @@ async function stagedSourceCount() {
   ).length;
 }
 
+async function assertStagingCapacity() {
+  await cleanupExpiredSources();
+
+  if ((await stagedSourceCount()) >= MAX_STAGED_SOURCES) {
+    throw new Error(
+      "Hay demasiadas vistas previas abiertas. Termina o recarga alguna antes de preparar otra."
+    );
+  }
+}
+
+async function writeMetadata(metadata: StagedMetadata) {
+  await writeFile(
+    metadataPath(metadata.token),
+    JSON.stringify(metadata),
+    {
+      flag: "wx",
+      mode: 0o600,
+    }
+  );
+}
+
 async function downloadPreviewSource(
   sourceUrl: string,
   destinationPath: string
@@ -244,13 +301,7 @@ export async function createStagedRemotePreviewSource(
   userId: string,
   sourceUrl: string
 ): Promise<StagedEditorialPreviewSource> {
-  await cleanupExpiredSources();
-
-  if ((await stagedSourceCount()) >= MAX_STAGED_SOURCES) {
-    throw new Error(
-      "Hay demasiadas vistas previas remotas abiertas. Termina o recarga alguna antes de preparar otra."
-    );
-  }
+  await assertStagingCapacity();
 
   const token = randomBytes(24).toString("hex");
   const destination = sourcePath(token);
@@ -287,20 +338,81 @@ export async function createStagedRemotePreviewSource(
       expiresAt: Date.now() + STAGING_TTL_MS,
     };
 
-    await writeFile(
-      metadataPath(token),
-      JSON.stringify(metadata),
-      {
-        flag: "wx",
-        mode: 0o600,
-      }
-    );
+    await writeMetadata(metadata);
 
     return {
       ...metadata,
       filePath: destination,
     };
   } catch (error) {
+    await removeStagedEditorialPreviewSource(token);
+    throw error;
+  }
+}
+
+export async function createStagedUploadedPreviewSource(
+  slug: string,
+  userId: string,
+  body: ReadableStream<Uint8Array>,
+  expectedBytes: number | null,
+  contentType: string
+): Promise<StagedEditorialPreviewSource> {
+  await assertStagingCapacity();
+
+  const token = randomBytes(24).toString("hex");
+  const destination = sourcePath(token);
+  let streamedDirectory: string | null = null;
+
+  try {
+    const streamed = await stageStreamedPreviewSource(
+      body,
+      expectedBytes
+    );
+    streamedDirectory = streamed.directory;
+
+    await rename(streamed.filePath, destination);
+    await rm(streamed.directory, {
+      recursive: true,
+      force: true,
+    });
+    streamedDirectory = null;
+
+    const stats = await lstat(destination);
+    if (
+      !stats.isFile() ||
+      stats.isSymbolicLink() ||
+      stats.size <= 0 ||
+      stats.size !== streamed.bytes ||
+      stats.size > MAX_PREVIEW_SOURCE_BYTES
+    ) {
+      throw new Error(
+        "El video temporal no superó la validación de almacenamiento."
+      );
+    }
+
+    const metadata: StagedMetadata = {
+      token,
+      slug,
+      userId,
+      bytes: stats.size,
+      contentType,
+      sourceUrl: "local-upload",
+      expiresAt: Date.now() + STAGING_TTL_MS,
+    };
+
+    await writeMetadata(metadata);
+
+    return {
+      ...metadata,
+      filePath: destination,
+    };
+  } catch (error) {
+    if (streamedDirectory) {
+      await rm(streamedDirectory, {
+        recursive: true,
+        force: true,
+      });
+    }
     await removeStagedEditorialPreviewSource(token);
     throw error;
   }
@@ -325,7 +437,7 @@ export async function resolveStagedEditorialPreviewSource(
     metadata.slug !== slug ||
     metadata.userId !== userId ||
     metadata.bytes <= 0 ||
-    metadata.bytes > MAX_REMOTE_PREVIEW_BYTES
+    metadata.bytes > MAX_PREVIEW_SOURCE_BYTES
   ) {
     return null;
   }
@@ -349,6 +461,92 @@ export async function resolveStagedEditorialPreviewSource(
     ...metadata,
     filePath,
   };
+}
+
+async function readExistingProxy(
+  token: string
+): Promise<StagedEditorialPreviewProxy | null> {
+  try {
+    const filePath = proxyPath(token);
+    const stats = await lstat(filePath);
+
+    if (
+      !stats.isFile() ||
+      stats.isSymbolicLink() ||
+      stats.size <= 0 ||
+      stats.size > MAX_EDITORIAL_EDIT_PROXY_BYTES
+    ) {
+      return null;
+    }
+
+    return {
+      token,
+      filePath,
+      bytes: stats.size,
+      contentType: "video/webm",
+    };
+  } catch {
+    return null;
+  }
+}
+
+export async function ensureStagedEditorialPreviewProxy(
+  source: StagedEditorialPreviewSource
+): Promise<StagedEditorialPreviewProxy> {
+  const existing = await readExistingProxy(source.token);
+  if (existing) return existing;
+
+  const running = proxyJobs.get(source.token);
+  if (running) return running;
+
+  const job = (async () => {
+    const output = proxyPath(source.token);
+    const temporaryOutput = `${output}.part`;
+
+    try {
+      const proxy = await createEditorialPreviewProxy(
+        source.filePath,
+        temporaryOutput
+      );
+      await rename(proxy.filePath, output);
+
+      const stored = await readExistingProxy(source.token);
+      if (!stored) {
+        throw new Error(
+          "La vista previa compatible no pudo almacenarse de forma segura."
+        );
+      }
+
+      return stored;
+    } finally {
+      await rm(temporaryOutput, { force: true });
+    }
+  })();
+
+  proxyJobs.set(source.token, job);
+
+  try {
+    return await job;
+  } finally {
+    if (proxyJobs.get(source.token) === job) {
+      proxyJobs.delete(source.token);
+    }
+  }
+}
+
+export async function resolveStagedEditorialPreviewProxy(
+  slug: string,
+  userId: string,
+  token: string
+): Promise<StagedEditorialPreviewProxy | null> {
+  const source = await resolveStagedEditorialPreviewSource(
+    slug,
+    userId,
+    token
+  );
+  if (!source) return null;
+
+  return readExistingProxy(token);
 }
 
 export const STAGED_PREVIEW_SOURCE_TTL_MS =
