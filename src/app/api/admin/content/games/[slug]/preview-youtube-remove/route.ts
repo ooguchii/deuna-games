@@ -77,18 +77,17 @@ export async function POST(
       );
     }
 
-    const fallbackMode = item.payload.youtubePreview
-      ? "youtube" as const
+    const fallbackMode = item.payload.previewClip
+      ? "webm" as const
       : undefined;
     const result = await saveGameMediaDraft(
       slug,
       revision.data,
       authorized.session.userId,
       {
-        previewClip: undefined,
+        youtubePreview: undefined,
         previewMode:
-          item.payload.previewMode === "webm" ||
-          (!item.payload.previewMode && item.payload.previewClip)
+          item.payload.previewMode === "youtube"
             ? fallbackMode
             : item.payload.previewMode,
       }

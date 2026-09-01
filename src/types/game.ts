@@ -72,6 +72,14 @@ export type GameDownload = {
   platform?: string;
 };
 
+export type GamePreviewMode = "webm" | "youtube";
+
+export type GameYouTubePreview = {
+  videoId: string;
+  startSeconds: number;
+  endSeconds: number;
+};
+
 export type Game = {
   id: string;
   slug: string;
@@ -107,11 +115,15 @@ export type Game = {
   coverImage?: string;
   heroImage?: string;
   screenshots?: string[];
+
   /*
-   * Preview ultraliviano para tarjetas. El panel normaliza cualquier
-   * fuente admitida a WebM/VP9, sin audio y con duración máxima de 30 s.
+   * Los dos orígenes pueden coexistir. previewMode decide cuál usa la card.
+   * Si falta (payloads históricos), previewClip conserva el comportamiento
+   * previo y se considera WebM activo.
    */
+  previewMode?: GamePreviewMode;
   previewClip?: string;
+  youtubePreview?: GameYouTubePreview;
 
   imageAlt: string;
 

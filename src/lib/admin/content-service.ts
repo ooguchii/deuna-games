@@ -148,7 +148,9 @@ export type GameMediaDraftInput = Pick<
   | "coverImage"
   | "heroImage"
   | "screenshots"
+  | "previewMode"
   | "previewClip"
+  | "youtubePreview"
 >;
 
 export type UpdateDraftInput = Pick<

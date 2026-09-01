@@ -19,7 +19,7 @@ import {
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const fields = ["expectedRevision"] as const;
+const fields = ["expectedRevision", "mode"] as const;
 
 export async function POST(
   request: NextRequest,
@@ -52,8 +52,12 @@ export async function POST(
   const revision = expectedRevisionSchema.safeParse(
     authorized.form.get("expectedRevision")
   );
+  const mode = authorized.form.get("mode");
 
-  if (!revision.success) {
+  if (
+    !revision.success ||
+    (mode !== "webm" && mode !== "youtube")
+  ) {
     return adminRedirect(
       authorized.adminOrigin,
       `${target}?estado=solicitud&seccion=multimedia`
@@ -77,21 +81,21 @@ export async function POST(
       );
     }
 
-    const fallbackMode = item.payload.youtubePreview
-      ? "youtube" as const
-      : undefined;
+    if (
+      (mode === "webm" && !item.payload.previewClip) ||
+      (mode === "youtube" && !item.payload.youtubePreview)
+    ) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        `${target}?estado=preview-recorte-invalido&seccion=multimedia`
+      );
+    }
+
     const result = await saveGameMediaDraft(
       slug,
       revision.data,
       authorized.session.userId,
-      {
-        previewClip: undefined,
-        previewMode:
-          item.payload.previewMode === "webm" ||
-          (!item.payload.previewMode && item.payload.previewClip)
-            ? fallbackMode
-            : item.payload.previewMode,
-      }
+      { previewMode: mode }
     );
 
     if (result.outcome === "not_found") {
@@ -110,7 +114,7 @@ export async function POST(
 
     return adminRedirect(
       authorized.adminOrigin,
-      `${target}?estado=preview-quitado&seccion=multimedia`
+      `${target}?estado=preview-subido&seccion=multimedia`
     );
   } catch {
     return adminUnavailableResponse();

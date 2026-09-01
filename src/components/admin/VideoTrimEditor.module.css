@@ -24,13 +24,18 @@
   background: #030609;
 }
 
-.previewStage video {
+.previewStage video,
+.previewStage iframe {
   display: block;
   width: 100%;
   max-height: 520px;
   aspect-ratio: 16 / 9;
   object-fit: contain;
+  border: 0;
   background: #000;
+}
+
+.previewStage video {
   cursor: pointer;
 }
 

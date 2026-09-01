@@ -15,11 +15,19 @@ import {
 import {
   hasExactAdminFormFields,
 } from "@/lib/admin/request-security";
+import {
+  parseYouTubePreview,
+} from "@/lib/media/youtube-preview";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const fields = ["expectedRevision"] as const;
+const fields = [
+  "expectedRevision",
+  "youtubeUrl",
+  "startSeconds",
+  "endSeconds",
+] as const;
 
 export async function POST(
   request: NextRequest,
@@ -52,11 +60,16 @@ export async function POST(
   const revision = expectedRevisionSchema.safeParse(
     authorized.form.get("expectedRevision")
   );
+  const preview = parseYouTubePreview(
+    authorized.form.get("youtubeUrl") ?? "",
+    authorized.form.get("startSeconds") ?? "",
+    authorized.form.get("endSeconds") ?? ""
+  );
 
-  if (!revision.success) {
+  if (!revision.success || !preview) {
     return adminRedirect(
       authorized.adminOrigin,
-      `${target}?estado=solicitud&seccion=multimedia`
+      `${target}?estado=preview-recorte-invalido&seccion=multimedia`
     );
   }
 
@@ -77,20 +90,13 @@ export async function POST(
       );
     }
 
-    const fallbackMode = item.payload.youtubePreview
-      ? "youtube" as const
-      : undefined;
     const result = await saveGameMediaDraft(
       slug,
       revision.data,
       authorized.session.userId,
       {
-        previewClip: undefined,
-        previewMode:
-          item.payload.previewMode === "webm" ||
-          (!item.payload.previewMode && item.payload.previewClip)
-            ? fallbackMode
-            : item.payload.previewMode,
+        previewMode: "youtube",
+        youtubePreview: preview,
       }
     );
 
@@ -110,7 +116,7 @@ export async function POST(
 
     return adminRedirect(
       authorized.adminOrigin,
-      `${target}?estado=preview-quitado&seccion=multimedia`
+      `${target}?estado=preview-subido&seccion=multimedia`
     );
   } catch {
     return adminUnavailableResponse();
