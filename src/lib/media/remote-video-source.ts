@@ -7,6 +7,12 @@ import { BlockList, isIP } from "node:net";
 import { Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
 
+import {
+  downloadViaMediaImportWorker,
+  mediaImportWorkerConfigured,
+  requireRemoteImportWorkerInProduction,
+} from "./media-import-worker-client";
+
 export const MAX_REMOTE_PREVIEW_BYTES = 64 * 1024 * 1024;
 
 const MAX_REDIRECTS = 3;
@@ -295,7 +301,7 @@ function requestRemoteVideo(
   });
 }
 
-export async function downloadRemoteEditorialVideo(
+async function downloadDirectlyForDevelopment(
   value: string,
   destinationPath: string
 ): Promise<RemoteEditorialVideo> {
@@ -346,4 +352,41 @@ export async function downloadRemoteEditorialVideo(
   }
 
   throw new Error("El video remoto no pudo descargarse.");
+}
+
+export async function downloadRemoteEditorialVideo(
+  value: string,
+  destinationPath: string
+): Promise<RemoteEditorialVideo> {
+  const parsed = parseRemoteVideoUrl(value);
+
+  requireRemoteImportWorkerInProduction();
+
+  if (mediaImportWorkerConfigured()) {
+    const worker = await downloadViaMediaImportWorker(
+      {
+        kind: "direct",
+        url: parsed.toString(),
+      },
+      destinationPath
+    );
+
+    if (!allowedContentTypes.has(worker.contentType)) {
+      throw new Error(
+        "El worker multimedia no devolvió un tipo de video permitido."
+      );
+    }
+
+    return {
+      bytes: worker.bytes,
+      contentType: worker.contentType,
+      sourceUrl:
+        worker.sourceUrl || parsed.toString(),
+    };
+  }
+
+  return downloadDirectlyForDevelopment(
+    parsed.toString(),
+    destinationPath
+  );
 }
