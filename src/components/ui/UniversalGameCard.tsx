@@ -276,6 +276,10 @@ export default function UniversalGameCard({
       deactivateYouTube(media);
     }
     youtubeActive.current = false;
+
+    articleRef.current?.style.removeProperty(
+      "--tilt-transition-duration"
+    );
   }
 
   function startCard(
@@ -319,7 +323,19 @@ export default function UniversalGameCard({
       if (!article || !media) return;
 
       cancelTiltFrame();
+      article.style.setProperty(
+        "--tilt-transition-duration",
+        "0ms"
+      );
       resetTilt(article);
+
+      /*
+       * El reproductor global se posiciona con getBoundingClientRect().
+       * Al desactivar la transición del tilt antes de medir evitamos que
+       * iframe y tarjeta queden desalineados durante los 150 ms de retorno.
+       */
+      void article.offsetWidth;
+
       youtubeActive.current = true;
       activateYouTube(media, resolvedPreview.preview);
     }, PREVIEW_DELAY_MS);
@@ -371,6 +387,8 @@ export default function UniversalGameCard({
   }
 
   useEffect(() => {
+    const media = mediaRef.current;
+
     return () => {
       if (previewTimer.current) {
         clearTimeout(previewTimer.current);
@@ -380,7 +398,6 @@ export default function UniversalGameCard({
         cancelAnimationFrame(tiltFrame.current);
       }
 
-      const media = mediaRef.current;
       if (youtubeActive.current && media) {
         deactivateYouTube(media);
       }
