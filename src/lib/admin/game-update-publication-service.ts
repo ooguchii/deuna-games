@@ -51,6 +51,10 @@ type InsertedUpdateRow = {
   publication_number: number;
 };
 
+type ExistingUpdateRow = {
+  draft_payload: unknown;
+};
+
 export type PublishGameUpdateInput = {
   expectedRevision: number;
   version: string;
@@ -93,15 +97,17 @@ function normalizeVersionToken(value: string) {
     .replace(/[^a-z0-9._-]+/g, "-")
     .replace(/^[^a-z0-9]+/, "")
     .replace(/[-._]+$/, "")
-    .replace(/-+/g, "-") || "version";
+    .replace(/-+/g, "-");
 }
 
 function updateIdentifier(slug: string, version: string) {
+  const normalizedVersion =
+    normalizeVersionToken(version) || "version";
   const digest = createHash("sha256")
-    .update(version)
+    .update(normalizedVersion)
     .digest("hex")
     .slice(0, 10);
-  const versionToken = normalizeVersionToken(version).slice(0, 28);
+  const versionToken = normalizedVersion.slice(0, 28);
   const suffix = `${versionToken}-${digest}`;
   const maximumSlug = Math.max(1, 160 - suffix.length - 1);
   const prefix = slug
@@ -396,8 +402,15 @@ export async function publishIntegratedGameUpdate(
       item.published_payload
     );
     const version = input.version.trim();
+    const versionToken = normalizeVersionToken(version);
+    const currentVersionToken = normalizeVersionToken(
+      publishedGame.version ?? ""
+    );
 
-    if (version === (publishedGame.version ?? "").trim()) {
+    if (
+      versionToken &&
+      versionToken === currentVersionToken
+    ) {
       return { outcome: "same_version" };
     }
 
@@ -420,20 +433,37 @@ export async function publishIntegratedGameUpdate(
       return { outcome: "no_download" };
     }
 
-    const updateId = updateIdentifier(slug, version);
-    const existing = await client.query<{ id: string }>(
-      `SELECT id
-       FROM deuna_admin.editorial_items
-       WHERE item_type = 'game_update'
-         AND item_key = $1
-       LIMIT 1`,
-      [updateId]
-    );
+    const existingVersions =
+      await client.query<ExistingUpdateRow>(
+        `SELECT draft_payload
+         FROM deuna_admin.editorial_items
+         WHERE item_type = 'game_update'
+           AND draft_payload ->> 'gameSlug' = $1
+         FOR SHARE`,
+        [slug]
+      );
+    const versionAlreadyRegistered =
+      existingVersions.rows.some((row) => {
+        try {
+          const existingUpdate = parseEditorialPayload(
+            "game_update",
+            row.draft_payload
+          );
 
-    if (existing.rows[0]) {
+          return (
+            normalizeVersionToken(existingUpdate.version) ===
+            versionToken
+          );
+        } catch {
+          return false;
+        }
+      });
+
+    if (versionAlreadyRegistered) {
       return { outcome: "update_exists" };
     }
 
+    const updateId = updateIdentifier(slug, version);
     const normalizedGame = normalizedPayload(
       "game",
       nextGame
