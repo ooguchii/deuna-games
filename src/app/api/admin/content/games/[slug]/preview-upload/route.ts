@@ -38,8 +38,7 @@ function contentLengthFromRequest(request: NextRequest) {
 }
 
 function errorState(error: unknown) {
-  const message =
-    error instanceof Error ? error.message : "";
+  const message = error instanceof Error ? error.message : "";
 
   if (message.includes("FFmpeg no está disponible")) {
     return "ffmpeg";
@@ -65,8 +64,7 @@ export async function POST(
     params: Promise<{ slug: string }>;
   }
 ) {
-  const authorized =
-    await authorizeAdminStreamingMediaRequest(request);
+  const authorized = await authorizeAdminStreamingMediaRequest(request);
 
   if (!authorized.authorized) {
     return authorized.response;
@@ -75,10 +73,8 @@ export async function POST(
   const { slug } = await context.params;
   const target = `/admin/juegos/${encodeURIComponent(slug)}`;
   const contentLength = contentLengthFromRequest(request);
-  const contentType =
-    request.headers.get("content-type") ?? "";
-  const extension =
-    request.headers.get("x-deuna-source-extension") ?? "";
+  const contentType = request.headers.get("content-type") ?? "";
+  const extension = request.headers.get("x-deuna-source-extension") ?? "";
   const revision = expectedRevisionSchema.safeParse(
     request.headers.get("x-deuna-expected-revision")
   );
@@ -116,10 +112,7 @@ export async function POST(
   let temporaryDirectory: string | null = null;
 
   try {
-    const item = await getEditorialItem(
-      "game",
-      slug
-    );
+    const item = await getEditorialItem("game", slug);
 
     if (!item) {
       return adminRedirect(
@@ -141,12 +134,11 @@ export async function POST(
     );
     temporaryDirectory = staged.directory;
 
-    const upload =
-      await storeEditorialPreviewVideoFromPath(
-        slug,
-        staged.filePath,
-        trim
-      );
+    const upload = await storeEditorialPreviewVideoFromPath(
+      slug,
+      staged.filePath,
+      trim
+    );
     const result = await saveGameMediaDraft(
       slug,
       revision.data,
@@ -155,6 +147,7 @@ export async function POST(
         previewClip: upload.publicPath,
         previewMode: undefined,
         youtubePreview: undefined,
+        directPreview: undefined,
       }
     );
 
@@ -179,9 +172,7 @@ export async function POST(
   } catch (error) {
     console.error(
       "No se pudo preparar el preview de tarjeta:",
-      error instanceof Error
-        ? error.message
-        : "error no identificado"
+      error instanceof Error ? error.message : "error no identificado"
     );
 
     return adminRedirect(
