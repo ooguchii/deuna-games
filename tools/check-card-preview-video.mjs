@@ -12,6 +12,9 @@ import {
   inspectSafeEditorialWebm,
   MAX_EDITORIAL_PREVIEW_BYTES,
 } from "../src/lib/media/safe-webm.ts";
+import {
+  parseYouTubeVideoUrl,
+} from "../src/lib/media/youtube-url.ts";
 
 const root = process.cwd();
 const failures = [];
@@ -55,6 +58,26 @@ assert(
   "El recorte compartido debe aceptar ventanas válidas y rechazar duración, orden o posiciones inválidas."
 );
 
+const youtubeWatch = parseYouTubeVideoUrl(
+  "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+);
+const youtubeShort = parseYouTubeVideoUrl(
+  "https://youtu.be/dQw4w9WgXcQ?t=20"
+);
+const youtubeShorts = parseYouTubeVideoUrl(
+  "https://www.youtube.com/shorts/dQw4w9WgXcQ"
+);
+assert(
+  youtubeWatch?.videoId === "dQw4w9WgXcQ" &&
+    youtubeShort?.videoId === "dQw4w9WgXcQ" &&
+    youtubeShorts?.videoId === "dQw4w9WgXcQ" &&
+    parseYouTubeVideoUrl("http://youtube.com/watch?v=dQw4w9WgXcQ") === null &&
+    parseYouTubeVideoUrl("https://youtube.com.evil.example/watch?v=dQw4w9WgXcQ") === null &&
+    parseYouTubeVideoUrl("https://user:pass@youtube.com/watch?v=dQw4w9WgXcQ") === null &&
+    parseYouTubeVideoUrl("https://youtube.com:444/watch?v=dQw4w9WgXcQ") === null,
+  "El parser de YouTube debe aceptar sólo hosts HTTPS exactos e IDs válidos, sin credenciales ni puertos alternativos."
+);
+
 const [
   schema,
   typeModel,
@@ -62,10 +85,13 @@ const [
   trimPolicy,
   remoteSource,
   staging,
+  youtubeUrlSource,
+  youtubeImporter,
   uploadRoute,
   stagingRoute,
   stagedPlaybackRoute,
   importRoute,
+  youtubeRoute,
   mediaAuth,
   mediaRequestSecurity,
   publicRoute,
@@ -73,11 +99,14 @@ const [
   universalCard,
   previewAdminForm,
   trimEditor,
+  youtubeTrimEditor,
   adminEditor,
   integrity,
   publicationChanges,
   nginx,
   envExample,
+  runtimeEnvExample,
+  nextConfig,
 ] = await Promise.all([
   source("src/lib/admin/content-validation.ts"),
   source("src/types/game.ts"),
@@ -85,10 +114,13 @@ const [
   source("src/lib/media/preview-video-policy.ts"),
   source("src/lib/media/remote-video-source.ts"),
   source("src/lib/media/editorial-video-staging.ts"),
+  source("src/lib/media/youtube-url.ts"),
+  source("src/lib/media/youtube-video-source.ts"),
   source("src/app/api/admin/content/games/[slug]/preview-upload/route.ts"),
   source("src/app/api/admin/content/games/[slug]/preview-source/route.ts"),
   source("src/app/api/admin/content/games/[slug]/preview-source/[token]/route.ts"),
   source("src/app/api/admin/content/games/[slug]/preview-import/route.ts"),
+  source("src/app/api/admin/content/games/[slug]/preview-youtube/route.ts"),
   source("src/lib/admin/media-admin-route.ts"),
   source("src/lib/admin/media-request-security.ts"),
   source("src/app/media/editorial/[slug]/[filename]/route.ts"),
@@ -96,11 +128,14 @@ const [
   source("src/components/ui/UniversalGameCard.tsx"),
   source("src/components/admin/GamePreviewClipUploadForm.tsx"),
   source("src/components/admin/VideoTrimEditor.tsx"),
+  source("src/components/admin/YouTubeTrimEditor.tsx"),
   source("src/app/admin/(protected)/juegos/[slug]/page.tsx"),
   source("src/lib/admin/game-media-integrity.ts"),
   source("src/lib/admin/game-publication-changes.ts"),
   source("ops/nginx/deuna-games.conf.example"),
   source(".env.example"),
+  source("ops/systemd/runtime.env.example"),
+  source("next.config.ts"),
 ]);
 
 assert(
@@ -165,7 +200,7 @@ assert(
     remoteSource.includes("pipeline") &&
     remoteSource.includes("resolved.address") &&
     remoteSource.includes("allowedContentTypes"),
-  "La importación remota debe impedir SSRF, fijar DNS público, limitar redirecciones/tamaño y escribir el origen en streaming."
+  "La importación remota directa debe impedir SSRF, fijar DNS público, limitar redirecciones/tamaño y escribir el origen en streaming."
 );
 assert(
   staging.includes("randomBytes(24)") &&
@@ -179,7 +214,7 @@ assert(
     staging.includes("artifactIsAbandoned") &&
     staging.includes("PART_SUFFIX") &&
     staging.includes("stats.isSymbolicLink()"),
-  "La preview remota debe usar staging temporal opaco, acotado, con vencimiento y limpieza de restos interrumpidos."
+  "La preview remota directa debe usar staging temporal opaco, acotado, con vencimiento y limpieza de restos interrumpidos."
 );
 assert(
   stagingRoute.includes("authorizeAdminFormRequest") &&
@@ -189,7 +224,7 @@ assert(
     stagingRoute.includes("createStagedRemotePreviewSource") &&
     stagingRoute.includes("src:") &&
     stagingRoute.includes("expiresAt"),
-  "La URL debe prepararse mediante un endpoint administrativo pequeño antes de mostrarla en el editor."
+  "La URL directa debe prepararse mediante un endpoint administrativo pequeño antes de mostrarla en el editor."
 );
 assert(
   stagedPlaybackRoute.includes("resolveAdminSession") &&
@@ -215,17 +250,59 @@ assert(
     importRoute.includes("removeStagedEditorialPreviewSource") &&
     importRoute.includes("saveGameMediaDraft") &&
     !importRoute.includes("spawn("),
-  "Confirmar una URL debe reutilizar el staging ya previsualizado, sin descargar de nuevo ni entregar la URL a FFmpeg."
+  "Confirmar una URL directa debe reutilizar el staging ya previsualizado, sin descargar de nuevo ni entregar la URL a FFmpeg."
 );
 assert(
-  previewAdminForm.includes('type SourceMode = "file" | "url"') &&
+  youtubeUrlSource.includes("YOUTUBE_VIDEO_ID_PATTERN") &&
+    youtubeUrlSource.includes('url.protocol !== "https:"') &&
+    youtubeUrlSource.includes("youtubeHosts") &&
+    youtubeUrlSource.includes("canonicalUrl"),
+  "YouTube debe usar un parser de URL dedicado y estricto en vez del descargador genérico de URLs."
+);
+assert(
+  youtubeImporter.includes('process.env.DEUNA_YTDLP_PATH') &&
+    youtubeImporter.includes('"--no-playlist"') &&
+    youtubeImporter.includes('"--concurrent-fragments"') &&
+    youtubeImporter.includes('"1"') &&
+    youtubeImporter.includes('"--limit-rate"') &&
+    youtubeImporter.includes('YOUTUBE_DOWNLOAD_RATE = "6M"') &&
+    youtubeImporter.includes('"--download-sections"') &&
+    youtubeImporter.includes('"--force-keyframes-at-cuts"') &&
+    youtubeImporter.includes('"bestvideo[height<=480]/best[height<=480]/worstvideo"') &&
+    youtubeImporter.includes('"--max-filesize"') &&
+    youtubeImporter.includes('"64M"') &&
+    youtubeImporter.includes("youtubeImportActive") &&
+    youtubeImporter.includes("storeEditorialPreviewVideoFromPath") &&
+    youtubeImporter.includes("mkdtemp") &&
+    youtubeImporter.includes("recursive: true") &&
+    youtubeImporter.includes("spawn(ytDlpExecutable()") &&
+    youtubeImporter.includes("shell: false"),
+  "YouTube debe descargar sólo el tramo confirmado, con una importación a la vez, red/calidad acotadas, sin shell y limpiando temporales."
+);
+assert(
+  youtubeRoute.includes("authorizeAdminFormRequest") &&
+    youtubeRoute.includes("hasExactAdminFormFields") &&
+    youtubeRoute.includes('"youtubeUrl"') &&
+    youtubeRoute.includes('"startSeconds"') &&
+    youtubeRoute.includes('"endSeconds"') &&
+    youtubeRoute.includes("parseYouTubeVideoUrl") &&
+    youtubeRoute.includes("parsePreviewTrimWindow") &&
+    youtubeRoute.includes("storeEditorialPreviewVideoFromYouTube") &&
+    youtubeRoute.includes("saveGameMediaDraft"),
+  "La confirmación de YouTube debe validar sesión, revisión, URL y recorte antes de guardar sólo el WebM editorial."
+);
+assert(
+  previewAdminForm.includes('type SourceMode = "file" | "url" | "youtube"') &&
     previewAdminForm.includes("VideoTrimEditor") &&
+    previewAdminForm.includes("YouTubeTrimEditor") &&
+    previewAdminForm.includes("parseYouTubeVideoUrl") &&
     previewAdminForm.includes("URL.createObjectURL") &&
     previewAdminForm.includes("/preview-source") &&
     previewAdminForm.includes("sourceToken") &&
     previewAdminForm.includes("/preview-import") &&
+    previewAdminForm.includes("/preview-youtube") &&
     previewAdminForm.includes("Reemplazar con este recorte"),
-  "El workspace debe mostrar una preview real antes de permitir confirmar el recorte, tanto local como remoto."
+  "El workspace debe mostrar una preview real para archivo, URL directa o YouTube y confirmar cada origen por su ruta segura."
 );
 assert(
   trimEditor.includes("Línea de tiempo del video") &&
@@ -240,7 +317,21 @@ assert(
     trimEditor.includes('role="slider"') &&
     trimEditor.includes('aria-orientation="horizontal"') &&
     trimEditor.includes("aria-valuetext"),
-  "El recortador visual debe tener video, timeline, tiradores IN/OUT accesibles, ajuste fino y reproducción del tramo elegido."
+  "El recortador local/remoto debe tener video, timeline, tiradores IN/OUT accesibles, ajuste fino y reproducción del tramo elegido."
+);
+assert(
+  youtubeTrimEditor.includes("https://www.youtube-nocookie.com") &&
+    youtubeTrimEditor.includes('loading="lazy"') &&
+    youtubeTrimEditor.includes("postMessage") &&
+    youtubeTrimEditor.includes("ALLOWED_MESSAGE_ORIGINS") &&
+    youtubeTrimEditor.includes("MAX_PREVIEW_DURATION_SECONDS") &&
+    youtubeTrimEditor.includes("parsePreviewTrimWindow") &&
+    youtubeTrimEditor.includes("Marcar IN aquí") &&
+    youtubeTrimEditor.includes("Marcar OUT aquí") &&
+    youtubeTrimEditor.includes("Reproducir recorte") &&
+    youtubeTrimEditor.includes('role="slider"') &&
+    !youtubeTrimEditor.includes("yt-dlp"),
+  "La edición de YouTube debe usar sólo un iframe privado lazy y el mismo recorte visual; nunca debe descargar el video desde el navegador."
 );
 assert(
   mediaAuth.includes("maximumBytes?: number") &&
@@ -301,11 +392,22 @@ assert(
     nginx.includes("client_max_body_size 66m") &&
     nginx.includes("client_max_body_size 8k") &&
     !nginx.includes("preview-import$"),
-  "Sólo la subida local debe abrir el body grande; staging e importación remota deben conservar el límite administrativo pequeño."
+  "Sólo la subida local debe abrir el body grande; staging e importaciones por URL deben conservar el límite administrativo pequeño."
 );
 assert(
-  envExample.includes("DEUNA_FFMPEG_PATH"),
-  "La dependencia operacional de FFmpeg debe estar documentada."
+  envExample.includes("DEUNA_FFMPEG_PATH") &&
+    envExample.includes("DEUNA_YTDLP_PATH") &&
+    runtimeEnvExample.includes("DEUNA_YTDLP_PATH"),
+  "Las dependencias operacionales FFmpeg/yt-dlp deben quedar documentadas sin integrarse al runtime público."
+);
+assert(
+  nextConfig.includes('"frame-src \'none\'"') &&
+    nextConfig.includes("frame-src https://www.youtube-nocookie.com") &&
+    nextConfig.includes('buildContentSecurityPolicy("none")') &&
+    nextConfig.includes('buildContentSecurityPolicy("youtube-admin")') &&
+    nextConfig.includes('source: "/admin/:path*"') &&
+    !nextConfig.includes("https://www.youtube.com/iframe_api"),
+  "La CSP pública debe seguir bloqueando iframes; sólo /admin puede enmarcar youtube-nocookie y sin scripts externos de YouTube."
 );
 
 if (failures.length > 0) {
@@ -317,5 +419,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  "Preview de video en tarjetas: OK (recortador visual IN/OUT, staging remoto seguro y reutilizable, VP9 ligero, 1 s de intención, cache y Range eficiente verificados)."
+  "Preview de video en tarjetas: OK (archivo/URL/YouTube con recorte visual, importación acotada, VP9 ligero, 1 s de intención, cache, Range y aislamiento público verificados)."
 );
