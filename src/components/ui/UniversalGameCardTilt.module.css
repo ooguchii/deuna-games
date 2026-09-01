@@ -24,7 +24,7 @@
   transform-style: preserve-3d;
 
   transition:
-    transform 150ms ease-out,
+    transform var(--tilt-transition-duration, 150ms) ease-out,
     border-color 180ms ease,
     box-shadow 220ms ease,
     background 180ms ease;
