@@ -113,6 +113,7 @@ export default async function Home() {
             games={collections.heroGames}
             copy={copy.hero}
             imageEffect={config.heroImageEffect ?? false}
+            imageTuning={config.heroImageTuning}
           />
         ) : null;
 
