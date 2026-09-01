@@ -57,6 +57,7 @@ export default function DirectPlatformPreviewEditor({
   onTrimChange,
 }: DirectPlatformPreviewEditorProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const previewStopTimerRef = useRef<number | null>(null);
   const parentHostname = useSyncExternalStore(
     subscribeBrowserLocation,
     browserHostnameSnapshot,
@@ -99,14 +100,12 @@ export default function DirectPlatformPreviewEditor({
   }, [onTrimChange, trim]);
 
   useEffect(() => {
-    if (!previewing || !trim) return;
-
-    const timer = window.setTimeout(() => {
-      setPreviewing(false);
-    }, Math.max(100, trim.durationSeconds * 1_000));
-
-    return () => window.clearTimeout(timer);
-  }, [previewNonce, previewing, trim]);
+    return () => {
+      if (previewStopTimerRef.current !== null) {
+        window.clearTimeout(previewStopTimerRef.current);
+      }
+    };
+  }, []);
 
   const preview: GameDirectPreview = {
     platform: parsed.platform,
@@ -124,6 +123,12 @@ export default function DirectPlatformPreviewEditor({
       parentHostname,
     }
   );
+
+  function clearPreviewStopTimer() {
+    if (previewStopTimerRef.current === null) return;
+    window.clearTimeout(previewStopTimerRef.current);
+    previewStopTimerRef.current = null;
+  }
 
   function normalizeStart(value: number) {
     if (!parsed.supportsStartOffset) return 0;
@@ -156,34 +161,42 @@ export default function DirectPlatformPreviewEditor({
   function updateStart(raw: number) {
     const nextStart = normalizeStart(raw);
     const nextEnd = normalizeEnd(endSeconds, nextStart);
+    clearPreviewStopTimer();
     setStartSeconds(nextStart);
     setEndSeconds(nextEnd);
     setPreviewing(false);
   }
 
   function updateEnd(raw: number) {
+    clearPreviewStopTimer();
     setEndSeconds(normalizeEnd(raw, startSeconds));
     setPreviewing(false);
   }
 
   function testSelection() {
     if (!trim || !embedSrc) return;
+    clearPreviewStopTimer();
     setPreviewNonce((value) => value + 1);
     setPreviewing(true);
   }
 
   function resetSelection() {
+    clearPreviewStopTimer();
     setStartSeconds(0);
     setEndSeconds(MAX_PREVIEW_DURATION_SECONDS);
     setPreviewing(false);
   }
 
   function handleEmbedLoad() {
-    if (
-      !previewing ||
-      parsed.platform !== "tiktok" ||
-      !trim
-    ) {
+    if (!previewing || !trim) return;
+
+    clearPreviewStopTimer();
+    previewStopTimerRef.current = window.setTimeout(() => {
+      previewStopTimerRef.current = null;
+      setPreviewing(false);
+    }, Math.max(100, trim.durationSeconds * 1_000));
+
+    if (parsed.platform !== "tiktok") {
       return;
     }
 
