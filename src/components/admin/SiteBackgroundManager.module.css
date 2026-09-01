@@ -131,7 +131,7 @@
   border: 1px solid color-mix(in srgb, var(--brand) 34%, #354554);
   border-radius: 8px;
   background: color-mix(in srgb, var(--brand) 7%, #0b141e);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 850;
 }
 
@@ -158,7 +158,7 @@
   border: 1px solid #31404f;
   border-radius: 999px;
   background: #09121b;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
 }
 
@@ -171,7 +171,7 @@
   border-radius: 8px;
   background: #0a131d;
   cursor: pointer;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 760;
   transition:
     color 140ms ease,
@@ -277,7 +277,7 @@
 
 .assetMeta {
   color: #768594;
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
   white-space: nowrap;
 }
@@ -384,7 +384,7 @@
 
 .previewHero span {
   color: color-mix(in srgb, var(--brand) 82%, #ffffff);
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 850;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -436,7 +436,7 @@
 
 .previewCaption span {
   color: #758493;
-  font-size: 9px;
+  font-size: 11px;
   text-align: right;
 }
 
@@ -461,7 +461,7 @@
 
 .subheading span {
   color: #788795;
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.45;
 }
 
@@ -495,14 +495,14 @@
 
 .presetButton strong {
   color: #e5edf3;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
 }
 
 .presetButton span {
   overflow: hidden;
   color: #788694;
-  font-size: 9px;
+  font-size: 11px;
   line-height: 1.35;
   text-overflow: ellipsis;
 }
@@ -549,7 +549,7 @@
   border-radius: 7px;
   background: color-mix(in srgb, var(--brand) 5%, #0b151e);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 750;
   text-align: center;
 }
@@ -621,7 +621,7 @@
 .sliderControl small {
   min-height: 0;
   color: #697988;
-  font-size: 9px;
+  font-size: 11px;
   line-height: 1.4;
 }
 
@@ -643,7 +643,7 @@
 
 .colorGrid > label > span {
   color: #d5dee6;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 740;
 }
 
@@ -669,7 +669,7 @@
 
 .colorPicker code {
   color: #95a4b2;
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .colorPicker[data-disabled="true"] {
@@ -704,7 +704,7 @@
 
 .saveBar span {
   color: #778694;
-  font-size: 9px;
+  font-size: 11px;
 }
 
 .saveBar button,
@@ -718,7 +718,7 @@
   background: linear-gradient(135deg, var(--brand-light, var(--brand)), var(--brand));
   box-shadow: 0 8px 22px color-mix(in srgb, var(--brand) 16%, transparent);
   cursor: pointer;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 820;
 }
 
@@ -762,7 +762,7 @@
   border-radius: 7px;
   background: #111c27;
   cursor: pointer;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 740;
 }
 
@@ -795,7 +795,7 @@
 
 .uploadPlaceholder span {
   color: color-mix(in srgb, var(--brand) 72%, #ffffff);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 820;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -814,7 +814,7 @@
 
 .uploadActions p {
   color: #748493;
-  font-size: 9px;
+  font-size: 11px;
   line-height: 1.5;
 }
 
