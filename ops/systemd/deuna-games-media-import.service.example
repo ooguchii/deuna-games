@@ -7,10 +7,10 @@ Wants=network-online.target
 Type=simple
 User=deuna-games
 Group=deuna-games
-WorkingDirectory=/srv/deuna-games/current
+WorkingDirectory=/usr/local/lib/deuna-games
 EnvironmentFile=/etc/deuna-games/media-import.env
 Environment=NODE_ENV=production
-ExecStart=/usr/bin/node /srv/deuna-games/current/media-import-worker.mjs
+ExecStart=/usr/bin/node /usr/local/lib/deuna-games/media-import-worker.mjs
 Restart=on-failure
 RestartSec=5s
 TimeoutStopSec=20s
