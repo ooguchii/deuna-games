@@ -15,6 +15,7 @@ import {
 } from "@/lib/admin/media-admin-route";
 import {
   hasExactAdminMediaFormFields,
+  MAX_ADMIN_PREVIEW_REQUEST_BYTES,
 } from "@/lib/admin/media-request-security";
 import {
   isAcceptedPreviewSource,
@@ -70,7 +71,13 @@ export async function POST(
   }
 ) {
   const authorized =
-    await authorizeAdminMediaRequest(request);
+    await authorizeAdminMediaRequest(
+      request,
+      {
+        maximumBytes:
+          MAX_ADMIN_PREVIEW_REQUEST_BYTES,
+      }
+    );
 
   if (!authorized.authorized) {
     return authorized.response;
