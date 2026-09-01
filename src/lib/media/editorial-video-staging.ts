@@ -23,6 +23,7 @@ const MAX_STAGED_SOURCES = 8;
 const TOKEN_PATTERN = /^[a-f0-9]{48}$/;
 const METADATA_SUFFIX = ".json";
 const SOURCE_SUFFIX = ".video";
+const PART_SUFFIX = `${SOURCE_SUFFIX}.part`;
 
 export type StagedEditorialPreviewSource = {
   token: string;
@@ -63,6 +64,21 @@ function sourcePath(token: string) {
 
 function validToken(token: string) {
   return TOKEN_PATTERN.test(token);
+}
+
+function tokenFromArtifact(entry: string) {
+  for (const suffix of [
+    METADATA_SUFFIX,
+    SOURCE_SUFFIX,
+    PART_SUFFIX,
+  ]) {
+    if (!entry.endsWith(suffix)) continue;
+
+    const token = entry.slice(0, -suffix.length);
+    return validToken(token) ? token : null;
+  }
+
+  return null;
 }
 
 async function ensureStagingRoot() {
@@ -124,25 +140,67 @@ export async function removeStagedEditorialPreviewSource(
   ]);
 }
 
+async function artifactIsAbandoned(
+  root: string,
+  entry: string,
+  now: number
+) {
+  try {
+    const stats = await lstat(
+      path.join(root, entry)
+    );
+
+    if (!stats.isFile() || stats.isSymbolicLink()) {
+      return true;
+    }
+
+    return now - stats.mtimeMs > STAGING_TTL_MS;
+  } catch {
+    return false;
+  }
+}
+
 async function cleanupExpiredSources() {
   const root = await ensureStagingRoot();
   const entries = await readdir(root);
-  const metadataEntries = entries.filter(
-    (entry) =>
-      entry.endsWith(METADATA_SUFFIX) &&
-      validToken(entry.slice(0, -METADATA_SUFFIX.length))
-  );
   const now = Date.now();
+  const tokens = new Set<string>();
+
+  for (const entry of entries) {
+    const token = tokenFromArtifact(entry);
+    if (token) tokens.add(token);
+  }
 
   await Promise.all(
-    metadataEntries.map(async (entry) => {
-      const token = entry.slice(
-        0,
-        -METADATA_SUFFIX.length
-      );
+    [...tokens].map(async (token) => {
       const metadata = await readMetadata(token);
 
-      if (!metadata || metadata.expiresAt <= now) {
+      if (metadata) {
+        if (metadata.expiresAt <= now) {
+          await removeStagedEditorialPreviewSource(token);
+        }
+        return;
+      }
+
+      const artifacts = [
+        `${token}${SOURCE_SUFFIX}`,
+        `${token}${PART_SUFFIX}`,
+      ].filter((entry) => entries.includes(entry));
+
+      if (artifacts.length === 0) {
+        await rm(metadataPath(token), {
+          force: true,
+        });
+        return;
+      }
+
+      const abandoned = await Promise.all(
+        artifacts.map((entry) =>
+          artifactIsAbandoned(root, entry, now)
+        )
+      );
+
+      if (abandoned.every(Boolean)) {
         await removeStagedEditorialPreviewSource(token);
       }
     })
