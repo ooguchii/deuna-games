@@ -42,7 +42,7 @@ syntheticWebm.write("webm", 24, "ascii");
 
 assert(
   inspectSafeEditorialWebm(syntheticWebm)?.bytes === syntheticWebm.length,
-  "El inspector WebM debe aceptar el contenedor editorial mínimo y calcular su identidad."
+  "El inspector WebM debe aceptar el contenedor editorial mínimo."
 );
 assert(
   inspectSafeEditorialWebm(Buffer.alloc(160)) === null,
@@ -50,13 +50,13 @@ assert(
 );
 assert(
   MAX_EDITORIAL_PREVIEW_BYTES === 3 * 1024 * 1024,
-  "El preview WebM público debe mantener un límite estricto de 3 MB."
+  "El WebM público debe mantener un límite estricto de 3 MB."
 );
 assert(
   MAX_PREVIEW_SOURCE_BYTES === 64 * 1024 * 1024 &&
     MAX_PREVIEW_DURATION_SECONDS === 30 &&
     MAX_PREVIEW_SOURCE_POSITION_SECONDS === 86_400,
-  "La política compartida debe limitar origen, duración y posición del recorte."
+  "La política de preview debe limitar tamaño, duración y posición del recorte."
 );
 assert(
   parsePreviewTrimWindow("12.5", "24")?.durationSeconds === 11.5 &&
@@ -64,75 +64,53 @@ assert(
     parsePreviewTrimWindow("0", "30.001") === null &&
     parsePreviewTrimWindow("20", "10") === null &&
     parsePreviewTrimWindow("-1", "1") === null,
-  "El recorte compartido debe aceptar ventanas válidas y rechazar duración, orden o posiciones inválidas."
+  "El recorte debe aceptar ventanas válidas y rechazar duración, orden o posiciones inválidas."
 );
 
 const [
-  schema,
-  typeModel,
   transcoder,
   trimPolicy,
-  youtubePreviewSource,
-  gamePreviewResolver,
   remoteSource,
   staging,
   uploadRoute,
   stagingRoute,
   stagedPlaybackRoute,
   importRoute,
-  youtubeRoute,
-  previewModeRoute,
-  youtubeRemoveRoute,
   removeRoute,
-  settingsRoute,
   mediaAuth,
   mediaRequestSecurity,
   publicRoute,
   hoverMedia,
   universalCard,
-  sharedYouTubePlayer,
   previewAdminForm,
   trimEditor,
-  youtubeTrimEditor,
   adminEditor,
   integrity,
   publicationChanges,
-  rootLayout,
   nextConfig,
   nginx,
   envExample,
   packageJson,
 ] = await Promise.all([
-  source("src/lib/admin/content-validation.ts"),
-  source("src/types/game.ts"),
   source("src/lib/media/editorial-video.ts"),
   source("src/lib/media/preview-video-policy.ts"),
-  source("src/lib/media/youtube-preview.ts"),
-  source("src/lib/media/game-card-preview.ts"),
   source("src/lib/media/remote-video-source.ts"),
   source("src/lib/media/editorial-video-staging.ts"),
   source("src/app/api/admin/content/games/[slug]/preview-upload/route.ts"),
   source("src/app/api/admin/content/games/[slug]/preview-source/route.ts"),
   source("src/app/api/admin/content/games/[slug]/preview-source/[token]/route.ts"),
   source("src/app/api/admin/content/games/[slug]/preview-import/route.ts"),
-  source("src/app/api/admin/content/games/[slug]/preview-youtube/route.ts"),
-  source("src/app/api/admin/content/games/[slug]/preview-mode/route.ts"),
-  source("src/app/api/admin/content/games/[slug]/preview-youtube-remove/route.ts"),
   source("src/app/api/admin/content/games/[slug]/preview-remove/route.ts"),
-  source("src/app/api/admin/content/games/[slug]/preview-settings/route.ts"),
   source("src/lib/admin/media-admin-route.ts"),
   source("src/lib/admin/media-request-security.ts"),
   source("src/app/media/editorial/[slug]/[filename]/route.ts"),
   source("src/components/ui/HoverPreviewMedia.tsx"),
   source("src/components/ui/UniversalGameCard.tsx"),
-  source("src/lib/media/shared-youtube-hover-player.ts"),
   source("src/components/admin/GamePreviewClipUploadForm.tsx"),
   source("src/components/admin/VideoTrimEditor.tsx"),
-  source("src/components/admin/YouTubeTrimEditor.tsx"),
   source("src/app/admin/(protected)/juegos/[slug]/page.tsx"),
   source("src/lib/admin/game-media-integrity.ts"),
   source("src/lib/admin/game-publication-changes.ts"),
-  source("src/app/layout.tsx"),
   source("next.config.ts"),
   source("ops/nginx/deuna-games.conf.example"),
   source(".env.example"),
@@ -140,53 +118,16 @@ const [
 ]);
 
 assert(
-  schema.includes("previewMode: z.enum") &&
-    schema.includes('"webm"') &&
-    schema.includes('"youtube"') &&
-    schema.includes("youtubePreview: youtubePreviewSchema.optional()") &&
-    schema.includes("previewClip: localPreviewClipSchema.optional()") &&
-    schema.includes("duration > 30") &&
-    schema.includes("[A-Za-z0-9_-]{11}"),
-  "El payload editorial debe validar modo híbrido, WebM local e ID/intervalo de YouTube."
-);
-assert(
-  typeModel.includes('GamePreviewMode = "webm" | "youtube"') &&
-    typeModel.includes("youtubePreview?: GameYouTubePreview") &&
-    typeModel.includes("previewClip?: string"),
-  "El modelo público debe transportar ambos orígenes sin romper WebM históricos."
-);
-assert(
   trimPolicy.includes("parsePreviewTrimWindow") &&
     trimPolicy.includes("MAX_PREVIEW_DURATION_SECONDS = 30") &&
     trimPolicy.includes("MAX_PREVIEW_SOURCE_POSITION_SECONDS = 86_400"),
-  "La política de recorte debe seguir siendo única para local, URL y YouTube."
+  "Archivo local y URL deben compartir una única política IN/OUT de máximo 30 segundos."
 );
-assert(
-  youtubePreviewSource.includes("VIDEO_ID_PATTERN") &&
-    youtubePreviewSource.includes("[A-Za-z0-9_-]{11}") &&
-    youtubePreviewSource.includes('hostname === "youtu.be"') &&
-    youtubePreviewSource.includes('url.searchParams.get("v")') &&
-    youtubePreviewSource.includes('parts[0] === "shorts"') &&
-    youtubePreviewSource.includes('parts[0] === "embed"') &&
-    youtubePreviewSource.includes('parts[0] === "live"') &&
-    youtubePreviewSource.includes("parsePreviewTrimWindow") &&
-    youtubePreviewSource.includes('url.protocol !== "https:"') &&
-    youtubePreviewSource.includes("url.username") &&
-    youtubePreviewSource.includes("url.password"),
-  "El parser YouTube debe aceptar formatos conocidos, exigir HTTPS/ID válido y compartir IN/OUT."
-);
-assert(
-  /if \(game\.previewMode === "youtube"\)[\s\S]*return local[\s\S]*if \(game\.previewMode === "webm"\)[\s\S]*return youtube/.test(
-    gamePreviewResolver
-  ) &&
-    gamePreviewResolver.includes("validateYouTubePreview") &&
-    gamePreviewResolver.includes("Payloads históricos") &&
-    gamePreviewResolver.includes("game.previewClip"),
-  "El resolver debe respetar el modo activo y mantener fallback bidireccional entre YouTube y WebM."
-);
+
 assert(
   transcoder.includes('"libvpx-vp9"') &&
     transcoder.includes('"-ss"') &&
+    transcoder.includes('"-t"') &&
     transcoder.includes('"-an"') &&
     transcoder.includes("PREFERRED_PREVIEW_BYTES = 1_572_864") &&
     transcoder.includes("width: 400") &&
@@ -196,23 +137,28 @@ assert(
     transcoder.includes("spawn(ffmpegExecutable()") &&
     transcoder.includes("shell: false") &&
     transcoder.includes("inspectSafeEditorialWebm"),
-  "La alternativa WebM debe conservar su conversión VP9 segura y ligera."
+  "La conversión debe recortar una sola vez y generar WebM/VP9 ligero de forma segura."
 );
+
 assert(
   uploadRoute.includes("MAX_ADMIN_PREVIEW_REQUEST_BYTES") &&
     uploadRoute.includes("parsePreviewTrimWindow") &&
-    uploadRoute.includes('previewMode: "webm"') &&
-    uploadRoute.includes("storeEditorialPreviewVideo"),
-  "Una subida local debe crear WebM y activarlo explícitamente."
+    uploadRoute.includes("storeEditorialPreviewVideo") &&
+    uploadRoute.includes("previewClip: upload.publicPath") &&
+    uploadRoute.includes("previewMode: undefined") &&
+    uploadRoute.includes("youtubePreview: undefined"),
+  "La subida local debe exigir IN/OUT, generar WebM y limpiar metadatos de previews retirados."
 );
+
 assert(
   remoteSource.includes("httpsRequest") &&
     remoteSource.includes("BlockList") &&
     remoteSource.includes("MAX_REDIRECTS = 3") &&
     remoteSource.includes("MAX_REMOTE_PREVIEW_BYTES") &&
     remoteSource.includes("pipeline"),
-  "La URL directa a archivo debe conservar protección SSRF, límites y streaming."
+  "La URL directa debe conservar SSRF, límites, DNS seguro y descarga por streaming."
 );
+
 assert(
   staging.includes("STAGING_TTL_MS = 30 * 60 * 1_000") &&
     staging.includes("MAX_STAGED_SOURCES = 8") &&
@@ -220,178 +166,141 @@ assert(
     stagingRoute.includes("createStagedRemotePreviewSource") &&
     stagedPlaybackRoute.includes('"Accept-Ranges": "bytes"') &&
     stagedPlaybackRoute.includes("removeStagedEditorialPreviewSource"),
-  "La alternativa URL→WebM debe mantener staging temporal, acotado y reproducible por Range."
+  "La URL directa debe usar staging privado, temporal, acotado y reproducible por Range."
 );
+
 assert(
-  importRoute.includes('previewMode: "webm"') &&
+  importRoute.includes("parsePreviewTrimWindow") &&
     importRoute.includes("storeEditorialPreviewVideoFromPath") &&
-    !importRoute.includes("youtube"),
-  "La URL directa debe seguir aislada del flujo YouTube y terminar como WebM local."
+    importRoute.includes("previewClip: upload.publicPath") &&
+    importRoute.includes("previewMode: undefined") &&
+    importRoute.includes("youtubePreview: undefined") &&
+    importRoute.includes("removeStagedEditorialPreviewSource"),
+  "La URL directa debe terminar siempre como WebM recortado local y limpiar su staging."
 );
+
 assert(
-  youtubeRoute.includes("authorizeAdminFormRequest") &&
-    youtubeRoute.includes("hasExactAdminFormFields") &&
-    youtubeRoute.includes("parseYouTubePreview") &&
-    youtubeRoute.includes('previewMode: "youtube"') &&
-    youtubeRoute.includes("youtubePreview: preview") &&
-    !youtubeRoute.includes("FFmpeg") &&
-    !youtubeRoute.includes("spawn(") &&
-    !youtubeRoute.includes("fetch(") &&
-    !youtubeRoute.includes("yt-dlp"),
-  "Guardar YouTube debe persistir sólo metadatos, sin descarga ni transcodificación."
+  removeRoute.includes("previewClip: undefined") &&
+    removeRoute.includes("previewMode: undefined") &&
+    removeRoute.includes("youtubePreview: undefined") &&
+    !removeRoute.includes("fallbackMode"),
+  "Quitar el preview debe dejar el juego sin ningún origen alternativo oculto."
 );
-assert(
-  previewModeRoute.includes('mode !== "webm"') &&
-    previewModeRoute.includes('mode !== "youtube"') &&
-    previewModeRoute.includes("item.payload.previewClip") &&
-    previewModeRoute.includes("item.payload.youtubePreview") &&
-    youtubeRemoveRoute.includes("fallbackMode") &&
-    removeRoute.includes("fallbackMode"),
-  "Cambiar o eliminar origen debe validar disponibilidad y caer al alternativo sin destruirlo."
-);
-assert(
-  settingsRoute.includes('"Cache-Control": "private, no-store, max-age=0"') &&
-    settingsRoute.includes("youtubePreview") &&
-    settingsRoute.includes("previewClip"),
-  "El gestor privado debe leer sus ajustes sin cachear datos administrativos."
-);
-assert(
-  previewAdminForm.includes('type SourceMode = "file" | "url" | "youtube"') &&
-    previewAdminForm.includes("VideoTrimEditor") &&
-    previewAdminForm.includes("YouTubeTrimEditor") &&
-    previewAdminForm.includes("parseYouTubeVideo(sourceUrl)") &&
-    previewAdminForm.includes("navigator.clipboard.readText()") &&
-    previewAdminForm.includes("Buscar en YouTube") &&
-    previewAdminForm.includes("/preview-youtube") &&
-    previewAdminForm.includes("/preview-mode") &&
-    previewAdminForm.includes("No existe un iframe por tarjeta"),
-  "Multimedia debe gestionar WebM y YouTube en un flujo visual único y distinguir URL directa de YouTube."
-);
-assert(
-  trimEditor.includes("Línea de tiempo del video") &&
-    trimEditor.includes("Marcar IN aquí") &&
-    trimEditor.includes("Marcar OUT aquí") &&
-    trimEditor.includes("Reproducir recorte") &&
-    trimEditor.includes('role="slider"') &&
-    youtubeTrimEditor.includes("youtube-nocookie.com") &&
-    youtubeTrimEditor.includes("Línea de tiempo del video de YouTube") &&
-    youtubeTrimEditor.includes("Marcar IN aquí") &&
-    youtubeTrimEditor.includes("Marcar OUT aquí") &&
-    youtubeTrimEditor.includes("Reproducir recorte") &&
-    youtubeTrimEditor.includes('role="slider"'),
-  "Archivo/URL y YouTube deben ofrecer recorte visual IN/OUT accesible antes de guardar."
-);
+
 assert(
   mediaAuth.includes("maximumBytes?: number") &&
     mediaRequestSecurity.includes("MAX_ADMIN_PREVIEW_REQUEST_BYTES") &&
     mediaRequestSecurity.includes("hasTrustedAdminOrigin"),
-  "El body grande debe seguir limitado a la carga local autenticada."
+  "Sólo la carga local autenticada debe aceptar el body multimedia grande."
 );
+
 assert(
   publicRoute.includes('"Content-Type": "video/webm"') &&
     publicRoute.includes('"Accept-Ranges": "bytes"') &&
     publicRoute.includes("MAX_VALIDATED_WEBM_CACHE_ENTRIES") &&
     publicRoute.includes("immutable"),
-  "La alternativa WebM debe mantener Range, validación y cache inmutable."
+  "El WebM público debe mantener Range, validación y cache inmutable."
 );
+
 assert(
   hoverMedia.includes('preload="none"') &&
     hoverMedia.includes("muted") &&
     hoverMedia.includes("loop") &&
     hoverMedia.includes("video.pause()"),
-  "El WebM no debe precargarse antes de la intención y debe pausarse al ocultar la página."
+  "La tarjeta no debe precargar el WebM y debe reproducirlo silencioso bajo intención."
 );
 
-const timerIndex = universalCard.indexOf(
-  "previewTimer.current = setTimeout"
-);
-const youtubeActivationIndex = universalCard.lastIndexOf(
-  "activateSharedYouTubeHoverPlayer("
-);
 assert(
   universalCard.includes("PREVIEW_DELAY_MS = 1_000") &&
-    universalCard.includes("resolveGameCardPreview") &&
-    universalCard.includes("deactivateSharedYouTubeHoverPlayer") &&
-    timerIndex >= 0 &&
-    youtubeActivationIndex > timerIndex &&
+    universalCard.includes("game.previewClip?.trim()") &&
+    universalCard.includes("setPreviewActive(true)") &&
     universalCard.includes("(hover: hover) and (pointer: fine)") &&
     universalCard.includes("prefers-reduced-motion: reduce") &&
     universalCard.includes("requestAnimationFrame") &&
-    universalCard.includes('"--tilt-transition-duration"'),
-  "La tarjeta debe esperar 1 s, estabilizar tilt y activar YouTube sólo después de intención real."
+    !universalCard.includes("YouTube") &&
+    !universalCard.includes("iframe") &&
+    !universalCard.includes("previewMode"),
+  "La tarjeta debe esperar 1 segundo y reproducir únicamente su WebM local."
 );
+
 assert(
-  sharedYouTubePlayer.includes("youtube-nocookie.com") &&
-    (sharedYouTubePlayer.match(/document\.createElement\("iframe"\)/g) ?? []).length === 1 &&
-    sharedYouTubePlayer.includes('sendCommand("loadVideoById"') &&
-    sharedYouTubePlayer.includes("startSeconds") &&
-    sharedYouTubePlayer.includes("endSeconds") &&
-    sharedYouTubePlayer.includes('sendCommand("pauseVideo")') &&
-    sharedYouTubePlayer.includes("visibilitychange") &&
-    sharedYouTubePlayer.includes("ResizeObserver") &&
-    sharedYouTubePlayer.includes("requestAnimationFrame") &&
-    sharedYouTubePlayer.includes("IDLE_DESTROY_MS = 60_000") &&
-    sharedYouTubePlayer.includes("destroyPlayer") &&
-    sharedYouTubePlayer.includes('pointerEvents: "none"') &&
-    sharedYouTubePlayer.includes('contain: "layout paint style"') &&
-    !sharedYouTubePlayer.includes("youtube.com/iframe_api") &&
-    !sharedYouTubePlayer.includes("YT.Player"),
-  "YouTube público debe usar un único iframe DOM lazy, reutilizable y liberable por inactividad."
+  previewAdminForm.includes('type SourceMode = "file" | "url"') &&
+    !previewAdminForm.includes('"youtube"') &&
+    previewAdminForm.includes("VideoTrimEditor") &&
+    previewAdminForm.includes("Cargar video para recortar") &&
+    previewAdminForm.includes("Marcar IN aquí") &&
+    previewAdminForm.includes("Marcar OUT aquí") &&
+    previewAdminForm.includes("Reproducir recorte") &&
+    previewAdminForm.includes("Crear preview WebM con este recorte") &&
+    previewAdminForm.includes("/preview-upload") &&
+    previewAdminForm.includes("/preview-source") &&
+    previewAdminForm.includes("/preview-import"),
+  "Multimedia debe ofrecer sólo archivo/URL, preview visual y selección explícita del fragmento."
 );
+
 assert(
-  !rootLayout.includes("YouTubeHoverPlayerProvider") &&
-    !rootLayout.includes("shared-youtube-hover-player"),
-  "El reproductor YouTube no debe montarse en root ni cargar JavaScript en rutas sin tarjetas."
+  trimEditor.includes("Línea de tiempo del video") &&
+    trimEditor.includes("Marcar IN aquí") &&
+    trimEditor.includes("Marcar OUT aquí") &&
+    trimEditor.includes("Reproducir recorte") &&
+    trimEditor.includes('role="slider"'),
+  "El editor debe conservar timeline, IN/OUT, playhead y recorte accesible."
 );
-assert(
-  nextConfig.includes('"frame-src https://www.youtube-nocookie.com"') &&
-    !nextConfig.includes('"frame-src https:"') &&
-    !nextConfig.includes('"frame-src *"') &&
-    !nextConfig.includes("youtube.com/iframe_api"),
-  "CSP debe permitir sólo youtube-nocookie, no iframes HTTPS arbitrarios ni SDK externo."
-);
+
 assert(
   adminEditor.includes("GamePreviewClipUploadForm") &&
     adminEditor.includes("currentPreview={game.previewClip}"),
-  "Multimedia del juego debe administrar el preview en el workspace editorial existente."
+  "El editor del juego debe mantener el preview dentro de Multimedia."
 );
+
 assert(
-  integrity.includes("game.previewClip") &&
-    !integrity.includes("youtubePreview"),
-  "Integridad de archivos debe comprobar sólo multimedia local."
+  integrity.includes("game.previewClip"),
+  "La integridad editorial debe seguir verificando el archivo WebM local."
 );
+
 assert(
-  publicationChanges.includes("previewMode") &&
-    publicationChanges.includes("youtubePreview") &&
-    publicationChanges.includes("previewClip"),
-  "La revisión de publicación debe mostrar cambios de modo, WebM y tramo YouTube."
+  publicationChanges.includes("previewClip") &&
+    publicationChanges.includes("WebM recortado") &&
+    !publicationChanges.includes("youtubePreview") &&
+    !publicationChanges.includes("previewMode"),
+  "La revisión de publicación debe describir únicamente el WebM recortado."
 );
+
+assert(
+  nextConfig.includes('"frame-src \'none\'"') &&
+    !nextConfig.includes("youtube-nocookie") &&
+    !nextConfig.includes("youtube.com"),
+  "CSP debe volver a bloquear todos los iframes tras retirar YouTube directo."
+);
+
 assert(
   nginx.includes("preview-upload$") &&
     nginx.includes("client_max_body_size 66m") &&
     nginx.includes("client_max_body_size 8k"),
-  "Sólo subir un archivo local debe conservar el body administrativo grande."
+  "Sólo subir archivo local debe conservar el body administrativo grande."
 );
+
 assert(
   envExample.includes("DEUNA_FFMPEG_PATH") &&
     !envExample.includes("DEUNA_YTDLP") &&
     !envExample.includes("MEDIA_IMPORT_WORKER") &&
     !packageJson.includes("yt-dlp"),
-  "YouTube directo no debe requerir yt-dlp, worker ni nuevas dependencias de servidor."
+  "El sistema WebM no debe requerir yt-dlp, worker ni dependencias de YouTube."
 );
 
-for (const discardedPath of [
-  "src/components/ui/YouTubeHoverPlayerProvider.tsx",
-  "src/components/ui/YouTubeHoverPlayerProvider.module.css",
-  "src/lib/media/youtube-video-source.ts",
-  "src/lib/media/media-import-worker-client.ts",
-  "ops/deploy/media-import-worker.mjs",
-  "ops/systemd/deuna-games-media-import.service.example",
-  "ops/systemd/media-import.env.example",
+for (const removedPath of [
+  "src/components/admin/YouTubeTrimEditor.tsx",
+  "src/lib/media/shared-youtube-hover-player.ts",
+  "src/lib/media/youtube-preview.ts",
+  "src/lib/media/game-card-preview.ts",
+  "src/app/api/admin/content/games/[slug]/preview-youtube/route.ts",
+  "src/app/api/admin/content/games/[slug]/preview-youtube-remove/route.ts",
+  "src/app/api/admin/content/games/[slug]/preview-mode/route.ts",
+  "src/app/api/admin/content/games/[slug]/preview-settings/route.ts",
 ]) {
   assert(
-    !(await exists(discardedPath)),
-    `No debe quedar residuo de la arquitectura descartada: ${discardedPath}`
+    !(await exists(removedPath)),
+    `No debe quedar funcionalidad de YouTube directo: ${removedPath}`
   );
 }
 
@@ -404,5 +313,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  "Preview de video en tarjetas: OK (WebM opcional + YouTube directo con singleton lazy, 1 s de intención, recorte visual, liberación por inactividad y cero descarga/transcodificación YouTube verificados)."
+  "Preview de video en tarjetas: OK (archivo/URL → recorte visual IN/OUT → WebM local optimizado; YouTube directo retirado)."
 );
