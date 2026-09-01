@@ -142,7 +142,7 @@ export async function POST(
       authorized.session.userId,
       {
         previewClip: upload.publicPath,
-        previewMode: undefined,
+        previewMode: "webm",
         youtubePreview: undefined,
         directPreview: undefined,
       }
