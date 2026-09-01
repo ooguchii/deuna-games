@@ -61,14 +61,14 @@ assert(
 );
 
 for (const excludedAction of [
-  '/publish',
-  '/hide',
-  '/restore',
-  '/media-upload',
-  '/preview-upload',
-  '/preview-import',
-  '/background-upload',
-  '/icon-upload',
+  "/publish",
+  "/hide",
+  "/restore",
+  "/media-upload",
+  "/preview-upload",
+  "/preview-import",
+  "/background-upload",
+  "/icon-upload",
 ]) {
   assert(
     themeContract.includes(`[action*="${excludedAction}"]`),
@@ -76,8 +76,15 @@ for (const excludedAction of [
   );
 }
 
+assert(
+  gameActions.includes("admin-form-actions") &&
+    gameActions.includes("saveLabel") &&
+    gameActions.includes("continueLabel") &&
+    gameActions.includes('type="submit"'),
+  "Juegos debe conservar su contrato común de Guardar / Guardar y continuar."
+);
+
 const revisionEditors = [
-  ["Juegos", gameActions, "Guardar"],
   ["Clasificaciones y etiquetas", taxonomy, "Guardar"],
   ["Inicio · Curaduría", homeCuration, "Guardar curaduría"],
   ["Inicio · Presentación", homePresentation, "Guardar presentación"],
