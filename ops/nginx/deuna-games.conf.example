@@ -116,7 +116,7 @@ server {
     # Única excepción de carga grande: el administrador puede subir un video
     # fuente de hasta 64 MB para que DeUna genere un WebM/VP9 <= 3 MB. La ruta
     # continúa protegida por VPN, sesión, origen confiable y validación backend.
-    location ~ ^/api/admin/content/games/[a-z0-9][a-z0-9._-]{0,159}/preview-upload$ {
+    location ~ "^/api/admin/content/games/[a-z0-9][a-z0-9._-]{0,159}/preview-upload$" {
         allow 10.8.0.0/24;
         deny all;
 
