@@ -185,19 +185,20 @@ function playActive() {
     syncPlacementNow();
     wrapper.style.visibility = "visible";
     wrapper.style.opacity = "1";
+
+    const durationMs = Math.max(
+      100,
+      (active.preview.endSeconds - active.preview.startSeconds) * 1_000
+    );
+    clearStopTimer();
+    state.stopTimer = setTimeout(() => {
+      state.stopTimer = null;
+      if (state.active === active) {
+        stopPlayback();
+      }
+    }, durationMs);
   };
   iframe.src = src;
-
-  const durationMs = Math.max(
-    100,
-    (active.preview.endSeconds - active.preview.startSeconds) * 1_000
-  );
-  state.stopTimer = setTimeout(() => {
-    state.stopTimer = null;
-    if (state.active === active) {
-      stopPlayback();
-    }
-  }, durationMs);
 }
 
 function handleViewportChange() {
