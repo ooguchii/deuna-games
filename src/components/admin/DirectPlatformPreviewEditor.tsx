@@ -195,15 +195,22 @@ export default function DirectPlatformPreviewEditor({
         {
           type: "seekTo",
           value: trim.startSeconds,
+          "x-tiktok-player": true,
         },
         "https://www.tiktok.com"
       );
       target.postMessage(
-        { type: "mute" },
+        {
+          type: "mute",
+          "x-tiktok-player": true,
+        },
         "https://www.tiktok.com"
       );
       target.postMessage(
-        { type: "play" },
+        {
+          type: "play",
+          "x-tiktok-player": true,
+        },
         "https://www.tiktok.com"
       );
     }, 300);
