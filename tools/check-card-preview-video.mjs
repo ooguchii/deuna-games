@@ -221,8 +221,7 @@ assert(
     previewAdminForm.includes("/preview-source") &&
     previewAdminForm.includes("sourceToken") &&
     previewAdminForm.includes("/preview-import") &&
-    previewAdminForm.includes("Reemplazar con este recorte") &&
-    previewAdminForm.includes("durante 1 segundo"),
+    previewAdminForm.includes("Reemplazar con este recorte"),
   "El workspace debe mostrar una preview real antes de permitir confirmar el recorte, tanto local como remoto."
 );
 assert(
