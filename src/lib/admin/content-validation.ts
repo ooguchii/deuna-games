@@ -578,6 +578,7 @@ export const editorialSiteConfigSchema = z
       .max(40)
       .optional(),
     pageBackgrounds: pageBackgroundsSchema.optional(),
+    heroImageEffect: z.boolean().optional(),
   })
   .strict();
 
