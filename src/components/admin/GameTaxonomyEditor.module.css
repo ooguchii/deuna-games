@@ -145,7 +145,9 @@
 .orderButtons button,
 .activeButton,
 .inactiveButton,
-.removeButton {
+.removeButton,
+.clearCustomButton,
+.iconUpload {
   outline: none;
   font: inherit;
   transition:
@@ -189,7 +191,9 @@
 .orderButtons button:focus-visible,
 .activeButton:focus-visible,
 .inactiveButton:focus-visible,
-.removeButton:focus-visible {
+.removeButton:focus-visible,
+.clearCustomButton:focus-visible,
+.iconUpload:focus-within {
   box-shadow:
     0 0 0 2px #0a1118,
     0 0 0 4px color-mix(in srgb, var(--brand) 58%, #ffffff);
@@ -198,7 +202,7 @@
 .columnHeader,
 .termRow {
   display: grid;
-  grid-template-columns: minmax(240px, 1fr) minmax(360px, 1.2fr) 100px 80px 100px 44px;
+  grid-template-columns: minmax(240px, 1fr) minmax(410px, 1.35fr) 100px 80px 100px 44px;
   align-items: center;
   gap: 11px;
 }
@@ -261,8 +265,20 @@
 
 .visualEditor {
   display: grid;
-  grid-template-columns: 48px minmax(130px, 1fr) minmax(110px, 0.8fr);
-  align-items: end;
+  grid-template-columns: 48px minmax(0, 1fr);
+  align-items: start;
+  gap: 9px;
+}
+
+.visualControls {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.visualFields {
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) minmax(110px, 0.72fr);
   gap: 9px;
 }
 
@@ -290,10 +306,106 @@
   height: 44px;
   display: grid;
   place-items: center;
+  margin-top: 17px;
   border: 1px solid color-mix(in srgb, var(--taxonomy-accent) 44%, transparent);
   border-radius: 10px;
   color: var(--taxonomy-accent);
   background: color-mix(in srgb, var(--taxonomy-accent) 10%, #09121c);
+}
+
+.customIconRow {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.iconUpload,
+.clearCustomButton {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 760;
+}
+
+.iconUpload {
+  position: relative;
+  overflow: hidden;
+  padding: 0 10px;
+  color: #d7e2ec;
+  border: 1px solid #475b70;
+  background: #0c1722;
+  cursor: pointer;
+}
+
+.iconUpload:hover {
+  color: #ffffff;
+  border-color: color-mix(in srgb, var(--brand) 45%, #607286);
+  background: color-mix(in srgb, var(--brand) 5%, #101c28);
+  transform: translateY(-1px);
+}
+
+.iconUpload[data-busy="true"] {
+  opacity: 0.58;
+  cursor: progress;
+  transform: none;
+}
+
+.iconUpload input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.iconUpload input:disabled {
+  cursor: progress;
+}
+
+.customBadge {
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 8px;
+  border: 1px solid color-mix(in srgb, var(--taxonomy-accent) 38%, #405163);
+  border-radius: 999px;
+  color: color-mix(in srgb, var(--taxonomy-accent) 70%, #ffffff);
+  background: color-mix(in srgb, var(--taxonomy-accent) 7%, #0a141e);
+  font-size: 10px;
+  font-weight: 780;
+  white-space: nowrap;
+}
+
+.clearCustomButton {
+  padding: 0 9px;
+  color: #aebdcc;
+  border: 1px solid #405164;
+  background: transparent;
+  cursor: pointer;
+}
+
+.clearCustomButton:hover {
+  color: #f1f5f9;
+  border-color: #586a7d;
+  background: #111c27;
+  transform: translateY(-1px);
+}
+
+.iconHint {
+  min-width: 180px;
+  flex: 1 1 200px;
+  color: #7f90a2;
+  font-size: 10px;
+  line-height: 1.42;
 }
 
 .usage {
@@ -410,10 +522,10 @@
   flex: 0 0 auto;
 }
 
-@media (max-width: 1320px) {
+@media (max-width: 1380px) {
   .columnHeader,
   .termRow {
-    grid-template-columns: minmax(240px, 1fr) minmax(330px, 1fr) 94px 78px 96px 44px;
+    grid-template-columns: minmax(220px, 1fr) minmax(380px, 1.2fr) 90px 76px 92px 44px;
   }
 
   .columnHeaderSimple,
@@ -436,6 +548,10 @@
   .visualEditor {
     grid-column: 1 / -1;
   }
+
+  .visualPreview {
+    margin-top: 17px;
+  }
 }
 
 @media (max-width: 900px) {
@@ -456,12 +572,29 @@
   .termMain,
   .termRow,
   .termRowSimple,
-  .visualEditor {
+  .visualEditor,
+  .visualFields {
     grid-template-columns: 1fr;
   }
 
   .visualPreview {
     width: 100%;
+    margin-top: 0;
+  }
+
+  .customIconRow {
+    align-items: stretch;
+  }
+
+  .iconUpload,
+  .clearCustomButton {
+    width: 100%;
+  }
+
+  .customBadge,
+  .iconHint {
+    width: 100%;
+    white-space: normal;
   }
 
   .usage {
@@ -483,7 +616,9 @@
   .orderButtons button,
   .activeButton,
   .inactiveButton,
-  .removeButton {
+  .removeButton,
+  .clearCustomButton,
+  .iconUpload {
     transition: none;
   }
 }
