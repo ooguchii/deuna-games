@@ -21,14 +21,6 @@ import {
 } from "react";
 
 import HoverPreviewMedia from "@/components/ui/HoverPreviewMedia";
-import {
-  resolveGameCardPreview,
-} from "@/lib/media/game-card-preview";
-import {
-  deactivateSharedYouTubeHoverPlayer,
-  prepareSharedYouTubeHoverPlayer,
-  revealSharedYouTubeHoverPlayer,
-} from "@/lib/media/shared-youtube-hover-player";
 import type { Game } from "@/types/game";
 
 import styles from "./UniversalGameCard.module.css";
@@ -52,7 +44,6 @@ type PendingTilt = {
 };
 
 const PREVIEW_DELAY_MS = 1_000;
-const YOUTUBE_WARMUP_DELAY_MS = 250;
 
 const fallbackClassBySlug: Record<string, string> = {
   "god-of-war-ragnarok": "godOfWar",
@@ -127,99 +118,46 @@ function applyTilt(
   const rotateY = (x - 0.5) * 8;
   const rotateX = (0.5 - y) * 7;
 
-  node.style.setProperty(
-    "--tilt-x",
-    `${rotateX.toFixed(2)}deg`
-  );
-  node.style.setProperty(
-    "--tilt-y",
-    `${rotateY.toFixed(2)}deg`
-  );
-  node.style.setProperty(
-    "--pointer-x",
-    `${(x * 100).toFixed(1)}%`
-  );
-  node.style.setProperty(
-    "--pointer-y",
-    `${(y * 100).toFixed(1)}%`
-  );
-  node.style.setProperty(
-    "--image-x",
-    `${((x - 0.5) * -8).toFixed(2)}px`
-  );
-  node.style.setProperty(
-    "--image-y",
-    `${((y - 0.5) * -6).toFixed(2)}px`
-  );
+  node.style.setProperty("--tilt-x", `${rotateX.toFixed(2)}deg`);
+  node.style.setProperty("--tilt-y", `${rotateY.toFixed(2)}deg`);
+  node.style.setProperty("--pointer-x", `${(x * 100).toFixed(1)}%`);
+  node.style.setProperty("--pointer-y", `${(y * 100).toFixed(1)}%`);
+  node.style.setProperty("--image-x", `${((x - 0.5) * -8).toFixed(2)}px`);
+  node.style.setProperty("--image-y", `${((y - 0.5) * -6).toFixed(2)}px`);
 }
 
-function Rating({
-  game,
-}: {
-  game: Game;
-}) {
+function Rating({ game }: { game: Game }) {
   return (
     <div className={styles.rating}>
-      <Star
-        size={17}
-        fill="currentColor"
-        aria-hidden="true"
-      />
-
+      <Star size={17} fill="currentColor" aria-hidden="true" />
       <strong>{game.rating ?? "—"}</strong>
-
-      {game.reviews && (
-        <span>({game.reviews})</span>
-      )}
+      {game.reviews && <span>({game.reviews})</span>}
     </div>
   );
 }
 
-function LowSpecDetails({
-  game,
-}: {
-  game: Game;
-}) {
+function LowSpecDetails({ game }: { game: Game }) {
   const requirements = game.requirements;
   const minimum = requirements?.minimum;
   const ram = requirements?.ram ?? minimum?.ram ?? "—";
-  const graphics =
-    requirements?.graphics ?? minimum?.graphics ?? "—";
-  const system =
-    requirements?.system ?? minimum?.system ?? "—";
+  const graphics = requirements?.graphics ?? minimum?.graphics ?? "—";
+  const system = requirements?.system ?? minimum?.system ?? "—";
 
   return (
     <>
-      <span className={styles.lowSpecBadge}>
-        BAJOS RECURSOS
-      </span>
-
+      <span className={styles.lowSpecBadge}>BAJOS RECURSOS</span>
       <div className={styles.requirements}>
         <div>
-          <span className={styles.requirementIcon}>
-            R
-          </span>
-          <p>
-            RAM: <strong>{ram}</strong>
-          </p>
+          <span className={styles.requirementIcon}>R</span>
+          <p>RAM: <strong>{ram}</strong></p>
         </div>
-
         <div>
-          <span className={styles.requirementIcon}>
-            G
-          </span>
-          <p>
-            Gráfica: <strong>{graphics}</strong>
-          </p>
+          <span className={styles.requirementIcon}>G</span>
+          <p>Gráfica: <strong>{graphics}</strong></p>
         </div>
-
         <div>
-          <span className={styles.requirementIcon}>
-            SO
-          </span>
-          <p>
-            Sistema: <strong>{system}</strong>
-          </p>
+          <span className={styles.requirementIcon}>SO</span>
+          <p>Sistema: <strong>{system}</strong></p>
         </div>
       </div>
     </>
@@ -230,20 +168,11 @@ export default function UniversalGameCard({
   game,
   variant = "standard",
 }: UniversalGameCardProps) {
-  const previewTimer = useRef<
-    ReturnType<typeof setTimeout> | null
-  >(null);
-  const youtubeWarmupTimer = useRef<
-    ReturnType<typeof setTimeout> | null
-  >(null);
+  const previewTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const tiltFrame = useRef<number | null>(null);
   const pendingTilt = useRef<PendingTilt | null>(null);
   const cardRect = useRef<DOMRect | null>(null);
   const pointerEffectsEnabled = useRef(false);
-  const youtubePrepared = useRef(false);
-  const youtubeActive = useRef(false);
-  const articleRef = useRef<HTMLElement>(null);
-  const mediaRef = useRef<HTMLDivElement>(null);
   const [previewActive, setPreviewActive] = useState(false);
 
   const mediaBadge = getMediaBadge(game, variant);
@@ -252,17 +181,14 @@ export default function UniversalGameCard({
   const isRecent = variant === "recent";
   const isLowSpec = variant === "lowSpec";
   const variantClass =
-    styles[
-      `variant${variant[0].toUpperCase()}${variant.slice(1)}`
-    ];
-  const resolvedPreview = resolveGameCardPreview(game);
+    styles[`variant${variant[0].toUpperCase()}${variant.slice(1)}`];
+  const previewClip = game.previewClip?.trim() || undefined;
 
   function cancelTiltFrame() {
     if (tiltFrame.current !== null) {
       cancelAnimationFrame(tiltFrame.current);
       tiltFrame.current = null;
     }
-
     pendingTilt.current = null;
   }
 
@@ -271,117 +197,34 @@ export default function UniversalGameCard({
       clearTimeout(previewTimer.current);
       previewTimer.current = null;
     }
-
-    if (youtubeWarmupTimer.current) {
-      clearTimeout(youtubeWarmupTimer.current);
-      youtubeWarmupTimer.current = null;
-    }
-
     setPreviewActive(false);
-
-    const media = mediaRef.current;
-    if (youtubePrepared.current && media) {
-      deactivateSharedYouTubeHoverPlayer(media);
-    }
-    youtubePrepared.current = false;
-    youtubeActive.current = false;
-
-    articleRef.current?.style.removeProperty(
-      "--tilt-transition-duration"
-    );
   }
 
-  function startCard(
-    event: ReactPointerEvent<HTMLElement>
-  ) {
+  function startCard(event: ReactPointerEvent<HTMLElement>) {
     const pointerIsFine =
       event.pointerType !== "touch" &&
-      window.matchMedia(
-        "(hover: hover) and (pointer: fine)"
-      ).matches;
+      window.matchMedia("(hover: hover) and (pointer: fine)").matches;
     const reducedMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)"
     ).matches;
 
-    pointerEffectsEnabled.current =
-      pointerIsFine && !reducedMotion;
-
+    pointerEffectsEnabled.current = pointerIsFine && !reducedMotion;
     if (!pointerEffectsEnabled.current) return;
 
     cardRect.current = event.currentTarget.getBoundingClientRect();
 
-    if (
-      !resolvedPreview ||
-      previewTimer.current ||
-      previewActive ||
-      youtubePrepared.current ||
-      youtubeActive.current
-    ) {
+    if (!previewClip || previewTimer.current || previewActive) {
       return;
-    }
-
-    if (resolvedPreview.kind === "youtube") {
-      youtubeWarmupTimer.current = setTimeout(() => {
-        youtubeWarmupTimer.current = null;
-        const media = mediaRef.current;
-        if (!media) return;
-
-        youtubePrepared.current = true;
-        prepareSharedYouTubeHoverPlayer(
-          media,
-          resolvedPreview.preview
-        );
-      }, YOUTUBE_WARMUP_DELAY_MS);
     }
 
     previewTimer.current = setTimeout(() => {
       previewTimer.current = null;
-
-      if (resolvedPreview.kind === "webm") {
-        setPreviewActive(true);
-        return;
-      }
-
-      const article = articleRef.current;
-      const media = mediaRef.current;
-      if (!article || !media) return;
-
-      if (!youtubePrepared.current) {
-        youtubePrepared.current = true;
-        prepareSharedYouTubeHoverPlayer(
-          media,
-          resolvedPreview.preview
-        );
-      }
-
-      cancelTiltFrame();
-      article.style.setProperty(
-        "--tilt-transition-duration",
-        "0ms"
-      );
-      resetTilt(article);
-
-      /*
-       * El reproductor se calienta invisible antes del segundo de intención.
-       * Al revelar, primero dejamos la tarjeta completamente plana para que
-       * el único iframe compartido mida exactamente la zona de imagen.
-       */
-      void article.offsetWidth;
-
-      youtubeActive.current = true;
-      revealSharedYouTubeHoverPlayer(media);
+      setPreviewActive(true);
     }, PREVIEW_DELAY_MS);
   }
 
-  function scheduleTilt(
-    event: ReactPointerEvent<HTMLElement>
-  ) {
-    if (
-      !pointerEffectsEnabled.current ||
-      youtubeActive.current
-    ) {
-      return;
-    }
+  function scheduleTilt(event: ReactPointerEvent<HTMLElement>) {
+    if (!pointerEffectsEnabled.current) return;
 
     pendingTilt.current = {
       node: event.currentTarget,
@@ -396,21 +239,12 @@ export default function UniversalGameCard({
       const pending = pendingTilt.current;
       const rect = cardRect.current;
       pendingTilt.current = null;
-
       if (!pending || !rect) return;
-
-      applyTilt(
-        pending.node,
-        pending.clientX,
-        pending.clientY,
-        rect
-      );
+      applyTilt(pending.node, pending.clientX, pending.clientY, rect);
     });
   }
 
-  function stopCard(
-    event: ReactPointerEvent<HTMLElement>
-  ) {
+  function stopCard(event: ReactPointerEvent<HTMLElement>) {
     cancelTiltFrame();
     cardRect.current = null;
     pointerEffectsEnabled.current = false;
@@ -419,30 +253,14 @@ export default function UniversalGameCard({
   }
 
   useEffect(() => {
-    const media = mediaRef.current;
-
     return () => {
-      if (previewTimer.current) {
-        clearTimeout(previewTimer.current);
-      }
-
-      if (youtubeWarmupTimer.current) {
-        clearTimeout(youtubeWarmupTimer.current);
-      }
-
-      if (tiltFrame.current !== null) {
-        cancelAnimationFrame(tiltFrame.current);
-      }
-
-      if (youtubePrepared.current && media) {
-        deactivateSharedYouTubeHoverPlayer(media);
-      }
+      if (previewTimer.current) clearTimeout(previewTimer.current);
+      if (tiltFrame.current !== null) cancelAnimationFrame(tiltFrame.current);
     };
   }, []);
 
   return (
     <article
-      ref={articleRef}
       className={`${styles.card} ${tiltStyles.tiltCard} ${variantClass}`}
       onPointerEnter={startCard}
       onPointerMove={scheduleTilt}
@@ -464,58 +282,33 @@ export default function UniversalGameCard({
         className={`${styles.link} ${tiltStyles.tiltClip}`}
         aria-label={`Ver ${game.title}`}
       >
-        <div
-          ref={mediaRef}
-          className={`${styles.media} ${tiltStyles.tiltMedia}`}
-        >
+        <div className={`${styles.media} ${tiltStyles.tiltMedia}`}>
           <HoverPreviewMedia
             imageSrc={game.coverImage}
             imageAlt={game.imageAlt}
-            previewClip={
-              resolvedPreview?.kind === "webm"
-                ? resolvedPreview.src
-                : undefined
-            }
+            previewClip={previewClip}
             active={previewActive}
             sizes="(max-width: 560px) 82vw, (max-width: 900px) 48vw, (max-width: 1250px) 30vw, 20vw"
-            fallbackClassName={
-              fallbackClass
-                ? styles[fallbackClass]
-                : undefined
-            }
+            fallbackClassName={fallbackClass ? styles[fallbackClass] : undefined}
           />
 
-          <div
-            className={styles.mediaOverlay}
-            aria-hidden="true"
-          />
-
-          <div
-            className={tiltStyles.spotlight}
-            aria-hidden="true"
-          />
+          <div className={styles.mediaOverlay} aria-hidden="true" />
+          <div className={tiltStyles.spotlight} aria-hidden="true" />
 
           {mediaBadge && (
             <span
               className={`${styles.mediaBadge} ${
-                mediaBadge.tone === "brand"
-                  ? styles.mediaBadgeBrand
-                  : ""
+                mediaBadge.tone === "brand" ? styles.mediaBadgeBrand : ""
               }`}
               data-brand-badge={
-                mediaBadge.tone === "brand"
-                  ? "true"
-                  : undefined
+                mediaBadge.tone === "brand" ? "true" : undefined
               }
             >
               {mediaBadge.label}
             </span>
           )}
 
-          <span
-            className={styles.favorite}
-            aria-hidden="true"
-          >
+          <span className={styles.favorite} aria-hidden="true">
             <Heart size={21} />
           </span>
 
@@ -531,37 +324,23 @@ export default function UniversalGameCard({
             <h3>{game.title}</h3>
 
             {isRecent && game.version && (
-              <span className={styles.version}>
-                {game.version}
-              </span>
+              <span className={styles.version}>{game.version}</span>
             )}
 
-            {isCatalog && (
-              <ChevronRight
-                size={17}
-                aria-hidden="true"
-              />
-            )}
+            {isCatalog && <ChevronRight size={17} aria-hidden="true" />}
           </div>
 
           {isCatalog && (
-            <p className={styles.description}>
-              {game.description}
-            </p>
+            <p className={styles.description}>{game.description}</p>
           )}
 
-          {isLowSpec && (
-            <LowSpecDetails game={game} />
-          )}
+          {isLowSpec && <LowSpecDetails game={game} />}
 
           <Rating game={game} />
 
           {isRecent && game.addedAt && (
             <div className={styles.date}>
-              <CalendarDays
-                size={15}
-                aria-hidden="true"
-              />
+              <CalendarDays size={15} aria-hidden="true" />
               <span>Añadido el {game.addedAt}</span>
             </div>
           )}
