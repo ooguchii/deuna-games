@@ -38,6 +38,15 @@ function protocolAndPortAllowed(url: URL) {
   return false;
 }
 
+function normalizedYouTubeInput(value: string) {
+  const raw = value.trim();
+  if (!raw || validVideoId(raw)) return raw;
+
+  return /^[a-z][a-z0-9+.-]*:\/\//i.test(raw)
+    ? raw
+    : `https://${raw}`;
+}
+
 function videoIdFromPath(pathname: string) {
   const parts = pathname
     .split("/")
@@ -62,19 +71,19 @@ function videoIdFromPath(pathname: string) {
 export function parseYouTubeVideo(
   value: string
 ): ParsedYouTubeVideo | null {
-  const raw = value.trim();
+  const normalized = normalizedYouTubeInput(value);
 
-  if (validVideoId(raw)) {
+  if (validVideoId(normalized)) {
     return {
-      videoId: raw,
-      canonicalUrl: `https://www.youtube.com/watch?v=${raw}`,
+      videoId: normalized,
+      canonicalUrl: `https://www.youtube.com/watch?v=${normalized}`,
     };
   }
 
   let url: URL;
 
   try {
-    url = new URL(raw);
+    url = new URL(normalized);
   } catch {
     return null;
   }
@@ -88,7 +97,7 @@ export function parseYouTubeVideo(
     return null;
   }
 
-  const hostname = url.hostname.toLowerCase();
+  const hostname = url.hostname.toLowerCase().replace(/\.$/, "");
   let videoId: string | null = null;
 
   if (
