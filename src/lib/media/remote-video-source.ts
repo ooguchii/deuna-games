@@ -7,7 +7,12 @@ import { BlockList, isIP } from "node:net";
 import { Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
 
-export const MAX_REMOTE_PREVIEW_BYTES = 64 * 1024 * 1024;
+import {
+  MAX_PREVIEW_SOURCE_BYTES,
+} from "./preview-video-policy";
+
+export const MAX_REMOTE_PREVIEW_BYTES =
+  MAX_PREVIEW_SOURCE_BYTES;
 
 const MAX_REDIRECTS = 3;
 const REQUEST_TIMEOUT_MS = 20_000;
@@ -162,7 +167,7 @@ async function streamResponseToFile(
       if (total > MAX_REMOTE_PREVIEW_BYTES) {
         callback(
           new Error(
-            "El video remoto supera el límite de importación de 64 MB."
+            "El video remoto supera el límite de importación de 1 GB."
           )
         );
         return;
@@ -262,7 +267,7 @@ function requestRemoteVideo(
           response.resume();
           reject(
             new Error(
-              "El video remoto supera el límite de importación de 64 MB."
+              "El video remoto supera el límite de importación de 1 GB."
             )
           );
           return;
