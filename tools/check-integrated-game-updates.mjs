@@ -19,6 +19,8 @@ const files = {
     "src/app/admin/(protected)/actualizaciones/page.tsx",
   legacyCreate:
     "src/app/admin/(protected)/actualizaciones/nueva/page.tsx",
+  legacyEditor:
+    "src/app/admin/(protected)/actualizaciones/[id]/page.tsx",
   publicUpdates: "src/lib/updates/public-updates.ts",
   publicGame: "src/app/juegos/[slug]/page.tsx",
 };
@@ -56,8 +58,9 @@ expect(
 expect(
   entries.workspace.includes("Publicar actualización") &&
     entries.workspace.includes("GameDownloadEditor") &&
-    entries.workspace.includes("expectedRevision"),
-  "El espacio de actualización debe integrar versión, descargas y control de revisión."
+    entries.workspace.includes("expectedRevision") &&
+    entries.workspace.includes("getPublicGameBySlug"),
+  "El espacio de actualización debe integrar versión, descargas, control de revisión y mostrar la referencia realmente pública."
 );
 expect(
   entries.route.includes("publishIntegratedGameUpdate") &&
@@ -71,17 +74,10 @@ expect(
   "La ficha normal de un juego publicado no debe permitir cambiar versión evitando el flujo de Actualizar."
 );
 expect(
-  entries.gameDownloadRoute.includes("getGamePublicationIdentity") &&
-    entries.gameDownloadRoute.includes("descargas-por-actualizacion") &&
-    entries.gameDownloadRoute.includes("publicVisible"),
-  "Las descargas de un juego ya publicado no deben poder cambiarse por fuera del flujo de Actualizar."
-);
-expect(
-  entries.notices.includes('"descargas-por-actualizacion"') &&
-    !entries.notices.includes(
-      "Para reemplazar enlaces sin anunciar una versión nueva, usa la sección Descargas"
-    ),
-  "Los mensajes del panel deben reforzar que los enlaces publicados se actualizan junto con el aviso."
+  entries.gameDownloadRoute.includes("saveGameDownloadDraft") &&
+    !entries.gameDownloadRoute.includes("descargas-por-actualizacion") &&
+    entries.notices.includes("mantenimiento de mirrors"),
+  "Descargas debe seguir disponible para mantenimiento operativo de mirrors sin obligar a inventar una versión nueva."
 );
 expect(
   entries.service.includes("withAdminTransaction") &&
@@ -100,6 +96,12 @@ expect(
   "Los flujos globales antiguos deben redirigir a Juegos para evitar dos experiencias de actualización."
 );
 expect(
+  entries.legacyEditor.includes("publicationState?.publicVisible") &&
+    entries.legacyEditor.includes("!publicationState.hasUnpublishedChanges") &&
+    entries.legacyEditor.includes("/actualizacion"),
+  "El editor antiguo sólo debe quedar como compatibilidad para borradores históricos no resueltos."
+);
+expect(
   entries.publicUpdates.includes("getPublicResolvedUpdates") &&
     entries.publicGame.includes("getPublicUpdatesForGame"),
   "La página pública de Actualizaciones y el historial del juego deben conservarse."
@@ -114,5 +116,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  "Actualizaciones integradas: OK (mismo juego/URL, descargas + versión + aviso atómicos, edición publicada encapsulada en Actualizar, versiones duplicadas bloqueadas, historial público preservado y navegación administrativa simplificada)."
+  "Actualizaciones integradas: OK (URL estable, nueva versión + descargas + aviso atómicos, mantenimiento de mirrors separado, duplicados bloqueados, historial público preservado y navegación administrativa simplificada)."
 );
