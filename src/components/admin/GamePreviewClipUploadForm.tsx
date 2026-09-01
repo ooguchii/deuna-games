@@ -4,7 +4,6 @@ import {
   type ChangeEvent,
   type FormEvent,
   useEffect,
-  useRef,
   useState,
 } from "react";
 
