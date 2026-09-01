@@ -3,9 +3,10 @@ import { notFound } from "next/navigation";
 import AdminPageHeader from "@/components/admin/AdminPageHeader";
 import EditorialHistory from "@/components/admin/EditorialHistory";
 import EditorStateNotice from "@/components/admin/EditorStateNotice";
-import HeroImageAppearanceEditor from "@/components/admin/HeroImageAppearanceEditor";
 import PublicationPanel from "@/components/admin/PublicationPanel";
-import SiteBackgroundManager from "@/components/admin/SiteBackgroundManager";
+import SiteAppearanceWorkspace, {
+  type AppearancePanel,
+} from "@/components/admin/SiteAppearanceWorkspace";
 import SiteIdentityPreview from "@/components/admin/SiteIdentityPreview";
 import { getEditorialItem } from "@/lib/admin/content-service";
 import { getSiteConfigPublicationState } from "@/lib/admin/publication-service";
@@ -24,12 +25,19 @@ const sections = [
   "historial",
 ] as const;
 
+const appearancePanels: AppearancePanel[] = [
+  "palette",
+  "hero",
+  "backgrounds",
+];
+
 type ConfigurationSection = (typeof sections)[number];
 
 type PageProps = {
   searchParams: Promise<{
     estado?: string | string[];
     seccion?: string | string[];
+    panel?: string | string[];
   }>;
 };
 
@@ -45,6 +53,45 @@ function resolveSection(
   return sections.includes(candidate as ConfigurationSection)
     ? (candidate as ConfigurationSection)
     : "identidad";
+}
+
+function resolveAppearancePanel(
+  value: string | string[] | undefined
+): AppearancePanel {
+  const candidate = single(value) as AppearancePanel | undefined;
+
+  return candidate && appearancePanels.includes(candidate)
+    ? candidate
+    : "palette";
+}
+
+function pageHeading(section: ConfigurationSection) {
+  switch (section) {
+    case "apariencia":
+      return {
+        title: "Apariencia del sitio",
+        description:
+          "Un único espacio para administrar marca, Hero y fondos. Cada herramienta conserva su propio guardado en borrador y sólo llega al sitio al publicar.",
+      };
+    case "publicacion":
+      return {
+        title: "Publicación de configuración",
+        description:
+          "Revisa el borrador completo de identidad y apariencia antes de convertirlo en la configuración pública activa.",
+      };
+    case "historial":
+      return {
+        title: "Historial de configuración",
+        description:
+          "Consulta revisiones anteriores de identidad y apariencia y restaura una versión cuando sea necesario.",
+      };
+    default:
+      return {
+        title: "Identidad pública",
+        description:
+          "Administra nombre, descripción y presentación institucional. Todo se guarda primero como borrador.",
+      };
+  }
 }
 
 export default async function AdminConfigurationPage({
@@ -70,6 +117,8 @@ export default async function AdminConfigurationPage({
 
   const state = single(parameters.estado);
   const section = resolveSection(parameters.seccion);
+  const appearancePanel = resolveAppearancePanel(parameters.panel);
+  const heading = pageHeading(section);
   const config = {
     ...sourceSiteConfig,
     ...item.payload,
@@ -88,8 +137,8 @@ export default async function AdminConfigurationPage({
     <>
       <AdminPageHeader
         eyebrow={<>CONFIGURACIÓN · REVISIÓN {item.revision}</>}
-        title="Identidad pública"
-        description="Administra la identidad y la apariencia pública sin modificar el dominio, los secretos, la VPN ni la configuración del servidor. Todo se guarda primero como borrador."
+        title={heading.title}
+        description={heading.description}
         action={<span className={styles.draftState}>{status}</span>}
       />
 
@@ -101,40 +150,89 @@ export default async function AdminConfigurationPage({
             <div className={configStyles.sectionIntro}>
               <span>DATOS GENERALES</span>
               <h2>Nombre y presentación</h2>
-              <p>Estos datos se guardan como borrador hasta que decidas publicarlos.</p>
+              <p>
+                Estos datos se guardan como borrador hasta que decidas publicarlos.
+              </p>
             </div>
 
-            <form className={styles.editorForm} method="post" action="/api/admin/content/configuration?seccion=identidad">
-              <input type="hidden" name="expectedRevision" value={item.revision} />
-              <input type="hidden" name="themeColor" value={config.themeColor} />
-              <input type="hidden" name="brandColor" value={config.brandColor} />
+            <form
+              className={styles.editorForm}
+              method="post"
+              action="/api/admin/content/configuration?seccion=identidad"
+            >
+              <input
+                type="hidden"
+                name="expectedRevision"
+                value={item.revision}
+              />
+              <input
+                type="hidden"
+                name="themeColor"
+                value={config.themeColor}
+              />
+              <input
+                type="hidden"
+                name="brandColor"
+                value={config.brandColor}
+              />
 
               <label>
                 <span>Nombre</span>
-                <input name="name" defaultValue={config.name} maxLength={100} required />
+                <input
+                  name="name"
+                  defaultValue={config.name}
+                  maxLength={100}
+                  required
+                />
               </label>
               <label>
                 <span>Nombre corto</span>
-                <input name="shortName" defaultValue={config.shortName} maxLength={100} required />
+                <input
+                  name="shortName"
+                  defaultValue={config.shortName}
+                  maxLength={100}
+                  required
+                />
               </label>
               <label className={styles.fieldWide}>
                 <span>Descripción</span>
-                <textarea name="description" defaultValue={config.description} maxLength={500} rows={5} required />
+                <textarea
+                  name="description"
+                  defaultValue={config.description}
+                  maxLength={500}
+                  rows={5}
+                  required
+                />
               </label>
               <label className={styles.fieldWide}>
                 <span>Lema del pie de página</span>
-                <input name="footerTagline" defaultValue={config.footerTagline} maxLength={180} required />
-                <small>Se muestra junto al copyright; los enlaces del pie permanecen protegidos.</small>
+                <input
+                  name="footerTagline"
+                  defaultValue={config.footerTagline}
+                  maxLength={180}
+                  required
+                />
+                <small>
+                  Se muestra junto al copyright; los enlaces del pie permanecen protegidos.
+                </small>
               </label>
               <label className={styles.fieldWide}>
                 <span>Idioma</span>
-                <select name="language" defaultValue={config.language} required>
+                <select
+                  name="language"
+                  defaultValue={config.language}
+                  required
+                >
                   <option value="es">Español neutral</option>
                 </select>
-                <small>La interfaz pública actual está disponible en español.</small>
+                <small>
+                  La interfaz pública actual está disponible en español.
+                </small>
               </label>
               <div className={styles.formActions}>
-                <p>Guardar no publica. La identidad activa permanece intacta hasta pulsar Publicar.</p>
+                <p>
+                  Guardar no publica. La identidad activa permanece intacta hasta pulsar Publicar.
+                </p>
                 <button type="submit">Guardar borrador</button>
               </div>
             </form>
@@ -145,63 +243,21 @@ export default async function AdminConfigurationPage({
       )}
 
       {section === "apariencia" && (
-        <>
-          <div className={configStyles.workspace}>
-            <section className={`${styles.editorPanel} ${configStyles.formPanel}`}>
-              <div className={configStyles.sectionIntro}>
-                <span>01 · PALETA GLOBAL</span>
-                <h2>Colores base del sitio</h2>
-                <p>Primero define la identidad general. Después puedes trabajar Hero y fondos sin perder esta referencia.</p>
-              </div>
-
-              <form className={styles.editorForm} method="post" action="/api/admin/content/configuration?seccion=apariencia">
-                <input type="hidden" name="expectedRevision" value={item.revision} />
-                <input type="hidden" name="name" value={config.name} />
-                <input type="hidden" name="shortName" value={config.shortName} />
-                <input type="hidden" name="description" value={config.description} />
-                <input type="hidden" name="footerTagline" value={config.footerTagline} />
-                <input type="hidden" name="language" value={config.language} />
-
-                <div className={`${configStyles.colorFields} ${styles.fieldWide}`}>
-                  <label className={configStyles.colorField}>
-                    <div>
-                      <strong>Fondo y navegador</strong>
-                      <span>{config.themeColor}</span>
-                    </div>
-                    <input type="color" name="themeColor" defaultValue={config.themeColor} aria-label="Color de fondo y navegador" required />
-                  </label>
-                  <label className={configStyles.colorField}>
-                    <div>
-                      <strong>Color de marca</strong>
-                      <span>{config.brandColor}</span>
-                    </div>
-                    <input type="color" name="brandColor" defaultValue={config.brandColor} aria-label="Color de marca" required />
-                  </label>
-                </div>
-
-                <div className={styles.formActions}>
-                  <p>La paleta se aplicará a todo el sitio y el panel sólo después de publicar.</p>
-                  <button type="submit">Guardar apariencia</button>
-                </div>
-              </form>
-            </section>
-
-            <SiteIdentityPreview {...config} />
-          </div>
-
-          <HeroImageAppearanceEditor
-            revision={item.revision}
-            enabled={item.payload.heroImageEffect ?? false}
-            tuning={item.payload.heroImageTuning}
-          />
-
-          <SiteBackgroundManager
-            revision={item.revision}
-            brandColor={config.brandColor}
-            customAssets={config.backgroundLibrary ?? []}
-            pageBackgrounds={config.pageBackgrounds ?? {}}
-          />
-        </>
+        <SiteAppearanceWorkspace
+          revision={item.revision}
+          initialPanel={appearancePanel}
+          name={config.name}
+          shortName={config.shortName}
+          description={config.description}
+          footerTagline={config.footerTagline}
+          language={config.language}
+          themeColor={config.themeColor}
+          brandColor={config.brandColor}
+          heroImageEffect={item.payload.heroImageEffect ?? false}
+          heroImageTuning={item.payload.heroImageTuning}
+          customAssets={config.backgroundLibrary ?? []}
+          pageBackgrounds={config.pageBackgrounds ?? {}}
+        />
       )}
 
       {section === "publicacion" && (
@@ -222,7 +278,10 @@ export default async function AdminConfigurationPage({
       )}
 
       {section === "historial" && (
-        <EditorialHistory revisions={item.revisions} currentRevision={item.revision} />
+        <EditorialHistory
+          revisions={item.revisions}
+          currentRevision={item.revision}
+        />
       )}
     </>
   );
