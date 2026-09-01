@@ -92,6 +92,7 @@ type HeroSlideProps = {
   copy: HomeCopy["hero"];
   logicalIndex: number;
   total: number;
+  imageEffect: boolean;
   clone?: boolean;
   active?: boolean;
 };
@@ -103,6 +104,7 @@ const HeroSlide = forwardRef<HTMLElement, HeroSlideProps>(
       copy,
       logicalIndex,
       total,
+      imageEffect,
       clone = false,
       active = false,
     },
@@ -131,7 +133,9 @@ const HeroSlide = forwardRef<HTMLElement, HeroSlideProps>(
             <div className={styles.mediaFallback} aria-hidden="true" />
           )}
 
-          <div className={styles.mediaOverlay} />
+          {imageEffect && (
+            <div className={styles.mediaOverlay} aria-hidden="true" />
+          )}
 
           {!active && (
             <div className={styles.previewOverlay} aria-hidden="true" />
@@ -489,9 +493,7 @@ export default function HeroSection({
 
   return (
     <section
-      className={`${styles.heroSection} ${
-        imageEffect ? styles.heroImageEffect : styles.heroImageClean
-      }`}
+      className={styles.heroSection}
       aria-label="Juegos destacados"
       aria-roledescription="carrusel"
       tabIndex={0}
@@ -548,6 +550,7 @@ export default function HeroSection({
               copy={copy}
               logicalIndex={trackSlide.logicalIndex}
               total={games.length}
+              imageEffect={imageEffect}
               clone={trackSlide.clone}
               active={trackIndex === physicalIndex}
             />
