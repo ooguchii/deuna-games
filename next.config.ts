@@ -40,6 +40,20 @@ const allowedDevOrigins =
     ? [lanHost]
     : undefined;
 
+const directPreviewFrameOrigins = [
+  "https://www.youtube-nocookie.com",
+  "https://www.facebook.com",
+  "https://www.instagram.com",
+  "https://www.tiktok.com",
+  "https://player.vimeo.com",
+  "https://platform.twitter.com",
+  "https://player.twitch.tv",
+  "https://clips.twitch.tv",
+  "https://geo.dailymotion.com",
+  "https://streamable.com",
+  "https://player.kick.com",
+].join(" ");
+
 const contentSecurityPolicy = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${
@@ -54,7 +68,7 @@ const contentSecurityPolicy = [
   "media-src 'self'",
   "manifest-src 'self'",
   "worker-src 'self' blob:",
-  "frame-src https://www.youtube-nocookie.com",
+  `frame-src ${directPreviewFrameOrigins}`,
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",

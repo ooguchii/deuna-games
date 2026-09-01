@@ -25,6 +25,10 @@ import {
   resolveGameCardPreview,
 } from "@/lib/media/game-card-preview";
 import {
+  activateSharedDirectPlatformHoverPlayer,
+  deactivateSharedDirectPlatformHoverPlayer,
+} from "@/lib/media/shared-direct-platform-hover-player";
+import {
   activateSharedYouTubeHoverPlayer,
   deactivateSharedYouTubeHoverPlayer,
 } from "@/lib/media/shared-youtube-hover-player";
@@ -49,6 +53,8 @@ type PendingTilt = {
   clientX: number;
   clientY: number;
 };
+
+type ExternalPreviewKind = "youtube" | "direct";
 
 const PREVIEW_DELAY_MS = 1_000;
 
@@ -219,7 +225,7 @@ export default function UniversalGameCard({
   const pendingTilt = useRef<PendingTilt | null>(null);
   const cardRect = useRef<DOMRect | null>(null);
   const pointerEffectsEnabled = useRef(false);
-  const youtubeActive = useRef(false);
+  const externalActive = useRef<ExternalPreviewKind | null>(null);
   const articleRef = useRef<HTMLElement>(null);
   const mediaRef = useRef<HTMLDivElement>(null);
   const [previewActive, setPreviewActive] =
@@ -246,6 +252,15 @@ export default function UniversalGameCard({
     pendingTilt.current = null;
   }
 
+  function deactivateExternalPreview(media: HTMLElement) {
+    if (externalActive.current === "youtube") {
+      deactivateSharedYouTubeHoverPlayer(media);
+    } else if (externalActive.current === "direct") {
+      deactivateSharedDirectPlatformHoverPlayer(media);
+    }
+    externalActive.current = null;
+  }
+
   function cancelPreview() {
     if (previewTimer.current) {
       clearTimeout(previewTimer.current);
@@ -255,10 +270,9 @@ export default function UniversalGameCard({
     setPreviewActive(false);
 
     const media = mediaRef.current;
-    if (youtubeActive.current && media) {
-      deactivateSharedYouTubeHoverPlayer(media);
+    if (externalActive.current && media) {
+      deactivateExternalPreview(media);
     }
-    youtubeActive.current = false;
 
     articleRef.current?.style.removeProperty(
       "--tilt-transition-duration"
@@ -288,7 +302,7 @@ export default function UniversalGameCard({
       !resolvedPreview ||
       previewTimer.current ||
       previewActive ||
-      youtubeActive.current
+      externalActive.current
     ) {
       return;
     }
@@ -311,11 +325,19 @@ export default function UniversalGameCard({
         "0ms"
       );
       resetTilt(article);
-
       void article.offsetWidth;
 
-      youtubeActive.current = true;
-      activateSharedYouTubeHoverPlayer(
+      if (resolvedPreview.kind === "youtube") {
+        externalActive.current = "youtube";
+        activateSharedYouTubeHoverPlayer(
+          media,
+          resolvedPreview.preview
+        );
+        return;
+      }
+
+      externalActive.current = "direct";
+      activateSharedDirectPlatformHoverPlayer(
         media,
         resolvedPreview.preview
       );
@@ -327,7 +349,7 @@ export default function UniversalGameCard({
   ) {
     if (
       !pointerEffectsEnabled.current ||
-      youtubeActive.current
+      externalActive.current
     ) {
       return;
     }
@@ -376,8 +398,8 @@ export default function UniversalGameCard({
       if (tiltFrame.current !== null) {
         cancelAnimationFrame(tiltFrame.current);
       }
-      if (youtubeActive.current && media) {
-        deactivateSharedYouTubeHoverPlayer(media);
+      if (externalActive.current && media) {
+        deactivateExternalPreview(media);
       }
     };
   }, []);

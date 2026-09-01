@@ -66,6 +66,7 @@ export async function GET(
       previewMode: item.payload.previewMode ?? null,
       previewClip: item.payload.previewClip ?? null,
       youtubePreview: item.payload.youtubePreview ?? null,
+      directPreview: item.payload.directPreview ?? null,
     });
   } catch {
     return json(

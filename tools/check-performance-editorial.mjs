@@ -16,6 +16,7 @@ async function source(relativePath) {
 const [
   gameTypes,
   validation,
+  validationCore,
   forms,
   performanceService,
   performanceAdminRoute,
@@ -35,6 +36,7 @@ const [
 ] = await Promise.all([
   source("src/types/game.ts"),
   source("src/lib/admin/content-validation.ts"),
+  source("src/lib/admin/content-validation-core.ts"),
   source("src/lib/admin/content-forms.ts"),
   source("src/lib/admin/game-performance-service.ts"),
   source("src/app/api/admin/content/games/[slug]/performance/route.ts"),
@@ -53,6 +55,8 @@ const [
   source("src/app/admin/(protected)/juegos/[slug]/vista-previa/page.tsx"),
 ]);
 
+const completeValidation = `${validation}\n${validationCore}`;
+
 assert(
   gameTypes.includes("GamePerformanceCalibration") &&
     gameTypes.includes("referenceFps: number") &&
@@ -64,9 +68,9 @@ assert(
 
 assert(
   /const performanceCalibrationSchema = z[\s\S]*?\.strict\(\)[\s\S]*?\.refine\([\s\S]*?value\.fpsCap === undefined[\s\S]*?(?:value\.fpsCap >= value\.referenceFps|value\.referenceFps <= value\.fpsCap)/.test(
-    validation
+    completeValidation
   ) &&
-    validation.includes("performance: performanceCalibrationSchema.optional()"),
+    completeValidation.includes("performance: performanceCalibrationSchema.optional()"),
   "La calibración editorial debe validarse como parte estricta del snapshot del juego."
 );
 

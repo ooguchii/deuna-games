@@ -72,10 +72,31 @@ export type GameDownload = {
   platform?: string;
 };
 
-export type GamePreviewMode = "webm" | "youtube";
+export type GameDirectPreviewPlatform =
+  | "facebook"
+  | "instagram"
+  | "tiktok"
+  | "vimeo"
+  | "x"
+  | "twitch"
+  | "dailymotion"
+  | "streamable"
+  | "kick";
+
+export type GamePreviewMode =
+  | "webm"
+  | "youtube"
+  | GameDirectPreviewPlatform;
 
 export type GameYouTubePreview = {
   videoId: string;
+  startSeconds: number;
+  endSeconds: number;
+};
+
+export type GameDirectPreview = {
+  platform: GameDirectPreviewPlatform;
+  url: string;
   startSeconds: number;
   endSeconds: number;
 };
@@ -117,13 +138,17 @@ export type Game = {
   screenshots?: string[];
 
   /*
-   * Los dos orígenes pueden coexistir. previewMode decide cuál usa la card.
-   * Si falta (payloads históricos), previewClip conserva el comportamiento
-   * previo y se considera WebM activo.
+   * Los orígenes pueden coexistir. previewMode decide cuál usa la card.
+   * YouTube conserva su contrato específico ya probado; las demás redes
+   * directas usan directPreview con una plataforma explícita para impedir
+   * que una URL termine accidentalmente en el adaptador de otra red.
+   * Si falta previewMode (payloads históricos), previewClip mantiene la
+   * prioridad anterior y se considera WebM activo.
    */
   previewMode?: GamePreviewMode;
   previewClip?: string;
   youtubePreview?: GameYouTubePreview;
+  directPreview?: GameDirectPreview;
 
   imageAlt: string;
 

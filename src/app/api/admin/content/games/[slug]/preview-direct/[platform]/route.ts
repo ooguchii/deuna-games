@@ -16,17 +16,29 @@ import {
 import {
   hasExactAdminFormFields,
 } from "@/lib/admin/request-security";
+import {
+  isGameDirectPreviewPlatform,
+  parseDirectPlatformPreview,
+} from "@/lib/media/direct-platform-preview";
 import type { Game } from "@/types/game";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const fields = ["expectedRevision"] as const;
+const fields = [
+  "expectedRevision",
+  "url",
+  "startSeconds",
+  "endSeconds",
+] as const;
 
 export async function POST(
   request: NextRequest,
   context: {
-    params: Promise<{ slug: string }>;
+    params: Promise<{
+      slug: string;
+      platform: string;
+    }>;
   }
 ) {
   const authorized =
@@ -36,10 +48,13 @@ export async function POST(
     return authorized.response;
   }
 
-  const { slug } = await context.params;
-  const target = `/admin/juegos/${encodeURIComponent(slug)}`;
+  const { slug, platform: rawPlatform } =
+    await context.params;
+  const target =
+    `/admin/juegos/${encodeURIComponent(slug)}`;
 
   if (
+    !isGameDirectPreviewPlatform(rawPlatform) ||
     !hasExactAdminFormFields(
       authorized.form,
       fields
@@ -54,16 +69,25 @@ export async function POST(
   const revision = expectedRevisionSchema.safeParse(
     authorized.form.get("expectedRevision")
   );
+  const preview = parseDirectPlatformPreview(
+    rawPlatform,
+    authorized.form.get("url") ?? "",
+    authorized.form.get("startSeconds") ?? "",
+    authorized.form.get("endSeconds") ?? ""
+  );
 
-  if (!revision.success) {
+  if (!revision.success || !preview) {
     return adminRedirect(
       authorized.adminOrigin,
-      `${target}?estado=solicitud&seccion=multimedia`
+      `${target}?estado=preview-recorte-invalido&seccion=multimedia`
     );
   }
 
   try {
-    const item = await getEditorialItem("game", slug);
+    const item = await getEditorialItem(
+      "game",
+      slug
+    );
 
     if (!item) {
       return adminRedirect(
@@ -81,10 +105,8 @@ export async function POST(
 
     const update: GameMediaDraftInput &
       Pick<Game, "directPreview"> = {
-        previewClip: undefined,
-        previewMode: undefined,
-        youtubePreview: undefined,
-        directPreview: undefined,
+        previewMode: rawPlatform,
+        directPreview: preview,
       };
 
     const result = await saveGameMediaDraft(
@@ -110,9 +132,15 @@ export async function POST(
 
     return adminRedirect(
       authorized.adminOrigin,
-      `${target}?estado=preview-quitado&seccion=multimedia`
+      `${target}?estado=preview-subido&seccion=multimedia`
     );
-  } catch {
+  } catch (error) {
+    console.error(
+      `No se pudo guardar el preview directo ${rawPlatform}:`,
+      error instanceof Error
+        ? error.message
+        : "error no identificado"
+    );
     return adminUnavailableResponse();
   }
 }

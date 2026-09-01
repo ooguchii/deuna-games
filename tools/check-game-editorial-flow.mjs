@@ -29,6 +29,7 @@ const [
   publicRevalidation,
   performanceService,
   contentValidation,
+  contentValidationCore,
   contentForms,
   performanceModel,
   performanceData,
@@ -69,6 +70,7 @@ const [
   source("src/lib/admin/game-public-revalidation.ts"),
   source("src/lib/admin/game-performance-service.ts"),
   source("src/lib/admin/content-validation.ts"),
+  source("src/lib/admin/content-validation-core.ts"),
   source("src/lib/admin/content-forms.ts"),
   source("src/features/game-finder/performance-model.ts"),
   source("src/features/game-finder/performance-data.ts"),
@@ -97,6 +99,9 @@ const [
   source("src/app/admin/(protected)/juegos/nuevo/page.tsx"),
   source("src/components/admin/NewGameForm.tsx"),
 ]);
+
+const completeContentValidation =
+  `${contentValidation}\n${contentValidationCore}`;
 
 assert(
   creationService.includes("public_visible") &&
@@ -196,11 +201,11 @@ for (const publicPath of [
 }
 
 assert(
-  contentValidation.includes("performanceCalibrationSchema") &&
-    contentValidation.includes("performance: performanceCalibrationSchema.optional()") &&
-    contentValidation.includes("referenceFps") &&
-    contentValidation.includes("ramGb") &&
-    contentValidation.includes("fpsCap"),
+  completeContentValidation.includes("performanceCalibrationSchema") &&
+    completeContentValidation.includes("performance: performanceCalibrationSchema.optional()") &&
+    completeContentValidation.includes("referenceFps") &&
+    completeContentValidation.includes("ramGb") &&
+    completeContentValidation.includes("fpsCap"),
   "El payload editorial del juego debe validar estrictamente la calibración de rendimiento."
 );
 

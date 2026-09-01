@@ -17,6 +17,7 @@ async function source(relativePath) {
 
 const [
   validation,
+  validationCore,
   migration,
   importer,
   service,
@@ -49,6 +50,7 @@ const [
   publicCatalog,
 ] = await Promise.all([
   source("src/lib/admin/content-validation.ts"),
+  source("src/lib/admin/content-validation-core.ts"),
   source("database/migrations/007_game_taxonomy.sql"),
   source("tools/admin/import-content.ts"),
   source("src/lib/admin/game-taxonomy-service.ts"),
@@ -81,15 +83,17 @@ const [
   source("src/lib/games/catalog.ts"),
 ]);
 
+const completeValidation = `${validation}\n${validationCore}`;
+
 assert(
-  validation.includes('"game_taxonomy"') &&
-    validation.includes("editorialGameTaxonomySchema") &&
-    validation.includes("classifications: taxonomyTerms(280)") &&
-    validation.includes("legacyGameTaxonomySchema") &&
-    validation.includes("mergeLegacyTaxonomyTerms") &&
-    validation.includes("tags: taxonomyTerms(500)") &&
-    validation.includes("icon: z.enum(taxonomyIconKeys).optional()") &&
-    validation.includes("tone: z.enum(taxonomyToneKeys).optional()"),
+  completeValidation.includes('"game_taxonomy"') &&
+    completeValidation.includes("editorialGameTaxonomySchema") &&
+    completeValidation.includes("classifications: taxonomyTerms(280)") &&
+    completeValidation.includes("legacyGameTaxonomySchema") &&
+    completeValidation.includes("mergeLegacyTaxonomyTerms") &&
+    completeValidation.includes("tags: taxonomyTerms(500)") &&
+    completeValidation.includes("icon: z.enum(taxonomyIconKeys).optional()") &&
+    completeValidation.includes("tone: z.enum(taxonomyToneKeys).optional()"),
   "La taxonomía debe validar una sola clasificación, migrar la forma antigua y admitir presentación visual segura."
 );
 

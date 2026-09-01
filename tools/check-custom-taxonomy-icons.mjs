@@ -22,6 +22,7 @@ async function source(relativePath) {
 
 const [
   validation,
+  validationCore,
   editor,
   presentation,
   taxonomyIcon,
@@ -32,6 +33,7 @@ const [
   catalogClient,
 ] = await Promise.all([
   source("src/lib/admin/content-validation.ts"),
+  source("src/lib/admin/content-validation-core.ts"),
   source("src/components/admin/GameTaxonomyEditor.tsx"),
   source("src/lib/games/taxonomy-presentation.ts"),
   source("src/components/taxonomy/TaxonomyIcon.tsx"),
@@ -41,6 +43,8 @@ const [
   source("src/components/home/FeaturedCategories.tsx"),
   source("src/components/games/GameCatalogClient.tsx"),
 ]);
+
+const completeValidation = `${validation}\n${validationCore}`;
 
 const simpleSvg = Buffer.from(
   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 12h16" fill="none" stroke="currentColor" stroke-width="2"/></svg>',
@@ -67,10 +71,10 @@ for (const unsafe of [
 }
 
 assert(
-  validation.includes("iconAsset: taxonomyIconAssetSchema.optional()") &&
-    validation.includes("taxonomy-icons") &&
-    validation.includes("(?:svg|webp)") &&
-    validation.includes("iconAsset: existing.iconAsset ?? term.iconAsset"),
+  completeValidation.includes("iconAsset: taxonomyIconAssetSchema.optional()") &&
+    completeValidation.includes("taxonomy-icons") &&
+    completeValidation.includes("(?:svg|webp)") &&
+    completeValidation.includes("iconAsset: existing.iconAsset ?? term.iconAsset"),
   "La taxonomía debe aceptar sólo assets SVG/WebP hashados del almacén de iconos y conservarlos al migrar datos heredados."
 );
 
