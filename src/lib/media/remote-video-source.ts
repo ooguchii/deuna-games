@@ -2,8 +2,11 @@ import "server-only";
 
 import { lookup } from "node:dns/promises";
 import { createWriteStream } from "node:fs";
+import { open } from "node:fs/promises";
+import { request as httpRequest } from "node:http";
 import { request as httpsRequest } from "node:https";
 import { BlockList, isIP } from "node:net";
+import path from "node:path";
 import { Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
 
@@ -19,8 +22,9 @@ import {
 export const MAX_REMOTE_PREVIEW_BYTES =
   MAX_PREVIEW_SOURCE_BYTES;
 
-const MAX_REDIRECTS = 3;
-const REQUEST_TIMEOUT_MS = 20_000;
+const MAX_REDIRECTS = 5;
+const REQUEST_TIMEOUT_MS = 60_000;
+const SNIFF_BYTES = 512;
 
 const allowedContentTypes = new Set([
   "video/mp4",
@@ -30,6 +34,14 @@ const allowedContentTypes = new Set([
   "video/x-matroska",
   "video/avi",
   "video/x-msvideo",
+]);
+
+const genericBinaryContentTypes = new Set([
+  "",
+  "application/octet-stream",
+  "binary/octet-stream",
+  "application/binary",
+  "application/x-binary",
 ]);
 
 const blockedAddresses = new BlockList();
@@ -145,19 +157,94 @@ function parseRemoteVideoUrl(value: string) {
     throw new Error("La URL del video no es válida.");
   }
 
+  const validProtocol =
+    url.protocol === "https:" ||
+    url.protocol === "http:";
+  const validPort =
+    !url.port ||
+    (url.protocol === "https:" && url.port === "443") ||
+    (url.protocol === "http:" && url.port === "80");
+
   if (
-    url.protocol !== "https:" ||
+    !validProtocol ||
+    !validPort ||
     url.username ||
     url.password ||
     !url.hostname ||
-    (url.port && url.port !== "443")
+    url.toString().length > 2_048
   ) {
     throw new Error(
-      "El video remoto debe usar una URL HTTPS pública sin credenciales ni puertos alternativos."
+      "El video remoto debe usar una URL HTTP/HTTPS pública, sin credenciales ni puertos alternativos."
     );
   }
 
   return url;
+}
+
+function contentTypeFromPathname(pathname: string) {
+  const extension = path.extname(pathname).toLowerCase();
+
+  if (extension === ".mp4" || extension === ".m4v") {
+    return "video/mp4";
+  }
+  if (extension === ".webm") return "video/webm";
+  if (extension === ".mov") return "video/quicktime";
+  if (extension === ".mkv") return "video/x-matroska";
+  if (extension === ".avi") return "video/x-msvideo";
+
+  return null;
+}
+
+async function sniffVideoContentType(
+  filePath: string,
+  pathname: string
+) {
+  const byExtension = contentTypeFromPathname(pathname);
+  const handle = await open(filePath, "r");
+
+  try {
+    const buffer = Buffer.alloc(SNIFF_BYTES);
+    const { bytesRead } = await handle.read(
+      buffer,
+      0,
+      buffer.length,
+      0
+    );
+    const sample = buffer.subarray(0, bytesRead);
+
+    if (
+      sample.length >= 12 &&
+      sample.toString("ascii", 4, 8) === "ftyp"
+    ) {
+      return byExtension === "video/quicktime"
+        ? "video/quicktime"
+        : "video/mp4";
+    }
+
+    if (
+      sample.length >= 12 &&
+      sample.toString("ascii", 0, 4) === "RIFF" &&
+      sample.toString("ascii", 8, 12) === "AVI "
+    ) {
+      return "video/x-msvideo";
+    }
+
+    if (
+      sample.length >= 4 &&
+      sample[0] === 0x1a &&
+      sample[1] === 0x45 &&
+      sample[2] === 0xdf &&
+      sample[3] === 0xa3
+    ) {
+      return sample.toString("ascii").toLowerCase().includes("webm")
+        ? "video/webm"
+        : "video/x-matroska";
+    }
+
+    return byExtension;
+  } finally {
+    await handle.close();
+  }
 }
 
 async function streamResponseToFile(
@@ -201,14 +288,18 @@ function requestRemoteVideo(
   destinationPath: string
 ): Promise<RemoteRequestResult> {
   return new Promise((resolve, reject) => {
-    const request = httpsRequest(
+    const requestFunction =
+      url.protocol === "http:"
+        ? httpRequest
+        : httpsRequest;
+    const request = requestFunction(
       url,
       {
         method: "GET",
         headers: {
           Accept:
-            "video/webm,video/mp4,video/quicktime,video/x-m4v,video/x-matroska,video/x-msvideo;q=0.9",
-          "User-Agent": "DeUnaGames-EditorialPreview/1.0",
+            "video/webm,video/mp4,video/quicktime,video/x-m4v,video/x-matroska,video/x-msvideo,application/octet-stream;q=0.8,*/*;q=0.1",
+          "User-Agent": "Mozilla/5.0 (compatible; DeUnaGames-EditorialPreview/2.0)",
         },
         lookup: (_hostname, _options, callback) => {
           callback(
@@ -232,34 +323,35 @@ function requestRemoteVideo(
           return;
         }
 
-        if (statusCode !== 200) {
+        if (statusCode !== 200 && statusCode !== 206) {
           response.resume();
           reject(
             new Error(
-              "El servidor remoto no devolvió un video disponible."
+              `El servidor remoto respondió HTTP ${statusCode || "desconocido"} en lugar de entregar el video.`
             )
           );
           return;
         }
 
-        const contentType = String(
+        const declaredContentType = String(
           response.headers["content-type"] ?? ""
         )
           .split(";", 1)[0]
           ?.trim()
-          .toLowerCase();
+          .toLowerCase() ?? "";
         const contentLength = Number(
           response.headers["content-length"] ?? 0
         );
 
         if (
-          !contentType ||
-          !allowedContentTypes.has(contentType)
+          declaredContentType &&
+          !allowedContentTypes.has(declaredContentType) &&
+          !genericBinaryContentTypes.has(declaredContentType)
         ) {
           response.resume();
           reject(
             new Error(
-              "La URL debe apuntar directamente a un MP4, WebM, MOV, M4V, MKV o AVI."
+              `La URL devolvió ${declaredContentType}, no un archivo de video directo.`
             )
           );
           return;
@@ -282,7 +374,21 @@ function requestRemoteVideo(
           response,
           destinationPath
         )
-          .then((bytes) => {
+          .then(async (bytes) => {
+            const contentType =
+              allowedContentTypes.has(declaredContentType)
+                ? declaredContentType
+                : await sniffVideoContentType(
+                    destinationPath,
+                    url.pathname
+                  );
+
+            if (!contentType) {
+              throw new Error(
+                "La URL respondió datos binarios, pero no se pudo reconocer un MP4, WebM, MOV, MKV o AVI válido."
+              );
+            }
+
             resolve({
               statusCode,
               contentType,
