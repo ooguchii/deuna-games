@@ -10,6 +10,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
 
 import {
@@ -28,6 +29,15 @@ import type { GameDirectPreview } from "@/types/game";
 import styles from "./VideoTrimEditor.module.css";
 
 const MIN_SELECTION_SECONDS = 0.1;
+const subscribeBrowserLocation = () => () => undefined;
+
+function browserHostnameSnapshot() {
+  return window.location.hostname || "localhost";
+}
+
+function serverHostnameSnapshot() {
+  return "localhost";
+}
 
 type DirectPlatformPreviewEditorProps = {
   parsed: ParsedDirectPlatformVideo;
@@ -47,8 +57,11 @@ export default function DirectPlatformPreviewEditor({
   onTrimChange,
 }: DirectPlatformPreviewEditorProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const [parentHostname, setParentHostname] =
-    useState("localhost");
+  const parentHostname = useSyncExternalStore(
+    subscribeBrowserLocation,
+    browserHostnameSnapshot,
+    serverHostnameSnapshot
+  );
   const [startSeconds, setStartSeconds] = useState(
     parsed.supportsStartOffset
       ? initialTrim?.startSeconds ?? 0
@@ -59,10 +72,6 @@ export default function DirectPlatformPreviewEditor({
   );
   const [previewing, setPreviewing] = useState(false);
   const [previewNonce, setPreviewNonce] = useState(0);
-
-  useEffect(() => {
-    setParentHostname(window.location.hostname || "localhost");
-  }, []);
 
   const trim = useMemo(() => {
     const parsedTrim = parsePreviewTrimWindow(
