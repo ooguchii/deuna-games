@@ -26,6 +26,18 @@ function validVideoId(value: string) {
   return VIDEO_ID_PATTERN.test(value);
 }
 
+function protocolAndPortAllowed(url: URL) {
+  if (url.protocol === "https:") {
+    return !url.port || url.port === "443";
+  }
+
+  if (url.protocol === "http:") {
+    return !url.port || url.port === "80";
+  }
+
+  return false;
+}
+
 function videoIdFromPath(pathname: string) {
   const parts = pathname
     .split("/")
@@ -68,10 +80,9 @@ export function parseYouTubeVideo(
   }
 
   if (
-    url.protocol !== "https:" ||
+    !protocolAndPortAllowed(url) ||
     url.username ||
     url.password ||
-    (url.port && url.port !== "443") ||
     url.toString().length > 2_048
   ) {
     return null;
