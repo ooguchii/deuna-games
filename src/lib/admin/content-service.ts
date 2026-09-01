@@ -151,7 +151,6 @@ export type GameMediaDraftInput = Pick<
   | "previewMode"
   | "previewClip"
   | "youtubePreview"
-  | "directPreview"
 >;
 
 export type UpdateDraftInput = Pick<
@@ -181,27 +180,37 @@ export type AboutManifestoDraftInput = Pick<
   "manifesto" | "ctaTitle"
 >;
 
-type GamePerformanceDraftInput =
-  NonNullable<Game["performance"]>;
+function compactHardwareRequirements(
+  input: GameHardwareRequirements | undefined
+) {
+  if (!input) return undefined;
 
-function parseCount(value: string | number) {
-  const parsed =
-    typeof value === "number" ? value : Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
+  const compact: GameHardwareRequirements = {};
+
+  for (const key of [
+    "system",
+    "processor",
+    "ram",
+    "graphics",
+    "storage",
+  ] as const) {
+    const value = input[key]?.trim();
+    if (value) compact[key] = value;
+  }
+
+  return Object.keys(compact).length > 0
+    ? compact
+    : undefined;
 }
 
-function asEditorialItem<
-  Type extends EditorialItemType,
->(
-  row: EditorialListRow,
-  type?: Type,
-  id?: string,
-  revisions: EditorialRevision[] = []
-): EditorialListItem<Type> | EditorialItem<Type> {
-  const base: EditorialListItem<Type> = {
+function mapListRow<Type extends EditorialItemType>(
+  type: Type,
+  row: EditorialListRow
+): EditorialListItem<Type> {
+  return {
     key: row.item_key,
     payload: parseEditorialPayload(
-      type ?? ("game" as Type),
+      type,
       row.draft_payload
     ),
     status: row.draft_status,
@@ -209,86 +218,181 @@ function asEditorialItem<
     sourcePresent: row.source_present,
     updatedAt: row.updated_at,
   };
+}
 
-  if (!type || !id) return base;
+export async function listEditorialItems<
+  Type extends EditorialItemType,
+>(type: Type) {
+  await verifyAdminSession();
+
+  const result = await adminQuery<EditorialListRow>(
+    `SELECT
+       item_key,
+       draft_payload,
+       draft_status,
+       revision,
+       source_present,
+       updated_at
+     FROM deuna_admin.editorial_items
+     WHERE item_type = $1
+     ORDER BY lower(
+       COALESCE(
+         draft_payload ->> 'title',
+         draft_payload ->> 'name',
+         item_key
+       )
+     ) ASC`,
+    [type]
+  );
+
+  return result.rows.map((row) =>
+    mapListRow(type, row)
+  );
+}
+
+export async function getEditorialOverview() {
+  await verifyAdminSession();
+
+  const result = await adminQuery<EditorialOverviewRow>(
+    `SELECT
+       count(*) FILTER (
+         WHERE item_type = 'game'
+           AND source_present = true
+       )::text AS games,
+       count(*) FILTER (
+         WHERE item_type = 'game_update'
+           AND source_present = true
+       )::text AS updates,
+       count(*) FILTER (
+         WHERE draft_status = 'modified'
+       )::text AS modified
+     FROM deuna_admin.editorial_items`
+  );
+  const row = result.rows[0];
 
   return {
-    ...base,
-    id,
-    type,
-    revisions,
+    games: Number(row?.games ?? 0),
+    updates: Number(row?.updates ?? 0),
+    modified: Number(row?.modified ?? 0),
   };
 }
 
-async function requireActor(actorUserId: string) {
-  const session = await verifyAdminSession();
+export async function getEditorialItem<
+  Type extends EditorialItemType,
+>(type: Type, key: string): Promise<EditorialItem<Type> | null> {
+  await verifyAdminSession();
 
-  if (session.userId !== actorUserId) {
-    throw new Error(
-      "La sesión administrativa no coincide con el actor."
-    );
-  }
+  const result = await adminQuery<EditorialItemRow>(
+    `SELECT
+       id,
+       item_type,
+       item_key,
+       draft_payload,
+       draft_status,
+       revision,
+       source_checksum,
+       source_present,
+       updated_at
+     FROM deuna_admin.editorial_items
+     WHERE item_type = $1
+       AND item_key = $2
+     LIMIT 1`,
+    [type, key]
+  );
+  const row = result.rows[0];
+
+  if (!row) return null;
+
+  const revisions = await adminQuery<EditorialRevisionRow>(
+    `SELECT
+       id::text,
+       revision,
+       action,
+       created_at
+     FROM deuna_admin.editorial_revisions
+     WHERE item_id = $1
+     ORDER BY revision DESC
+     LIMIT 10`,
+    [row.id]
+  );
+
+  return {
+    id: row.id,
+    type,
+    ...mapListRow(type, row),
+    revisions: revisions.rows.map((revision) => ({
+      id: revision.id,
+      revision: revision.revision,
+      action: revision.action,
+      createdAt: revision.created_at,
+    })),
+  };
 }
 
-async function writeRevision<
-  Type extends EditorialItemType,
->(
+async function writeRevision(
   client: PoolClient,
   item: EditorialItemRow,
-  payload: EditorialPayloadByType[Type],
+  payload: EditorialPayloadByType[EditorialItemType],
   actorUserId: string,
-  action: EditorialRevisionRow["action"],
-  metadata: Record<string, unknown> = {}
+  action: "draft_saved" | "draft_restored",
+  details: Record<string, unknown>
 ) {
-  const normalized = normalizeEditorialPayload(payload);
-  const checksum = hashEditorialPayload(payload);
-  const revision = item.revision + 1;
+  const nextRevision = item.revision + 1;
+  const normalized = normalizeEditorialPayload(
+    parseEditorialPayload(item.item_type, payload)
+  );
+  const serialized = JSON.stringify(normalized);
   const status: EditorialStatus =
-    checksum === item.source_checksum
+    hashEditorialPayload(normalized) ===
+    item.source_checksum
       ? "synced"
       : "modified";
 
   await client.query(
     `UPDATE deuna_admin.editorial_items
      SET draft_payload = $2::jsonb,
-         draft_checksum = $3,
-         draft_status = $4,
-         revision = $5,
-         updated_at = now()
+         draft_status = $3,
+         revision = $4,
+         updated_at = now(),
+         updated_by = $5
      WHERE id = $1`,
-    [item.id, normalized, checksum, status, revision]
-  );
-
-  await client.query(
-    `INSERT INTO deuna_admin.editorial_revisions (
-       item_id,
-       revision,
-       action,
-       payload,
-       checksum,
-       actor_user_id,
-       metadata
-     ) VALUES (
-       $1,
-       $2,
-       $3,
-       $4::jsonb,
-       $5,
-       $6,
-       $7::jsonb
-     )`,
     [
       item.id,
-      revision,
-      action,
-      normalized,
-      checksum,
+      serialized,
+      status,
+      nextRevision,
       actorUserId,
-      JSON.stringify(metadata),
+    ]
+  );
+  await client.query(
+    `INSERT INTO deuna_admin.editorial_revisions
+       (item_id, revision, payload, action, actor_user_id)
+     VALUES ($1, $2, $3::jsonb, $4, $5)`,
+    [
+      item.id,
+      nextRevision,
+      serialized,
+      action,
+      actorUserId,
+    ]
+  );
+  await client.query(
+    `INSERT INTO deuna_admin.admin_audit_log
+       (user_id, action, entity_type, entity_id, details)
+     VALUES ($1, $2, $3, $4, $5::jsonb)`,
+    [
+      actorUserId,
+      action,
+      item.item_type,
+      item.item_key,
+      JSON.stringify({
+        revision: nextRevision,
+        ...details,
+      }),
     ]
   );
 
-  return revision;
+  return nextRevision;
 }
 
 async function updateEditorialDraft<
@@ -302,7 +406,13 @@ async function updateEditorialDraft<
     current: EditorialPayloadByType[Type]
   ) => EditorialPayloadByType[Type]
 ): Promise<EditorialMutationResult> {
-  await requireActor(actorUserId);
+  const session = await verifyAdminSession();
+
+  if (session.userId !== actorUserId) {
+    throw new Error(
+      "La sesión administrativa no coincide con el actor."
+    );
+  }
 
   return withAdminTransaction(async (client) => {
     const result = await client.query<EditorialItemRow>(
@@ -310,10 +420,10 @@ async function updateEditorialDraft<
          id,
          item_type,
          item_key,
-         source_checksum,
          draft_payload,
          draft_status,
          revision,
+         source_checksum,
          source_present,
          updated_at
        FROM deuna_admin.editorial_items
@@ -323,154 +433,33 @@ async function updateEditorialDraft<
        FOR UPDATE`,
       [type, key]
     );
-    const row = result.rows[0];
+    const item = result.rows[0];
 
-    if (!row) return { outcome: "not_found" };
+    if (!item) return { outcome: "not_found" };
 
-    if (row.revision !== expectedRevision) {
+    if (item.revision !== expectedRevision) {
       return {
         outcome: "conflict",
-        revision: row.revision,
+        revision: item.revision,
       };
     }
 
     const current = parseEditorialPayload(
       type,
-      row.draft_payload
+      item.draft_payload
     );
-    const next = parseEditorialPayload(
-      type,
-      update(current)
-    );
+    const next = update(current);
     const revision = await writeRevision(
       client,
-      row,
+      item,
       next,
       actorUserId,
-      "draft_saved"
+      "draft_saved",
+      {}
     );
 
     return { outcome: "saved", revision };
   });
-}
-
-function cleanText(value?: string) {
-  const clean = value?.trim();
-  return clean ? clean : undefined;
-}
-
-function compactHardwareRequirements(
-  value?: GameHardwareRequirements
-) {
-  if (!value) return undefined;
-
-  const compact: GameHardwareRequirements = {
-    ram: cleanText(value.ram),
-    graphics: cleanText(value.graphics),
-    processor: cleanText(value.processor),
-    storage: cleanText(value.storage),
-    system: cleanText(value.system),
-  };
-
-  return Object.values(compact).some(Boolean)
-    ? compact
-    : undefined;
-}
-
-export async function getEditorialOverview() {
-  const result = await adminQuery<EditorialOverviewRow>(
-    `SELECT
-       count(*) FILTER (WHERE item_type = 'game')::text AS games,
-       count(*) FILTER (WHERE item_type = 'game_update')::text AS updates,
-       count(*) FILTER (WHERE draft_status = 'modified')::text AS modified
-     FROM deuna_admin.editorial_items`
-  );
-  const row = result.rows[0];
-
-  return {
-    games: parseCount(row?.games ?? 0),
-    updates: parseCount(row?.updates ?? 0),
-    modified: parseCount(row?.modified ?? 0),
-  };
-}
-
-export async function listEditorialItems<
-  Type extends EditorialItemType,
->(type: Type) {
-  const result = await adminQuery<EditorialListRow>(
-    `SELECT
-       item_key,
-       draft_payload,
-       draft_status,
-       revision,
-       source_present,
-       updated_at
-     FROM deuna_admin.editorial_items
-     WHERE item_type = $1
-     ORDER BY item_key ASC`,
-    [type]
-  );
-
-  return result.rows.map(
-    (row) => asEditorialItem<Type>(row) as EditorialListItem<Type>
-  );
-}
-
-export async function getEditorialItem<
-  Type extends EditorialItemType,
->(type: Type, key: string) {
-  const [itemResult, revisionsResult] = await Promise.all([
-    adminQuery<EditorialItemRow>(
-      `SELECT
-         id,
-         item_type,
-         item_key,
-         source_checksum,
-         draft_payload,
-         draft_status,
-         revision,
-         source_present,
-         updated_at
-       FROM deuna_admin.editorial_items
-       WHERE item_type = $1
-         AND item_key = $2
-       LIMIT 1`,
-      [type, key]
-    ),
-    adminQuery<EditorialRevisionRow>(
-      `SELECT
-         id::text,
-         revision,
-         action,
-         created_at
-       FROM deuna_admin.editorial_revisions
-       WHERE item_id = (
-         SELECT id
-         FROM deuna_admin.editorial_items
-         WHERE item_type = $1
-           AND item_key = $2
-         LIMIT 1
-       )
-       ORDER BY revision DESC
-       LIMIT 20`,
-      [type, key]
-    ),
-  ]);
-  const row = itemResult.rows[0];
-
-  if (!row) return null;
-
-  return asEditorialItem<Type>(
-    row,
-    type,
-    row.id,
-    revisionsResult.rows.map((revision) => ({
-      id: revision.id,
-      revision: revision.revision,
-      action: revision.action,
-      createdAt: revision.created_at,
-    }))
-  ) as EditorialItem<Type>;
 }
 
 export function saveGameCoreDraft(
@@ -509,52 +498,48 @@ export function saveGameAdvancedDraft(
   );
 }
 
-export function saveGamePerformanceDraft(
-  key: string,
-  expectedRevision: number,
-  actorUserId: string,
-  input: GamePerformanceDraftInput | undefined
-) {
-  return updateEditorialDraft(
-    "game",
-    key,
-    expectedRevision,
-    actorUserId,
-    (current) => ({
-      ...current,
-      performance: input,
-    })
-  );
-}
-
 export function saveGameDownloadDraft(
   key: string,
   expectedRevision: number,
   actorUserId: string,
-  input: GameDownloadDraftInput | undefined
+  input: GameDownloadDraftInput
 ) {
   return updateEditorialDraft(
     "game",
     key,
     expectedRevision,
     actorUserId,
-    (current) => ({
-      ...current,
-      download: input
-        ? {
-            ...(current.download ?? {}),
-            sizeGb: input.sizeGb,
-            fileCount: input.fileCount,
-            platform: input.platform,
-            sources: input.sources,
-            href:
-              current.download?.href ??
-              input.sources?.find(
-                (source) => source.enabled !== false
-              )?.href,
-          }
-        : undefined,
-    })
+    (current) => {
+      const previous = current.download;
+      const nextDownload = {
+        ...(previous?.href
+          ? { href: previous.href }
+          : {}),
+        ...(previous?.label
+          ? { label: previous.label }
+          : {}),
+        ...(input.sources?.length
+          ? { sources: input.sources }
+          : {}),
+        ...(input.sizeGb !== undefined
+          ? { sizeGb: input.sizeGb }
+          : {}),
+        ...(input.fileCount !== undefined
+          ? { fileCount: input.fileCount }
+          : {}),
+        ...(input.platform
+          ? { platform: input.platform }
+          : {}),
+      };
+
+      return {
+        ...current,
+        download:
+          Object.keys(nextDownload).length > 0
+            ? nextDownload
+            : undefined,
+      };
+    }
   );
 }
 
@@ -684,8 +669,9 @@ export function saveAboutHeroDraft(
     "about",
     expectedRevision,
     actorUserId,
-    () => ({
-      ...input,
+    (current) => ({
+      ...current,
+      hero: input,
     })
   );
 }
