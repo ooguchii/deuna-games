@@ -1,9 +1,13 @@
 import {
+  validateDirectPlatformPreview,
+} from "./direct-platform-preview";
+import {
   validateYouTubePreview,
 } from "./youtube-preview";
 
 import type {
   Game,
+  GameDirectPreview,
   GameYouTubePreview,
 } from "@/types/game";
 
@@ -15,12 +19,19 @@ export type ResolvedGameCardPreview =
   | {
       kind: "youtube";
       preview: GameYouTubePreview;
+    }
+  | {
+      kind: "direct";
+      preview: GameDirectPreview;
     };
 
 export function resolveGameCardPreview(
   game: Pick<
     Game,
-    "previewMode" | "previewClip" | "youtubePreview"
+    | "previewMode"
+    | "previewClip"
+    | "youtubePreview"
+    | "directPreview"
   >
 ): ResolvedGameCardPreview | null {
   const local = game.previewClip?.trim();
@@ -28,6 +39,11 @@ export function resolveGameCardPreview(
     game.youtubePreview
   )
     ? game.youtubePreview
+    : undefined;
+  const direct = validateDirectPlatformPreview(
+    game.directPreview
+  )
+    ? game.directPreview
     : undefined;
 
   if (game.previewMode === "youtube") {
@@ -40,7 +56,19 @@ export function resolveGameCardPreview(
 
     return local
       ? { kind: "webm", src: local }
-      : null;
+      : direct
+        ? { kind: "direct", preview: direct }
+        : null;
+  }
+
+  if (
+    direct &&
+    game.previewMode === direct.platform
+  ) {
+    return {
+      kind: "direct",
+      preview: direct,
+    };
   }
 
   if (game.previewMode === "webm") {
@@ -48,8 +76,15 @@ export function resolveGameCardPreview(
       return { kind: "webm", src: local };
     }
 
-    return youtube
-      ? { kind: "youtube", preview: youtube }
+    if (youtube) {
+      return {
+        kind: "youtube",
+        preview: youtube,
+      };
+    }
+
+    return direct
+      ? { kind: "direct", preview: direct }
       : null;
   }
 
@@ -58,7 +93,14 @@ export function resolveGameCardPreview(
     return { kind: "webm", src: local };
   }
 
-  return youtube
-    ? { kind: "youtube", preview: youtube }
+  if (youtube) {
+    return {
+      kind: "youtube",
+      preview: youtube,
+    };
+  }
+
+  return direct
+    ? { kind: "direct", preview: direct }
     : null;
 }
