@@ -1,14 +1,12 @@
 import type { Metadata } from "next";
 
 import Footer from "@/components/layout/Footer";
-import Header from "@/components/layout/Header";
 
 import FeaturedCategories from "@/components/home/FeaturedCategories";
 import GameFinderSection from "@/components/home/GameFinderSection";
 import GamesForYourPC from "@/components/home/GamesForYourPC";
-import HeroSection from "@/components/home/HeroSection";
+import HomeShowcase from "@/components/home/HomeShowcase";
 import LatestUpdates from "@/components/home/LatestUpdates";
-import PopularGames from "@/components/home/PopularGames";
 import RecentlyAdded from "@/components/home/RecentlyAdded";
 import RecommendedGames from "@/components/home/RecommendedGames";
 import TrustSection from "@/components/home/TrustSection";
@@ -67,14 +65,12 @@ export default function Home() {
         }}
       />
 
-      <Header />
+      <HomeShowcase />
 
       <main
         id="main-content"
         className="main-content"
       >
-        <HeroSection />
-        <PopularGames />
         <GameFinderSection />
         <FeaturedCategories />
         <RecentlyAdded />
