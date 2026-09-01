@@ -9,10 +9,14 @@ import {
 } from "react";
 
 import VideoTrimEditor from "@/components/admin/VideoTrimEditor";
+import YouTubeTrimEditor from "@/components/admin/YouTubeTrimEditor";
 import {
   MAX_PREVIEW_SOURCE_BYTES,
   type PreviewTrimWindow,
 } from "@/lib/media/preview-video-policy";
+import {
+  parseYouTubeVideoUrl,
+} from "@/lib/media/youtube-url";
 
 import styles from "../../app/admin/admin.module.css";
 
@@ -26,7 +30,7 @@ const acceptedTypes = new Set([
   "video/x-msvideo",
 ]);
 
-type SourceMode = "file" | "url";
+type SourceMode = "file" | "url" | "youtube";
 
 type PreparedSource =
   | {
@@ -41,6 +45,12 @@ type PreparedSource =
       label: string;
       token: string;
       bytes: number;
+    }
+  | {
+      mode: "youtube";
+      videoId: string;
+      url: string;
+      label: string;
     };
 
 type GamePreviewClipUploadFormProps = {
@@ -67,11 +77,20 @@ function uploadError(state: string | null) {
   if (state === "ffmpeg") {
     return "FFmpeg no está disponible en este servidor. Instálalo o configura DEUNA_FFMPEG_PATH y reinicia DeUna.";
   }
+  if (state === "ytdlp") {
+    return "yt-dlp no está disponible en este servidor. Instálalo o configura DEUNA_YTDLP_PATH y reinicia DeUna.";
+  }
+  if (state === "youtube-ocupado") {
+    return "Ya hay una importación de YouTube en curso. Espera a que termine antes de iniciar otra.";
+  }
+  if (state === "youtube-no-disponible") {
+    return "YouTube no permitió obtener ese tramo. Comprueba que sea un video público y que yt-dlp esté actualizado.";
+  }
   if (state === "video-pesado") {
     return "El preview final no pudo quedar por debajo del límite de 3 MB. Elige un tramo con menos movimiento o de menor duración.";
   }
   if (state === "preview-recorte-invalido") {
-    return "El recorte no es válido. Ajusta los marcadores IN y OUT y vuelve a intentarlo.";
+    return "La fuente o el recorte no son válidos. Ajusta los marcadores IN y OUT y vuelve a intentarlo.";
   }
   if (state === "preview-source-expirada") {
     return "La vista previa remota venció o ya no está disponible. Vuelve a cargar la URL y selecciona el tramo otra vez.";
@@ -150,12 +169,14 @@ export default function GamePreviewClipUploadForm({
         return;
       }
 
-      void fetch(source.src, {
-        method: "DELETE",
-        credentials: "same-origin",
-        cache: "no-store",
-        keepalive: true,
-      }).catch(() => undefined);
+      if (source.mode === "url") {
+        void fetch(source.src, {
+          method: "DELETE",
+          credentials: "same-origin",
+          cache: "no-store",
+          keepalive: true,
+        }).catch(() => undefined);
+      }
     };
   }, [preparedSource]);
 
@@ -194,16 +215,45 @@ export default function GamePreviewClipUploadForm({
     );
   }
 
+  function prepareYouTubeSource(value = sourceUrl) {
+    const youtube = parseYouTubeVideoUrl(value);
+
+    if (!youtube) {
+      setStatus(
+        "Usa un enlace válido de YouTube, youtu.be o YouTube Shorts."
+      );
+      return false;
+    }
+
+    resetPreparedSource();
+    setSourceMode("youtube");
+    setSourceUrl(youtube.canonicalUrl);
+    setPreparedSource({
+      mode: "youtube",
+      videoId: youtube.videoId,
+      url: youtube.canonicalUrl,
+      label: `YouTube · ${youtube.videoId}`,
+    });
+    setStatus(
+      "Vista previa de YouTube lista. Mientras eliges IN/OUT, DeUna no descarga el video en el servidor."
+    );
+    return true;
+  }
+
   async function prepareRemoteSource() {
     if (sourceBusy || busy) return;
 
-    const parsedUrl = parsePublicHttpsUrl(
-      sourceUrl
-    );
+    const youtube = parseYouTubeVideoUrl(sourceUrl);
+    if (youtube) {
+      prepareYouTubeSource(youtube.canonicalUrl);
+      return;
+    }
+
+    const parsedUrl = parsePublicHttpsUrl(sourceUrl);
 
     if (!parsedUrl) {
       setStatus(
-        "Usa una URL HTTPS pública, sin credenciales ni puertos alternativos, que entregue directamente el archivo de video."
+        "Usa una URL HTTPS pública al archivo de video, o cambia el origen a YouTube si pegaste un enlace de YouTube."
       );
       return;
     }
@@ -279,7 +329,7 @@ export default function GamePreviewClipUploadForm({
       setStatus(
         sourceMode === "file"
           ? "Selecciona primero un video para ver la preview y elegir el corte."
-          : "Carga primero la URL para ver la preview y elegir el corte."
+          : "Prepara primero la fuente para ver la preview y elegir el corte."
       );
       return;
     }
@@ -298,20 +348,14 @@ export default function GamePreviewClipUploadForm({
     if (preparedSource.mode === "file") {
       const upload = new FormData();
       upload.set("expectedRevision", String(revision));
-      upload.set(
-        "startSeconds",
-        String(trim.startSeconds)
-      );
-      upload.set(
-        "endSeconds",
-        String(trim.endSeconds)
-      );
+      upload.set("startSeconds", String(trim.startSeconds));
+      upload.set("endSeconds", String(trim.endSeconds));
       upload.set("video", preparedSource.file);
 
       endpoint =
         `/api/admin/content/games/${encodeURIComponent(slug)}/preview-upload`;
       body = upload;
-    } else {
+    } else if (preparedSource.mode === "url") {
       endpoint =
         `/api/admin/content/games/${encodeURIComponent(slug)}/preview-import`;
       body = new URLSearchParams({
@@ -324,11 +368,26 @@ export default function GamePreviewClipUploadForm({
         "Content-Type":
           "application/x-www-form-urlencoded;charset=UTF-8",
       };
+    } else {
+      endpoint =
+        `/api/admin/content/games/${encodeURIComponent(slug)}/preview-youtube`;
+      body = new URLSearchParams({
+        expectedRevision: String(revision),
+        youtubeUrl: preparedSource.url,
+        startSeconds: String(trim.startSeconds),
+        endSeconds: String(trim.endSeconds),
+      });
+      headers = {
+        "Content-Type":
+          "application/x-www-form-urlencoded;charset=UTF-8",
+      };
     }
 
     setBusy(true);
     setStatus(
-      `Recortando ${trim.startSeconds}s → ${trim.endSeconds}s (${trim.durationSeconds}s) y generando WebM/VP9 optimizado…`
+      preparedSource.mode === "youtube"
+        ? `Obteniendo sólo ${trim.durationSeconds}s de YouTube y generando el WebM/VP9 final…`
+        : `Recortando ${trim.startSeconds}s → ${trim.endSeconds}s (${trim.durationSeconds}s) y generando WebM/VP9 optimizado…`
     );
 
     try {
@@ -376,7 +435,7 @@ export default function GamePreviewClipUploadForm({
           <h2>Seleccionar y recortar visualmente</h2>
         </div>
         <p>
-          Primero carga el video, míralo y elige el tramo con IN y OUT. Sólo al confirmar se recorta una vez, se convierte a WebM/VP9 y se descarta el original.
+          Usa un archivo, una URL directa o YouTube. Primero miras y eliges IN/OUT; sólo al confirmar se genera una vez el WebM/VP9 público.
         </p>
       </div>
 
@@ -423,11 +482,15 @@ export default function GamePreviewClipUploadForm({
               setSourceMode(
                 event.target.value as SourceMode
               );
+              setSourceUrl("");
               setStatus(null);
             }}
           >
             <option value="file">
               Archivo de mi equipo
+            </option>
+            <option value="youtube">
+              YouTube
             </option>
             <option value="url">
               URL directa HTTPS
@@ -435,7 +498,7 @@ export default function GamePreviewClipUploadForm({
           </select>
         </label>
 
-        {sourceMode === "file" ? (
+        {sourceMode === "file" && (
           <label className={styles.fieldWide}>
             <span>Archivo de video</span>
             <input
@@ -447,22 +510,59 @@ export default function GamePreviewClipUploadForm({
               onChange={handleLocalFile}
             />
             <small>
-              MP4, WebM, MOV, M4V, MKV o AVI de hasta 64 MB. La vista previa se reproduce directamente desde tu equipo y no se sube hasta que confirmas el recorte.
+              Hasta 64 MB. Se reproduce desde tu equipo y no se sube hasta confirmar el recorte.
             </small>
           </label>
-        ) : (
+        )}
+
+        {sourceMode === "youtube" && (
           <>
             <label className={styles.fieldWide}>
-              <span>URL directa del video</span>
+              <span>Enlace de YouTube</span>
               <input
                 type="url"
                 inputMode="url"
                 value={sourceUrl}
                 disabled={busy || sourceBusy}
                 onChange={(event) => {
-                  if (
-                    preparedSource?.mode === "url"
-                  ) {
+                  resetPreparedSource();
+                  setSourceUrl(event.target.value);
+                  setStatus(null);
+                }}
+                maxLength={2048}
+                placeholder="https://www.youtube.com/watch?v=..."
+              />
+              <small>
+                Acepta youtube.com, youtu.be y Shorts. Usa sólo videos propios o cuyo uso tengas autorizado. La preview embebida no consume almacenamiento ni CPU del VPS.
+              </small>
+            </label>
+
+            <div className={styles.formActions}>
+              <p>
+                Durante la edición sólo se carga el reproductor privado de YouTube. El servidor obtendrá el tramo elegido recién cuando confirmes.
+              </p>
+              <button
+                type="button"
+                disabled={busy || !sourceUrl.trim()}
+                onClick={() => prepareYouTubeSource()}
+              >
+                Cargar preview de YouTube
+              </button>
+            </div>
+          </>
+        )}
+
+        {sourceMode === "url" && (
+          <>
+            <label className={styles.fieldWide}>
+              <span>URL directa del archivo</span>
+              <input
+                type="url"
+                inputMode="url"
+                value={sourceUrl}
+                disabled={busy || sourceBusy}
+                onChange={(event) => {
+                  if (preparedSource?.mode === "url") {
                     resetPreparedSource();
                   }
                   setSourceUrl(event.target.value);
@@ -472,13 +572,13 @@ export default function GamePreviewClipUploadForm({
                 placeholder="https://cdn.example/video.mp4"
               />
               <small>
-                Debe ser un enlace HTTPS público al archivo de video. DeUna lo descarga una vez a staging privado para que puedas reproducirlo y recortarlo sin depender del servidor externo durante la edición.
+                Debe devolver directamente MP4, WebM, MOV, M4V, MKV o AVI. Si pegas un enlace de YouTube, DeUna lo reconocerá y cambiará al importador de YouTube.
               </small>
             </label>
 
             <div className={styles.formActions}>
               <p>
-                La URL se valida contra redes privadas/locales y redirecciones antes de descargarla. El staging vence automáticamente si abandonas la edición.
+                Las URLs directas se validan contra redes privadas y se descargan una sola vez a staging temporal para poder recortarlas visualmente.
               </p>
               <button
                 type="button"
@@ -497,7 +597,18 @@ export default function GamePreviewClipUploadForm({
           </>
         )}
 
-        {preparedSource && (
+        {preparedSource?.mode === "youtube" && (
+          <div className={styles.fieldWide}>
+            <YouTubeTrimEditor
+              key={preparedSource.videoId}
+              videoId={preparedSource.videoId}
+              sourceLabel={preparedSource.label}
+              onTrimChange={setTrim}
+            />
+          </div>
+        )}
+
+        {preparedSource && preparedSource.mode !== "youtube" && (
           <div className={styles.fieldWide}>
             <VideoTrimEditor
               key={preparedSource.src}
@@ -513,7 +624,7 @@ export default function GamePreviewClipUploadForm({
         >
           <strong>Conversión final</strong>
           <span>
-            El editor sólo decide el corte. Al confirmar, DeUna procesa exclusivamente ese tramo, elimina audio, subtítulos, datos y metadatos, y genera el WebM/VP9 ultraliviano usado por las tarjetas.
+            Todos los orígenes terminan igual: sólo queda un WebM/VP9 silencioso, de hasta 30 segundos y optimizado para las tarjetas. Ninguna página pública carga YouTube ni el archivo original.
           </span>
         </div>
 
@@ -530,7 +641,7 @@ export default function GamePreviewClipUploadForm({
 
         <div className={styles.formActions}>
           <p>
-            El botón se habilita cuando existe una fuente reproducible y un tramo IN/OUT válido de hasta 30 segundos. El corte no se vuelve a calcular para los visitantes: se hace una única vez al guardar.
+            El botón se habilita cuando existe una fuente reproducible y un tramo IN/OUT válido de hasta 30 segundos. El procesamiento se realiza una sola vez al guardar.
           </p>
           <button
             type="submit"
