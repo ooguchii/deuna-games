@@ -40,31 +40,45 @@ const allowedDevOrigins =
     ? [lanHost]
     : undefined;
 
-const contentSecurityPolicy = [
-  "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${
-    isDev ? " 'unsafe-eval'" : ""
-  }`,
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' blob: data:",
-  "font-src 'self' data:",
-  `connect-src 'self'${
-    isDev ? " ws: wss:" : ""
-  }`,
-  "media-src 'self'",
-  "manifest-src 'self'",
-  "worker-src 'self' blob:",
-  "frame-src 'none'",
-  "object-src 'none'",
-  "base-uri 'self'",
-  "form-action 'self'",
-  "frame-ancestors 'none'",
-].join("; ");
+function buildContentSecurityPolicy(
+  frameSource: "none" | "youtube-admin"
+) {
+  const frameDirective =
+    frameSource === "youtube-admin"
+      ? "frame-src https://www.youtube-nocookie.com"
+      : "frame-src 'none'";
+
+  return [
+    "default-src 'self'",
+    `script-src 'self' 'unsafe-inline'${
+      isDev ? " 'unsafe-eval'" : ""
+    }`,
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' blob: data:",
+    "font-src 'self' data:",
+    `connect-src 'self'${
+      isDev ? " ws: wss:" : ""
+    }`,
+    "media-src 'self'",
+    "manifest-src 'self'",
+    "worker-src 'self' blob:",
+    frameDirective,
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+  ].join("; ");
+}
+
+const publicContentSecurityPolicy =
+  buildContentSecurityPolicy("none");
+const adminContentSecurityPolicy =
+  buildContentSecurityPolicy("youtube-admin");
 
 const securityHeaders = [
   {
     key: "Content-Security-Policy",
-    value: contentSecurityPolicy,
+    value: publicContentSecurityPolicy,
   },
   {
     key: "Referrer-Policy",
@@ -114,6 +128,13 @@ const privateAdminHeaders = [
   },
 ] as const;
 
+const adminFrameHeaders = [
+  {
+    key: "Content-Security-Policy",
+    value: adminContentSecurityPolicy,
+  },
+] as const;
+
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   compress: true,
@@ -147,16 +168,19 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
-        source: "/admin/:path*",
-        headers: [...privateAdminHeaders],
+        source: "/(.*)",
+        headers: [...securityHeaders],
       },
       {
         source: "/api/admin/:path*",
         headers: [...privateAdminHeaders],
       },
       {
-        source: "/(.*)",
-        headers: [...securityHeaders],
+        source: "/admin/:path*",
+        headers: [
+          ...privateAdminHeaders,
+          ...adminFrameHeaders,
+        ],
       },
     ];
   },
