@@ -6,11 +6,13 @@ import {
   useState,
 } from "react";
 
-import styles from "../../app/admin/admin.module.css";
+import {
+  MAX_PREVIEW_SOURCE_BYTES,
+  MAX_PREVIEW_SOURCE_POSITION_SECONDS,
+  parsePreviewTrimWindow,
+} from "@/lib/media/preview-video-policy";
 
-const MAX_SOURCE_BYTES = 64 * 1024 * 1024;
-const MAX_PREVIEW_SECONDS = 30;
-const MAX_SOURCE_POSITION_SECONDS = 86_400;
+import styles from "../../app/admin/admin.module.css";
 
 const acceptedTypes = new Set([
   "video/mp4",
@@ -30,55 +32,8 @@ type GamePreviewClipUploadFormProps = {
   currentPreview?: string;
 };
 
-type TrimWindow = {
-  startSeconds: number;
-  endSeconds: number;
-  durationSeconds: number;
-};
-
 function formatSize(bytes: number) {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-}
-
-function parseTrimWindow(
-  startValue: string,
-  endValue: string
-): TrimWindow | null {
-  if (!startValue.trim() || !endValue.trim()) {
-    return null;
-  }
-
-  const rawStart = Number(startValue);
-  const rawEnd = Number(endValue);
-
-  if (
-    !Number.isFinite(rawStart) ||
-    !Number.isFinite(rawEnd) ||
-    rawStart < 0 ||
-    rawEnd <= rawStart ||
-    rawStart > MAX_SOURCE_POSITION_SECONDS ||
-    rawEnd > MAX_SOURCE_POSITION_SECONDS
-  ) {
-    return null;
-  }
-
-  const startMilliseconds = Math.round(rawStart * 1_000);
-  const endMilliseconds = Math.round(rawEnd * 1_000);
-  const durationMilliseconds =
-    endMilliseconds - startMilliseconds;
-
-  if (
-    durationMilliseconds <= 0 ||
-    durationMilliseconds > MAX_PREVIEW_SECONDS * 1_000
-  ) {
-    return null;
-  }
-
-  return {
-    startSeconds: startMilliseconds / 1_000,
-    endSeconds: endMilliseconds / 1_000,
-    durationSeconds: durationMilliseconds / 1_000,
-  };
 }
 
 function uploadError(state: string | null) {
@@ -126,7 +81,7 @@ export default function GamePreviewClipUploadForm({
     event.preventDefault();
     if (busy) return;
 
-    const trim = parseTrimWindow(
+    const trim = parsePreviewTrimWindow(
       startSeconds,
       endSeconds
     );
@@ -158,7 +113,7 @@ export default function GamePreviewClipUploadForm({
 
       if (
         file.size <= 0 ||
-        file.size > MAX_SOURCE_BYTES ||
+        file.size > MAX_PREVIEW_SOURCE_BYTES ||
         (!extensionOk &&
           file.type &&
           !acceptedTypes.has(file.type.toLowerCase()))
@@ -268,7 +223,7 @@ export default function GamePreviewClipUploadForm({
     }
   }
 
-  const currentTrim = parseTrimWindow(
+  const currentTrim = parsePreviewTrimWindow(
     startSeconds,
     endSeconds
   );
@@ -382,7 +337,7 @@ export default function GamePreviewClipUploadForm({
             type="number"
             inputMode="decimal"
             min="0"
-            max={MAX_SOURCE_POSITION_SECONDS}
+            max={MAX_PREVIEW_SOURCE_POSITION_SECONDS}
             step="0.1"
             value={startSeconds}
             onChange={(event) =>
@@ -398,7 +353,7 @@ export default function GamePreviewClipUploadForm({
             type="number"
             inputMode="decimal"
             min="0"
-            max={MAX_SOURCE_POSITION_SECONDS}
+            max={MAX_PREVIEW_SOURCE_POSITION_SECONDS}
             step="0.1"
             value={endSeconds}
             onChange={(event) =>
