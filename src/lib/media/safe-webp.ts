@@ -30,6 +30,7 @@ export type SafeWebpInspection = {
   bytes: number;
   width: number;
   height: number;
+  hasAlpha: boolean;
 };
 
 type Dimensions = {
@@ -105,7 +106,10 @@ function inspectVp8l(
   buffer: Buffer,
   dataStart: number,
   chunkSize: number
-): Dimensions | null {
+): {
+  dimensions: Dimensions;
+  alpha: boolean;
+} | null {
   if (
     chunkSize < 5 ||
     buffer[dataStart] !== 0x2f
@@ -125,9 +129,14 @@ function inspectVp8l(
     height: ((bits >>> 14) & 0x3fff) + 1,
   };
 
-  return dimensionsAreSafe(dimensions)
-    ? dimensions
-    : null;
+  if (!dimensionsAreSafe(dimensions)) {
+    return null;
+  }
+
+  return {
+    dimensions,
+    alpha: ((bits >>> 28) & 1) === 1,
+  };
 }
 
 function inspectVp8x(
@@ -197,6 +206,7 @@ export function inspectSafeEditorialWebp(
   let imageDimensions: Dimensions | null = null;
   let canvasDimensions: Dimensions | null = null;
   let extendedAlpha = false;
+  let losslessAlpha = false;
 
   while (cursor < buffer.length) {
     if (cursor + 8 > buffer.length) {
@@ -274,14 +284,17 @@ export function inspectSafeEditorialWebp(
         return null;
       }
 
-      imageType = "VP8L";
-      imageDimensions = inspectVp8l(
+      const lossless = inspectVp8l(
         buffer,
         dataStart,
         chunkSize
       );
 
-      if (!imageDimensions) return null;
+      if (!lossless) return null;
+
+      imageType = "VP8L";
+      imageDimensions = lossless.dimensions;
+      losslessAlpha = lossless.alpha;
     }
 
     cursor = paddedEnd;
@@ -300,6 +313,17 @@ export function inspectSafeEditorialWebp(
   if (
     alphaChunks > 0 &&
     imageType !== "VP8 "
+  ) {
+    return null;
+  }
+
+  const actualAlpha =
+    alphaChunks > 0 ||
+    losslessAlpha;
+
+  if (
+    canvasDimensions &&
+    extendedAlpha !== actualAlpha
   ) {
     return null;
   }
@@ -325,6 +349,7 @@ export function inspectSafeEditorialWebp(
     height:
       canvasDimensions?.height ??
       imageDimensions.height,
+    hasAlpha: actualAlpha,
   };
 }
 
