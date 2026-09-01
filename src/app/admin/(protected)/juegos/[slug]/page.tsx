@@ -10,6 +10,7 @@ import GameEditorFormActions from "@/components/admin/GameEditorFormActions";
 import GameMultimediaEditor from "@/components/admin/GameMultimediaEditor";
 import GamePerformanceEditor from "@/components/admin/GamePerformanceEditor";
 import GamePlatformEditor from "@/components/admin/GamePlatformEditor";
+import GamePreviewClipUploadForm from "@/components/admin/GamePreviewClipUploadForm";
 import GameTaxonomyMultiSelect from "@/components/admin/GameTaxonomyMultiSelect";
 import {
   getEditorialItem,
@@ -638,7 +639,13 @@ export default async function AdminGameEditorPage({
           coverImage={game.coverImage}
           heroImage={game.heroImage}
           screenshots={game.screenshots}
-          previewClip={game.previewClip}
+          videoEditor={
+            <GamePreviewClipUploadForm
+              slug={slug}
+              revision={item.revision}
+              currentPreview={game.previewClip}
+            />
+          }
         />
       )}
 
