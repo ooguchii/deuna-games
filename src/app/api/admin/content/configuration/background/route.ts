@@ -137,13 +137,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const sitePayload = { ...item.payload };
+    delete sitePayload.heroImageEffect;
+    delete sitePayload.heroImageTuning;
+
     const result = await saveSiteConfigDraft(
       parsed.data.expectedRevision,
       authorized.session.userId,
       {
-        ...item.payload,
+        ...sitePayload,
         pageBackgrounds: {
-          ...(item.payload.pageBackgrounds ?? {}),
+          ...(sitePayload.pageBackgrounds ?? {}),
           [parsed.data.page]: {
             assetId,
             colorMode: parsed.data.colorMode,
