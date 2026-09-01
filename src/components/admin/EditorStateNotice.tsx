@@ -17,6 +17,11 @@ const notices = {
     message:
       "Actualización creada como borrador privado. Revisa sus datos y pulsa Publicar cuando deba aparecer en la web.",
   },
+  "version-por-actualizacion": {
+    kind: "warning",
+    message:
+      "La ficha no se guardó porque intentaste cambiar la versión de un juego ya publicado. Haz ese cambio desde Actualizar para que versión, descargas y aviso público permanezcan sincronizados.",
+  },
   "actualizacion-publicada": {
     kind: "success",
     message:
