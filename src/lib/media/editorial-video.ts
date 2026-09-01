@@ -37,6 +37,8 @@ export type { PreviewTrimWindow } from "./preview-video-policy";
 const PREFERRED_PREVIEW_BYTES = 1_572_864;
 const FFMPEG_TIMEOUT_MS = 90_000;
 const MAX_FFMPEG_ERROR_CHARS = 8_000;
+const PREVIEW_FFMPEG_THREADS = "2";
+const PREVIEW_FILTER_THREADS = "1";
 
 const allowedMimeTypes = new Set([
   "video/mp4",
@@ -175,6 +177,8 @@ function runFfmpeg(
       "error",
       "-nostdin",
       "-y",
+      "-filter_threads",
+      PREVIEW_FILTER_THREADS,
       "-ss",
       formatFfmpegSeconds(trim.startSeconds),
       "-i",
@@ -204,6 +208,8 @@ function runFfmpeg(
       "4",
       "-row-mt",
       "1",
+      "-threads",
+      PREVIEW_FFMPEG_THREADS,
       "-g",
       String(preset.fps * 6),
       "-pix_fmt",
