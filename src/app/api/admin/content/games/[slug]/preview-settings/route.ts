@@ -40,6 +40,7 @@ export async function GET(
   return Response.json(
     {
       revision: item.revision,
+      title: game.title,
       mode,
       previewClip: game.previewClip ?? null,
       youtubePreview: game.youtubePreview ?? null,
