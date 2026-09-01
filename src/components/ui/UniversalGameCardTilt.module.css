@@ -5,7 +5,6 @@
   --pointer-y: 50%;
   --image-x: 0px;
   --image-y: 0px;
-  --tilt-transition-duration: 150ms;
 
   position: relative;
 
@@ -25,7 +24,7 @@
   transform-style: preserve-3d;
 
   transition:
-    transform var(--tilt-transition-duration) ease-out,
+    transform 150ms ease-out,
     border-color 180ms ease,
     box-shadow 220ms ease,
     background 180ms ease;

@@ -176,8 +176,9 @@ export async function POST(
       revision.data,
       authorized.session.userId,
       {
-        previewMode: "webm",
         previewClip: upload.publicPath,
+        previewMode: undefined,
+        youtubePreview: undefined,
       }
     );
 
