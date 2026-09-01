@@ -11,7 +11,10 @@ import {
   readdir,
   rm,
 } from "node:fs/promises";
-import { createServer } from "node:http";
+import {
+  createServer,
+  request as httpRequest,
+} from "node:http";
 import { request as httpsRequest } from "node:https";
 import { BlockList, isIP } from "node:net";
 import os from "node:os";
@@ -31,6 +34,8 @@ const DIRECT_TIMEOUT_MS = 60_000;
 const PLATFORM_TIMEOUT_MS = 10 * 60 * 1_000;
 const PLATFORM_DOWNLOAD_RATE = "8M";
 const MAX_ERROR_CHARS = 8_000;
+const YTDLP_JS_RUNTIME =
+  process.env.DEUNA_YTDLP_JS_RUNTIME?.trim() || "node";
 const TOKEN =
   process.env.DEUNA_MEDIA_IMPORT_WORKER_TOKEN?.trim() ?? "";
 
@@ -58,6 +63,8 @@ const allowedContentTypes = new Set([
   "video/x-matroska",
   "video/avi",
   "video/x-msvideo",
+  "application/octet-stream",
+  "binary/octet-stream",
 ]);
 
 const platformHosts = [
@@ -66,7 +73,9 @@ const platformHosts = [
   "youtube-nocookie.com",
   "facebook.com",
   "fb.watch",
+  "fb.com",
   "instagram.com",
+  "instagr.am",
   "tiktok.com",
   "vimeo.com",
   "x.com",
@@ -214,25 +223,36 @@ async function resolvePublicAddress(hostname) {
   return addresses[0];
 }
 
-function parseHttpsUrl(value) {
+function parsePublicUrl(value) {
+  const raw = String(value).trim();
+  const candidate = /^[a-z][a-z0-9+.-]*:\/\//i.test(raw)
+    ? raw
+    : `https://${raw}`;
   let url;
 
   try {
-    url = new URL(String(value).trim());
+    url = new URL(candidate);
   } catch {
     throw new Error("La URL del video no es válida.");
   }
 
+  const isHttp = url.protocol === "http:";
+  const isHttps = url.protocol === "https:";
+  const validPort =
+    !url.port ||
+    (isHttp && url.port === "80") ||
+    (isHttps && url.port === "443");
+
   if (
-    url.protocol !== "https:" ||
+    (!isHttp && !isHttps) ||
     url.username ||
     url.password ||
     !url.hostname ||
-    (url.port && url.port !== "443") ||
+    !validPort ||
     url.toString().length > 2_048
   ) {
     throw new Error(
-      "El video remoto debe usar una URL HTTPS pública sin credenciales ni puertos alternativos."
+      "El video remoto debe usar una URL HTTP o HTTPS pública sin credenciales ni puertos alternativos."
     );
   }
 
@@ -247,7 +267,7 @@ function hostnameMatches(hostname, allowedHost) {
 }
 
 function parsePlatformUrl(value) {
-  const url = parseHttpsUrl(value);
+  const url = parsePublicUrl(value);
   const hostname = url.hostname
     .trim()
     .toLowerCase()
@@ -308,14 +328,16 @@ function requestDirectVideo(
   destinationPath
 ) {
   return new Promise((resolve, reject) => {
-    const request = httpsRequest(
+    const requestFn =
+      url.protocol === "http:" ? httpRequest : httpsRequest;
+    const request = requestFn(
       url,
       {
         method: "GET",
         headers: {
           Accept:
-            "video/webm,video/mp4,video/quicktime,video/x-m4v,video/x-matroska,video/x-msvideo;q=0.9",
-          "User-Agent": "DeUnaGames-MediaImportWorker/2.0",
+            "video/webm,video/mp4,video/quicktime,video/x-m4v,video/x-matroska,video/x-msvideo,application/octet-stream;q=0.8,*/*;q=0.1",
+          "User-Agent": "DeUnaGames-MediaImportWorker/3.0",
         },
         lookup: (_hostname, _options, callback) => {
           callback(
@@ -366,7 +388,7 @@ function requestDirectVideo(
           response.resume();
           reject(
             new Error(
-              "La URL directa debe devolver MP4, WebM, MOV, M4V, MKV o AVI; no una página web."
+              "La URL directa debe devolver un archivo de video o un flujo binario; no una página web."
             )
           );
           return;
@@ -414,7 +436,7 @@ function requestDirectVideo(
 }
 
 async function downloadDirectVideo(value, destinationPath) {
-  let current = parseHttpsUrl(value);
+  let current = parsePublicUrl(value);
 
   for (
     let redirectCount = 0;
@@ -441,7 +463,7 @@ async function downloadDirectVideo(value, destinationPath) {
         );
       }
 
-      current = parseHttpsUrl(
+      current = parsePublicUrl(
         new URL(response.location, current).toString()
       );
       continue;
@@ -480,11 +502,23 @@ function classifyYtDlpFailure(stderr) {
   const normalized = stderr.toLowerCase();
 
   if (
+    normalized.includes("no supported javascript runtime") ||
+    normalized.includes("javascript runtime") &&
+      normalized.includes("unavailable") ||
+    normalized.includes("challenge solving failed")
+  ) {
+    return new Error(
+      "YouTube requiere un runtime JavaScript compatible en el worker multimedia. Confirma Node 22 o superior y DEUNA_YTDLP_JS_RUNTIME=node."
+    );
+  }
+
+  if (
     normalized.includes("sign in") ||
     normalized.includes("login") ||
     normalized.includes("private") ||
     normalized.includes("age-restricted") ||
     normalized.includes("members-only") ||
+    normalized.includes("not available") ||
     normalized.includes("unavailable")
   ) {
     return new Error(
@@ -497,12 +531,21 @@ function classifyYtDlpFailure(stderr) {
     normalized.includes("no suitable extractor")
   ) {
     return new Error(
-      "yt-dlp no pudo extraer ese enlace. Actualiza yt-dlp o usa una URL directa al archivo."
+      "Ese enlace pertenece a una plataforma reconocida, pero yt-dlp no pudo extraer el video. Actualiza yt-dlp y vuelve a intentarlo."
+    );
+  }
+
+  if (
+    normalized.includes("max-filesize") ||
+    normalized.includes("file is larger")
+  ) {
+    return new Error(
+      "La copia liviana necesaria para recortar ese video supera 512 MB. Prueba con un video más corto o una URL directa al archivo."
     );
   }
 
   return new Error(
-    "No se pudo obtener el video desde la plataforma. Actualiza yt-dlp y vuelve a intentarlo."
+    "No se pudo obtener el video público desde la plataforma. Comprueba el enlace y mantén yt-dlp actualizado."
   );
 }
 
@@ -517,6 +560,8 @@ function runPlatformYtDlp(
     );
     const args = [
       "--no-config",
+      "--js-runtimes",
+      YTDLP_JS_RUNTIME,
       "--no-playlist",
       "--max-downloads",
       "1",
@@ -540,7 +585,7 @@ function runPlatformYtDlp(
       "--no-write-info-json",
       "--no-write-playlist-metafiles",
       "--format",
-      "best[height<=480][ext=mp4]/best[height<=480]/worst[ext=mp4]/worst",
+      "best[height<=480][vcodec^=avc1][ext=mp4]/best[height<=480][ext=mp4]/best[height<=480]/worst[ext=mp4]/worst",
       "--max-filesize",
       "512M",
       "--output",
