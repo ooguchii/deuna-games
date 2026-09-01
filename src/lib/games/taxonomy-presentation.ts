@@ -89,6 +89,9 @@ export const taxonomyToneOptions: ReadonlyArray<{
   { key: "red", label: "Rojo", color: "#ff4b55" },
 ];
 
+const customTaxonomyIconPattern =
+  /^\/media\/editorial\/taxonomy-icons\/[a-f0-9]{64}\.(?:svg|webp)$/;
+
 function normalized(value: string) {
   return value
     .normalize("NFD")
@@ -146,7 +149,10 @@ export function defaultTaxonomyTone(
 }
 
 export function resolveTaxonomyVisual(
-  term: Pick<GameTaxonomyTerm, "label" | "icon" | "tone">,
+  term: Pick<
+    GameTaxonomyTerm,
+    "label" | "icon" | "iconAsset" | "tone"
+  >,
   index = 0
 ) {
   const icon = taxonomyIconKeys.includes(
@@ -154,6 +160,11 @@ export function resolveTaxonomyVisual(
   )
     ? (term.icon as GameTaxonomyIcon)
     : defaultTaxonomyIcon(term.label);
+  const iconAsset =
+    typeof term.iconAsset === "string" &&
+    customTaxonomyIconPattern.test(term.iconAsset)
+      ? term.iconAsset
+      : undefined;
   const tone = taxonomyToneKeys.includes(
     term.tone as GameTaxonomyTone
   )
@@ -163,7 +174,12 @@ export function resolveTaxonomyVisual(
     taxonomyToneOptions.find((option) => option.key === tone)?.color ??
     taxonomyToneOptions[0].color;
 
-  return { icon, tone, color };
+  return {
+    icon,
+    iconAsset,
+    tone,
+    color,
+  };
 }
 
 export function withTaxonomyVisualDefaults(
@@ -175,6 +191,7 @@ export function withTaxonomyVisualDefaults(
   return {
     ...term,
     icon: visual.icon,
+    iconAsset: visual.iconAsset,
     tone: visual.tone,
   };
 }
