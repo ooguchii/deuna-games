@@ -25,8 +25,9 @@ import {
   resolveGameCardPreview,
 } from "@/lib/media/game-card-preview";
 import {
-  activateSharedYouTubeHoverPlayer,
   deactivateSharedYouTubeHoverPlayer,
+  prepareSharedYouTubeHoverPlayer,
+  revealSharedYouTubeHoverPlayer,
 } from "@/lib/media/shared-youtube-hover-player";
 import type { Game } from "@/types/game";
 
@@ -51,6 +52,7 @@ type PendingTilt = {
 };
 
 const PREVIEW_DELAY_MS = 1_000;
+const YOUTUBE_WARMUP_DELAY_MS = 250;
 
 const fallbackClassBySlug: Record<string, string> = {
   "god-of-war-ragnarok": "godOfWar",
@@ -231,10 +233,14 @@ export default function UniversalGameCard({
   const previewTimer = useRef<
     ReturnType<typeof setTimeout> | null
   >(null);
+  const youtubeWarmupTimer = useRef<
+    ReturnType<typeof setTimeout> | null
+  >(null);
   const tiltFrame = useRef<number | null>(null);
   const pendingTilt = useRef<PendingTilt | null>(null);
   const cardRect = useRef<DOMRect | null>(null);
   const pointerEffectsEnabled = useRef(false);
+  const youtubePrepared = useRef(false);
   const youtubeActive = useRef(false);
   const articleRef = useRef<HTMLElement>(null);
   const mediaRef = useRef<HTMLDivElement>(null);
@@ -266,12 +272,18 @@ export default function UniversalGameCard({
       previewTimer.current = null;
     }
 
+    if (youtubeWarmupTimer.current) {
+      clearTimeout(youtubeWarmupTimer.current);
+      youtubeWarmupTimer.current = null;
+    }
+
     setPreviewActive(false);
 
     const media = mediaRef.current;
-    if (youtubeActive.current && media) {
+    if (youtubePrepared.current && media) {
       deactivateSharedYouTubeHoverPlayer(media);
     }
+    youtubePrepared.current = false;
     youtubeActive.current = false;
 
     articleRef.current?.style.removeProperty(
@@ -302,9 +314,24 @@ export default function UniversalGameCard({
       !resolvedPreview ||
       previewTimer.current ||
       previewActive ||
+      youtubePrepared.current ||
       youtubeActive.current
     ) {
       return;
+    }
+
+    if (resolvedPreview.kind === "youtube") {
+      youtubeWarmupTimer.current = setTimeout(() => {
+        youtubeWarmupTimer.current = null;
+        const media = mediaRef.current;
+        if (!media) return;
+
+        youtubePrepared.current = true;
+        prepareSharedYouTubeHoverPlayer(
+          media,
+          resolvedPreview.preview
+        );
+      }, YOUTUBE_WARMUP_DELAY_MS);
     }
 
     previewTimer.current = setTimeout(() => {
@@ -319,6 +346,14 @@ export default function UniversalGameCard({
       const media = mediaRef.current;
       if (!article || !media) return;
 
+      if (!youtubePrepared.current) {
+        youtubePrepared.current = true;
+        prepareSharedYouTubeHoverPlayer(
+          media,
+          resolvedPreview.preview
+        );
+      }
+
       cancelTiltFrame();
       article.style.setProperty(
         "--tilt-transition-duration",
@@ -327,17 +362,14 @@ export default function UniversalGameCard({
       resetTilt(article);
 
       /*
-       * El reproductor compartido se posiciona con getBoundingClientRect().
-       * Al desactivar la transición del tilt antes de medir evitamos que el
-       * iframe y la tarjeta queden desalineados durante el retorno a plano.
+       * El reproductor se calienta invisible antes del segundo de intención.
+       * Al revelar, primero dejamos la tarjeta completamente plana para que
+       * el único iframe compartido mida exactamente la zona de imagen.
        */
       void article.offsetWidth;
 
       youtubeActive.current = true;
-      activateSharedYouTubeHoverPlayer(
-        media,
-        resolvedPreview.preview
-      );
+      revealSharedYouTubeHoverPlayer(media);
     }, PREVIEW_DELAY_MS);
   }
 
@@ -394,11 +426,15 @@ export default function UniversalGameCard({
         clearTimeout(previewTimer.current);
       }
 
+      if (youtubeWarmupTimer.current) {
+        clearTimeout(youtubeWarmupTimer.current);
+      }
+
       if (tiltFrame.current !== null) {
         cancelAnimationFrame(tiltFrame.current);
       }
 
-      if (youtubeActive.current && media) {
+      if (youtubePrepared.current && media) {
         deactivateSharedYouTubeHoverPlayer(media);
       }
     };

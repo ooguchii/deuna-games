@@ -10,6 +10,7 @@ const ALLOWED_MESSAGE_ORIGINS = new Set([
 const PLAYER_ID = "deuna-shared-youtube-hover-player";
 const IDLE_DESTROY_MS = 60_000;
 const MIN_PLAYER_EDGE_PX = 200;
+const MIN_HIDDEN_PLAYBACK_MS = 900;
 
 type ActiveRequest = {
   target: HTMLElement;
@@ -26,6 +27,9 @@ type SharedPlayerState = {
   iframe: HTMLIFrameElement | null;
   active: ActiveRequest | null;
   ready: boolean;
+  revealRequested: boolean;
+  playingSince: number | null;
+  revealTimer: ReturnType<typeof setTimeout> | null;
   positionFrame: number | null;
   idleTimer: ReturnType<typeof setTimeout> | null;
   resizeObserver: ResizeObserver | null;
@@ -37,6 +41,9 @@ const state: SharedPlayerState = {
   iframe: null,
   active: null,
   ready: false,
+  revealRequested: false,
+  playingSince: null,
+  revealTimer: null,
   positionFrame: null,
   idleTimer: null,
   resizeObserver: null,
@@ -82,6 +89,15 @@ function hidePlayer() {
 
   wrapper.style.opacity = "0";
   wrapper.style.visibility = "hidden";
+}
+
+function keepPlayerRenderingInvisible() {
+  const wrapper = state.wrapper;
+  if (!wrapper || !state.active) return;
+
+  syncPlacementNow();
+  wrapper.style.visibility = "visible";
+  wrapper.style.opacity = "0";
 }
 
 function showPlayer() {
@@ -139,11 +155,6 @@ function syncPlacementNow() {
   wrapper.style.height = `${rect.height}px`;
   wrapper.style.borderRadius = `${radius} ${radius} 0 0`;
 
-  /*
-   * YouTube recomienda un reproductor de al menos 200×200. El wrapper
-   * conserva el tamaño exacto de la zona de imagen y recorta, como máximo,
-   * unos pocos píxeles si una variante de tarjeta queda apenas por debajo.
-   */
   iframe.width = String(Math.max(MIN_PLAYER_EDGE_PX, Math.round(rect.width)));
   iframe.height = String(Math.max(MIN_PLAYER_EDGE_PX, Math.round(rect.height)));
 }
@@ -157,11 +168,52 @@ function schedulePlacementSync() {
   });
 }
 
+function cancelRevealTimer() {
+  if (!state.revealTimer) return;
+  clearTimeout(state.revealTimer);
+  state.revealTimer = null;
+}
+
+function scheduleRevealIfReady() {
+  cancelRevealTimer();
+
+  if (
+    !state.active ||
+    !state.revealRequested ||
+    state.playingSince === null ||
+    document.hidden
+  ) {
+    return;
+  }
+
+  const elapsed = performance.now() - state.playingSince;
+  const remaining = Math.max(0, MIN_HIDDEN_PLAYBACK_MS - elapsed);
+
+  if (remaining === 0) {
+    showPlayer();
+    return;
+  }
+
+  state.revealTimer = setTimeout(() => {
+    state.revealTimer = null;
+    if (
+      state.active &&
+      state.revealRequested &&
+      state.playingSince !== null &&
+      !document.hidden
+    ) {
+      showPlayer();
+    }
+  }, remaining);
+}
+
 function playActive() {
   const active = state.active;
   if (!active || !state.ready || document.hidden) return;
 
-  hidePlayer();
+  cancelRevealTimer();
+  state.playingSince = null;
+  keepPlayerRenderingInvisible();
   sendCommand("mute");
   sendCommand("loadVideoById", [
     {
@@ -206,12 +258,16 @@ function handlePlayerMessage(event: MessageEvent) {
     const playerState = Number(message.info);
 
     if (playerState === 1 && state.active) {
-      showPlayer();
+      state.playingSince = performance.now();
+      keepPlayerRenderingInvisible();
+      scheduleRevealIfReady();
       return;
     }
 
     if (playerState === 0 && state.active) {
-      hidePlayer();
+      cancelRevealTimer();
+      state.playingSince = null;
+      keepPlayerRenderingInvisible();
       playActive();
     }
 
@@ -219,6 +275,8 @@ function handlePlayerMessage(event: MessageEvent) {
   }
 
   if (message.event === "onError") {
+    cancelRevealTimer();
+    state.playingSince = null;
     hidePlayer();
   }
 }
@@ -229,6 +287,7 @@ function handleViewportChange() {
 
 function handleVisibilityChange() {
   if (document.hidden) {
+    cancelRevealTimer();
     hidePlayer();
     sendCommand("pauseVideo");
     return;
@@ -271,6 +330,7 @@ function cancelIdleDestroy() {
 
 function destroyPlayer() {
   cancelIdleDestroy();
+  cancelRevealTimer();
 
   if (state.positionFrame !== null) {
     cancelAnimationFrame(state.positionFrame);
@@ -286,6 +346,8 @@ function destroyPlayer() {
   state.iframe = null;
   state.active = null;
   state.ready = false;
+  state.revealRequested = false;
+  state.playingSince = null;
 }
 
 function scheduleIdleDestroy() {
@@ -309,7 +371,7 @@ function ensurePlayer(initialVideoId: string) {
     opacity: "0",
     pointerEvents: "none",
     visibility: "hidden",
-    transition: "opacity 110ms ease",
+    transition: "opacity 90ms ease",
     contain: "layout paint style",
   });
 
@@ -322,7 +384,8 @@ function ensurePlayer(initialVideoId: string) {
   iframe.referrerPolicy = "strict-origin-when-cross-origin";
   iframe.src =
     `${PLAYER_ORIGIN}/embed/${encodeURIComponent(initialVideoId)}` +
-    "?enablejsapi=1&playsinline=1&controls=0&disablekb=1&fs=0&rel=0&iv_load_policy=3";
+    "?enablejsapi=1&playsinline=1&controls=0&disablekb=1&fs=0&rel=0&iv_load_policy=3" +
+    `&origin=${encodeURIComponent(window.location.origin)}`;
   Object.assign(iframe.style, {
     position: "absolute",
     top: "50%",
@@ -353,11 +416,12 @@ function ensurePlayer(initialVideoId: string) {
   }
 }
 
-export function activateSharedYouTubeHoverPlayer(
+export function prepareSharedYouTubeHoverPlayer(
   target: HTMLElement,
   preview: GameYouTubePreview
 ) {
   cancelIdleDestroy();
+  cancelRevealTimer();
 
   if (
     window.matchMedia("(prefers-reduced-motion: reduce)").matches ||
@@ -372,11 +436,23 @@ export function activateSharedYouTubeHoverPlayer(
   }
 
   state.active = { target, preview };
+  state.revealRequested = false;
+  state.playingSince = null;
   ensurePlayer(preview.videoId);
   state.resizeObserver?.observe(target);
-  syncPlacementNow();
+  keepPlayerRenderingInvisible();
 
   if (state.ready) playActive();
+}
+
+export function revealSharedYouTubeHoverPlayer(
+  target: HTMLElement
+) {
+  if (!state.active || state.active.target !== target) return;
+
+  state.revealRequested = true;
+  syncPlacementNow();
+  scheduleRevealIfReady();
 }
 
 export function deactivateSharedYouTubeHoverPlayer(
@@ -388,6 +464,9 @@ export function deactivateSharedYouTubeHoverPlayer(
 
   state.resizeObserver?.unobserve(active.target);
   state.active = null;
+  state.revealRequested = false;
+  state.playingSince = null;
+  cancelRevealTimer();
   hidePlayer();
   sendCommand("pauseVideo");
   scheduleIdleDestroy();
