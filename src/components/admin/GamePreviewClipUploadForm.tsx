@@ -25,6 +25,9 @@ const acceptedTypes = new Set([
   "video/x-msvideo",
 ]);
 
+const acceptedExtensions =
+  /\.(mp4|webm|mov|m4v|mkv|avi)$/i;
+
 type SourceMode = "file" | "url";
 
 type PreparedSource =
@@ -56,7 +59,19 @@ type StagedSourceResponse = {
 };
 
 function formatSize(bytes: number) {
+  if (bytes >= 1024 * 1024 * 1024) {
+    return `${(bytes / 1024 / 1024 / 1024).toFixed(2)} GB`;
+  }
+
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
+function sourceExtension(filename: string) {
+  const match = filename.match(/\.[^.]+$/);
+  const extension = match?.[0]?.toLowerCase() ?? "";
+  return acceptedExtensions.test(extension)
+    ? extension
+    : ".video";
 }
 
 function uploadError(state: string | null) {
@@ -79,14 +94,13 @@ function uploadError(state: string | null) {
     return "La solicitud fue rechazada por seguridad. Recarga el editor y vuelve a intentarlo.";
   }
   if (state === "video-invalido") {
-    return "El archivo no pudo decodificarse como video compatible.";
+    return "El archivo no pudo validarse o decodificarse como video compatible.";
   }
   return "No se pudo guardar el preview de la tarjeta.";
 }
 
 function validLocalFile(file: File) {
-  const extensionOk =
-    /\.(mp4|webm|mov|m4v|mkv|avi)$/i.test(file.name);
+  const extensionOk = acceptedExtensions.test(file.name);
 
   return !(
     file.size <= 0 ||
@@ -178,7 +192,7 @@ export default function GamePreviewClipUploadForm({
     if (!validLocalFile(file)) {
       event.target.value = "";
       setStatus(
-        "Usa MP4, WebM, MOV, M4V, MKV o AVI de hasta 64 MB."
+        "Usa MP4, WebM, MOV, M4V, MKV o AVI de hasta 1 GB."
       );
       return;
     }
@@ -192,7 +206,7 @@ export default function GamePreviewClipUploadForm({
       file,
     });
     setStatus(
-      "Video listo. Reprodúcelo y mueve IN/OUT para elegir exactamente qué fragmento usar en las tarjetas."
+      "Video listo. Reprodúcelo y mueve IN/OUT para elegir exactamente qué fragmento usar. El archivo grande todavía no se subió."
     );
   }
 
@@ -292,19 +306,25 @@ export default function GamePreviewClipUploadForm({
     }
 
     let endpoint: string;
-    let body: FormData | URLSearchParams;
-    let headers: HeadersInit | undefined;
+    let body: BodyInit;
+    let headers: HeadersInit;
 
     if (preparedSource.mode === "file") {
-      const upload = new FormData();
-      upload.set("expectedRevision", String(revision));
-      upload.set("startSeconds", String(trim.startSeconds));
-      upload.set("endSeconds", String(trim.endSeconds));
-      upload.set("video", preparedSource.file);
-
       endpoint =
         `/api/admin/content/games/${encodeURIComponent(slug)}/preview-upload`;
-      body = upload;
+      body = preparedSource.file;
+      headers = {
+        "Content-Type":
+          preparedSource.file.type || "application/octet-stream",
+        "X-Deuna-Expected-Revision": String(revision),
+        "X-Deuna-Trim-Start": String(trim.startSeconds),
+        "X-Deuna-Trim-End": String(trim.endSeconds),
+        "X-Deuna-Source-Extension":
+          sourceExtension(preparedSource.file.name),
+      };
+      setStatus(
+        `Subiendo ${formatSize(preparedSource.file.size)} por streaming y preparando sólo ${trim.durationSeconds.toFixed(1)} s del recorte…`
+      );
     } else {
       endpoint =
         `/api/admin/content/games/${encodeURIComponent(slug)}/preview-import`;
@@ -318,12 +338,12 @@ export default function GamePreviewClipUploadForm({
         "Content-Type":
           "application/x-www-form-urlencoded;charset=UTF-8",
       };
+      setStatus(
+        `Recortando ${trim.startSeconds}s → ${trim.endSeconds}s y generando el WebM/VP9 optimizado…`
+      );
     }
 
     setBusy(true);
-    setStatus(
-      `Recortando ${trim.startSeconds}s → ${trim.endSeconds}s y generando el WebM/VP9 optimizado…`
-    );
 
     try {
       const response = await fetch(endpoint, {
@@ -336,7 +356,9 @@ export default function GamePreviewClipUploadForm({
 
       if (!response.ok) {
         throw new Error(
-          "El servidor rechazó la preparación del preview."
+          response.status === 413
+            ? "El video supera el límite máximo de 1 GB."
+            : "El servidor rechazó la preparación del preview."
         );
       }
 
@@ -370,7 +392,7 @@ export default function GamePreviewClipUploadForm({
           <h2>Video y recorte</h2>
         </div>
         <p>
-          Elige un archivo de tu equipo o una URL directa. Primero ves el video completo, después marcas el fragmento que quieres mostrar y sólo ese tramo se convierte una vez a WebM optimizado.
+          Puedes usar un archivo de hasta 1 GB o una URL directa. Primero eliges visualmente el fragmento y sólo después se procesa una vez para crear el WebM final.
         </p>
       </div>
 
@@ -396,9 +418,6 @@ export default function GamePreviewClipUploadForm({
 
       <form
         className={styles.editorForm}
-        method="post"
-        encType="multipart/form-data"
-        action={`/api/admin/content/games/${encodeURIComponent(slug)}/preview-upload`}
         onSubmit={handleSubmit}
       >
         <label>
@@ -417,16 +436,15 @@ export default function GamePreviewClipUploadForm({
 
         {sourceMode === "file" && (
           <label className={styles.fieldWide}>
-            <span>Archivo de video</span>
+            <span>Archivo de video · máximo 1 GB</span>
             <input
               type="file"
-              name="video"
               accept="video/mp4,video/webm,video/quicktime,video/x-m4v,video/x-matroska,video/x-msvideo,.mp4,.webm,.mov,.m4v,.mkv,.avi"
               disabled={busy || sourceBusy}
               onChange={handleLocalFile}
             />
             <small>
-              Se previsualiza directamente en tu navegador. El archivo sólo se sube cuando confirmas el fragmento.
+              Se reproduce directamente desde tu equipo para elegir el corte. Al confirmar se sube por streaming a disco temporal, sin cargar el archivo completo en la RAM del servidor.
             </small>
           </label>
         )}
@@ -434,7 +452,7 @@ export default function GamePreviewClipUploadForm({
         {sourceMode === "url" && (
           <>
             <label className={styles.fieldWide}>
-              <span>URL directa del archivo de video</span>
+              <span>URL directa del archivo de video · máximo 1 GB</span>
               <input
                 type="url"
                 inputMode="url"
@@ -486,7 +504,7 @@ export default function GamePreviewClipUploadForm({
         <div className={`${styles.tableSummary} ${styles.fieldWide}`}>
           <strong>Resultado final</strong>
           <span>
-            Puedes mover IN y OUT, usar “Marcar IN aquí”, “Marcar OUT aquí” y “Reproducir recorte”. Al guardar, sólo el fragmento elegido —máximo 30 segundos— se transforma a WebM/VP9 silencioso y liviano para las tarjetas.
+            Puedes mover IN y OUT, usar “Marcar IN aquí”, “Marcar OUT aquí” y “Reproducir recorte”. El origen puede pesar hasta 1 GB, pero sólo el fragmento elegido —máximo 30 segundos— se convierte a WebM/VP9 silencioso y liviano.
           </span>
         </div>
 
@@ -510,7 +528,7 @@ export default function GamePreviewClipUploadForm({
             disabled={busy || sourceBusy || !trim || !preparedSource}
           >
             {busy
-              ? "Recortando y convirtiendo…"
+              ? "Subiendo, recortando y convirtiendo…"
               : "Crear preview WebM con este recorte"}
           </button>
         </div>

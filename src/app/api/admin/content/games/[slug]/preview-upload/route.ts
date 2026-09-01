@@ -1,7 +1,10 @@
+import { rm } from "node:fs/promises";
 import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 
 import {
   adminRedirect,
+  adminUnavailableResponse,
 } from "@/lib/admin/admin-route";
 import {
   expectedRevisionSchema,
@@ -11,44 +14,86 @@ import {
   saveGameMediaDraft,
 } from "@/lib/admin/content-service";
 import {
-  authorizeAdminMediaRequest,
-} from "@/lib/admin/media-admin-route";
+  getAdminOrigin,
+  isAdminEnabled,
+} from "@/lib/admin/database-config";
 import {
-  hasExactAdminMediaFormFields,
-  MAX_ADMIN_PREVIEW_REQUEST_BYTES,
-} from "@/lib/admin/media-request-security";
+  hasTrustedAdminOrigin,
+} from "@/lib/admin/request-security";
 import {
-  isAcceptedPreviewSource,
-  storeEditorialPreviewVideo,
+  getAdminSessionCookieName,
+  resolveAdminSession,
+} from "@/lib/admin/session";
+import {
+  storeEditorialPreviewVideoFromPath,
 } from "@/lib/media/editorial-video";
 import {
+  MAX_PREVIEW_SOURCE_BYTES,
   parsePreviewTrimWindow,
 } from "@/lib/media/preview-video-policy";
+import {
+  isAcceptedStreamedPreviewSource,
+  stageStreamedPreviewSource,
+} from "@/lib/media/streamed-preview-source";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const fields = [
-  "expectedRevision",
-  "startSeconds",
-  "endSeconds",
-  "video",
-] as const;
-
-function readSingleString(
-  form: FormData,
-  field: string
-) {
-  const value = form.get(field);
-  return typeof value === "string" ? value : null;
+function rejected(status = 403) {
+  return new NextResponse("Solicitud rechazada.", {
+    status,
+    headers: {
+      "Cache-Control": "no-store, max-age=0",
+      "Content-Type": "text/plain; charset=utf-8",
+    },
+  });
 }
 
-function readSingleFile(
-  form: FormData,
-  field: string
+async function authorizeStreamingUpload(
+  request: NextRequest
 ) {
-  const value = form.get(field);
-  return value instanceof File ? value : null;
+  if (!isAdminEnabled()) {
+    return {
+      authorized: false as const,
+      response: new NextResponse(null, { status: 404 }),
+    };
+  }
+
+  try {
+    const adminOrigin = getAdminOrigin();
+    const token = request.cookies.get(
+      getAdminSessionCookieName()
+    )?.value;
+    const session = await resolveAdminSession(token);
+
+    if (!session) {
+      return {
+        authorized: false as const,
+        response: adminRedirect(
+          adminOrigin,
+          "/admin/login"
+        ),
+      };
+    }
+
+    if (!hasTrustedAdminOrigin(request, adminOrigin)) {
+      return {
+        authorized: false as const,
+        response: rejected(),
+      };
+    }
+
+    return {
+      authorized: true as const,
+      adminOrigin,
+      session,
+    };
+  } catch {
+    return {
+      authorized: false as const,
+      response: adminUnavailableResponse(),
+    };
+  }
 }
 
 function errorState(error: unknown) {
@@ -79,14 +124,7 @@ export async function POST(
     params: Promise<{ slug: string }>;
   }
 ) {
-  const authorized =
-    await authorizeAdminMediaRequest(
-      request,
-      {
-        maximumBytes:
-          MAX_ADMIN_PREVIEW_REQUEST_BYTES,
-      }
-    );
+  const authorized = await authorizeStreamingUpload(request);
 
   if (!authorized.authorized) {
     return authorized.response;
@@ -94,38 +132,19 @@ export async function POST(
 
   const { slug } = await context.params;
   const target = `/admin/juegos/${encodeURIComponent(slug)}`;
-
-  if (
-    !hasExactAdminMediaFormFields(
-      authorized.form,
-      fields
-    )
-  ) {
-    return adminRedirect(
-      authorized.adminOrigin,
-      `${target}?estado=solicitud&seccion=multimedia`
-    );
-  }
-
-  const revision = expectedRevisionSchema.safeParse(
-    readSingleString(
-      authorized.form,
-      "expectedRevision"
-    )
+  const contentLength = Number(
+    request.headers.get("content-length") ?? 0
   );
-  const video = readSingleFile(
-    authorized.form,
-    "video"
+  const contentType =
+    request.headers.get("content-type") ?? "";
+  const extension =
+    request.headers.get("x-deuna-source-extension") ?? "";
+  const revision = expectedRevisionSchema.safeParse(
+    request.headers.get("x-deuna-expected-revision")
   );
   const trim = parsePreviewTrimWindow(
-    readSingleString(
-      authorized.form,
-      "startSeconds"
-    ),
-    readSingleString(
-      authorized.form,
-      "endSeconds"
-    )
+    request.headers.get("x-deuna-trim-start"),
+    request.headers.get("x-deuna-trim-end")
   );
 
   if (!trim) {
@@ -137,14 +156,23 @@ export async function POST(
 
   if (
     !revision.success ||
-    !video ||
-    !isAcceptedPreviewSource(video)
+    !request.body ||
+    !Number.isSafeInteger(contentLength) ||
+    contentLength <= 0 ||
+    contentLength > MAX_PREVIEW_SOURCE_BYTES ||
+    !isAcceptedStreamedPreviewSource(
+      `source${extension}`,
+      contentType,
+      contentLength
+    )
   ) {
     return adminRedirect(
       authorized.adminOrigin,
       `${target}?estado=video-invalido&seccion=multimedia`
     );
   }
+
+  let temporaryDirectory: string | null = null;
 
   try {
     const item = await getEditorialItem(
@@ -166,11 +194,18 @@ export async function POST(
       );
     }
 
-    const upload = await storeEditorialPreviewVideo(
-      slug,
-      video,
-      trim
+    const staged = await stageStreamedPreviewSource(
+      request.body,
+      contentLength
     );
+    temporaryDirectory = staged.directory;
+
+    const upload =
+      await storeEditorialPreviewVideoFromPath(
+        slug,
+        staged.filePath,
+        trim
+      );
     const result = await saveGameMediaDraft(
       slug,
       revision.data,
@@ -212,5 +247,12 @@ export async function POST(
       authorized.adminOrigin,
       `${target}?estado=${errorState(error)}&seccion=multimedia`
     );
+  } finally {
+    if (temporaryDirectory) {
+      await rm(temporaryDirectory, {
+        recursive: true,
+        force: true,
+      });
+    }
   }
 }

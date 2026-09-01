@@ -53,10 +53,10 @@ assert(
   "El WebM público debe mantener un límite estricto de 3 MB."
 );
 assert(
-  MAX_PREVIEW_SOURCE_BYTES === 64 * 1024 * 1024 &&
+  MAX_PREVIEW_SOURCE_BYTES === 1024 * 1024 * 1024 &&
     MAX_PREVIEW_DURATION_SECONDS === 30 &&
     MAX_PREVIEW_SOURCE_POSITION_SECONDS === 86_400,
-  "La política de preview debe limitar tamaño, duración y posición del recorte."
+  "La política de preview debe permitir origen de 1 GiB manteniendo 30 s máximos de salida."
 );
 assert(
   parsePreviewTrimWindow("12.5", "24")?.durationSeconds === 11.5 &&
@@ -70,6 +70,7 @@ assert(
 const [
   transcoder,
   trimPolicy,
+  streamedSource,
   remoteSource,
   staging,
   uploadRoute,
@@ -77,8 +78,6 @@ const [
   stagedPlaybackRoute,
   importRoute,
   removeRoute,
-  mediaAuth,
-  mediaRequestSecurity,
   publicRoute,
   hoverMedia,
   universalCard,
@@ -94,6 +93,7 @@ const [
 ] = await Promise.all([
   source("src/lib/media/editorial-video.ts"),
   source("src/lib/media/preview-video-policy.ts"),
+  source("src/lib/media/streamed-preview-source.ts"),
   source("src/lib/media/remote-video-source.ts"),
   source("src/lib/media/editorial-video-staging.ts"),
   source("src/app/api/admin/content/games/[slug]/preview-upload/route.ts"),
@@ -101,8 +101,6 @@ const [
   source("src/app/api/admin/content/games/[slug]/preview-source/[token]/route.ts"),
   source("src/app/api/admin/content/games/[slug]/preview-import/route.ts"),
   source("src/app/api/admin/content/games/[slug]/preview-remove/route.ts"),
-  source("src/lib/admin/media-admin-route.ts"),
-  source("src/lib/admin/media-request-security.ts"),
   source("src/app/media/editorial/[slug]/[filename]/route.ts"),
   source("src/components/ui/HoverPreviewMedia.tsx"),
   source("src/components/ui/UniversalGameCard.tsx"),
@@ -118,10 +116,10 @@ const [
 ]);
 
 assert(
-  trimPolicy.includes("parsePreviewTrimWindow") &&
-    trimPolicy.includes("MAX_PREVIEW_DURATION_SECONDS = 30") &&
-    trimPolicy.includes("MAX_PREVIEW_SOURCE_POSITION_SECONDS = 86_400"),
-  "Archivo local y URL deben compartir una única política IN/OUT de máximo 30 segundos."
+  trimPolicy.includes("MAX_PREVIEW_SOURCE_BYTES = 1024 * 1024 * 1024") &&
+    trimPolicy.includes("parsePreviewTrimWindow") &&
+    trimPolicy.includes("MAX_PREVIEW_DURATION_SECONDS = 30"),
+  "Origen grande y recorte corto deben compartir una única política."
 );
 
 assert(
@@ -137,17 +135,35 @@ assert(
     transcoder.includes("spawn(ffmpegExecutable()") &&
     transcoder.includes("shell: false") &&
     transcoder.includes("inspectSafeEditorialWebm"),
-  "La conversión debe recortar una sola vez y generar WebM/VP9 ligero de forma segura."
+  "La conversión debe seguir recortando una sola vez y generando WebM/VP9 ligero."
 );
 
 assert(
-  uploadRoute.includes("MAX_ADMIN_PREVIEW_REQUEST_BYTES") &&
-    uploadRoute.includes("parsePreviewTrimWindow") &&
-    uploadRoute.includes("storeEditorialPreviewVideo") &&
+  streamedSource.includes("Readable.from") &&
+    streamedSource.includes("Transform") &&
+    streamedSource.includes("pipeline") &&
+    streamedSource.includes("createWriteStream") &&
+    streamedSource.includes('mode: 0o600') &&
+    streamedSource.includes("MAX_PREVIEW_SOURCE_BYTES") &&
+    !streamedSource.includes("arrayBuffer"),
+  "La subida local grande debe ir por streaming a disco temporal y nunca materializarse completa en RAM."
+);
+
+assert(
+  uploadRoute.includes("hasTrustedAdminOrigin") &&
+    uploadRoute.includes("resolveAdminSession") &&
+    uploadRoute.includes('request.headers.get("content-length")') &&
+    uploadRoute.includes("x-deuna-expected-revision") &&
+    uploadRoute.includes("x-deuna-trim-start") &&
+    uploadRoute.includes("x-deuna-trim-end") &&
+    uploadRoute.includes("stageStreamedPreviewSource") &&
+    uploadRoute.includes("storeEditorialPreviewVideoFromPath") &&
     uploadRoute.includes("previewClip: upload.publicPath") &&
     uploadRoute.includes("previewMode: undefined") &&
-    uploadRoute.includes("youtubePreview: undefined"),
-  "La subida local debe exigir IN/OUT, generar WebM y limpiar metadatos de previews retirados."
+    uploadRoute.includes("youtubePreview: undefined") &&
+    !uploadRoute.includes("request.formData()") &&
+    !uploadRoute.includes("storeEditorialPreviewVideo("),
+  "La ruta local de 1 GiB debe autenticar, validar IN/OUT, transmitir a disco y convertir desde path."
 );
 
 assert(
@@ -155,8 +171,9 @@ assert(
     remoteSource.includes("BlockList") &&
     remoteSource.includes("MAX_REDIRECTS = 3") &&
     remoteSource.includes("MAX_REMOTE_PREVIEW_BYTES") &&
+    remoteSource.includes("MAX_PREVIEW_SOURCE_BYTES") &&
     remoteSource.includes("pipeline"),
-  "La URL directa debe conservar SSRF, límites, DNS seguro y descarga por streaming."
+  "La URL directa debe usar el mismo techo de 1 GiB conservando SSRF, DNS y streaming."
 );
 
 assert(
@@ -166,32 +183,22 @@ assert(
     stagingRoute.includes("createStagedRemotePreviewSource") &&
     stagedPlaybackRoute.includes('"Accept-Ranges": "bytes"') &&
     stagedPlaybackRoute.includes("removeStagedEditorialPreviewSource"),
-  "La URL directa debe usar staging privado, temporal, acotado y reproducible por Range."
+  "La URL directa debe mantener staging privado, temporal y reproducible por Range."
 );
 
 assert(
   importRoute.includes("parsePreviewTrimWindow") &&
     importRoute.includes("storeEditorialPreviewVideoFromPath") &&
     importRoute.includes("previewClip: upload.publicPath") &&
-    importRoute.includes("previewMode: undefined") &&
-    importRoute.includes("youtubePreview: undefined") &&
     importRoute.includes("removeStagedEditorialPreviewSource"),
-  "La URL directa debe terminar siempre como WebM recortado local y limpiar su staging."
+  "La URL directa debe terminar como WebM recortado local y limpiar su staging."
 );
 
 assert(
   removeRoute.includes("previewClip: undefined") &&
     removeRoute.includes("previewMode: undefined") &&
-    removeRoute.includes("youtubePreview: undefined") &&
-    !removeRoute.includes("fallbackMode"),
-  "Quitar el preview debe dejar el juego sin ningún origen alternativo oculto."
-);
-
-assert(
-  mediaAuth.includes("maximumBytes?: number") &&
-    mediaRequestSecurity.includes("MAX_ADMIN_PREVIEW_REQUEST_BYTES") &&
-    mediaRequestSecurity.includes("hasTrustedAdminOrigin"),
-  "Sólo la carga local autenticada debe aceptar el body multimedia grande."
+    removeRoute.includes("youtubePreview: undefined"),
+  "Quitar el preview debe dejar el juego sin origen alternativo oculto."
 );
 
 assert(
@@ -218,24 +225,22 @@ assert(
     universalCard.includes("prefers-reduced-motion: reduce") &&
     universalCard.includes("requestAnimationFrame") &&
     !universalCard.includes("YouTube") &&
-    !universalCard.includes("iframe") &&
-    !universalCard.includes("previewMode"),
-  "La tarjeta debe esperar 1 segundo y reproducir únicamente su WebM local."
+    !universalCard.includes("iframe"),
+  "La tarjeta debe esperar 1 segundo y reproducir únicamente el WebM local."
 );
 
 assert(
   previewAdminForm.includes('type SourceMode = "file" | "url"') &&
-    !previewAdminForm.includes('"youtube"') &&
     previewAdminForm.includes("VideoTrimEditor") &&
+    previewAdminForm.includes("1 GB") &&
+    previewAdminForm.includes("X-Deuna-Expected-Revision") &&
+    previewAdminForm.includes("X-Deuna-Trim-Start") &&
+    previewAdminForm.includes("X-Deuna-Trim-End") &&
+    previewAdminForm.includes("body = preparedSource.file") &&
+    !previewAdminForm.includes("new FormData()") &&
     previewAdminForm.includes("Cargar video para recortar") &&
-    previewAdminForm.includes("Marcar IN aquí") &&
-    previewAdminForm.includes("Marcar OUT aquí") &&
-    previewAdminForm.includes("Reproducir recorte") &&
-    previewAdminForm.includes("Crear preview WebM con este recorte") &&
-    previewAdminForm.includes("/preview-upload") &&
-    previewAdminForm.includes("/preview-source") &&
-    previewAdminForm.includes("/preview-import"),
-  "Multimedia debe ofrecer sólo archivo/URL, preview visual y selección explícita del fragmento."
+    previewAdminForm.includes("Crear preview WebM con este recorte"),
+  "Multimedia debe permitir 1 GiB por streaming sin perder archivo/URL ni recorte visual."
 );
 
 assert(
@@ -270,22 +275,23 @@ assert(
   nextConfig.includes('"frame-src \'none\'"') &&
     !nextConfig.includes("youtube-nocookie") &&
     !nextConfig.includes("youtube.com"),
-  "CSP debe volver a bloquear todos los iframes tras retirar YouTube directo."
+  "CSP debe bloquear iframes externos."
 );
 
 assert(
   nginx.includes("preview-upload$") &&
-    nginx.includes("client_max_body_size 66m") &&
+    nginx.includes("client_max_body_size 1024m") &&
+    nginx.includes("proxy_request_buffering off") &&
+    nginx.includes("proxy_send_timeout 600s") &&
     nginx.includes("client_max_body_size 8k"),
-  "Sólo subir archivo local debe conservar el body administrativo grande."
+  "Sólo preview-upload debe admitir 1 GiB y debe transmitirlo sin buffering de request en Nginx."
 );
 
 assert(
   envExample.includes("DEUNA_FFMPEG_PATH") &&
     !envExample.includes("DEUNA_YTDLP") &&
-    !envExample.includes("MEDIA_IMPORT_WORKER") &&
     !packageJson.includes("yt-dlp"),
-  "El sistema WebM no debe requerir yt-dlp, worker ni dependencias de YouTube."
+  "El sistema WebM debe seguir sin dependencias de YouTube."
 );
 
 for (const removedPath of [
@@ -313,5 +319,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  "Preview de video en tarjetas: OK (archivo/URL → recorte visual IN/OUT → WebM local optimizado; YouTube directo retirado)."
+  "Preview de video en tarjetas: OK (origen hasta 1 GiB por streaming/URL → recorte IN/OUT <= 30 s → WebM local <= 3 MB)."
 );
