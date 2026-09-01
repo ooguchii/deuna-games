@@ -1,37 +1,28 @@
 import { z } from "zod";
 
 import {
-  isGameDirectPreviewPlatform,
-  parseDirectPlatformPreview,
-} from "@/lib/media/direct-platform-preview";
+  DIRECT_PREVIEW_PLATFORM_VALUES,
+  isDirectPreviewPlatformValue,
+  validateDirectPreviewEditorialValue,
+} from "../media/direct-platform-validation.ts";
 import type {
   Game,
   GameDirectPreview,
-} from "@/types/game";
+} from "../../types/game.ts";
 
 import {
   parseEditorialPayload as parseCoreEditorialPayload,
-} from "./content-validation-core";
+} from "./content-validation-core.ts";
 import type {
   EditorialItemType,
   EditorialPayloadByType,
-} from "./content-validation-core";
+} from "./content-validation-core.ts";
 
-export * from "./content-validation-core";
+export * from "./content-validation-core.ts";
 
 const directPreviewInputSchema = z
   .object({
-    platform: z.enum([
-      "facebook",
-      "instagram",
-      "tiktok",
-      "vimeo",
-      "x",
-      "twitch",
-      "dailymotion",
-      "streamable",
-      "kick",
-    ]),
+    platform: z.enum(DIRECT_PREVIEW_PLATFORM_VALUES),
     url: z.string().trim().min(1).max(2_048),
     startSeconds: z.number().min(0).max(86_400),
     endSeconds: z.number().positive().max(86_400),
@@ -42,20 +33,14 @@ function parseDirectPreview(value: unknown): GameDirectPreview | undefined {
   if (value === undefined) return undefined;
 
   const parsed = directPreviewInputSchema.parse(value);
-  const preview = parseDirectPlatformPreview(
-    parsed.platform,
-    parsed.url,
-    parsed.startSeconds,
-    parsed.endSeconds
-  );
 
-  if (!preview) {
+  if (!validateDirectPreviewEditorialValue(parsed)) {
     throw new Error(
       "El preview directo no coincide con su plataforma o su tramo no es válido."
     );
   }
 
-  return preview;
+  return parsed;
 }
 
 function parseGamePayload(payload: unknown): Game {
@@ -74,7 +59,7 @@ function parseGamePayload(payload: unknown): Game {
   const directPreview = parseDirectPreview(
     raw.directPreview
   );
-  const directMode = isGameDirectPreviewPlatform(
+  const directMode = isDirectPreviewPlatformValue(
     raw.previewMode
   )
     ? raw.previewMode
