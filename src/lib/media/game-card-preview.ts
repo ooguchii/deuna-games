@@ -1,10 +1,3 @@
-import {
-  validateDirectPlatformPreview,
-} from "./direct-platform-preview";
-import {
-  validateYouTubePreview,
-} from "./youtube-preview";
-
 import type {
   Game,
   GameDirectPreview,
@@ -35,72 +28,11 @@ export function resolveGameCardPreview(
   >
 ): ResolvedGameCardPreview | null {
   const local = game.previewClip?.trim();
-  const youtube = validateYouTubePreview(
-    game.youtubePreview
-  )
-    ? game.youtubePreview
-    : undefined;
-  const direct = validateDirectPlatformPreview(
-    game.directPreview
-  )
-    ? game.directPreview
-    : undefined;
 
-  if (game.previewMode === "youtube") {
-    if (youtube) {
-      return {
-        kind: "youtube",
-        preview: youtube,
-      };
-    }
-
-    return local
-      ? { kind: "webm", src: local }
-      : direct
-        ? { kind: "direct", preview: direct }
-        : null;
-  }
-
-  if (
-    direct &&
-    game.previewMode === direct.platform
-  ) {
-    return {
-      kind: "direct",
-      preview: direct,
-    };
-  }
-
-  if (game.previewMode === "webm") {
-    if (local) {
-      return { kind: "webm", src: local };
-    }
-
-    if (youtube) {
-      return {
-        kind: "youtube",
-        preview: youtube,
-      };
-    }
-
-    return direct
-      ? { kind: "direct", preview: direct }
-      : null;
-  }
-
-  // Payloads históricos conservan prioridad para el WebM local.
-  if (local) {
-    return { kind: "webm", src: local };
-  }
-
-  if (youtube) {
-    return {
-      kind: "youtube",
-      preview: youtube,
-    };
-  }
-
-  return direct
-    ? { kind: "direct", preview: direct }
-    : null;
+  // Contrato público actual: la plataforma externa es sólo una fuente de
+  // importación editorial. Las tarjetas nunca reproducen YouTube, Facebook ni
+  // otra red en runtime; sólo consumen el WebM ya recortado y almacenado por
+  // DeUna Games. Los campos externos se conservan temporalmente únicamente
+  // para poder migrar configuraciones creadas por versiones anteriores.
+  return local ? { kind: "webm", src: local } : null;
 }
