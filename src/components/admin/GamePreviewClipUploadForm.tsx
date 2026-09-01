@@ -130,7 +130,7 @@ function validLocalFile(file: File) {
   );
 }
 
-function parsePublicHttpsUrl(value: string) {
+function parsePublicRemoteUrl(value: string) {
   let parsedUrl: URL;
 
   try {
@@ -139,11 +139,21 @@ function parsePublicHttpsUrl(value: string) {
     return null;
   }
 
+  const validProtocol =
+    parsedUrl.protocol === "https:" ||
+    parsedUrl.protocol === "http:";
+  const validPort =
+    !parsedUrl.port ||
+    (parsedUrl.protocol === "https:" &&
+      parsedUrl.port === "443") ||
+    (parsedUrl.protocol === "http:" &&
+      parsedUrl.port === "80");
+
   if (
-    parsedUrl.protocol !== "https:" ||
+    !validProtocol ||
+    !validPort ||
     parsedUrl.username ||
     parsedUrl.password ||
-    (parsedUrl.port && parsedUrl.port !== "443") ||
     parsedUrl.toString().length > 2_048
   ) {
     return null;
@@ -391,11 +401,11 @@ export default function GamePreviewClipUploadForm({
       return;
     }
 
-    const parsedUrl = parsePublicHttpsUrl(sourceUrl);
+    const parsedUrl = parsePublicRemoteUrl(sourceUrl);
 
     if (!parsedUrl) {
       setStatus(
-        "Usa una URL HTTPS pública: puede ser un archivo de video directo o un enlace público de una plataforma compatible."
+        "Usa una URL HTTP/HTTPS pública: puede ser un archivo de video directo o un enlace público de una plataforma compatible."
       );
       return;
     }
@@ -735,10 +745,10 @@ export default function GamePreviewClipUploadForm({
                   )
                 }
                 maxLength={2048}
-                placeholder="https://cdn.example/video.mp4 o enlace de una red compatible"
+                placeholder="https://cdn.example/video.mp4 o http://servidor.example/video.mp4"
               />
               <small>
-                Los archivos directos y Facebook, Instagram, TikTok, Vimeo, X/Twitter, Twitch, Dailymotion, Streamable y Kick se intentan importar como copia temporal para crear un WebM local. Si pegas YouTube, DeUna cambia automáticamente al reproductor directo más confiable.
+                Acepta HTTP o HTTPS para archivos directos públicos. Facebook, Instagram, TikTok, Vimeo, X/Twitter, Twitch, Dailymotion, Streamable y Kick se intentan importar como copia temporal para crear un WebM local. Si pegas YouTube, DeUna cambia automáticamente al reproductor directo más confiable.
               </small>
             </label>
 
@@ -783,7 +793,7 @@ export default function GamePreviewClipUploadForm({
                 placeholder="https://www.youtube.com/watch?v=..."
               />
               <small>
-                Acepta youtube.com, youtu.be, Shorts, Live y enlaces embed. Este modo usa youtube-nocookie.com directamente: no pasa el video por yt-dlp, no lo descarga y no consume espacio de almacenamiento.
+                Acepta youtube.com, youtu.be, Shorts, Live y enlaces embed, incluso enlaces http:// antiguos que se normalizan a HTTPS. Este modo usa youtube-nocookie.com directamente: no pasa el video por yt-dlp, no lo descarga y no consume espacio de almacenamiento.
               </small>
             </label>
 
