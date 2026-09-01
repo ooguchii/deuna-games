@@ -22,11 +22,12 @@ import {
 
 import HoverPreviewMedia from "@/components/ui/HoverPreviewMedia";
 import {
-  useYouTubeHoverPlayer,
-} from "@/components/ui/YouTubeHoverPlayerProvider";
-import {
   resolveGameCardPreview,
 } from "@/lib/media/game-card-preview";
+import {
+  activateSharedYouTubeHoverPlayer,
+  deactivateSharedYouTubeHoverPlayer,
+} from "@/lib/media/shared-youtube-hover-player";
 import type { Game } from "@/types/game";
 
 import styles from "./UniversalGameCard.module.css";
@@ -238,10 +239,6 @@ export default function UniversalGameCard({
   const articleRef = useRef<HTMLElement>(null);
   const mediaRef = useRef<HTMLDivElement>(null);
   const [previewActive, setPreviewActive] = useState(false);
-  const {
-    activate: activateYouTube,
-    deactivate: deactivateYouTube,
-  } = useYouTubeHoverPlayer();
 
   const mediaBadge = getMediaBadge(game, variant);
   const fallbackClass = fallbackClassBySlug[game.slug];
@@ -273,7 +270,7 @@ export default function UniversalGameCard({
 
     const media = mediaRef.current;
     if (youtubeActive.current && media) {
-      deactivateYouTube(media);
+      deactivateSharedYouTubeHoverPlayer(media);
     }
     youtubeActive.current = false;
 
@@ -330,14 +327,17 @@ export default function UniversalGameCard({
       resetTilt(article);
 
       /*
-       * El reproductor global se posiciona con getBoundingClientRect().
-       * Al desactivar la transición del tilt antes de medir evitamos que
-       * iframe y tarjeta queden desalineados durante los 150 ms de retorno.
+       * El reproductor compartido se posiciona con getBoundingClientRect().
+       * Al desactivar la transición del tilt antes de medir evitamos que el
+       * iframe y la tarjeta queden desalineados durante el retorno a plano.
        */
       void article.offsetWidth;
 
       youtubeActive.current = true;
-      activateYouTube(media, resolvedPreview.preview);
+      activateSharedYouTubeHoverPlayer(
+        media,
+        resolvedPreview.preview
+      );
     }, PREVIEW_DELAY_MS);
   }
 
@@ -399,10 +399,10 @@ export default function UniversalGameCard({
       }
 
       if (youtubeActive.current && media) {
-        deactivateYouTube(media);
+        deactivateSharedYouTubeHoverPlayer(media);
       }
     };
-  }, [deactivateYouTube]);
+  }, []);
 
   return (
     <article
