@@ -466,6 +466,8 @@ export default function VideoTrimEditor({
 
             <button
               type="button"
+              role="slider"
+              aria-orientation="horizontal"
               className={`${styles.handle} ${styles.handleStart}`}
               style={{ left: `${startPercent}%` }}
               aria-label={`Inicio del recorte: ${formatTime(startSeconds)}`}
@@ -475,6 +477,7 @@ export default function VideoTrimEditor({
                 endSeconds - MIN_SELECTION_SECONDS
               )}
               aria-valuenow={startSeconds}
+              aria-valuetext={formatTime(startSeconds)}
               onPointerDown={(event) => {
                 event.stopPropagation();
                 event.currentTarget.setPointerCapture(
@@ -491,6 +494,8 @@ export default function VideoTrimEditor({
 
             <button
               type="button"
+              role="slider"
+              aria-orientation="horizontal"
               className={`${styles.handle} ${styles.handleEnd}`}
               style={{ left: `${endPercent}%` }}
               aria-label={`Final del recorte: ${formatTime(endSeconds)}`}
@@ -503,6 +508,7 @@ export default function VideoTrimEditor({
                 startSeconds + MAX_PREVIEW_DURATION_SECONDS
               )}
               aria-valuenow={endSeconds}
+              aria-valuetext={formatTime(endSeconds)}
               onPointerDown={(event) => {
                 event.stopPropagation();
                 event.currentTarget.setPointerCapture(
