@@ -186,29 +186,29 @@ export default function HomeShowcase() {
 
                 <div className={styles.profileDivider} />
 
-                <Link href="/perfil" className={styles.profileItem}>
+                <button type="button" className={styles.profileItem}>
                   <UserRound size={22} strokeWidth={1.7} />
                   <span><strong>Mi perfil</strong><small>Ver y editar perfil</small></span>
-                </Link>
-                <Link href="/biblioteca" className={styles.profileItem}>
+                </button>
+                <button type="button" className={styles.profileItem}>
                   <Library size={22} strokeWidth={1.7} />
                   <span><strong>Mi biblioteca</strong><small>Tus juegos y progreso</small></span>
-                </Link>
-                <Link href="/favoritos" className={styles.profileItem}>
+                </button>
+                <button type="button" className={styles.profileItem}>
                   <Heart size={22} strokeWidth={1.7} />
                   <span><strong>Favoritos</strong><small>Juegos que te encantan</small></span>
-                </Link>
+                </button>
 
                 <div className={styles.profileDivider} />
 
-                <Link href="/configuracion" className={styles.profileItem}>
+                <button type="button" className={styles.profileItem}>
                   <Settings size={22} strokeWidth={1.7} />
                   <span><strong>Configuración</strong><small>Preferencias de la cuenta</small></span>
-                </Link>
-                <Link href="/seguridad" className={styles.profileItem}>
+                </button>
+                <button type="button" className={styles.profileItem}>
                   <Shield size={22} strokeWidth={1.7} />
                   <span><strong>Seguridad</strong><small>Contraseña y verificación</small></span>
-                </Link>
+                </button>
 
                 <div className={styles.profileDivider} />
 
@@ -331,11 +331,11 @@ export default function HomeShowcase() {
             <Trophy size={25} />
             <span>Mejor<br />calificados</span>
           </Link>
-          <Link href="/juegos?modo=multijugador" className={styles.quickTile}>
+          <Link href="/juegos" className={styles.quickTile}>
             <UsersRound size={25} />
             <span>Multijugador</span>
           </Link>
-          <Link href="/juegos?genero=mundo-abierto" className={styles.quickTile}>
+          <Link href="/juegos" className={styles.quickTile}>
             <Globe2 size={25} />
             <span>Mundo<br />abierto</span>
           </Link>
