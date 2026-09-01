@@ -19,6 +19,7 @@ import { usePathname } from "next/navigation";
 import type { AdminRole } from "@/lib/admin/roles";
 
 import ia from "./AdminInformationArchitecture.module.css";
+import selection from "./AdminNavigationSelection.module.css";
 
 const navigationGroups = [
   {
@@ -132,7 +133,7 @@ export default function AdminNavigation({
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`${ia.navLink} ${active ? ia.navLinkActive : ""}`}
+                  className={`${ia.navLink} ${selection.interactive} ${active ? selection.active : ""}`}
                   aria-current={active ? "page" : undefined}
                 >
                   <Icon size={17} aria-hidden="true" />
@@ -174,7 +175,7 @@ export default function AdminNavigation({
                   <Link
                     key={item.href}
                     href={item.href}
-                    data-active={active ? "true" : "false"}
+                    className={`${selection.interactive} ${active ? selection.active : ""}`}
                     aria-current={active ? "page" : undefined}
                   >
                     <Icon size={16} aria-hidden="true" />
