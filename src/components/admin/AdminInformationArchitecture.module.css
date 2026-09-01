@@ -12,7 +12,7 @@
 .navGroupTitle {
   padding: 0 11px 4px;
   color: #6f7d8d;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 850;
   letter-spacing: 0.13em;
   line-height: 1.2;
@@ -473,11 +473,10 @@
   .contextMobileGroup > span {
     padding: 3px 8px;
     color: #6f7d8c;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 850;
     letter-spacing: 0.11em;
   }
-
   .mobileNavPanel a,
   .contextMobilePanel a {
     min-height: 42px;
