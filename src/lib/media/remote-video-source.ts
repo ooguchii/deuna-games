@@ -12,6 +12,8 @@ import {
   mediaImportWorkerConfigured,
   requireRemoteImportWorkerInProduction,
 } from "./media-import-worker-client";
+import { downloadPlatformEditorialVideo } from "./platform-video-source";
+import { parseSupportedPlatformVideoUrl } from "./platform-video-url";
 import { MAX_PREVIEW_SOURCE_BYTES } from "./preview-video-policy";
 
 export const MAX_REMOTE_PREVIEW_BYTES = MAX_PREVIEW_SOURCE_BYTES;
@@ -233,6 +235,10 @@ export async function downloadRemoteEditorialVideo(
   value: string,
   destinationPath: string
 ): Promise<RemoteEditorialVideo> {
+  if (parseSupportedPlatformVideoUrl(value)) {
+    return downloadPlatformEditorialVideo(value, destinationPath);
+  }
+
   const parsed = parseRemoteVideoUrl(value);
   requireRemoteImportWorkerInProduction();
 
