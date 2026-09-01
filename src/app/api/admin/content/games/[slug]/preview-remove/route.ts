@@ -9,6 +9,7 @@ import {
   expectedRevisionSchema,
 } from "@/lib/admin/content-forms";
 import {
+  getEditorialItem,
   saveGameMediaDraft,
 } from "@/lib/admin/content-service";
 import {
@@ -60,11 +61,37 @@ export async function POST(
   }
 
   try {
+    const item = await getEditorialItem("game", slug);
+
+    if (!item) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        "/admin/juegos?estado=no-encontrado"
+      );
+    }
+
+    if (item.revision !== revision.data) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        `${target}?estado=conflicto&seccion=multimedia`
+      );
+    }
+
+    const fallbackMode = item.payload.youtubePreview
+      ? "youtube" as const
+      : undefined;
     const result = await saveGameMediaDraft(
       slug,
       revision.data,
       authorized.session.userId,
-      { previewClip: undefined }
+      {
+        previewClip: undefined,
+        previewMode:
+          item.payload.previewMode === "webm" ||
+          (!item.payload.previewMode && item.payload.previewClip)
+            ? fallbackMode
+            : item.payload.previewMode,
+      }
     );
 
     if (result.outcome === "not_found") {
