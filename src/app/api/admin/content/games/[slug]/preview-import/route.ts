@@ -158,8 +158,7 @@ export async function POST(
       authorized.session.userId,
       {
         previewClip: upload.publicPath,
-        previewMode: undefined,
-        youtubePreview: undefined,
+        previewMode: "webm",
       }
     );
 
