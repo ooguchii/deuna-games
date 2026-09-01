@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 
 import PublicPageBackground from "@/components/site/PublicPageBackground";
+import YouTubeHoverPlayerProvider from "@/components/ui/YouTubeHoverPlayerProvider";
 import {
   getPublicHomeConfig,
 } from "@/lib/home/public-home-config";
@@ -116,13 +117,15 @@ export default async function RootLayout({
           Saltar al contenido principal
         </a>
 
-        <PublicPageBackground
-          brandColor={config.brandColor}
-          customAssets={config.backgroundLibrary ?? []}
-          pageBackgrounds={config.pageBackgrounds ?? {}}
-        >
-          {children}
-        </PublicPageBackground>
+        <YouTubeHoverPlayerProvider>
+          <PublicPageBackground
+            brandColor={config.brandColor}
+            customAssets={config.backgroundLibrary ?? []}
+            pageBackgrounds={config.pageBackgrounds ?? {}}
+          >
+            {children}
+          </PublicPageBackground>
+        </YouTubeHoverPlayerProvider>
       </body>
     </html>
   );
