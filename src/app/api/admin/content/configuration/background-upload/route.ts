@@ -148,11 +148,15 @@ export async function POST(request: NextRequest) {
         image: upload.publicPath,
       },
     ];
+    const sitePayload = { ...item.payload };
+    delete sitePayload.heroImageEffect;
+    delete sitePayload.heroImageTuning;
+
     const result = await saveSiteConfigDraft(
       revision.data,
       authorized.session.userId,
       {
-        ...item.payload,
+        ...sitePayload,
         backgroundLibrary,
       }
     );

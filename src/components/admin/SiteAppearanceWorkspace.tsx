@@ -8,7 +8,6 @@ import {
 import {
   ImageIcon,
   Palette,
-  Sparkles,
 } from "lucide-react";
 
 import {
@@ -19,16 +18,13 @@ import type {
   SiteBackgroundAsset,
   SiteBackgroundMap,
 } from "@/lib/site/backgrounds";
-import type { HeroImageTuning } from "@/lib/site/hero-image";
 
 import adminStyles from "../../app/admin/admin.module.css";
-import HeroImageAppearanceEditor from "./HeroImageAppearanceEditor";
 import SiteBackgroundManager from "./SiteBackgroundManager";
 import styles from "./SiteAppearanceWorkspace.module.css";
 
 export type AppearancePanel =
   | "palette"
-  | "hero"
   | "backgrounds";
 
 type SiteAppearanceWorkspaceProps = {
@@ -41,8 +37,6 @@ type SiteAppearanceWorkspaceProps = {
   language: "es";
   themeColor: string;
   brandColor: string;
-  heroImageEffect?: boolean;
-  heroImageTuning?: Partial<HeroImageTuning>;
   customAssets?: SiteBackgroundAsset[];
   pageBackgrounds?: SiteBackgroundMap;
 };
@@ -58,12 +52,6 @@ const panels: ReadonlyArray<{
     label: "Marca y color",
     description: "Colores globales",
     icon: Palette,
-  },
-  {
-    id: "hero",
-    label: "Hero",
-    description: "Imagen principal",
-    icon: Sparkles,
   },
   {
     id: "backgrounds",
@@ -83,8 +71,6 @@ export default function SiteAppearanceWorkspace({
   language,
   themeColor: initialThemeColor,
   brandColor: initialBrandColor,
-  heroImageEffect = false,
-  heroImageTuning,
   customAssets = [],
   pageBackgrounds = {},
 }: SiteAppearanceWorkspaceProps) {
@@ -156,7 +142,7 @@ export default function SiteAppearanceWorkspace({
           <span>MARCA Y COLOR</span>
           <h2>Paleta global del sitio</h2>
           <p>
-            Este es el único lugar para cambiar los colores generales. El Hero y los fondos tienen sus propios ajustes de imagen en las otras pestañas.
+            Aquí cambias los colores generales. Las imágenes de fondo se administran por separado en la pestaña Fondos.
           </p>
         </div>
 
@@ -259,7 +245,7 @@ export default function SiteAppearanceWorkspace({
               <span className={styles.previewEyebrow}>VISTA PREVIA</span>
               <strong>Así se combinarán los colores</strong>
               <p>
-                La imagen de fondo y el Hero se editan aparte para no mezclar responsabilidades.
+                Los fondos de cada página se eligen y ajustan desde su editor específico.
               </p>
               <button type="button" tabIndex={-1}>
                 Acción principal
@@ -285,19 +271,6 @@ export default function SiteAppearanceWorkspace({
           </aside>
         </div>
       </section>
-
-      <div
-        id="appearance-panel-hero"
-        role="tabpanel"
-        aria-labelledby="appearance-tab-hero"
-        hidden={activePanel !== "hero"}
-      >
-        <HeroImageAppearanceEditor
-          revision={revision}
-          enabled={heroImageEffect}
-          tuning={heroImageTuning}
-        />
-      </div>
 
       <div
         id="appearance-panel-backgrounds"
