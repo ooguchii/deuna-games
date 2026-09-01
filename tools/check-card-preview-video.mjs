@@ -61,7 +61,10 @@ const [
   transcoder,
   trimPolicy,
   remoteSource,
+  staging,
   uploadRoute,
+  stagingRoute,
+  stagedPlaybackRoute,
   importRoute,
   mediaAuth,
   mediaRequestSecurity,
@@ -69,6 +72,7 @@ const [
   hoverMedia,
   universalCard,
   previewAdminForm,
+  trimEditor,
   adminEditor,
   integrity,
   publicationChanges,
@@ -80,7 +84,10 @@ const [
   source("src/lib/media/editorial-video.ts"),
   source("src/lib/media/preview-video-policy.ts"),
   source("src/lib/media/remote-video-source.ts"),
+  source("src/lib/media/editorial-video-staging.ts"),
   source("src/app/api/admin/content/games/[slug]/preview-upload/route.ts"),
+  source("src/app/api/admin/content/games/[slug]/preview-source/route.ts"),
+  source("src/app/api/admin/content/games/[slug]/preview-source/[token]/route.ts"),
   source("src/app/api/admin/content/games/[slug]/preview-import/route.ts"),
   source("src/lib/admin/media-admin-route.ts"),
   source("src/lib/admin/media-request-security.ts"),
@@ -88,6 +95,7 @@ const [
   source("src/components/ui/HoverPreviewMedia.tsx"),
   source("src/components/ui/UniversalGameCard.tsx"),
   source("src/components/admin/GamePreviewClipUploadForm.tsx"),
+  source("src/components/admin/VideoTrimEditor.tsx"),
   source("src/app/admin/(protected)/juegos/[slug]/page.tsx"),
   source("src/lib/admin/game-media-integrity.ts"),
   source("src/lib/admin/game-publication-changes.ts"),
@@ -115,7 +123,6 @@ assert(
     transcoder.includes('"-ss"') &&
     transcoder.includes("formatFfmpegSeconds(trim.startSeconds)") &&
     transcoder.includes("formatFfmpegSeconds(trim.durationSeconds)") &&
-    transcoder.includes('"-map"') &&
     transcoder.includes('"0:v:0"') &&
     transcoder.includes('"-an"') &&
     transcoder.includes('"-sn"') &&
@@ -125,21 +132,16 @@ assert(
     transcoder.includes("fps: 15") &&
     transcoder.includes("width: 360") &&
     transcoder.includes("fps: 12") &&
-    transcoder.includes("force_divisible_by=2") &&
-    transcoder.includes('"-g"') &&
+    transcoder.includes("storeEditorialPreviewVideoFromPath") &&
+    transcoder.includes("assertSafeSourcePath") &&
+    !transcoder.includes("downloadRemoteEditorialVideo") &&
     transcoder.includes("spawn(ffmpegExecutable()") &&
     transcoder.includes("shell: false") &&
-    transcoder.includes("downloadRemoteEditorialVideo") &&
-    transcoder.includes("source.video") &&
-    transcoder.includes("convertTemporarySource") &&
-    transcoder.includes("mkdtemp") &&
-    transcoder.includes("rm(temporaryDirectory") &&
     transcoder.includes("inspectSafeEditorialWebm"),
-  "La conversión debe recortar antes de codificar, generar VP9 silencioso y limpiar siempre el origen temporal."
+  "La conversión debe trabajar sólo sobre archivos locales seguros, recortar antes de codificar y generar VP9 silencioso."
 );
 assert(
   uploadRoute.includes("hasExactAdminMediaFormFields") &&
-    uploadRoute.includes('"expectedRevision"') &&
     uploadRoute.includes('"startSeconds"') &&
     uploadRoute.includes('"endSeconds"') &&
     uploadRoute.includes('"video"') &&
@@ -166,29 +168,79 @@ assert(
   "La importación remota debe impedir SSRF, fijar DNS público, limitar redirecciones/tamaño y escribir el origen en streaming."
 );
 assert(
+  staging.includes("randomBytes(24)") &&
+    staging.includes("STAGING_TTL_MS = 30 * 60 * 1_000") &&
+    staging.includes("MAX_STAGED_SOURCES = 8") &&
+    staging.includes("downloadRemoteEditorialVideo") &&
+    staging.includes("createStagedRemotePreviewSource") &&
+    staging.includes("resolveStagedEditorialPreviewSource") &&
+    staging.includes("removeStagedEditorialPreviewSource") &&
+    staging.includes("tokenFromArtifact") &&
+    staging.includes("artifactIsAbandoned") &&
+    staging.includes("PART_SUFFIX") &&
+    staging.includes("stats.isSymbolicLink()"),
+  "La preview remota debe usar staging temporal opaco, acotado, con vencimiento y limpieza de restos interrumpidos."
+);
+assert(
+  stagingRoute.includes("authorizeAdminFormRequest") &&
+    stagingRoute.includes("hasExactAdminFormFields") &&
+    stagingRoute.includes('"expectedRevision"') &&
+    stagingRoute.includes('"url"') &&
+    stagingRoute.includes("createStagedRemotePreviewSource") &&
+    stagingRoute.includes("src:") &&
+    stagingRoute.includes("expiresAt"),
+  "La URL debe prepararse mediante un endpoint administrativo pequeño antes de mostrarla en el editor."
+);
+assert(
+  stagedPlaybackRoute.includes("resolveAdminSession") &&
+    stagedPlaybackRoute.includes("resolveStagedEditorialPreviewSource") &&
+    stagedPlaybackRoute.includes("createReadStream") &&
+    stagedPlaybackRoute.includes('"Accept-Ranges": "bytes"') &&
+    stagedPlaybackRoute.includes("Content-Range") &&
+    stagedPlaybackRoute.includes("export async function DELETE") &&
+    stagedPlaybackRoute.includes("removeStagedEditorialPreviewSource") &&
+    stagedPlaybackRoute.includes('"private, no-store, max-age=0"'),
+  "La fuente temporal debe reproducirse sólo con sesión administrativa, por streaming/rangos y poder eliminarse al abandonar el editor."
+);
+assert(
   importRoute.includes("authorizeAdminFormRequest") &&
     importRoute.includes("hasExactAdminFormFields") &&
-    importRoute.includes('"expectedRevision"') &&
-    importRoute.includes('"url"') &&
+    importRoute.includes('"sourceToken"') &&
+    !importRoute.includes('"url"') &&
     importRoute.includes('"startSeconds"') &&
     importRoute.includes('"endSeconds"') &&
     importRoute.includes("parsePreviewTrimWindow") &&
-    importRoute.includes("storeRemoteEditorialPreviewVideo") &&
+    importRoute.includes("resolveStagedEditorialPreviewSource") &&
+    importRoute.includes("storeEditorialPreviewVideoFromPath") &&
+    importRoute.includes("removeStagedEditorialPreviewSource") &&
     importRoute.includes("saveGameMediaDraft") &&
     !importRoute.includes("spawn("),
-  "La URL debe entrar por un endpoint administrativo pequeño y terminar en el mismo pipeline local, sin entregar la URL a FFmpeg."
+  "Confirmar una URL debe reutilizar el staging ya previsualizado, sin descargar de nuevo ni entregar la URL a FFmpeg."
 );
 assert(
   previewAdminForm.includes('type SourceMode = "file" | "url"') &&
-    previewAdminForm.includes("URL directa HTTPS") &&
-    previewAdminForm.includes("MAX_PREVIEW_SOURCE_BYTES") &&
-    previewAdminForm.includes("MAX_PREVIEW_SOURCE_POSITION_SECONDS") &&
-    previewAdminForm.includes("parsePreviewTrimWindow") &&
-    previewAdminForm.includes('"startSeconds"') &&
-    previewAdminForm.includes('"endSeconds"') &&
+    previewAdminForm.includes("VideoTrimEditor") &&
+    previewAdminForm.includes("URL.createObjectURL") &&
+    previewAdminForm.includes("/preview-source") &&
+    previewAdminForm.includes("sourceToken") &&
     previewAdminForm.includes("/preview-import") &&
-    previewAdminForm.includes("durante 1 segundo"),
-  "El editor debe ofrecer archivo o URL, inicio/fin y usar la misma política de recorte del servidor."
+    previewAdminForm.includes("Reemplazar con este recorte"),
+  "El workspace debe mostrar una preview real antes de permitir confirmar el recorte, tanto local como remoto."
+);
+assert(
+  trimEditor.includes("Línea de tiempo del video") &&
+    trimEditor.includes("handleStartPointerMove") &&
+    trimEditor.includes("handleEndPointerMove") &&
+    trimEditor.includes("Marcar IN aquí") &&
+    trimEditor.includes("Marcar OUT aquí") &&
+    trimEditor.includes("Reproducir recorte") &&
+    trimEditor.includes("onLoadedMetadata") &&
+    trimEditor.includes("MAX_PREVIEW_DURATION_SECONDS") &&
+    trimEditor.includes("parsePreviewTrimWindow") &&
+    trimEditor.includes('role="slider"') &&
+    trimEditor.includes('aria-orientation="horizontal"') &&
+    trimEditor.includes("aria-valuetext"),
+  "El recortador visual debe tener video, timeline, tiradores IN/OUT accesibles, ajuste fino y reproducción del tramo elegido."
 );
 assert(
   mediaAuth.includes("maximumBytes?: number") &&
@@ -249,7 +301,7 @@ assert(
     nginx.includes("client_max_body_size 66m") &&
     nginx.includes("client_max_body_size 8k") &&
     !nginx.includes("preview-import$"),
-  "Sólo la subida local debe abrir el body grande; importar por URL debe conservar el límite administrativo pequeño."
+  "Sólo la subida local debe abrir el body grande; staging e importación remota deben conservar el límite administrativo pequeño."
 );
 assert(
   envExample.includes("DEUNA_FFMPEG_PATH"),
@@ -265,5 +317,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  "Preview de video en tarjetas: OK (VP9 ligero, recorte de una sola vez, URL HTTPS protegida, 1 s de intención, pausa en segundo plano, cache y Range eficiente verificados)."
+  "Preview de video en tarjetas: OK (recortador visual IN/OUT, staging remoto seguro y reutilizable, VP9 ligero, 1 s de intención, cache y Range eficiente verificados)."
 );
