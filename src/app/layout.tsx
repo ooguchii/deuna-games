@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 
+import PublicPageBackground from "@/components/site/PublicPageBackground";
 import {
   getPublicHomeConfig,
 } from "@/lib/home/public-home-config";
@@ -115,7 +116,13 @@ export default async function RootLayout({
           Saltar al contenido principal
         </a>
 
-        {children}
+        <PublicPageBackground
+          brandColor={config.brandColor}
+          customAssets={config.backgroundLibrary ?? []}
+          pageBackgrounds={config.pageBackgrounds ?? {}}
+        >
+          {children}
+        </PublicPageBackground>
       </body>
     </html>
   );

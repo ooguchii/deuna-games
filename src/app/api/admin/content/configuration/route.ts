@@ -6,6 +6,7 @@ import {
   authorizeAdminFormRequest,
 } from "@/lib/admin/admin-route";
 import {
+  getEditorialItem,
   saveSiteConfigDraft,
 } from "@/lib/admin/content-service";
 import {
@@ -66,11 +67,29 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    const current = await getEditorialItem(
+      "site_config",
+      "site"
+    );
+
+    if (!current) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        redirectPath("no-encontrado")
+      );
+    }
+
     const { expectedRevision, ...input } = parsed.data;
     const result = await saveSiteConfigDraft(
       expectedRevision,
       authorized.session.userId,
-      input
+      {
+        ...input,
+        backgroundLibrary:
+          current.payload.backgroundLibrary,
+        pageBackgrounds:
+          current.payload.pageBackgrounds,
+      }
     );
 
     if (result.outcome === "not_found") {

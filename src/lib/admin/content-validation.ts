@@ -109,6 +109,33 @@ const localImageSchema = z
   .max(400)
   .refine(isSafeLocalImagePath);
 
+const pageBackgroundAssetSchema = z
+  .object({
+    id: identifierSchema,
+    name: z.string().trim().min(1).max(80),
+    image: localImageSchema,
+  })
+  .strict();
+
+const pageBackgroundSettingSchema = z
+  .object({
+    assetId: identifierSchema.nullable(),
+    colorMode: z.enum(["brand", "custom"]),
+    customColor: z.string().regex(/^#[0-9a-f]{6}$/i),
+    tintOpacity: z.number().int().min(0).max(100),
+  })
+  .strict();
+
+const pageBackgroundsSchema = z
+  .object({
+    home: pageBackgroundSettingSchema.optional(),
+    games: pageBackgroundSettingSchema.optional(),
+    updates: pageBackgroundSettingSchema.optional(),
+    finder: pageBackgroundSettingSchema.optional(),
+    about: pageBackgroundSettingSchema.optional(),
+  })
+  .strict();
+
 const downloadHrefSchema = z
   .string()
   .max(2_048)
@@ -546,6 +573,11 @@ export const editorialSiteConfigSchema = z
     themeColor: z.string().regex(/^#[0-9a-f]{6}$/i),
     brandColor: z.string().regex(/^#[0-9a-f]{6}$/i).optional(),
     footerTagline: z.string().trim().min(1).max(180).optional(),
+    backgroundLibrary: z
+      .array(pageBackgroundAssetSchema)
+      .max(40)
+      .optional(),
+    pageBackgrounds: pageBackgroundsSchema.optional(),
   })
   .strict();
 

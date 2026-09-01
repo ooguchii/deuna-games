@@ -4,6 +4,7 @@ import AdminPageHeader from "@/components/admin/AdminPageHeader";
 import EditorialHistory from "@/components/admin/EditorialHistory";
 import EditorStateNotice from "@/components/admin/EditorStateNotice";
 import PublicationPanel from "@/components/admin/PublicationPanel";
+import SiteBackgroundManager from "@/components/admin/SiteBackgroundManager";
 import SiteIdentityPreview from "@/components/admin/SiteIdentityPreview";
 import { getEditorialItem } from "@/lib/admin/content-service";
 import { getSiteConfigPublicationState } from "@/lib/admin/publication-service";
@@ -143,48 +144,57 @@ export default async function AdminConfigurationPage({
       )}
 
       {section === "apariencia" && (
-        <div className={configStyles.workspace}>
-          <section className={`${styles.editorPanel} ${configStyles.formPanel}`}>
-            <div className={configStyles.sectionIntro}>
-              <span>APARIENCIA</span>
-              <h2>Paleta global</h2>
-              <p>El fondo define navegador y superficies; la marca unifica logo, botones, enlaces y foco.</p>
-            </div>
-
-            <form className={styles.editorForm} method="post" action="/api/admin/content/configuration?seccion=apariencia">
-              <input type="hidden" name="expectedRevision" value={item.revision} />
-              <input type="hidden" name="name" value={config.name} />
-              <input type="hidden" name="shortName" value={config.shortName} />
-              <input type="hidden" name="description" value={config.description} />
-              <input type="hidden" name="footerTagline" value={config.footerTagline} />
-              <input type="hidden" name="language" value={config.language} />
-
-              <div className={`${configStyles.colorFields} ${styles.fieldWide}`}>
-                <label className={configStyles.colorField}>
-                  <div>
-                    <strong>Fondo y navegador</strong>
-                    <span>{config.themeColor}</span>
-                  </div>
-                  <input type="color" name="themeColor" defaultValue={config.themeColor} aria-label="Color de fondo y navegador" required />
-                </label>
-                <label className={configStyles.colorField}>
-                  <div>
-                    <strong>Color de marca</strong>
-                    <span>{config.brandColor}</span>
-                  </div>
-                  <input type="color" name="brandColor" defaultValue={config.brandColor} aria-label="Color de marca" required />
-                </label>
+        <>
+          <div className={configStyles.workspace}>
+            <section className={`${styles.editorPanel} ${configStyles.formPanel}`}>
+              <div className={configStyles.sectionIntro}>
+                <span>APARIENCIA</span>
+                <h2>Paleta global</h2>
+                <p>El fondo define navegador y superficies; la marca unifica logo, botones, enlaces y foco.</p>
               </div>
 
-              <div className={styles.formActions}>
-                <p>La paleta se aplicará a todo el sitio y el panel sólo después de publicar.</p>
-                <button type="submit">Guardar apariencia</button>
-              </div>
-            </form>
-          </section>
+              <form className={styles.editorForm} method="post" action="/api/admin/content/configuration?seccion=apariencia">
+                <input type="hidden" name="expectedRevision" value={item.revision} />
+                <input type="hidden" name="name" value={config.name} />
+                <input type="hidden" name="shortName" value={config.shortName} />
+                <input type="hidden" name="description" value={config.description} />
+                <input type="hidden" name="footerTagline" value={config.footerTagline} />
+                <input type="hidden" name="language" value={config.language} />
 
-          <SiteIdentityPreview {...config} />
-        </div>
+                <div className={`${configStyles.colorFields} ${styles.fieldWide}`}>
+                  <label className={configStyles.colorField}>
+                    <div>
+                      <strong>Fondo y navegador</strong>
+                      <span>{config.themeColor}</span>
+                    </div>
+                    <input type="color" name="themeColor" defaultValue={config.themeColor} aria-label="Color de fondo y navegador" required />
+                  </label>
+                  <label className={configStyles.colorField}>
+                    <div>
+                      <strong>Color de marca</strong>
+                      <span>{config.brandColor}</span>
+                    </div>
+                    <input type="color" name="brandColor" defaultValue={config.brandColor} aria-label="Color de marca" required />
+                  </label>
+                </div>
+
+                <div className={styles.formActions}>
+                  <p>La paleta se aplicará a todo el sitio y el panel sólo después de publicar.</p>
+                  <button type="submit">Guardar apariencia</button>
+                </div>
+              </form>
+            </section>
+
+            <SiteIdentityPreview {...config} />
+          </div>
+
+          <SiteBackgroundManager
+            revision={item.revision}
+            brandColor={config.brandColor}
+            customAssets={config.backgroundLibrary ?? []}
+            pageBackgrounds={config.pageBackgrounds ?? {}}
+          />
+        </>
       )}
 
       {section === "publicacion" && (
