@@ -133,11 +133,13 @@ export function evaluateGamePublicationChanges(
         coverImage: draft.coverImage,
         heroImage: draft.heroImage,
         screenshots: draft.screenshots,
+        previewClip: draft.previewClip,
       },
       {
         coverImage: published.coverImage,
         heroImage: published.heroImage,
         screenshots: published.screenshots,
+        previewClip: published.previewClip,
       }
     )
   ) {
@@ -145,7 +147,7 @@ export function evaluateGamePublicationChanges(
       id: "media",
       label: "Multimedia",
       detail:
-        "Cambian la portada, la imagen hero o las capturas que verá el visitante.",
+        "Cambian la portada, la imagen hero, las capturas o el preview WebM de las tarjetas.",
       section: "multimedia",
     });
   }
