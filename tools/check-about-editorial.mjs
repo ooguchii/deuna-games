@@ -19,6 +19,7 @@ const [
   publicPage,
   publicResolver,
   validation,
+  validationCore,
   adminPage,
   heroRoute,
   principlesRoute,
@@ -28,12 +29,15 @@ const [
   source("src/app/quienes-somos/page.tsx"),
   source("src/lib/about/public-about-config.ts"),
   source("src/lib/admin/content-validation.ts"),
+  source("src/lib/admin/content-validation-core.ts"),
   source("src/app/admin/(protected)/paginas/quienes-somos/page.tsx"),
   source("src/app/api/admin/content/about/hero/route.ts"),
   source("src/app/api/admin/content/about/principles/route.ts"),
   source("src/app/api/admin/content/about/reason/route.ts"),
   source("src/app/api/admin/content/about/manifesto/route.ts"),
 ]);
+
+const completeValidation = `${validation}\n${validationCore}`;
 
 assert(
   publicPage.includes("getPublicAboutConfig") &&
@@ -50,11 +54,11 @@ assert(
 );
 
 assert(
-  validation.includes('"about_config"') &&
-    validation.includes("editorialAboutConfigSchema") &&
-    validation.includes("signals: z.array(aboutCardSchema).length(3)") &&
-    validation.includes("principles:") &&
-    validation.includes("ecosystem:"),
+  completeValidation.includes('"about_config"') &&
+    completeValidation.includes("editorialAboutConfigSchema") &&
+    completeValidation.includes("signals: z.array(aboutCardSchema).length(3)") &&
+    completeValidation.includes("principles:") &&
+    completeValidation.includes("ecosystem:"),
   "Quiénes somos debe conservar un esquema estructurado con cardinalidades controladas."
 );
 
