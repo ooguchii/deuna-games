@@ -4,7 +4,9 @@ import {
   ArrowDown,
   ArrowUp,
   Plus,
+  RotateCcw,
   Trash2,
+  Upload,
 } from "lucide-react";
 import type { CSSProperties } from "react";
 import {
@@ -40,6 +42,15 @@ type Section = {
   description: string;
   singular: string;
 };
+
+type IconUploadResponse = {
+  publicPath?: unknown;
+  format?: unknown;
+  error?: unknown;
+};
+
+const customIconPattern =
+  /^\/media\/editorial\/taxonomy-icons\/[a-f0-9]{64}\.(?:svg|webp)$/;
 
 const sections: Section[] = [
   {
@@ -131,6 +142,7 @@ export default function GameTaxonomyEditor({
     tags: "",
   });
   const [feedback, setFeedback] = useState("");
+  const [uploadingKey, setUploadingKey] = useState<string | null>(null);
 
   const serialized = useMemo(
     () => JSON.stringify(taxonomy),
@@ -219,12 +231,117 @@ export default function GameTaxonomyEditor({
     value: GameTaxonomyIcon | GameTaxonomyTone
   ) {
     updateTerms(kind, (currentTerms) =>
+      currentTerms.map((term) => {
+        if (term.key !== key) return term;
+
+        if (field === "icon") {
+          return {
+            ...term,
+            icon: value as GameTaxonomyIcon,
+            iconAsset: undefined,
+          };
+        }
+
+        return {
+          ...term,
+          tone: value as GameTaxonomyTone,
+        };
+      })
+    );
+  }
+
+  function clearCustomIcon(
+    kind: GameTaxonomyKind,
+    key: string
+  ) {
+    updateTerms(kind, (currentTerms) =>
       currentTerms.map((term) =>
         term.key === key
-          ? { ...term, [field]: value }
+          ? { ...term, iconAsset: undefined }
           : term
       )
     );
+    setFeedback(
+      "Se volvió al icono de biblioteca. Guarda clasificaciones para confirmar el cambio."
+    );
+  }
+
+  async function uploadCustomIcon(
+    kind: GameTaxonomyKind,
+    key: string,
+    file: File
+  ) {
+    const type = file.type.toLowerCase();
+
+    if (
+      type !== "image/svg+xml" &&
+      type !== "image/webp"
+    ) {
+      setFeedback(
+        "El icono debe ser SVG o WebP. Para WebP usa fondo transparente."
+      );
+      return;
+    }
+
+    setUploadingKey(key);
+    setFeedback("");
+
+    try {
+      const body = new FormData();
+      body.set("expectedRevision", String(revision));
+      body.set("icon", file);
+
+      const response = await fetch(
+        "/api/admin/content/catalogs/icon-upload",
+        {
+          method: "POST",
+          body,
+          credentials: "same-origin",
+          headers: {
+            Accept: "application/json",
+          },
+        }
+      );
+      const payload = (await response
+        .json()
+        .catch(() => null)) as IconUploadResponse | null;
+
+      if (
+        !response.ok ||
+        typeof payload?.publicPath !== "string" ||
+        !customIconPattern.test(payload.publicPath)
+      ) {
+        const message =
+          typeof payload?.error === "string"
+            ? payload.error
+            : "No se pudo cargar el icono.";
+        setFeedback(message);
+        return;
+      }
+
+      updateTerms(kind, (currentTerms) =>
+        currentTerms.map((term) =>
+          term.key === key
+            ? {
+                ...term,
+                iconAsset: payload.publicPath as string,
+              }
+            : term
+        )
+      );
+
+      const format =
+        payload.format === "svg" ? "SVG" : "WebP";
+      setFeedback(
+        `Icono ${format} cargado. Ya toma el color elegido; usa “Guardar clasificaciones” para conservarlo.`
+      );
+    } catch {
+      setFeedback(
+        "No se pudo conectar con el almacén de iconos. Intenta nuevamente."
+      );
+    } finally {
+      setUploadingKey(null);
+    }
   }
 
   function moveTerm(
@@ -368,6 +485,7 @@ export default function GameTaxonomyEditor({
                 const tone = taxonomyToneOptions.find(
                   (option) => option.key === term.tone
                 );
+                const uploading = uploadingKey === term.key;
 
                 return (
                   <div
@@ -403,50 +521,119 @@ export default function GameTaxonomyEditor({
                             } as CSSProperties
                           }
                         >
-                          <TaxonomyIcon icon={term.icon} size={23} />
+                          <TaxonomyIcon
+                            icon={term.icon}
+                            asset={term.iconAsset}
+                            size={23}
+                          />
                         </span>
 
-                        <label>
-                          <span>Icono</span>
-                          <select
-                            value={term.icon}
-                            onChange={(event) =>
-                              setVisual(
-                                currentSection.kind,
-                                term.key,
-                                "icon",
-                                event.target.value as GameTaxonomyIcon
-                              )
-                            }
-                          >
-                            {taxonomyIconOptions.map((option) => (
-                              <option key={option.key} value={option.key}>
-                                {option.label}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
+                        <div className={styles.visualControls}>
+                          <div className={styles.visualFields}>
+                            <label>
+                              <span>Icono de biblioteca</span>
+                              <select
+                                value={term.icon}
+                                onChange={(event) =>
+                                  setVisual(
+                                    currentSection.kind,
+                                    term.key,
+                                    "icon",
+                                    event.target.value as GameTaxonomyIcon
+                                  )
+                                }
+                              >
+                                {taxonomyIconOptions.map((option) => (
+                                  <option key={option.key} value={option.key}>
+                                    {option.label}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
 
-                        <label>
-                          <span>Color</span>
-                          <select
-                            value={term.tone}
-                            onChange={(event) =>
-                              setVisual(
-                                currentSection.kind,
-                                term.key,
-                                "tone",
-                                event.target.value as GameTaxonomyTone
-                              )
-                            }
-                          >
-                            {taxonomyToneOptions.map((option) => (
-                              <option key={option.key} value={option.key}>
-                                {option.label}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
+                            <label>
+                              <span>Color</span>
+                              <select
+                                value={term.tone}
+                                onChange={(event) =>
+                                  setVisual(
+                                    currentSection.kind,
+                                    term.key,
+                                    "tone",
+                                    event.target.value as GameTaxonomyTone
+                                  )
+                                }
+                              >
+                                {taxonomyToneOptions.map((option) => (
+                                  <option key={option.key} value={option.key}>
+                                    {option.label}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                          </div>
+
+                          <div className={styles.customIconRow}>
+                            <label
+                              className={styles.iconUpload}
+                              data-busy={uploading ? "true" : "false"}
+                            >
+                              <Upload size={14} aria-hidden="true" />
+                              <span>
+                                {uploading
+                                  ? "Subiendo icono..."
+                                  : term.iconAsset
+                                    ? "Reemplazar icono propio"
+                                    : "Subir SVG o WebP"}
+                              </span>
+                              <input
+                                type="file"
+                                accept=".svg,.webp,image/svg+xml,image/webp"
+                                disabled={uploading}
+                                aria-label={`Subir icono propio para ${term.label}`}
+                                onChange={(event) => {
+                                  const input = event.currentTarget;
+                                  const file = input.files?.[0];
+
+                                  if (!file) return;
+
+                                  void uploadCustomIcon(
+                                    currentSection.kind,
+                                    term.key,
+                                    file
+                                  ).finally(() => {
+                                    input.value = "";
+                                  });
+                                }}
+                              />
+                            </label>
+
+                            {term.iconAsset ? (
+                              <>
+                                <span className={styles.customBadge}>
+                                  Icono propio · color editable
+                                </span>
+                                <button
+                                  type="button"
+                                  className={styles.clearCustomButton}
+                                  onClick={() =>
+                                    clearCustomIcon(
+                                      currentSection.kind,
+                                      term.key
+                                    )
+                                  }
+                                >
+                                  <RotateCcw size={13} aria-hidden="true" />
+                                  Usar biblioteca
+                                </button>
+                              </>
+                            ) : (
+                              <small className={styles.iconHint}>
+                                SVG recomendado. WebP sólo con transparencia. El color se aplica desde este panel.
+                              </small>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     )}
 
@@ -520,7 +707,7 @@ export default function GameTaxonomyEditor({
       <div className={styles.actions}>
         <p>
           {hasVisuals
-            ? "El orden de esta ventana es el mismo orden que se reutiliza públicamente. El contador considera cada juego una sola vez por clasificación."
+            ? "El orden de esta ventana es el mismo orden que se reutiliza públicamente. El contador considera cada juego una sola vez por clasificación. Los iconos propios conservan el mismo selector de color."
             : "Las etiquetas usadas no se eliminan para proteger las fichas existentes; puedes desactivarlas y mantener el historial editorial."}
         </p>
         <button type="submit" data-brand-action="true">

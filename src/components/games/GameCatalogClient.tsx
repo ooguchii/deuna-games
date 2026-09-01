@@ -278,6 +278,7 @@ export default function GameCatalogClient({
                   <span className={styles.categoryIcon}>
                     <TaxonomyIcon
                       icon={visual.icon}
+                      asset={visual.iconAsset}
                       size={28}
                     />
                   </span>
