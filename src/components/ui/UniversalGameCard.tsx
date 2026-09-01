@@ -21,6 +21,12 @@ import {
 } from "react";
 
 import HoverPreviewMedia from "@/components/ui/HoverPreviewMedia";
+import {
+  useYouTubeHoverPlayer,
+} from "@/components/ui/YouTubeHoverPlayerProvider";
+import {
+  resolveGameCardPreview,
+} from "@/lib/media/game-card-preview";
 import type { Game } from "@/types/game";
 
 import styles from "./UniversalGameCard.module.css";
@@ -228,7 +234,14 @@ export default function UniversalGameCard({
   const pendingTilt = useRef<PendingTilt | null>(null);
   const cardRect = useRef<DOMRect | null>(null);
   const pointerEffectsEnabled = useRef(false);
+  const youtubeActive = useRef(false);
+  const articleRef = useRef<HTMLElement>(null);
+  const mediaRef = useRef<HTMLDivElement>(null);
   const [previewActive, setPreviewActive] = useState(false);
+  const {
+    activate: activateYouTube,
+    deactivate: deactivateYouTube,
+  } = useYouTubeHoverPlayer();
 
   const mediaBadge = getMediaBadge(game, variant);
   const fallbackClass = fallbackClassBySlug[game.slug];
@@ -239,15 +252,7 @@ export default function UniversalGameCard({
     styles[
       `variant${variant[0].toUpperCase()}${variant.slice(1)}`
     ];
-
-  function cancelPreview() {
-    if (previewTimer.current) {
-      clearTimeout(previewTimer.current);
-      previewTimer.current = null;
-    }
-
-    setPreviewActive(false);
-  }
+  const resolvedPreview = resolveGameCardPreview(game);
 
   function cancelTiltFrame() {
     if (tiltFrame.current !== null) {
@@ -256,6 +261,21 @@ export default function UniversalGameCard({
     }
 
     pendingTilt.current = null;
+  }
+
+  function cancelPreview() {
+    if (previewTimer.current) {
+      clearTimeout(previewTimer.current);
+      previewTimer.current = null;
+    }
+
+    setPreviewActive(false);
+
+    const media = mediaRef.current;
+    if (youtubeActive.current && media) {
+      deactivateYouTube(media);
+    }
+    youtubeActive.current = false;
   }
 
   function startCard(
@@ -278,23 +298,42 @@ export default function UniversalGameCard({
     cardRect.current = event.currentTarget.getBoundingClientRect();
 
     if (
-      !game.previewClip ||
+      !resolvedPreview ||
       previewTimer.current ||
-      previewActive
+      previewActive ||
+      youtubeActive.current
     ) {
       return;
     }
 
     previewTimer.current = setTimeout(() => {
       previewTimer.current = null;
-      setPreviewActive(true);
+
+      if (resolvedPreview.kind === "webm") {
+        setPreviewActive(true);
+        return;
+      }
+
+      const article = articleRef.current;
+      const media = mediaRef.current;
+      if (!article || !media) return;
+
+      cancelTiltFrame();
+      resetTilt(article);
+      youtubeActive.current = true;
+      activateYouTube(media, resolvedPreview.preview);
     }, PREVIEW_DELAY_MS);
   }
 
   function scheduleTilt(
     event: ReactPointerEvent<HTMLElement>
   ) {
-    if (!pointerEffectsEnabled.current) return;
+    if (
+      !pointerEffectsEnabled.current ||
+      youtubeActive.current
+    ) {
+      return;
+    }
 
     pendingTilt.current = {
       node: event.currentTarget,
@@ -340,11 +379,17 @@ export default function UniversalGameCard({
       if (tiltFrame.current !== null) {
         cancelAnimationFrame(tiltFrame.current);
       }
+
+      const media = mediaRef.current;
+      if (youtubeActive.current && media) {
+        deactivateYouTube(media);
+      }
     };
-  }, []);
+  }, [deactivateYouTube]);
 
   return (
     <article
+      ref={articleRef}
       className={`${styles.card} ${tiltStyles.tiltCard} ${variantClass}`}
       onPointerEnter={startCard}
       onPointerMove={scheduleTilt}
@@ -367,12 +412,17 @@ export default function UniversalGameCard({
         aria-label={`Ver ${game.title}`}
       >
         <div
+          ref={mediaRef}
           className={`${styles.media} ${tiltStyles.tiltMedia}`}
         >
           <HoverPreviewMedia
             imageSrc={game.coverImage}
             imageAlt={game.imageAlt}
-            previewClip={game.previewClip}
+            previewClip={
+              resolvedPreview?.kind === "webm"
+                ? resolvedPreview.src
+                : undefined
+            }
             active={previewActive}
             sizes="(max-width: 560px) 82vw, (max-width: 900px) 48vw, (max-width: 1250px) 30vw, 20vw"
             fallbackClassName={
