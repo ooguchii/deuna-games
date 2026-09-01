@@ -73,9 +73,14 @@ const [
   streamedSource,
   remoteSource,
   staging,
+  proxyGenerator,
+  streamingAuth,
   uploadRoute,
+  localStagingRoute,
   stagingRoute,
   stagedPlaybackRoute,
+  proxyRoute,
+  stagedHttp,
   importRoute,
   removeRoute,
   publicRoute,
@@ -96,9 +101,14 @@ const [
   source("src/lib/media/streamed-preview-source.ts"),
   source("src/lib/media/remote-video-source.ts"),
   source("src/lib/media/editorial-video-staging.ts"),
+  source("src/lib/media/editorial-preview-proxy.ts"),
+  source("src/lib/admin/streaming-media-admin-route.ts"),
   source("src/app/api/admin/content/games/[slug]/preview-upload/route.ts"),
+  source("src/app/api/admin/content/games/[slug]/preview-source-upload/route.ts"),
   source("src/app/api/admin/content/games/[slug]/preview-source/route.ts"),
   source("src/app/api/admin/content/games/[slug]/preview-source/[token]/route.ts"),
+  source("src/app/api/admin/content/games/[slug]/preview-source/[token]/proxy/route.ts"),
+  source("src/lib/media/staged-preview-http.ts"),
   source("src/app/api/admin/content/games/[slug]/preview-import/route.ts"),
   source("src/app/api/admin/content/games/[slug]/preview-remove/route.ts"),
   source("src/app/media/editorial/[slug]/[filename]/route.ts"),
@@ -135,7 +145,7 @@ assert(
     transcoder.includes("spawn(ffmpegExecutable()") &&
     transcoder.includes("shell: false") &&
     transcoder.includes("inspectSafeEditorialWebm"),
-  "La conversión debe seguir recortando una sola vez y generando WebM/VP9 ligero."
+  "La conversión final debe seguir recortando el original y generando WebM/VP9 ligero."
 );
 
 assert(
@@ -146,24 +156,37 @@ assert(
     streamedSource.includes('mode: 0o600') &&
     streamedSource.includes("MAX_PREVIEW_SOURCE_BYTES") &&
     !streamedSource.includes("arrayBuffer"),
-  "La subida local grande debe ir por streaming a disco temporal y nunca materializarse completa en RAM."
+  "Las cargas grandes deben ir por streaming a disco temporal y nunca materializarse completas en RAM."
 );
 
 assert(
-  uploadRoute.includes("hasTrustedAdminOrigin") &&
-    uploadRoute.includes("resolveAdminSession") &&
+  streamingAuth.includes("hasTrustedAdminOrigin") &&
+    streamingAuth.includes("resolveAdminSession") &&
+    streamingAuth.includes("authorizeAdminStreamingMediaRequest"),
+  "Las rutas de streaming deben compartir sesión administrativa y validación de origen."
+);
+
+assert(
+  uploadRoute.includes("authorizeAdminStreamingMediaRequest") &&
     uploadRoute.includes('request.headers.get("content-length")') &&
-    uploadRoute.includes("x-deuna-expected-revision") &&
     uploadRoute.includes("x-deuna-trim-start") &&
     uploadRoute.includes("x-deuna-trim-end") &&
     uploadRoute.includes("stageStreamedPreviewSource") &&
     uploadRoute.includes("storeEditorialPreviewVideoFromPath") &&
     uploadRoute.includes("previewClip: upload.publicPath") &&
-    uploadRoute.includes("previewMode: undefined") &&
-    uploadRoute.includes("youtubePreview: undefined") &&
     !uploadRoute.includes("request.formData()") &&
-    !uploadRoute.includes("storeEditorialPreviewVideo("),
-  "La ruta local de 1 GiB debe autenticar, validar IN/OUT, transmitir a disco y convertir desde path."
+    !uploadRoute.includes("arrayBuffer"),
+  "La ruta final local debe transmitir a disco y recortar desde el original sin buffering grande."
+);
+
+assert(
+  localStagingRoute.includes("authorizeAdminStreamingMediaRequest") &&
+    localStagingRoute.includes("createStagedUploadedPreviewSource") &&
+    localStagingRoute.includes("ensureStagedEditorialPreviewProxy") &&
+    localStagingRoute.includes('request.headers.get("content-length")') &&
+    !localStagingRoute.includes("request.formData()") &&
+    !localStagingRoute.includes("arrayBuffer"),
+  "El fallback de códec local debe subir por streaming y crear el proxy sin cargar 1 GiB en RAM."
 );
 
 assert(
@@ -173,17 +196,42 @@ assert(
     remoteSource.includes("MAX_REMOTE_PREVIEW_BYTES") &&
     remoteSource.includes("MAX_PREVIEW_SOURCE_BYTES") &&
     remoteSource.includes("pipeline"),
-  "La URL directa debe usar el mismo techo de 1 GiB conservando SSRF, DNS y streaming."
+  "La URL directa debe conservar SSRF, DNS seguro, límite de 1 GiB y streaming."
 );
 
 assert(
-  staging.includes("STAGING_TTL_MS = 30 * 60 * 1_000") &&
-    staging.includes("MAX_STAGED_SOURCES = 8") &&
+  staging.includes("MAX_STAGED_SOURCES = 8") &&
+    staging.includes("createStagedRemotePreviewSource") &&
+    staging.includes("createStagedUploadedPreviewSource") &&
+    staging.includes("ensureStagedEditorialPreviewProxy") &&
+    staging.includes("resolveStagedEditorialPreviewProxy") &&
     staging.includes("removeStagedEditorialPreviewSource") &&
-    stagingRoute.includes("createStagedRemotePreviewSource") &&
-    stagedPlaybackRoute.includes('"Accept-Ranges": "bytes"') &&
-    stagedPlaybackRoute.includes("removeStagedEditorialPreviewSource"),
-  "La URL directa debe mantener staging privado, temporal y reproducible por Range."
+    stagingRoute.includes("createStagedRemotePreviewSource"),
+  "Archivo incompatible y URL deben reutilizar el mismo staging privado y temporal."
+);
+
+assert(
+  proxyGenerator.includes("createEditorialPreviewProxy") &&
+    proxyGenerator.includes('"libvpx-vp9"') &&
+    proxyGenerator.includes("min(320,iw)") &&
+    proxyGenerator.includes("fps=8") &&
+    proxyGenerator.includes('"-an"') &&
+    proxyGenerator.includes('"-threads"') &&
+    proxyGenerator.includes('"2"') &&
+    proxyGenerator.includes("MAX_EDITORIAL_EDIT_PROXY_BYTES") &&
+    proxyGenerator.includes("shell: false"),
+  "El proxy debe ser pequeño, sin audio y barato de codificar; nunca debe ser el archivo público final."
+);
+
+assert(
+  stagedHttp.includes('"Accept-Ranges": "bytes"') &&
+    stagedHttp.includes('"Cache-Control": "private, no-store, max-age=0"') &&
+    stagedPlaybackRoute.includes("serveStagedPreviewFile") &&
+    stagedPlaybackRoute.includes("removeStagedEditorialPreviewSource") &&
+    proxyRoute.includes("ensureStagedEditorialPreviewProxy") &&
+    proxyRoute.includes("resolveStagedEditorialPreviewProxy") &&
+    proxyRoute.includes("serveStagedPreviewFile"),
+  "Original temporal y proxy deben servirse autenticados, privados y con Range para scrubbing."
 );
 
 assert(
@@ -191,7 +239,7 @@ assert(
     importRoute.includes("storeEditorialPreviewVideoFromPath") &&
     importRoute.includes("previewClip: upload.publicPath") &&
     importRoute.includes("removeStagedEditorialPreviewSource"),
-  "La URL directa debe terminar como WebM recortado local y limpiar su staging."
+  "Tras editar con proxy, el recorte final debe volver siempre al original staged."
 );
 
 assert(
@@ -221,26 +269,24 @@ assert(
   universalCard.includes("PREVIEW_DELAY_MS = 1_000") &&
     universalCard.includes("game.previewClip?.trim()") &&
     universalCard.includes("setPreviewActive(true)") &&
-    universalCard.includes("(hover: hover) and (pointer: fine)") &&
     universalCard.includes("prefers-reduced-motion: reduce") &&
-    universalCard.includes("requestAnimationFrame") &&
     !universalCard.includes("YouTube") &&
     !universalCard.includes("iframe"),
-  "La tarjeta debe esperar 1 segundo y reproducir únicamente el WebM local."
+  "La tarjeta pública debe seguir usando únicamente el WebM local después de intención."
 );
 
 assert(
   previewAdminForm.includes('type SourceMode = "file" | "url"') &&
     previewAdminForm.includes("VideoTrimEditor") &&
-    previewAdminForm.includes("1 GB") &&
-    previewAdminForm.includes("X-Deuna-Expected-Revision") &&
-    previewAdminForm.includes("X-Deuna-Trim-Start") &&
-    previewAdminForm.includes("X-Deuna-Trim-End") &&
+    previewAdminForm.includes("probeBrowserPlayback") &&
+    previewAdminForm.includes("preview-source-upload") &&
+    previewAdminForm.includes("createProxyForStagedToken") &&
+    previewAdminForm.includes("vista previa compatible") &&
     previewAdminForm.includes("body = preparedSource.file") &&
     !previewAdminForm.includes("new FormData()") &&
     previewAdminForm.includes("Cargar video para recortar") &&
     previewAdminForm.includes("Crear preview WebM con este recorte"),
-  "Multimedia debe permitir 1 GiB por streaming sin perder archivo/URL ni recorte visual."
+  "Multimedia debe probar el códec y activar automáticamente un proxy sólo cuando el navegador lo necesita."
 );
 
 assert(
@@ -259,39 +305,33 @@ assert(
 );
 
 assert(
-  integrity.includes("game.previewClip"),
-  "La integridad editorial debe seguir verificando el archivo WebM local."
-);
-
-assert(
-  publicationChanges.includes("previewClip") &&
-    publicationChanges.includes("WebM recortado") &&
-    !publicationChanges.includes("youtubePreview") &&
-    !publicationChanges.includes("previewMode"),
-  "La revisión de publicación debe describir únicamente el WebM recortado."
+  integrity.includes("game.previewClip") &&
+    publicationChanges.includes("previewClip") &&
+    publicationChanges.includes("WebM recortado"),
+  "Integridad y publicación deben seguir trabajando sólo con el WebM final."
 );
 
 assert(
   nextConfig.includes('"frame-src \'none\'"') &&
     !nextConfig.includes("youtube-nocookie") &&
     !nextConfig.includes("youtube.com"),
-  "CSP debe bloquear iframes externos."
+  "CSP debe seguir bloqueando iframes externos."
 );
 
 assert(
-  nginx.includes("preview-upload$") &&
+  nginx.includes("preview-(upload|source-upload)$") &&
     nginx.includes("client_max_body_size 1024m") &&
     nginx.includes("proxy_request_buffering off") &&
-    nginx.includes("proxy_send_timeout 600s") &&
+    nginx.includes("proxy_send_timeout 1200s") &&
     nginx.includes("client_max_body_size 8k"),
-  "Sólo preview-upload debe admitir 1 GiB y debe transmitirlo sin buffering de request en Nginx."
+  "Sólo las dos rutas de fuente grande deben admitir 1 GiB sin buffering en Nginx."
 );
 
 assert(
   envExample.includes("DEUNA_FFMPEG_PATH") &&
     !envExample.includes("DEUNA_YTDLP") &&
     !packageJson.includes("yt-dlp"),
-  "El sistema WebM debe seguir sin dependencias de YouTube."
+  "El sistema debe seguir sin dependencias de YouTube."
 );
 
 for (const removedPath of [
@@ -319,5 +359,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  "Preview de video en tarjetas: OK (origen hasta 1 GiB por streaming/URL → recorte IN/OUT <= 30 s → WebM local <= 3 MB)."
+  "Preview de video en tarjetas: OK (hasta 1 GiB; códec nativo o proxy automático de edición → IN/OUT <= 30 s → WebM final desde el original <= 3 MB)."
 );

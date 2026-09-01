@@ -27,6 +27,7 @@ const acceptedTypes = new Set([
 
 const acceptedExtensions =
   /\.(mp4|webm|mov|m4v|mkv|avi)$/i;
+const MEDIA_PROBE_TIMEOUT_MS = 10_000;
 
 type SourceMode = "file" | "url";
 
@@ -38,11 +39,12 @@ type PreparedSource =
       file: File;
     }
   | {
-      mode: "url";
+      mode: "staged";
       src: string;
       label: string;
       token: string;
       bytes: number;
+      usesProxy: boolean;
     };
 
 type GamePreviewClipUploadFormProps = {
@@ -53,6 +55,13 @@ type GamePreviewClipUploadFormProps = {
 
 type StagedSourceResponse = {
   token?: unknown;
+  src?: unknown;
+  bytes?: unknown;
+  proxyBytes?: unknown;
+  error?: unknown;
+};
+
+type ProxyResponse = {
   src?: unknown;
   bytes?: unknown;
   error?: unknown;
@@ -88,7 +97,7 @@ function uploadError(state: string | null) {
     return "El video o el recorte no son válidos. Ajusta IN y OUT y vuelve a intentarlo.";
   }
   if (state === "preview-source-expirada") {
-    return "La vista previa remota venció. Vuelve a cargar la URL y selecciona el tramo otra vez.";
+    return "La vista previa temporal venció. Vuelve a cargar el video y selecciona el tramo otra vez.";
   }
   if (state === "solicitud") {
     return "La solicitud fue rechazada por seguridad. Recarga el editor y vuelve a intentarlo.";
@@ -133,6 +142,42 @@ function parsePublicHttpsUrl(value: string) {
   return parsedUrl;
 }
 
+function probeBrowserPlayback(src: string) {
+  return new Promise<boolean>((resolve) => {
+    const video = document.createElement("video");
+    let settled = false;
+    const finish = (playable: boolean) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      video.pause();
+      video.removeAttribute("src");
+      video.load();
+      resolve(playable);
+    };
+    const timeout = window.setTimeout(
+      () => finish(false),
+      MEDIA_PROBE_TIMEOUT_MS
+    );
+
+    video.muted = true;
+    video.playsInline = true;
+    video.preload = "auto";
+    video.addEventListener(
+      "canplay",
+      () => finish(true),
+      { once: true }
+    );
+    video.addEventListener(
+      "error",
+      () => finish(false),
+      { once: true }
+    );
+    video.src = src;
+    video.load();
+  });
+}
+
 export default function GamePreviewClipUploadForm({
   slug,
   revision,
@@ -149,6 +194,10 @@ export default function GamePreviewClipUploadForm({
   const [sourceBusy, setSourceBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
 
+  function stagedSourcePath(token: string) {
+    return `/api/admin/content/games/${encodeURIComponent(slug)}/preview-source/${token}`;
+  }
+
   useEffect(() => {
     const source = preparedSource;
 
@@ -160,14 +209,14 @@ export default function GamePreviewClipUploadForm({
         return;
       }
 
-      void fetch(source.src, {
+      void fetch(stagedSourcePath(source.token), {
         method: "DELETE",
         credentials: "same-origin",
         cache: "no-store",
         keepalive: true,
       }).catch(() => undefined);
     };
-  }, [preparedSource]);
+  }, [preparedSource, slug]);
 
   function resetPreparedSource() {
     setPreparedSource(null);
@@ -178,6 +227,127 @@ export default function GamePreviewClipUploadForm({
     resetPreparedSource();
     setSourceMode(mode);
     setStatus(null);
+  }
+
+  async function createProxyForStagedToken(token: string) {
+    const response = await fetch(
+      `${stagedSourcePath(token)}/proxy`,
+      {
+        method: "POST",
+        credentials: "same-origin",
+        cache: "no-store",
+        headers: {
+          "Content-Type":
+            "application/x-www-form-urlencoded;charset=UTF-8",
+        },
+        body: new URLSearchParams({
+          expectedRevision: String(revision),
+        }),
+      }
+    );
+    const result = (await response.json()) as ProxyResponse;
+
+    if (!response.ok || typeof result.src !== "string") {
+      throw new Error(
+        typeof result.error === "string"
+          ? result.error
+          : "No se pudo crear una vista previa compatible para este códec."
+      );
+    }
+
+    return result.src;
+  }
+
+  async function prepareLocalCodecFallback(
+    file: File
+  ) {
+    setStatus(
+      `El navegador no puede reproducir directamente este códec. Subiendo ${formatSize(file.size)} por streaming y creando una vista previa de edición liviana…`
+    );
+
+    const response = await fetch(
+      `/api/admin/content/games/${encodeURIComponent(slug)}/preview-source-upload`,
+      {
+        method: "POST",
+        credentials: "same-origin",
+        cache: "no-store",
+        headers: {
+          "Content-Type":
+            file.type || "application/octet-stream",
+          "X-Deuna-Expected-Revision": String(revision),
+          "X-Deuna-Source-Extension":
+            sourceExtension(file.name),
+        },
+        body: file,
+      }
+    );
+    const result =
+      (await response.json()) as StagedSourceResponse;
+
+    if (
+      !response.ok ||
+      typeof result.token !== "string" ||
+      typeof result.src !== "string" ||
+      typeof result.bytes !== "number"
+    ) {
+      throw new Error(
+        typeof result.error === "string"
+          ? result.error
+          : "No se pudo preparar una vista previa compatible."
+      );
+    }
+
+    setPreparedSource({
+      mode: "staged",
+      src: result.src,
+      label:
+        `${file.name} · ${formatSize(file.size)} · vista previa compatible`,
+      token: result.token,
+      bytes: result.bytes,
+      usesProxy: true,
+    });
+    setStatus(
+      "Vista previa compatible lista. Puedes recorrer todo el video y elegir IN/OUT; el WebM final se generará desde el archivo original, no desde este proxy."
+    );
+  }
+
+  async function prepareLocalFile(file: File) {
+    setSourceBusy(true);
+    setStatus("Comprobando si el navegador puede reproducir el video directamente…");
+
+    const src = URL.createObjectURL(file);
+    let keepObjectUrl = false;
+
+    try {
+      const playable = await probeBrowserPlayback(src);
+
+      if (playable) {
+        keepObjectUrl = true;
+        setPreparedSource({
+          mode: "file",
+          src,
+          label: `${file.name} · ${formatSize(file.size)}`,
+          file,
+        });
+        setStatus(
+          "Video listo. Reprodúcelo y mueve IN/OUT para elegir exactamente qué fragmento usar. El archivo grande todavía no se subió."
+        );
+        return;
+      }
+
+      await prepareLocalCodecFallback(file);
+    } catch (error) {
+      setStatus(
+        error instanceof Error
+          ? error.message
+          : "No se pudo preparar el video para recortar."
+      );
+    } finally {
+      if (!keepObjectUrl) {
+        URL.revokeObjectURL(src);
+      }
+      setSourceBusy(false);
+    }
   }
 
   function handleLocalFile(
@@ -197,17 +367,7 @@ export default function GamePreviewClipUploadForm({
       return;
     }
 
-    const src = URL.createObjectURL(file);
-
-    setPreparedSource({
-      mode: "file",
-      src,
-      label: `${file.name} · ${formatSize(file.size)}`,
-      file,
-    });
-    setStatus(
-      "Video listo. Reprodúcelo y mueve IN/OUT para elegir exactamente qué fragmento usar. El archivo grande todavía no se subió."
-    );
+    void prepareLocalFile(file);
   }
 
   async function prepareRemoteSource() {
@@ -227,6 +387,7 @@ export default function GamePreviewClipUploadForm({
     setStatus(
       "Preparando una copia temporal del video remoto para que puedas elegir visualmente el recorte…"
     );
+    let stagedToken: string | null = null;
 
     try {
       const response = await fetch(
@@ -261,18 +422,44 @@ export default function GamePreviewClipUploadForm({
         );
       }
 
+      stagedToken = result.token;
+      const playable = await probeBrowserPlayback(result.src);
+      let editorSrc = result.src;
+      let usesProxy = false;
+
+      if (!playable) {
+        setStatus(
+          "El archivo remoto usa un códec que el navegador no reproduce. Creando una vista previa de edición compatible…"
+        );
+        editorSrc = await createProxyForStagedToken(result.token);
+        usesProxy = true;
+      }
+
       setPreparedSource({
-        mode: "url",
-        src: result.src,
+        mode: "staged",
+        src: editorSrc,
         label:
-          `${parsedUrl.hostname} · ${formatSize(result.bytes)}`,
+          `${parsedUrl.hostname} · ${formatSize(result.bytes)}` +
+          (usesProxy ? " · vista previa compatible" : ""),
         token: result.token,
         bytes: result.bytes,
+        usesProxy,
       });
+      stagedToken = null;
       setStatus(
-        "Video remoto listo. Elige el tramo con IN/OUT; el original temporal se elimina después de generar el WebM."
+        usesProxy
+          ? "Vista previa compatible lista. El recorte final se generará desde el archivo remoto original."
+          : "Video remoto listo. Elige el tramo con IN/OUT; el original temporal se elimina después de generar el WebM."
       );
     } catch (error) {
+      if (stagedToken) {
+        void fetch(stagedSourcePath(stagedToken), {
+          method: "DELETE",
+          credentials: "same-origin",
+          cache: "no-store",
+        }).catch(() => undefined);
+      }
+
       setStatus(
         error instanceof Error
           ? error.message
@@ -339,7 +526,7 @@ export default function GamePreviewClipUploadForm({
           "application/x-www-form-urlencoded;charset=UTF-8",
       };
       setStatus(
-        `Recortando ${trim.startSeconds}s → ${trim.endSeconds}s y generando el WebM/VP9 optimizado…`
+        `Recortando ${trim.startSeconds}s → ${trim.endSeconds}s desde el original y generando el WebM/VP9 optimizado…`
       );
     }
 
@@ -444,7 +631,7 @@ export default function GamePreviewClipUploadForm({
               onChange={handleLocalFile}
             />
             <small>
-              Se reproduce directamente desde tu equipo para elegir el corte. Al confirmar se sube por streaming a disco temporal, sin cargar el archivo completo en la RAM del servidor.
+              Primero intenta reproducirse directamente desde tu equipo. Si el navegador no entiende el códec, DeUna crea automáticamente un proxy de edición liviano; el resultado final siempre sale del original.
             </small>
           </label>
         )}
@@ -459,7 +646,7 @@ export default function GamePreviewClipUploadForm({
                 value={sourceUrl}
                 disabled={busy || sourceBusy}
                 onChange={(event) => {
-                  if (preparedSource?.mode === "url") {
+                  if (preparedSource?.mode === "staged") {
                     resetPreparedSource();
                   }
                   setSourceUrl(event.target.value);
@@ -475,7 +662,7 @@ export default function GamePreviewClipUploadForm({
 
             <div className={styles.formActions}>
               <p>
-                Se crea una copia temporal privada para poder reproducirla y elegir el corte. Esa copia no se publica.
+                Se crea una copia temporal privada para poder reproducirla y elegir el corte. Si su códec no es compatible con el navegador, el editor genera automáticamente un proxy liviano.
               </p>
               <button
                 type="button"
@@ -483,7 +670,7 @@ export default function GamePreviewClipUploadForm({
                 onClick={prepareRemoteSource}
               >
                 {sourceBusy
-                  ? "Cargando video…"
+                  ? "Preparando video…"
                   : "Cargar video para recortar"}
               </button>
             </div>
