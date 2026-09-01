@@ -129,14 +129,14 @@ assert(
     directCases[0][1],
     5,
     20
-  ) === null &&
+  )?.startSeconds === 5 &&
     parseDirectPlatformPreview(
-      "facebook",
-      directCases[0][1],
-      0,
+      "instagram",
+      directCases[1][1],
+      5,
       20
-    )?.endSeconds === 20,
-  "Plataformas sin seek estable deben fijar IN en 0 en vez de simular recorte arbitrario."
+    ) === null,
+  "Facebook debe aceptar IN real y las plataformas sin seek estable deben seguir fijando IN en 0."
 );
 assert(
   parseDirectPlatformPreview(
@@ -154,6 +154,15 @@ assert(
   "Plataformas con seek deben aceptar IN real manteniendo el máximo de 30 s."
 );
 
+const facebookEmbed = buildDirectPlatformEmbedUrl(
+  {
+    platform: "facebook",
+    url: directCases[0][1],
+    startSeconds: 8,
+    endSeconds: 20,
+  },
+  { autoplay: true, muted: true }
+);
 const vimeoEmbed = buildDirectPlatformEmbedUrl(
   {
     platform: "vimeo",
@@ -186,14 +195,16 @@ const streamableEmbed = buildDirectPlatformEmbedUrl(
   { autoplay: true, muted: true }
 );
 assert(
-  vimeoEmbed?.startsWith("https://player.vimeo.com/video/") &&
+  facebookEmbed?.includes("www.facebook.com/plugins/video.php") &&
+    facebookEmbed.includes("t=8") &&
+    vimeoEmbed?.startsWith("https://player.vimeo.com/video/") &&
     vimeoEmbed.includes("start_time=8") &&
     vimeoEmbed.includes("end_time=20") &&
     twitchEmbed?.includes("player.twitch.tv") &&
     twitchEmbed.includes("parent=example.invalid") &&
     twitchEmbed.includes("time=8s") &&
     streamableEmbed?.includes("streamable.com/o/abc123"),
-  "Vimeo debe usar segmento IN/OUT, Twitch VOD debe fijar parent/IN y Streamable debe usar su embed oEmbed actual."
+  "Facebook debe enviar IN con t, Vimeo debe usar IN/OUT, Twitch VOD parent/IN y Streamable su embed oEmbed actual."
 );
 
 const [
@@ -202,6 +213,7 @@ const [
   directEditor,
   directRoute,
   directAdapters,
+  directValidation,
   directHover,
   youtubeRoute,
   youtubeEditor,
@@ -226,6 +238,7 @@ const [
   source("src/components/admin/DirectPlatformPreviewEditor.tsx"),
   source("src/app/api/admin/content/games/[slug]/preview-direct/[platform]/route.ts"),
   source("src/lib/media/direct-platform-preview.ts"),
+  source("src/lib/media/direct-platform-validation.ts"),
   source("src/lib/media/shared-direct-platform-hover-player.ts"),
   source("src/app/api/admin/content/games/[slug]/preview-youtube/route.ts"),
   source("src/components/admin/YouTubeTrimEditor.tsx"),
@@ -312,11 +325,13 @@ assert(
     directEditor.includes("supportsStartOffset") &&
     directEditor.includes("Probar recorte") &&
     directEditor.includes("MAX_PREVIEW_DURATION_SECONDS") &&
+    directEditor.includes("previewStopTimerRef") &&
+    directEditor.includes("handleEmbedLoad") &&
     directEditor.includes('type: "seekTo"') &&
     directEditor.includes('"x-tiktok-player": true') &&
     directEditor.includes('type: "mute"') &&
     directEditor.includes('type: "play"'),
-  "El editor directo debe distinguir capacidades reales y usar el protocolo documentado de TikTok sin fingirlo en las demás redes."
+  "El editor directo debe iniciar OUT tras cargar el iframe, distinguir capacidades reales y conservar el protocolo TikTok."
 );
 assert(
   youtubeEditor.includes("youtube-nocookie.com") &&
@@ -342,6 +357,12 @@ for (const signature of [
     `Falta el adaptador directo oficial/específico: ${signature}`
   );
 }
+assert(
+  directAdapters.includes('supportsStartOffset: true') &&
+    directAdapters.includes('embed.searchParams.set("t", String(preview.startSeconds))') &&
+    directValidation.includes('platform === "facebook"'),
+  "Facebook debe exponer IN real tanto en el adaptador como en la validación editorial persistida."
+);
 
 assert(
   resolver.includes('kind: "webm"') &&
@@ -365,8 +386,11 @@ assert(
     directHover.includes("durationMs") &&
     directHover.includes('type: "seekTo"') &&
     directHover.includes('"x-tiktok-player": true') &&
-    directHover.includes("window.location.hostname"),
-  "Las redes directas deben compartir un único iframe, detenerse en OUT, usar el protocolo TikTok actual y resolver Twitch parent en runtime."
+    directHover.includes("window.location.hostname") &&
+    /iframe\.onload = \(\) => \{[\s\S]*?state\.stopTimer = setTimeout/.test(
+      directHover
+    ),
+  "Las redes directas deben compartir un iframe, iniciar OUT tras cargarlo, conservar TikTok actual y resolver Twitch parent en runtime."
 );
 assert(
   youtubeHover.includes("youtube-nocookie.com") &&
@@ -463,5 +487,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  "Preview de video en tarjetas: OK (archivo local aislado + YouTube directo + Facebook/Instagram/TikTok/Vimeo/X/Twitch/Dailymotion/Streamable/Kick separados, sin importador universal)."
+  "Preview de video en tarjetas: OK (archivo local aislado + YouTube directo + Facebook con IN real + Instagram/TikTok/Vimeo/X/Twitch/Dailymotion/Streamable/Kick separados, sin importador universal)."
 );
