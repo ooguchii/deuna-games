@@ -22,6 +22,11 @@ const notices = {
     message:
       "La ficha no se guardó porque intentaste cambiar la versión de un juego ya publicado. Haz ese cambio desde Actualizar para que versión, descargas y aviso público permanezcan sincronizados.",
   },
+  "descargas-por-actualizacion": {
+    kind: "warning",
+    message:
+      "Este juego ya está publicado. Para cambiar sus enlaces de descarga usa Actualizar: DeUna publicará juntos la nueva versión, las nuevas fuentes y el aviso para los visitantes.",
+  },
   "actualizacion-publicada": {
     kind: "success",
     message:
@@ -40,7 +45,7 @@ const notices = {
   "actualizacion-misma-version": {
     kind: "warning",
     message:
-      "La nueva versión coincide con la versión pública actual. Para reemplazar enlaces sin anunciar una versión nueva, usa la sección Descargas del juego.",
+      "La nueva versión coincide con la versión pública actual. Indica una versión nueva para que el reemplazo de descargas quede acompañado por su aviso e historial correspondiente.",
   },
   "actualizacion-sin-descarga": {
     kind: "error",
