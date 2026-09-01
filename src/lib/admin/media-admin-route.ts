@@ -58,7 +58,10 @@ function mediaUnavailableResponse() {
 }
 
 export async function authorizeAdminMediaRequest(
-  request: NextRequest
+  request: NextRequest,
+  options?: {
+    maximumBytes?: number;
+  }
 ): Promise<
   AuthorizedAdminMediaForm |
   RejectedAdminMediaForm
@@ -91,7 +94,8 @@ export async function authorizeAdminMediaRequest(
 
     const form = await readTrustedAdminMediaForm(
       request,
-      adminOrigin
+      adminOrigin,
+      options?.maximumBytes
     );
 
     if (!form) {
