@@ -314,8 +314,8 @@ export default async function AdminGameUpdatePage({
         </div>
 
         {relatedUpdates.length > 0 ? (
-          <div className={styles.tableShell}>
-            <table className={styles.adminTable}>
+          <div className={styles.tableWrap}>
+            <table>
               <thead>
                 <tr>
                   <th>Versión</th>
@@ -327,9 +327,10 @@ export default async function AdminGameUpdatePage({
               <tbody>
                 {relatedUpdates.map((update) => (
                   <tr key={update.key}>
-                    <td>
+                    <th scope="row">
                       <strong>{update.payload.version}</strong>
-                    </td>
+                      <span>{update.key}</span>
+                    </th>
                     <td>{update.payload.type}</td>
                     <td>
                       {new Date(
