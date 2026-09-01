@@ -188,9 +188,9 @@ for (const route of [importRoute, uploadRoute]) {
   assert(
     route.includes("storeEditorialPreviewVideoFromPath") &&
       route.includes("previewClip: upload.publicPath") &&
-      route.includes("youtubePreview: undefined") &&
-      route.includes("directPreview: undefined"),
-    "Guardar un WebM debe limpiar cualquier metadata externa heredada."
+      route.includes('previewMode: "webm"') &&
+      route.includes("youtubePreview: undefined"),
+    "Guardar una fuente local o remota debe terminar explícitamente en modo WebM interno."
   );
 }
 
