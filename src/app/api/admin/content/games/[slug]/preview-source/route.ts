@@ -84,7 +84,7 @@ export async function POST(
     return json(
       {
         error:
-          "Usa una URL HTTPS pública que apunte directamente al archivo de video.",
+          "Usa una URL HTTPS pública: archivo directo o enlace de una plataforma compatible.",
       },
       400
     );

@@ -14,6 +14,12 @@ import os from "node:os";
 import path from "node:path";
 
 import {
+  downloadPlatformEditorialVideo,
+} from "./platform-video-source";
+import {
+  parseSupportedPlatformVideoUrl,
+} from "./platform-video-url";
+import {
   downloadRemoteEditorialVideo,
   MAX_REMOTE_PREVIEW_BYTES,
 } from "./remote-video-source";
@@ -216,6 +222,23 @@ async function stagedSourceCount() {
   ).length;
 }
 
+async function downloadPreviewSource(
+  sourceUrl: string,
+  destinationPath: string
+) {
+  if (parseSupportedPlatformVideoUrl(sourceUrl)) {
+    return downloadPlatformEditorialVideo(
+      sourceUrl,
+      destinationPath
+    );
+  }
+
+  return downloadRemoteEditorialVideo(
+    sourceUrl,
+    destinationPath
+  );
+}
+
 export async function createStagedRemotePreviewSource(
   slug: string,
   userId: string,
@@ -234,7 +257,7 @@ export async function createStagedRemotePreviewSource(
   const temporaryDestination = `${destination}.part`;
 
   try {
-    const remote = await downloadRemoteEditorialVideo(
+    const remote = await downloadPreviewSource(
       sourceUrl,
       temporaryDestination
     );

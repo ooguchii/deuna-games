@@ -72,6 +72,9 @@ const [
   trimPolicy,
   streamedSource,
   remoteSource,
+  platformUrl,
+  platformSource,
+  workerClient,
   staging,
   uploadRoute,
   stagingRoute,
@@ -90,11 +93,17 @@ const [
   nginx,
   envExample,
   packageJson,
+  workerScript,
+  workerService,
+  workerEnv,
 ] = await Promise.all([
   source("src/lib/media/editorial-video.ts"),
   source("src/lib/media/preview-video-policy.ts"),
   source("src/lib/media/streamed-preview-source.ts"),
   source("src/lib/media/remote-video-source.ts"),
+  source("src/lib/media/platform-video-url.ts"),
+  source("src/lib/media/platform-video-source.ts"),
+  source("src/lib/media/media-import-worker-client.ts"),
   source("src/lib/media/editorial-video-staging.ts"),
   source("src/app/api/admin/content/games/[slug]/preview-upload/route.ts"),
   source("src/app/api/admin/content/games/[slug]/preview-source/route.ts"),
@@ -113,6 +122,9 @@ const [
   source("ops/nginx/deuna-games.conf.example"),
   source(".env.example"),
   source("package.json"),
+  source("ops/worker/media-import-worker.mjs"),
+  source("ops/systemd/deuna-games-media-import.service.example"),
+  source("ops/systemd/media-import.env.example"),
 ]);
 
 assert(
@@ -172,18 +184,85 @@ assert(
     remoteSource.includes("MAX_REDIRECTS = 3") &&
     remoteSource.includes("MAX_REMOTE_PREVIEW_BYTES") &&
     remoteSource.includes("MAX_PREVIEW_SOURCE_BYTES") &&
-    remoteSource.includes("pipeline"),
-  "La URL directa debe usar el mismo techo de 1 GiB conservando SSRF, DNS y streaming."
+    remoteSource.includes("pipeline") &&
+    remoteSource.includes("mediaImportWorkerConfigured") &&
+    remoteSource.includes('kind: "direct"'),
+  "La URL directa debe usar el mismo techo de 1 GiB conservando SSRF, DNS, streaming y aislamiento de producción."
+);
+
+assert(
+  platformUrl.includes('platform: "youtube"') &&
+    platformUrl.includes('platform: "facebook"') &&
+    platformUrl.includes('platform: "instagram"') &&
+    platformUrl.includes('platform: "tiktok"') &&
+    platformUrl.includes('platform: "vimeo"') &&
+    platformUrl.includes('platform: "x"') &&
+    platformUrl.includes('platform: "twitch"') &&
+    platformUrl.includes('platform: "dailymotion"') &&
+    platformUrl.includes('platform: "streamable"') &&
+    platformUrl.includes('platform: "kick"') &&
+    platformUrl.includes('parsed.protocol !== "https:"') &&
+    platformUrl.includes("hostnameMatches"),
+  "Los enlaces de plataforma deben limitarse a HTTPS y a una allowlist explícita de proveedores públicos."
+);
+
+assert(
+  platformSource.includes("parseSupportedPlatformVideoUrl") &&
+    platformSource.includes("spawn(ytDlpExecutable()") &&
+    platformSource.includes("shell: false") &&
+    platformSource.includes("512 * 1024 * 1024") &&
+    platformSource.includes("mediaImportWorkerConfigured") &&
+    platformSource.includes('kind: "platform"') &&
+    platformSource.includes("--no-playlist") &&
+    platformSource.includes("--max-filesize"),
+  "Las plataformas deben preparar una copia visual liviana mediante yt-dlp sin shell, playlists ni descargas ilimitadas."
+);
+
+assert(
+  workerClient.includes('url.hostname === "127.0.0.1"') &&
+    workerClient.includes("DEUNA_MEDIA_IMPORT_WORKER_TOKEN") &&
+    workerClient.includes("MAX_PREVIEW_SOURCE_BYTES") &&
+    workerClient.includes("pipeline") &&
+    workerClient.includes("createWriteStream") &&
+    workerClient.includes('kind: "direct"') &&
+    workerClient.includes('kind: "platform"'),
+  "El runtime público sólo debe comunicarse con el worker multimedia autenticado por loopback y recibir archivos por streaming."
+);
+
+assert(
+  workerScript.includes('const HOST = "127.0.0.1"') &&
+    workerScript.includes("timingSafeEqual") &&
+    workerScript.includes("BlockList") &&
+    workerScript.includes("platformHosts") &&
+    workerScript.includes('"--no-playlist"') &&
+    workerScript.includes('"--max-filesize"') &&
+    workerScript.includes('"512M"') &&
+    workerScript.includes("activeJob") &&
+    workerScript.includes("createReadStream") &&
+    workerScript.includes("pipeline"),
+  "El worker debe quedar autenticado, limitado a loopback, con SSRF protegido, allowlist de plataformas y una sola importación concurrente."
+);
+
+assert(
+  workerService.includes("CPUQuota=35%") &&
+    workerService.includes("MemoryMax=384M") &&
+    workerService.includes("IPAddressDeny=10.0.0.0/8") &&
+    workerService.includes("NoNewPrivileges=true") &&
+    workerEnv.includes("DEUNA_MEDIA_IMPORT_WORKER_TOKEN") &&
+    workerEnv.includes("DEUNA_YTDLP_PATH"),
+  "El worker de producción debe conservar límites de CPU/memoria, bloqueo de redes privadas y secreto separado."
 );
 
 assert(
   staging.includes("STAGING_TTL_MS = 30 * 60 * 1_000") &&
     staging.includes("MAX_STAGED_SOURCES = 8") &&
     staging.includes("removeStagedEditorialPreviewSource") &&
+    staging.includes("parseSupportedPlatformVideoUrl") &&
+    staging.includes("downloadPlatformEditorialVideo") &&
     stagingRoute.includes("createStagedRemotePreviewSource") &&
     stagedPlaybackRoute.includes('"Accept-Ranges": "bytes"') &&
     stagedPlaybackRoute.includes("removeStagedEditorialPreviewSource"),
-  "La URL directa debe mantener staging privado, temporal y reproducible por Range."
+  "URL directa y plataformas deben compartir staging privado, temporal y reproducible por Range."
 );
 
 assert(
@@ -191,7 +270,7 @@ assert(
     importRoute.includes("storeEditorialPreviewVideoFromPath") &&
     importRoute.includes("previewClip: upload.publicPath") &&
     importRoute.includes("removeStagedEditorialPreviewSource"),
-  "La URL directa debe terminar como WebM recortado local y limpiar su staging."
+  "Toda fuente remota debe terminar como WebM recortado local y limpiar su staging."
 );
 
 assert(
@@ -226,7 +305,7 @@ assert(
     universalCard.includes("requestAnimationFrame") &&
     !universalCard.includes("YouTube") &&
     !universalCard.includes("iframe"),
-  "La tarjeta debe esperar 1 segundo y reproducir únicamente el WebM local."
+  "La tarjeta debe esperar 1 segundo y reproducir únicamente el WebM local, nunca un reproductor externo."
 );
 
 assert(
@@ -238,9 +317,10 @@ assert(
     previewAdminForm.includes("X-Deuna-Trim-End") &&
     previewAdminForm.includes("body = preparedSource.file") &&
     !previewAdminForm.includes("new FormData()") &&
-    previewAdminForm.includes("Cargar video para recortar") &&
+    previewAdminForm.includes("URL / YouTube / redes") &&
+    previewAdminForm.includes("Cargar video o enlace para recortar") &&
     previewAdminForm.includes("Crear preview WebM con este recorte"),
-  "Multimedia debe permitir 1 GiB por streaming sin perder archivo/URL ni recorte visual."
+  "Multimedia debe permitir 1 GiB local/directo y enlaces de plataforma sin perder streaming ni recorte visual."
 );
 
 assert(
@@ -275,7 +355,7 @@ assert(
   nextConfig.includes('"frame-src \'none\'"') &&
     !nextConfig.includes("youtube-nocookie") &&
     !nextConfig.includes("youtube.com"),
-  "CSP debe bloquear iframes externos."
+  "CSP debe seguir bloqueando iframes externos: las plataformas sólo existen en la importación administrativa."
 );
 
 assert(
@@ -284,14 +364,16 @@ assert(
     nginx.includes("proxy_request_buffering off") &&
     nginx.includes("proxy_send_timeout 600s") &&
     nginx.includes("client_max_body_size 8k"),
-  "Sólo preview-upload debe admitir 1 GiB y debe transmitirlo sin buffering de request en Nginx."
+  "Sólo preview-upload debe admitir 1 GiB de request y debe transmitirlo sin buffering en Nginx."
 );
 
 assert(
   envExample.includes("DEUNA_FFMPEG_PATH") &&
-    !envExample.includes("DEUNA_YTDLP") &&
+    envExample.includes("DEUNA_YTDLP_PATH") &&
+    envExample.includes("DEUNA_MEDIA_IMPORT_WORKER_URL") &&
+    envExample.includes("DEUNA_MEDIA_IMPORT_WORKER_TOKEN") &&
     !packageJson.includes("yt-dlp"),
-  "El sistema WebM debe seguir sin dependencias de YouTube."
+  "FFmpeg debe seguir siendo el conversor final y yt-dlp una herramienta editorial externa/aislada, no una dependencia del frontend ni del WebM público."
 );
 
 for (const removedPath of [
@@ -306,7 +388,7 @@ for (const removedPath of [
 ]) {
   assert(
     !(await exists(removedPath)),
-    `No debe quedar funcionalidad de YouTube directo: ${removedPath}`
+    `No debe volver el reproductor/preview YouTube específico: ${removedPath}`
   );
 }
 
@@ -319,5 +401,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  "Preview de video en tarjetas: OK (origen hasta 1 GiB por streaming/URL → recorte IN/OUT <= 30 s → WebM local <= 3 MB)."
+  "Preview de video en tarjetas: OK (archivo/URL/plataforma pública → staging privado → recorte IN/OUT <= 30 s → WebM local <= 3 MB)."
 );
