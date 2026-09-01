@@ -130,14 +130,12 @@ export async function POST(request: NextRequest) {
       bytes: upload.bytes,
       reused: upload.reused,
     });
-  } catch (error) {
-    const message =
-      error instanceof Error
-        ? error.message
-        : "No se pudo procesar el icono.";
-
+  } catch {
     return json(
-      { error: message },
+      {
+        error:
+          "El icono no pudo validarse. Usa un SVG simple y seguro o un WebP transparente.",
+      },
       400
     );
   }
