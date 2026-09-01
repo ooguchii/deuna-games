@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { notFound } from "next/navigation";
+import {
+  notFound,
+  redirect,
+} from "next/navigation";
 
 import EditorialHistory from "@/components/admin/EditorialHistory";
 import EditorStateNotice from "@/components/admin/EditorStateNotice";
@@ -75,11 +78,21 @@ export default async function AdminUpdateEditorPage({
     );
   }
 
+  const update = item.payload;
+
+  if (
+    publicationState?.publicVisible &&
+    !publicationState.hasUnpublishedChanges
+  ) {
+    redirect(
+      `/admin/juegos/${encodeURIComponent(update.gameSlug)}/actualizacion`
+    );
+  }
+
   const state = Array.isArray(parameters.estado)
     ? parameters.estado[0]
     : parameters.estado;
   const section = resolveUpdateSection(parameters.seccion);
-  const update = item.payload;
   const publishedAt = new Date(
     update.publishedAt
   )
@@ -89,17 +102,17 @@ export default async function AdminUpdateEditorPage({
   return (
     <>
       <Link
-        href="/admin/actualizaciones"
+        href="/admin/juegos"
         className={styles.backLink}
       >
         <ArrowLeft size={15} aria-hidden="true" />
-        Volver a actualizaciones
+        Volver a juegos
       </Link>
 
       <AdminPageHeader
-        eyebrow={<>ACTUALIZACIÓN · REVISIÓN {item.revision}</>}
+        eyebrow={<>ACTUALIZACIÓN HISTÓRICA · REVISIÓN {item.revision}</>}
         title={update.version}
-        description={<>Juego relacionado: {update.gameSlug}. Edita, publica o revisa el historial como tareas separadas.</>}
+        description={<>Compatibilidad editorial para un borrador antiguo relacionado con {update.gameSlug}. Las nuevas versiones se gestionan desde el propio juego.</>}
         action={<span className={styles.draftState}>
           {publicationState?.publicVisible === false
             ? "Oculta de la web"
@@ -187,10 +200,10 @@ export default async function AdminUpdateEditorPage({
 
             <div className={styles.formActions}>
               <p>
-                Guardar conserva el cambio como borrador. La web pública sólo cambia al publicar.
+                Este editor se conserva únicamente para resolver borradores históricos. Las versiones nuevas deben publicarse desde Juegos → Actualizar.
               </p>
               <button type="submit">
-                Guardar borrador
+                Guardar borrador histórico
               </button>
             </div>
           </form>
