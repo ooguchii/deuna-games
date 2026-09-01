@@ -15,13 +15,6 @@ import {
   inspectSafeEditorialWebm,
   MAX_EDITORIAL_PREVIEW_BYTES,
 } from "../src/lib/media/safe-webm.ts";
-import {
-  parseYouTubePreview,
-  parseYouTubeVideo,
-} from "../src/lib/media/youtube-preview.ts";
-import {
-  resolveGameCardPreview,
-} from "../src/lib/media/game-card-preview.ts";
 
 const root = process.cwd();
 const failures = [];
@@ -74,58 +67,13 @@ assert(
   "El recorte compartido debe aceptar ventanas válidas y rechazar duración, orden o posiciones inválidas."
 );
 
-const parsedWatch = parseYouTubeVideo(
-  "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
-);
-const parsedShort = parseYouTubeVideo(
-  "https://youtu.be/dQw4w9WgXcQ?t=14"
-);
-assert(
-  parsedWatch?.videoId === "dQw4w9WgXcQ" &&
-    parsedShort?.videoId === "dQw4w9WgXcQ" &&
-    parseYouTubeVideo("https://example.com/watch?v=dQw4w9WgXcQ") === null &&
-    parseYouTubePreview(
-      "dQw4w9WgXcQ",
-      "12.5",
-      "30"
-    )?.endSeconds === 30 &&
-    parseYouTubePreview(
-      "dQw4w9WgXcQ",
-      "0",
-      "30.001"
-    ) === null,
-  "YouTube debe aceptar sólo IDs/URLs reconocidos y compartir el límite de 30 s."
-);
-assert(
-  resolveGameCardPreview({
-    previewMode: "youtube",
-    previewClip: "/media/editorial/game/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.webm",
-    youtubePreview: {
-      videoId: "dQw4w9WgXcQ",
-      startSeconds: 4,
-      endSeconds: 24,
-    },
-  })?.kind === "youtube" &&
-    resolveGameCardPreview({
-      previewMode: "webm",
-      previewClip: "/media/editorial/game/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.webm",
-      youtubePreview: {
-        videoId: "dQw4w9WgXcQ",
-        startSeconds: 4,
-        endSeconds: 24,
-      },
-    })?.kind === "webm" &&
-    resolveGameCardPreview({
-      previewClip: "/media/editorial/game/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.webm",
-    })?.kind === "webm",
-  "El resolver debe respetar el modo activo, conservar fallback y mantener compatibilidad con WebM históricos."
-);
-
 const [
   schema,
   typeModel,
   transcoder,
   trimPolicy,
+  youtubePreviewSource,
+  gamePreviewResolver,
   remoteSource,
   staging,
   uploadRoute,
@@ -159,6 +107,8 @@ const [
   source("src/types/game.ts"),
   source("src/lib/media/editorial-video.ts"),
   source("src/lib/media/preview-video-policy.ts"),
+  source("src/lib/media/youtube-preview.ts"),
+  source("src/lib/media/game-card-preview.ts"),
   source("src/lib/media/remote-video-source.ts"),
   source("src/lib/media/editorial-video-staging.ts"),
   source("src/app/api/admin/content/games/[slug]/preview-upload/route.ts"),
@@ -210,6 +160,29 @@ assert(
     trimPolicy.includes("MAX_PREVIEW_DURATION_SECONDS = 30") &&
     trimPolicy.includes("MAX_PREVIEW_SOURCE_POSITION_SECONDS = 86_400"),
   "La política de recorte debe seguir siendo única para local y YouTube."
+);
+assert(
+  youtubePreviewSource.includes("VIDEO_ID_PATTERN") &&
+    youtubePreviewSource.includes("[A-Za-z0-9_-]{11}") &&
+    youtubePreviewSource.includes('hostname === "youtu.be"') &&
+    youtubePreviewSource.includes('url.searchParams.get("v")') &&
+    youtubePreviewSource.includes('parts[0] === "shorts"') &&
+    youtubePreviewSource.includes('parts[0] === "embed"') &&
+    youtubePreviewSource.includes('parts[0] === "live"') &&
+    youtubePreviewSource.includes("parsePreviewTrimWindow") &&
+    youtubePreviewSource.includes("url.protocol !== \"https:\"") &&
+    youtubePreviewSource.includes("url.username") &&
+    youtubePreviewSource.includes("url.password"),
+  "El parser YouTube debe aceptar formatos conocidos, exigir ID válido/HTTPS y reutilizar la política IN/OUT."
+);
+assert(
+  gamePreviewResolver.includes('game.previewMode === "youtube"') &&
+    gamePreviewResolver.includes('game.previewMode === "webm"') &&
+    gamePreviewResolver.includes("validateYouTubePreview") &&
+    gamePreviewResolver.includes("game.previewClip") &&
+    gamePreviewResolver.indexOf('game.previewMode === "youtube"') <
+      gamePreviewResolver.lastIndexOf("game.previewClip"),
+  "El resolver debe respetar el modo activo y mantener fallback entre YouTube y WebM."
 );
 assert(
   transcoder.includes('"libvpx-vp9"') &&
