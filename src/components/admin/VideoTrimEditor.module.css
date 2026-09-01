@@ -150,7 +150,7 @@
   top: 7px;
   display: grid;
   place-items: center;
-  width: 26px;
+  width: 28px;
   height: 42px;
   padding: 0;
   border: 1px solid color-mix(in srgb, var(--brand) 78%, #fff);
@@ -165,9 +165,9 @@
 
 .handle span {
   writing-mode: vertical-rl;
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 800;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.04em;
   line-height: 1;
   transform: rotate(180deg);
 }
