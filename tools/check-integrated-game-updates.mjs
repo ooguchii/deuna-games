@@ -7,6 +7,8 @@ const files = {
     "src/app/admin/(protected)/juegos/[slug]/actualizacion/page.tsx",
   route:
     "src/app/api/admin/content/games/[slug]/publish-update/route.ts",
+  gameCoreRoute:
+    "src/app/api/admin/content/games/[slug]/route.ts",
   service:
     "src/lib/admin/game-update-publication-service.ts",
   legacyIndex:
@@ -54,13 +56,20 @@ expect(
   "La ruta unificada debe usar publicación atómica, revalidación y protección exacta del formulario."
 );
 expect(
+  entries.gameCoreRoute.includes("getGamePublicationIdentity") &&
+    entries.gameCoreRoute.includes("version-por-actualizacion"),
+  "La ficha normal de un juego publicado no debe permitir cambiar versión evitando el flujo de Actualizar."
+);
+expect(
   entries.service.includes("withAdminTransaction") &&
     entries.service.includes("FOR UPDATE") &&
     entries.service.includes('outcome: "pending_changes"') &&
     entries.service.includes('outcome: "same_version"') &&
     entries.service.includes("resolveGameDownload") &&
+    entries.service.includes("normalizeVersionToken") &&
+    entries.service.includes("versionAlreadyRegistered") &&
     entries.service.includes('"game_update"'),
-  "La publicación integrada debe bloquear concurrencia/cambios pendientes y publicar juego + aviso en una transacción."
+  "La publicación integrada debe bloquear concurrencia, cambios pendientes, versiones equivalentes o históricas y publicar juego + aviso en una transacción."
 );
 expect(
   entries.legacyIndex.includes('redirect("/admin/juegos")') &&
@@ -82,5 +91,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  "Actualizaciones integradas: OK (mismo juego/URL, descargas + versión + aviso atómicos, historial público preservado y navegación administrativa simplificada)."
+  "Actualizaciones integradas: OK (mismo juego/URL, descargas + versión + aviso atómicos, versiones duplicadas bloqueadas, historial público preservado y navegación administrativa simplificada)."
 );
