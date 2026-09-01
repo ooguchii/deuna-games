@@ -54,7 +54,7 @@ function readSingleFile(
 }
 
 function redirectPath(state: string) {
-  return `/admin/configuracion?seccion=apariencia&estado=${state}`;
+  return `/admin/configuracion?seccion=apariencia&panel=backgrounds&estado=${state}`;
 }
 
 export async function POST(request: NextRequest) {
