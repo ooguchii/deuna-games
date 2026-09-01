@@ -16,6 +16,7 @@ import {
   MonitorCog,
   Palette,
   PanelTop,
+  RefreshCcw,
   Rocket,
   SquarePen,
   Tags,
@@ -31,6 +32,7 @@ const gameSections = [
   { id: "rendimiento", label: "Rendimiento", icon: Gauge },
   { id: "multimedia", label: "Multimedia", icon: ImageIcon },
   { id: "descargas", label: "Descargas", icon: Download },
+  { id: "actualizacion", label: "Actualizar", icon: RefreshCcw },
   { id: "publicacion", label: "Publicación", icon: Rocket },
   { id: "historial", label: "Historial", icon: FileClock },
 ] as const;
@@ -181,13 +183,17 @@ function ContextLinks({
 export default function AdminContextBar() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const gameMatch = /^\/admin\/juegos\/([^/]+)(?:\/(publicacion))?$/.exec(pathname);
+  const gameMatch =
+    /^\/admin\/juegos\/([^/]+)(?:\/(publicacion|actualizacion))?$/.exec(
+      pathname
+    );
   const updateMatch = /^\/admin\/actualizaciones\/([^/]+)$/.exec(pathname);
 
   if (gameMatch && gameMatch[1] !== "nuevo") {
     const gamePath = `/admin/juegos/${gameMatch[1]}`;
-    const selected = gameMatch[2] === "publicacion"
-      ? "publicacion"
+    const routeSection = gameMatch[2];
+    const selected = routeSection
+      ? routeSection
       : searchParams.get("seccion") ?? "ficha";
 
     return (
@@ -196,11 +202,17 @@ export default function AdminContextBar() {
         selected={selected}
         sections={gameSections}
         label="Secciones del editor de juego"
-        hrefForSection={(sectionId) =>
-          sectionId === "publicacion"
-            ? `${gamePath}/publicacion`
-            : `${gamePath}?seccion=${sectionId}`
-        }
+        hrefForSection={(sectionId) => {
+          if (sectionId === "publicacion") {
+            return `${gamePath}/publicacion`;
+          }
+
+          if (sectionId === "actualizacion") {
+            return `${gamePath}/actualizacion`;
+          }
+
+          return `${gamePath}?seccion=${sectionId}`;
+        }}
       />
     );
   }

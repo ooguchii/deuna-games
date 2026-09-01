@@ -17,6 +17,41 @@ const notices = {
     message:
       "Actualización creada como borrador privado. Revisa sus datos y pulsa Publicar cuando deba aparecer en la web.",
   },
+  "version-por-actualizacion": {
+    kind: "warning",
+    message:
+      "La ficha no se guardó porque intentaste cambiar la versión de un juego ya publicado. Haz ese cambio desde Actualizar para que versión, descargas y aviso público permanezcan sincronizados.",
+  },
+  "actualizacion-publicada": {
+    kind: "success",
+    message:
+      "Actualización publicada. La ficha conserva su misma URL y ya usa la nueva versión y las nuevas fuentes de descarga; el aviso quedó registrado en Actualizaciones.",
+  },
+  "actualizacion-juego-no-publicado": {
+    kind: "warning",
+    message:
+      "Este juego todavía no está publicado. Completa primero su publicación inicial; las actualizaciones están reservadas para versiones posteriores de un juego ya visible.",
+  },
+  "actualizacion-cambios-pendientes": {
+    kind: "warning",
+    message:
+      "El juego tiene otros cambios sin publicar. Por seguridad no se mezclaron con la actualización. Publica o restaura esos cambios y vuelve a intentarlo.",
+  },
+  "actualizacion-misma-version": {
+    kind: "warning",
+    message:
+      "La nueva versión coincide con la versión pública actual. Para mantenimiento de mirrors o enlaces sin una versión nueva, usa Descargas; para anunciar una versión nueva, indica aquí su nuevo número.",
+  },
+  "actualizacion-sin-descarga": {
+    kind: "error",
+    message:
+      "La actualización necesita al menos una fuente de descarga válida, visible y marcada como Disponible.",
+  },
+  "actualizacion-duplicada": {
+    kind: "warning",
+    message:
+      "Ya existe un aviso registrado para esa versión de este juego. Revisa el historial antes de intentar publicarla nuevamente.",
+  },
   duplicado: {
     kind: "warning",
     message:

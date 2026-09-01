@@ -6,6 +6,7 @@ import {
   CircleSlash2,
   Eye,
   Pencil,
+  RefreshCcw,
   Rocket,
   Search,
   X,
@@ -291,6 +292,15 @@ export default function AdminGamesCatalog({
                         <Eye size={14} aria-hidden="true" />
                         Previa
                       </Link>
+                      {item.status === "published" && (
+                        <Link
+                          href={`/admin/juegos/${encodeURIComponent(item.key)}/actualizacion`}
+                          title={`Publicar una nueva versión de ${item.title}`}
+                        >
+                          <RefreshCcw size={14} aria-hidden="true" />
+                          Actualizar
+                        </Link>
+                      )}
                       <Link
                         href={`/admin/juegos/${encodeURIComponent(item.key)}/publicacion`}
                         title={`Revisar publicación de ${item.title}`}

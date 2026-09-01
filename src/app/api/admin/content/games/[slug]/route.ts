@@ -9,6 +9,7 @@ import {
   editorialGameFormSchema,
 } from "@/lib/admin/content-forms";
 import {
+  getEditorialItem,
   saveGameCoreDraft,
 } from "@/lib/admin/content-service";
 import {
@@ -18,6 +19,9 @@ import {
 import {
   resolveGameTaxonomySelection,
 } from "@/lib/admin/game-taxonomy-service";
+import {
+  getGamePublicationIdentity,
+} from "@/lib/admin/publication-overview";
 import {
   hasExactAdminFormFields,
 } from "@/lib/admin/request-security";
@@ -36,6 +40,10 @@ const fields = [
   "reviews",
   "imageAlt",
 ] as const;
+
+function normalizeVersion(value: string | undefined) {
+  return value?.trim() ?? "";
+}
 
 export async function POST(
   request: NextRequest,
@@ -82,11 +90,40 @@ export async function POST(
 
   try {
     const { expectedRevision, ...input } = parsed.data;
-    const classification =
-      await resolveGameTaxonomySelection({
-        category: input.category,
-        currentGameKey: slug,
-      });
+    const [classification, currentItem, publicationIdentity] =
+      await Promise.all([
+        resolveGameTaxonomySelection({
+          category: input.category,
+          currentGameKey: slug,
+        }),
+        getEditorialItem("game", slug),
+        getGamePublicationIdentity(slug),
+      ]);
+
+    if (!currentItem) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        "/admin/juegos?estado=no-encontrado"
+      );
+    }
+
+    if (currentItem.revision !== expectedRevision) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        `${target}?estado=conflicto&seccion=ficha`
+      );
+    }
+
+    if (
+      publicationIdentity?.publicVisible &&
+      normalizeVersion(input.version) !==
+        normalizeVersion(currentItem.payload.version)
+    ) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        `${target}/actualizacion?estado=version-por-actualizacion`
+      );
+    }
 
     if (!classification.valid || !classification.category) {
       return adminRedirect(

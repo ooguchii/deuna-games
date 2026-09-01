@@ -148,7 +148,7 @@ export default async function AdminDashboardPage() {
         <article>
           <span><RefreshCcw size={20} aria-hidden="true" /></span>
           <strong>{publicUpdates}</strong>
-          <p>Actualizaciones con snapshot</p>
+          <p>Avisos de actualización publicados</p>
         </article>
         <article>
           <span><Database size={20} aria-hidden="true" /></span>
@@ -232,18 +232,18 @@ export default async function AdminDashboardPage() {
             <div>
               <strong>Revisar juegos</strong>
               <span>
-                Títulos, clasificaciones, versiones, requisitos, descargas y publicación.
+                Títulos, clasificaciones, requisitos, rendimiento, descargas y publicación.
               </span>
             </div>
             <ArrowRight size={18} aria-hidden="true" />
           </Link>
 
-          <Link href="/admin/actualizaciones">
+          <Link href="/admin/juegos">
             <RefreshCcw size={23} aria-hidden="true" />
             <div>
-              <strong>Revisar actualizaciones</strong>
+              <strong>Publicar nueva versión</strong>
               <span>
-                Versiones, fechas, publicación y relación con cada juego.
+                Elige un juego publicado y usa Actualizar para cambiar versión y descargas y generar el aviso público en una sola operación.
               </span>
             </div>
             <ArrowRight size={18} aria-hidden="true" />
