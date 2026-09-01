@@ -15,6 +15,11 @@ import {
   type EditorialPreviewUploadResult,
 } from "./editorial-video";
 import {
+  downloadViaMediaImportWorker,
+  mediaImportWorkerConfigured,
+  requireRemoteImportWorkerInProduction,
+} from "./media-import-worker-client";
+import {
   MAX_PREVIEW_SOURCE_BYTES,
   parsePreviewTrimWindow,
   type PreviewTrimWindow,
@@ -234,6 +239,53 @@ async function resolveDownloadedSource(
   return filePath;
 }
 
+async function downloadSelectedSource(
+  youtubeUrl: string,
+  temporaryDirectory: string,
+  trim: PreviewTrimWindow
+) {
+  requireRemoteImportWorkerInProduction();
+
+  if (mediaImportWorkerConfigured()) {
+    const destination = path.join(
+      temporaryDirectory,
+      "source.video"
+    );
+
+    await downloadViaMediaImportWorker(
+      {
+        kind: "youtube",
+        url: youtubeUrl,
+        startSeconds: trim.startSeconds,
+        endSeconds: trim.endSeconds,
+      },
+      destination
+    );
+
+    const stats = await lstat(destination);
+    if (
+      !stats.isFile() ||
+      stats.isSymbolicLink() ||
+      stats.size <= 0 ||
+      stats.size > MAX_PREVIEW_SOURCE_BYTES
+    ) {
+      throw new Error(
+        "El worker multimedia no produjo un tramo de YouTube válido."
+      );
+    }
+
+    return destination;
+  }
+
+  await runYtDlp(
+    youtubeUrl,
+    temporaryDirectory,
+    trim
+  );
+
+  return resolveDownloadedSource(temporaryDirectory);
+}
+
 export async function storeEditorialPreviewVideoFromYouTube(
   slug: string,
   value: string,
@@ -263,13 +315,10 @@ export async function storeEditorialPreviewVideoFromYouTube(
   );
 
   try {
-    await runYtDlp(
+    const sourcePath = await downloadSelectedSource(
       youtube.canonicalUrl,
       temporaryDirectory,
       normalizedTrim
-    );
-    const sourcePath = await resolveDownloadedSource(
-      temporaryDirectory
     );
 
     return await storeEditorialPreviewVideoFromPath(
