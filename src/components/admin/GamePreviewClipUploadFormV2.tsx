@@ -448,7 +448,7 @@ export default function GamePreviewClipUploadFormV2({
     }
 
     if (isGameDirectPreviewPlatform(mode)) {
-      setYoutubeUrl("");
+      setYouTubeUrl("");
       setDirectUrl(
         savedDirectPreview?.platform === mode
           ? savedDirectPreview.url
@@ -457,7 +457,7 @@ export default function GamePreviewClipUploadFormV2({
       return;
     }
 
-    setYoutubeUrl("");
+    setYouTubeUrl("");
     setDirectUrl("");
   }
 
