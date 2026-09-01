@@ -71,6 +71,12 @@ type StagedSourceResponse = {
   error?: unknown;
 };
 
+type PreviewStateResponse = {
+  previewMode?: unknown;
+  previewClip?: unknown;
+  youtubePreview?: unknown;
+};
+
 function formatSize(bytes: number) {
   if (bytes >= 1024 * 1024 * 1024) {
     return `${(bytes / 1024 / 1024 / 1024).toFixed(2)} GB`;
@@ -146,6 +152,26 @@ function parsePublicHttpsUrl(value: string) {
   return parsedUrl;
 }
 
+function isYouTubePreview(
+  value: unknown
+): value is GameYouTubePreview {
+  if (
+    typeof value !== "object" ||
+    value === null ||
+    Array.isArray(value)
+  ) {
+    return false;
+  }
+
+  const preview = value as Record<string, unknown>;
+  return (
+    typeof preview.videoId === "string" &&
+    /^[A-Za-z0-9_-]{11}$/.test(preview.videoId) &&
+    typeof preview.startSeconds === "number" &&
+    typeof preview.endSeconds === "number"
+  );
+}
+
 export default function GamePreviewClipUploadForm({
   slug,
   revision,
@@ -153,9 +179,19 @@ export default function GamePreviewClipUploadForm({
   currentPreviewMode,
   currentYouTubePreview,
 }: GamePreviewClipUploadFormProps) {
-  const currentYouTubeUrl = currentYouTubePreview
+  const initialYouTubeUrl = currentYouTubePreview
     ? `https://www.youtube.com/watch?v=${currentYouTubePreview.videoId}`
     : "";
+  const [savedPreviewMode, setSavedPreviewMode] =
+    useState<GamePreviewMode | undefined>(
+      currentPreviewMode
+    );
+  const [savedPreview, setSavedPreview] =
+    useState<string | undefined>(currentPreview);
+  const [savedYouTubePreview, setSavedYouTubePreview] =
+    useState<GameYouTubePreview | undefined>(
+      currentYouTubePreview
+    );
   const [sourceMode, setSourceMode] =
     useState<SourceMode>(
       currentPreviewMode === "youtube" && currentYouTubePreview
@@ -164,7 +200,7 @@ export default function GamePreviewClipUploadForm({
     );
   const [sourceUrl, setSourceUrl] = useState(
     currentPreviewMode === "youtube"
-      ? currentYouTubeUrl
+      ? initialYouTubeUrl
       : ""
   );
   const [preparedSource, setPreparedSource] =
@@ -179,14 +215,73 @@ export default function GamePreviewClipUploadForm({
     () => parseYouTubeVideo(sourceUrl),
     [sourceUrl]
   );
-  const currentYouTubeTrim = useMemo(
+  const savedYouTubeUrl = savedYouTubePreview
+    ? `https://www.youtube.com/watch?v=${savedYouTubePreview.videoId}`
+    : "";
+  const savedYouTubeTrim = useMemo(
     () =>
-      currentYouTubePreview &&
-      parsedYouTube?.videoId === currentYouTubePreview.videoId
-        ? youtubePreviewTrim(currentYouTubePreview)
+      savedYouTubePreview &&
+      parsedYouTube?.videoId === savedYouTubePreview.videoId
+        ? youtubePreviewTrim(savedYouTubePreview)
         : null,
-    [currentYouTubePreview, parsedYouTube?.videoId]
+    [savedYouTubePreview, parsedYouTube?.videoId]
   );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void fetch(
+      `/api/admin/content/games/${encodeURIComponent(slug)}/preview-state`,
+      {
+        method: "GET",
+        credentials: "same-origin",
+        cache: "no-store",
+      }
+    )
+      .then(async (response) => {
+        if (!response.ok) return null;
+        return (await response.json()) as PreviewStateResponse;
+      })
+      .then((result) => {
+        if (!result || cancelled) return;
+
+        const mode =
+          result.previewMode === "youtube" ||
+          result.previewMode === "webm"
+            ? result.previewMode
+            : undefined;
+        const local =
+          typeof result.previewClip === "string" &&
+          result.previewClip.trim()
+            ? result.previewClip
+            : undefined;
+        const youtube = isYouTubePreview(
+          result.youtubePreview
+        )
+          ? result.youtubePreview
+          : undefined;
+
+        setSavedPreviewMode(mode);
+        setSavedPreview(local);
+        setSavedYouTubePreview(youtube);
+
+        if (mode === "youtube" && youtube) {
+          setSourceMode((current) =>
+            current === "file" ? "youtube" : current
+          );
+          setSourceUrl((current) =>
+            current.trim()
+              ? current
+              : `https://www.youtube.com/watch?v=${youtube.videoId}`
+          );
+        }
+      })
+      .catch(() => undefined);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [slug]);
 
   useEffect(() => {
     const source = preparedSource;
@@ -225,8 +320,12 @@ export default function GamePreviewClipUploadForm({
     setSourceMode(mode);
     setStatus(null);
 
-    if (mode !== "youtube" && currentPreviewMode !== "youtube") {
-      setSourceUrl("");
+    if (
+      mode === "youtube" &&
+      !sourceUrl.trim() &&
+      savedYouTubeUrl
+    ) {
+      setSourceUrl(savedYouTubeUrl);
     }
   }
 
@@ -243,7 +342,7 @@ export default function GamePreviewClipUploadForm({
 
     setSourceMode("youtube");
     setStatus(
-      "Detecté YouTube. Abrí el reproductor directo de YouTube para recortar sin descargar ni convertir el video. Si prefieres un WebM local, puedes intentar esa conversión de forma opcional."
+      "Detecté YouTube. Abrí el reproductor directo para recortar sin descargar ni convertir el video. Si prefieres un WebM local, puedes intentar esa conversión de forma opcional."
     );
   }
 
@@ -533,9 +632,9 @@ export default function GamePreviewClipUploadForm({
   }
 
   const activePreviewLabel =
-    currentPreviewMode === "youtube" && currentYouTubePreview
-      ? `YouTube directo · ${currentYouTubePreview.startSeconds}s → ${currentYouTubePreview.endSeconds}s`
-      : currentPreview
+    savedPreviewMode === "youtube" && savedYouTubePreview
+      ? `YouTube directo · ${savedYouTubePreview.startSeconds}s → ${savedYouTubePreview.endSeconds}s`
+      : savedPreview
         ? "WebM local"
         : "Sin preview configurado";
 
@@ -556,12 +655,12 @@ export default function GamePreviewClipUploadForm({
         <span>{activePreviewLabel}</span>
       </div>
 
-      {currentPreview && (
+      {savedPreview && (
         <div className={`${styles.tableSummary} ${styles.fieldWide}`}>
           <strong>WebM local disponible</strong>
-          <span>{currentPreview}</span>
+          <span>{savedPreview}</span>
           <video
-            src={currentPreview}
+            src={savedPreview}
             controls
             muted
             playsInline
@@ -576,11 +675,11 @@ export default function GamePreviewClipUploadForm({
         </div>
       )}
 
-      {currentYouTubePreview && (
+      {savedYouTubePreview && (
         <div className={`${styles.tableSummary} ${styles.fieldWide}`}>
           <strong>YouTube directo disponible</strong>
           <span>
-            {currentYouTubeUrl} · {currentYouTubePreview.startSeconds}s → {currentYouTubePreview.endSeconds}s
+            {savedYouTubeUrl} · {savedYouTubePreview.startSeconds}s → {savedYouTubePreview.endSeconds}s
           </span>
         </div>
       )}
@@ -694,7 +793,7 @@ export default function GamePreviewClipUploadForm({
                   key={parsedYouTube.videoId}
                   videoId={parsedYouTube.videoId}
                   sourceLabel={parsedYouTube.canonicalUrl}
-                  initialTrim={currentYouTubeTrim}
+                  initialTrim={savedYouTubeTrim}
                   onTrimChange={handleTrimChange}
                 />
               </div>
@@ -791,7 +890,7 @@ export default function GamePreviewClipUploadForm({
         </div>
       </form>
 
-      {(currentPreview || currentYouTubePreview) && (
+      {(savedPreview || savedYouTubePreview) && (
         <form
           method="post"
           action={`/api/admin/content/games/${encodeURIComponent(slug)}/preview-remove`}
