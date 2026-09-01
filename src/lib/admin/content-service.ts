@@ -151,6 +151,7 @@ export type GameMediaDraftInput = Pick<
   | "previewMode"
   | "previewClip"
   | "youtubePreview"
+  | "directPreview"
 >;
 
 export type UpdateDraftInput = Pick<
@@ -277,9 +278,10 @@ export async function getEditorialOverview() {
   };
 }
 
-export async function getEditorialItem<
-  Type extends EditorialItemType,
->(type: Type, key: string): Promise<EditorialItem<Type> | null> {
+export async function getEditorialItem<Type extends EditorialItemType>(
+  type: Type,
+  key: string
+): Promise<EditorialItem<Type> | null> {
   await verifyAdminSession();
 
   const result = await adminQuery<EditorialItemRow>(
@@ -290,8 +292,8 @@ export async function getEditorialItem<
        draft_payload,
        draft_status,
        revision,
-       source_checksum,
        source_present,
+       source_checksum,
        updated_at
      FROM deuna_admin.editorial_items
      WHERE item_type = $1
@@ -303,7 +305,7 @@ export async function getEditorialItem<
 
   if (!row) return null;
 
-  const revisions = await adminQuery<EditorialRevisionRow>(
+  const revisionsResult = await adminQuery<EditorialRevisionRow>(
     `SELECT
        id::text,
        revision,
@@ -312,21 +314,51 @@ export async function getEditorialItem<
      FROM deuna_admin.editorial_revisions
      WHERE item_id = $1
      ORDER BY revision DESC
-     LIMIT 10`,
+     LIMIT 12`,
     [row.id]
   );
 
   return {
     id: row.id,
     type,
-    ...mapListRow(type, row),
-    revisions: revisions.rows.map((revision) => ({
-      id: revision.id,
-      revision: revision.revision,
-      action: revision.action,
-      createdAt: revision.created_at,
-    })),
+    key: row.item_key,
+    payload: parseEditorialPayload(
+      type,
+      row.draft_payload
+    ),
+    status: row.draft_status,
+    revision: row.revision,
+    sourcePresent: row.source_present,
+    updatedAt: row.updated_at,
+    revisions: revisionsResult.rows,
   };
+}
+
+export async function listEditorialRevisions(
+  type: EditorialItemType,
+  key: string,
+  limit = 20
+): Promise<EditorialRevision[]> {
+  await verifyAdminSession();
+
+  const safeLimit = Math.max(1, Math.min(100, limit));
+  const result = await adminQuery<EditorialRevisionRow>(
+    `SELECT
+       revision_row.id::text AS id,
+       revision_row.revision,
+       revision_row.action,
+       revision_row.created_at
+     FROM deuna_admin.editorial_revisions AS revision_row
+     INNER JOIN deuna_admin.editorial_items AS item
+       ON item.id = revision_row.item_id
+     WHERE item.item_type = $1
+       AND item.item_key = $2
+     ORDER BY revision_row.revision DESC
+     LIMIT $3`,
+    [type, key, safeLimit]
+  );
+
+  return result.rows;
 }
 
 async function writeRevision(
@@ -334,70 +366,69 @@ async function writeRevision(
   item: EditorialItemRow,
   payload: EditorialPayloadByType[EditorialItemType],
   actorUserId: string,
-  action: "draft_saved" | "draft_restored",
-  details: Record<string, unknown>
+  action: EditorialRevisionRow["action"],
+  metadata?: Record<string, unknown>
 ) {
-  const nextRevision = item.revision + 1;
   const normalized = normalizeEditorialPayload(
-    parseEditorialPayload(item.item_type, payload)
+    item.item_type,
+    payload
   );
-  const serialized = JSON.stringify(normalized);
-  const status: EditorialStatus =
-    hashEditorialPayload(normalized) ===
-    item.source_checksum
-      ? "synced"
-      : "modified";
+  const checksum = hashEditorialPayload(normalized);
+  const revision = item.revision + 1;
+  const draftStatus: EditorialStatus =
+    checksum === item.source_checksum ? "synced" : "modified";
 
   await client.query(
     `UPDATE deuna_admin.editorial_items
-     SET draft_payload = $2::jsonb,
-         draft_status = $3,
-         revision = $4,
-         updated_at = now(),
-         updated_by = $5
-     WHERE id = $1`,
+     SET draft_payload = $1::jsonb,
+         draft_status = $2,
+         revision = $3,
+         updated_by = $4,
+         updated_at = NOW()
+     WHERE id = $5`,
     [
+      JSON.stringify(normalized),
+      draftStatus,
+      revision,
+      actorUserId,
       item.id,
-      serialized,
-      status,
-      nextRevision,
-      actorUserId,
-    ]
-  );
-  await client.query(
-    `INSERT INTO deuna_admin.editorial_revisions
-       (item_id, revision, payload, action, actor_user_id)
-     VALUES ($1, $2, $3::jsonb, $4, $5)`,
-    [
-      item.id,
-      nextRevision,
-      serialized,
-      action,
-      actorUserId,
-    ]
-  );
-  await client.query(
-    `INSERT INTO deuna_admin.admin_audit_log
-       (user_id, action, entity_type, entity_id, details)
-     VALUES ($1, $2, $3, $4, $5::jsonb)`,
-    [
-      actorUserId,
-      action,
-      item.item_type,
-      item.item_key,
-      JSON.stringify({
-        revision: nextRevision,
-        ...details,
-      }),
     ]
   );
 
-  return nextRevision;
+  await client.query(
+    `INSERT INTO deuna_admin.editorial_revisions (
+       item_id,
+       revision,
+       action,
+       payload,
+       payload_hash,
+       actor_user_id,
+       metadata
+     )
+     VALUES (
+       $1,
+       $2,
+       $3,
+       $4::jsonb,
+       $5,
+       $6,
+       $7::jsonb
+     )`,
+    [
+      item.id,
+      revision,
+      action,
+      JSON.stringify(normalized),
+      checksum,
+      actorUserId,
+      JSON.stringify(metadata ?? {}),
+    ]
+  );
+
+  return revision;
 }
 
-async function updateEditorialDraft<
-  Type extends EditorialItemType,
->(
+async function updateEditorialDraft<Type extends EditorialItemType>(
   type: Type,
   key: string,
   expectedRevision: number,
@@ -423,8 +454,8 @@ async function updateEditorialDraft<
          draft_payload,
          draft_status,
          revision,
-         source_checksum,
          source_present,
+         source_checksum,
          updated_at
        FROM deuna_admin.editorial_items
        WHERE item_type = $1
@@ -449,16 +480,19 @@ async function updateEditorialDraft<
       item.draft_payload
     );
     const next = update(current);
+    const parsed = parseEditorialPayload(type, next);
     const revision = await writeRevision(
       client,
       item,
-      next,
+      parsed,
       actorUserId,
-      "draft_saved",
-      {}
+      "draft_saved"
     );
 
-    return { outcome: "saved", revision };
+    return {
+      outcome: "saved",
+      revision,
+    };
   });
 }
 
@@ -494,6 +528,42 @@ export function saveGameAdvancedDraft(
     (current) => ({
       ...current,
       ...input,
+    })
+  );
+}
+
+export function saveGameClassificationDraft(
+  key: string,
+  expectedRevision: number,
+  actorUserId: string,
+  classification: NonNullable<Game["classification"]>
+) {
+  return updateEditorialDraft(
+    "game",
+    key,
+    expectedRevision,
+    actorUserId,
+    (current) => ({
+      ...current,
+      classification,
+    })
+  );
+}
+
+export function saveGamePerformanceDraft(
+  key: string,
+  expectedRevision: number,
+  actorUserId: string,
+  performance: NonNullable<Game["performance"]>
+) {
+  return updateEditorialDraft(
+    "game",
+    key,
+    expectedRevision,
+    actorUserId,
+    (current) => ({
+      ...current,
+      performance,
     })
   );
 }
