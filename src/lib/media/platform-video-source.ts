@@ -17,6 +17,7 @@ import {
 } from "./media-import-worker-client";
 import {
   parseSupportedPlatformVideoUrl,
+  type SupportedPlatformVideoUrl,
 } from "./platform-video-url";
 import {
   MAX_PREVIEW_SOURCE_BYTES,
@@ -38,6 +39,12 @@ const YTDLP_REMOTE_COMPONENT =
   process.env.DEUNA_YTDLP_REMOTE_COMPONENT?.trim() || "ejs:github";
 const YTDLP_COOKIES_FILE =
   process.env.DEUNA_YTDLP_COOKIES_FILE?.trim() || "";
+const YOUTUBE_PUBLIC_CLIENTS =
+  process.env.DEUNA_YTDLP_YOUTUBE_CLIENTS?.trim() ||
+  "default,web_embedded";
+const YTDLP_DIAGNOSTICS =
+  process.env.DEUNA_YTDLP_DIAGNOSTICS?.trim() === "1" ||
+  process.env.NODE_ENV !== "production";
 
 let platformImportActive = false;
 
@@ -59,28 +66,64 @@ function contentTypeFromFilename(filename: string) {
   return "application/octet-stream";
 }
 
-function classifyYtDlpFailure(stderr: string) {
+function logYtDlpDiagnostic(
+  platform: SupportedPlatformVideoUrl,
+  stderr: string
+) {
+  if (!YTDLP_DIAGNOSTICS || !stderr.trim()) return;
+
+  const excerpt = stderr.slice(-MAX_YTDLP_ERROR_CHARS);
+  console.error(
+    `[media-import:${platform.platform}] yt-dlp rechazó ${platform.hostname}:\n${excerpt}`
+  );
+}
+
+function classifyYtDlpFailure(
+  stderr: string,
+  platform: SupportedPlatformVideoUrl
+) {
   const normalized = stderr.toLowerCase();
+  const youtube = platform.platform === "youtube";
 
   if (
-    normalized.includes("sign in to confirm") &&
-      normalized.includes("not a bot") ||
-    normalized.includes("captcha")
+    youtube &&
+    (normalized.includes("http error 429") ||
+      normalized.includes("too many requests"))
+  ) {
+    return new Error(
+      "YouTube bloqueó temporalmente esta IP por exceso o reputación de solicitudes (HTTP 429). Espera unos minutos o cambia de IP antes de reintentar; repetir el botón muchas veces puede prolongar el bloqueo."
+    );
+  }
+
+  if (
+    youtube &&
+    ((normalized.includes("sign in to confirm") &&
+      normalized.includes("not a bot")) ||
+      normalized.includes("captcha"))
   ) {
     return new Error(
       YTDLP_COOKIES_FILE
-        ? "YouTube rechazó incluso la sesión configurada por su verificación anti-bot. Actualiza las cookies de YouTube y vuelve a intentarlo."
-        : "YouTube activó una verificación anti-bot para esta conexión. DeUna ya usa el solucionador JavaScript recomendado; si YouTube insiste, configura DEUNA_YTDLP_COOKIES_FILE con una sesión válida de YouTube."
+        ? "YouTube rechazó incluso la sesión configurada por su verificación anti-bot. Actualiza las cookies de YouTube o cambia de IP antes de volver a intentarlo."
+        : "YouTube activó una verificación anti-bot para esta conexión. El video puede ser público y aun así YouTube bloquear a yt-dlp por IP. DeUna ya usa Node, EJS y el cliente web embebido; si el bloqueo persiste, cambia de IP o configura DEUNA_YTDLP_COOKIES_FILE con una sesión válida."
+    );
+  }
+
+  if (
+    youtube &&
+    normalized.includes("login_required")
+  ) {
+    return new Error(
+      "YouTube devolvió LOGIN_REQUIRED incluso usando clientes públicos. En 2026 esto suele indicar un bloqueo anti-bot/IP, aunque el video sea público; también puede ser una restricción real del video. Prueba primero tras unos minutos o con otra IP."
     );
   }
 
   if (
     normalized.includes("no supported javascript runtime") ||
-    normalized.includes("javascript runtime") &&
-      normalized.includes("unavailable") ||
+    (normalized.includes("javascript runtime") &&
+      normalized.includes("unavailable")) ||
     normalized.includes("challenge solving failed") ||
-    normalized.includes("external javascript") &&
-      normalized.includes("component")
+    (normalized.includes("external javascript") &&
+      normalized.includes("component"))
   ) {
     return new Error(
       "YouTube no pudo resolver su desafío JavaScript. DeUna habilita Node y ejs:github automáticamente; confirma Node 22 o superior y acceso de red a los componentes oficiales de yt-dlp."
@@ -88,16 +131,34 @@ function classifyYtDlpFailure(stderr: string) {
   }
 
   if (
+    youtube &&
+    (normalized.includes("sign in to confirm your age") ||
+      normalized.includes("age-restricted"))
+  ) {
+    return new Error(
+      "YouTube exige verificación de edad para este video. Ese contenido necesita una sesión válida mediante DEUNA_YTDLP_COOKIES_FILE."
+    );
+  }
+
+  if (
+    normalized.includes("private") ||
+    normalized.includes("members-only")
+  ) {
+    return new Error(
+      "La plataforma no permite importar este contenido porque es privado o exclusivo para miembros."
+    );
+  }
+
+  if (
     normalized.includes("sign in") ||
     normalized.includes("login") ||
-    normalized.includes("private") ||
-    normalized.includes("age-restricted") ||
-    normalized.includes("members-only") ||
     normalized.includes("not available") ||
     normalized.includes("unavailable")
   ) {
     return new Error(
-      "La plataforma exige una sesión o el contenido no es público. Los videos públicos normales se importan sin login; para contenido que YouTube bloquee por sesión puede configurarse DEUNA_YTDLP_COOKIES_FILE."
+      youtube
+        ? "YouTube exige una sesión o rechazó los clientes públicos para este video. Si el video abre normalmente en el navegador, la causa más probable es un bloqueo anti-bot/IP de YouTube sobre yt-dlp."
+        : "La plataforma exige una sesión o el contenido no es público."
     );
   }
 
@@ -120,12 +181,25 @@ function classifyYtDlpFailure(stderr: string) {
   }
 
   return new Error(
-    "No se pudo obtener el video público desde la plataforma. Comprueba el enlace y mantén yt-dlp actualizado."
+    "No se pudo obtener el video público desde la plataforma. Revisa la terminal: DeUna deja allí el diagnóstico real de yt-dlp en desarrollo."
   );
 }
 
+function platformSpecificArgs(
+  platform: SupportedPlatformVideoUrl
+) {
+  if (platform.platform !== "youtube") return [];
+
+  return [
+    "--extractor-args",
+    `youtube:player_client=${YOUTUBE_PUBLIC_CLIENTS}`,
+    "--sleep-requests",
+    "1",
+  ];
+}
+
 function runYtDlp(
-  sourceUrl: string,
+  platform: SupportedPlatformVideoUrl,
   temporaryDirectory: string
 ) {
   return new Promise<void>((resolve, reject) => {
@@ -142,6 +216,7 @@ function runYtDlp(
       ...(YTDLP_COOKIES_FILE
         ? ["--cookies", YTDLP_COOKIES_FILE]
         : []),
+      ...platformSpecificArgs(platform),
       "--no-playlist",
       "--max-downloads",
       "1",
@@ -170,7 +245,7 @@ function runYtDlp(
       "512M",
       "--output",
       outputTemplate,
-      sourceUrl,
+      platform.url,
     ];
     const child = spawn(ytDlpExecutable(), args, {
       shell: false,
@@ -224,7 +299,8 @@ function runYtDlp(
       }
 
       if (code !== 0) {
-        reject(classifyYtDlpFailure(stderr));
+        logYtDlpDiagnostic(platform, stderr);
+        reject(classifyYtDlpFailure(stderr, platform));
         return;
       }
 
@@ -277,7 +353,7 @@ async function resolveDownloadedSource(
 }
 
 async function downloadDirectlyForDevelopment(
-  sourceUrl: string,
+  platform: SupportedPlatformVideoUrl,
   destinationPath: string
 ): Promise<RemoteEditorialVideo> {
   const temporaryDirectory = await mkdtemp(
@@ -288,7 +364,7 @@ async function downloadDirectlyForDevelopment(
   );
 
   try {
-    await runYtDlp(sourceUrl, temporaryDirectory);
+    await runYtDlp(platform, temporaryDirectory);
     const downloaded = await resolveDownloadedSource(
       temporaryDirectory
     );
@@ -300,7 +376,7 @@ async function downloadDirectlyForDevelopment(
       contentType: contentTypeFromFilename(
         downloaded.filename
       ),
-      sourceUrl,
+      sourceUrl: platform.url,
     };
   } finally {
     await rm(temporaryDirectory, {
@@ -358,7 +434,7 @@ export async function downloadPlatformEditorialVideo(
     }
 
     return await downloadDirectlyForDevelopment(
-      platform.url,
+      platform,
       destinationPath
     );
   } finally {
