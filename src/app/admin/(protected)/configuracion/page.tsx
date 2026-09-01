@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import AdminPageHeader from "@/components/admin/AdminPageHeader";
 import EditorialHistory from "@/components/admin/EditorialHistory";
 import EditorStateNotice from "@/components/admin/EditorStateNotice";
+import HeroImageAppearanceEditor from "@/components/admin/HeroImageAppearanceEditor";
 import PublicationPanel from "@/components/admin/PublicationPanel";
 import SiteBackgroundManager from "@/components/admin/SiteBackgroundManager";
 import SiteIdentityPreview from "@/components/admin/SiteIdentityPreview";
@@ -148,9 +149,9 @@ export default async function AdminConfigurationPage({
           <div className={configStyles.workspace}>
             <section className={`${styles.editorPanel} ${configStyles.formPanel}`}>
               <div className={configStyles.sectionIntro}>
-                <span>APARIENCIA</span>
-                <h2>Paleta global</h2>
-                <p>El fondo define navegador y superficies; la marca unifica logo, botones, enlaces y foco.</p>
+                <span>01 · PALETA GLOBAL</span>
+                <h2>Colores base del sitio</h2>
+                <p>Primero define la identidad general. Después puedes trabajar Hero y fondos sin perder esta referencia.</p>
               </div>
 
               <form className={styles.editorForm} method="post" action="/api/admin/content/configuration?seccion=apariencia">
@@ -188,54 +189,18 @@ export default async function AdminConfigurationPage({
             <SiteIdentityPreview {...config} />
           </div>
 
+          <HeroImageAppearanceEditor
+            revision={item.revision}
+            enabled={item.payload.heroImageEffect ?? false}
+            tuning={item.payload.heroImageTuning}
+          />
+
           <SiteBackgroundManager
             revision={item.revision}
             brandColor={config.brandColor}
             customAssets={config.backgroundLibrary ?? []}
             pageBackgrounds={config.pageBackgrounds ?? {}}
           />
-
-          <section className={`${styles.editorPanel} ${configStyles.formPanel}`}>
-            <div className={configStyles.sectionIntro}>
-              <span>HERO PRINCIPAL</span>
-              <h2>Efecto de imagen</h2>
-              <p>
-                El efecto difumina la imagen activa alrededor del Hero y refuerza el fundido oscuro bajo el texto. Desactivado mantiene la imagen más limpia y definida.
-              </p>
-            </div>
-
-            <form
-              className={styles.editorForm}
-              method="post"
-              action="/api/admin/content/configuration/hero-effect"
-            >
-              <input
-                type="hidden"
-                name="expectedRevision"
-                value={item.revision}
-              />
-
-              <label className={styles.fieldWide}>
-                <span>Difuminado del Hero</span>
-                <select
-                  name="effect"
-                  defaultValue={item.payload.heroImageEffect ? "on" : "off"}
-                  required
-                >
-                  <option value="off">Desactivado — imagen más limpia</option>
-                  <option value="on">Activado — difuminado y fundido</option>
-                </select>
-                <small>
-                  Por defecto queda desactivado. El cambio se guarda como borrador y se aplica públicamente al publicar Configuración.
-                </small>
-              </label>
-
-              <div className={styles.formActions}>
-                <p>Este ajuste sólo modifica el efecto visual del Hero de Inicio.</p>
-                <button type="submit">Guardar efecto</button>
-              </div>
-            </form>
-          </section>
         </>
       )}
 
