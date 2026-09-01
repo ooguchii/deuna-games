@@ -64,6 +64,7 @@ export default async function FeaturedCategories({
                 <div className={styles.iconBox}>
                   <TaxonomyIcon
                     icon={visual.icon}
+                    asset={visual.iconAsset}
                     size={40}
                     strokeWidth={1.8}
                   />
