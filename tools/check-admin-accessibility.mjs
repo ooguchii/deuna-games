@@ -21,6 +21,7 @@ const [
   shellUx,
   navigation,
   contextBar,
+  informationArchitectureCss,
   catalogCss,
   gamesCatalog,
   updateWorkspace,
@@ -46,6 +47,7 @@ const [
   source("src/components/admin/AdminShellUx.module.css"),
   source("src/components/admin/AdminNavigation.tsx"),
   source("src/components/admin/AdminContextBar.tsx"),
+  source("src/components/admin/AdminInformationArchitecture.module.css"),
   source("src/components/admin/AdminCatalog.module.css"),
   source("src/components/admin/AdminGamesCatalog.tsx"),
   source("src/app/admin/(protected)/juegos/[slug]/actualizacion/page.tsx"),
@@ -218,7 +220,8 @@ assert(
     catalogCss.includes("border-bottom: 1px solid #2e3a47") &&
     catalogCss.includes("nth-child(even)") &&
     catalogCss.includes(":focus-within") &&
-    catalogCss.includes("min-height: 38px") &&
+    informationArchitectureCss.includes(".rowActions") &&
+    informationArchitectureCss.includes("min-height: 34px") &&
     !catalogCss.includes("#e8adb9") &&
     !catalogCss.includes("#ffd4de"),
   "Los catálogos administrativos deben distinguir filas, jerarquía de texto, foco, acciones legibles y color de marca dinámico."
