@@ -1,4 +1,5 @@
 import type { NextRequest } from "next/server";
+import { z } from "zod";
 
 import {
   adminRedirect,
@@ -6,12 +7,12 @@ import {
   authorizeAdminFormRequest,
 } from "@/lib/admin/admin-route";
 import {
+  expectedRevisionSchema,
+} from "@/lib/admin/content-forms";
+import {
   getEditorialItem,
   saveSiteConfigDraft,
 } from "@/lib/admin/content-service";
-import {
-  frontendSiteConfigFormSchema,
-} from "@/lib/admin/frontend-content-forms";
 import {
   hasExactAdminFormFields,
 } from "@/lib/admin/request-security";
@@ -21,23 +22,20 @@ export const runtime = "nodejs";
 
 const fields = [
   "expectedRevision",
-  "name",
-  "shortName",
-  "description",
-  "language",
-  "themeColor",
-  "brandColor",
-  "footerTagline",
+  "effect",
 ] as const;
 
+const formSchema = z.object({
+  expectedRevision: expectedRevisionSchema,
+  effect: z.enum(["off", "on"]),
+});
+
+function redirectPath(state: string) {
+  return `/admin/configuracion?seccion=apariencia&estado=${state}`;
+}
+
 export async function POST(request: NextRequest) {
-  const section = request.nextUrl.searchParams.get("seccion") === "apariencia"
-    ? "apariencia"
-    : "identidad";
-  const redirectPath = (state: string) =>
-    `/admin/configuracion?seccion=${section}&estado=${state}`;
-  const authorized =
-    await authorizeAdminFormRequest(request);
+  const authorized = await authorizeAdminFormRequest(request);
 
   if (!authorized.authorized) {
     return authorized.response;
@@ -55,7 +53,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const parsed = frontendSiteConfigFormSchema.safeParse(
+  const parsed = formSchema.safeParse(
     Object.fromEntries(authorized.form)
   );
 
@@ -67,52 +65,47 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const current = await getEditorialItem(
+    const item = await getEditorialItem(
       "site_config",
       "site"
     );
 
-    if (!current) {
+    if (!item) {
       return adminRedirect(
         authorized.adminOrigin,
         redirectPath("no-encontrado")
       );
     }
 
-    const { expectedRevision, ...input } = parsed.data;
+    if (item.revision !== parsed.data.expectedRevision) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        redirectPath("conflicto")
+      );
+    }
+
     const result = await saveSiteConfigDraft(
-      expectedRevision,
+      parsed.data.expectedRevision,
       authorized.session.userId,
       {
-        ...input,
-        backgroundLibrary:
-          current.payload.backgroundLibrary,
-        pageBackgrounds:
-          current.payload.pageBackgrounds,
-        heroImageEffect:
-          current.payload.heroImageEffect,
+        ...item.payload,
+        heroImageEffect: parsed.data.effect === "on",
       }
     );
 
-    if (result.outcome === "not_found") {
-      return adminRedirect(
-        authorized.adminOrigin,
-        redirectPath("no-encontrado")
-      );
-    }
-
-    const state =
-      result.outcome === "conflict"
-        ? "conflicto"
-        : "guardado";
-
     return adminRedirect(
       authorized.adminOrigin,
-      redirectPath(state)
+      redirectPath(
+        result.outcome === "conflict"
+          ? "conflicto"
+          : result.outcome === "not_found"
+            ? "no-encontrado"
+            : "guardado"
+      )
     );
   } catch {
     console.error(
-      "No se pudo guardar la configuración editorial."
+      "No se pudo guardar el efecto visual del Hero."
     );
     return adminUnavailableResponse();
   }

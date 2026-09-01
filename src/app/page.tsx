@@ -112,6 +112,7 @@ export default async function Home() {
             key={section.id}
             games={collections.heroGames}
             copy={copy.hero}
+            imageEffect={config.heroImageEffect ?? false}
           />
         ) : null;
 

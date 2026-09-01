@@ -92,6 +92,7 @@ type HeroSlideProps = {
   copy: HomeCopy["hero"];
   logicalIndex: number;
   total: number;
+  imageEffect: boolean;
   clone?: boolean;
   active?: boolean;
 };
@@ -103,6 +104,7 @@ const HeroSlide = forwardRef<HTMLElement, HeroSlideProps>(
       copy,
       logicalIndex,
       total,
+      imageEffect,
       clone = false,
       active = false,
     },
@@ -131,7 +133,9 @@ const HeroSlide = forwardRef<HTMLElement, HeroSlideProps>(
             <div className={styles.mediaFallback} aria-hidden="true" />
           )}
 
-          <div className={styles.mediaOverlay} />
+          {imageEffect && (
+            <div className={styles.mediaOverlay} aria-hidden="true" />
+          )}
 
           {!active && (
             <div className={styles.previewOverlay} aria-hidden="true" />
@@ -199,9 +203,11 @@ function logicalIndexFromPhysical(
 export default function HeroSection({
   games,
   copy,
+  imageEffect = false,
 }: {
   games: Game[];
   copy: HomeCopy["hero"];
+  imageEffect?: boolean;
 }) {
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const trackRef = useRef<HTMLDivElement | null>(null);
@@ -510,12 +516,14 @@ export default function HeroSection({
         {copy.accessibleTitle}
       </h1>
 
-      <div className={styles.ambientBackdrop} aria-hidden="true">
-        <div key={activeGame.id} className={styles.ambientFrame}>
-          <ResponsiveArtwork game={activeGame} alt="" active ambient />
+      {imageEffect && (
+        <div className={styles.ambientBackdrop} aria-hidden="true">
+          <div key={activeGame.id} className={styles.ambientFrame}>
+            <ResponsiveArtwork game={activeGame} alt="" active ambient />
+          </div>
+          <div className={styles.ambientShade} />
         </div>
-        <div className={styles.ambientShade} />
-      </div>
+      )}
 
       <div
         ref={viewportRef}
@@ -542,6 +550,7 @@ export default function HeroSection({
               copy={copy}
               logicalIndex={trackSlide.logicalIndex}
               total={games.length}
+              imageEffect={imageEffect}
               clone={trackSlide.clone}
               active={trackIndex === physicalIndex}
             />

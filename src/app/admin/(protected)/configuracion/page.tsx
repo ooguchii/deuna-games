@@ -194,6 +194,48 @@ export default async function AdminConfigurationPage({
             customAssets={config.backgroundLibrary ?? []}
             pageBackgrounds={config.pageBackgrounds ?? {}}
           />
+
+          <section className={`${styles.editorPanel} ${configStyles.formPanel}`}>
+            <div className={configStyles.sectionIntro}>
+              <span>HERO PRINCIPAL</span>
+              <h2>Efecto de imagen</h2>
+              <p>
+                El efecto difumina la imagen activa alrededor del Hero y refuerza el fundido oscuro bajo el texto. Desactivado mantiene la imagen más limpia y definida.
+              </p>
+            </div>
+
+            <form
+              className={styles.editorForm}
+              method="post"
+              action="/api/admin/content/configuration/hero-effect"
+            >
+              <input
+                type="hidden"
+                name="expectedRevision"
+                value={item.revision}
+              />
+
+              <label className={styles.fieldWide}>
+                <span>Difuminado del Hero</span>
+                <select
+                  name="effect"
+                  defaultValue={item.payload.heroImageEffect ? "on" : "off"}
+                  required
+                >
+                  <option value="off">Desactivado — imagen más limpia</option>
+                  <option value="on">Activado — difuminado y fundido</option>
+                </select>
+                <small>
+                  Por defecto queda desactivado. El cambio se guarda como borrador y se aplica públicamente al publicar Configuración.
+                </small>
+              </label>
+
+              <div className={styles.formActions}>
+                <p>Este ajuste sólo modifica el efecto visual del Hero de Inicio.</p>
+                <button type="submit">Guardar efecto</button>
+              </div>
+            </form>
+          </section>
         </>
       )}
 
