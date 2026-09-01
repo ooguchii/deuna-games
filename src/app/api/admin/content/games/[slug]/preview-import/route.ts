@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 
 import {
   adminRedirect,
+  authorizeAdminFormRequest,
 } from "@/lib/admin/admin-route";
 import {
   expectedRevisionSchema,
@@ -11,15 +12,10 @@ import {
   saveGameMediaDraft,
 } from "@/lib/admin/content-service";
 import {
-  authorizeAdminMediaRequest,
-} from "@/lib/admin/media-admin-route";
+  hasExactAdminFormFields,
+} from "@/lib/admin/request-security";
 import {
-  hasExactAdminMediaFormFields,
-  MAX_ADMIN_PREVIEW_REQUEST_BYTES,
-} from "@/lib/admin/media-request-security";
-import {
-  isAcceptedPreviewSource,
-  storeEditorialPreviewVideo,
+  storeRemoteEditorialPreviewVideo,
 } from "@/lib/media/editorial-video";
 import {
   parsePreviewTrimWindow,
@@ -30,25 +26,16 @@ export const runtime = "nodejs";
 
 const fields = [
   "expectedRevision",
+  "url",
   "startSeconds",
   "endSeconds",
-  "video",
 ] as const;
 
 function readSingleString(
-  form: FormData,
+  form: URLSearchParams,
   field: string
 ) {
-  const value = form.get(field);
-  return typeof value === "string" ? value : null;
-}
-
-function readSingleFile(
-  form: FormData,
-  field: string
-) {
-  const value = form.get(field);
-  return value instanceof File ? value : null;
+  return form.get(field);
 }
 
 function errorState(error: unknown) {
@@ -70,6 +57,15 @@ function errorState(error: unknown) {
     return "preview-recorte-invalido";
   }
 
+  if (
+    message.includes("URL") ||
+    message.includes("remoto") ||
+    message.includes("descarga") ||
+    message.includes("HTTPS")
+  ) {
+    return "preview-url-invalida";
+  }
+
   return "video-invalido";
 }
 
@@ -80,13 +76,7 @@ export async function POST(
   }
 ) {
   const authorized =
-    await authorizeAdminMediaRequest(
-      request,
-      {
-        maximumBytes:
-          MAX_ADMIN_PREVIEW_REQUEST_BYTES,
-      }
-    );
+    await authorizeAdminFormRequest(request);
 
   if (!authorized.authorized) {
     return authorized.response;
@@ -96,7 +86,7 @@ export async function POST(
   const target = `/admin/juegos/${encodeURIComponent(slug)}`;
 
   if (
-    !hasExactAdminMediaFormFields(
+    !hasExactAdminFormFields(
       authorized.form,
       fields
     )
@@ -113,10 +103,8 @@ export async function POST(
       "expectedRevision"
     )
   );
-  const video = readSingleFile(
-    authorized.form,
-    "video"
-  );
+  const sourceUrl =
+    readSingleString(authorized.form, "url")?.trim() ?? "";
   const trim = parsePreviewTrimWindow(
     readSingleString(
       authorized.form,
@@ -137,12 +125,12 @@ export async function POST(
 
   if (
     !revision.success ||
-    !video ||
-    !isAcceptedPreviewSource(video)
+    sourceUrl.length < 8 ||
+    sourceUrl.length > 2_048
   ) {
     return adminRedirect(
       authorized.adminOrigin,
-      `${target}?estado=video-invalido&seccion=multimedia`
+      `${target}?estado=preview-url-invalida&seccion=multimedia`
     );
   }
 
@@ -166,11 +154,12 @@ export async function POST(
       );
     }
 
-    const upload = await storeEditorialPreviewVideo(
-      slug,
-      video,
-      trim
-    );
+    const upload =
+      await storeRemoteEditorialPreviewVideo(
+        slug,
+        sourceUrl,
+        trim
+      );
     const result = await saveGameMediaDraft(
       slug,
       revision.data,
@@ -200,7 +189,7 @@ export async function POST(
     );
   } catch (error) {
     console.error(
-      "No se pudo preparar el preview de tarjeta:",
+      "No se pudo importar el preview remoto:",
       error instanceof Error
         ? error.message
         : "error no identificado"
