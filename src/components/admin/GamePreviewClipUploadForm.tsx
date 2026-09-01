@@ -3,15 +3,26 @@
 import {
   type ChangeEvent,
   type FormEvent,
+  useCallback,
   useEffect,
+  useMemo,
   useState,
 } from "react";
 
 import VideoTrimEditor from "@/components/admin/VideoTrimEditor";
+import YouTubeTrimEditor from "@/components/admin/YouTubeTrimEditor";
 import {
   MAX_PREVIEW_SOURCE_BYTES,
   type PreviewTrimWindow,
 } from "@/lib/media/preview-video-policy";
+import {
+  parseYouTubeVideo,
+  youtubePreviewTrim,
+} from "@/lib/media/youtube-preview";
+import type {
+  GamePreviewMode,
+  GameYouTubePreview,
+} from "@/types/game";
 
 import styles from "../../app/admin/admin.module.css";
 
@@ -28,7 +39,7 @@ const acceptedExtensions =
   /\.(mp4|webm|mov|m4v|mkv|avi)$/i;
 const MEDIA_PROBE_TIMEOUT_MS = 10_000;
 
-type SourceMode = "file" | "url";
+type SourceMode = "file" | "youtube";
 
 type PreparedSource =
   | {
@@ -43,24 +54,19 @@ type PreparedSource =
       label: string;
       token: string;
       bytes: number;
-      usesProxy: boolean;
+      usesProxy: true;
     };
 
 type GamePreviewClipUploadFormProps = {
   slug: string;
   revision: number;
   currentPreview?: string;
+  currentPreviewMode?: GamePreviewMode;
+  currentYouTubePreview?: GameYouTubePreview;
 };
 
 type StagedSourceResponse = {
   token?: unknown;
-  src?: unknown;
-  bytes?: unknown;
-  proxyBytes?: unknown;
-  error?: unknown;
-};
-
-type ProxyResponse = {
   src?: unknown;
   bytes?: unknown;
   error?: unknown;
@@ -80,6 +86,10 @@ function sourceExtension(filename: string) {
   return acceptedExtensions.test(extension)
     ? extension
     : ".video";
+}
+
+function stagedSourcePath(slug: string, token: string) {
+  return `/api/admin/content/games/${encodeURIComponent(slug)}/preview-source/${token}`;
 }
 
 function uploadError(state: string | null) {
@@ -117,42 +127,6 @@ function validLocalFile(file: File) {
       file.type &&
       !acceptedTypes.has(file.type.toLowerCase()))
   );
-}
-
-function parsePublicVideoUrl(value: string) {
-  const raw = value.trim();
-  if (!raw) return null;
-
-  const candidate = /^[a-z][a-z0-9+.-]*:\/\//i.test(raw)
-    ? raw
-    : `https://${raw}`;
-  let parsedUrl: URL;
-
-  try {
-    parsedUrl = new URL(candidate);
-  } catch {
-    return null;
-  }
-
-  const isHttp = parsedUrl.protocol === "http:";
-  const isHttps = parsedUrl.protocol === "https:";
-  const validPort =
-    !parsedUrl.port ||
-    (isHttp && parsedUrl.port === "80") ||
-    (isHttps && parsedUrl.port === "443");
-
-  if (
-    (!isHttp && !isHttps) ||
-    parsedUrl.username ||
-    parsedUrl.password ||
-    !parsedUrl.hostname ||
-    !validPort ||
-    parsedUrl.toString().length > 2_048
-  ) {
-    return null;
-  }
-
-  return parsedUrl;
 }
 
 function probeBrowserPlayback(src: string) {
@@ -196,10 +170,23 @@ export default function GamePreviewClipUploadForm({
   slug,
   revision,
   currentPreview,
+  currentPreviewMode,
+  currentYouTubePreview,
 }: GamePreviewClipUploadFormProps) {
+  const currentYouTubeUrl = currentYouTubePreview
+    ? `https://www.youtube.com/watch?v=${currentYouTubePreview.videoId}`
+    : "";
   const [sourceMode, setSourceMode] =
-    useState<SourceMode>("file");
-  const [sourceUrl, setSourceUrl] = useState("");
+    useState<SourceMode>(
+      currentPreviewMode === "youtube" && currentYouTubePreview
+        ? "youtube"
+        : "file"
+    );
+  const [youtubeUrl, setYouTubeUrl] = useState(
+    currentPreviewMode === "youtube"
+      ? currentYouTubeUrl
+      : ""
+  );
   const [preparedSource, setPreparedSource] =
     useState<PreparedSource | null>(null);
   const [trim, setTrim] =
@@ -208,9 +195,24 @@ export default function GamePreviewClipUploadForm({
   const [sourceBusy, setSourceBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
 
-  function stagedSourcePath(token: string) {
-    return `/api/admin/content/games/${encodeURIComponent(slug)}/preview-source/${token}`;
-  }
+  const parsedYouTube = useMemo(
+    () => parseYouTubeVideo(youtubeUrl),
+    [youtubeUrl]
+  );
+  const initialYouTubeTrim = useMemo(
+    () =>
+      currentYouTubePreview &&
+      parsedYouTube?.videoId === currentYouTubePreview.videoId
+        ? youtubePreviewTrim(currentYouTubePreview)
+        : null,
+    [currentYouTubePreview, parsedYouTube?.videoId]
+  );
+  const handleTrimChange = useCallback(
+    (nextTrim: PreviewTrimWindow | null) => {
+      setTrim(nextTrim);
+    },
+    []
+  );
 
   useEffect(() => {
     const source = preparedSource;
@@ -223,7 +225,7 @@ export default function GamePreviewClipUploadForm({
         return;
       }
 
-      void fetch(stagedSourcePath(source.token), {
+      void fetch(stagedSourcePath(slug, source.token), {
         method: "DELETE",
         credentials: "same-origin",
         cache: "no-store",
@@ -241,35 +243,14 @@ export default function GamePreviewClipUploadForm({
     resetPreparedSource();
     setSourceMode(mode);
     setStatus(null);
-  }
 
-  async function createProxyForStagedToken(token: string) {
-    const response = await fetch(
-      `${stagedSourcePath(token)}/proxy`,
-      {
-        method: "POST",
-        credentials: "same-origin",
-        cache: "no-store",
-        headers: {
-          "Content-Type":
-            "application/x-www-form-urlencoded;charset=UTF-8",
-        },
-        body: new URLSearchParams({
-          expectedRevision: String(revision),
-        }),
-      }
-    );
-    const result = (await response.json()) as ProxyResponse;
-
-    if (!response.ok || typeof result.src !== "string") {
-      throw new Error(
-        typeof result.error === "string"
-          ? result.error
-          : "No se pudo crear una vista previa compatible para este códec."
-      );
+    if (
+      mode === "youtube" &&
+      !youtubeUrl.trim() &&
+      currentYouTubeUrl
+    ) {
+      setYouTubeUrl(currentYouTubeUrl);
     }
-
-    return result.src;
   }
 
   async function prepareLocalCodecFallback(file: File) {
@@ -384,28 +365,22 @@ export default function GamePreviewClipUploadForm({
     void prepareLocalFile(file);
   }
 
-  async function prepareRemoteSource() {
-    if (sourceBusy || busy) return;
-
-    const parsedUrl = parsePublicVideoUrl(sourceUrl);
-
-    if (!parsedUrl) {
+  async function saveYouTubePreview() {
+    if (!parsedYouTube || !trim) {
       setStatus(
-        "Usa un enlace público HTTP o HTTPS: archivo directo o enlace de una plataforma compatible. También puedes pegarlo sin escribir https://."
+        "Pega un enlace válido de YouTube y selecciona un tramo con IN y OUT."
       );
       return;
     }
 
-    resetPreparedSource();
-    setSourceBusy(true);
+    setBusy(true);
     setStatus(
-      "Preparando una copia temporal privada para que puedas reproducir el video y elegir visualmente el recorte…"
+      `Guardando YouTube ${trim.startSeconds}s → ${trim.endSeconds}s. El video no se descarga ni pasa por yt-dlp…`
     );
-    let stagedToken: string | null = null;
 
     try {
       const response = await fetch(
-        `/api/admin/content/games/${encodeURIComponent(slug)}/preview-source`,
+        `/api/admin/content/games/${encodeURIComponent(slug)}/preview-youtube`,
         {
           method: "POST",
           credentials: "same-origin",
@@ -416,85 +391,45 @@ export default function GamePreviewClipUploadForm({
           },
           body: new URLSearchParams({
             expectedRevision: String(revision),
-            url: parsedUrl.toString(),
+            youtubeUrl: parsedYouTube.canonicalUrl,
+            startSeconds: String(trim.startSeconds),
+            endSeconds: String(trim.endSeconds),
           }),
         }
       );
-      const result =
-        (await response.json()) as StagedSourceResponse;
 
-      if (
-        !response.ok ||
-        typeof result.token !== "string" ||
-        typeof result.src !== "string" ||
-        typeof result.bytes !== "number"
-      ) {
+      if (!response.ok) {
         throw new Error(
-          typeof result.error === "string"
-            ? result.error
-            : "No se pudo preparar la vista previa remota."
+          "El servidor rechazó el preview directo de YouTube."
         );
       }
 
-      stagedToken = result.token;
-      const playable = await probeBrowserPlayback(result.src);
-      let editorSrc = result.src;
-      let usesProxy = false;
-
-      if (!playable) {
-        setStatus(
-          "El video remoto usa un códec o tipo de respuesta que el navegador no reproduce. Creando una vista previa de edición compatible…"
-        );
-        editorSrc = await createProxyForStagedToken(result.token);
-        usesProxy = true;
-      }
-
-      setPreparedSource({
-        mode: "staged",
-        src: editorSrc,
-        label:
-          `${parsedUrl.hostname} · ${formatSize(result.bytes)}` +
-          (usesProxy ? " · vista previa compatible" : ""),
-        token: result.token,
-        bytes: result.bytes,
-        usesProxy,
-      });
-      stagedToken = null;
-      setStatus(
-        usesProxy
-          ? "Vista previa compatible lista. El recorte final se generará desde el original temporal."
-          : "Video remoto listo. Elige el tramo con IN/OUT; la copia temporal se elimina después de generar el WebM."
+      const resultUrl = new URL(
+        response.url,
+        window.location.href
       );
-    } catch (error) {
-      if (stagedToken) {
-        void fetch(stagedSourcePath(stagedToken), {
-          method: "DELETE",
-          credentials: "same-origin",
-          cache: "no-store",
-        }).catch(() => undefined);
+      const resultState =
+        resultUrl.searchParams.get("estado");
+
+      if (resultState !== "preview-subido") {
+        throw new Error(uploadError(resultState));
       }
 
+      window.location.assign(resultUrl.toString());
+    } catch (error) {
       setStatus(
         error instanceof Error
           ? error.message
-          : "No se pudo preparar la vista previa remota."
+          : "No se pudo guardar el preview de YouTube."
       );
-    } finally {
-      setSourceBusy(false);
+      setBusy(false);
     }
   }
 
-  async function handleSubmit(
-    event: FormEvent<HTMLFormElement>
-  ) {
-    event.preventDefault();
-    if (busy || sourceBusy) return;
-
+  async function saveLocalPreview() {
     if (!preparedSource) {
       setStatus(
-        sourceMode === "file"
-          ? "Selecciona primero un archivo para ver el video y elegir el corte."
-          : "Carga primero la URL o el enlace de plataforma para ver el video y elegir el corte."
+        "Selecciona primero un archivo para ver el video y elegir el corte."
       );
       return;
     }
@@ -585,6 +520,29 @@ export default function GamePreviewClipUploadForm({
     }
   }
 
+  async function handleSubmit(
+    event: FormEvent<HTMLFormElement>
+  ) {
+    event.preventDefault();
+    if (busy || sourceBusy) return;
+
+    if (sourceMode === "youtube") {
+      await saveYouTubePreview();
+      return;
+    }
+
+    await saveLocalPreview();
+  }
+
+  const activePreviewLabel =
+    currentPreviewMode === "youtube" && currentYouTubePreview
+      ? `YouTube · ${currentYouTubePreview.startSeconds}s → ${currentYouTubePreview.endSeconds}s`
+      : currentPreview
+        ? "WebM local"
+        : currentYouTubePreview
+          ? `YouTube · ${currentYouTubePreview.startSeconds}s → ${currentYouTubePreview.endSeconds}s`
+          : "Sin preview configurado";
+
   return (
     <section className={styles.editorPanel}>
       <div className={styles.sectionHeading}>
@@ -593,13 +551,18 @@ export default function GamePreviewClipUploadForm({
           <h2>Video y recorte</h2>
         </div>
         <p>
-          Puedes usar un archivo de hasta 1 GB, una URL directa o un enlace público de una plataforma compatible. Primero eliges visualmente el fragmento y sólo después se crea el WebM final.
+          Elige un archivo local o pega una URL de YouTube. Son dos caminos separados: los archivos se convierten a WebM; YouTube se guarda directamente por ID y tramo, sin descargar el video.
         </p>
+      </div>
+
+      <div className={`${styles.tableSummary} ${styles.fieldWide}`}>
+        <strong>Preview activo</strong>
+        <span>{activePreviewLabel}</span>
       </div>
 
       {currentPreview && (
         <div className={`${styles.tableSummary} ${styles.fieldWide}`}>
-          <strong>Preview WebM actual</strong>
+          <strong>WebM local disponible</strong>
           <span>{currentPreview}</span>
           <video
             src={currentPreview}
@@ -617,6 +580,15 @@ export default function GamePreviewClipUploadForm({
         </div>
       )}
 
+      {currentYouTubePreview && (
+        <div className={`${styles.tableSummary} ${styles.fieldWide}`}>
+          <strong>YouTube guardado</strong>
+          <span>
+            https://www.youtube.com/watch?v={currentYouTubePreview.videoId} · {currentYouTubePreview.startSeconds}s → {currentYouTubePreview.endSeconds}s
+          </span>
+        </div>
+      )}
+
       <form
         className={styles.editorForm}
         onSubmit={handleSubmit}
@@ -627,11 +599,13 @@ export default function GamePreviewClipUploadForm({
             value={sourceMode}
             disabled={busy || sourceBusy}
             onChange={(event) =>
-              switchSourceMode(event.target.value as SourceMode)
+              switchSourceMode(
+                event.target.value as SourceMode
+              )
             }
           >
             <option value="file">Archivo de mi equipo</option>
-            <option value="url">URL / YouTube / redes</option>
+            <option value="youtube">URL de YouTube</option>
           </select>
         </label>
 
@@ -645,59 +619,66 @@ export default function GamePreviewClipUploadForm({
               onChange={handleLocalFile}
             />
             <small>
-              Si tu navegador reproduce el códec, se edita directamente desde tu equipo. Si no, DeUna crea automáticamente una vista previa WebM privada y liviana; al confirmar siempre recorta el archivo original.
+              Si el navegador reproduce el códec, editas directamente desde tu equipo. Si no, DeUna crea una vista previa privada compatible; el WebM final siempre se recorta desde el archivo original.
             </small>
           </label>
         )}
 
-        {sourceMode === "url" && (
+        {sourceMode === "youtube" && (
           <>
             <label className={styles.fieldWide}>
-              <span>URL directa o enlace público de plataforma</span>
+              <span>URL de YouTube</span>
               <input
                 type="text"
                 inputMode="url"
-                value={sourceUrl}
+                value={youtubeUrl}
                 disabled={busy || sourceBusy}
                 onChange={(event) => {
-                  if (preparedSource?.mode === "staged") {
-                    resetPreparedSource();
-                  }
-                  setSourceUrl(event.target.value);
+                  setYouTubeUrl(event.target.value);
+                  setTrim(null);
                   setStatus(null);
                 }}
                 maxLength={2048}
-                placeholder="youtube.com/watch?v=... · http://... · https://cdn.example/video.mp4"
+                placeholder="youtube.com/watch?v=... · youtu.be/... · Shorts · Live"
+                autoComplete="off"
+                spellCheck={false}
               />
               <small>
-                Acepta HTTP y HTTPS, con o sin escribir el protocolo, archivos directos MP4/WebM/MOV/M4V/MKV/AVI de hasta 1 GB y enlaces públicos de YouTube, Facebook, Instagram, TikTok, Vimeo, X/Twitter, Twitch, Dailymotion, Streamable y Kick. Los videos privados, con login o DRM no se pueden importar.
+                Sólo YouTube. Acepta el enlace normal, youtu.be, Shorts, Live, embed o directamente el ID de 11 caracteres, con o sin escribir https://. El video no pasa por yt-dlp ni por el servidor de DeUna.
               </small>
             </label>
 
-            <div className={styles.formActions}>
-              <p>
-                Los archivos directos se copian por streaming. En plataformas se prepara una versión temporal para recortar visualmente; si el navegador no entiende el códec se genera además un proxy privado. Nada de eso se publica.
-              </p>
-              <button
-                type="button"
-                disabled={busy || sourceBusy || !sourceUrl.trim()}
-                onClick={prepareRemoteSource}
+            {parsedYouTube ? (
+              <div className={styles.fieldWide}>
+                <YouTubeTrimEditor
+                  key={parsedYouTube.videoId}
+                  videoId={parsedYouTube.videoId}
+                  sourceLabel={parsedYouTube.canonicalUrl}
+                  initialTrim={initialYouTubeTrim}
+                  onTrimChange={handleTrimChange}
+                />
+              </div>
+            ) : youtubeUrl.trim() ? (
+              <div
+                className={`${styles.tableSummary} ${styles.fieldWide}`}
+                role="status"
               >
-                {sourceBusy
-                  ? "Cargando video…"
-                  : "Cargar video o enlace para recortar"}
-              </button>
-            </div>
+                <strong>YouTube</strong>
+                <span>
+                  No pude reconocer un video de YouTube en ese valor. Usa youtube.com, youtu.be, Shorts, Live, embed o un ID válido de 11 caracteres.
+                </span>
+              </div>
+            ) : null}
           </>
         )}
 
-        {preparedSource && (
+        {sourceMode === "file" && preparedSource && (
           <div className={styles.fieldWide}>
             <VideoTrimEditor
               key={preparedSource.src}
               src={preparedSource.src}
               sourceLabel={preparedSource.label}
-              onTrimChange={setTrim}
+              onTrimChange={handleTrimChange}
             />
           </div>
         )}
@@ -705,7 +686,9 @@ export default function GamePreviewClipUploadForm({
         <div className={`${styles.tableSummary} ${styles.fieldWide}`}>
           <strong>Resultado final</strong>
           <span>
-            Puedes mover IN y OUT, usar “Marcar IN aquí”, “Marcar OUT aquí” y “Reproducir recorte”. El origen puede pesar hasta 1 GB, pero sólo el fragmento elegido —máximo 30 segundos— se convierte desde el original a WebM/VP9 silencioso y liviano.
+            {sourceMode === "youtube"
+              ? "YouTube guarda únicamente el ID del video y el tramo IN/OUT de hasta 30 segundos. No se crea una copia del video y no intervienen yt-dlp ni FFmpeg."
+              : "El archivo puede pesar hasta 1 GB, pero sólo el fragmento elegido —máximo 30 segundos— se convierte desde el original a WebM/VP9 silencioso y liviano."}
           </span>
         </div>
 
@@ -722,20 +705,32 @@ export default function GamePreviewClipUploadForm({
 
         <div className={styles.formActions}>
           <p>
-            La portada sigue siendo lo primero que carga. El WebM se solicita sólo después del hover configurado en la tarjeta.
+            {sourceMode === "youtube"
+              ? "El reproductor usa youtube-nocookie.com y sólo se activa en las tarjetas cuando existe intención de hover."
+              : "La portada sigue cargando primero. El WebM se solicita sólo después del hover configurado en la tarjeta."}
           </p>
           <button
             type="submit"
-            disabled={busy || sourceBusy || !trim || !preparedSource}
+            disabled={
+              busy ||
+              sourceBusy ||
+              !trim ||
+              (sourceMode === "file" && !preparedSource) ||
+              (sourceMode === "youtube" && !parsedYouTube)
+            }
           >
             {busy
-              ? "Subiendo, recortando y convirtiendo…"
-              : "Crear preview WebM con este recorte"}
+              ? sourceMode === "youtube"
+                ? "Guardando YouTube…"
+                : "Subiendo, recortando y convirtiendo…"
+              : sourceMode === "youtube"
+                ? "Usar este recorte de YouTube"
+                : "Crear preview WebM con este recorte"}
           </button>
         </div>
       </form>
 
-      {currentPreview && (
+      {(currentPreview || currentYouTubePreview) && (
         <form
           method="post"
           action={`/api/admin/content/games/${encodeURIComponent(slug)}/preview-remove`}
@@ -746,7 +741,9 @@ export default function GamePreviewClipUploadForm({
             name="expectedRevision"
             value={revision}
           />
-          <p>Elimina el preview WebM actual de las tarjetas.</p>
+          <p>
+            Elimina el preview de tarjeta configurado, tanto YouTube como cualquier WebM local conservado.
+          </p>
           <button type="submit">Quitar preview</button>
         </form>
       )}
