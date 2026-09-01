@@ -128,7 +128,7 @@
 
 .previewCopy > span {
   color: color-mix(in srgb, var(--brand) 82%, #ffffff);
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 850;
   letter-spacing: 0.1em;
 }
@@ -142,7 +142,7 @@
 
 .previewCopy p {
   color: #aab5c1;
-  font-size: 9px;
+  font-size: 11px;
   line-height: 1.5;
 }
 
@@ -177,7 +177,7 @@
 
 .previewInfo div span {
   color: #788795;
-  font-size: 9px;
+  font-size: 11px;
 }
 
 .modeBadge {
@@ -186,7 +186,7 @@
   border: 1px solid #364553;
   border-radius: 999px;
   background: #0a141d;
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 850;
   letter-spacing: 0.08em;
 }
@@ -231,7 +231,7 @@
   border: 1px solid color-mix(in srgb, var(--brand) 32%, #364655);
   border-radius: 8px;
   background: color-mix(in srgb, var(--brand) 6%, #0b151e);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 850;
 }
 
@@ -248,7 +248,7 @@
 
 .blockTitle p {
   color: #7a8997;
-  font-size: 9px;
+  font-size: 11px;
   line-height: 1.45;
 }
 
@@ -289,13 +289,13 @@
 
 .modeSwitch strong {
   color: #e3ebf2;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 780;
 }
 
 .modeSwitch span {
   color: #748391;
-  font-size: 9px;
+  font-size: 11px;
   line-height: 1.4;
 }
 
@@ -329,13 +329,13 @@
 
 .presets strong {
   color: #e6edf3;
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 800;
 }
 
 .presets span {
   color: #738290;
-  font-size: 8px;
+  font-size: 11px;
   line-height: 1.35;
 }
 
@@ -369,7 +369,7 @@
 
 .sliderTop strong {
   color: #dbe4eb;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 750;
 }
 
@@ -381,7 +381,7 @@
   border-radius: 6px;
   background: color-mix(in srgb, var(--brand) 5%, #0b151e);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 9px;
+  font-size: 11px;
   text-align: center;
 }
 
@@ -445,7 +445,7 @@
 
 .slider small {
   color: #687786;
-  font-size: 8px;
+  font-size: 11px;
   line-height: 1.4;
 }
 
@@ -477,7 +477,7 @@
 
 .saveBar span {
   color: #778694;
-  font-size: 9px;
+  font-size: 11px;
 }
 
 .saveBar button {
@@ -490,7 +490,7 @@
   background: linear-gradient(135deg, var(--brand-light, var(--brand)), var(--brand));
   box-shadow: 0 8px 22px color-mix(in srgb, var(--brand) 17%, transparent);
   cursor: pointer;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 820;
 }
 
