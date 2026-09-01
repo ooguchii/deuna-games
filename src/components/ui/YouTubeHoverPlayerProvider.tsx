@@ -118,6 +118,7 @@ export default function YouTubeHoverPlayerProvider({
   const readyRef = useRef(false);
   const frameCreatedRef = useRef(false);
   const positionFrameRef = useRef<number | null>(null);
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const [frameSrc, setFrameSrc] = useState<string | null>(null);
   const [placement, setPlacement] =
     useState<PlayerPlacement | null>(null);
@@ -184,9 +185,10 @@ export default function YouTubeHoverPlayerProvider({
       preview: GameYouTubePreview
     ) => {
       activeRef.current = { target, preview };
+      resizeObserverRef.current?.disconnect();
+      resizeObserverRef.current?.observe(target);
       setVisible(false);
-      const nextPlacement = placementFor(target);
-      setPlacement(nextPlacement);
+      setPlacement(placementFor(target));
 
       if (!frameCreatedRef.current) {
         frameCreatedRef.current = true;
@@ -210,12 +212,37 @@ export default function YouTubeHoverPlayerProvider({
       if (target && active.target !== target) return;
 
       activeRef.current = null;
+      resizeObserverRef.current?.disconnect();
       setVisible(false);
       setPlacement(null);
       sendCommand("pauseVideo");
     },
     [sendCommand]
   );
+
+  useEffect(() => {
+    resizeObserverRef.current = new ResizeObserver(
+      syncPlacement
+    );
+
+    function onViewportChange() {
+      syncPlacement();
+    }
+
+    window.addEventListener("scroll", onViewportChange, true);
+    window.addEventListener("resize", onViewportChange);
+
+    return () => {
+      window.removeEventListener("scroll", onViewportChange, true);
+      window.removeEventListener("resize", onViewportChange);
+      resizeObserverRef.current?.disconnect();
+      resizeObserverRef.current = null;
+
+      if (positionFrameRef.current !== null) {
+        cancelAnimationFrame(positionFrameRef.current);
+      }
+    };
+  }, [syncPlacement]);
 
   useEffect(() => {
     function onMessage(event: MessageEvent) {
@@ -235,6 +262,7 @@ export default function YouTubeHoverPlayerProvider({
         const state = Number(message.info);
 
         if (state === 1 && activeRef.current) {
+          syncPlacement();
           setVisible(true);
           return;
         }
@@ -254,33 +282,7 @@ export default function YouTubeHoverPlayerProvider({
 
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
-  }, [playActive]);
-
-  useEffect(() => {
-    function onViewportChange() {
-      syncPlacement();
-    }
-
-    window.addEventListener("scroll", onViewportChange, true);
-    window.addEventListener("resize", onViewportChange);
-
-    const observer = new ResizeObserver(onViewportChange);
-    const interval = window.setInterval(() => {
-      const target = activeRef.current?.target;
-      if (target) observer.observe(target);
-    }, 500);
-
-    return () => {
-      window.removeEventListener("scroll", onViewportChange, true);
-      window.removeEventListener("resize", onViewportChange);
-      window.clearInterval(interval);
-      observer.disconnect();
-
-      if (positionFrameRef.current !== null) {
-        cancelAnimationFrame(positionFrameRef.current);
-      }
-    };
-  }, [syncPlacement]);
+  }, [playActive, syncPlacement]);
 
   useEffect(() => {
     function onVisibilityChange() {
@@ -321,12 +323,15 @@ export default function YouTubeHoverPlayerProvider({
     }
   }
 
-  const frameHeight = placement
-    ? Math.max(200, placement.height)
-    : 200;
-  const frameWidth = placement
-    ? Math.max(200, placement.width)
-    : 200;
+  const safePlacement = placement ?? {
+    top: -10_000,
+    left: -10_000,
+    width: 200,
+    height: 200,
+    borderRadius: "0px",
+  };
+  const frameHeight = Math.max(200, safePlacement.height);
+  const frameWidth = Math.max(200, safePlacement.width);
 
   return (
     <YouTubeHoverPlayerContext.Provider
@@ -334,17 +339,17 @@ export default function YouTubeHoverPlayerProvider({
     >
       {children}
 
-      {frameSrc && placement && (
+      {frameSrc && (
         <div
           className={`${styles.layer} ${
-            visible ? styles.layerVisible : ""
+            visible && placement ? styles.layerVisible : ""
           }`}
           style={{
-            top: placement.top,
-            left: placement.left,
-            width: placement.width,
-            height: placement.height,
-            borderRadius: placement.borderRadius,
+            top: safePlacement.top,
+            left: safePlacement.left,
+            width: safePlacement.width,
+            height: safePlacement.height,
+            borderRadius: safePlacement.borderRadius,
           }}
           aria-hidden="true"
         >
