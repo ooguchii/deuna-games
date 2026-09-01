@@ -1,5 +1,3 @@
-import "server-only";
-
 import { createHash } from "node:crypto";
 
 export const MAX_EDITORIAL_PREVIEW_BYTES = 3 * 1024 * 1024;
