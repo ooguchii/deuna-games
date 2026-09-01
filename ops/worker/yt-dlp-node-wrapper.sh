@@ -4,7 +4,7 @@ set -euo pipefail
 YTDLP_BIN="${DEUNA_YTDLP_BINARY:-/usr/bin/yt-dlp}"
 NODE_BIN="${DEUNA_NODE_BINARY:-/usr/bin/node}"
 COOKIES_FILE="${DEUNA_YTDLP_COOKIES_FILE:-}"
-YOUTUBE_CLIENTS="${DEUNA_YTDLP_YOUTUBE_CLIENTS:-}"
+YOUTUBE_CLIENTS="${DEUNA_YTDLP_YOUTUBE_CLIENTS:-web_embedded,default}"
 
 if [[ ! -x "${YTDLP_BIN}" ]]; then
   YTDLP_BIN="$(command -v yt-dlp 2>/dev/null || true)"
@@ -25,11 +25,11 @@ if [[ -n "${COOKIES_FILE}" ]]; then
 fi
 
 # Normalizamos las opciones que puede declarar el runtime web. El wrapper es la
-# única fuente de verdad para Node/EJS y evita que una mitigación vieja de
-# YouTube quede fijada para siempre. En particular, default,web_embedded fue una
-# solución temporal; yt-dlp moderno ya decide sus clientes y fallbacks por sí
-# mismo. Si se necesita investigar una regresión futura, puede configurarse un
-# override explícito distinto mediante DEUNA_YTDLP_YOUTUBE_CLIENTS.
+# única fuente de verdad para Node/EJS en producción. Para previews editoriales
+# priorizamos web_embedded: en videos embebibles ese cliente no necesita PO
+# Token para GVS y evita escoger primero formatos de clientes más protegidos.
+# Los clientes automáticos quedan como fallback. El valor histórico
+# default,web_embedded y el alias auto migran a este orden nuevo.
 args=()
 youtube_url=0
 skip_next=0
@@ -67,9 +67,6 @@ while (( $# > 0 )); do
       shift
       ;;
     --sleep-requests)
-      # La versión anterior imponía 1 s entre cada petición de YouTube. Además
-      # de volver muy lenta la preparación, ya no es necesario como política
-      # general. Preservamos cualquier valor explícito que no sea ese legado.
       value="${2:-}"
       if [[ "${value}" == "1" ]]; then
         shift
@@ -106,23 +103,18 @@ if (( youtube_url )); then
     exit 127
   fi
 
-  # EJS + Node siguen siendo necesarios para los desafíos modernos de YouTube.
   YOUTUBE_ARGS+=(
     "--js-runtimes" "node:${NODE_BIN}"
     "--remote-components" "ejs:github"
   )
 
-  # Migración automática de la configuración que DeUna recomendaba antes.
-  # Ese par se considera "auto" para no seguir forzando web_embedded en 2026.
-  if [[ "${YOUTUBE_CLIENTS}" == "default,web_embedded" || "${YOUTUBE_CLIENTS}" == "auto" ]]; then
-    YOUTUBE_CLIENTS=""
+  if [[ "${YOUTUBE_CLIENTS}" == "default,web_embedded" || "${YOUTUBE_CLIENTS}" == "auto" || -z "${YOUTUBE_CLIENTS}" ]]; then
+    YOUTUBE_CLIENTS="web_embedded,default"
   fi
 
-  if [[ -n "${YOUTUBE_CLIENTS}" ]]; then
-    YOUTUBE_ARGS+=(
-      "--extractor-args" "youtube:player_client=${YOUTUBE_CLIENTS}"
-    )
-  fi
+  YOUTUBE_ARGS+=(
+    "--extractor-args" "youtube:player_client=${YOUTUBE_CLIENTS}"
+  )
 fi
 
 exec "${YTDLP_BIN}" \
