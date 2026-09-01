@@ -14,4 +14,27 @@ if [[ ! -x "${NODE_BIN}" ]]; then
   exit 127
 fi
 
-exec "${YTDLP_BIN}" --js-runtimes "node:${NODE_BIN}" "$@"
+# El worker puede declarar --js-runtimes para funcionar también sin este wrapper.
+# Aquí eliminamos cualquier declaración previa y fijamos una sola ruta absoluta a
+# Node, evitando opciones duplicadas y diferencias de PATH bajo systemd.
+args=()
+skip_next=0
+for arg in "$@"; do
+  if (( skip_next )); then
+    skip_next=0
+    continue
+  fi
+
+  if [[ "${arg}" == "--js-runtimes" ]]; then
+    skip_next=1
+    continue
+  fi
+
+  if [[ "${arg}" == --js-runtimes=* ]]; then
+    continue
+  fi
+
+  args+=("${arg}")
+done
+
+exec "${YTDLP_BIN}" --js-runtimes "node:${NODE_BIN}" "${args[@]}"
