@@ -1,12 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
 import {
-  useEffect,
-  useRef,
-} from "react";
-import {
+  ChevronDown,
   Download,
   FileClock,
   Gauge,
@@ -22,20 +18,10 @@ import {
   Tags,
   UserRound,
 } from "lucide-react";
+import { usePathname, useSearchParams } from "next/navigation";
 
+import ia from "./AdminInformationArchitecture.module.css";
 import ux from "./AdminShellUx.module.css";
-
-const gameSections = [
-  { id: "ficha", label: "Ficha", icon: PanelTop },
-  { id: "datos", label: "Datos", icon: ListTree },
-  { id: "requisitos", label: "Requisitos", icon: MonitorCog },
-  { id: "rendimiento", label: "Rendimiento", icon: Gauge },
-  { id: "multimedia", label: "Multimedia", icon: ImageIcon },
-  { id: "descargas", label: "Descargas", icon: Download },
-  { id: "actualizacion", label: "Actualizar", icon: RefreshCcw },
-  { id: "publicacion", label: "Publicación", icon: Rocket },
-  { id: "historial", label: "Historial", icon: FileClock },
-] as const;
 
 const updateSections = [
   { id: "editar", label: "Editar", icon: SquarePen },
@@ -81,103 +67,157 @@ const aboutSections = [
   { id: "historial", label: "Historial", icon: History },
 ] as const;
 
-type ContextSection = {
-  id: string;
+type ContextIcon = typeof PanelTop;
+
+type ContextChild = {
+  key: string;
   label: string;
-  icon: typeof PanelTop;
+  href: string;
+  active: boolean;
+  icon?: ContextIcon;
 };
 
-function useKeepActiveContextVisible(selected: string) {
-  const navRef = useRef<HTMLElement>(null);
-
-  useEffect(() => {
-    const frame = window.requestAnimationFrame(() => {
-      const nav = navRef.current;
-      const active = nav?.querySelector<HTMLElement>(
-        '[aria-current="page"]'
-      );
-
-      if (!nav || !active) return;
-
-      const edgePadding = 10;
-      const navRect = nav.getBoundingClientRect();
-      const activeRect = active.getBoundingClientRect();
-      const activeLeft =
-        nav.scrollLeft + activeRect.left - navRect.left;
-      const activeRight = activeLeft + activeRect.width;
-      const visibleLeft = nav.scrollLeft + edgePadding;
-      const visibleRight =
-        nav.scrollLeft + nav.clientWidth - edgePadding;
-
-      if (
-        activeLeft >= visibleLeft &&
-        activeRight <= visibleRight
-      ) {
-        return;
-      }
-
-      const centered =
-        activeLeft -
-        (nav.clientWidth - activeRect.width) / 2;
-      const maximum = Math.max(
-        0,
-        nav.scrollWidth - nav.clientWidth
-      );
-
-      nav.scrollLeft = Math.min(
-        maximum,
-        Math.max(0, centered)
-      );
-    });
-
-    return () => window.cancelAnimationFrame(frame);
-  }, [selected]);
-
-  return navRef;
-}
-
-function ContextLinks({
-  pathname,
-  selected,
-  sections,
-  label,
-  hrefForSection,
-}: {
-  pathname: string;
-  selected: string;
-  sections: readonly ContextSection[];
+type ContextItem = {
+  key: string;
   label: string;
-  hrefForSection?: (sectionId: string) => string;
+  href: string;
+  active: boolean;
+  icon: ContextIcon;
+  children?: ContextChild[];
+};
+
+function ContextNavigator({
+  label,
+  items,
+}: {
+  label: string;
+  items: ContextItem[];
 }) {
-  const navRef = useKeepActiveContextVisible(selected);
+  const activeItem = items.find((item) => item.active) ?? items[0];
+  const activeChild = activeItem?.children?.find((item) => item.active);
+  const mobileLabel = activeChild
+    ? `${activeItem.label} · ${activeChild.label}`
+    : activeItem?.label ?? "Secciones";
+  const ActiveIcon = activeItem?.icon ?? PanelTop;
 
   return (
-    <nav
-      ref={navRef}
-      className={ux.contextBar}
-      aria-label={label}
-    >
-      {sections.map((section) => {
-        const Icon = section.icon;
-        const active = selected === section.id;
-        const href = hrefForSection
-          ? hrefForSection(section.id)
-          : `${pathname}?seccion=${section.id}`;
+    <div className={ia.contextShell}>
+      <div className={ia.contextDesktop}>
+        <nav
+          className={`${ux.contextBar} ${ia.contextPrimary}`}
+          aria-label={label}
+        >
+          {items.map((item) => {
+            const Icon = item.icon;
 
-        return (
-          <Link
-            key={section.id}
-            href={href}
-            className={active ? ux.contextActive : undefined}
-            aria-current={active ? "page" : undefined}
+            return (
+              <Link
+                key={item.key}
+                href={item.href}
+                className={item.active ? ux.contextActive : undefined}
+                aria-current={item.active ? "page" : undefined}
+              >
+                <Icon size={16} strokeWidth={1.9} aria-hidden="true" />
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
+
+        {activeItem?.children && activeItem.children.length > 1 && (
+          <nav
+            className={ia.contextSecondary}
+            aria-label={`Opciones de ${activeItem.label}`}
           >
-            <Icon size={16} strokeWidth={1.9} aria-hidden="true" />
-            {section.label}
-          </Link>
-        );
-      })}
-    </nav>
+            {activeItem.children.map((child) => {
+              const Icon = child.icon;
+
+              return (
+                <Link
+                  key={child.key}
+                  href={child.href}
+                  className={child.active ? ia.contextSecondaryActive : undefined}
+                  aria-current={child.active ? "page" : undefined}
+                >
+                  {Icon && <Icon size={14} aria-hidden="true" />}
+                  {child.label}
+                </Link>
+              );
+            })}
+          </nav>
+        )}
+      </div>
+
+      <details className={ia.contextMobile} key={mobileLabel}>
+        <summary>
+          <ActiveIcon size={17} aria-hidden="true" />
+          <span>{mobileLabel}</span>
+          <ChevronDown size={16} aria-hidden="true" />
+        </summary>
+
+        <div className={ia.contextMobilePanel}>
+          {items.map((item) => {
+            const Icon = item.icon;
+
+            if (item.children && item.children.length > 1) {
+              return (
+                <div className={ia.contextMobileGroup} key={item.key}>
+                  <span>{item.label.toUpperCase()}</span>
+                  <div className={ia.contextMobileSub}>
+                    {item.children.map((child) => {
+                      const ChildIcon = child.icon;
+
+                      return (
+                        <Link
+                          key={child.key}
+                          href={child.href}
+                          data-active={child.active ? "true" : "false"}
+                          aria-current={child.active ? "page" : undefined}
+                        >
+                          {ChildIcon && <ChildIcon size={15} aria-hidden="true" />}
+                          {child.label}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            }
+
+            return (
+              <Link
+                key={item.key}
+                href={item.href}
+                data-active={item.active ? "true" : "false"}
+                aria-current={item.active ? "page" : undefined}
+              >
+                <Icon size={16} aria-hidden="true" />
+                {item.label}
+              </Link>
+            );
+          })}
+        </div>
+      </details>
+    </div>
   );
+}
+
+function simpleItems(
+  pathname: string,
+  selected: string,
+  sections: readonly {
+    id: string;
+    label: string;
+    icon: ContextIcon;
+  }[]
+): ContextItem[] {
+  return sections.map((section) => ({
+    key: section.id,
+    label: section.label,
+    href: `${pathname}?seccion=${section.id}`,
+    active: selected === section.id,
+    icon: section.icon,
+  }));
 }
 
 export default function AdminContextBar() {
@@ -195,90 +235,172 @@ export default function AdminContextBar() {
     const selected = routeSection
       ? routeSection
       : searchParams.get("seccion") ?? "ficha";
+    const gameItems: ContextItem[] = [
+      {
+        key: "informacion",
+        label: "Información",
+        href: `${gamePath}?seccion=ficha`,
+        active: selected === "ficha",
+        icon: PanelTop,
+      },
+      {
+        key: "clasificacion",
+        label: "Clasificación",
+        href: `${gamePath}?seccion=datos`,
+        active: selected === "datos",
+        icon: Tags,
+      },
+      {
+        key: "compatibilidad",
+        label: "Compatibilidad",
+        href: `${gamePath}?seccion=requisitos`,
+        active: selected === "requisitos" || selected === "rendimiento",
+        icon: MonitorCog,
+        children: [
+          {
+            key: "requisitos",
+            label: "Requisitos",
+            href: `${gamePath}?seccion=requisitos`,
+            active: selected === "requisitos",
+            icon: MonitorCog,
+          },
+          {
+            key: "rendimiento",
+            label: "Rendimiento",
+            href: `${gamePath}?seccion=rendimiento`,
+            active: selected === "rendimiento",
+            icon: Gauge,
+          },
+        ],
+      },
+      {
+        key: "multimedia",
+        label: "Multimedia",
+        href: `${gamePath}?seccion=multimedia`,
+        active: selected === "multimedia",
+        icon: ImageIcon,
+      },
+      {
+        key: "distribucion",
+        label: "Distribución",
+        href: `${gamePath}?seccion=descargas`,
+        active: selected === "descargas" || selected === "actualizacion",
+        icon: Download,
+        children: [
+          {
+            key: "descargas",
+            label: "Descargas y mirrors",
+            href: `${gamePath}?seccion=descargas`,
+            active: selected === "descargas",
+            icon: Download,
+          },
+          {
+            key: "actualizacion",
+            label: "Nueva versión",
+            href: `${gamePath}/actualizacion`,
+            active: selected === "actualizacion",
+            icon: RefreshCcw,
+          },
+        ],
+      },
+      {
+        key: "publicacion",
+        label: "Publicación",
+        href: `${gamePath}/publicacion`,
+        active: selected === "publicacion",
+        icon: Rocket,
+      },
+      {
+        key: "historial",
+        label: "Historial",
+        href: `${gamePath}?seccion=historial`,
+        active: selected === "historial",
+        icon: FileClock,
+      },
+    ];
 
     return (
-      <ContextLinks
-        pathname={gamePath}
-        selected={selected}
-        sections={gameSections}
+      <ContextNavigator
         label="Secciones del editor de juego"
-        hrefForSection={(sectionId) => {
-          if (sectionId === "publicacion") {
-            return `${gamePath}/publicacion`;
-          }
-
-          if (sectionId === "actualizacion") {
-            return `${gamePath}/actualizacion`;
-          }
-
-          return `${gamePath}?seccion=${sectionId}`;
-        }}
+        items={gameItems}
       />
     );
   }
 
   if (updateMatch && updateMatch[1] !== "nueva") {
     return (
-      <ContextLinks
-        pathname={pathname}
-        selected={searchParams.get("seccion") ?? "editar"}
-        sections={updateSections}
-        label="Secciones del editor de actualización"
+      <ContextNavigator
+        label="Secciones del borrador histórico"
+        items={simpleItems(
+          pathname,
+          searchParams.get("seccion") ?? "editar",
+          updateSections
+        )}
       />
     );
   }
 
   if (pathname === "/admin/catalogos") {
     return (
-      <ContextLinks
-        pathname={pathname}
-        selected={searchParams.get("seccion") ?? "clasificaciones"}
-        sections={catalogSections}
-        label="Secciones del panel de catálogos"
+      <ContextNavigator
+        label="Secciones de Clasificaciones y etiquetas"
+        items={simpleItems(
+          pathname,
+          searchParams.get("seccion") ?? "clasificaciones",
+          catalogSections
+        )}
       />
     );
   }
 
   if (pathname === "/admin/portada") {
     return (
-      <ContextLinks
-        pathname={pathname}
-        selected={searchParams.get("seccion") ?? "curaduria"}
-        sections={homeSections}
-        label="Secciones del editor de Portada"
+      <ContextNavigator
+        label="Secciones del editor de Inicio"
+        items={simpleItems(
+          pathname,
+          searchParams.get("seccion") ?? "curaduria",
+          homeSections
+        )}
       />
     );
   }
 
   if (pathname === "/admin/paginas/presentacion") {
     return (
-      <ContextLinks
-        pathname={pathname}
-        selected={searchParams.get("seccion") ?? "juegos"}
-        sections={publicPageSections}
-        label="Secciones de presentación pública"
+      <ContextNavigator
+        label="Páginas públicas"
+        items={simpleItems(
+          pathname,
+          searchParams.get("seccion") ?? "juegos",
+          publicPageSections
+        )}
       />
     );
   }
 
   if (pathname === "/admin/paginas/quienes-somos") {
     return (
-      <ContextLinks
-        pathname={pathname}
-        selected={searchParams.get("seccion") ?? "encabezado"}
-        sections={aboutSections}
+      <ContextNavigator
         label="Secciones de Quiénes somos"
+        items={simpleItems(
+          pathname,
+          searchParams.get("seccion") ?? "encabezado",
+          aboutSections
+        )}
       />
     );
   }
 
   if (pathname === "/admin/configuracion") {
     return (
-      <ContextLinks
-        pathname={pathname}
-        selected={searchParams.get("seccion") ?? "identidad"}
-        sections={configurationSections}
-        label="Secciones de Configuración"
+      <ContextNavigator
+        label="Secciones de Marca y apariencia"
+        items={simpleItems(
+          pathname,
+          searchParams.get("seccion") ?? "identidad",
+          configurationSections
+        )}
       />
     );
   }

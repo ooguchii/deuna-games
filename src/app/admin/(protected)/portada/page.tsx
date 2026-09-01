@@ -85,7 +85,7 @@ export default async function AdminHomeEditorPage({
       await getHomeConfigPublicationState();
   } catch {
     console.error(
-      "No se pudo leer el estado de publicación de la portada."
+      "No se pudo leer el estado de publicación de Inicio."
     );
   }
 
@@ -110,9 +110,9 @@ export default async function AdminHomeEditorPage({
   return (
     <>
       <AdminPageHeader
-        eyebrow={<>PORTADA · REVISIÓN {item.revision}</>}
+        eyebrow={<>INICIO · REVISIÓN {item.revision}</>}
         title="Inicio"
-        description="Administra curaduría, automatización, orden, visibilidad y textos de Inicio sin mezclar contenido con la lógica de los componentes. Todo queda en borrador hasta publicar."
+        description="Administra curaduría, automatización, orden, visibilidad y textos de la página principal sin mezclar contenido con la lógica de los componentes. Todo queda en borrador hasta publicar."
         action={<span className={styles.draftState}>
           {publicationState?.hasUnpublishedChanges
             ? "Cambios sin publicar"
@@ -151,7 +151,7 @@ export default async function AdminHomeEditorPage({
             />
           ) : (
             <p>
-              La infraestructura de publicación todavía no está disponible en esta base. Aplica las migraciones e importa el contenido editorial antes de publicar la portada.
+              La infraestructura de publicación todavía no está disponible en esta base. Aplica las migraciones e importa el contenido editorial antes de publicar Inicio.
             </p>
           )}
         </section>

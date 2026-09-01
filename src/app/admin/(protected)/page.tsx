@@ -2,14 +2,16 @@ import Link from "next/link";
 import {
   ArrowRight,
   Database,
+  ExternalLink,
   FileText,
   Gamepad2,
-  LayoutTemplate,
+  House,
+  Plus,
   RefreshCcw,
-  Settings2,
   ShieldCheck,
 } from "lucide-react";
 
+import ia from "@/components/admin/AdminInformationArchitecture.module.css";
 import { games } from "@/data/games";
 import { gameUpdates } from "@/data/updates";
 import {
@@ -59,7 +61,7 @@ function publicationPath(
     return "/admin/paginas/presentacion?seccion=publicacion";
   }
 
-  return "/admin/configuracion";
+  return "/admin/configuracion?seccion=publicacion";
 }
 
 function attentionPath(item: PendingPublication) {
@@ -74,12 +76,12 @@ function publicationTypeLabel(
   type: RecentPublication["type"]
 ) {
   if (type === "game") return "Juego";
-  if (type === "game_update") return "Actualización";
-  if (type === "home_config") return "Portada";
-  if (type === "about_config") return "Página";
-  if (type === "game_taxonomy") return "Catálogos";
-  if (type === "public_pages_config") return "Presentación pública";
-  return "Configuración";
+  if (type === "game_update") return "Versión de juego";
+  if (type === "home_config") return "Inicio";
+  if (type === "about_config") return "Quiénes somos";
+  if (type === "game_taxonomy") return "Clasificaciones y etiquetas";
+  if (type === "public_pages_config") return "Páginas públicas";
+  return "Marca y apariencia";
 }
 
 function pendingStatusLabel(
@@ -124,43 +126,23 @@ export default async function AdminDashboardPage() {
       <header className={styles.pageHeader}>
         <div>
           <span>PANEL PRIVADO</span>
-          <h1>Resumen de administración</h1>
+          <h1>Resumen</h1>
           <p>
-            Área editorial segura: borradores versionados, publicaciones separadas, recuperación e historial auditable en PostgreSQL.
+            Tu centro de operaciones: primero lo que requiere atención, después las acciones frecuentes y el estado general del sitio.
           </p>
         </div>
 
-        <span className={styles.secureState}>
-          <ShieldCheck size={17} aria-hidden="true" />
-          Acceso protegido
-        </span>
+        <div className={ia.dashboardHeaderActions}>
+          <Link href="/admin/juegos/nuevo">
+            <Plus size={16} aria-hidden="true" />
+            Crear juego
+          </Link>
+          <Link href="/" target="_blank" rel="noreferrer">
+            <ExternalLink size={15} aria-hidden="true" />
+            Ver sitio
+          </Link>
+        </div>
       </header>
-
-      <section
-        className={styles.metricGrid}
-        aria-label="Resumen del contenido"
-      >
-        <article>
-          <span><Gamepad2 size={20} aria-hidden="true" /></span>
-          <strong>{publicGames}</strong>
-          <p>Juegos con snapshot público</p>
-        </article>
-        <article>
-          <span><RefreshCcw size={20} aria-hidden="true" /></span>
-          <strong>{publicUpdates}</strong>
-          <p>Avisos de actualización publicados</p>
-        </article>
-        <article>
-          <span><Database size={20} aria-hidden="true" /></span>
-          <strong>{pending}</strong>
-          <p>Cambios sin publicar</p>
-        </article>
-        <article>
-          <span><ShieldCheck size={20} aria-hidden="true" /></span>
-          <strong>{security.activeSessions}</strong>
-          <p>Sesiones activas</p>
-        </article>
-      </section>
 
       {publication.available && publication.pendingItems.length > 0 && (
         <section className={styles.tablePanel} aria-labelledby="attention-title">
@@ -213,97 +195,91 @@ export default async function AdminDashboardPage() {
         </section>
       )}
 
-      <section className={styles.adminSection}>
+      <section className={`${styles.adminSection} ${ia.quickActionsPanel}`}>
         <div className={styles.sectionHeading}>
           <div>
-            <span>CONTROL DE CONTENIDO</span>
-            <h2>Estado actual del catálogo</h2>
+            <span>ACCIONES RÁPIDAS</span>
+            <h2>Trabajo frecuente</h2>
           </div>
           <p>
-            {publication.available
-              ? "Guardar conserva un borrador privado. Publicar crea un snapshot auditable y restaurable."
-              : "La publicación explícita quedará disponible al aplicar la migración editorial pendiente."}
+            Atajos a las tareas que más se repiten. La navegación completa permanece en el menú lateral.
           </p>
         </div>
 
-        <div className={styles.moduleGrid}>
-          <Link href="/admin/juegos">
-            <Gamepad2 size={23} aria-hidden="true" />
+        <div className={ia.quickActionsGrid}>
+          <Link href="/admin/juegos/nuevo" className={ia.quickAction}>
+            <Gamepad2 size={21} aria-hidden="true" />
             <div>
-              <strong>Revisar juegos</strong>
-              <span>
-                Títulos, clasificaciones, requisitos, rendimiento, descargas y publicación.
-              </span>
+              <strong>Nuevo juego</strong>
+              <span>Crear un borrador y completar su ficha antes de publicarlo.</span>
             </div>
-            <ArrowRight size={18} aria-hidden="true" />
+            <ArrowRight size={16} aria-hidden="true" />
           </Link>
 
-          <Link href="/admin/juegos">
-            <RefreshCcw size={23} aria-hidden="true" />
+          <Link href="/admin/juegos" className={ia.quickAction}>
+            <RefreshCcw size={21} aria-hidden="true" />
             <div>
               <strong>Publicar nueva versión</strong>
-              <span>
-                Elige un juego publicado y usa Actualizar para cambiar versión y descargas y generar el aviso público en una sola operación.
-              </span>
+              <span>Elegir un juego publicado y abrir su flujo de Distribución.</span>
             </div>
-            <ArrowRight size={18} aria-hidden="true" />
+            <ArrowRight size={16} aria-hidden="true" />
           </Link>
 
-          <Link href="/admin/portada">
-            <LayoutTemplate size={23} aria-hidden="true" />
+          <Link href="/admin/portada" className={ia.quickAction}>
+            <House size={21} aria-hidden="true" />
             <div>
-              <strong>Organizar portada</strong>
-              <span>
-                Prioridades de Hero, Populares, Bajos recursos y Recomendados con publicación versionada.
-              </span>
+              <strong>Editar Inicio</strong>
+              <span>Curaduría, presentación y publicación de la página principal.</span>
             </div>
-            <ArrowRight size={18} aria-hidden="true" />
+            <ArrowRight size={16} aria-hidden="true" />
           </Link>
 
-          <Link href="/admin/paginas">
-            <FileText size={23} aria-hidden="true" />
+          <Link href="/admin/paginas" className={ia.quickAction}>
+            <FileText size={21} aria-hidden="true" />
             <div>
-              <strong>Editar páginas</strong>
-              <span>
-                Textos institucionales estructurados, versionados y publicables sin HTML libre.
-              </span>
+              <strong>Páginas públicas</strong>
+              <span>Entrar directamente a Juegos, Actualizaciones, compatibilidad o Quiénes somos.</span>
             </div>
-            <ArrowRight size={18} aria-hidden="true" />
-          </Link>
-
-          <Link href="/admin/seguridad">
-            <ShieldCheck size={23} aria-hidden="true" />
-            <div>
-              <strong>Comprobar seguridad</strong>
-              <span>
-                Sesiones y eventos administrativos sin rastreo de visitantes.
-              </span>
-            </div>
-            <ArrowRight size={18} aria-hidden="true" />
-          </Link>
-
-          <Link href="/admin/configuracion">
-            <Settings2 size={23} aria-hidden="true" />
-            <div>
-              <strong>Configuración editorial</strong>
-              <span>
-                Identidad pública versionada, publicable y restaurable sin exponer secretos ni opciones del servidor.
-              </span>
-            </div>
-            <ArrowRight size={18} aria-hidden="true" />
+            <ArrowRight size={16} aria-hidden="true" />
           </Link>
         </div>
+      </section>
+
+      <section
+        className={styles.metricGrid}
+        aria-label="Estado general del sitio"
+      >
+        <article>
+          <span><Gamepad2 size={20} aria-hidden="true" /></span>
+          <strong>{publicGames}</strong>
+          <p>Juegos publicados</p>
+        </article>
+        <article>
+          <span><Database size={20} aria-hidden="true" /></span>
+          <strong>{pending}</strong>
+          <p>Cambios sin publicar</p>
+        </article>
+        <article>
+          <span><ShieldCheck size={20} aria-hidden="true" /></span>
+          <strong>{security.activeSessions}</strong>
+          <p>Sesiones administrativas activas</p>
+        </article>
+        <article>
+          <span><RefreshCcw size={20} aria-hidden="true" /></span>
+          <strong>{publicUpdates}</strong>
+          <p>Versiones y avisos publicados</p>
+        </article>
       </section>
 
       {publication.available && publication.recent.length > 0 && (
         <section className={styles.tablePanel}>
           <div className={styles.tableSummary}>
-            <strong>Publicaciones recientes</strong>
+            <strong>Actividad editorial reciente</strong>
             <span>{publication.recent.length} movimientos</span>
           </div>
 
           <div className={styles.tableWrap}>
-            <table className="admin-data-table" aria-label="Publicaciones editoriales recientes">
+            <table className="admin-data-table" aria-label="Actividad editorial reciente">
               <thead>
                 <tr>
                   <th scope="col">Contenido</th>
@@ -320,9 +296,7 @@ export default async function AdminDashboardPage() {
                         href={publicationPath(entry.type, entry.key)}
                       >
                         <strong>{entry.key}</strong>
-                        <span>
-                          {publicationTypeLabel(entry.type)}
-                        </span>
+                        <span>{publicationTypeLabel(entry.type)}</span>
                       </Link>
                     </th>
                     <td>#{entry.publicationNumber}</td>

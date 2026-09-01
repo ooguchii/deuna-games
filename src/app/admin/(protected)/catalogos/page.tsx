@@ -137,16 +137,16 @@ export default async function AdminCatalogsPage({
       await getGameTaxonomyPublicationState();
   } catch {
     console.error(
-      "No se pudo leer el estado de publicación de Catálogos."
+      "No se pudo leer el estado de publicación de Clasificaciones y etiquetas."
     );
   }
 
   return (
     <>
       <AdminPageHeader
-        eyebrow="DATOS MAESTROS"
-        title="Catálogos"
-        description="Trabaja clasificaciones y etiquetas en borrador. La misma definición maestra alimenta toda la web únicamente después de publicar su snapshot."
+        eyebrow="ORGANIZACIÓN DEL CATÁLOGO"
+        title="Clasificaciones y etiquetas"
+        description="Administra las clasificaciones y etiquetas maestras que organizan los juegos. Los cambios permanecen en borrador hasta publicar su snapshot."
         action={<span className={styles.draftState}>
           <BookOpenCheck size={15} aria-hidden="true" />
           {publicationState?.hasUnpublishedChanges
@@ -161,9 +161,9 @@ export default async function AdminCatalogsPage({
 
       {!item ? (
         <section className={styles.editorPanel}>
-          <h2>Catálogo administrativo pendiente</h2>
+          <h2>Clasificaciones y etiquetas pendientes</h2>
           <p>
-            Ejecuta la actualización local para generar el catálogo inicial a partir de los juegos existentes.
+            Ejecuta la actualización local para generar la definición inicial a partir de los juegos existentes.
           </p>
         </section>
       ) : section === "historial" ? (
@@ -182,7 +182,7 @@ export default async function AdminCatalogsPage({
             />
           ) : (
             <p>
-              El snapshot publicado de Catálogos todavía no está disponible. Ejecuta la actualización local antes de publicar cambios visuales o de orden.
+              El snapshot publicado todavía no está disponible. Ejecuta la actualización local antes de publicar cambios visuales o de orden.
             </p>
           )}
         </section>

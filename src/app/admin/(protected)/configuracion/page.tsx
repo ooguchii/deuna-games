@@ -70,23 +70,23 @@ function pageHeading(section: ConfigurationSection) {
       return {
         title: "Apariencia del sitio",
         description:
-          "Administra la marca y los fondos de las páginas desde un único espacio. Todo se guarda primero como borrador y sólo llega al sitio al publicar.",
+          "Administra colores y fondos de las páginas desde un único espacio. Todo se guarda primero como borrador y sólo llega al sitio al publicar.",
       };
     case "publicacion":
       return {
-        title: "Publicación de configuración",
+        title: "Publicación de marca y apariencia",
         description:
-          "Revisa el borrador completo de identidad y apariencia antes de convertirlo en la configuración pública activa.",
+          "Revisa el borrador completo de identidad y apariencia antes de convertirlo en la versión pública activa.",
       };
     case "historial":
       return {
-        title: "Historial de configuración",
+        title: "Historial de marca y apariencia",
         description:
           "Consulta revisiones anteriores de identidad y apariencia y restaura una versión cuando sea necesario.",
       };
     default:
       return {
-        title: "Identidad pública",
+        title: "Identidad de marca",
         description:
           "Administra nombre, descripción y presentación institucional. Todo se guarda primero como borrador.",
       };
@@ -110,7 +110,7 @@ export default async function AdminConfigurationPage({
     publicationState = await getSiteConfigPublicationState();
   } catch {
     console.error(
-      "No se pudo leer el estado de publicación de la configuración."
+      "No se pudo leer el estado de publicación de Marca y apariencia."
     );
   }
 
@@ -135,7 +135,7 @@ export default async function AdminConfigurationPage({
   return (
     <>
       <AdminPageHeader
-        eyebrow={<>CONFIGURACIÓN · REVISIÓN {item.revision}</>}
+        eyebrow={<>MARCA Y APARIENCIA · REVISIÓN {item.revision}</>}
         title={heading.title}
         description={heading.description}
         action={<span className={styles.draftState}>{status}</span>}

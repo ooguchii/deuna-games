@@ -32,10 +32,10 @@ export default async function AdminSecurityPage() {
     <>
       <header className={styles.pageHeader}>
         <div>
-          <span>SEGURIDAD</span>
-          <h1>Sesiones y accesos</h1>
+          <span>ADMINISTRACIÓN</span>
+          <h1>Acceso y seguridad</h1>
           <p>
-            Este registro contiene únicamente actividad de tu propia cuenta administrativa. No guarda IP, dispositivo, ubicación ni navegación de visitantes.
+            Revisa sesiones y actividad administrativa desde un único lugar. Este registro no guarda IP, dispositivo, ubicación ni navegación de visitantes.
           </p>
         </div>
       </header>

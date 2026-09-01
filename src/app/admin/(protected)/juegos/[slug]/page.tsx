@@ -193,6 +193,7 @@ export default async function AdminGameEditorPage({
   const performanceAction = `${coreAction}/performance`;
   const mediaAction = `${coreAction}/media`;
   const downloadAction = `${coreAction}/download`;
+  const hasPublicVersion = publicationIdentity?.everPublished ?? false;
 
   return (
     <>
@@ -204,7 +205,7 @@ export default async function AdminGameEditorPage({
       <AdminPageHeader
         eyebrow={<>JUEGO · REVISIÓN {item.revision}</>}
         title={game.title}
-        description="Trabaja una sección a la vez. Guardar conserva el borrador y Publicar sigue siendo una acción separada."
+        description="Gestiona información, clasificación, compatibilidad, multimedia y distribución desde un único espacio. Guardar conserva el borrador; Publicar sigue siendo una acción separada."
         action={<div
           style={{
             display: "flex",
@@ -245,11 +246,11 @@ export default async function AdminGameEditorPage({
         <section className={styles.editorPanel}>
           <div className={styles.sectionHeading}>
             <div>
-              <span>DATOS PRINCIPALES</span>
-              <h2>Ficha editorial</h2>
+              <span>INFORMACIÓN</span>
+              <h2>Información del juego</h2>
             </div>
             <p>
-              Título, descripción, clasificación principal y datos de presentación.
+              Título, descripción, presentación y datos editoriales principales del juego.
             </p>
           </div>
 
@@ -299,18 +300,37 @@ export default async function AdminGameEditorPage({
                 ))}
               </select>
               <small>
-                Todas las opciones provienen de la misma lista de Clasificaciones en Catálogos. La principal sólo define cuál se muestra primero en la ficha interna del juego.
+                Las opciones provienen de la lista maestra de Clasificaciones y etiquetas. La principal define cuál se muestra primero en la ficha interna del juego.
               </small>
             </label>
 
-            <label>
-              <span>Versión</span>
-              <input
-                name="version"
-                defaultValue={game.version ?? ""}
-                maxLength={240}
-              />
-            </label>
+            {hasPublicVersion ? (
+              <>
+                <input
+                  type="hidden"
+                  name="version"
+                  value={game.version ?? ""}
+                />
+                <div className={`${styles.tableSummary} ${styles.fieldWide}`}>
+                  <strong>Versión pública</strong>
+                  <span>
+                    {game.version?.trim() || "Sin versión registrada"} · Se modifica desde Distribución → Nueva versión.
+                  </span>
+                </div>
+              </>
+            ) : (
+              <label>
+                <span>Versión inicial</span>
+                <input
+                  name="version"
+                  defaultValue={game.version ?? ""}
+                  maxLength={240}
+                />
+                <small>
+                  Después de la primera publicación, las versiones nuevas se gestionan desde Distribución.
+                </small>
+              </label>
+            )}
 
             <label>
               <span>Insignia</span>
@@ -357,8 +377,8 @@ export default async function AdminGameEditorPage({
               note="Guardar no publica. La revisión anterior seguirá disponible en Historial."
               action={coreAction}
               continueTo="datos"
-              saveLabel="Guardar ficha"
-              continueLabel="Guardar y continuar a Datos"
+              saveLabel="Guardar información"
+              continueLabel="Guardar y continuar a Clasificación"
             />
           </form>
         </section>
@@ -368,11 +388,11 @@ export default async function AdminGameEditorPage({
         <section className={styles.editorPanel}>
           <div className={styles.sectionHeading}>
             <div>
-              <span>DATOS AVANZADOS</span>
-              <h2>Identidad y clasificación</h2>
+              <span>CLASIFICACIÓN Y METADATOS</span>
+              <h2>Clasificación del juego</h2>
             </div>
             <p>
-              Información para clasificaciones adicionales, etiquetas, plataformas y metadatos de la ficha.
+              Organiza clasificaciones adicionales, etiquetas y plataformas, junto con los metadatos que completan la identidad del título.
             </p>
           </div>
 
@@ -457,8 +477,8 @@ export default async function AdminGameEditorPage({
               note="La clasificación principal y las adicionales salen de una única lista maestra; un mismo juego nunca se contará dos veces dentro de la misma clasificación."
               action={advancedAction}
               continueTo="requisitos"
-              saveLabel="Guardar datos avanzados"
-              continueLabel="Guardar y continuar a Requisitos"
+              saveLabel="Guardar clasificación y metadatos"
+              continueLabel="Guardar y continuar a Compatibilidad"
             />
           </form>
         </section>
@@ -468,11 +488,11 @@ export default async function AdminGameEditorPage({
         <section className={styles.editorPanel}>
           <div className={styles.sectionHeading}>
             <div>
-              <span>REQUISITOS</span>
-              <h2>Compatibilidad del sistema</h2>
+              <span>COMPATIBILIDAD · REQUISITOS</span>
+              <h2>Requisitos del sistema</h2>
             </div>
             <p>
-              Configura mínimos y recomendados sin mezclar esta tarea con el resto de la ficha.
+              Configura mínimos y recomendados. Rendimiento permanece como la segunda parte de Compatibilidad.
             </p>
           </div>
 
@@ -675,7 +695,7 @@ export default async function AdminGameEditorPage({
               action={mediaAction}
               continueTo="descargas"
               saveLabel="Guardar multimedia"
-              continueLabel="Guardar y continuar a Descargas"
+              continueLabel="Guardar y continuar a Distribución"
             />
           </form>
         </section>
@@ -685,11 +705,11 @@ export default async function AdminGameEditorPage({
         <section className={styles.editorPanel}>
           <div className={styles.sectionHeading}>
             <div>
-              <span>DESCARGAS</span>
-              <h2>Página de descarga</h2>
+              <span>DISTRIBUCIÓN</span>
+              <h2>Descargas y mirrors</h2>
             </div>
             <p>
-              Gestiona tamaño, plataforma y fuentes sin abandonar el workspace del juego.
+              Mantén tamaño, plataforma y fuentes de la versión actual. Para publicar una versión diferente utiliza Distribución → Nueva versión.
             </p>
           </div>
 
@@ -751,10 +771,10 @@ export default async function AdminGameEditorPage({
             />
 
             <GameEditorFormActions
-              note="Las direcciones se validan antes de guardarse y no se aceptan URLs HTTP inseguras."
+              note="Esta pantalla mantiene las fuentes de la versión actual. No crea una versión nueva y las direcciones HTTP inseguras se rechazan."
               action={downloadAction}
               continueTo="publicacion"
-              saveLabel="Guardar descargas"
+              saveLabel="Guardar distribución"
               continueLabel="Guardar y revisar Publicación"
             />
           </form>

@@ -5,6 +5,8 @@ import {
   CheckCircle2,
   CircleSlash2,
   Eye,
+  FileClock,
+  MoreHorizontal,
   Pencil,
   RefreshCcw,
   Rocket,
@@ -19,6 +21,7 @@ import {
   useState,
 } from "react";
 
+import ia from "./AdminInformationArchitecture.module.css";
 import styles from "./AdminCatalog.module.css";
 
 export type AdminGameCatalogItem = {
@@ -243,75 +246,109 @@ export default function AdminGamesCatalog({
               </tr>
             </thead>
             <tbody>
-              {filtered.map((item) => (
-                <tr key={item.key}>
-                  <th scope="row">
-                    <strong>{item.title}</strong>
-                    <span>
-                      {item.key}
-                      {item.version ? ` · ${item.version}` : ""}
-                    </span>
-                  </th>
-                  <td>{item.category}</td>
-                  <td>
-                    {item.status === "published" ? (
-                      <span className={styles.statusOk}>
-                        <CheckCircle2 size={15} aria-hidden="true" />
-                        Publicado
-                      </span>
-                    ) : (
-                      <span className={styles.statusPending}>
-                        <CircleSlash2 size={15} aria-hidden="true" />
-                        {item.status === "hidden"
-                          ? "Oculto"
-                          : item.status === "unpublished"
-                            ? "Sin publicar"
-                            : "Cambios pendientes"}
-                      </span>
-                    )}
-                  </td>
-                  <td>
-                    {item.publicationNumber
-                      ? `#${item.publicationNumber}`
-                      : "—"}
-                  </td>
-                  <td>{item.revision}</td>
-                  <td>
-                    <div className={styles.actions}>
-                      <Link
-                        href={`/admin/juegos/${encodeURIComponent(item.key)}`}
-                        title={`Editar ${item.title}`}
-                      >
-                        <Pencil size={14} aria-hidden="true" />
-                        Editar
+              {filtered.map((item) => {
+                const gamePath = `/admin/juegos/${encodeURIComponent(item.key)}`;
+                const published = item.status === "published";
+
+                return (
+                  <tr key={item.key}>
+                    <th scope="row">
+                      <Link href={gamePath} title={`Editar ${item.title}`}>
+                        <strong>{item.title}</strong>
+                        <span>
+                          {item.key}
+                          {item.version ? ` · ${item.version}` : ""}
+                        </span>
                       </Link>
-                      <Link
-                        href={`/admin/juegos/${encodeURIComponent(item.key)}/vista-previa`}
-                        title={`Ver borrador de ${item.title}`}
-                      >
-                        <Eye size={14} aria-hidden="true" />
-                        Previa
-                      </Link>
-                      {item.status === "published" && (
-                        <Link
-                          href={`/admin/juegos/${encodeURIComponent(item.key)}/actualizacion`}
-                          title={`Publicar una nueva versión de ${item.title}`}
-                        >
-                          <RefreshCcw size={14} aria-hidden="true" />
-                          Actualizar
-                        </Link>
+                    </th>
+                    <td>{item.category}</td>
+                    <td>
+                      {published ? (
+                        <span className={styles.statusOk}>
+                          <CheckCircle2 size={15} aria-hidden="true" />
+                          Publicado
+                        </span>
+                      ) : (
+                        <span className={styles.statusPending}>
+                          <CircleSlash2 size={15} aria-hidden="true" />
+                          {item.status === "hidden"
+                            ? "Oculto"
+                            : item.status === "unpublished"
+                              ? "Sin publicar"
+                              : "Cambios pendientes"}
+                        </span>
                       )}
-                      <Link
-                        href={`/admin/juegos/${encodeURIComponent(item.key)}/publicacion`}
-                        title={`Revisar publicación de ${item.title}`}
-                      >
-                        <Rocket size={14} aria-hidden="true" />
-                        {publicationActionLabel(item.status)}
-                      </Link>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td>
+                      {item.publicationNumber
+                        ? `#${item.publicationNumber}`
+                        : "—"}
+                    </td>
+                    <td>{item.revision}</td>
+                    <td>
+                      <div className={ia.rowActions}>
+                        <Link
+                          href={gamePath}
+                          title={`Editar ${item.title}`}
+                        >
+                          <Pencil size={14} aria-hidden="true" />
+                          Editar
+                        </Link>
+
+                        {published ? (
+                          <Link
+                            href={`${gamePath}/actualizacion`}
+                            title={`Publicar una nueva versión de ${item.title}`}
+                          >
+                            <RefreshCcw size={14} aria-hidden="true" />
+                            Nueva versión
+                          </Link>
+                        ) : (
+                          <Link
+                            href={`${gamePath}/publicacion`}
+                            title={`Revisar publicación de ${item.title}`}
+                          >
+                            <Rocket size={14} aria-hidden="true" />
+                            {publicationActionLabel(item.status)}
+                          </Link>
+                        )}
+
+                        <details className={ia.rowMenu}>
+                          <summary aria-label={`Más acciones para ${item.title}`}>
+                            <MoreHorizontal size={16} aria-hidden="true" />
+                            <span className={ia.srOnly}>Más acciones</span>
+                          </summary>
+                          <div className={ia.rowMenuPanel}>
+                            <Link
+                              href={`${gamePath}/vista-previa`}
+                              title={`Ver borrador de ${item.title}`}
+                            >
+                              <Eye size={14} aria-hidden="true" />
+                              Vista previa
+                            </Link>
+                            {published && (
+                              <Link
+                                href={`${gamePath}/publicacion`}
+                                title={`Revisar publicación de ${item.title}`}
+                              >
+                                <Rocket size={14} aria-hidden="true" />
+                                Publicación
+                              </Link>
+                            )}
+                            <Link
+                              href={`${gamePath}?seccion=historial`}
+                              title={`Revisar historial de ${item.title}`}
+                            >
+                              <FileClock size={14} aria-hidden="true" />
+                              Historial
+                            </Link>
+                          </div>
+                        </details>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

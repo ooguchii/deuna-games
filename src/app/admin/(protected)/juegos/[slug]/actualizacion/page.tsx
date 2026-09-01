@@ -104,17 +104,17 @@ export default async function AdminGameUpdatePage({
   return (
     <>
       <Link
-        href={`/admin/juegos/${encodeURIComponent(slug)}`}
+        href={`/admin/juegos/${encodeURIComponent(slug)}?seccion=descargas`}
         className={styles.backLink}
       >
         <ArrowLeft size={15} aria-hidden="true" />
-        Volver a {game.title}
+        Volver a Distribución
       </Link>
 
       <AdminPageHeader
-        eyebrow={<>ACTUALIZAR JUEGO · REVISIÓN {item.revision}</>}
+        eyebrow={<>DISTRIBUCIÓN · NUEVA VERSIÓN · REVISIÓN {item.revision}</>}
         title={game.title}
-        description="Publica una nueva versión sin cambiar la URL del juego. Esta operación reemplaza las descargas actuales y crea el aviso público de actualización en un solo paso."
+        description="Publica una nueva versión sin cambiar la URL del juego. La operación reemplaza las descargas actuales y crea el aviso público de actualización en un solo paso."
         action={
           <Link
             href={`/juegos/${encodeURIComponent(slug)}`}
@@ -137,7 +137,7 @@ export default async function AdminGameUpdatePage({
         >
           <ShieldCheck size={18} aria-hidden="true" />
           <span>
-            Este juego todavía no está visible públicamente. Completa su primera publicación antes de generar avisos de actualización.
+            Este juego todavía no está visible públicamente. Completa su primera publicación antes de publicar una nueva versión.
           </span>
         </div>
       )}
@@ -150,7 +150,7 @@ export default async function AdminGameUpdatePage({
           >
             <ShieldCheck size={18} aria-hidden="true" />
             <span>
-              Hay otros cambios pendientes en el borrador de este juego. Por seguridad, DeUna no los publicará accidentalmente junto con una actualización. Publica o restaura esos cambios antes de continuar. Los datos mostrados abajo corresponden a la versión que realmente está visible en la web.
+              Hay otros cambios pendientes en el borrador de este juego. Por seguridad, DeUna no los publicará accidentalmente junto con una nueva versión. Publica o restaura esos cambios antes de continuar. Los datos mostrados abajo corresponden a la versión realmente visible en la web.
             </span>
           </div>
         )}
@@ -159,10 +159,10 @@ export default async function AdminGameUpdatePage({
         <div className={styles.sectionHeading}>
           <div>
             <span>ESTADO ACTUAL</span>
-            <h2>Versión pública y descarga</h2>
+            <h2>Versión pública y descargas</h2>
           </div>
           <p>
-            La dirección pública permanece siempre en /juegos/{slug}. Sólo cambian la versión, los enlaces de descarga y el historial de novedades.
+            La dirección pública permanece siempre en /juegos/{slug}. Sólo cambian la versión, las fuentes de descarga y el historial de novedades.
           </p>
         </div>
 
@@ -186,10 +186,10 @@ export default async function AdminGameUpdatePage({
         <div className={styles.sectionHeading}>
           <div>
             <span>NUEVA VERSIÓN</span>
-            <h2>Publicar actualización</h2>
+            <h2>Publicar nueva versión</h2>
           </div>
           <p>
-            El botón final publica inmediatamente el juego actualizado y el aviso. No existe un segundo paso que pueda dejar ambos estados desincronizados.
+            La confirmación publica inmediatamente el juego actualizado y su aviso. No existe un segundo paso que pueda dejar ambos estados desincronizados.
           </p>
         </div>
 
@@ -306,7 +306,7 @@ export default async function AdminGameUpdatePage({
               </p>
               <button type="submit">
                 <RefreshCcw size={15} aria-hidden="true" />
-                Publicar actualización
+                Publicar nueva versión
               </button>
             </div>
           </fieldset>
@@ -317,10 +317,10 @@ export default async function AdminGameUpdatePage({
         <div className={styles.sectionHeading}>
           <div>
             <span>HISTORIAL</span>
-            <h2>Avisos registrados para este juego</h2>
+            <h2>Versiones registradas para este juego</h2>
           </div>
           <p>
-            El historial se conserva aunque los enlaces de descarga del juego sigan cambiando con versiones posteriores.
+            El historial se conserva aunque las fuentes de descarga sigan cambiando con versiones posteriores.
           </p>
         </div>
 
@@ -360,7 +360,7 @@ export default async function AdminGameUpdatePage({
           </div>
         ) : (
           <p className={styles.emptyState}>
-            Todavía no hay actualizaciones registradas para este juego.
+            Todavía no hay versiones registradas para este juego.
           </p>
         )}
       </section>

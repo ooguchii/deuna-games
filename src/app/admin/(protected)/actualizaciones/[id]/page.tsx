@@ -110,9 +110,9 @@ export default async function AdminUpdateEditorPage({
       </Link>
 
       <AdminPageHeader
-        eyebrow={<>ACTUALIZACIÓN HISTÓRICA · REVISIÓN {item.revision}</>}
+        eyebrow={<>BORRADOR HISTÓRICO · REVISIÓN {item.revision}</>}
         title={update.version}
-        description={<>Compatibilidad editorial para un borrador antiguo relacionado con {update.gameSlug}. Las nuevas versiones se gestionan desde el propio juego.</>}
+        description={<>Compatibilidad editorial para un borrador antiguo relacionado con {update.gameSlug}. Las versiones nuevas se gestionan desde Distribución → Nueva versión dentro del propio juego.</>}
         action={<span className={styles.draftState}>
           {publicationState?.publicVisible === false
             ? "Oculta de la web"
@@ -200,7 +200,7 @@ export default async function AdminUpdateEditorPage({
 
             <div className={styles.formActions}>
               <p>
-                Este editor se conserva únicamente para resolver borradores históricos. Las versiones nuevas deben publicarse desde Juegos → Actualizar.
+                Este editor se conserva únicamente para resolver borradores históricos. Las versiones nuevas deben publicarse desde Distribución → Nueva versión.
               </p>
               <button type="submit">
                 Guardar borrador histórico
