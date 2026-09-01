@@ -91,6 +91,8 @@ export async function POST(request: NextRequest) {
           current.payload.pageBackgrounds,
         heroImageEffect:
           current.payload.heroImageEffect,
+        heroImageTuning:
+          current.payload.heroImageTuning,
       }
     );
 
