@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import {
   forwardRef,
+  type CSSProperties,
   type KeyboardEvent,
   type PointerEvent,
   type TransitionEvent,
@@ -22,6 +23,10 @@ import {
 } from "react";
 
 import type { HomeCopy } from "@/data/home-config";
+import {
+  resolveHeroImageTuning,
+  type HeroImageTuning,
+} from "@/lib/site/hero-image";
 import type { Game } from "@/types/game";
 
 import artworkStyles from "./HeroArtwork.module.css";
@@ -42,6 +47,7 @@ type ResponsiveArtworkProps = {
   alt: string;
   active?: boolean;
   ambient?: boolean;
+  style?: CSSProperties;
 };
 
 function ResponsiveArtwork({
@@ -49,6 +55,7 @@ function ResponsiveArtwork({
   alt,
   active = false,
   ambient = false,
+  style,
 }: ResponsiveArtworkProps) {
   const desktopSrc = game.heroImage ?? game.coverImage;
   const mobileSrc = game.coverImage ?? game.heroImage;
@@ -79,6 +86,7 @@ function ResponsiveArtwork({
         src={fallbackSrc}
         alt={alt}
         className={artworkClassName}
+        style={style}
         loading={active ? "eager" : "lazy"}
         fetchPriority={active ? "high" : "auto"}
         decoding="async"
@@ -93,6 +101,8 @@ type HeroSlideProps = {
   logicalIndex: number;
   total: number;
   imageEffect: boolean;
+  artworkStyle: CSSProperties;
+  overlayOpacity: number;
   clone?: boolean;
   active?: boolean;
 };
@@ -105,6 +115,8 @@ const HeroSlide = forwardRef<HTMLElement, HeroSlideProps>(
       logicalIndex,
       total,
       imageEffect,
+      artworkStyle,
+      overlayOpacity,
       clone = false,
       active = false,
     },
@@ -128,13 +140,18 @@ const HeroSlide = forwardRef<HTMLElement, HeroSlideProps>(
               game={game}
               alt={accessible ? game.imageAlt : ""}
               active={active}
+              style={artworkStyle}
             />
           ) : (
             <div className={styles.mediaFallback} aria-hidden="true" />
           )}
 
           {imageEffect && (
-            <div className={styles.mediaOverlay} aria-hidden="true" />
+            <div
+              className={styles.mediaOverlay}
+              style={{ opacity: overlayOpacity }}
+              aria-hidden="true"
+            />
           )}
 
           {!active && (
@@ -204,10 +221,12 @@ export default function HeroSection({
   games,
   copy,
   imageEffect = false,
+  imageTuning,
 }: {
   games: Game[];
   copy: HomeCopy["hero"];
   imageEffect?: boolean;
+  imageTuning?: Partial<HeroImageTuning>;
 }) {
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const trackRef = useRef<HTMLDivElement | null>(null);
@@ -215,6 +234,34 @@ export default function HeroSection({
   const pointerStartX = useRef<number | null>(null);
   const resizeFrameOneRef = useRef<number | null>(null);
   const resizeFrameTwoRef = useRef<number | null>(null);
+
+  const resolvedTuning = useMemo(
+    () => resolveHeroImageTuning(imageTuning),
+    [imageTuning]
+  );
+  const artworkStyle = useMemo<CSSProperties>(
+    () => ({
+      filter: `brightness(${resolvedTuning.brightness}%) saturate(${resolvedTuning.saturation}%) contrast(${resolvedTuning.contrast}%)`,
+    }),
+    [resolvedTuning]
+  );
+  const ambientArtworkStyle = useMemo<CSSProperties>(() => {
+    const ambientBrightness = Math.round(
+      resolvedTuning.brightness * 0.72
+    );
+    const ambientSaturation = Math.min(
+      240,
+      Math.round(resolvedTuning.saturation * 1.2)
+    );
+    const scale = 1.12 + resolvedTuning.ambientBlur / 450;
+
+    return {
+      opacity: resolvedTuning.ambientOpacity / 100,
+      filter: `blur(${resolvedTuning.ambientBlur}px) saturate(${ambientSaturation}%) brightness(${ambientBrightness}%) contrast(${resolvedTuning.contrast}%)`,
+      transform: `scale(${scale.toFixed(3)})`,
+    };
+  }, [resolvedTuning]);
+  const overlayOpacity = resolvedTuning.overlayStrength / 100;
 
   const trackSlides = useMemo<TrackSlide[]>(() => {
     const first = games[0]!;
@@ -519,7 +566,13 @@ export default function HeroSection({
       {imageEffect && (
         <div className={styles.ambientBackdrop} aria-hidden="true">
           <div key={activeGame.id} className={styles.ambientFrame}>
-            <ResponsiveArtwork game={activeGame} alt="" active ambient />
+            <ResponsiveArtwork
+              game={activeGame}
+              alt=""
+              active
+              ambient
+              style={ambientArtworkStyle}
+            />
           </div>
           <div className={styles.ambientShade} />
         </div>
@@ -551,6 +604,8 @@ export default function HeroSection({
               logicalIndex={trackSlide.logicalIndex}
               total={games.length}
               imageEffect={imageEffect}
+              artworkStyle={artworkStyle}
+              overlayOpacity={overlayOpacity}
               clone={trackSlide.clone}
               active={trackIndex === physicalIndex}
             />
