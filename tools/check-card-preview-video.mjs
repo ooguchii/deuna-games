@@ -3,6 +3,12 @@ import path from "node:path";
 import process from "node:process";
 
 import {
+  MAX_PREVIEW_DURATION_SECONDS,
+  MAX_PREVIEW_SOURCE_BYTES,
+  MAX_PREVIEW_SOURCE_POSITION_SECONDS,
+  parsePreviewTrimWindow,
+} from "../src/lib/media/preview-video-policy.ts";
+import {
   inspectSafeEditorialWebm,
   MAX_EDITORIAL_PREVIEW_BYTES,
 } from "../src/lib/media/safe-webm.ts";
@@ -34,17 +40,35 @@ assert(
   MAX_EDITORIAL_PREVIEW_BYTES === 3 * 1024 * 1024,
   "El preview público debe mantener un límite estricto de 3 MB."
 );
+assert(
+  MAX_PREVIEW_SOURCE_BYTES === 64 * 1024 * 1024 &&
+    MAX_PREVIEW_DURATION_SECONDS === 30 &&
+    MAX_PREVIEW_SOURCE_POSITION_SECONDS === 86_400,
+  "La política compartida debe limitar origen, duración y posición del recorte."
+);
+assert(
+  parsePreviewTrimWindow("12.5", "24")?.durationSeconds === 11.5 &&
+    parsePreviewTrimWindow("0", "30")?.durationSeconds === 30 &&
+    parsePreviewTrimWindow("0", "30.001") === null &&
+    parsePreviewTrimWindow("20", "10") === null &&
+    parsePreviewTrimWindow("-1", "1") === null,
+  "El recorte compartido debe aceptar ventanas válidas y rechazar duración, orden o posiciones inválidas."
+);
 
 const [
   schema,
   typeModel,
   transcoder,
+  trimPolicy,
+  remoteSource,
   uploadRoute,
+  importRoute,
   mediaAuth,
   mediaRequestSecurity,
   publicRoute,
   hoverMedia,
   universalCard,
+  previewAdminForm,
   adminEditor,
   integrity,
   publicationChanges,
@@ -54,12 +78,16 @@ const [
   source("src/lib/admin/content-validation.ts"),
   source("src/types/game.ts"),
   source("src/lib/media/editorial-video.ts"),
+  source("src/lib/media/preview-video-policy.ts"),
+  source("src/lib/media/remote-video-source.ts"),
   source("src/app/api/admin/content/games/[slug]/preview-upload/route.ts"),
+  source("src/app/api/admin/content/games/[slug]/preview-import/route.ts"),
   source("src/lib/admin/media-admin-route.ts"),
   source("src/lib/admin/media-request-security.ts"),
   source("src/app/media/editorial/[slug]/[filename]/route.ts"),
   source("src/components/ui/HoverPreviewMedia.tsx"),
   source("src/components/ui/UniversalGameCard.tsx"),
+  source("src/components/admin/GamePreviewClipUploadForm.tsx"),
   source("src/app/admin/(protected)/juegos/[slug]/page.tsx"),
   source("src/lib/admin/game-media-integrity.ts"),
   source("src/lib/admin/game-publication-changes.ts"),
@@ -77,9 +105,21 @@ assert(
   "El modelo público del juego debe transportar el preview opcional."
 );
 assert(
+  trimPolicy.includes("parsePreviewTrimWindow") &&
+    trimPolicy.includes("MAX_PREVIEW_DURATION_SECONDS = 30") &&
+    trimPolicy.includes("MAX_PREVIEW_SOURCE_POSITION_SECONDS = 86_400"),
+  "La política de recorte debe ser compartible por cliente y servidor."
+);
+assert(
   transcoder.includes('"libvpx-vp9"') &&
+    transcoder.includes('"-ss"') &&
+    transcoder.includes("formatFfmpegSeconds(trim.startSeconds)") &&
+    transcoder.includes("formatFfmpegSeconds(trim.durationSeconds)") &&
+    transcoder.includes('"-map"') &&
+    transcoder.includes('"0:v:0"') &&
     transcoder.includes('"-an"') &&
-    transcoder.includes("MAX_PREVIEW_DURATION_SECONDS = 30") &&
+    transcoder.includes('"-sn"') &&
+    transcoder.includes('"-dn"') &&
     transcoder.includes("PREFERRED_PREVIEW_BYTES = 1_572_864") &&
     transcoder.includes("width: 400") &&
     transcoder.includes("fps: 15") &&
@@ -89,19 +129,66 @@ assert(
     transcoder.includes('"-g"') &&
     transcoder.includes("spawn(ffmpegExecutable()") &&
     transcoder.includes("shell: false") &&
+    transcoder.includes("downloadRemoteEditorialVideo") &&
+    transcoder.includes("source.video") &&
+    transcoder.includes("convertTemporarySource") &&
     transcoder.includes("mkdtemp") &&
     transcoder.includes("rm(temporaryDirectory") &&
     transcoder.includes("inspectSafeEditorialWebm"),
-  "La conversión debe generar VP9 silencioso, ligero, acotado, sin shell y limpiar el archivo fuente temporal."
+  "La conversión debe recortar antes de codificar, generar VP9 silencioso y limpiar siempre el origen temporal."
 );
 assert(
   uploadRoute.includes("hasExactAdminMediaFormFields") &&
     uploadRoute.includes('"expectedRevision"') &&
+    uploadRoute.includes('"startSeconds"') &&
+    uploadRoute.includes('"endSeconds"') &&
     uploadRoute.includes('"video"') &&
+    uploadRoute.includes("parsePreviewTrimWindow") &&
     uploadRoute.includes("MAX_ADMIN_PREVIEW_REQUEST_BYTES") &&
     uploadRoute.includes("saveGameMediaDraft") &&
     uploadRoute.includes("storeEditorialPreviewVideo"),
-  "La carga de preview debe conservar autenticación, campos exactos, concurrencia y guardado sólo en borrador."
+  "La carga local debe validar recorte, campos exactos, concurrencia y guardar sólo el WebM en borrador."
+);
+assert(
+  remoteSource.includes("httpsRequest") &&
+    remoteSource.includes("lookup") &&
+    remoteSource.includes("BlockList") &&
+    remoteSource.includes('url.protocol !== "https:"') &&
+    remoteSource.includes("url.username") &&
+    remoteSource.includes("url.password") &&
+    remoteSource.includes('url.port !== "443"') &&
+    remoteSource.includes("MAX_REDIRECTS = 3") &&
+    remoteSource.includes("MAX_REMOTE_PREVIEW_BYTES") &&
+    remoteSource.includes("createWriteStream") &&
+    remoteSource.includes("pipeline") &&
+    remoteSource.includes("resolved.address") &&
+    remoteSource.includes("allowedContentTypes"),
+  "La importación remota debe impedir SSRF, fijar DNS público, limitar redirecciones/tamaño y escribir el origen en streaming."
+);
+assert(
+  importRoute.includes("authorizeAdminFormRequest") &&
+    importRoute.includes("hasExactAdminFormFields") &&
+    importRoute.includes('"expectedRevision"') &&
+    importRoute.includes('"url"') &&
+    importRoute.includes('"startSeconds"') &&
+    importRoute.includes('"endSeconds"') &&
+    importRoute.includes("parsePreviewTrimWindow") &&
+    importRoute.includes("storeRemoteEditorialPreviewVideo") &&
+    importRoute.includes("saveGameMediaDraft") &&
+    !importRoute.includes("spawn("),
+  "La URL debe entrar por un endpoint administrativo pequeño y terminar en el mismo pipeline local, sin entregar la URL a FFmpeg."
+);
+assert(
+  previewAdminForm.includes('type SourceMode = "file" | "url"') &&
+    previewAdminForm.includes("URL directa HTTPS") &&
+    previewAdminForm.includes("MAX_PREVIEW_SOURCE_BYTES") &&
+    previewAdminForm.includes("MAX_PREVIEW_SOURCE_POSITION_SECONDS") &&
+    previewAdminForm.includes("parsePreviewTrimWindow") &&
+    previewAdminForm.includes('"startSeconds"') &&
+    previewAdminForm.includes('"endSeconds"') &&
+    previewAdminForm.includes("/preview-import") &&
+    previewAdminForm.includes("durante 1 segundo"),
+  "El editor debe ofrecer archivo o URL, inicio/fin y usar la misma política de recorte del servidor."
 );
 assert(
   mediaAuth.includes("maximumBytes?: number") &&
@@ -160,8 +247,9 @@ assert(
 assert(
   nginx.includes("preview-upload$") &&
     nginx.includes("client_max_body_size 66m") &&
-    nginx.includes("client_max_body_size 8k"),
-  "Nginx debe permitir el video fuente sólo en el endpoint de conversión y mantener pequeño el límite general del API administrativo."
+    nginx.includes("client_max_body_size 8k") &&
+    !nginx.includes("preview-import$"),
+  "Sólo la subida local debe abrir el body grande; importar por URL debe conservar el límite administrativo pequeño."
 );
 assert(
   envExample.includes("DEUNA_FFMPEG_PATH"),
@@ -177,5 +265,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  "Preview de video en tarjetas: OK (VP9 ligero, 1 s de intención, tilt limitado por frame, pausa en segundo plano, cache de validación y Range eficiente verificados)."
+  "Preview de video en tarjetas: OK (VP9 ligero, recorte de una sola vez, URL HTTPS protegida, 1 s de intención, pausa en segundo plano, cache y Range eficiente verificados)."
 );
