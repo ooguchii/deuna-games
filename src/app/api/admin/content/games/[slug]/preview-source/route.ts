@@ -16,6 +16,9 @@ import {
 import {
   createStagedRemotePreviewSource,
 } from "@/lib/media/editorial-video-staging";
+import {
+  parseSupportedPlatformVideoUrl,
+} from "@/lib/media/platform-video-url";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -44,6 +47,7 @@ export async function POST(
     params: Promise<{ slug: string }>;
   }
 ) {
+  const startedAt = Date.now();
   const authorized =
     await authorizeAdminFormRequest(request);
 
@@ -129,13 +133,19 @@ export async function POST(
       expiresAt: staged.expiresAt,
     });
   } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "No se pudo preparar la vista previa remota.";
+    const platform =
+      parseSupportedPlatformVideoUrl(sourceUrl);
+
+    console.error(
+      `[preview-source] kind=${platform?.platform ?? "direct"} durationMs=${Date.now() - startedAt} error=${message}`
+    );
+
     return json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "No se pudo preparar la vista previa remota.",
-      },
+      { error: message },
       400
     );
   }
