@@ -80,16 +80,19 @@ assert(
   transcoder.includes('"libvpx-vp9"') &&
     transcoder.includes('"-an"') &&
     transcoder.includes("MAX_PREVIEW_DURATION_SECONDS = 30") &&
-    transcoder.includes("width: 480") &&
-    transcoder.includes("fps: 18") &&
+    transcoder.includes("PREFERRED_PREVIEW_BYTES = 1_572_864") &&
     transcoder.includes("width: 400") &&
     transcoder.includes("fps: 15") &&
+    transcoder.includes("width: 360") &&
+    transcoder.includes("fps: 12") &&
+    transcoder.includes("force_divisible_by=2") &&
+    transcoder.includes('"-g"') &&
     transcoder.includes("spawn(ffmpegExecutable()") &&
     transcoder.includes("shell: false") &&
     transcoder.includes("mkdtemp") &&
     transcoder.includes("rm(temporaryDirectory") &&
     transcoder.includes("inspectSafeEditorialWebm"),
-  "La conversión debe ejecutarse con FFmpeg/VP9, sin audio, acotada, sin shell y limpiando el archivo fuente temporal."
+  "La conversión debe generar VP9 silencioso, ligero, acotado, sin shell y limpiar el archivo fuente temporal."
 );
 assert(
   uploadRoute.includes("hasExactAdminMediaFormFields") &&
@@ -113,8 +116,12 @@ assert(
     publicRoute.includes('"Accept-Ranges": "bytes"') &&
     publicRoute.includes("Content-Range") &&
     publicRoute.includes("inspectSafeEditorialWebm") &&
+    publicRoute.includes("MAX_VALIDATED_WEBM_CACHE_ENTRIES") &&
+    publicRoute.includes("validateWebmForServing") &&
+    publicRoute.includes("readFileRange") &&
+    publicRoute.includes('ETag: `"${filename}"`') &&
     publicRoute.includes("immutable"),
-  "La ruta pública debe validar WebM inmutable y soportar byte ranges para reproducción eficiente."
+  "La ruta pública debe validar una vez por identidad de archivo, servir rangos parciales y mantener cache inmutable."
 );
 assert(
   hoverMedia.includes("preload=\"none\"") &&
@@ -122,17 +129,23 @@ assert(
     hoverMedia.includes("loop") &&
     hoverMedia.includes("playsInline") &&
     hoverMedia.includes("controls={false}") &&
+    hoverMedia.includes("disableRemotePlayback") &&
+    hoverMedia.includes("visibilitychange") &&
+    hoverMedia.includes("video.pause()") &&
     !hoverMedia.includes("poster="),
-  "El preview público debe ser silencioso, sin controles y sin precarga anticipada."
+  "El preview público debe ser silencioso, sin controles, sin precarga anticipada y pausar al ocultarse la página."
 );
 assert(
-  universalCard.includes("PREVIEW_DELAY_MS = 2_000") &&
-    universalCard.includes("onPointerEnter={schedulePreview}") &&
+  universalCard.includes("PREVIEW_DELAY_MS = 1_000") &&
+    universalCard.includes("onPointerEnter={startCard}") &&
+    universalCard.includes("requestAnimationFrame") &&
+    universalCard.includes("cancelAnimationFrame") &&
+    universalCard.includes("cardRect.current") &&
     universalCard.includes("setPreviewActive(true)") &&
     universalCard.includes("setPreviewActive(false)") &&
     universalCard.includes("(hover: hover) and (pointer: fine)") &&
     universalCard.includes("prefers-reduced-motion: reduce"),
-  "La tarjeta universal debe activar el video sólo tras 2 s de intención en puntero fino y respetar movimiento reducido."
+  "La tarjeta universal debe activar el video tras 1 s, limitar el tilt a un frame y respetar puntero fino y movimiento reducido."
 );
 assert(
   adminEditor.includes("GamePreviewClipUploadForm") &&
@@ -164,5 +177,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  "Preview de video en tarjetas: OK (VP9, 30 s, carga diferida, límites, seguridad, publicación y Range verificados)."
+  "Preview de video en tarjetas: OK (VP9 ligero, 1 s de intención, tilt limitado por frame, pausa en segundo plano, cache de validación y Range eficiente verificados)."
 );

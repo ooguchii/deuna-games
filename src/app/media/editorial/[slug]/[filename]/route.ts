@@ -1,5 +1,6 @@
 import {
   lstat,
+  open,
   readFile,
 } from "node:fs/promises";
 
@@ -24,6 +25,20 @@ import {
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+
+const MAX_VALIDATED_WEBM_CACHE_ENTRIES = 96;
+
+type ValidatedWebmIdentity = {
+  size: number;
+  mtimeMs: number;
+  ctimeMs: number;
+  ino: number;
+};
+
+const validatedWebmCache = new Map<
+  string,
+  ValidatedWebmIdentity
+>();
 
 function notFoundResponse() {
   return new Response(null, {
@@ -81,6 +96,115 @@ function requestedRange(
   };
 }
 
+function currentWebmIdentity(stats: {
+  size: number;
+  mtimeMs: number;
+  ctimeMs: number;
+  ino: number;
+}): ValidatedWebmIdentity {
+  return {
+    size: stats.size,
+    mtimeMs: stats.mtimeMs,
+    ctimeMs: stats.ctimeMs,
+    ino: stats.ino,
+  };
+}
+
+function matchesValidatedIdentity(
+  cached: ValidatedWebmIdentity,
+  current: ValidatedWebmIdentity
+) {
+  return (
+    cached.size === current.size &&
+    cached.mtimeMs === current.mtimeMs &&
+    cached.ctimeMs === current.ctimeMs &&
+    cached.ino === current.ino
+  );
+}
+
+function rememberValidatedWebm(
+  filePath: string,
+  identity: ValidatedWebmIdentity
+) {
+  validatedWebmCache.delete(filePath);
+  validatedWebmCache.set(filePath, identity);
+
+  while (
+    validatedWebmCache.size > MAX_VALIDATED_WEBM_CACHE_ENTRIES
+  ) {
+    const oldest = validatedWebmCache.keys().next().value;
+    if (!oldest) break;
+    validatedWebmCache.delete(oldest);
+  }
+}
+
+async function validateWebmForServing(
+  filePath: string,
+  identity: ValidatedWebmIdentity
+) {
+  const cached = validatedWebmCache.get(filePath);
+
+  if (cached && matchesValidatedIdentity(cached, identity)) {
+    validatedWebmCache.delete(filePath);
+    validatedWebmCache.set(filePath, cached);
+    return {
+      safe: true as const,
+      content: null,
+    };
+  }
+
+  const content = await readFile(filePath);
+  const safe = inspectSafeEditorialWebm(content);
+
+  if (!safe) {
+    validatedWebmCache.delete(filePath);
+    return {
+      safe: false as const,
+      content: null,
+    };
+  }
+
+  rememberValidatedWebm(filePath, identity);
+
+  return {
+    safe: true as const,
+    content,
+  };
+}
+
+async function readFileRange(
+  filePath: string,
+  start: number,
+  end: number
+) {
+  const length = end - start + 1;
+  const buffer = Buffer.allocUnsafe(length);
+  const handle = await open(filePath, "r");
+
+  try {
+    let offset = 0;
+
+    while (offset < length) {
+      const { bytesRead } = await handle.read(
+        buffer,
+        offset,
+        length - offset,
+        start + offset
+      );
+
+      if (bytesRead <= 0) {
+        throw new Error("No se pudo completar el rango multimedia.");
+      }
+
+      offset += bytesRead;
+    }
+
+    return buffer;
+  } finally {
+    await handle.close();
+  }
+}
+
 export async function GET(
   request: Request,
   context: {
@@ -108,8 +232,7 @@ export async function GET(
       slug,
       filename
     );
-    const resolved =
-      resolveEditorialMediaDiskPath(publicPath);
+    const resolved = resolveEditorialMediaDiskPath(publicPath);
 
     if (!resolved) {
       return notFoundResponse();
@@ -131,44 +254,48 @@ export async function GET(
       return notFoundResponse();
     }
 
-    const content = await readFile(
-      resolved.filePath
-    );
-    const safe = isSvg
-      ? inspectSafeTaxonomySvgIcon(content)
-      : isWebm
-        ? inspectSafeEditorialWebm(content)
-        : inspectSafeEditorialWebp(content);
-
-    if (!safe) {
-      return notFoundResponse();
-    }
-
     const sharedHeaders = {
       "Cache-Control":
         "public, max-age=31536000, immutable",
       "X-Content-Type-Options": "nosniff",
+      ETag: `"${filename}"`,
     };
 
     if (isWebm) {
-      const range = requestedRange(request, content.length);
+      const identity = currentWebmIdentity(stats);
+      const validation = await validateWebmForServing(
+        resolved.filePath,
+        identity
+      );
+
+      if (!validation.safe) {
+        return notFoundResponse();
+      }
+
+      const range = requestedRange(request, stats.size);
 
       if (range === "invalid") {
         return new Response(null, {
           status: 416,
           headers: {
             ...sharedHeaders,
-            "Content-Range": `bytes */${content.length}`,
+            "Content-Range": `bytes */${stats.size}`,
             "Accept-Ranges": "bytes",
           },
         });
       }
 
       if (range) {
-        const body = content.subarray(
-          range.start,
-          range.end + 1
-        );
+        const body = validation.content
+          ? validation.content.subarray(
+              range.start,
+              range.end + 1
+            )
+          : await readFileRange(
+              resolved.filePath,
+              range.start,
+              range.end
+            );
 
         return new Response(new Uint8Array(body), {
           status: 206,
@@ -177,11 +304,15 @@ export async function GET(
             "Content-Type": "video/webm",
             "Content-Length": String(body.length),
             "Content-Range":
-              `bytes ${range.start}-${range.end}/${content.length}`,
+              `bytes ${range.start}-${range.end}/${stats.size}`,
             "Accept-Ranges": "bytes",
           },
         });
       }
+
+      const content =
+        validation.content ??
+        (await readFile(resolved.filePath));
 
       return new Response(new Uint8Array(content), {
         status: 200,
@@ -192,6 +323,15 @@ export async function GET(
           "Accept-Ranges": "bytes",
         },
       });
+    }
+
+    const content = await readFile(resolved.filePath);
+    const safe = isSvg
+      ? inspectSafeTaxonomySvgIcon(content)
+      : inspectSafeEditorialWebp(content);
+
+    if (!safe) {
+      return notFoundResponse();
     }
 
     const headers = isSvg
@@ -208,13 +348,10 @@ export async function GET(
           "Content-Type": "image/webp",
         };
 
-    return new Response(
-      new Uint8Array(content),
-      {
-        status: 200,
-        headers,
-      }
-    );
+    return new Response(new Uint8Array(content), {
+      status: 200,
+      headers,
+    });
   } catch {
     return notFoundResponse();
   }

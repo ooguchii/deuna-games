@@ -25,6 +25,7 @@ import {
 export const MAX_PREVIEW_SOURCE_BYTES = 64 * 1024 * 1024;
 export const MAX_PREVIEW_DURATION_SECONDS = 30;
 
+const PREFERRED_PREVIEW_BYTES = 1_572_864;
 const FFMPEG_TIMEOUT_MS = 90_000;
 const MAX_FFMPEG_ERROR_CHARS = 8_000;
 
@@ -54,8 +55,8 @@ type PreviewPreset = {
 };
 
 const presets: PreviewPreset[] = [
-  { width: 480, fps: 18, crf: 38 },
-  { width: 400, fps: 15, crf: 43 },
+  { width: 400, fps: 15, crf: 41 },
+  { width: 360, fps: 12, crf: 44 },
 ];
 
 export type EditorialPreviewUploadResult = {
@@ -118,7 +119,8 @@ function runFfmpeg(
 ) {
   return new Promise<void>((resolve, reject) => {
     const filter =
-      `scale=w='min(${preset.width},iw)':h=-2:force_original_aspect_ratio=decrease,` +
+      `scale=w='min(${preset.width},iw)':h=-2:` +
+      "force_original_aspect_ratio=decrease:force_divisible_by=2," +
       `fps=${preset.fps}`;
     const args = [
       "-hide_banner",
@@ -149,6 +151,8 @@ function runFfmpeg(
       "4",
       "-row-mt",
       "1",
+      "-g",
+      String(preset.fps * 6),
       "-pix_fmt",
       "yuv420p",
       "-f",
@@ -246,13 +250,21 @@ async function transcodePreview(
 
     const output = await readFile(outputPath);
     const inspection = inspectSafeEditorialWebm(output);
+    const isLastPreset = index === presets.length - 1;
 
-    if (inspection) {
+    if (
+      inspection &&
+      (output.length <= PREFERRED_PREVIEW_BYTES || isLastPreset)
+    ) {
       return {
         buffer: output,
         inspection,
         preset,
       };
+    }
+
+    if (inspection) {
+      continue;
     }
 
     if (output.length <= MAX_EDITORIAL_PREVIEW_BYTES) {
