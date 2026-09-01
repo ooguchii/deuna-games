@@ -10,15 +10,8 @@ import {
   parsePreviewTrimWindow,
 } from "../src/lib/media/preview-video-policy.ts";
 import {
-  buildDirectPlatformEmbedUrl,
-  DIRECT_PREVIEW_OPTIONS,
-  parseDirectPlatformPreview,
-  parseDirectPlatformVideo,
-} from "../src/lib/media/direct-platform-preview.ts";
-import {
-  parseYouTubePreview,
-  parseYouTubeVideo,
-} from "../src/lib/media/youtube-preview.ts";
+  parseSupportedPlatformVideoUrl,
+} from "../src/lib/media/platform-video-url.ts";
 import {
   inspectSafeEditorialWebm,
   MAX_EDITORIAL_PREVIEW_BYTES,
@@ -48,434 +41,188 @@ assert(
   MAX_EDITORIAL_PREVIEW_BYTES === 3 * 1024 * 1024 &&
     MAX_PREVIEW_SOURCE_BYTES === 1024 * 1024 * 1024 &&
     MAX_PREVIEW_DURATION_SECONDS === 30,
-  "Archivo local y previews directos deben conservar 1 GiB de origen local y 30 s máximos de preview."
+  "El origen local debe conservar 1 GiB y el WebM final un máximo editorial de 30 s / 3 MB."
 );
 assert(
-  parsePreviewTrimWindow("0", "30")?.durationSeconds === 30 &&
-    parsePreviewTrimWindow("0", "30.001") === null &&
+  parsePreviewTrimWindow("12", "42")?.durationSeconds === 30 &&
+    parsePreviewTrimWindow("12", "42.001") === null &&
     parsePreviewTrimWindow("20", "10") === null,
   "IN/OUT debe mantener una única política estricta de 30 segundos."
 );
 
-assert(
-  parseYouTubeVideo("youtube.com/watch?v=dQw4w9WgXcQ")?.videoId ===
-    "dQw4w9WgXcQ" &&
-    parseYouTubePreview(
-      "https://youtu.be/dQw4w9WgXcQ",
-      4,
-      24
-    )?.endSeconds === 24,
-  "YouTube directo debe seguir funcionando de forma independiente."
-);
-
-const directCases = [
-  [
-    "facebook",
-    "https://www.facebook.com/watch/?v=123456789012345",
-  ],
-  [
-    "instagram",
-    "https://www.instagram.com/reel/ABCdef12345/",
-  ],
-  [
-    "tiktok",
-    "https://www.tiktok.com/@deuna/video/1234567890123456789",
-  ],
+const platformCases = [
+  ["youtube", "https://www.youtube.com/watch?v=dQw4w9WgXcQ"],
+  ["facebook", "https://www.facebook.com/watch/?v=123456789012345"],
+  ["instagram", "https://www.instagram.com/reel/ABCdef12345/"],
+  ["tiktok", "https://www.tiktok.com/@deuna/video/1234567890123456789"],
   ["vimeo", "https://vimeo.com/123456789"],
-  [
-    "x",
-    "https://x.com/deuna/status/1234567890123456789",
-  ],
+  ["x", "https://x.com/deuna/status/1234567890123456789"],
   ["twitch", "https://www.twitch.tv/videos/123456789"],
-  [
-    "dailymotion",
-    "https://www.dailymotion.com/video/x9abcd1",
-  ],
+  ["dailymotion", "https://www.dailymotion.com/video/x9abcd1"],
   ["streamable", "https://streamable.com/abc123"],
   ["kick", "https://kick.com/deuna"],
+  ["reddit", "https://www.reddit.com/r/gaming/comments/abc123/example/"],
+  ["rumble", "https://rumble.com/v123abc-example.html"],
+  ["odysee", "https://odysee.com/@deuna:1/video:2"],
+  ["bilibili", "https://www.bilibili.com/video/BV1xx411c7mD"],
+  ["vk", "https://vk.com/video-1_123456"],
+  ["imgur", "https://imgur.com/abc123"],
+  ["pinterest", "https://www.pinterest.com/pin/123456789/"],
+  ["tumblr", "https://www.tumblr.com/deuna/123456789/example"],
+  ["snapchat", "https://www.snapchat.com/spotlight/example"],
+  ["loom", "https://www.loom.com/share/0123456789abcdef0123456789abcdef"],
+  ["wistia", "https://fast.wistia.net/embed/iframe/abc123def4"],
+  ["nicovideo", "https://www.nicovideo.jp/watch/sm12345678"],
 ];
 
-assert(
-  DIRECT_PREVIEW_OPTIONS.length === 9,
-  "Deben existir exactamente nueve adaptadores directos además de YouTube."
-);
-
-for (const [platform, url] of directCases) {
-  const parsed = parseDirectPlatformVideo(platform, url);
+for (const [platform, url] of platformCases) {
   assert(
-    parsed?.platform === platform,
-    `El adaptador ${platform} debe aceptar sólo su formato directo.`
-  );
-  assert(
-    parseDirectPlatformVideo(
-      platform === "facebook" ? "instagram" : "facebook",
-      url
-    ) === null,
-    `Una URL ${platform} no debe caer en otro adaptador.`
+    parseSupportedPlatformVideoUrl(url)?.platform === platform,
+    `El parser aislado debe reconocer ${platform}.`
   );
 }
-
-assert(
-  parseDirectPlatformVideo(
-    "streamable",
-    "https://streamable.com/o/abc123"
-  )?.resourceId === "abc123",
-  "Streamable debe aceptar también su URL oEmbed /o/{id}."
-);
-
-assert(
-  parseDirectPlatformPreview(
-    "facebook",
-    directCases[0][1],
-    5,
-    20
-  )?.startSeconds === 5 &&
-    parseDirectPlatformPreview(
-      "instagram",
-      directCases[1][1],
-      5,
-      20
-    ) === null,
-  "Facebook debe aceptar IN real y las plataformas sin seek estable deben seguir fijando IN en 0."
-);
-assert(
-  parseDirectPlatformPreview(
-    "vimeo",
-    "https://vimeo.com/123456789",
-    10,
-    28
-  )?.startSeconds === 10 &&
-    parseDirectPlatformPreview(
-      "tiktok",
-      directCases[2][1],
-      10,
-      41
-    ) === null,
-  "Plataformas con seek deben aceptar IN real manteniendo el máximo de 30 s."
-);
-
-const facebookEmbed = buildDirectPlatformEmbedUrl(
-  {
-    platform: "facebook",
-    url: directCases[0][1],
-    startSeconds: 8,
-    endSeconds: 20,
-  },
-  { autoplay: true, muted: true }
-);
-const vimeoEmbed = buildDirectPlatformEmbedUrl(
-  {
-    platform: "vimeo",
-    url: "https://vimeo.com/123456789",
-    startSeconds: 8,
-    endSeconds: 20,
-  },
-  { autoplay: true, muted: true }
-);
-const twitchEmbed = buildDirectPlatformEmbedUrl(
-  {
-    platform: "twitch",
-    url: "https://www.twitch.tv/videos/123456789",
-    startSeconds: 8,
-    endSeconds: 20,
-  },
-  {
-    autoplay: true,
-    muted: true,
-    parentHostname: "example.invalid",
-  }
-);
-const streamableEmbed = buildDirectPlatformEmbedUrl(
-  {
-    platform: "streamable",
-    url: "https://streamable.com/abc123",
-    startSeconds: 0,
-    endSeconds: 20,
-  },
-  { autoplay: true, muted: true }
-);
-assert(
-  facebookEmbed?.includes("www.facebook.com/plugins/video.php") &&
-    facebookEmbed.includes("t=8") &&
-    vimeoEmbed?.startsWith("https://player.vimeo.com/video/") &&
-    vimeoEmbed.includes("start_time=8") &&
-    vimeoEmbed.includes("end_time=20") &&
-    twitchEmbed?.includes("player.twitch.tv") &&
-    twitchEmbed.includes("parent=example.invalid") &&
-    twitchEmbed.includes("time=8s") &&
-    streamableEmbed?.includes("streamable.com/o/abc123"),
-  "Facebook debe enviar IN con t, Vimeo debe usar IN/OUT, Twitch VOD parent/IN y Streamable su embed oEmbed actual."
-);
 
 const [
   formEntry,
   form,
-  directEditor,
-  directRoute,
-  directAdapters,
-  directValidation,
-  directHover,
-  youtubeRoute,
-  youtubeEditor,
-  youtubeHover,
+  platformRoute,
+  isolatedStaging,
+  staging,
+  platformSource,
+  proxyRoute,
+  importRoute,
+  uploadRoute,
   resolver,
   card,
-  previewState,
-  removeRoute,
-  uploadRoute,
-  importRoute,
-  streamedSource,
   transcoder,
-  validation,
-  validationCore,
-  gameTypes,
-  publicationChanges,
-  nextConfig,
-  packageJson,
+  workerClient,
+  worker,
+  wrapper,
 ] = await Promise.all([
   source("src/components/admin/GamePreviewClipUploadForm.tsx"),
-  source("src/components/admin/GamePreviewClipUploadFormV2.tsx"),
-  source("src/components/admin/DirectPlatformPreviewEditor.tsx"),
-  source("src/app/api/admin/content/games/[slug]/preview-direct/[platform]/route.ts"),
-  source("src/lib/media/direct-platform-preview.ts"),
-  source("src/lib/media/direct-platform-validation.ts"),
-  source("src/lib/media/shared-direct-platform-hover-player.ts"),
-  source("src/app/api/admin/content/games/[slug]/preview-youtube/route.ts"),
-  source("src/components/admin/YouTubeTrimEditor.tsx"),
-  source("src/lib/media/shared-youtube-hover-player.ts"),
+  source("src/components/admin/GamePreviewClipUploadFormV3.tsx"),
+  source("src/app/api/admin/content/games/[slug]/preview-platform/[platform]/route.ts"),
+  source("src/lib/media/isolated-platform-preview-source.ts"),
+  source("src/lib/media/editorial-video-staging.ts"),
+  source("src/lib/media/platform-video-source.ts"),
+  source("src/app/api/admin/content/games/[slug]/preview-source/[token]/proxy/route.ts"),
+  source("src/app/api/admin/content/games/[slug]/preview-import/route.ts"),
+  source("src/app/api/admin/content/games/[slug]/preview-upload/route.ts"),
   source("src/lib/media/game-card-preview.ts"),
   source("src/components/ui/UniversalGameCard.tsx"),
-  source("src/app/api/admin/content/games/[slug]/preview-state/route.ts"),
-  source("src/app/api/admin/content/games/[slug]/preview-remove/route.ts"),
-  source("src/app/api/admin/content/games/[slug]/preview-upload/route.ts"),
-  source("src/app/api/admin/content/games/[slug]/preview-import/route.ts"),
-  source("src/lib/media/streamed-preview-source.ts"),
   source("src/lib/media/editorial-video.ts"),
-  source("src/lib/admin/content-validation.ts"),
-  source("src/lib/admin/content-validation-core.ts"),
-  source("src/types/game.ts"),
-  source("src/lib/admin/game-publication-changes.ts"),
-  source("next.config.ts"),
-  source("package.json"),
+  source("src/lib/media/media-import-worker-client.ts"),
+  source("ops/worker/media-import-worker.mjs"),
+  source("ops/worker/yt-dlp-node-wrapper.sh"),
 ]);
 
 assert(
-  formEntry.includes('export { default } from "./GamePreviewClipUploadFormV2"'),
-  "La entrada histórica del formulario debe apuntar a la implementación aislada sin cambiar imports externos."
+  formEntry.includes('export { default } from "./GamePreviewClipUploadFormV3"'),
+  "La entrada del editor debe apuntar al flujo plataforma → WebM."
 );
 
-for (const [value, label] of [
-  ["youtube", "YouTube"],
-  ["facebook", "Facebook"],
-  ["instagram", "Instagram"],
-  ["tiktok", "TikTok"],
-  ["vimeo", "Vimeo"],
-  ["x", "X / Twitter"],
-  ["twitch", "Twitch"],
-  ["dailymotion", "Dailymotion"],
-  ["streamable", "Streamable"],
-  ["kick", "Kick"],
-]) {
+for (const [platform] of platformCases) {
   assert(
-    form.includes(`<option value="${value}">${label}</option>`),
-    `El selector debe tener una línea exclusiva para ${label}.`
+    form.includes(`value: "${platform}"`) ||
+      form.includes(`value="${platform}"`),
+    `El selector debe tener una línea independiente para ${platform}.`
   );
 }
+
 assert(
   form.includes('<option value="file">Archivo de mi equipo</option>') &&
-    form.includes("/preview-youtube") &&
-    form.includes("/preview-direct/") &&
-    !form.includes("prepareRemoteSource") &&
-    !form.includes("URL / YouTube / redes") &&
-    !form.includes("parseSupportedPlatformVideoUrl"),
-  "La UI visible debe ser archivo + plataformas explícitas; nunca un importador universal."
-);
-assert(
-  form.includes("preview-source-upload") &&
-    form.includes("probeBrowserPlayback") &&
-    form.includes("prepareLocalCodecFallback") &&
+    form.includes("preview-platform/") &&
     form.includes("/preview-import") &&
-    !form.includes("new FormData()"),
-  "La carga local debe conservar streaming, fallback de códec y recorte desde original."
+    form.includes("VideoTrimEditor") &&
+    form.includes("Descargar y preparar") &&
+    form.includes("Crear preview WebM con este recorte") &&
+    form.includes("createProxyForStagedToken") &&
+    !form.includes("preview-youtube") &&
+    !form.includes("preview-direct/") &&
+    !form.includes("YouTubeTrimEditor") &&
+    !form.includes("DirectPlatformPreviewEditor"),
+  "La UI debe descargar la plataforma a staging, recortar con el editor común y finalizar siempre en WebM."
 );
 
 assert(
-  directRoute.includes("isGameDirectPreviewPlatform") &&
-    directRoute.includes("parseDirectPlatformPreview") &&
-    directRoute.includes("hasExactAdminFormFields") &&
-    directRoute.includes("expectedRevisionSchema") &&
-    directRoute.includes("saveGameMediaDraft") &&
-    directRoute.includes("directPreview: preview") &&
-    !directRoute.includes("preview-source") &&
-    !directRoute.includes("yt-dlp") &&
-    !directRoute.includes("ffmpeg") &&
-    !directRoute.includes("downloadPlatformEditorialVideo"),
-  "Cada plataforma directa debe guardarse sin staging, descarga, yt-dlp ni FFmpeg."
-);
-assert(
-  youtubeRoute.includes('previewMode: "youtube"') &&
-    youtubeRoute.includes("parseYouTubePreview") &&
-    !youtubeRoute.includes("preview-source") &&
-    !youtubeRoute.includes("yt-dlp"),
-  "YouTube debe conservar su camino directo independiente ya probado."
+  platformRoute.includes("parsed.platform !== platform") &&
+    platformRoute.includes("createIsolatedPlatformPreviewSource") &&
+    platformRoute.includes("expectedRevisionSchema") &&
+    platformRoute.includes("hasExactAdminFormFields") &&
+    !platformRoute.includes("preview-direct") &&
+    !platformRoute.includes("youtubePreview"),
+  "La ruta de preparación debe validar plataforma exacta, revisión y campos antes de descargar."
 );
 
 assert(
-  directEditor.includes("DirectPlatformPreviewEditor") &&
-    directEditor.includes("supportsStartOffset") &&
-    directEditor.includes("Probar recorte") &&
-    directEditor.includes("MAX_PREVIEW_DURATION_SECONDS") &&
-    directEditor.includes("previewStopTimerRef") &&
-    directEditor.includes("handleEmbedLoad") &&
-    directEditor.includes('type: "seekTo"') &&
-    directEditor.includes('"x-tiktok-player": true') &&
-    directEditor.includes('type: "mute"') &&
-    directEditor.includes('type: "play"'),
-  "El editor directo debe iniciar OUT tras cargar el iframe, distinguir capacidades reales y conservar el protocolo TikTok."
-);
-assert(
-  youtubeEditor.includes("youtube-nocookie.com") &&
-    youtubeEditor.includes("Marcar IN aquí") &&
-    youtubeEditor.includes("Marcar OUT aquí"),
-  "El editor YouTube existente debe permanecer intacto."
+  isolatedStaging.includes("parsed.platform !== expectedPlatform") &&
+    isolatedStaging.includes("createStagedRemotePreviewSource"),
+  "El staging aislado debe rechazar una URL de otra red antes de entrar al importador compartido."
 );
 
-for (const signature of [
-  "www.facebook.com/plugins/video.php",
-  "www.instagram.com",
-  "www.tiktok.com/player/v1",
-  "player.vimeo.com/video",
-  "platform.twitter.com/embed/Tweet.html",
-  "player.twitch.tv",
-  "clips.twitch.tv/embed",
-  "geo.dailymotion.com/player.html",
-  "streamable.com/o/",
-  "player.kick.com",
-]) {
+assert(
+  staging.includes("downloadPlatformEditorialVideo") &&
+    staging.includes("ensureStagedEditorialPreviewProxy") &&
+    staging.includes("STAGING_TTL_MS") &&
+    staging.includes("MAX_STAGED_SOURCES"),
+  "La fuente externa debe vivir sólo en staging privado, con TTL/capacidad y proxy de edición opcional."
+);
+
+assert(
+  platformSource.includes("yt-dlp") &&
+    platformSource.includes("--no-playlist") &&
+    platformSource.includes("--max-filesize") &&
+    platformSource.includes("512M") &&
+    platformSource.includes("shell: false") &&
+    platformSource.includes("requireRemoteImportWorkerInProduction"),
+  "Las redes deben obtener una copia editorial limitada mediante yt-dlp y usar worker aislado en producción."
+);
+
+assert(
+  proxyRoute.includes("ensureStagedEditorialPreviewProxy") &&
+    proxyRoute.includes("no-store"),
+  "El proxy de edición debe seguir autenticado y sin cache pública."
+);
+
+for (const route of [importRoute, uploadRoute]) {
   assert(
-    directAdapters.includes(signature),
-    `Falta el adaptador directo oficial/específico: ${signature}`
+    route.includes("storeEditorialPreviewVideoFromPath") &&
+      route.includes("previewClip: upload.publicPath") &&
+      route.includes('previewMode: "webm"') &&
+      route.includes("youtubePreview: undefined"),
+    "Guardar una fuente local o remota debe terminar explícitamente en modo WebM interno."
   );
 }
-assert(
-  directAdapters.includes('supportsStartOffset: true') &&
-    directAdapters.includes('embed.searchParams.set("t", String(preview.startSeconds))') &&
-    directValidation.includes('platform === "facebook"'),
-  "Facebook debe exponer IN real tanto en el adaptador como en la validación editorial persistida."
-);
 
-assert(
-  resolver.includes('kind: "webm"') &&
-    resolver.includes('kind: "youtube"') &&
-    resolver.includes('kind: "direct"') &&
-    resolver.includes("validateDirectPlatformPreview"),
-  "La card debe resolver WebM, YouTube o una plataforma directa explícita."
-);
-assert(
-  card.includes("activateSharedYouTubeHoverPlayer") &&
-    card.includes("activateSharedDirectPlatformHoverPlayer") &&
-    card.includes("PREVIEW_DELAY_MS = 1_000") &&
-    card.includes("prefers-reduced-motion: reduce") &&
-    card.includes("(hover: hover) and (pointer: fine)"),
-  "Las cards deben conservar 1 s de intención, accesibilidad y reproductores compartidos separados."
-);
-assert(
-  directHover.includes("buildDirectPlatformEmbedUrl") &&
-    directHover.includes("IDLE_DESTROY_MS") &&
-    directHover.includes("about:blank") &&
-    directHover.includes("durationMs") &&
-    directHover.includes('type: "seekTo"') &&
-    directHover.includes('"x-tiktok-player": true') &&
-    directHover.includes("window.location.hostname") &&
-    /iframe\.onload = \(\) => \{[\s\S]*?state\.stopTimer = setTimeout/.test(
-      directHover
-    ),
-  "Las redes directas deben compartir un iframe, iniciar OUT tras cargarlo, conservar TikTok actual y resolver Twitch parent en runtime."
-);
-assert(
-  youtubeHover.includes("youtube-nocookie.com") &&
-    youtubeHover.includes("loadVideoById") &&
-    youtubeHover.includes("startSeconds") &&
-    youtubeHover.includes("endSeconds"),
-  "El reproductor YouTube compartido debe seguir separado del resto."
-);
-
-assert(
-  previewState.includes("directPreview") &&
-    previewState.includes("private, no-store"),
-  "El estado privado del editor debe incluir el preview directo sin cache."
-);
-assert(
-  removeRoute.includes("directPreview: undefined") &&
-    removeRoute.includes("youtubePreview: undefined") &&
-    removeRoute.includes("previewClip: undefined"),
-  "Quitar preview debe limpiar local, YouTube y plataforma directa."
-);
-assert(
-  gameTypes.includes("GameDirectPreviewPlatform") &&
-    gameTypes.includes("GameDirectPreview") &&
-    gameTypes.includes("directPreview?: GameDirectPreview"),
-  "El modelo debe representar la plataforma directa de forma discriminada."
-);
-assert(
-  validation.includes("validateDirectPreviewEditorialValue") &&
-    validation.includes("directPreview") &&
-    validationCore.includes("editorialGameSchema"),
-  "La validación editorial debe conservar el núcleo previo y validar la extensión directa antes de persistirla."
-);
-assert(
-  publicationChanges.includes("directPreview") &&
-    publicationChanges.includes("reproductor directo aislado por plataforma"),
-  "Publicación debe detectar cambios de URL/plataforma/tramo directo."
-);
-
-for (const origin of [
-  "https://www.youtube-nocookie.com",
-  "https://www.facebook.com",
-  "https://www.instagram.com",
-  "https://www.tiktok.com",
-  "https://player.vimeo.com",
-  "https://platform.twitter.com",
-  "https://player.twitch.tv",
-  "https://clips.twitch.tv",
-  "https://geo.dailymotion.com",
-  "https://streamable.com",
-  "https://player.kick.com",
-]) {
-  assert(
-    nextConfig.includes(origin),
-    `CSP debe permitir sólo el origen de iframe declarado: ${origin}`
-  );
-}
-assert(
-  !nextConfig.includes('frame-src https:') &&
-    !nextConfig.includes("frame-src *"),
-  "CSP no debe abrir frame-src con comodines para soportar redes."
-);
-
-assert(
-  streamedSource.includes("pipeline") &&
-    streamedSource.includes("MAX_PREVIEW_SOURCE_BYTES") &&
-    !streamedSource.includes("arrayBuffer"),
-  "El archivo local de hasta 1 GiB debe seguir transmitiéndose a disco sin materializarse en RAM."
-);
 assert(
   transcoder.includes('"libvpx-vp9"') &&
     transcoder.includes('"-ss"') &&
     transcoder.includes('"-t"') &&
     transcoder.includes("shell: false"),
-  "FFmpeg local debe conservar recorte y conversión segura sin shell."
+  "FFmpeg debe seguir recortando y convirtiendo a VP9/WebM sin shell."
 );
+
 assert(
-  uploadRoute.includes("storeEditorialPreviewVideoFromPath") &&
-    importRoute.includes("storeEditorialPreviewVideoFromPath"),
-  "Ambos caminos locales deben seguir terminando en el conversor WebM validado."
+  resolver.includes("const local = game.previewClip?.trim()") &&
+    resolver.includes('return local ? { kind: "webm", src: local } : null') &&
+    !resolver.includes("validateYouTubePreview") &&
+    !resolver.includes("validateDirectPlatformPreview"),
+  "La web pública debe resolver únicamente el WebM interno, nunca una URL externa."
 );
+
 assert(
-  packageJson.includes(
-    "node --import ./tools/register-ts-paths.mjs ./tools/check-card-preview-video.mjs"
-  ),
-  "El checker multimedia debe ejecutarse con el resolver TypeScript oficial del repositorio."
+  card.includes("resolveGameCardPreview") &&
+    card.includes("PREVIEW_DELAY_MS = 1_000"),
+  "La card debe conservar el hover diferido sobre el preview resuelto."
+);
+
+assert(
+  workerClient.includes('kind: "platform"') &&
+    worker.includes("downloadPlatformVideo") &&
+    worker.includes("MAX_PLATFORM_SOURCE_BYTES") &&
+    wrapper.includes("--remote-components") &&
+    wrapper.includes("ejs:github"),
+  "Producción debe conservar el worker multimedia y el wrapper moderno de yt-dlp/YouTube."
 );
 
 if (failures.length > 0) {
@@ -487,5 +234,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  "Preview de video en tarjetas: OK (archivo local aislado + YouTube directo + Facebook con IN real + Instagram/TikTok/Vimeo/X/Twitch/Dailymotion/Streamable/Kick separados, sin importador universal)."
+  "Preview de video en tarjetas: OK (plataformas aisladas → staging privado → IN/OUT → WebM interno; cards sin iframes externos)."
 );

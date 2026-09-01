@@ -36,8 +36,7 @@ const fields = [
 ] as const;
 
 function errorState(error: unknown) {
-  const message =
-    error instanceof Error ? error.message : "";
+  const message = error instanceof Error ? error.message : "";
 
   if (message.includes("FFmpeg no está disponible")) {
     return "ffmpeg";
@@ -63,8 +62,7 @@ export async function POST(
     params: Promise<{ slug: string }>;
   }
 ) {
-  const authorized =
-    await authorizeAdminFormRequest(request);
+  const authorized = await authorizeAdminFormRequest(request);
 
   if (!authorized.authorized) {
     return authorized.response;
@@ -73,12 +71,7 @@ export async function POST(
   const { slug } = await context.params;
   const target = `/admin/juegos/${encodeURIComponent(slug)}`;
 
-  if (
-    !hasExactAdminFormFields(
-      authorized.form,
-      fields
-    )
-  ) {
+  if (!hasExactAdminFormFields(authorized.form, fields)) {
     return adminRedirect(
       authorized.adminOrigin,
       `${target}?estado=solicitud&seccion=multimedia`
@@ -88,8 +81,7 @@ export async function POST(
   const revision = expectedRevisionSchema.safeParse(
     authorized.form.get("expectedRevision")
   );
-  const sourceToken =
-    authorized.form.get("sourceToken")?.trim() ?? "";
+  const sourceToken = authorized.form.get("sourceToken")?.trim() ?? "";
   const trim = parsePreviewTrimWindow(
     authorized.form.get("startSeconds"),
     authorized.form.get("endSeconds")
@@ -102,10 +94,7 @@ export async function POST(
     );
   }
 
-  if (
-    !revision.success ||
-    !/^[a-f0-9]{48}$/.test(sourceToken)
-  ) {
+  if (!revision.success || !/^[a-f0-9]{48}$/.test(sourceToken)) {
     return adminRedirect(
       authorized.adminOrigin,
       `${target}?estado=preview-source-expirada&seccion=multimedia`
@@ -113,10 +102,7 @@ export async function POST(
   }
 
   try {
-    const item = await getEditorialItem(
-      "game",
-      slug
-    );
+    const item = await getEditorialItem("game", slug);
 
     if (!item) {
       return adminRedirect(
@@ -132,12 +118,11 @@ export async function POST(
       );
     }
 
-    const source =
-      await resolveStagedEditorialPreviewSource(
-        slug,
-        authorized.session.userId,
-        sourceToken
-      );
+    const source = await resolveStagedEditorialPreviewSource(
+      slug,
+      authorized.session.userId,
+      sourceToken
+    );
 
     if (!source) {
       return adminRedirect(
@@ -146,19 +131,18 @@ export async function POST(
       );
     }
 
-    const upload =
-      await storeEditorialPreviewVideoFromPath(
-        slug,
-        source.filePath,
-        trim
-      );
+    const upload = await storeEditorialPreviewVideoFromPath(
+      slug,
+      source.filePath,
+      trim
+    );
     const result = await saveGameMediaDraft(
       slug,
       revision.data,
       authorized.session.userId,
       {
         previewClip: upload.publicPath,
-        previewMode: undefined,
+        previewMode: "webm",
         youtubePreview: undefined,
       }
     );
@@ -177,9 +161,7 @@ export async function POST(
       );
     }
 
-    await removeStagedEditorialPreviewSource(
-      sourceToken
-    );
+    await removeStagedEditorialPreviewSource(sourceToken);
 
     return adminRedirect(
       authorized.adminOrigin,
@@ -188,9 +170,7 @@ export async function POST(
   } catch (error) {
     console.error(
       "No se pudo preparar el preview remoto:",
-      error instanceof Error
-        ? error.message
-        : "error no identificado"
+      error instanceof Error ? error.message : "error no identificado"
     );
 
     return adminRedirect(

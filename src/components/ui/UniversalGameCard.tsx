@@ -24,14 +24,6 @@ import HoverPreviewMedia from "@/components/ui/HoverPreviewMedia";
 import {
   resolveGameCardPreview,
 } from "@/lib/media/game-card-preview";
-import {
-  activateSharedDirectPlatformHoverPlayer,
-  deactivateSharedDirectPlatformHoverPlayer,
-} from "@/lib/media/shared-direct-platform-hover-player";
-import {
-  activateSharedYouTubeHoverPlayer,
-  deactivateSharedYouTubeHoverPlayer,
-} from "@/lib/media/shared-youtube-hover-player";
 import type { Game } from "@/types/game";
 
 import styles from "./UniversalGameCard.module.css";
@@ -53,8 +45,6 @@ type PendingTilt = {
   clientX: number;
   clientY: number;
 };
-
-type ExternalPreviewKind = "youtube" | "direct";
 
 const PREVIEW_DELAY_MS = 1_000;
 
@@ -225,9 +215,7 @@ export default function UniversalGameCard({
   const pendingTilt = useRef<PendingTilt | null>(null);
   const cardRect = useRef<DOMRect | null>(null);
   const pointerEffectsEnabled = useRef(false);
-  const externalActive = useRef<ExternalPreviewKind | null>(null);
   const articleRef = useRef<HTMLElement>(null);
-  const mediaRef = useRef<HTMLDivElement>(null);
   const [previewActive, setPreviewActive] =
     useState(false);
 
@@ -252,15 +240,6 @@ export default function UniversalGameCard({
     pendingTilt.current = null;
   }
 
-  function deactivateExternalPreview(media: HTMLElement) {
-    if (externalActive.current === "youtube") {
-      deactivateSharedYouTubeHoverPlayer(media);
-    } else if (externalActive.current === "direct") {
-      deactivateSharedDirectPlatformHoverPlayer(media);
-    }
-    externalActive.current = null;
-  }
-
   function cancelPreview() {
     if (previewTimer.current) {
       clearTimeout(previewTimer.current);
@@ -268,12 +247,6 @@ export default function UniversalGameCard({
     }
 
     setPreviewActive(false);
-
-    const media = mediaRef.current;
-    if (externalActive.current && media) {
-      deactivateExternalPreview(media);
-    }
-
     articleRef.current?.style.removeProperty(
       "--tilt-transition-duration"
     );
@@ -301,56 +274,21 @@ export default function UniversalGameCard({
     if (
       !resolvedPreview ||
       previewTimer.current ||
-      previewActive ||
-      externalActive.current
+      previewActive
     ) {
       return;
     }
 
     previewTimer.current = setTimeout(() => {
       previewTimer.current = null;
-
-      if (resolvedPreview.kind === "webm") {
-        setPreviewActive(true);
-        return;
-      }
-
-      const article = articleRef.current;
-      const media = mediaRef.current;
-      if (!article || !media) return;
-
-      cancelTiltFrame();
-      article.style.setProperty(
-        "--tilt-transition-duration",
-        "0ms"
-      );
-      resetTilt(article);
-      void article.offsetWidth;
-
-      if (resolvedPreview.kind === "youtube") {
-        externalActive.current = "youtube";
-        activateSharedYouTubeHoverPlayer(
-          media,
-          resolvedPreview.preview
-        );
-        return;
-      }
-
-      externalActive.current = "direct";
-      activateSharedDirectPlatformHoverPlayer(
-        media,
-        resolvedPreview.preview
-      );
+      setPreviewActive(true);
     }, PREVIEW_DELAY_MS);
   }
 
   function scheduleTilt(
     event: ReactPointerEvent<HTMLElement>
   ) {
-    if (
-      !pointerEffectsEnabled.current ||
-      externalActive.current
-    ) {
+    if (!pointerEffectsEnabled.current) {
       return;
     }
 
@@ -389,17 +327,12 @@ export default function UniversalGameCard({
   }
 
   useEffect(() => {
-    const media = mediaRef.current;
-
     return () => {
       if (previewTimer.current) {
         clearTimeout(previewTimer.current);
       }
       if (tiltFrame.current !== null) {
         cancelAnimationFrame(tiltFrame.current);
-      }
-      if (externalActive.current && media) {
-        deactivateExternalPreview(media);
       }
     };
   }, []);
@@ -429,17 +362,12 @@ export default function UniversalGameCard({
         aria-label={`Ver ${game.title}`}
       >
         <div
-          ref={mediaRef}
           className={`${styles.media} ${tiltStyles.tiltMedia}`}
         >
           <HoverPreviewMedia
             imageSrc={game.coverImage}
             imageAlt={game.imageAlt}
-            previewClip={
-              resolvedPreview?.kind === "webm"
-                ? resolvedPreview.src
-                : undefined
-            }
+            previewClip={resolvedPreview?.src}
             active={previewActive}
             sizes="(max-width: 560px) 82vw, (max-width: 900px) 48vw, (max-width: 1250px) 30vw, 20vw"
             fallbackClassName={
