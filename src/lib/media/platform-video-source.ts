@@ -32,6 +32,8 @@ const MAX_PLATFORM_STAGE_BYTES = Math.min(
 const YTDLP_TIMEOUT_MS = 10 * 60 * 1_000;
 const MAX_YTDLP_ERROR_CHARS = 8_000;
 const PLATFORM_DOWNLOAD_RATE = "8M";
+const YTDLP_JS_RUNTIME =
+  process.env.DEUNA_YTDLP_JS_RUNTIME?.trim() || "node";
 
 let platformImportActive = false;
 
@@ -55,6 +57,17 @@ function contentTypeFromFilename(filename: string) {
 
 function classifyYtDlpFailure(stderr: string) {
   const normalized = stderr.toLowerCase();
+
+  if (
+    normalized.includes("no supported javascript runtime") ||
+    normalized.includes("javascript runtime") &&
+      normalized.includes("unavailable") ||
+    normalized.includes("challenge solving failed")
+  ) {
+    return new Error(
+      "YouTube requiere un runtime JavaScript compatible. DeUna usa Node automáticamente; confirma Node 22 o superior en el mismo entorno donde ejecutas npm run dev."
+    );
+  }
 
   if (
     normalized.includes("sign in") ||
@@ -104,6 +117,8 @@ function runYtDlp(
     );
     const args = [
       "--no-config",
+      "--js-runtimes",
+      YTDLP_JS_RUNTIME,
       "--no-playlist",
       "--max-downloads",
       "1",
@@ -127,7 +142,7 @@ function runYtDlp(
       "--no-write-info-json",
       "--no-write-playlist-metafiles",
       "--format",
-      "best[height<=480][ext=mp4]/best[height<=480]/worst[ext=mp4]/worst",
+      "best[height<=480][vcodec^=avc1][ext=mp4]/best[height<=480][ext=mp4]/best[height<=480]/worst[ext=mp4]/worst",
       "--max-filesize",
       "512M",
       "--output",
