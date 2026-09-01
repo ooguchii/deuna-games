@@ -40,6 +40,7 @@ export type GameTaxonomyTerm = {
   label: string;
   active: boolean;
   icon?: GameTaxonomyIcon;
+  iconAsset?: string;
   tone?: GameTaxonomyTone;
 };
 
