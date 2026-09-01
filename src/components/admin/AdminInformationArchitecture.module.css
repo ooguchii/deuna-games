@@ -12,7 +12,7 @@
 .navGroupTitle {
   padding: 0 11px 4px;
   color: #6f7d8d;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 850;
   letter-spacing: 0.13em;
   line-height: 1.2;
@@ -46,24 +46,6 @@
   border-color: #344353;
   background: color-mix(in srgb, var(--brand) 5%, #0d141d);
   transform: translateX(2px);
-}
-
-.navLinkActive {
-  color: #ffffff;
-  border-color: color-mix(in srgb, var(--brand) 48%, #344252);
-  background:
-    linear-gradient(
-      90deg,
-      color-mix(in srgb, var(--brand) 17%, #111922),
-      color-mix(in srgb, var(--background) 7%, #0d141d)
-    );
-  box-shadow:
-    inset 3px 0 0 var(--brand),
-    0 7px 18px rgba(0, 0, 0, 0.14);
-}
-
-.navLinkActive svg {
-  color: color-mix(in srgb, var(--brand) 58%, #ffffff);
 }
 
 .navUtility {
@@ -473,7 +455,7 @@
   .contextMobileGroup > span {
     padding: 3px 8px;
     color: #6f7d8c;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 850;
     letter-spacing: 0.11em;
   }

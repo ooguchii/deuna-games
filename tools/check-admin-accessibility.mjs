@@ -21,6 +21,7 @@ const [
   shellUx,
   navigation,
   contextBar,
+  informationArchitectureCss,
   catalogCss,
   gamesCatalog,
   updateWorkspace,
@@ -46,6 +47,7 @@ const [
   source("src/components/admin/AdminShellUx.module.css"),
   source("src/components/admin/AdminNavigation.tsx"),
   source("src/components/admin/AdminContextBar.tsx"),
+  source("src/components/admin/AdminInformationArchitecture.module.css"),
   source("src/components/admin/AdminCatalog.module.css"),
   source("src/components/admin/AdminGamesCatalog.tsx"),
   source("src/app/admin/(protected)/juegos/[slug]/actualizacion/page.tsx"),
@@ -106,19 +108,16 @@ assert(
 );
 
 assert(
-  contextBar.includes("useKeepActiveContextVisible") &&
-    contextBar.includes("window.requestAnimationFrame") &&
-    contextBar.includes("getBoundingClientRect") &&
-    contextBar.includes("nav.scrollLeft") &&
-    contextBar.includes('aria-current={active ? "page" : undefined}') &&
-    navigation.includes("window.requestAnimationFrame") &&
-    navigation.includes("getBoundingClientRect") &&
-    navigation.includes("nav.scrollLeft") &&
+  navigation.includes("<details") &&
+    navigation.includes("activeItem?.label") &&
     navigation.includes('aria-current={active ? "page" : undefined}') &&
-    shellUx.includes("overscroll-behavior-inline: contain") &&
-    shellUx.includes("scroll-padding-inline: 10px") &&
-    shellUx.includes("scrollbar-width: none"),
-  "Las navegaciones horizontales deben mantener visible la opción activa, conservar aria-current y contener el overscroll móvil."
+    navigation.includes("mobileNavPanel") &&
+    contextBar.includes("<details") &&
+    contextBar.includes("mobileLabel") &&
+    contextBar.includes('aria-current={item.active ? "page" : undefined}') &&
+    contextBar.includes('aria-current={child.active ? "page" : undefined}') &&
+    contextBar.includes("contextMobilePanel"),
+  "Las navegaciones móviles deben exponer la opción activa, conservar aria-current y ofrecer una estructura desplegable accesible."
 );
 
 assert(
@@ -221,7 +220,8 @@ assert(
     catalogCss.includes("border-bottom: 1px solid #2e3a47") &&
     catalogCss.includes("nth-child(even)") &&
     catalogCss.includes(":focus-within") &&
-    catalogCss.includes("min-height: 38px") &&
+    informationArchitectureCss.includes(".rowActions") &&
+    informationArchitectureCss.includes("min-height: 34px") &&
     !catalogCss.includes("#e8adb9") &&
     !catalogCss.includes("#ffd4de"),
   "Los catálogos administrativos deben distinguir filas, jerarquía de texto, foco, acciones legibles y color de marca dinámico."
@@ -309,6 +309,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    `Accesibilidad administrativa: OK (${adminCssFiles.length} módulos revisados; identidad dinámica y contrastada, navegaciones móviles autocentradas, login accesible, skip-link único, contraste adaptable, escala legible, foco único, tema adaptativo, teclado, movimiento reducido y catálogos semánticos).`
+    `Accesibilidad administrativa: OK (${adminCssFiles.length} módulos revisados; identidad dinámica y contrastada, navegación móvil desplegable, login accesible, skip-link único, contraste adaptable, escala legible, foco único, tema adaptativo, teclado, movimiento reducido y catálogos semánticos).`
   );
 }

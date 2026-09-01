@@ -83,6 +83,8 @@ const bundledImagePattern =
   /^\/images\/[A-Za-z0-9/_.,@+() -]+\.(?:avif|gif|jpe?g|png|webp)$/i;
 const editorialMediaPattern =
   /^\/media\/editorial\/[a-z0-9][a-z0-9._-]{0,159}\/[a-f0-9]{64}\.webp$/;
+const editorialPreviewPattern =
+  /^\/media\/editorial\/[a-z0-9][a-z0-9._-]{0,159}\/[a-f0-9]{64}\.webm$/;
 const taxonomyIconAssetSchema = z
   .string()
   .max(400)
@@ -114,6 +116,11 @@ const localImageSchema = z
   .string()
   .max(400)
   .refine(isSafeLocalImagePath);
+
+const localPreviewClipSchema = z
+  .string()
+  .max(400)
+  .regex(editorialPreviewPattern);
 
 const pageBackgroundAssetSchema = z
   .object({
@@ -560,6 +567,7 @@ export const editorialGameSchema: z.ZodType<Game> = z
       .array(localImageSchema)
       .max(20)
       .optional(),
+    previewClip: localPreviewClipSchema.optional(),
     imageAlt: z.string().trim().min(1).max(240),
     requirements: requirementsSchema.optional(),
     performance: performanceCalibrationSchema.optional(),

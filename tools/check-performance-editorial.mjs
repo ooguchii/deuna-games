@@ -109,9 +109,11 @@ assert(
     editorPage.includes('section === "rendimiento"') &&
     editorPage.includes("GamePerformanceEditor") &&
     editorPage.includes('continueTo="rendimiento"') &&
-    contextBar.includes('id: "rendimiento"') &&
-    contextBar.includes('label: "Rendimiento"'),
-  "Rendimiento debe formar parte real del flujo Requisitos → Rendimiento → Multimedia."
+    contextBar.includes('key: "compatibilidad"') &&
+    contextBar.includes('key: "rendimiento"') &&
+    contextBar.includes('label: "Rendimiento"') &&
+    contextBar.includes('href: `${gamePath}?seccion=rendimiento`'),
+  "Rendimiento debe formar parte real del flujo Requisitos → Rendimiento → Multimedia y permanecer accesible dentro de Compatibilidad."
 );
 
 assert(

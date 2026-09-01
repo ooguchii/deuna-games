@@ -55,7 +55,7 @@ async function bundledImageExists(
   return fileIsRegular(absolutePath);
 }
 
-async function editorialImageExists(
+async function editorialMediaExists(
   mediaPath: string
 ) {
   try {
@@ -70,11 +70,11 @@ async function editorialImageExists(
   }
 }
 
-async function localImageExists(
+async function localMediaExists(
   mediaPath: string
 ) {
   if (mediaPath.startsWith("/media/editorial/")) {
-    return editorialImageExists(mediaPath);
+    return editorialMediaExists(mediaPath);
   }
 
   if (mediaPath.startsWith("/images/")) {
@@ -90,7 +90,7 @@ export async function inspectLocalImageReferences(
   const missing: string[] = [];
 
   for (const mediaPath of new Set(mediaPaths)) {
-    if (!(await localImageExists(mediaPath))) {
+    if (!(await localMediaExists(mediaPath))) {
       missing.push(mediaPath);
     }
   }
@@ -108,6 +108,7 @@ export async function inspectGameMediaIntegrity(
     game.coverImage,
     game.heroImage,
     ...(game.screenshots ?? []),
+    game.previewClip,
   ].filter(
     (value): value is string => Boolean(value)
   );

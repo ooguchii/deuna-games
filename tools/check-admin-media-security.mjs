@@ -311,7 +311,7 @@ assert(
     uploadStorage.includes("sanitizeEditorialWebp") &&
     uploadStorage.includes("inspectSafeEditorialWebp") &&
     uploadStorage.includes("isSymbolicLink"),
-  "Los archivos deben sanear metadatos, crearse sin sobrescritura, validarse y rechazar enlaces simbólicos."
+  "Los archivos de imagen deben sanear metadatos, crearse sin sobrescritura, validarse y rechazar enlaces simbólicos."
 );
 assert(
   publicRoute.includes(
@@ -319,7 +319,7 @@ assert(
   ) &&
     publicRoute.includes("immutable") &&
     publicRoute.includes("isSymbolicLink"),
-  "La ruta pública debe servir sólo WebP inmutable desde archivos regulares."
+  "La ruta pública multimedia debe seguir sirviendo WebP inmutable y seguro aunque también admita otros formatos editoriales validados."
 );
 assert(
   systemd.includes(
@@ -347,5 +347,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  "Seguridad multimedia administrativa: OK (normalización cliente/servidor, URLs HTTPS públicas, WebP, multipart, almacenamiento y ruta pública verificados)."
+  "Seguridad multimedia administrativa: OK (imágenes WebP, multipart, URLs HTTPS, almacenamiento y ruta pública verificados)."
 );

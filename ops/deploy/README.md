@@ -8,7 +8,7 @@ No publiques contraseñas, claves privadas, archivos `.env`, dumps ni capturas q
 
 1. Mantener `DEUNA_ADMIN_ENABLED=false`.
 2. Confirmar que el VPS tiene acceso SSH seguro y actualizaciones instaladas.
-3. Instalar PostgreSQL, Nginx, Node.js 24 y WireGuard desde fuentes confiables.
+3. Instalar PostgreSQL, Nginx, Node.js 24, WireGuard y FFmpeg desde fuentes confiables.
 4. Crear los roles y la base PostgreSQL sólo en loopback.
 5. Aplicar migraciones, importar contenido y crear la única cuenta propietaria.
 6. Preparar el estado multimedia persistente y ejecutar los preflight.
@@ -19,6 +19,8 @@ No publiques contraseñas, claves privadas, archivos `.env`, dumps ni capturas q
 11. Cambiar `DEUNA_ADMIN_ENABLED=true`, reiniciar y repetir ambas pruebas.
 
 El panel no se habilita antes del paso 11. Si una verificación falla, se mantiene cerrado.
+
+FFmpeg sólo se usa al cargar o reemplazar un preview de tarjeta desde el panel. La navegación pública y la reproducción de los WebM ya generados no dependen de FFmpeg.
 
 ## 1. Estructura del servidor
 
@@ -36,7 +38,7 @@ Usar una cuenta de servicio sin login interactivo, releases separadas y estado p
 
 `source-private/` contiene temporalmente las migraciones y herramientas administrativas. No es servido por Nginx y no debe ser legible por el usuario del proceso web. `current/` contiene solamente el artefacto mínimo generado por `npm run build:secure`.
 
-`/var/lib/deuna-games/editorial-media/` contiene únicamente WebP editoriales aceptados por el panel. Está fuera de `current/` deliberadamente: cambiar de release o volver atrás no debe borrar las imágenes ya publicadas.
+`/var/lib/deuna-games/editorial-media/` contiene WebP, SVG de taxonomía y WebM editoriales aceptados por el panel. Está fuera de `current/` deliberadamente: cambiar de release o volver atrás no debe borrar imágenes ni previews ya publicados.
 
 La release anterior se conserva para poder volver atrás cambiando el enlace `current`; no se borra automáticamente.
 
@@ -101,7 +103,9 @@ sudo DEUNA_SERVICE_USER=<USUARIO-SERVICIO> \
      bash ops/deploy/prepare-editorial-media.sh
 ```
 
-No apuntar `DEUNA_EDITORIAL_MEDIA_ROOT` a `current/`, `releases/`, `public/`, `/tmp` ni a la raíz del sistema. Las imágenes editoriales deben sobrevivir a un nuevo deploy y a una reversión de release.
+No apuntar `DEUNA_EDITORIAL_MEDIA_ROOT` a `current/`, `releases/`, `public/`, `/tmp` ni a la raíz del sistema. La multimedia editorial debe sobrevivir a un nuevo deploy y a una reversión de release.
+
+Los previews de tarjetas se almacenan sólo después de convertir el archivo fuente a WebM/VP9, sin audio, con duración máxima de 30 segundos y límite público de 3 MB. El archivo fuente temporal se elimina al finalizar la conversión.
 
 ## 4. Entorno del servicio
 
@@ -115,11 +119,12 @@ NEXT_PUBLIC_SITE_URL=https://<DOMINIO-REAL>
 DEUNA_ADMIN_ENABLED=false
 DEUNA_ADMIN_ORIGIN=https://<ORIGEN-EXACTO-DEL-PANEL>
 DEUNA_EDITORIAL_MEDIA_ROOT=/var/lib/deuna-games/editorial-media
+DEUNA_FFMPEG_PATH=/usr/bin/ffmpeg
 DEUNA_DATABASE_HOST=127.0.0.1
 DEUNA_DATABASE_USER=deuna_runtime
 ```
 
-No usar marcadores, localhost ni dominios de ejemplo en la release real.
+No usar marcadores, localhost ni dominios de ejemplo en la release real. Si `ffmpeg` está disponible en el `PATH` de la unidad systemd, `DEUNA_FFMPEG_PATH` puede quedar vacío; indicar una ruta absoluta evita depender del entorno interactivo del usuario SSH.
 
 En desarrollo local, si `DEUNA_EDITORIAL_MEDIA_ROOT` no está definido, la aplicación usa de forma deliberada un directorio privado bajo el home del usuario y fuera del repositorio. En producción no existe ese fallback: la variable es obligatoria.
 
@@ -150,6 +155,7 @@ Adaptar `ops/nginx/deuna-games.conf.example`:
 - reemplazar dominio y rutas de certificados;
 - reemplazar `10.8.0.0/24` únicamente si WireGuard usa otra subred privada;
 - mantener `deny all` en todas las rutas administrativas;
+- conservar la excepción de `66m` únicamente en `/api/admin/content/games/<slug>/preview-upload`; el resto del API administrativo mantiene límites pequeños;
 - mantener desactivados `access_log` y el registro persistente de errores;
 - no agregar `X-Real-IP` ni `X-Forwarded-For`;
 - probar la configuración con `sudo nginx -t` antes de recargar.
@@ -176,7 +182,9 @@ Sólo cuando la frontera sea correcta, cambiar a `DEUNA_ADMIN_ENABLED=true`, rei
 - la contraseña correcta crea una cookie `HttpOnly`, `Secure` y `SameSite=Strict`;
 - cerrar sesión revoca la sesión y vuelve al login;
 - una imagen WebP válida puede subirse desde Multimedia y queda accesible bajo `/media/editorial/...`;
-- cambiar `current` a otra release no elimina esa imagen.
+- un video fuente admitido puede convertirse desde Multimedia a un WebM de preview y el archivo fuente no queda en el almacén persistente;
+- el WebM público responde como `video/webm`, admite `Range` y queda por debajo del límite editorial;
+- cambiar `current` a otra release no elimina imágenes ni previews ya publicados.
 
 ## 8. Vuelta atrás
 
@@ -192,6 +200,6 @@ Para convertir esta guía en comandos exactos hacen falta únicamente:
 - dominio público que usará DeUna Games;
 - puerto SSH y nombre del usuario con `sudo`;
 - confirmar si WireGuard ya existe y, si existe, su subred privada;
-- confirmar si PostgreSQL, Nginx y Node.js ya están instalados.
+- confirmar si PostgreSQL, Nginx, Node.js y FFmpeg ya están instalados.
 
 No hacen falta contraseñas ni claves privadas en el chat.

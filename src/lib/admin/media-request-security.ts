@@ -8,15 +8,22 @@ import {
 
 export const MAX_ADMIN_MEDIA_REQUEST_BYTES =
   8 * 1024 * 1024;
+export const MAX_ADMIN_PREVIEW_REQUEST_BYTES =
+  66 * 1024 * 1024;
 
 export async function readTrustedAdminMediaForm(
   request: NextRequest,
-  adminOrigin: string
+  adminOrigin: string,
+  maximumBytes = MAX_ADMIN_MEDIA_REQUEST_BYTES
 ) {
   const contentType =
     request.headers.get("content-type") ?? "";
   const contentLengthHeader =
     request.headers.get("content-length");
+  const effectiveMaximum = Math.min(
+    Math.max(1, maximumBytes),
+    MAX_ADMIN_PREVIEW_REQUEST_BYTES
+  );
 
   if (
     !hasTrustedAdminOrigin(
@@ -46,7 +53,7 @@ export async function readTrustedAdminMediaForm(
   if (
     !Number.isSafeInteger(contentLength) ||
     contentLength <= 0 ||
-    contentLength > MAX_ADMIN_MEDIA_REQUEST_BYTES
+    contentLength > effectiveMaximum
   ) {
     return null;
   }
@@ -70,7 +77,7 @@ export async function readTrustedAdminMediaForm(
 
     if (
       valueBytes >
-      MAX_ADMIN_MEDIA_REQUEST_BYTES
+      effectiveMaximum
     ) {
       return null;
     }

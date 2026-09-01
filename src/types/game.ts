@@ -107,6 +107,11 @@ export type Game = {
   coverImage?: string;
   heroImage?: string;
   screenshots?: string[];
+  /*
+   * Preview ultraliviano para tarjetas. El panel normaliza cualquier
+   * fuente admitida a WebM/VP9, sin audio y con duración máxima de 30 s.
+   */
+  previewClip?: string;
 
   imageAlt: string;
 
