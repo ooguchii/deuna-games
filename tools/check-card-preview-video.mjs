@@ -175,8 +175,11 @@ assert(
     staging.includes("createStagedRemotePreviewSource") &&
     staging.includes("resolveStagedEditorialPreviewSource") &&
     staging.includes("removeStagedEditorialPreviewSource") &&
+    staging.includes("tokenFromArtifact") &&
+    staging.includes("artifactIsAbandoned") &&
+    staging.includes("PART_SUFFIX") &&
     staging.includes("stats.isSymbolicLink()"),
-  "La preview remota debe usar staging temporal opaco, acotado, con vencimiento y validación del archivo."
+  "La preview remota debe usar staging temporal opaco, acotado, con vencimiento y limpieza de restos interrumpidos."
 );
 assert(
   stagingRoute.includes("authorizeAdminFormRequest") &&
@@ -233,8 +236,11 @@ assert(
     trimEditor.includes("Reproducir recorte") &&
     trimEditor.includes("onLoadedMetadata") &&
     trimEditor.includes("MAX_PREVIEW_DURATION_SECONDS") &&
-    trimEditor.includes("parsePreviewTrimWindow"),
-  "El recortador visual debe tener video, timeline, tiradores IN/OUT, ajuste fino y reproducción del tramo elegido."
+    trimEditor.includes("parsePreviewTrimWindow") &&
+    trimEditor.includes('role="slider"') &&
+    trimEditor.includes('aria-orientation="horizontal"') &&
+    trimEditor.includes("aria-valuetext"),
+  "El recortador visual debe tener video, timeline, tiradores IN/OUT accesibles, ajuste fino y reproducción del tramo elegido."
 );
 assert(
   mediaAuth.includes("maximumBytes?: number") &&
