@@ -887,26 +887,11 @@
   }
 }
 /* ==================================================
-   MENÚ MÓVIL V4 — CHECKBOX NATIVO
-   La animación ya no depende de <details>.
-   El panel SIEMPRE está renderizado y cambia de estado
-   mediante :checked, por eso anima cada vez.
+   MENÚ MÓVIL V5 — ESTADO REACT
+   El panel siempre está renderizado y React aplica
+   clases de estado explícitas para abrir/cerrar y animar.
 ================================================== */
 
-.mobileMenuToggle {
-  position: fixed;
-
-  width: 1px;
-  height: 1px;
-
-  overflow: hidden;
-
-  clip-path: inset(50%);
-
-  white-space: nowrap;
-
-  opacity: 0;
-}
 
 .menuButton {
   user-select: none;
@@ -956,9 +941,7 @@
       ease;
 }
 
-.mobileMenuToggle:checked
-~ .header
-.menuButton {
+.menuButtonOpen {
   color: #ffffff;
 
   border-color:
@@ -974,14 +957,12 @@
       color-mix(in srgb, var(--brand) 4%, transparent);
 }
 
-.mobileMenuToggle:checked
-~ .header
+.menuButtonOpen
 .menuOpenIcon {
   display: none;
 }
 
-.mobileMenuToggle:checked
-~ .header
+.menuButtonOpen
 .menuCloseIcon {
   display: block;
 
@@ -990,9 +971,7 @@
     scale(1);
 }
 
-.mobileMenuToggle:focus-visible
-~ .header
-.menuButton {
+.menuButton:focus-visible {
   outline:
     2px solid
     var(--brand);
@@ -1068,8 +1047,7 @@
   -webkit-overflow-scrolling: touch;
 }
 
-.mobileMenuToggle:checked
-~ .mobileNativePanel {
+.mobileNativePanelOpen {
   opacity: 1;
 
   visibility: visible;
@@ -1169,14 +1147,11 @@
       ease;
 }
 
-.mobileMenuToggle:checked
-~ .mobileNativePanel
+.mobileNativePanelOpen
 .mobileSearch,
-.mobileMenuToggle:checked
-~ .mobileNativePanel
+.mobileNativePanelOpen
 .mobileNavItem,
-.mobileMenuToggle:checked
-~ .mobileNativePanel
+.mobileNativePanelOpen
 .mobileFinder {
   opacity: 1;
 
@@ -1184,44 +1159,37 @@
     translateY(0);
 }
 
-.mobileMenuToggle:checked
-~ .mobileNativePanel
+.mobileNativePanelOpen
 .mobileSearch {
   transition-delay: 45ms;
 }
 
-.mobileMenuToggle:checked
-~ .mobileNativePanel
+.mobileNativePanelOpen
 .mobileNavItem:nth-child(1) {
   transition-delay: 75ms;
 }
 
-.mobileMenuToggle:checked
-~ .mobileNativePanel
+.mobileNativePanelOpen
 .mobileNavItem:nth-child(2) {
   transition-delay: 100ms;
 }
 
-.mobileMenuToggle:checked
-~ .mobileNativePanel
+.mobileNativePanelOpen
 .mobileNavItem:nth-child(3) {
   transition-delay: 125ms;
 }
 
-.mobileMenuToggle:checked
-~ .mobileNativePanel
+.mobileNativePanelOpen
 .mobileNavItem:nth-child(4) {
   transition-delay: 150ms;
 }
 
-.mobileMenuToggle:checked
-~ .mobileNativePanel
+.mobileNativePanelOpen
 .mobileNavItem:nth-child(5) {
   transition-delay: 175ms;
 }
 
-.mobileMenuToggle:checked
-~ .mobileNativePanel
+.mobileNativePanelOpen
 .mobileFinder {
   transition-delay: 200ms;
 }
@@ -1390,7 +1358,6 @@
 ================================================== */
 
 @media (min-width: 1161px) {
-  .mobileMenuToggle,
   .mobileNativePanel {
     display: none;
   }

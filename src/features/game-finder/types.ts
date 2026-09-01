@@ -23,6 +23,7 @@ export type HardwareProfile = {
   ramGb: number | null;
   ramKnowledge: RamKnowledge;
   os: string;
+  osConfirmed?: boolean;
   memoryMode: MemoryMode;
   source: HardwareSource;
   confidence: ConfidenceLevel;
@@ -30,6 +31,7 @@ export type HardwareProfile = {
 };
 
 export type BrowserHardwareSnapshot = {
+  secureContext: boolean;
   logicalProcessors: number | null;
   approximateMemoryGb: number | null;
   memoryKind: "unknown" | "approximate" | "lower-bound";
@@ -37,7 +39,9 @@ export type BrowserHardwareSnapshot = {
   gpuVendor: string | null;
   gpuSource: "webgpu" | "webgl" | "none";
   platform: string | null;
+  platformVersion: string | null;
   architecture: string | null;
+  bitness: string | null;
   warnings: string[];
 };
 

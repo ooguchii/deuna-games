@@ -388,7 +388,7 @@ if (missing.length > 0 || invalidQueries.length > 0) {
   }
 
   console.error(
-    "\nCreá/corregí la ruta o usá parámetros admitidos antes de integrar el cambio.\n"
+    "\nCrea o corrige la ruta, o usa parámetros admitidos antes de integrar el cambio.\n"
   );
 
   process.exit(1);

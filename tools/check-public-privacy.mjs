@@ -8,14 +8,13 @@ const roots = [
   path.join(root, "src"),
   path.join(root, "public"),
   path.join(root, "ops"),
+  path.join(root, "tools"),
 ];
 
 const rootFiles = [
   "README.md",
   ".env.example",
   "next.config.ts",
-  "Dockerfile",
-  "docker-compose.yml",
 ].map((file) => path.join(root, file));
 
 const textExtensions = new Set([
@@ -81,7 +80,7 @@ const regionalCopyPatterns = [
   {
     label: "voseo o imperativo regional en contenido público",
     pattern:
-      /(?<![\p{L}\p{N}_])(?:vos|encontrá|consultá|explorá|seguí|compará|usá|elegí|buscá|descubrí|accedé|revisá|mirá|probá|conocé|aprendé|volvé|hacé|andá|vení|poné|sacá|dejá|agregá|quitá|cambiá|configurá|ejecutá|corregí|retirá|eliminá|subí|bajá|abrí|cerrá|guardá|podés|tenés|querés|sabés|sos|decís|venís|hacés)(?![\p{L}\p{N}_])/giu,
+      /(?<![\p{L}\p{N}_])(?:vos|encontrá|consultá|explorá|seguí|compará|combiná|usá|usás|elegí|buscá|buscás|descubrí|accedé|revisá|mirá|probá|conocé|aprendé|volvé|hacé|andá|vení|poné|sacá|dejá|agregá|quitá|cambiá|configurá|ejecutá|corregí|retirá|eliminá|subí|bajá|abrí|cerrá|guardá|conectá|desactivá|comprobá|mantenete|detenelo|arrancalo|podés|tenés|querés|sabés|sos|decís|venís|hacés)(?![\p{L}\p{N}_])/giu,
   },
 ];
 
@@ -132,6 +131,9 @@ const files = [
 
 const uniqueFiles = [...new Set(files)];
 const issues = [];
+const regionalCopyExemptions = new Set([
+  "tools/check-public-privacy.mjs",
+]);
 
 for (const file of uniqueFiles) {
   let content;
@@ -145,6 +147,10 @@ for (const file of uniqueFiles) {
   const fileRelative = relative(file);
 
   for (const rule of forbidden) {
+    if (fileRelative.startsWith("tools/")) {
+      continue;
+    }
+
     rule.pattern.lastIndex = 0;
 
     for (const match of content.matchAll(rule.pattern)) {
@@ -154,7 +160,7 @@ for (const file of uniqueFiles) {
     }
   }
 
-  if (fileRelative.startsWith("src/")) {
+  if (!regionalCopyExemptions.has(fileRelative)) {
     for (const rule of regionalCopyPatterns) {
       rule.pattern.lastIndex = 0;
 
@@ -175,7 +181,7 @@ if (issues.length > 0) {
   }
 
   console.error(
-    "\nRetirá referencias geográficas, regionalismos identificables, rutas personales, correos personales, timestamps ambiguos o tracking antes de integrar.\n"
+    "\nRetira referencias geográficas, regionalismos identificables, rutas personales, correos personales, timestamps ambiguos o tracking antes de integrar.\n"
   );
 
   process.exit(1);

@@ -446,7 +446,7 @@ function checkGitIdentity() {
 
   if (name || email) {
     warnings.push(
-      "Git tiene identidad configurada. Si el repositorio se hace público, revisá autor/email del historial antes de publicarlo."
+      "Git tiene identidad configurada. Si el repositorio se hace público, revisa autor/email del historial antes de publicarlo."
     );
   }
 }
@@ -551,7 +551,7 @@ if (errors.length > 0) {
     "AUDITORÍA: NO APROBADA"
   );
   console.error(
-    "Corregí los ERROR antes de publicar."
+    "Corrige los ERROR antes de publicar."
   );
   process.exit(1);
 }

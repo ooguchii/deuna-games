@@ -7,12 +7,16 @@
   },
   "scripts": {
     "dev": "next dev",
+    "lan": "next dev --hostname 0.0.0.0 --port 3000",
+    "lan:prod": "npm run build && next start --hostname 0.0.0.0 --port 3000",
+    "lan:doctor": "node ./tools/lan-doctor.mjs",
+    "mobile": "npm run lan",
     "dev:webpack": "next dev --webpack",
     "build": "next build",
     "start": "next start",
-    "mobile": "next build && next start -H 0.0.0.0",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
+    "check:architecture": "node ./tools/check-architecture.mjs",
     "check:source": "node ./tools/check-source-hygiene.mjs",
     "check:encoding": "node ./tools/check-text-encoding.mjs",
     "check:privacy": "node ./tools/check-public-privacy.mjs",
@@ -22,7 +26,7 @@
     "check:css-vars": "node ./tools/check-css-vars.mjs",
     "check:css-modules": "node ./tools/check-css-modules.mjs",
     "smoke": "node ./tools/smoke-test.mjs",
-    "check": "npm run lint && npm run typecheck && npm run check:source && npm run check:encoding && npm run check:privacy && npm run check:data && npm run check:assets && npm run check:routes && npm run check:css-vars && npm run check:css-modules && npm run build && npm run smoke",
+    "check": "npm run lint && npm run typecheck && npm run check:architecture && npm run check:source && npm run check:encoding && npm run check:privacy && npm run check:data && npm run check:assets && npm run check:routes && npm run check:css-vars && npm run check:css-modules && npm run build && npm run smoke",
     "audit:deps": "npm audit --audit-level=high",
     "audit:prod": "npm audit --omit=dev --audit-level=high",
     "security:scan": "node ./tools/security-audit.mjs",
@@ -34,7 +38,7 @@
   },
   "dependencies": {
     "lucide-react": "^1.34.0",
-    "next": "16.3.2",
+    "next": "16.3.3",
     "react": "19.2.8",
     "react-dom": "19.2.8"
   },
@@ -43,7 +47,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.3.2",
+    "eslint-config-next": "16.3.3",
     "typescript": "^5"
   }
 }

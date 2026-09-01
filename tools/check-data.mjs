@@ -4,23 +4,27 @@ import process from "node:process";
 import ts from "typescript";
 
 const root = process.cwd();
+const gameFinderRoot = path.join(
+  root,
+  "src",
+  "features",
+  "game-finder"
+);
 
 const files = {
   games: path.join(root, "src", "data", "games.ts"),
   updates: path.join(root, "src", "data", "updates.ts"),
   performance: path.join(
-    root,
-    "src",
-    "features",
-    "game-finder",
+    gameFinderRoot,
     "performance-data.ts"
   ),
-  hardware: path.join(
-    root,
-    "src",
-    "features",
-    "game-finder",
-    "hardware-catalog.ts"
+  hardwareBase: path.join(
+    gameFinderRoot,
+    "hardware-catalog-base.ts"
+  ),
+  hardwareExpansion: path.join(
+    gameFinderRoot,
+    "hardware-catalog-expansion.ts"
   ),
 };
 
@@ -98,15 +102,15 @@ function literalValue(node) {
         continue;
       }
 
-      const name =
-        getPropertyName(property.name);
+      const name = getPropertyName(property.name);
 
       if (!name) {
         continue;
       }
 
-      result[name] =
-        literalValue(property.initializer);
+      result[name] = literalValue(
+        property.initializer
+      );
     }
 
     return result;
@@ -118,14 +122,16 @@ function literalValue(node) {
 function findArrayDeclaration(
   source,
   variableName,
-  fileLabel
+  fileLabel,
+  elementKind
 ) {
   for (const statement of source.statements) {
     if (!ts.isVariableStatement(statement)) {
       continue;
     }
 
-    for (const declaration of statement.declarationList.declarations) {
+    for (const declaration of
+      statement.declarationList.declarations) {
       if (
         !ts.isIdentifier(declaration.name) ||
         declaration.name.text !== variableName
@@ -135,22 +141,38 @@ function findArrayDeclaration(
 
       if (
         !declaration.initializer ||
-        !ts.isArrayLiteralExpression(declaration.initializer)
+        !ts.isArrayLiteralExpression(
+          declaration.initializer
+        )
       ) {
         throw new Error(
           `${fileLabel}: ${variableName} debe declararse como un array literal.`
         );
       }
 
-      return declaration.initializer.elements.map((element, index) => {
-        if (!ts.isObjectLiteralExpression(element)) {
-          throw new Error(
-            `${fileLabel}: ${variableName}[${index}] debe ser un objeto literal.`
-          );
-        }
+      return declaration.initializer.elements.map(
+        (element, index) => {
+          if (
+            elementKind === "object" &&
+            !ts.isObjectLiteralExpression(element)
+          ) {
+            throw new Error(
+              `${fileLabel}: ${variableName}[${index}] debe ser un objeto literal.`
+            );
+          }
 
-        return literalValue(element);
-      });
+          if (
+            elementKind === "tuple" &&
+            !ts.isArrayLiteralExpression(element)
+          ) {
+            throw new Error(
+              `${fileLabel}: ${variableName}[${index}] debe ser una tupla literal.`
+            );
+          }
+
+          return literalValue(element);
+        }
+      );
     }
   }
 
@@ -161,13 +183,13 @@ function findArrayDeclaration(
 
 async function readArray(
   filePath,
-  variableName
+  variableName,
+  elementKind = "object"
 ) {
   const content = await fs.readFile(
     filePath,
     "utf8"
   );
-
   const source = ts.createSourceFile(
     filePath,
     content,
@@ -179,7 +201,8 @@ async function readArray(
   return findArrayDeclaration(
     source,
     variableName,
-    path.relative(root, filePath)
+    path.relative(root, filePath),
+    elementKind
   );
 }
 
@@ -235,15 +258,61 @@ function isValidPublishedAt(value) {
     return false;
   }
 
-  return Number.isFinite(
-    Date.parse(value)
-  );
+  return Number.isFinite(Date.parse(value));
 }
 
-function validateDownload(
-  game,
+function validateDownloadHref(
+  href,
+  label,
   errors
 ) {
+  if (!isNonEmptyString(href)) {
+    errors.push(
+      `${label} debe ser un string no vacío.`
+    );
+    return false;
+  }
+
+  const trimmed = href.trim();
+
+  if (trimmed.startsWith("/")) {
+    if (
+      trimmed.startsWith("//") ||
+      trimmed.includes("\\")
+    ) {
+      errors.push(
+        `${label} interno no puede usar // ni barras invertidas.`
+      );
+      return false;
+    }
+
+    return true;
+  }
+
+  try {
+    const url = new URL(trimmed);
+
+    if (
+      url.protocol !== "https:" ||
+      url.username ||
+      url.password
+    ) {
+      errors.push(
+        `${label} externo debe ser HTTPS y no contener credenciales.`
+      );
+      return false;
+    }
+
+    return true;
+  } catch {
+    errors.push(
+      `${label} no es una URL válida.`
+    );
+    return false;
+  }
+}
+
+function validateDownload(game, errors) {
   if (game.download === undefined) {
     return;
   }
@@ -258,52 +327,128 @@ function validateDownload(
     return;
   }
 
-  const href = game.download.href;
+  const download = game.download;
+  const hasLegacyHref =
+    download.href !== undefined;
+  const hasSources =
+    download.sources !== undefined;
 
-  if (!isNonEmptyString(href)) {
+  if (!hasLegacyHref && !hasSources) {
     errors.push(
-      `${game.slug}: download.href debe ser un string no vacío.`
+      `${game.slug}: download debe declarar href o sources.`
     );
-    return;
   }
 
-  const trimmed = href.trim();
+  if (hasLegacyHref) {
+    validateDownloadHref(
+      download.href,
+      `${game.slug}: download.href`,
+      errors
+    );
+  }
 
-  if (trimmed.startsWith("/")) {
-    if (
-      trimmed.startsWith("//") ||
-      trimmed.includes("\\")
+  if (
+    download.label !== undefined &&
+    !isNonEmptyString(download.label)
+  ) {
+    errors.push(
+      `${game.slug}: download.label, si existe, debe ser un string no vacío.`
+    );
+  }
+
+  if (hasSources) {
+    if (!Array.isArray(download.sources)) {
+      errors.push(
+        `${game.slug}: download.sources debe ser un array.`
+      );
+    } else if (
+      download.sources.length === 0 &&
+      !hasLegacyHref
     ) {
       errors.push(
-        `${game.slug}: download.href interno no puede usar // ni barras invertidas.`
+        `${game.slug}: download.sources no puede estar vacío si no existe download.href.`
       );
-    }
-  } else {
-    try {
-      const url = new URL(trimmed);
+    } else {
+      const sourceIds = new Set();
 
-      if (
-        url.protocol !== "https:" ||
-        url.username ||
-        url.password
-      ) {
-        errors.push(
-          `${game.slug}: download.href externo debe ser HTTPS y no contener credenciales.`
+      for (const [index, source] of
+        download.sources.entries()) {
+        const sourceLabel =
+          `${game.slug}: download.sources[${index}]`;
+
+        if (
+          !source ||
+          typeof source !== "object"
+        ) {
+          errors.push(
+            `${sourceLabel} debe ser un objeto.`
+          );
+          continue;
+        }
+
+        if (!isNonEmptyString(source.id)) {
+          errors.push(
+            `${sourceLabel}.id debe ser un string no vacío.`
+          );
+        } else if (sourceIds.has(source.id)) {
+          errors.push(
+            `${sourceLabel}.id está duplicado.`
+          );
+        } else {
+          sourceIds.add(source.id);
+        }
+
+        if (!isNonEmptyString(source.name)) {
+          errors.push(
+            `${sourceLabel}.name debe ser un string no vacío.`
+          );
+        }
+
+        validateDownloadHref(
+          source.href,
+          `${sourceLabel}.href`,
+          errors
         );
+
+        if (
+          source.label !== undefined &&
+          !isNonEmptyString(source.label)
+        ) {
+          errors.push(
+            `${sourceLabel}.label, si existe, debe ser un string no vacío.`
+          );
+        }
       }
-    } catch {
-      errors.push(
-        `${game.slug}: download.href no es una URL válida.`
-      );
     }
   }
 
   if (
-    game.download.label !== undefined &&
-    !isNonEmptyString(game.download.label)
+    download.sizeGb !== undefined &&
+    !isPositiveNumber(download.sizeGb)
   ) {
     errors.push(
-      `${game.slug}: download.label, si existe, debe ser un string no vacío.`
+      `${game.slug}: download.sizeGb debe ser un número positivo.`
+    );
+  }
+
+  if (
+    download.fileCount !== undefined &&
+    (
+      !Number.isInteger(download.fileCount) ||
+      download.fileCount <= 0
+    )
+  ) {
+    errors.push(
+      `${game.slug}: download.fileCount debe ser un entero positivo.`
+    );
+  }
+
+  if (
+    download.platform !== undefined &&
+    !isNonEmptyString(download.platform)
+  ) {
+    errors.push(
+      `${game.slug}: download.platform, si existe, debe ser un string no vacío.`
     );
   }
 }
@@ -322,7 +467,8 @@ function validateRequirementObject(
     return;
   }
 
-  for (const [key, field] of Object.entries(value)) {
+  for (const [key, field] of
+    Object.entries(value)) {
     if (
       key === "minimum" ||
       key === "recommended"
@@ -349,58 +495,263 @@ function validateHardwareCatalog(
   errors
 ) {
   const ids = new Set();
+  const names = new Set();
 
-  for (const [index, item] of entries.entries()) {
+  for (const [index, item] of
+    entries.entries()) {
     const itemLabel =
-      isNonEmptyString(item.id)
+      isNonEmptyString(item?.id)
         ? `${label}.${item.id}`
         : `${label}[${index}]`;
 
+    if (!item || typeof item !== "object") {
+      errors.push(
+        `${itemLabel}: entrada de hardware inválida.`
+      );
+      continue;
+    }
+
     if (!isNonEmptyString(item.id)) {
-      errors.push(`${itemLabel}: id es obligatorio.`);
+      errors.push(
+        `${itemLabel}: id es obligatorio.`
+      );
     } else if (ids.has(item.id)) {
-      errors.push(`${itemLabel}: id duplicado.`);
+      errors.push(
+        `${itemLabel}: id duplicado.`
+      );
     } else {
       ids.add(item.id);
     }
 
     if (!isNonEmptyString(item.name)) {
-      errors.push(`${itemLabel}: name es obligatorio.`);
+      errors.push(
+        `${itemLabel}: name es obligatorio.`
+      );
+    } else {
+      const normalizedName =
+        item.name.trim().toLowerCase();
+
+      if (names.has(normalizedName)) {
+        errors.push(
+          `${itemLabel}: nombre de hardware duplicado.`
+        );
+      } else {
+        names.add(normalizedName);
+      }
     }
 
     if (!isPositiveNumber(item.score)) {
-      errors.push(`${itemLabel}: score debe ser un número positivo.`);
+      errors.push(
+        `${itemLabel}: score debe ser un número positivo.`
+      );
     }
 
     if (
       item.integrated !== undefined &&
       typeof item.integrated !== "boolean"
     ) {
-      errors.push(`${itemLabel}: integrated debe ser booleano.`);
+      errors.push(
+        `${itemLabel}: integrated debe ser booleano.`
+      );
     }
   }
+}
+
+function validateCrossCatalogDuplicates(
+  base,
+  expansion,
+  label,
+  errors
+) {
+  const baseIds = new Set(
+    base
+      .filter((item) => isNonEmptyString(item?.id))
+      .map((item) => item.id)
+  );
+  const baseNames = new Set(
+    base
+      .filter((item) => isNonEmptyString(item?.name))
+      .map((item) => item.name.trim().toLowerCase())
+  );
+
+  for (const [index, item] of expansion.entries()) {
+    const itemLabel =
+      isNonEmptyString(item?.id)
+        ? `${label}.${item.id}`
+        : `${label}[${index}]`;
+
+    if (
+      isNonEmptyString(item?.id) &&
+      baseIds.has(item.id)
+    ) {
+      errors.push(
+        `${itemLabel}: id duplicado entre catálogo base y expansión.`
+      );
+    }
+
+    if (isNonEmptyString(item?.name)) {
+      const normalizedName =
+        item.name.trim().toLowerCase();
+
+      if (baseNames.has(normalizedName)) {
+        errors.push(
+          `${itemLabel}: nombre duplicado entre catálogo base y expansión.`
+        );
+      }
+    }
+  }
+}
+
+function makeExpansionId(name) {
+  return `extra-${name
+    .toLowerCase()
+    .replaceAll("+", " plus ")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")}`;
+}
+
+function buildCpuExpansion(specs) {
+  return specs.map((spec, index) => {
+    if (
+      !Array.isArray(spec) ||
+      spec.length !== 2
+    ) {
+      return {
+        id: `invalid-cpu-spec-${index}`,
+        name: "",
+        score: Number.NaN,
+      };
+    }
+
+    const [name, score] = spec;
+
+    return {
+      id:
+        typeof name === "string"
+          ? makeExpansionId(name)
+          : `invalid-cpu-spec-${index}`,
+      name,
+      score,
+    };
+  });
+}
+
+function buildGpuExpansion(specs) {
+  return specs.map((spec, index) => {
+    if (
+      !Array.isArray(spec) ||
+      (spec.length !== 2 && spec.length !== 3)
+    ) {
+      return {
+        id: `invalid-gpu-spec-${index}`,
+        name: "",
+        score: Number.NaN,
+      };
+    }
+
+    const [name, score, integrated] = spec;
+
+    return {
+      id:
+        typeof name === "string"
+          ? makeExpansionId(name)
+          : `invalid-gpu-spec-${index}`,
+      name,
+      score,
+      ...(integrated === true
+        ? { integrated: true }
+        : integrated === undefined
+          ? {}
+          : { integrated }),
+    };
+  });
+}
+
+function mergeHardwareCatalog(
+  base,
+  expansion
+) {
+  const merged = [...base];
+  const ids = new Set(
+    merged.map((part) => part.id)
+  );
+  const names = new Set(
+    merged.map((part) =>
+      part.name.toLowerCase()
+    )
+  );
+
+  for (const part of expansion) {
+    const normalizedName =
+      typeof part.name === "string"
+        ? part.name.toLowerCase()
+        : "";
+
+    if (
+      ids.has(part.id) ||
+      names.has(normalizedName)
+    ) {
+      continue;
+    }
+
+    merged.push(part);
+    ids.add(part.id);
+    names.add(normalizedName);
+  }
+
+  return merged.sort((a, b) =>
+    a.name.localeCompare(b.name, "en", {
+      numeric: true,
+    })
+  );
 }
 
 const [
   games,
   updates,
   performanceProfiles,
-  cpuCatalog,
-  gpuCatalog,
+  baseCpuCatalog,
+  baseGpuCatalog,
+  cpuSpecs,
+  gpuSpecs,
 ] = await Promise.all([
   readArray(files.games, "games"),
   readArray(files.updates, "gameUpdates"),
   readArray(files.performance, "profiles"),
-  readArray(files.hardware, "cpuCatalog"),
-  readArray(files.hardware, "gpuCatalog"),
+  readArray(files.hardwareBase, "cpuCatalog"),
+  readArray(files.hardwareBase, "gpuCatalog"),
+  readArray(
+    files.hardwareExpansion,
+    "cpuSpecs",
+    "tuple"
+  ),
+  readArray(
+    files.hardwareExpansion,
+    "gpuSpecs",
+    "tuple"
+  ),
 ]);
+
+const cpuCatalogExpansion =
+  buildCpuExpansion(cpuSpecs);
+const gpuCatalogExpansion =
+  buildGpuExpansion(gpuSpecs);
+const cpuCatalog = mergeHardwareCatalog(
+  baseCpuCatalog,
+  cpuCatalogExpansion
+);
+const gpuCatalog = mergeHardwareCatalog(
+  baseGpuCatalog,
+  gpuCatalogExpansion
+);
 
 const errors = [];
 const gameIds = new Set();
 const gameSlugs = new Set();
 const gamesBySlug = new Map();
 
-for (const [index, game] of games.entries()) {
+for (const [index, game] of
+  games.entries()) {
   const label =
     isNonEmptyString(game.slug)
       ? game.slug
@@ -449,7 +800,7 @@ for (const [index, game] of games.entries()) {
 
     if (!slugPattern.test(game.slug)) {
       errors.push(
-        `${label}: slug inválido. Usá minúsculas, números y guiones simples.`
+        `${label}: slug inválido. Usa minúsculas, números y guiones simples.`
       );
     }
   }
@@ -521,7 +872,8 @@ for (const [index, game] of games.entries()) {
         `${label}: screenshots debe ser un array.`
       );
     } else {
-      for (const screenshot of game.screenshots) {
+      for (const screenshot of
+        game.screenshots) {
         if (
           !isNonEmptyString(screenshot) ||
           !screenshot.startsWith("/images/")
@@ -544,46 +896,61 @@ for (const [index, game] of games.entries()) {
 
 const performanceSlugs = new Set();
 
-for (const [index, profile] of performanceProfiles.entries()) {
+for (const [index, profile] of
+  performanceProfiles.entries()) {
   const label =
     isNonEmptyString(profile.slug)
       ? `performance.${profile.slug}`
       : `performance[${index}]`;
 
   if (!isNonEmptyString(profile.slug)) {
-    errors.push(`${label}: slug es obligatorio.`);
+    errors.push(
+      `${label}: slug es obligatorio.`
+    );
     continue;
   }
 
   if (performanceSlugs.has(profile.slug)) {
-    errors.push(`${label}: perfil de rendimiento duplicado.`);
+    errors.push(
+      `${label}: perfil de rendimiento duplicado.`
+    );
   }
   performanceSlugs.add(profile.slug);
 
   if (!gameSlugs.has(profile.slug)) {
-    errors.push(`${label}: referencia un juego inexistente.`);
+    errors.push(
+      `${label}: referencia un juego inexistente.`
+    );
   }
 
   if (!isPositiveNumber(profile.referenceFps)) {
-    errors.push(`${label}: referenceFps debe ser positivo.`);
+    errors.push(
+      `${label}: referenceFps debe ser positivo.`
+    );
   }
 
   if (!isPositiveNumber(profile.ramGb)) {
-    errors.push(`${label}: ramGb debe ser positivo.`);
+    errors.push(
+      `${label}: ramGb debe ser positivo.`
+    );
   }
 
   if (
     profile.storageGb !== undefined &&
     !isPositiveNumber(profile.storageGb)
   ) {
-    errors.push(`${label}: storageGb debe ser positivo.`);
+    errors.push(
+      `${label}: storageGb debe ser positivo.`
+    );
   }
 
   if (
     profile.fpsCap !== undefined &&
     !isPositiveNumber(profile.fpsCap)
   ) {
-    errors.push(`${label}: fpsCap debe ser positivo.`);
+    errors.push(
+      `${label}: fpsCap debe ser positivo.`
+    );
   }
 
   const cpuWeight = profile.cpuWeight;
@@ -595,7 +962,9 @@ for (const [index, profile] of performanceProfiles.entries()) {
     cpuWeight < 0 ||
     cpuWeight > 1
   ) {
-    errors.push(`${label}: cpuWeight debe estar entre 0 y 1.`);
+    errors.push(
+      `${label}: cpuWeight debe estar entre 0 y 1.`
+    );
   }
 
   if (
@@ -604,15 +973,21 @@ for (const [index, profile] of performanceProfiles.entries()) {
     gpuWeight < 0 ||
     gpuWeight > 1
   ) {
-    errors.push(`${label}: gpuWeight debe estar entre 0 y 1.`);
+    errors.push(
+      `${label}: gpuWeight debe estar entre 0 y 1.`
+    );
   }
 
   if (
     typeof cpuWeight === "number" &&
     typeof gpuWeight === "number" &&
-    Math.abs(cpuWeight + gpuWeight - 1) > 0.001
+    Math.abs(
+      cpuWeight + gpuWeight - 1
+    ) > 0.001
   ) {
-    errors.push(`${label}: cpuWeight + gpuWeight debe sumar 1.`);
+    errors.push(
+      `${label}: cpuWeight + gpuWeight debe sumar 1.`
+    );
   }
 
   if (
@@ -624,7 +999,9 @@ for (const [index, profile] of performanceProfiles.entries()) {
       profile.optimization > 1.5
     )
   ) {
-    errors.push(`${label}: optimization debe estar entre 0.5 y 1.5.`);
+    errors.push(
+      `${label}: optimization debe estar entre 0.5 y 1.5.`
+    );
   }
 }
 
@@ -636,6 +1013,38 @@ for (const slug of gameSlugs) {
   }
 }
 
+validateHardwareCatalog(
+  baseCpuCatalog,
+  "cpuCatalogBase",
+  errors
+);
+validateHardwareCatalog(
+  cpuCatalogExpansion,
+  "cpuCatalogExpansion",
+  errors
+);
+validateHardwareCatalog(
+  baseGpuCatalog,
+  "gpuCatalogBase",
+  errors
+);
+validateHardwareCatalog(
+  gpuCatalogExpansion,
+  "gpuCatalogExpansion",
+  errors
+);
+validateCrossCatalogDuplicates(
+  baseCpuCatalog,
+  cpuCatalogExpansion,
+  "cpuCatalogExpansion",
+  errors
+);
+validateCrossCatalogDuplicates(
+  baseGpuCatalog,
+  gpuCatalogExpansion,
+  "gpuCatalogExpansion",
+  errors
+);
 validateHardwareCatalog(
   cpuCatalog,
   "cpuCatalog",
@@ -651,7 +1060,8 @@ const updateIds = new Set();
 const updateVersions = new Set();
 const updatesByGame = new Map();
 
-for (const [index, update] of updates.entries()) {
+for (const [index, update] of
+  updates.entries()) {
   const label =
     isNonEmptyString(update.id)
       ? update.id
@@ -703,9 +1113,7 @@ for (const [index, update] of updates.entries()) {
     );
   }
 
-  if (
-    !isValidPublishedAt(update.publishedAt)
-  ) {
+  if (!isValidPublishedAt(update.publishedAt)) {
     errors.push(
       `${label}: publishedAt debe usar un timestamp ISO válido.`
     );
@@ -745,7 +1153,8 @@ for (const [index, update] of updates.entries()) {
   }
 }
 
-for (const [slug, gameUpdates] of updatesByGame) {
+for (const [slug, gameUpdates] of
+  updatesByGame) {
   const game = gamesBySlug.get(slug);
 
   if (!game) {
@@ -773,5 +1182,5 @@ if (errors.length > 0) {
 }
 
 console.log(
-  `Datos: OK (${games.length} juegos, ${updates.length} actualizaciones, ${performanceProfiles.length} perfiles de rendimiento, ${cpuCatalog.length} CPU y ${gpuCatalog.length} GPU consistentes).`
+  `Datos: OK (${games.length} juegos, ${updates.length} actualizaciones, ${performanceProfiles.length} perfiles de rendimiento, ${cpuCatalog.length} CPU y ${gpuCatalog.length} GPU consolidadas; expansión incluida).`
 );

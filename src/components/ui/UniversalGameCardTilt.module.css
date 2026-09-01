@@ -7,7 +7,13 @@
   --image-y: 0px;
 
   position: relative;
-  overflow: visible;
+
+  /*
+   * El tilt sigue moviendo la tarjeta, pero todo el pintado interno
+   * (halo, spotlight e imagen) queda recortado por su propio borde.
+   * Esto evita que el glow aparezca por debajo de la card vecina.
+   */
+  overflow: hidden;
 
   transform:
     perspective(900px)
@@ -28,7 +34,7 @@
   content: "";
 
   position: absolute;
-  inset: -1px;
+  inset: 0;
   z-index: -1;
 
   border-radius: inherit;

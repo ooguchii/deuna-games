@@ -164,11 +164,11 @@ export function estimateGamePerformance(
 
   if (profile.fpsCap) fps = Math.min(fps, profile.fpsCap);
 
-  fps = Math.max(8, fps);
+  fps = Math.max(0, fps);
 
   const spread = estimateSpread[hardware.confidence];
   const minFps = Math.max(
-    5,
+    0,
     fps * (1 - spread) * ramModel.lowRangeFactor
   );
   const uncappedMaxFps =

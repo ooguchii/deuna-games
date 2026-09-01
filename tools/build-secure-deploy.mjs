@@ -27,16 +27,13 @@ const deployRoot = path.join(
   "deploy"
 );
 
-const stageBase =
-  process.platform === "win32"
-    ? path.resolve(
-        `${process.env.SystemDrive || "C:"}${path.sep}`,
-        "DeUnaSecureBuild"
-      )
-    : path.join(
-        os.tmpdir(),
-        "deuna-secure-build"
-      );
+const stageBase = path.resolve(
+  process.env.DEUNA_SECURE_STAGE_DIR?.trim() ||
+    path.join(
+      os.tmpdir(),
+      "deuna-secure-build"
+    )
+);
 
 const stageRoot = path.join(
   stageBase,
@@ -140,6 +137,48 @@ function fail(message) {
   process.exit(1);
 }
 
+function containsPath(parent, child) {
+  const relative = path.relative(
+    parent,
+    child
+  );
+
+  return (
+    relative === "" ||
+    (
+      relative !== ".." &&
+      !relative.startsWith(`..${path.sep}`) &&
+      !path.isAbsolute(relative)
+    )
+  );
+}
+
+function validateStageLocation() {
+  const filesystemRoot =
+    path.parse(stageBase).root;
+
+  if (stageBase === filesystemRoot) {
+    fail(
+      "DEUNA_SECURE_STAGE_DIR no puede apuntar a la raíz del sistema de archivos."
+    );
+  }
+
+  if (containsPath(stageBase, root)) {
+    fail(
+      "DEUNA_SECURE_STAGE_DIR no puede ser el repositorio ni una carpeta que lo contenga."
+    );
+  }
+
+  if (
+    containsPath(stageBase, deployRoot) ||
+    containsPath(deployRoot, stageBase)
+  ) {
+    fail(
+      "DEUNA_SECURE_STAGE_DIR no puede solaparse con deploy/."
+    );
+  }
+}
+
 async function exists(target) {
   try {
     await access(target);
@@ -188,16 +227,19 @@ function runNpm(
   args,
   cwd = root
 ) {
+  const npmCommand =
+    process.platform === "win32"
+      ? "npm.cmd"
+      : "npm";
+
   const result = spawnSync(
-    "npm",
+    npmCommand,
     args,
     {
       cwd,
       env: process.env,
       stdio: "inherit",
-      shell:
-        process.platform ===
-        "win32",
+      shell: false,
     }
   );
 
@@ -237,7 +279,7 @@ function validateProductionSiteUrl() {
 
   if (!raw) {
     fail(
-      "NEXT_PUBLIC_SITE_URL es obligatorio para build:secure. Configurá el dominio HTTPS real antes de generar un deploy."
+      "NEXT_PUBLIC_SITE_URL es obligatorio para build:secure. Configura el dominio HTTPS real antes de generar un deploy."
     );
   }
 
@@ -339,7 +381,7 @@ async function assembleDeploy() {
 
   if (!(await exists(standalone))) {
     fail(
-      "No se generó .next/standalone. Revisá output: 'standalone' en next.config.ts."
+      "No se generó .next/standalone. Revisa output: 'standalone' en next.config.ts."
     );
   }
 
@@ -523,6 +565,7 @@ console.log("");
 
 const productionOrigin =
   validateProductionSiteUrl();
+validateStageLocation();
 
 console.log(
   `[OK] URL pública: ${productionOrigin}`
@@ -560,6 +603,7 @@ console.log(
 for (const script of [
   "lint",
   "typecheck",
+  "check:architecture",
   "check:source",
   "check:encoding",
   "check:privacy",
@@ -651,5 +695,5 @@ console.log(
   `Artefacto final: ${deployRoot}`
 );
 console.log(
-  "Subí únicamente el contenido de deploy/."
+  "Sube únicamente el contenido de deploy/."
 );

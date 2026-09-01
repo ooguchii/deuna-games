@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Bell,
   Gamepad2,
@@ -11,18 +14,86 @@ import {
 import HeaderNavigation from "./HeaderNavigation";
 import styles from "./Header.module.css";
 
-const MOBILE_MENU_ID = "deuna-mobile-menu-toggle";
-
 export default function Header() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const mobilePanelRef = useRef<HTMLDivElement>(null);
+
+  const closeMobileMenu = useCallback((restoreFocus = false) => {
+    setMobileMenuOpen(false);
+
+    if (restoreFocus) {
+      window.requestAnimationFrame(() => {
+        menuButtonRef.current?.focus();
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    const desktopMedia = window.matchMedia("(min-width: 1161px)");
+
+    document.body.style.overflow = "hidden";
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeMobileMenu(true);
+        return;
+      }
+
+      if (event.key !== "Tab") return;
+
+      const focusable =
+        mobilePanelRef.current?.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+
+      if (!focusable?.length) {
+        event.preventDefault();
+        return;
+      }
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement;
+
+      if (event.shiftKey && active === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    const handleDesktop = () => {
+      if (desktopMedia.matches) {
+        closeMobileMenu(false);
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    desktopMedia.addEventListener("change", handleDesktop);
+
+    const focusFrame = window.requestAnimationFrame(() => {
+      mobilePanelRef.current
+        ?.querySelector<HTMLInputElement>('input[type="search"]')
+        ?.focus();
+    });
+
+    return () => {
+      window.cancelAnimationFrame(focusFrame);
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleKeyDown);
+      desktopMedia.removeEventListener("change", handleDesktop);
+    };
+  }, [closeMobileMenu, mobileMenuOpen]);
+
   return (
     <>
-      <input
-        id={MOBILE_MENU_ID}
-        type="checkbox"
-        className={styles.mobileMenuToggle}
-        aria-label="Abrir o cerrar menú"
-        aria-controls="mobile-navigation"
-      />
 
       <header className={styles.header}>
         <div className={styles.inner}>
@@ -111,11 +182,15 @@ export default function Header() {
               />
             </button>
 
-            <label
-              htmlFor={MOBILE_MENU_ID}
-              className={styles.menuButton}
-              aria-label="Abrir o cerrar menú"
-              title="Menú"
+            <button
+              ref={menuButtonRef}
+              type="button"
+              className={`${styles.menuButton} ${mobileMenuOpen ? styles.menuButtonOpen : ""}`}
+              aria-label={mobileMenuOpen ? "Cerrar menú" : "Abrir menú"}
+              aria-expanded={mobileMenuOpen}
+              aria-controls="mobile-navigation"
+              title={mobileMenuOpen ? "Cerrar menú" : "Abrir menú"}
+              onClick={() => setMobileMenuOpen((current) => !current)}
             >
               <Menu
                 size={23}
@@ -127,14 +202,21 @@ export default function Header() {
                 className={styles.menuCloseIcon}
                 aria-hidden="true"
               />
-            </label>
+            </button>
           </div>
         </div>
       </header>
 
       <div
         id="mobile-navigation"
-        className={styles.mobileNativePanel}
+        ref={mobilePanelRef}
+        className={`${styles.mobileNativePanel} ${mobileMenuOpen ? styles.mobileNativePanelOpen : ""}`}
+        aria-hidden={!mobileMenuOpen}
+        onClick={(event) => {
+          if ((event.target as HTMLElement).closest("a")) {
+            closeMobileMenu(false);
+          }
+        }}
       >
         <div
           className={styles.mobileMenuGlow}
@@ -146,6 +228,7 @@ export default function Header() {
             className={styles.mobileSearch}
             action="/juegos"
             role="search"
+            onSubmit={() => closeMobileMenu(false)}
           >
             <Search size={18} aria-hidden="true" />
 

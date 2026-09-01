@@ -1,0 +1,1032 @@
+.hero {
+  position: relative;
+  isolation: isolate;
+
+  display: grid;
+  grid-template-columns: minmax(300px, 0.72fr) minmax(0, 1.48fr);
+  align-items: center;
+  gap: clamp(24px, 2.3vw, 38px);
+
+  overflow: hidden;
+
+  padding: clamp(24px, 2.5vw, 34px);
+
+  border: 1px solid rgba(255, 61, 107, 0.22);
+  border-radius: var(--radius-xl);
+
+  background:
+    radial-gradient(
+      700px 340px at 93% 48%,
+      rgba(255, 8, 71, 0.17),
+      transparent 72%
+    ),
+    radial-gradient(
+      480px 260px at 62% 0%,
+      rgba(115, 65, 255, 0.065),
+      transparent 76%
+    ),
+    linear-gradient(
+      112deg,
+      rgba(10, 15, 23, 0.99),
+      rgba(5, 9, 15, 0.985) 55%,
+      rgba(27, 5, 16, 0.95)
+    );
+
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.02),
+    0 22px 64px rgba(0, 0, 0, 0.24);
+}
+
+.hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.014) 1px, transparent 1px),
+    linear-gradient(rgba(255, 255, 255, 0.01) 1px, transparent 1px);
+  background-size: 44px 44px;
+
+  mask-image: linear-gradient(90deg, transparent, #000 43%, #000 100%);
+  opacity: 0.22;
+}
+
+.heroGlow {
+  position: absolute;
+  right: -180px;
+  bottom: -300px;
+  z-index: -2;
+
+  width: 650px;
+  height: 650px;
+
+  border-radius: 50%;
+  background: rgba(255, 8, 71, 0.085);
+  filter: blur(82px);
+  pointer-events: none;
+}
+
+.copy {
+  min-width: 0;
+  position: relative;
+  z-index: 2;
+}
+
+.eyebrow {
+  color: var(--brand-light);
+
+  font-size: var(--font-micro);
+  font-weight: 850;
+  letter-spacing: 0.12em;
+}
+
+.copy h1 {
+  max-width: 520px;
+  margin-top: 11px;
+
+  color: var(--text);
+
+  font-size: clamp(38px, 3.25vw, 54px);
+  font-weight: 880;
+  letter-spacing: -0.055em;
+  line-height: 1.01;
+}
+
+.copy h1 strong {
+  display: block;
+  margin-top: 4px;
+
+  color: var(--brand);
+  font-weight: inherit;
+
+  text-shadow: 0 0 34px rgba(255, 8, 71, 0.08);
+}
+
+.copy > p {
+  max-width: 520px;
+  margin-top: 15px;
+
+  color: var(--text-soft);
+
+  font-size: clamp(13px, 0.95vw, 16px);
+  line-height: 1.56;
+}
+
+.microFlow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+
+  margin-top: 15px;
+
+  color: var(--text-muted);
+
+  font-size: 9px;
+  font-weight: 760;
+}
+
+.microFlow span {
+  min-height: 22px;
+
+  display: inline-flex;
+  align-items: center;
+
+  padding: 0 7px;
+
+  border: 1px solid rgba(132, 151, 175, 0.13);
+  border-radius: 6px;
+  background: rgba(6, 10, 16, 0.38);
+}
+
+.microFlow i {
+  width: 12px;
+  height: 1px;
+
+  background: linear-gradient(90deg, rgba(255, 8, 71, 0.52), rgba(132, 151, 175, 0.16));
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+
+  margin-top: 18px;
+}
+
+.primaryAction,
+.secondaryAction {
+  min-height: 44px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  padding: 0 17px;
+
+  border-radius: 9px;
+  cursor: pointer;
+
+  font-size: var(--font-sm);
+  font-weight: 800;
+
+  transition:
+    transform 180ms var(--ease-premium),
+    border-color 180ms ease,
+    background 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.primaryAction {
+  position: relative;
+  overflow: hidden;
+
+  color: var(--text-on-brand);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(135deg, var(--brand-light), var(--brand));
+  box-shadow: 0 12px 30px rgba(255, 8, 71, 0.2);
+}
+
+.secondaryAction {
+  color: var(--text-soft);
+  border: 1px solid rgba(166, 184, 207, 0.24);
+  background: rgba(10, 15, 23, 0.7);
+}
+
+.primaryAction:hover,
+.secondaryAction:hover {
+  transform: translateY(-2px);
+}
+
+.primaryAction:hover {
+  box-shadow: 0 16px 38px rgba(255, 8, 71, 0.26);
+}
+
+.secondaryAction:hover {
+  color: var(--text);
+  border-color: rgba(255, 255, 255, 0.24);
+  background: rgba(15, 21, 31, 0.88);
+}
+
+.primaryAction:disabled,
+.primaryAction:disabled:hover {
+  cursor: wait;
+  opacity: 0.68;
+  transform: none;
+  box-shadow: 0 10px 24px rgba(255, 8, 71, 0.12);
+}
+
+.trust {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+
+  margin-top: 11px;
+
+  color: var(--text-muted);
+
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.trust svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: var(--success);
+}
+
+.workspace {
+  min-width: 0;
+
+  display: grid;
+  grid-template-rows: auto auto;
+  align-content: center;
+  gap: 11px;
+}
+
+.profileCard,
+.recommendationsPanel {
+  min-width: 0;
+
+  border: 1px solid rgba(132, 151, 175, 0.22);
+  border-radius: 13px;
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(13, 19, 28, 0.975),
+      rgba(7, 12, 19, 0.975)
+    );
+
+  box-shadow:
+    0 18px 46px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.018);
+}
+
+.profileCard {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+
+  min-height: 110px;
+
+  display: grid;
+  grid-template-columns: minmax(165px, 0.66fr) minmax(0, 2fr) auto;
+  align-items: center;
+  gap: 0;
+
+  padding: 12px 14px;
+
+  border-color: rgba(255, 61, 107, 0.34);
+
+  background:
+    radial-gradient(460px 150px at 18% 0%, rgba(123, 82, 255, 0.115), transparent 74%),
+    radial-gradient(520px 170px at 92% 110%, rgba(255, 8, 71, 0.12), transparent 72%),
+    linear-gradient(102deg, rgba(17, 25, 38, 0.99), rgba(9, 15, 24, 0.995) 48%, rgba(20, 8, 19, 0.985));
+
+  box-shadow:
+    0 20px 50px rgba(0, 0, 0, 0.34),
+    0 0 30px rgba(255, 8, 71, 0.035),
+    inset 0 1px 0 rgba(255, 255, 255, 0.035);
+}
+
+.profileCard::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+
+  pointer-events: none;
+
+  background:
+    linear-gradient(90deg, rgba(255, 8, 71, 0.22), rgba(143, 94, 255, 0.08) 45%, transparent 72%) top / 100% 1px no-repeat,
+    radial-gradient(300px 90px at 36% -20%, rgba(255, 255, 255, 0.055), transparent 75%);
+}
+
+.profileIdentity,
+.profileSpecs,
+.profileActions {
+  position: relative;
+  z-index: 1;
+}
+
+.profileIdentity {
+  min-width: 0;
+  padding-right: 16px;
+}
+
+.profileIdentityTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.profileIdentityTop > span {
+  color: var(--brand-light);
+
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.085em;
+}
+
+.profileIdentityTop > svg {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  color: var(--success);
+  filter: drop-shadow(0 0 8px rgba(32, 207, 121, 0.16));
+}
+
+.profileIdentityTop[data-state="detecting"] > svg,
+.profileIdentityTop[data-state="error"] > svg {
+  color: var(--brand-light);
+  filter: drop-shadow(0 0 8px rgba(255, 8, 71, 0.14));
+}
+
+.profileIdentityTop[data-state="partial"] > svg {
+  color: var(--warning);
+  filter: drop-shadow(0 0 8px rgba(255, 165, 31, 0.12));
+}
+
+.profileIdentityTop[data-state="idle"] > svg {
+  color: #aeb9c8;
+  filter: none;
+}
+
+.profileTitleLine {
+  min-width: 0;
+
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 2px;
+
+  margin-top: 5px;
+}
+
+.profileTitleLine strong {
+  min-width: 0;
+  overflow: hidden;
+
+  color: #fff;
+
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: -0.015em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profileTitleLine small {
+  color: #aab4c2;
+
+  font-size: 8px;
+  font-weight: 760;
+}
+
+.profileState {
+  min-width: 0;
+  margin-top: 8px;
+}
+
+.profileStateLabel {
+  min-width: 0;
+
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  color: #d6dde7;
+
+  font-size: 9px;
+  font-weight: 820;
+}
+
+.profileStateLabel svg {
+  flex: 0 0 auto;
+  color: var(--success);
+}
+
+.profileStateLabel[data-state="detecting"] svg {
+  color: var(--brand-light);
+  animation: spin 800ms linear infinite;
+}
+
+.profileStateLabel[data-state="partial"] svg {
+  color: var(--warning);
+}
+
+.profileStateLabel[data-state="error"] svg {
+  color: var(--brand-light);
+}
+
+.profileHint {
+  overflow: hidden;
+
+  display: -webkit-box;
+  margin-top: 3px;
+
+  color: #8f9bab;
+
+  font-size: 8px;
+  font-weight: 580;
+  line-height: 1.38;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.profileSpecs {
+  min-width: 0;
+
+  display: grid;
+  grid-template-columns: 1.15fr 1.45fr 0.72fr 1.1fr;
+  align-items: stretch;
+}
+
+.specItem {
+  min-width: 0;
+
+  display: grid;
+  align-content: center;
+  gap: 7px;
+
+  min-height: 68px;
+  padding: 4px 15px;
+
+  border-left: 1px solid rgba(174, 190, 211, 0.16);
+}
+
+.specLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+
+  color: #aeb9c8;
+
+  font-size: 9px;
+  font-weight: 860;
+  letter-spacing: 0.035em;
+}
+
+.specLabel svg {
+  flex: 0 0 auto;
+  width: 17px;
+  height: 17px;
+  color: #d2d9e3;
+  filter: drop-shadow(0 0 8px rgba(178, 138, 255, 0.12));
+}
+
+.specItem dd {
+  min-width: 0;
+  overflow: hidden;
+
+  color: #f6f8fb;
+
+  font-size: 11.5px;
+  font-weight: 880;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profileActions {
+  min-width: 224px;
+
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 7px;
+
+  padding-left: 15px;
+
+  border-left: 1px solid rgba(174, 190, 211, 0.16);
+}
+
+.profileActions button {
+  min-width: 0;
+  min-height: 38px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+
+  padding: 0 12px;
+
+  color: #aeb8c6;
+  border: 1px solid rgba(154, 174, 200, 0.24);
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(12, 19, 29, 0.78), rgba(5, 10, 17, 0.68));
+
+  cursor: pointer;
+
+  font-size: 10px;
+  font-weight: 830;
+  white-space: nowrap;
+
+  transition:
+    color var(--ease-fast),
+    border-color var(--ease-fast),
+    background var(--ease-fast),
+    transform var(--ease-fast),
+    box-shadow var(--ease-fast);
+}
+
+.profileActions .profileActionPrimary {
+  color: #fff;
+  border-color: rgba(255, 8, 71, 0.52);
+  background:
+    linear-gradient(180deg, rgba(255, 8, 71, 0.14), rgba(255, 8, 71, 0.065)),
+    rgba(10, 14, 21, 0.8);
+  box-shadow:
+    inset 0 0 24px rgba(255, 8, 71, 0.045),
+    0 0 18px rgba(255, 8, 71, 0.035);
+}
+
+.profileActions button:hover {
+  color: #fff;
+  border-color: rgba(255, 8, 71, 0.48);
+  background: rgba(255, 8, 71, 0.1);
+  transform: translateY(-1px);
+}
+
+.profileActions .profileActionPrimary:hover {
+  border-color: rgba(255, 61, 107, 0.7);
+  box-shadow:
+    inset 0 0 26px rgba(255, 8, 71, 0.065),
+    0 8px 20px rgba(255, 8, 71, 0.11);
+}
+
+.profileActions button:disabled {
+  cursor: wait;
+  opacity: 0.5;
+  transform: none;
+}
+
+.spin {
+  color: var(--brand-light) !important;
+  animation: spin 800ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.recommendationsPanel {
+  display: flex;
+  flex-direction: column;
+
+  padding: 11px 12px 10px;
+
+  border-color: rgba(255, 8, 71, 0.2);
+
+  background:
+    radial-gradient(430px 220px at 100% 16%, rgba(255, 8, 71, 0.055), transparent 72%),
+    linear-gradient(180deg, rgba(10, 15, 24, 0.97), rgba(6, 10, 16, 0.97));
+}
+
+.recommendationsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+
+  margin-bottom: 8px;
+}
+
+.recommendationsHeader > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+
+  color: #c19cff;
+
+  font-size: 10px;
+  font-weight: 880;
+  letter-spacing: 0.055em;
+}
+
+.recommendationsHeader > span svg {
+  width: 15px;
+  height: 15px;
+  color: var(--brand-light);
+}
+
+.recommendationsHeader button {
+  flex: 0 0 auto;
+
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+
+  padding: 0;
+
+  color: #9ca7b6;
+  border: 0;
+  background: transparent;
+
+  cursor: pointer;
+
+  font-size: 9px;
+  font-weight: 780;
+}
+
+.recommendationsHeader button:hover {
+  color: var(--text);
+}
+
+.recommendationsGrid {
+  min-width: 0;
+
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.recommendationCard {
+  min-width: 0;
+
+  overflow: hidden;
+
+  padding: 0;
+
+  color: inherit;
+  border: 1px solid rgba(132, 151, 175, 0.08);
+  border-radius: 9px;
+  background: rgba(12, 18, 27, 0.78);
+
+  cursor: pointer;
+  text-align: left;
+
+  transition:
+    transform 180ms var(--ease-premium),
+    border-color 180ms ease,
+    background 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.recommendationCard:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 8, 71, 0.3);
+  background: rgba(15, 21, 31, 0.96);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.26);
+}
+
+.recommendationMedia {
+  position: relative;
+
+  height: clamp(108px, 9vw, 142px);
+  overflow: hidden;
+
+  background: var(--surface-2);
+}
+
+.recommendationImage {
+  object-fit: cover;
+  object-position: center 24%;
+
+  transition: transform 250ms var(--ease-premium), filter 180ms ease;
+}
+
+.recommendationCard:hover .recommendationImage {
+  transform: scale(1.045);
+  filter: saturate(1.06) brightness(1.025);
+}
+
+.recommendationFallback {
+  position: absolute;
+  inset: 0;
+
+  background:
+    radial-gradient(circle at 30% 20%, rgba(255, 8, 71, 0.16), transparent 50%),
+    linear-gradient(135deg, var(--surface-3), var(--surface));
+}
+
+.recommendationShade {
+  position: absolute;
+  inset: 0;
+
+  background: linear-gradient(180deg, transparent 62%, rgba(6, 10, 16, 0.42) 100%);
+  pointer-events: none;
+}
+
+.recommendationMeta {
+  display: grid;
+  gap: 3px;
+
+  min-height: 44px;
+  padding: 6px 8px 7px;
+}
+
+.recommendationMeta strong {
+  overflow: hidden;
+
+  color: var(--text-soft);
+
+  font-size: 9px;
+  font-weight: 860;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recommendationMeta strong[data-tier="excellent"],
+.recommendationMeta strong[data-tier="good"] {
+  color: var(--success);
+}
+
+.recommendationMeta strong[data-tier="acceptable"] {
+  color: var(--warning);
+}
+
+.recommendationMeta strong[data-tier="basic"] {
+  color: var(--brand-light);
+}
+
+.recommendationMeta strong[data-tier="pending"] {
+  color: var(--text-muted);
+}
+
+.recommendationMeta span {
+  color: #fff;
+
+  font-size: 11px;
+  font-weight: 880;
+  white-space: nowrap;
+}
+
+.recommendationFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+
+  margin-top: 7px;
+}
+
+.recommendationFooter > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+
+  color: #8f9aa9;
+
+  font-size: 8px;
+  font-weight: 740;
+}
+
+.recommendationFooter > span svg {
+  color: var(--brand);
+}
+
+
+@media (max-width: 1500px) {
+  .hero {
+    grid-template-columns: minmax(280px, 0.68fr) minmax(0, 1.42fr);
+    gap: 24px;
+    padding: 28px;
+  }
+
+  .profileCard {
+    grid-template-columns: minmax(145px, 0.58fr) minmax(0, 2fr) 202px;
+    padding: 11px 12px;
+  }
+
+  .profileIdentity {
+    padding-right: 12px;
+  }
+
+  .profileIdentityTop > span {
+    font-size: 9px;
+  }
+
+  .profileTitleLine strong {
+    font-size: 13px;
+  }
+
+  .specItem {
+    padding: 3px 11px;
+  }
+
+  .specLabel {
+    font-size: 8.5px;
+  }
+
+  .specLabel svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .specItem dd {
+    font-size: 10.5px;
+  }
+
+  .profileActions {
+    min-width: 0;
+    padding-left: 11px;
+  }
+
+  .profileActions button {
+    gap: 5px;
+    padding: 0 8px;
+    font-size: 9px;
+  }
+
+  .recommendationMedia {
+    height: clamp(104px, 8.5vw, 126px);
+  }
+}
+
+@media (max-width: 1260px) {
+  .hero {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .copy {
+    max-width: 860px;
+  }
+
+  .copy h1 {
+    max-width: 760px;
+    font-size: clamp(40px, 5.5vw, 54px);
+  }
+
+  .profileCard {
+    grid-template-columns: minmax(160px, 0.55fr) minmax(0, 2fr) 210px;
+  }
+
+  .recommendationMedia {
+    height: clamp(118px, 14vw, 158px);
+  }
+}
+
+@media (max-width: 900px) {
+  .hero {
+    padding: 25px 22px;
+  }
+
+  .profileCard {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 15px;
+  }
+
+  .profileIdentity {
+    padding-right: 0;
+  }
+
+  .profileIdentityTop > span {
+    font-size: 10px;
+  }
+
+  .profileTitleLine strong {
+    font-size: 14px;
+  }
+
+  .profileHint {
+    white-space: normal;
+  }
+
+  .profileSpecs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .specItem {
+    min-height: 58px;
+    padding: 7px 10px;
+
+    border: 1px solid rgba(132, 151, 175, 0.13);
+    border-radius: 8px;
+    background: rgba(6, 10, 16, 0.42);
+  }
+
+  .specLabel {
+    font-size: 9px;
+  }
+
+  .specItem dd {
+    font-size: 11px;
+  }
+
+  .profileActions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    min-width: 0;
+    padding-left: 0;
+
+    border-left: 0;
+  }
+
+  .profileActions button {
+    min-height: 40px;
+    font-size: 10px;
+  }
+
+  .recommendationMedia {
+    height: 145px;
+  }
+}
+
+@media (max-width: 640px) {
+  .hero {
+    padding: 22px 16px 17px;
+    border-radius: 15px;
+  }
+
+  .copy h1 {
+    font-size: clamp(35px, 11.4vw, 47px);
+  }
+
+  .copy > p {
+    font-size: var(--font-sm);
+  }
+
+  .microFlow {
+    gap: 6px;
+  }
+
+  .microFlow i {
+    display: none;
+  }
+
+  .actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .primaryAction,
+  .secondaryAction {
+    width: 100%;
+  }
+
+  .profileSpecs {
+    grid-template-columns: 1fr;
+  }
+
+  .profileActions {
+    grid-template-columns: 1fr;
+  }
+
+  .recommendationsGrid {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(138px, 45vw);
+    grid-template-columns: none;
+
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scroll-snap-type: x proximity;
+
+    padding-bottom: 4px;
+  }
+
+  .recommendationCard {
+    scroll-snap-align: start;
+  }
+
+  .recommendationMedia {
+    height: 148px;
+  }
+}
+
+@media (max-width: 430px) {
+  .profileTitleLine {
+    gap: 3px;
+  }
+
+  .recommendationsHeader {
+    align-items: flex-start;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .primaryAction,
+  .secondaryAction,
+  .profileActions button,
+  .recommendationCard,
+  .recommendationImage {
+    transition: none;
+  }
+
+  .primaryAction:hover,
+  .secondaryAction:hover,
+  .profileActions button:hover,
+  .recommendationCard:hover {
+    transform: none;
+  }
+
+  .recommendationCard:hover .recommendationImage {
+    transform: none;
+  }
+
+  .spin,
+  .profileStateLabel[data-state="detecting"] svg {
+    animation: none;
+  }
+}

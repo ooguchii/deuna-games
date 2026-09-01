@@ -3,9 +3,9 @@ import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 
 import CardCarousel from "@/components/ui/CardCarousel";
+import UniversalGameCard from "@/components/ui/UniversalGameCard";
 import { recommendedGames } from "@/data/home";
 
-import GameCard from "./GameCard";
 import styles from "./RecommendedGames.module.css";
 
 export default function RecommendedGames() {
@@ -37,9 +37,10 @@ export default function RecommendedGames() {
         itemsDesktop={5}
       >
         {recommendedGames.map((game) => (
-          <GameCard
+          <UniversalGameCard
             key={game.slug}
             game={game}
+            variant="standard"
           />
         ))}
       </CardCarousel>

@@ -387,7 +387,7 @@ export default function UpdatesCatalogClient({
 
             <p>
               Busca por juego o versión
-              y combiná los filtros.
+              y combina los filtros.
             </p>
           </div>
 
@@ -1022,7 +1022,11 @@ export default function UpdatesCatalogClient({
                     key={
                       update.id
                     }
-                    href={`/juegos/${update.game.slug}/descargar`}
+                    href={
+                      update.downloadable
+                        ? `/juegos/${update.game.slug}/descargar`
+                        : `/juegos/${update.game.slug}`
+                    }
                   >
                     <span
                       className={
