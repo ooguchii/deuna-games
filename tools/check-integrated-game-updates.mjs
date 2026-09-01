@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 
 const files = {
   navigation: "src/components/admin/AdminNavigation.tsx",
+  contextBar: "src/components/admin/AdminContextBar.tsx",
   catalog: "src/components/admin/AdminGamesCatalog.tsx",
   workspace:
     "src/app/admin/(protected)/juegos/[slug]/actualizacion/page.tsx",
@@ -9,6 +10,9 @@ const files = {
     "src/app/api/admin/content/games/[slug]/publish-update/route.ts",
   gameCoreRoute:
     "src/app/api/admin/content/games/[slug]/route.ts",
+  gameDownloadRoute:
+    "src/app/api/admin/content/games/[slug]/download/route.ts",
+  notices: "src/components/admin/EditorStateNotice.tsx",
   service:
     "src/lib/admin/game-update-publication-service.ts",
   legacyIndex:
@@ -39,6 +43,12 @@ expect(
   "Actualizaciones no debe seguir como módulo principal del menú administrativo."
 );
 expect(
+  entries.contextBar.includes('id: "actualizacion"') &&
+    entries.contextBar.includes("/actualizacion") &&
+    entries.contextBar.includes("publicacion|actualizacion"),
+  "Actualizar debe formar parte real de la navegación contextual del juego."
+);
+expect(
   entries.catalog.includes("/actualizacion") &&
     entries.catalog.includes("Actualizar"),
   "El catálogo de juegos debe ofrecer la acción Actualizar por juego."
@@ -59,6 +69,19 @@ expect(
   entries.gameCoreRoute.includes("getGamePublicationIdentity") &&
     entries.gameCoreRoute.includes("version-por-actualizacion"),
   "La ficha normal de un juego publicado no debe permitir cambiar versión evitando el flujo de Actualizar."
+);
+expect(
+  entries.gameDownloadRoute.includes("getGamePublicationIdentity") &&
+    entries.gameDownloadRoute.includes("descargas-por-actualizacion") &&
+    entries.gameDownloadRoute.includes("publicVisible"),
+  "Las descargas de un juego ya publicado no deben poder cambiarse por fuera del flujo de Actualizar."
+);
+expect(
+  entries.notices.includes('"descargas-por-actualizacion"') &&
+    !entries.notices.includes(
+      "Para reemplazar enlaces sin anunciar una versión nueva, usa la sección Descargas"
+    ),
+  "Los mensajes del panel deben reforzar que los enlaces publicados se actualizan junto con el aviso."
 );
 expect(
   entries.service.includes("withAdminTransaction") &&
@@ -91,5 +114,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  "Actualizaciones integradas: OK (mismo juego/URL, descargas + versión + aviso atómicos, versiones duplicadas bloqueadas, historial público preservado y navegación administrativa simplificada)."
+  "Actualizaciones integradas: OK (mismo juego/URL, descargas + versión + aviso atómicos, edición publicada encapsulada en Actualizar, versiones duplicadas bloqueadas, historial público preservado y navegación administrativa simplificada)."
 );
