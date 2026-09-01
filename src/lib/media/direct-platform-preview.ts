@@ -160,7 +160,7 @@ function parseFacebook(url: URL): ParsedDirectPlatformVideo | null {
     canonicalUrl: canonical.toString(),
     resourceId: canonical.pathname,
     resourceKind: "video",
-    supportsStartOffset: false,
+    supportsStartOffset: true,
   };
 }
 
@@ -520,6 +520,7 @@ export function buildDirectPlatformEmbedUrl(
       embed.searchParams.set("href", parsed.canonicalUrl);
       embed.searchParams.set("show_text", "false");
       embed.searchParams.set("width", "560");
+      embed.searchParams.set("t", String(preview.startSeconds));
       if (autoplay) embed.searchParams.set("autoplay", "true");
       return embed.toString();
     }
