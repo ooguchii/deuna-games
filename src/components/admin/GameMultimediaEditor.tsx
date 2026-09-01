@@ -1,6 +1,7 @@
+import type { ReactNode } from "react";
+
 import GameEditorFormActions from "@/components/admin/GameEditorFormActions";
 import GameMediaUploadForm from "@/components/admin/GameMediaUploadForm";
-import GamePreviewClipUploadForm from "@/components/admin/GamePreviewClipUploadForm";
 
 import adminStyles from "../../app/admin/admin.module.css";
 import styles from "./GameMultimediaEditor.module.css";
@@ -12,7 +13,7 @@ type GameMultimediaEditorProps = {
   coverImage?: string;
   heroImage?: string;
   screenshots?: readonly string[];
-  previewClip?: string;
+  videoEditor: ReactNode;
 };
 
 function imageSlotState(value: string | undefined) {
@@ -28,7 +29,7 @@ export default function GameMultimediaEditor({
   coverImage,
   heroImage,
   screenshots = [],
-  previewClip,
+  videoEditor,
 }: GameMultimediaEditorProps) {
   return (
     <div className={styles.workspace}>
@@ -140,11 +141,7 @@ export default function GameMultimediaEditor({
       </div>
 
       <div className={`${styles.column} ${styles.videoColumn}`}>
-        <GamePreviewClipUploadForm
-          slug={slug}
-          revision={revision}
-          currentPreview={previewClip}
-        />
+        {videoEditor}
       </div>
     </div>
   );
