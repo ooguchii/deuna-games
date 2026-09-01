@@ -30,6 +30,8 @@ function PreviewVideo({
   const [playing, setPlaying] = useState(false);
 
   useEffect(() => {
+    const mountedVideo = videoRef.current;
+
     function syncDocumentVisibility() {
       const video = videoRef.current;
       if (!video) return;
@@ -55,7 +57,7 @@ function PreviewVideo({
         "visibilitychange",
         syncDocumentVisibility
       );
-      videoRef.current?.pause();
+      mountedVideo?.pause();
     };
   }, []);
 
