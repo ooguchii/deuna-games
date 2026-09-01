@@ -35,7 +35,6 @@
 }
 
 .loginBadge,
-.secureState,
 .draftState {
   display: inline-flex;
   align-items: center;
@@ -237,42 +236,6 @@
   line-height: 1.4;
 }
 
-.adminNavigation {
-  display: grid;
-  gap: 5px;
-  margin-top: 21px;
-}
-
-.adminNavigation a {
-  min-height: 43px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 0 12px;
-  color: #8e99a7;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 650;
-  transition:
-    color 150ms ease,
-    border-color 150ms ease,
-    background 150ms ease;
-}
-
-.adminNavigation a:hover,
-.adminNavigation a:focus-visible {
-  color: #f4f6f9;
-  border-color:
-    color-mix(in srgb, var(--brand) 18%, #202a36);
-  background:
-    color-mix(in srgb, var(--brand) 5%, #0c121a);
-}
-
-.adminNavigation svg {
-  color: var(--brand);
-}
-
 .privacyNotice {
   display: flex;
   align-items: flex-start;
@@ -396,13 +359,6 @@
   line-height: 1.65;
 }
 
-.secureState {
-  flex-shrink: 0;
-  color: #9ee8c2;
-  border-color: rgba(32, 207, 121, 0.22);
-  background: rgba(32, 207, 121, 0.035);
-}
-
 .draftState {
   flex-shrink: 0;
   color: #f0bf8f;
@@ -482,60 +438,6 @@
   font-size: 12px;
   line-height: 1.55;
   text-align: right;
-}
-
-.moduleGrid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  margin-top: 18px;
-}
-
-.moduleGrid a {
-  min-width: 0;
-  min-height: 112px;
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 12px;
-  padding: 17px;
-  color: inherit;
-  border: 1px solid #1d2834;
-  border-radius: 10px;
-  background: #0a1017;
-  transition:
-    border-color 160ms ease,
-    background 160ms ease,
-    transform 160ms ease;
-}
-
-.moduleGrid a:hover {
-  border-color:
-    color-mix(in srgb, var(--brand) 38%, #24303d);
-  background: #0d141d;
-  transform: translateY(-2px);
-}
-
-.moduleGrid a > svg:first-child,
-.moduleGrid a > svg:last-child {
-  color: var(--brand);
-}
-
-.moduleGrid strong,
-.moduleGrid span {
-  display: block;
-}
-
-.moduleGrid strong {
-  color: #dfe4ea;
-  font-size: 12px;
-}
-
-.moduleGrid span {
-  margin-top: 5px;
-  color: #7f8c9b;
-  font-size: 11px;
-  line-height: 1.5;
 }
 
 .tableSummary {
@@ -926,10 +828,6 @@
   .metricGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-
-  .moduleGrid {
-    grid-template-columns: 1fr;
-  }
 }
 
 @media (max-width: 760px) {
@@ -948,17 +846,6 @@
 
   .adminBrand {
     padding-bottom: 14px;
-  }
-
-  .adminNavigation {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    margin-top: 13px;
-    overflow-x: auto;
-  }
-
-  .adminNavigation a {
-    min-width: 112px;
-    justify-content: center;
   }
 
   .privacyNotice {
@@ -1023,25 +910,12 @@
     grid-template-columns: 1fr;
   }
 
-  .secureState {
-    width: 100%;
-    justify-content: center;
-  }
-
   .adminSection,
   .eventPanel,
   .tablePanel,
   .editorPanel,
   .historyPanel {
     padding: 16px;
-  }
-
-  .adminNavigation {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .adminNavigation a {
-    min-width: 0;
   }
 
   .historyList li {
@@ -1053,16 +927,13 @@
 @media (prefers-reduced-motion: reduce) {
   .loginForm input,
   .loginForm button,
-  .adminNavigation a,
-  .moduleGrid a,
   .editorForm input,
   .editorForm textarea,
   .editorForm select {
     transition: none;
   }
 
-  .loginForm button:hover,
-  .moduleGrid a:hover {
+  .loginForm button:hover {
     transform: none;
   }
 }
