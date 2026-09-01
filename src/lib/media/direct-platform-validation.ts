@@ -195,6 +195,7 @@ function supportsStartOffset(
   url: URL
 ) {
   if (
+    platform === "facebook" ||
     platform === "tiktok" ||
     platform === "vimeo" ||
     platform === "dailymotion"
