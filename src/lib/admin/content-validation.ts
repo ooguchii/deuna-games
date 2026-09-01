@@ -122,6 +122,28 @@ const localPreviewClipSchema = z
   .max(400)
   .regex(editorialPreviewPattern);
 
+const youtubePreviewSchema = z
+  .object({
+    videoId: z
+      .string()
+      .regex(/^[A-Za-z0-9_-]{11}$/),
+    startSeconds: z.number().min(0).max(86_400),
+    endSeconds: z.number().positive().max(86_400),
+  })
+  .strict()
+  .superRefine((value, context) => {
+    const duration = value.endSeconds - value.startSeconds;
+
+    if (duration <= 0 || duration > 30) {
+      context.addIssue({
+        code: "custom",
+        path: ["endSeconds"],
+        message:
+          "El preview de YouTube debe durar más de 0 y como máximo 30 segundos.",
+      });
+    }
+  });
+
 const pageBackgroundAssetSchema = z
   .object({
     id: identifierSchema,
@@ -567,15 +589,39 @@ export const editorialGameSchema: z.ZodType<Game> = z
       .array(localImageSchema)
       .max(20)
       .optional(),
+    previewMode: z.enum(["webm", "youtube"]).optional(),
     previewClip: localPreviewClipSchema.optional(),
+    youtubePreview: youtubePreviewSchema.optional(),
     imageAlt: z.string().trim().min(1).max(240),
     requirements: requirementsSchema.optional(),
     performance: performanceCalibrationSchema.optional(),
     download: downloadSchema.optional(),
   })
   .strict()
-  .refine((game) => game.id === game.slug, {
-    message: "El ID y el slug del juego deben coincidir.",
+  .superRefine((game, context) => {
+    if (game.id !== game.slug) {
+      context.addIssue({
+        code: "custom",
+        path: ["slug"],
+        message: "El ID y el slug del juego deben coincidir.",
+      });
+    }
+
+    if (game.previewMode === "webm" && !game.previewClip) {
+      context.addIssue({
+        code: "custom",
+        path: ["previewMode"],
+        message: "El modo WebM requiere un preview local configurado.",
+      });
+    }
+
+    if (game.previewMode === "youtube" && !game.youtubePreview) {
+      context.addIssue({
+        code: "custom",
+        path: ["previewMode"],
+        message: "El modo YouTube requiere un video configurado.",
+      });
+    }
   });
 
 export const editorialUpdateSchema: z.ZodType<GameUpdate> = z
