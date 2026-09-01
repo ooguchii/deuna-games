@@ -9,17 +9,9 @@ YOUTUBE_CLIENTS="${DEUNA_YTDLP_YOUTUBE_CLIENTS:-}"
 if [[ -z "${YTDLP_BIN}" ]]; then
   YTDLP_BIN="$(command -v yt-dlp 2>/dev/null || true)"
 fi
-if [[ -z "${NODE_BIN}" ]]; then
-  NODE_BIN="$(command -v node 2>/dev/null || true)"
-fi
 
 if [[ -z "${YTDLP_BIN}" || ! -x "${YTDLP_BIN}" ]]; then
   echo "yt-dlp no está disponible. Instálalo/actualízalo o configura DEUNA_YTDLP_BINARY con su ruta real." >&2
-  exit 127
-fi
-
-if [[ -z "${NODE_BIN}" || ! -x "${NODE_BIN}" ]]; then
-  echo "Node no está disponible; YouTube requiere un runtime JavaScript compatible." >&2
   exit 127
 fi
 
@@ -98,6 +90,15 @@ done
 
 YOUTUBE_ARGS=()
 if (( youtube_url )); then
+  if [[ -z "${NODE_BIN}" ]]; then
+    NODE_BIN="$(command -v node 2>/dev/null || true)"
+  fi
+
+  if [[ -z "${NODE_BIN}" || ! -x "${NODE_BIN}" ]]; then
+    echo "Node no está disponible; YouTube requiere un runtime JavaScript compatible." >&2
+    exit 127
+  fi
+
   # EJS + Node siguen siendo necesarios para los desafíos modernos de YouTube.
   YOUTUBE_ARGS+=(
     --js-runtimes "node:${NODE_BIN}"
