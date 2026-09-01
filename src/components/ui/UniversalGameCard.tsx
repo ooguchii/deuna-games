@@ -14,8 +14,13 @@ import type {
   CSSProperties,
   PointerEvent as ReactPointerEvent,
 } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
-import GameMedia from "@/components/ui/GameMedia";
+import HoverPreviewMedia from "@/components/ui/HoverPreviewMedia";
 import type { Game } from "@/types/game";
 
 import styles from "./UniversalGameCard.module.css";
@@ -31,6 +36,8 @@ type UniversalGameCardProps = {
   game: Game;
   variant?: UniversalGameCardVariant;
 };
+
+const PREVIEW_DELAY_MS = 2_000;
 
 const fallbackClassBySlug:
   Record<string, string> = {
@@ -255,6 +262,11 @@ export default function UniversalGameCard({
   game,
   variant = "standard",
 }: UniversalGameCardProps) {
+  const previewTimer = useRef<
+    ReturnType<typeof setTimeout> | null
+  >(null);
+  const [previewActive, setPreviewActive] =
+    useState(false);
   const mediaBadge =
     getMediaBadge(
       game,
@@ -283,12 +295,56 @@ export default function UniversalGameCard({
       )}`
     ];
 
+  function cancelPreview() {
+    if (previewTimer.current) {
+      clearTimeout(previewTimer.current);
+      previewTimer.current = null;
+    }
+    setPreviewActive(false);
+  }
+
+  function schedulePreview(
+    event: ReactPointerEvent<HTMLElement>
+  ) {
+    if (
+      !game.previewClip ||
+      event.pointerType === "touch" ||
+      !window.matchMedia("(hover: hover) and (pointer: fine)").matches ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      return;
+    }
+
+    if (previewTimer.current || previewActive) return;
+
+    previewTimer.current = setTimeout(() => {
+      previewTimer.current = null;
+      setPreviewActive(true);
+    }, PREVIEW_DELAY_MS);
+  }
+
+  function stopCard(
+    event: ReactPointerEvent<HTMLElement>
+  ) {
+    stopTilt(event);
+    cancelPreview();
+  }
+
+  useEffect(() => {
+    return () => {
+      if (previewTimer.current) {
+        clearTimeout(previewTimer.current);
+      }
+    };
+  }, []);
+
   return (
     <article
       className={`${styles.card} ${tiltStyles.tiltCard} ${variantClass}`}
+      onPointerEnter={schedulePreview}
       onPointerMove={updateTilt}
-      onPointerLeave={stopTilt}
-      onPointerCancel={stopTilt}
+      onPointerLeave={stopCard}
+      onPointerCancel={stopCard}
       style={
         {
           "--tilt-x": "0deg",
@@ -308,9 +364,11 @@ export default function UniversalGameCard({
         <div
           className={`${styles.media} ${tiltStyles.tiltMedia}`}
         >
-          <GameMedia
-            src={game.coverImage}
-            alt={game.imageAlt}
+          <HoverPreviewMedia
+            imageSrc={game.coverImage}
+            imageAlt={game.imageAlt}
+            previewClip={game.previewClip}
+            active={previewActive}
             sizes="(max-width: 560px) 82vw, (max-width: 900px) 48vw, (max-width: 1250px) 30vw, 20vw"
             fallbackClassName={
               fallbackClass
