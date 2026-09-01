@@ -142,14 +142,14 @@ const [
   publicRoute,
   hoverMedia,
   universalCard,
-  youtubeProvider,
-  youtubeProviderCss,
+  sharedYouTubePlayer,
   previewAdminForm,
   trimEditor,
   youtubeTrimEditor,
   adminEditor,
   integrity,
   publicationChanges,
+  rootLayout,
   nextConfig,
   nginx,
   envExample,
@@ -175,14 +175,14 @@ const [
   source("src/app/media/editorial/[slug]/[filename]/route.ts"),
   source("src/components/ui/HoverPreviewMedia.tsx"),
   source("src/components/ui/UniversalGameCard.tsx"),
-  source("src/components/ui/YouTubeHoverPlayerProvider.tsx"),
-  source("src/components/ui/YouTubeHoverPlayerProvider.module.css"),
+  source("src/lib/media/shared-youtube-hover-player.ts"),
   source("src/components/admin/GamePreviewClipUploadForm.tsx"),
   source("src/components/admin/VideoTrimEditor.tsx"),
   source("src/components/admin/YouTubeTrimEditor.tsx"),
   source("src/app/admin/(protected)/juegos/[slug]/page.tsx"),
   source("src/lib/admin/game-media-integrity.ts"),
   source("src/lib/admin/game-publication-changes.ts"),
+  source("src/app/layout.tsx"),
   source("next.config.ts"),
   source("ops/nginx/deuna-games.conf.example"),
   source(".env.example"),
@@ -331,37 +331,39 @@ assert(
 assert(
   universalCard.includes("PREVIEW_DELAY_MS = 1_000") &&
     universalCard.includes("resolveGameCardPreview") &&
-    universalCard.includes("activateYouTube(media") &&
-    universalCard.includes("deactivateYouTube(media") &&
+    universalCard.includes("activateSharedYouTubeHoverPlayer") &&
+    universalCard.includes("deactivateSharedYouTubeHoverPlayer") &&
     universalCard.indexOf("setTimeout") <
-      universalCard.indexOf("activateYouTube(media") &&
+      universalCard.indexOf("activateSharedYouTubeHoverPlayer") &&
     universalCard.includes("(hover: hover) and (pointer: fine)") &&
     universalCard.includes("prefers-reduced-motion: reduce") &&
-    universalCard.includes("requestAnimationFrame"),
-  "La tarjeta debe esperar 1 s antes de activar cualquier preview y mantener optimizaciones de puntero/tilt."
+    universalCard.includes("requestAnimationFrame") &&
+    universalCard.includes('"--tilt-transition-duration"'),
+  "La tarjeta debe esperar 1 s, estabilizar el tilt y activar el singleton sólo tras intención real."
 );
 assert(
-  youtubeProvider.includes("createContext") &&
-    youtubeProvider.includes("frameCreatedRef") &&
-    youtubeProvider.includes("activeRef") &&
-    youtubeProvider.includes("youtube-nocookie.com") &&
-    youtubeProvider.includes('sendCommand("loadVideoById"') &&
-    youtubeProvider.includes("startSeconds") &&
-    youtubeProvider.includes("endSeconds") &&
-    youtubeProvider.includes('sendCommand("pauseVideo")') &&
-    youtubeProvider.includes("visibilitychange") &&
-    youtubeProvider.includes("ResizeObserver") &&
-    youtubeProvider.includes("requestAnimationFrame") &&
-    (youtubeProvider.match(/<iframe/g) ?? []).length === 1 &&
-    !youtubeProvider.includes("youtube.com/iframe_api") &&
-    !youtubeProvider.includes("YT.Player"),
-  "YouTube público debe usar exactamente un iframe global bajo demanda y reutilizable, sin SDK externo ni iframe por tarjeta."
+  sharedYouTubePlayer.includes("youtube-nocookie.com") &&
+    sharedYouTubePlayer.includes('document.createElement("iframe")') &&
+    (sharedYouTubePlayer.match(/createElement\("iframe"\)/g) ?? []).length === 1 &&
+    sharedYouTubePlayer.includes('sendCommand("loadVideoById"') &&
+    sharedYouTubePlayer.includes("startSeconds") &&
+    sharedYouTubePlayer.includes("endSeconds") &&
+    sharedYouTubePlayer.includes('sendCommand("pauseVideo")') &&
+    sharedYouTubePlayer.includes("visibilitychange") &&
+    sharedYouTubePlayer.includes("ResizeObserver") &&
+    sharedYouTubePlayer.includes("requestAnimationFrame") &&
+    sharedYouTubePlayer.includes("IDLE_DESTROY_MS = 60_000") &&
+    sharedYouTubePlayer.includes("destroyPlayer") &&
+    sharedYouTubePlayer.includes('pointerEvents: "none"') &&
+    sharedYouTubePlayer.includes('contain: "layout paint style"') &&
+    !sharedYouTubePlayer.includes("youtube.com/iframe_api") &&
+    !sharedYouTubePlayer.includes("YT.Player"),
+  "YouTube público debe usar un único iframe DOM lazy, reutilizable y liberable por inactividad, sin SDK externo."
 );
 assert(
-  youtubeProviderCss.includes("position: fixed") &&
-    youtubeProviderCss.includes("pointer-events: none") &&
-    youtubeProviderCss.includes("contain: layout paint style"),
-  "El reproductor global debe superponerse sin capturar interacción ni provocar layout del documento."
+  !rootLayout.includes("YouTubeHoverPlayerProvider") &&
+    !rootLayout.includes("shared-youtube-hover-player"),
+  "El reproductor YouTube no debe montarse en el root layout ni añadir JavaScript a rutas sin tarjetas."
 );
 assert(
   nextConfig.includes('frame-src https://www.youtube-nocookie.com') &&
@@ -400,6 +402,8 @@ assert(
 );
 
 for (const discardedPath of [
+  "src/components/ui/YouTubeHoverPlayerProvider.tsx",
+  "src/components/ui/YouTubeHoverPlayerProvider.module.css",
   "src/lib/media/youtube-video-source.ts",
   "src/lib/media/media-import-worker-client.ts",
   "ops/deploy/media-import-worker.mjs",
@@ -421,5 +425,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  "Preview de video en tarjetas: OK (WebM opcional + YouTube directo con un único player reutilizable, 1 s de intención, recorte visual y cero descarga/transcodificación YouTube verificados)."
+  "Preview de video en tarjetas: OK (WebM opcional + YouTube directo con singleton lazy, 1 s de intención, recorte visual, liberación por inactividad y cero descarga/transcodificación YouTube verificados)."
 );
