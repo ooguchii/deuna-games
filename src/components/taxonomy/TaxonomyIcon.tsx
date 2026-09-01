@@ -24,6 +24,7 @@ import {
   Users,
   Zap,
 } from "lucide-react";
+import type { CSSProperties } from "react";
 
 import type {
   GameTaxonomyIcon,
@@ -58,13 +59,42 @@ const iconMap = {
 
 export default function TaxonomyIcon({
   icon,
+  asset,
   size = 28,
   strokeWidth = 1.9,
 }: {
   icon: GameTaxonomyIcon;
+  asset?: string;
   size?: number;
   strokeWidth?: number;
 }) {
+  if (asset) {
+    const mask = `url("${asset}")`;
+    const customStyle = {
+      width: size,
+      height: size,
+      display: "inline-block",
+      flex: "0 0 auto",
+      backgroundColor:
+        "var(--taxonomy-accent, currentColor)",
+      WebkitMaskImage: mask,
+      maskImage: mask,
+      WebkitMaskRepeat: "no-repeat",
+      maskRepeat: "no-repeat",
+      WebkitMaskPosition: "center",
+      maskPosition: "center",
+      WebkitMaskSize: "contain",
+      maskSize: "contain",
+    } as CSSProperties;
+
+    return (
+      <span
+        style={customStyle}
+        aria-hidden="true"
+      />
+    );
+  }
+
   const Icon = iconMap[icon] ?? Gamepad2;
 
   return (
