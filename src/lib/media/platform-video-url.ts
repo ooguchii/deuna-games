@@ -94,6 +94,18 @@ function hostnameMatches(
   );
 }
 
+function protocolAndPortAllowed(url: URL) {
+  if (url.protocol === "https:") {
+    return !url.port || url.port === "443";
+  }
+
+  if (url.protocol === "http:") {
+    return !url.port || url.port === "80";
+  }
+
+  return false;
+}
+
 export function parseSupportedPlatformVideoUrl(
   value: string
 ): SupportedPlatformVideoUrl | null {
@@ -106,11 +118,10 @@ export function parseSupportedPlatformVideoUrl(
   }
 
   if (
-    parsed.protocol !== "https:" ||
+    !protocolAndPortAllowed(parsed) ||
     parsed.username ||
     parsed.password ||
     !parsed.hostname ||
-    (parsed.port && parsed.port !== "443") ||
     parsed.toString().length > 2_048
   ) {
     return null;
@@ -124,6 +135,12 @@ export function parseSupportedPlatformVideoUrl(
   );
 
   if (!rule) return null;
+
+  // Las plataformas públicas soportadas sirven su contenido por HTTPS.
+  // Normalizar enlaces http:// históricos evita que un link válido falle
+  // antes de llegar al extractor y mantiene la importación cifrada.
+  parsed.protocol = "https:";
+  parsed.port = "";
 
   return {
     platform: rule.platform,
