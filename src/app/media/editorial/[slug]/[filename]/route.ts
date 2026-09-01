@@ -88,20 +88,23 @@ export async function GET(
       return notFoundResponse();
     }
 
-    const headers: Record<string, string> = {
-      "Content-Type": isSvg
-        ? "image/svg+xml; charset=utf-8"
-        : "image/webp",
+    const sharedHeaders = {
       "Content-Length": String(content.length),
       "Cache-Control":
         "public, max-age=31536000, immutable",
       "X-Content-Type-Options": "nosniff",
     };
-
-    if (isSvg) {
-      headers["Content-Security-Policy"] =
-        "default-src 'none'; style-src 'none'; sandbox";
-    }
+    const headers = isSvg
+      ? {
+          ...sharedHeaders,
+          "Content-Type": "image/svg+xml; charset=utf-8",
+          "Content-Security-Policy":
+            "default-src 'none'; style-src 'none'; sandbox",
+        }
+      : {
+          ...sharedHeaders,
+          "Content-Type": "image/webp",
+        };
 
     return new Response(
       new Uint8Array(content),
