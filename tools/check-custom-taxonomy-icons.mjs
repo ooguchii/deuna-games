@@ -1,0 +1,130 @@
+import {
+  readFile,
+} from "node:fs/promises";
+import path from "node:path";
+import process from "node:process";
+
+import {
+  inspectSafeTaxonomySvgIcon,
+  sanitizeTaxonomySvgIcon,
+} from "../src/lib/media/safe-svg-icon.ts";
+
+const root = process.cwd();
+const failures = [];
+
+function assert(condition, message) {
+  if (!condition) failures.push(message);
+}
+
+async function source(relativePath) {
+  return readFile(path.join(root, relativePath), "utf8");
+}
+
+const [
+  validation,
+  editor,
+  presentation,
+  taxonomyIcon,
+  uploadRoute,
+  uploadStorage,
+  publicMediaRoute,
+  homeClassifications,
+  catalogClient,
+] = await Promise.all([
+  source("src/lib/admin/content-validation.ts"),
+  source("src/components/admin/GameTaxonomyEditor.tsx"),
+  source("src/lib/games/taxonomy-presentation.ts"),
+  source("src/components/taxonomy/TaxonomyIcon.tsx"),
+  source("src/app/api/admin/content/catalogs/icon-upload/route.ts"),
+  source("src/lib/media/taxonomy-icon-upload.ts"),
+  source("src/app/media/editorial/[slug]/[filename]/route.ts"),
+  source("src/components/home/FeaturedCategories.tsx"),
+  source("src/components/games/GameCatalogClient.tsx"),
+]);
+
+const simpleSvg = Buffer.from(
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 12h16" fill="none" stroke="currentColor" stroke-width="2"/></svg>',
+  "utf8"
+);
+const sanitizedSimple = sanitizeTaxonomySvgIcon(simpleSvg);
+
+assert(
+  sanitizedSimple !== null &&
+    inspectSafeTaxonomySvgIcon(sanitizedSimple) !== null,
+  "Un SVG geométrico simple debe poder normalizarse y validarse como icono."
+);
+
+for (const unsafe of [
+  '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>',
+  '<svg xmlns="http://www.w3.org/2000/svg"><path d="M0 0" onclick="alert(1)"/></svg>',
+  '<svg xmlns="http://www.w3.org/2000/svg"><image href="https://example.com/a.png"/></svg>',
+  '<svg xmlns="http://www.w3.org/2000/svg"><foreignObject><div>html</div></foreignObject></svg>',
+]) {
+  assert(
+    sanitizeTaxonomySvgIcon(Buffer.from(unsafe, "utf8")) === null,
+    "El saneador SVG debe rechazar scripts, eventos, recursos externos y HTML embebido."
+  );
+}
+
+assert(
+  validation.includes("iconAsset: taxonomyIconAssetSchema.optional()") &&
+    validation.includes("taxonomy-icons") &&
+    validation.includes("(?:svg|webp)") &&
+    validation.includes("iconAsset: existing.iconAsset ?? term.iconAsset"),
+  "La taxonomía debe aceptar sólo assets SVG/WebP hashados del almacén de iconos y conservarlos al migrar datos heredados."
+);
+
+assert(
+  editor.includes("/api/admin/content/catalogs/icon-upload") &&
+    editor.includes('accept=".svg,.webp,image/svg+xml,image/webp"') &&
+    editor.includes("iconAsset: payload.publicPath") &&
+    editor.includes("asset={term.iconAsset}") &&
+    editor.includes("Usar biblioteca") &&
+    editor.includes("Guardar clasificaciones"),
+  "El panel debe permitir subir/reemplazar iconos propios, previsualizarlos con color y mantener el guardado editorial explícito."
+);
+
+assert(
+  presentation.includes("customTaxonomyIconPattern") &&
+    presentation.includes("iconAsset") &&
+    taxonomyIcon.includes("maskImage") &&
+    taxonomyIcon.includes("WebkitMaskImage") &&
+    taxonomyIcon.includes("--taxonomy-accent"),
+  "La presentación pública debe validar el asset y colorearlo mediante máscara CSS con el mismo acento de taxonomía."
+);
+
+assert(
+  uploadRoute.includes("authorizeAdminMediaRequest") &&
+    uploadRoute.includes("hasExactAdminMediaFormFields") &&
+    uploadRoute.includes("expectedRevision") &&
+    uploadRoute.includes("storeTaxonomyIcon") &&
+    uploadStorage.includes("sanitizeTaxonomySvgIcon") &&
+    uploadStorage.includes("sanitizeEditorialWebp") &&
+    uploadStorage.includes("inspection.hasAlpha") &&
+    uploadStorage.includes('flag: "wx"'),
+  "La carga de iconos debe permanecer autenticada, concurrente, saneada, hashada y exigir transparencia en WebP."
+);
+
+assert(
+  publicMediaRoute.includes('slug !== "taxonomy-icons"') &&
+    publicMediaRoute.includes("inspectSafeTaxonomySvgIcon") &&
+    publicMediaRoute.includes("Content-Security-Policy") &&
+    publicMediaRoute.includes('"Content-Type": "image/svg+xml; charset=utf-8"'),
+  "Los SVG sólo deben servirse en el namespace de iconos, revalidarse y quedar aislados por CSP."
+);
+
+assert(
+  homeClassifications.includes("asset={visual.iconAsset}") &&
+    catalogClient.includes("asset={visual.iconAsset}"),
+  "Inicio y Juegos deben mostrar el mismo icono propio publicado."
+);
+
+if (failures.length > 0) {
+  console.error("\nIconos personalizados de taxonomía: REGRESIÓN\n");
+  failures.forEach((failure) => console.error(`- ${failure}`));
+  process.exitCode = 1;
+} else {
+  console.log(
+    "Iconos personalizados de taxonomía: OK (SVG/WebP seguro, recolor por máscara, borrador/publicación y superficies públicas compartidas)."
+  );
+}
