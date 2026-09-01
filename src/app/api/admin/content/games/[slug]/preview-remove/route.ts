@@ -11,10 +11,12 @@ import {
 import {
   getEditorialItem,
   saveGameMediaDraft,
+  type GameMediaDraftInput,
 } from "@/lib/admin/content-service";
 import {
   hasExactAdminFormFields,
 } from "@/lib/admin/request-security";
+import type { Game } from "@/types/game";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -77,15 +79,19 @@ export async function POST(
       );
     }
 
+    const update: GameMediaDraftInput &
+      Pick<Game, "directPreview"> = {
+        previewClip: undefined,
+        previewMode: undefined,
+        youtubePreview: undefined,
+        directPreview: undefined,
+      };
+
     const result = await saveGameMediaDraft(
       slug,
       revision.data,
       authorized.session.userId,
-      {
-        previewClip: undefined,
-        previewMode: undefined,
-        youtubePreview: undefined,
-      }
+      update
     );
 
     if (result.outcome === "not_found") {
