@@ -10,6 +10,7 @@ import GameEditorFormActions from "@/components/admin/GameEditorFormActions";
 import GameMediaUploadForm from "@/components/admin/GameMediaUploadForm";
 import GamePerformanceEditor from "@/components/admin/GamePerformanceEditor";
 import GamePlatformEditor from "@/components/admin/GamePlatformEditor";
+import GamePreviewClipUploadForm from "@/components/admin/GamePreviewClipUploadForm";
 import GameTaxonomyMultiSelect from "@/components/admin/GameTaxonomyMultiSelect";
 import {
   getEditorialItem,
@@ -631,74 +632,82 @@ export default async function AdminGameEditorPage({
       )}
 
       {section === "multimedia" && (
-        <section className={styles.editorPanel}>
-          <div className={styles.sectionHeading}>
-            <div>
-              <span>MULTIMEDIA</span>
-              <h2>Portada, hero y galería</h2>
+        <>
+          <section className={styles.editorPanel}>
+            <div className={styles.sectionHeading}>
+              <div>
+                <span>MULTIMEDIA · IMÁGENES</span>
+                <h2>Portada, hero y galería</h2>
+              </div>
+              <p>
+                Sube una imagen de tu equipo o impórtala desde una URL HTTPS. El panel la normaliza a WebP seguro antes de guardarla.
+              </p>
             </div>
-            <p>
-              Sube una imagen de tu equipo o impórtala desde una URL HTTPS. El panel la normaliza a WebP seguro antes de guardarla.
-            </p>
-          </div>
 
-          <GameMediaUploadForm
+            <GameMediaUploadForm
+              slug={slug}
+              revision={item.revision}
+              screenshotCount={game.screenshots?.length ?? 0}
+            />
+
+            <form
+              className={styles.editorForm}
+              method="post"
+              action={mediaAction}
+            >
+              <input
+                type="hidden"
+                name="expectedRevision"
+                value={item.revision}
+              />
+
+              <label className={styles.fieldWide}>
+                <span>Ruta de portada</span>
+                <input
+                  name="coverImage"
+                  defaultValue={game.coverImage ?? ""}
+                  maxLength={400}
+                  placeholder="Ruta local de la portada"
+                />
+              </label>
+
+              <label className={styles.fieldWide}>
+                <span>Ruta de imagen hero</span>
+                <input
+                  name="heroImage"
+                  defaultValue={game.heroImage ?? ""}
+                  maxLength={400}
+                  placeholder="Ruta local de la imagen hero"
+                />
+              </label>
+
+              <label className={styles.fieldWide}>
+                <span>Galería — una ruta por línea</span>
+                <textarea
+                  name="screenshotsText"
+                  defaultValue={(game.screenshots ?? []).join("\n")}
+                  maxLength={3500}
+                  rows={7}
+                  placeholder="Una ruta local por línea"
+                />
+              </label>
+
+              <GameEditorFormActions
+                note="Se aceptan hasta 8 capturas sin duplicados y las rutas se validan antes de guardar."
+                action={mediaAction}
+                continueTo="descargas"
+                saveLabel="Guardar multimedia"
+                continueLabel="Guardar y continuar a Distribución"
+              />
+            </form>
+          </section>
+
+          <GamePreviewClipUploadForm
             slug={slug}
             revision={item.revision}
-            screenshotCount={game.screenshots?.length ?? 0}
+            currentPreview={game.previewClip}
           />
-
-          <form
-            className={styles.editorForm}
-            method="post"
-            action={mediaAction}
-          >
-            <input
-              type="hidden"
-              name="expectedRevision"
-              value={item.revision}
-            />
-
-            <label className={styles.fieldWide}>
-              <span>Ruta de portada</span>
-              <input
-                name="coverImage"
-                defaultValue={game.coverImage ?? ""}
-                maxLength={400}
-                placeholder="Ruta local de la portada"
-              />
-            </label>
-
-            <label className={styles.fieldWide}>
-              <span>Ruta de imagen hero</span>
-              <input
-                name="heroImage"
-                defaultValue={game.heroImage ?? ""}
-                maxLength={400}
-                placeholder="Ruta local de la imagen hero"
-              />
-            </label>
-
-            <label className={styles.fieldWide}>
-              <span>Galería — una ruta por línea</span>
-              <textarea
-                name="screenshotsText"
-                defaultValue={(game.screenshots ?? []).join("\n")}
-                maxLength={3500}
-                rows={7}
-                placeholder="Una ruta local por línea"
-              />
-            </label>
-
-            <GameEditorFormActions
-              note="Se aceptan hasta 8 capturas sin duplicados y las rutas se validan antes de guardar."
-              action={mediaAction}
-              continueTo="descargas"
-              saveLabel="Guardar multimedia"
-              continueLabel="Guardar y continuar a Distribución"
-            />
-          </form>
-        </section>
+        </>
       )}
 
       {section === "descargas" && (
