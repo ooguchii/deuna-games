@@ -1,10 +1,8 @@
 import { rm } from "node:fs/promises";
 import type { NextRequest } from "next/server";
-import { NextResponse } from "next/server";
 
 import {
   adminRedirect,
-  adminUnavailableResponse,
 } from "@/lib/admin/admin-route";
 import {
   expectedRevisionSchema,
@@ -14,16 +12,8 @@ import {
   saveGameMediaDraft,
 } from "@/lib/admin/content-service";
 import {
-  getAdminOrigin,
-  isAdminEnabled,
-} from "@/lib/admin/database-config";
-import {
-  hasTrustedAdminOrigin,
-} from "@/lib/admin/request-security";
-import {
-  getAdminSessionCookieName,
-  resolveAdminSession,
-} from "@/lib/admin/session";
+  authorizeAdminStreamingMediaRequest,
+} from "@/lib/admin/streaming-media-admin-route";
 import {
   storeEditorialPreviewVideoFromPath,
 } from "@/lib/media/editorial-video";
@@ -38,63 +28,6 @@ import {
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-
-function rejected(status = 403) {
-  return new NextResponse("Solicitud rechazada.", {
-    status,
-    headers: {
-      "Cache-Control": "no-store, max-age=0",
-      "Content-Type": "text/plain; charset=utf-8",
-    },
-  });
-}
-
-async function authorizeStreamingUpload(
-  request: NextRequest
-) {
-  if (!isAdminEnabled()) {
-    return {
-      authorized: false as const,
-      response: new NextResponse(null, { status: 404 }),
-    };
-  }
-
-  try {
-    const adminOrigin = getAdminOrigin();
-    const token = request.cookies.get(
-      getAdminSessionCookieName()
-    )?.value;
-    const session = await resolveAdminSession(token);
-
-    if (!session) {
-      return {
-        authorized: false as const,
-        response: adminRedirect(
-          adminOrigin,
-          "/admin/login"
-        ),
-      };
-    }
-
-    if (!hasTrustedAdminOrigin(request, adminOrigin)) {
-      return {
-        authorized: false as const,
-        response: rejected(),
-      };
-    }
-
-    return {
-      authorized: true as const,
-      adminOrigin,
-      session,
-    };
-  } catch {
-    return {
-      authorized: false as const,
-      response: adminUnavailableResponse(),
-    };
-  }
-}
 
 function errorState(error: unknown) {
   const message =
@@ -124,7 +57,8 @@ export async function POST(
     params: Promise<{ slug: string }>;
   }
 ) {
-  const authorized = await authorizeStreamingUpload(request);
+  const authorized =
+    await authorizeAdminStreamingMediaRequest(request);
 
   if (!authorized.authorized) {
     return authorized.response;
