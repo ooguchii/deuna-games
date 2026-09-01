@@ -143,9 +143,7 @@ function normalizedSvgText(input: Buffer) {
     /<\?/i.test(source) ||
     /<!(?!\-\-)/i.test(source) ||
     /\bon[a-z0-9_-]+\s*=/i.test(source) ||
-    /\b(?:href|xlink:href|src|style)\s*=/i.test(source) ||
-    /(?:javascript|data|file|https?):/i.test(source) ||
-    /url\s*\(/i.test(source)
+    /\b(?:href|xlink:href|src|style)\s*=/i.test(source)
   ) {
     return null;
   }
