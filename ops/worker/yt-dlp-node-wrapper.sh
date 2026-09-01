@@ -14,4 +14,7 @@ if [[ ! -x "${NODE_BIN}" ]]; then
   exit 127
 fi
 
-exec "${YTDLP_BIN}" --js-runtimes "node:${NODE_BIN}" "$@"
+exec "${YTDLP_BIN}" \
+  --js-runtimes "node:${NODE_BIN}" \
+  --remote-components "ejs:github" \
+  "$@"
