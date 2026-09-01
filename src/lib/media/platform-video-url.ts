@@ -39,17 +39,21 @@ const platformRules: readonly PlatformRule[] = [
   {
     platform: "youtube",
     label: "YouTube",
-    hosts: ["youtube.com", "youtu.be", "youtube-nocookie.com"],
+    hosts: [
+      "youtube.com",
+      "youtu.be",
+      "youtube-nocookie.com",
+    ],
   },
   {
     platform: "facebook",
     label: "Facebook",
-    hosts: ["facebook.com", "fb.watch"],
+    hosts: ["facebook.com", "fb.watch", "fb.com"],
   },
   {
     platform: "instagram",
     label: "Instagram",
-    hosts: ["instagram.com"],
+    hosts: ["instagram.com", "instagr.am"],
   },
   {
     platform: "tiktok",
@@ -152,8 +156,23 @@ function cleanHostname(value: string) {
   return value.trim().toLowerCase().replace(/\.$/, "");
 }
 
-function hostnameMatches(hostname: string, allowedHost: string) {
-  return hostname === allowedHost || hostname.endsWith(`.${allowedHost}`);
+function hostnameMatches(
+  hostname: string,
+  allowedHost: string
+) {
+  return (
+    hostname === allowedHost ||
+    hostname.endsWith(`.${allowedHost}`)
+  );
+}
+
+function normalizedUrlInput(value: string) {
+  const raw = value.trim();
+  if (!raw) return raw;
+
+  return /^[a-z][a-z0-9+.-]*:\/\//i.test(raw)
+    ? raw
+    : `https://${raw}`;
 }
 
 export function parseSupportedPlatformVideoUrl(
@@ -162,17 +181,24 @@ export function parseSupportedPlatformVideoUrl(
   let parsed: URL;
 
   try {
-    parsed = new URL(value.trim());
+    parsed = new URL(normalizedUrlInput(value));
   } catch {
     return null;
   }
 
+  const isHttp = parsed.protocol === "http:";
+  const isHttps = parsed.protocol === "https:";
+  const validPort =
+    !parsed.port ||
+    (isHttp && parsed.port === "80") ||
+    (isHttps && parsed.port === "443");
+
   if (
-    parsed.protocol !== "https:" ||
+    (!isHttp && !isHttps) ||
     parsed.username ||
     parsed.password ||
     !parsed.hostname ||
-    (parsed.port && parsed.port !== "443") ||
+    !validPort ||
     parsed.toString().length > 2_048
   ) {
     return null;
@@ -180,7 +206,9 @@ export function parseSupportedPlatformVideoUrl(
 
   const hostname = cleanHostname(parsed.hostname);
   const rule = platformRules.find(({ hosts }) =>
-    hosts.some((allowedHost) => hostnameMatches(hostname, allowedHost))
+    hosts.some((allowedHost) =>
+      hostnameMatches(hostname, allowedHost)
+    )
   );
 
   if (!rule) return null;

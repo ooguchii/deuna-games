@@ -63,10 +63,7 @@ export function serveStagedPreviewFile(
   },
   headOnly: boolean
 ) {
-  const range = requestedRange(
-    request,
-    file.bytes
-  );
+  const range = requestedRange(request, file.bytes);
   const sharedHeaders = {
     "Cache-Control": "private, no-store, max-age=0",
     "Content-Type": file.contentType,
@@ -112,9 +109,7 @@ export function serveStagedPreviewFile(
 
   const body = headOnly
     ? null
-    : Readable.toWeb(
-        createReadStream(file.filePath)
-      );
+    : Readable.toWeb(createReadStream(file.filePath));
 
   return new Response(
     body as ReadableStream<Uint8Array> | null,

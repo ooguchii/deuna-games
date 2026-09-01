@@ -24,7 +24,6 @@ const acceptedTypes = new Set([
   "video/avi",
   "video/x-msvideo",
 ]);
-
 const acceptedExtensions =
   /\.(mp4|webm|mov|m4v|mkv|avi)$/i;
 const MEDIA_PROBE_TIMEOUT_MS = 10_000;
@@ -120,20 +119,34 @@ function validLocalFile(file: File) {
   );
 }
 
-function parsePublicHttpsUrl(value: string) {
+function parsePublicVideoUrl(value: string) {
+  const raw = value.trim();
+  if (!raw) return null;
+
+  const candidate = /^[a-z][a-z0-9+.-]*:\/\//i.test(raw)
+    ? raw
+    : `https://${raw}`;
   let parsedUrl: URL;
 
   try {
-    parsedUrl = new URL(value.trim());
+    parsedUrl = new URL(candidate);
   } catch {
     return null;
   }
 
+  const isHttp = parsedUrl.protocol === "http:";
+  const isHttps = parsedUrl.protocol === "https:";
+  const validPort =
+    !parsedUrl.port ||
+    (isHttp && parsedUrl.port === "80") ||
+    (isHttps && parsedUrl.port === "443");
+
   if (
-    parsedUrl.protocol !== "https:" ||
+    (!isHttp && !isHttps) ||
     parsedUrl.username ||
     parsedUrl.password ||
-    (parsedUrl.port && parsedUrl.port !== "443") ||
+    !parsedUrl.hostname ||
+    !validPort ||
     parsedUrl.toString().length > 2_048
   ) {
     return null;
@@ -146,6 +159,7 @@ function probeBrowserPlayback(src: string) {
   return new Promise<boolean>((resolve) => {
     const video = document.createElement("video");
     let settled = false;
+
     const finish = (playable: boolean) => {
       if (settled) return;
       settled = true;
@@ -258,9 +272,7 @@ export default function GamePreviewClipUploadForm({
     return result.src;
   }
 
-  async function prepareLocalCodecFallback(
-    file: File
-  ) {
+  async function prepareLocalCodecFallback(file: File) {
     setStatus(
       `El navegador no puede reproducir directamente este códec. Subiendo ${formatSize(file.size)} por streaming y creando una vista previa de edición liviana…`
     );
@@ -313,7 +325,9 @@ export default function GamePreviewClipUploadForm({
 
   async function prepareLocalFile(file: File) {
     setSourceBusy(true);
-    setStatus("Comprobando si el navegador puede reproducir el video directamente…");
+    setStatus(
+      "Comprobando si el navegador puede reproducir el video directamente…"
+    );
 
     const src = URL.createObjectURL(file);
     let keepObjectUrl = false;
@@ -373,11 +387,11 @@ export default function GamePreviewClipUploadForm({
   async function prepareRemoteSource() {
     if (sourceBusy || busy) return;
 
-    const parsedUrl = parsePublicHttpsUrl(sourceUrl);
+    const parsedUrl = parsePublicVideoUrl(sourceUrl);
 
     if (!parsedUrl) {
       setStatus(
-        "Usa una URL HTTPS pública: puede ser un archivo de video directo o un enlace público de una plataforma compatible."
+        "Usa un enlace público HTTP o HTTPS: archivo directo o enlace de una plataforma compatible. También puedes pegarlo sin escribir https://."
       );
       return;
     }
@@ -385,7 +399,7 @@ export default function GamePreviewClipUploadForm({
     resetPreparedSource();
     setSourceBusy(true);
     setStatus(
-      "Preparando una copia temporal privada del video o enlace para que puedas elegir visualmente el recorte…"
+      "Preparando una copia temporal privada para que puedas reproducir el video y elegir visualmente el recorte…"
     );
     let stagedToken: string | null = null;
 
@@ -429,7 +443,7 @@ export default function GamePreviewClipUploadForm({
 
       if (!playable) {
         setStatus(
-          "La fuente preparada usa un códec que el navegador no reproduce. Creando una vista previa de edición compatible…"
+          "El video remoto usa un códec o tipo de respuesta que el navegador no reproduce. Creando una vista previa de edición compatible…"
         );
         editorSrc = await createProxyForStagedToken(result.token);
         usesProxy = true;
@@ -448,7 +462,7 @@ export default function GamePreviewClipUploadForm({
       stagedToken = null;
       setStatus(
         usesProxy
-          ? "Vista previa compatible lista. El recorte final se generará desde la fuente original preparada."
+          ? "Vista previa compatible lista. El recorte final se generará desde el original temporal."
           : "Video remoto listo. Elige el tramo con IN/OUT; la copia temporal se elimina después de generar el WebM."
       );
     } catch (error) {
@@ -631,7 +645,7 @@ export default function GamePreviewClipUploadForm({
               onChange={handleLocalFile}
             />
             <small>
-              Primero intenta reproducirse directamente desde tu equipo. Si el navegador no entiende el códec, DeUna crea automáticamente un proxy de edición liviano; el resultado final siempre sale del original.
+              Si tu navegador reproduce el códec, se edita directamente desde tu equipo. Si no, DeUna crea automáticamente una vista previa WebM privada y liviana; al confirmar siempre recorta el archivo original.
             </small>
           </label>
         )}
@@ -641,7 +655,7 @@ export default function GamePreviewClipUploadForm({
             <label className={styles.fieldWide}>
               <span>URL directa o enlace público de plataforma</span>
               <input
-                type="url"
+                type="text"
                 inputMode="url"
                 value={sourceUrl}
                 disabled={busy || sourceBusy}
@@ -653,16 +667,16 @@ export default function GamePreviewClipUploadForm({
                   setStatus(null);
                 }}
                 maxLength={2048}
-                placeholder="https://www.youtube.com/watch?v=... o https://cdn.example/video.mp4"
+                placeholder="youtube.com/watch?v=... · http://... · https://cdn.example/video.mp4"
               />
               <small>
-                Acepta archivos directos MP4/WebM/MOV/M4V/MKV/AVI de hasta 1 GB y enlaces públicos de YouTube, Facebook, Instagram, TikTok, Vimeo, X/Twitter, Twitch, Reddit, Rumble, Dailymotion, Kick y otras plataformas habilitadas. Los videos privados, con login, cookies obligatorias o DRM no se pueden importar.
+                Acepta HTTP y HTTPS, con o sin escribir el protocolo, archivos directos MP4/WebM/MOV/M4V/MKV/AVI de hasta 1 GB y enlaces públicos de YouTube, Facebook, Instagram, TikTok, Vimeo, X/Twitter, Twitch, Dailymotion, Streamable y Kick. Los videos privados, con login o DRM no se pueden importar.
               </small>
             </label>
 
             <div className={styles.formActions}>
               <p>
-                Los archivos directos se copian por streaming. Para enlaces de plataformas se prepara una copia temporal privada y liviana; si el códec no es compatible con el navegador, el editor crea además un proxy de edición. Nada de eso se publica como fuente externa.
+                Los archivos directos se copian por streaming. En plataformas se prepara una versión temporal para recortar visualmente; si el navegador no entiende el códec se genera además un proxy privado. Nada de eso se publica.
               </p>
               <button
                 type="button"
@@ -670,7 +684,7 @@ export default function GamePreviewClipUploadForm({
                 onClick={prepareRemoteSource}
               >
                 {sourceBusy
-                  ? "Preparando video…"
+                  ? "Cargando video…"
                   : "Cargar video o enlace para recortar"}
               </button>
             </div>
@@ -691,7 +705,7 @@ export default function GamePreviewClipUploadForm({
         <div className={`${styles.tableSummary} ${styles.fieldWide}`}>
           <strong>Resultado final</strong>
           <span>
-            Puedes mover IN y OUT, usar “Marcar IN aquí”, “Marcar OUT aquí” y “Reproducir recorte”. El origen puede pesar hasta 1 GB, pero sólo el fragmento elegido —máximo 30 segundos— se convierte a WebM/VP9 silencioso y liviano.
+            Puedes mover IN y OUT, usar “Marcar IN aquí”, “Marcar OUT aquí” y “Reproducir recorte”. El origen puede pesar hasta 1 GB, pero sólo el fragmento elegido —máximo 30 segundos— se convierte desde el original a WebM/VP9 silencioso y liviano.
           </span>
         </div>
 

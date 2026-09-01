@@ -5,14 +5,22 @@ import { request as httpRequest } from "node:http";
 import { Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
 
-import { MAX_PREVIEW_SOURCE_BYTES } from "./preview-video-policy";
+import {
+  MAX_PREVIEW_SOURCE_BYTES,
+} from "./preview-video-policy";
 
 const WORKER_TIMEOUT_MS = 10 * 60 * 1_000;
 const MAX_WORKER_RESPONSE_BYTES = MAX_PREVIEW_SOURCE_BYTES;
 
 export type MediaImportWorkerPayload =
-  | { kind: "direct"; url: string }
-  | { kind: "platform"; url: string };
+  | {
+      kind: "direct";
+      url: string;
+    }
+  | {
+      kind: "platform";
+      url: string;
+    };
 
 export type MediaImportWorkerResult = {
   bytes: number;
@@ -21,14 +29,19 @@ export type MediaImportWorkerResult = {
 };
 
 function configuredWorkerUrl() {
-  const raw = process.env.DEUNA_MEDIA_IMPORT_WORKER_URL?.trim();
+  const raw =
+    process.env.DEUNA_MEDIA_IMPORT_WORKER_URL?.trim();
+
   if (!raw) return null;
 
   let url: URL;
+
   try {
     url = new URL(raw);
   } catch {
-    throw new Error("DEUNA_MEDIA_IMPORT_WORKER_URL no es una URL válida.");
+    throw new Error(
+      "DEUNA_MEDIA_IMPORT_WORKER_URL no es una URL válida."
+    );
   }
 
   const loopback =
@@ -54,17 +67,22 @@ function configuredWorkerUrl() {
 }
 
 function configuredWorkerToken() {
-  const token = process.env.DEUNA_MEDIA_IMPORT_WORKER_TOKEN?.trim() ?? "";
+  const token =
+    process.env.DEUNA_MEDIA_IMPORT_WORKER_TOKEN?.trim() ?? "";
+
   if (token.length < 32 || token.length > 256) {
     throw new Error(
       "DEUNA_MEDIA_IMPORT_WORKER_TOKEN debe tener entre 32 y 256 caracteres."
     );
   }
+
   return token;
 }
 
 export function mediaImportWorkerConfigured() {
-  return Boolean(process.env.DEUNA_MEDIA_IMPORT_WORKER_URL?.trim());
+  return Boolean(
+    process.env.DEUNA_MEDIA_IMPORT_WORKER_URL?.trim()
+  );
 }
 
 export function requireRemoteImportWorkerInProduction() {
@@ -80,6 +98,7 @@ export function requireRemoteImportWorkerInProduction() {
 
 function decodeSourceUrl(value: string | undefined) {
   if (!value) return "";
+
   try {
     return Buffer.from(value, "base64url").toString("utf8");
   } catch {
@@ -96,14 +115,20 @@ export function downloadViaMediaImportWorker(
   destinationPath: string
 ): Promise<MediaImportWorkerResult> {
   const workerUrl = configuredWorkerUrl();
+
   if (!workerUrl) {
-    throw new Error("El worker multimedia no está configurado.");
+    throw new Error(
+      "El worker multimedia no está configurado."
+    );
   }
 
   const token = configuredWorkerToken();
   const body = Buffer.from(JSON.stringify(payload), "utf8");
+
   if (body.length > 8 * 1024) {
-    throw new Error("La solicitud al worker multimedia es demasiado grande.");
+    throw new Error(
+      "La solicitud al worker multimedia es demasiado grande."
+    );
   }
 
   return new Promise((resolve, reject) => {
@@ -126,20 +151,26 @@ export function downloadViaMediaImportWorker(
           response.setEncoding("utf8");
           response.on("data", (chunk: string) => {
             if (errorText.length < 4_000) {
-              errorText += chunk.slice(0, 4_000 - errorText.length);
+              errorText += chunk.slice(
+                0,
+                4_000 - errorText.length
+              );
             }
           });
           response.on("end", () => {
             reject(
               new Error(
-                errorText.trim() || `El worker multimedia respondió ${statusCode}.`
+                errorText.trim() ||
+                  `El worker multimedia respondió ${statusCode}.`
               )
             );
           });
           return;
         }
 
-        const announcedLength = Number(response.headers["content-length"] ?? 0);
+        const announcedLength = Number(
+          response.headers["content-length"] ?? 0
+        );
         if (
           Number.isFinite(announcedLength) &&
           announcedLength > MAX_WORKER_RESPONSE_BYTES
@@ -153,34 +184,48 @@ export function downloadViaMediaImportWorker(
         const limiter = new Transform({
           transform(chunk: Buffer, _encoding, callback) {
             total += chunk.length;
+
             if (total > MAX_WORKER_RESPONSE_BYTES) {
               callback(new Error(responseLimitMessage()));
               return;
             }
+
             callback(null, chunk);
           },
         });
-        const output = createWriteStream(destinationPath, {
-          flags: "wx",
-          mode: 0o600,
-        });
+        const output = createWriteStream(
+          destinationPath,
+          {
+            flags: "wx",
+            mode: 0o600,
+          }
+        );
 
         void pipeline(response, limiter, output)
           .then(() => {
             if (total <= 0) {
-              reject(new Error("El worker multimedia devolvió una fuente vacía."));
+              reject(
+                new Error(
+                  "El worker multimedia devolvió una fuente vacía."
+                )
+              );
               return;
             }
 
             resolve({
               bytes: total,
-              contentType:
-                String(response.headers["content-type"] ?? "application/octet-stream")
-                  .split(";", 1)[0]
-                  ?.trim()
-                  .toLowerCase() || "application/octet-stream",
+              contentType: String(
+                response.headers["content-type"] ??
+                  "application/octet-stream"
+              )
+                .split(";", 1)[0]
+                ?.trim()
+                .toLowerCase() ||
+                "application/octet-stream",
               sourceUrl: decodeSourceUrl(
-                Array.isArray(response.headers["x-deuna-source-url"])
+                Array.isArray(
+                  response.headers["x-deuna-source-url"]
+                )
                   ? response.headers["x-deuna-source-url"][0]
                   : response.headers["x-deuna-source-url"]
               ),
@@ -191,7 +236,11 @@ export function downloadViaMediaImportWorker(
     );
 
     request.setTimeout(WORKER_TIMEOUT_MS, () => {
-      request.destroy(new Error("El worker multimedia agotó el tiempo permitido."));
+      request.destroy(
+        new Error(
+          "El worker multimedia agotó el tiempo permitido."
+        )
+      );
     });
     request.on("error", reject);
     request.end(body);

@@ -78,13 +78,13 @@ export async function POST(
   }
 
   if (
-    sourceUrl.length < 8 ||
+    sourceUrl.length < 4 ||
     sourceUrl.length > 2_048
   ) {
     return json(
       {
         error:
-          "Usa una URL HTTPS pública: puede ser un archivo de video directo o un enlace público de una plataforma compatible.",
+          "Usa un enlace público HTTP o HTTPS: archivo directo o enlace de una plataforma compatible.",
       },
       400
     );

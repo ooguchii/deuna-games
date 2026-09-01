@@ -113,11 +113,12 @@ server {
         proxy_read_timeout 30s;
     }
 
-    # Únicas excepciones de carga grande: preview-upload crea el WebM final y
-    # preview-source-upload conserva temporalmente un original cuyo códec no
-    # puede reproducir el navegador para generar un proxy de edición liviano.
-    # Ambos reciben hasta 1 GiB por streaming sin bufferizar el body completo.
-    location ~ "^/api/admin/content/games/[a-z0-9][a-z0-9._-]{0,159}/preview-(upload|source-upload)$" {
+    # Únicas excepciones de carga grande: el administrador puede enviar un video
+    # fuente de hasta 1 GiB para guardarlo directamente o para crear el proxy de
+    # edición cuando el navegador no entiende el códec. Nginx no almacena el body
+    # completo antes de pasarlo a Next: ambos endpoints escriben por streaming en
+    # un archivo temporal 0600 y eliminan los temporales al terminar.
+    location ~ "^/api/admin/content/games/[a-z0-9][a-z0-9._-]{0,159}/(preview-upload|preview-source-upload)$" {
         allow 10.8.0.0/24;
         deny all;
 
@@ -136,11 +137,11 @@ server {
         proxy_hide_header X-Nextjs-Stale-Time;
 
         proxy_connect_timeout 10s;
-        proxy_send_timeout 1200s;
-        proxy_read_timeout 1200s;
+        proxy_send_timeout 600s;
+        proxy_read_timeout 600s;
     }
 
-    # No usar ^~ aquí: necesitamos que la excepción regex de previews grandes
+    # No usar ^~ aquí: necesitamos que la excepción regex de cargas multimedia
     # anterior pueda ganar antes de aplicar el límite pequeño general.
     location /api/admin/ {
         allow 10.8.0.0/24;

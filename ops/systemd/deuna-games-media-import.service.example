@@ -26,8 +26,8 @@ MemoryHigh=256M
 MemoryMax=384M
 TasksMax=48
 
-# Bloquear redes privadas/no enrutables. El código además valida DNS y
-# limita yt-dlp a una allowlist explícita de plataformas públicas.
+# Bloquear redes privadas/no enrutables. El código también valida las URLs
+# directas y sólo habilita plataformas públicas conocidas para yt-dlp.
 IPAddressDeny=10.0.0.0/8
 IPAddressDeny=100.64.0.0/10
 IPAddressDeny=169.254.0.0/16

@@ -29,6 +29,14 @@ import {
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+function contentLengthFromRequest(request: NextRequest) {
+  const raw = request.headers.get("content-length");
+  if (!raw) return null;
+
+  const value = Number(raw);
+  return Number.isSafeInteger(value) ? value : Number.NaN;
+}
+
 function errorState(error: unknown) {
   const message =
     error instanceof Error ? error.message : "";
@@ -66,9 +74,7 @@ export async function POST(
 
   const { slug } = await context.params;
   const target = `/admin/juegos/${encodeURIComponent(slug)}`;
-  const contentLength = Number(
-    request.headers.get("content-length") ?? 0
-  );
+  const contentLength = contentLengthFromRequest(request);
   const contentType =
     request.headers.get("content-type") ?? "";
   const extension =
@@ -91,9 +97,10 @@ export async function POST(
   if (
     !revision.success ||
     !request.body ||
-    !Number.isSafeInteger(contentLength) ||
-    contentLength <= 0 ||
-    contentLength > MAX_PREVIEW_SOURCE_BYTES ||
+    (contentLength !== null &&
+      (!Number.isSafeInteger(contentLength) ||
+        contentLength <= 0 ||
+        contentLength > MAX_PREVIEW_SOURCE_BYTES)) ||
     !isAcceptedStreamedPreviewSource(
       `source${extension}`,
       contentType,

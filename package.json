@@ -35,7 +35,7 @@
     "check:account-dashboard": "node ./tools/check-account-dashboard-structure.mjs",
     "check:admin-ui": "node ./tools/check-admin-ui-css.mjs",
     "check:public-theme": "node ./tools/check-public-theme.mjs",
-    "check:maintenance": "node ./tools/check-maintenance.mjs && node ./tools/check-public-site-identity.mjs && npm run check:public-theme && node ./tools/check-lan-mode.mjs && node ./tools/check-frontend-editorial-boundaries.mjs && node ./tools/check-admin-accessibility.mjs && npm run check:admin-ui && npm run check:account-dashboard",
+    "check:maintenance": "node ./tools/check-maintenance.mjs && node ./tools/check-public-site-identity.mjs && npm run check:public-theme && node ./tools/check-lan-mode.mjs && node ./tools/check-frontend-editorial-boundaries.mjs && node ./tools/check-admin-accessibility.mjs && node ./tools/check-admin-persistent-save.mjs && npm run check:admin-ui && npm run check:account-dashboard",
     "check:source": "node ./tools/check-source-hygiene.mjs",
     "check:encoding": "node ./tools/check-text-encoding.mjs",
     "check:account-privacy": "node ./tools/check-account-privacy.mjs",

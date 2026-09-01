@@ -38,12 +38,15 @@ const allowedExtensions = new Set([
 export function isAcceptedStreamedPreviewSource(
   filename: string,
   contentType: string,
-  contentLength: number
+  contentLength: number | null
 ) {
   if (
-    !Number.isSafeInteger(contentLength) ||
-    contentLength <= 0 ||
-    contentLength > MAX_PREVIEW_SOURCE_BYTES
+    contentLength !== null &&
+    (
+      !Number.isSafeInteger(contentLength) ||
+      contentLength <= 0 ||
+      contentLength > MAX_PREVIEW_SOURCE_BYTES
+    )
   ) {
     return false;
   }
@@ -68,7 +71,7 @@ export function isAcceptedStreamedPreviewSource(
 
 export async function stageStreamedPreviewSource(
   body: ReadableStream<Uint8Array>,
-  expectedBytes: number
+  expectedBytes: number | null
 ) {
   const directory = await mkdtemp(
     path.join(os.tmpdir(), "deuna-preview-upload-")
@@ -81,7 +84,7 @@ export async function stageStreamedPreviewSource(
 
       if (
         total > MAX_PREVIEW_SOURCE_BYTES ||
-        total > expectedBytes
+        (expectedBytes !== null && total > expectedBytes)
       ) {
         callback(
           new Error(
@@ -105,7 +108,11 @@ export async function stageStreamedPreviewSource(
   try {
     await pipeline(input, limiter, output);
 
-    if (total !== expectedBytes) {
+    if (total <= 0) {
+      throw new Error("El video fuente está vacío.");
+    }
+
+    if (expectedBytes !== null && total !== expectedBytes) {
       throw new Error(
         "La carga del video fuente quedó incompleta."
       );
@@ -115,7 +122,8 @@ export async function stageStreamedPreviewSource(
     if (
       !stats.isFile() ||
       stats.isSymbolicLink() ||
-      stats.size !== expectedBytes
+      stats.size !== total ||
+      stats.size > MAX_PREVIEW_SOURCE_BYTES
     ) {
       throw new Error(
         "El video fuente temporal no superó la validación de almacenamiento."

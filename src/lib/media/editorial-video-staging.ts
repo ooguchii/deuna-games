@@ -18,6 +18,12 @@ import {
   MAX_EDITORIAL_EDIT_PROXY_BYTES,
 } from "./editorial-preview-proxy";
 import {
+  downloadPlatformEditorialVideo,
+} from "./platform-video-source";
+import {
+  parseSupportedPlatformVideoUrl,
+} from "./platform-video-url";
+import {
   MAX_PREVIEW_SOURCE_BYTES,
 } from "./preview-video-policy";
 import {
@@ -226,9 +232,7 @@ async function cleanupExpiredSources() {
       ].filter((entry) => entries.includes(entry));
 
       if (artifacts.length === 0) {
-        await rm(metadataPath(token), {
-          force: true,
-        });
+        await rm(metadataPath(token), { force: true });
         return;
       }
 
@@ -264,9 +268,7 @@ async function assertStagingCapacity() {
   }
 }
 
-async function writeMetadata(
-  metadata: StagedMetadata
-) {
+async function writeMetadata(metadata: StagedMetadata) {
   await writeFile(
     metadataPath(metadata.token),
     JSON.stringify(metadata),
@@ -274,6 +276,23 @@ async function writeMetadata(
       flag: "wx",
       mode: 0o600,
     }
+  );
+}
+
+async function downloadPreviewSource(
+  sourceUrl: string,
+  destinationPath: string
+) {
+  if (parseSupportedPlatformVideoUrl(sourceUrl)) {
+    return downloadPlatformEditorialVideo(
+      sourceUrl,
+      destinationPath
+    );
+  }
+
+  return downloadRemoteEditorialVideo(
+    sourceUrl,
+    destinationPath
   );
 }
 
@@ -289,7 +308,7 @@ export async function createStagedRemotePreviewSource(
   const temporaryDestination = `${destination}.part`;
 
   try {
-    const remote = await downloadRemoteEditorialVideo(
+    const remote = await downloadPreviewSource(
       sourceUrl,
       temporaryDestination
     );
@@ -335,7 +354,7 @@ export async function createStagedUploadedPreviewSource(
   slug: string,
   userId: string,
   body: ReadableStream<Uint8Array>,
-  expectedBytes: number,
+  expectedBytes: number | null,
   contentType: string
 ): Promise<StagedEditorialPreviewSource> {
   await assertStagingCapacity();
@@ -363,7 +382,7 @@ export async function createStagedUploadedPreviewSource(
       !stats.isFile() ||
       stats.isSymbolicLink() ||
       stats.size <= 0 ||
-      stats.size !== expectedBytes ||
+      stats.size !== streamed.bytes ||
       stats.size > MAX_PREVIEW_SOURCE_BYTES
     ) {
       throw new Error(

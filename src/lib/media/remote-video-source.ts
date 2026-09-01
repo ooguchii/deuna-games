@@ -2,6 +2,7 @@ import "server-only";
 
 import { lookup } from "node:dns/promises";
 import { createWriteStream } from "node:fs";
+import { request as httpRequest } from "node:http";
 import { request as httpsRequest } from "node:https";
 import { BlockList, isIP } from "node:net";
 import { Transform } from "node:stream";
@@ -12,11 +13,12 @@ import {
   mediaImportWorkerConfigured,
   requireRemoteImportWorkerInProduction,
 } from "./media-import-worker-client";
-import { downloadPlatformEditorialVideo } from "./platform-video-source";
-import { parseSupportedPlatformVideoUrl } from "./platform-video-url";
-import { MAX_PREVIEW_SOURCE_BYTES } from "./preview-video-policy";
+import {
+  MAX_PREVIEW_SOURCE_BYTES,
+} from "./preview-video-policy";
 
-export const MAX_REMOTE_PREVIEW_BYTES = MAX_PREVIEW_SOURCE_BYTES;
+export const MAX_REMOTE_PREVIEW_BYTES =
+  MAX_PREVIEW_SOURCE_BYTES;
 
 const MAX_REDIRECTS = 3;
 const REQUEST_TIMEOUT_MS = 20_000;
@@ -29,26 +31,48 @@ const allowedContentTypes = new Set([
   "video/x-matroska",
   "video/avi",
   "video/x-msvideo",
+  "application/octet-stream",
+  "binary/octet-stream",
 ]);
 
 const blockedAddresses = new BlockList();
+
 for (const [network, prefix] of [
-  ["0.0.0.0", 8], ["10.0.0.0", 8], ["100.64.0.0", 10],
-  ["127.0.0.0", 8], ["169.254.0.0", 16], ["172.16.0.0", 12],
-  ["192.0.0.0", 24], ["192.0.2.0", 24], ["192.168.0.0", 16],
-  ["198.18.0.0", 15], ["198.51.100.0", 24], ["203.0.113.0", 24],
-  ["224.0.0.0", 4], ["240.0.0.0", 4],
+  ["0.0.0.0", 8],
+  ["10.0.0.0", 8],
+  ["100.64.0.0", 10],
+  ["127.0.0.0", 8],
+  ["169.254.0.0", 16],
+  ["172.16.0.0", 12],
+  ["192.0.0.0", 24],
+  ["192.0.2.0", 24],
+  ["192.168.0.0", 16],
+  ["198.18.0.0", 15],
+  ["198.51.100.0", 24],
+  ["203.0.113.0", 24],
+  ["224.0.0.0", 4],
+  ["240.0.0.0", 4],
 ] as const) {
   blockedAddresses.addSubnet(network, prefix, "ipv4");
 }
+
 for (const [network, prefix] of [
-  ["::", 128], ["::1", 128], ["::ffff:0:0", 96],
-  ["2001:db8::", 32], ["fc00::", 7], ["fe80::", 10], ["ff00::", 8],
+  ["::", 128],
+  ["::1", 128],
+  ["::ffff:0:0", 96],
+  ["2001:db8::", 32],
+  ["fc00::", 7],
+  ["fe80::", 10],
+  ["ff00::", 8],
 ] as const) {
   blockedAddresses.addSubnet(network, prefix, "ipv6");
 }
 
-type ResolvedAddress = { address: string; family: 4 | 6 };
+type ResolvedAddress = {
+  address: string;
+  family: 4 | 6;
+};
+
 type RemoteRequestResult = {
   statusCode: number;
   location?: string;
@@ -68,51 +92,86 @@ function normalizeHostname(hostname: string) {
     : hostname;
 }
 
-function addressIsPublic({ address, family }: ResolvedAddress) {
-  return !blockedAddresses.check(address, family === 4 ? "ipv4" : "ipv6");
+function addressIsPublic({
+  address,
+  family,
+}: ResolvedAddress) {
+  return !blockedAddresses.check(
+    address,
+    family === 4 ? "ipv4" : "ipv6"
+  );
 }
 
-async function resolvePublicAddress(hostname: string): Promise<ResolvedAddress> {
+async function resolvePublicAddress(
+  hostname: string
+): Promise<ResolvedAddress> {
   const normalized = normalizeHostname(hostname);
   const literalFamily = isIP(normalized);
   const addresses = literalFamily
-    ? [{ address: normalized, family: literalFamily }]
-    : await lookup(normalized, { all: true, verbatim: true });
+    ? [
+        {
+          address: normalized,
+          family: literalFamily,
+        },
+      ]
+    : await lookup(normalized, {
+        all: true,
+        verbatim: true,
+      });
 
   if (addresses.length === 0) {
     throw new Error("La URL del video no pudo resolverse.");
   }
 
-  const normalizedAddresses = addresses.map(({ address, family }) => ({
-    address,
-    family: family as 4 | 6,
-  }));
+  const normalizedAddresses = addresses.map(
+    ({ address, family }) => ({
+      address,
+      family: family as 4 | 6,
+    })
+  );
+
   if (!normalizedAddresses.every(addressIsPublic)) {
-    throw new Error("La URL del video apunta a una red no permitida.");
+    throw new Error(
+      "La URL del video apunta a una red no permitida."
+    );
   }
+
   return normalizedAddresses[0]!;
 }
 
 function parseRemoteVideoUrl(value: string) {
+  const raw = value.trim();
+  const candidate = /^[a-z][a-z0-9+.-]*:\/\//i.test(raw)
+    ? raw
+    : `https://${raw}`;
   let url: URL;
+
   try {
-    url = new URL(value.trim());
+    url = new URL(candidate);
   } catch {
     throw new Error("La URL del video no es válida.");
   }
 
+  const isHttp = url.protocol === "http:";
+  const isHttps = url.protocol === "https:";
+  const validPort =
+    !url.port ||
+    (isHttp && url.port === "80") ||
+    (isHttps && url.port === "443");
+
   if (
-    url.protocol !== "https:" ||
+    (!isHttp && !isHttps) ||
     url.username ||
     url.password ||
     !url.hostname ||
-    (url.port && url.port !== "443") ||
+    !validPort ||
     url.toString().length > 2_048
   ) {
     throw new Error(
-      "El video remoto debe usar una URL HTTPS pública sin credenciales ni puertos alternativos."
+      "El video remoto debe usar una URL HTTP o HTTPS pública sin credenciales ni puertos alternativos."
     );
   }
+
   return url;
 }
 
@@ -124,16 +183,30 @@ async function streamResponseToFile(
   const limiter = new Transform({
     transform(chunk: Buffer, _encoding, callback) {
       total += chunk.length;
+
       if (total > MAX_REMOTE_PREVIEW_BYTES) {
-        callback(new Error("El video remoto supera el límite de importación de 1 GB."));
+        callback(
+          new Error(
+            "El video remoto supera el límite de importación de 1 GB."
+          )
+        );
         return;
       }
+
       callback(null, chunk);
     },
   });
-  const output = createWriteStream(destinationPath, { flags: "wx", mode: 0o600 });
+  const output = createWriteStream(destinationPath, {
+    flags: "wx",
+    mode: 0o600,
+  });
+
   await pipeline(response, limiter, output);
-  if (total <= 0) throw new Error("El video remoto está vacío.");
+
+  if (total <= 0) {
+    throw new Error("El video remoto está vacío.");
+  }
+
   return total;
 }
 
@@ -143,57 +216,106 @@ function requestRemoteVideo(
   destinationPath: string
 ): Promise<RemoteRequestResult> {
   return new Promise((resolve, reject) => {
-    const request = httpsRequest(
+    const requestFn =
+      url.protocol === "http:" ? httpRequest : httpsRequest;
+    const request = requestFn(
       url,
       {
         method: "GET",
         headers: {
-          Accept: "video/webm,video/mp4,video/quicktime,video/x-m4v,video/x-matroska,video/x-msvideo;q=0.9",
+          Accept:
+            "video/webm,video/mp4,video/quicktime,video/x-m4v,video/x-matroska,video/x-msvideo,application/octet-stream;q=0.8,*/*;q=0.1",
           "User-Agent": "DeUnaGames-EditorialPreview/2.0",
         },
         lookup: (_hostname, _options, callback) => {
-          callback(null, resolved.address, resolved.family);
+          callback(
+            null,
+            resolved.address,
+            resolved.family
+          );
         },
       },
       (response) => {
         const statusCode = response.statusCode ?? 0;
         const location = response.headers.location;
-        if (statusCode >= 300 && statusCode < 400 && location) {
+
+        if (
+          statusCode >= 300 &&
+          statusCode < 400 &&
+          location
+        ) {
           response.resume();
           resolve({ statusCode, location });
           return;
         }
-        if (statusCode !== 200) {
-          response.resume();
-          reject(new Error("El servidor remoto no devolvió un video disponible."));
-          return;
-        }
 
-        const contentType = String(response.headers["content-type"] ?? "")
-          .split(";", 1)[0]?.trim().toLowerCase();
-        const contentLength = Number(response.headers["content-length"] ?? 0);
-        if (!contentType || !allowedContentTypes.has(contentType)) {
+        if (statusCode !== 200) {
           response.resume();
           reject(
             new Error(
-              "La URL directa debe devolver MP4, WebM, MOV, M4V, MKV o AVI; no una página web."
+              "El servidor remoto no devolvió un video disponible."
             )
           );
           return;
         }
-        if (Number.isFinite(contentLength) && contentLength > MAX_REMOTE_PREVIEW_BYTES) {
+
+        const contentType = String(
+          response.headers["content-type"] ?? ""
+        )
+          .split(";", 1)[0]
+          ?.trim()
+          .toLowerCase();
+        const contentLength = Number(
+          response.headers["content-length"] ?? 0
+        );
+
+        if (
+          !contentType ||
+          !allowedContentTypes.has(contentType)
+        ) {
           response.resume();
-          reject(new Error("El video remoto supera el límite de importación de 1 GB."));
+          reject(
+            new Error(
+              "La URL directa debe devolver un archivo de video o un flujo binario; no una página web."
+            )
+          );
           return;
         }
 
-        void streamResponseToFile(response, destinationPath)
-          .then((bytes) => resolve({ statusCode, contentType, bytes }))
+        if (
+          Number.isFinite(contentLength) &&
+          contentLength > MAX_REMOTE_PREVIEW_BYTES
+        ) {
+          response.resume();
+          reject(
+            new Error(
+              "El video remoto supera el límite de importación de 1 GB."
+            )
+          );
+          return;
+        }
+
+        void streamResponseToFile(
+          response,
+          destinationPath
+        )
+          .then((bytes) => {
+            resolve({
+              statusCode,
+              contentType,
+              bytes,
+            });
+          })
           .catch(reject);
       }
     );
+
     request.setTimeout(REQUEST_TIMEOUT_MS, () => {
-      request.destroy(new Error("La descarga del video agotó el tiempo permitido."));
+      request.destroy(
+        new Error(
+          "La descarga del video agotó el tiempo permitido."
+        )
+      );
     });
     request.on("error", reject);
     request.end();
@@ -206,21 +328,43 @@ async function downloadDirectlyForDevelopment(
 ): Promise<RemoteEditorialVideo> {
   let current = parseRemoteVideoUrl(value);
 
-  for (let redirectCount = 0; redirectCount <= MAX_REDIRECTS; redirectCount += 1) {
-    const resolved = await resolvePublicAddress(current.hostname);
-    const response = await requestRemoteVideo(current, resolved, destinationPath);
+  for (
+    let redirectCount = 0;
+    redirectCount <= MAX_REDIRECTS;
+    redirectCount += 1
+  ) {
+    const resolved = await resolvePublicAddress(
+      current.hostname
+    );
+    const response = await requestRemoteVideo(
+      current,
+      resolved,
+      destinationPath
+    );
 
-    if (response.statusCode >= 300 && response.statusCode < 400 && response.location) {
+    if (
+      response.statusCode >= 300 &&
+      response.statusCode < 400 &&
+      response.location
+    ) {
       if (redirectCount === MAX_REDIRECTS) {
-        throw new Error("La URL del video tiene demasiadas redirecciones.");
+        throw new Error(
+          "La URL del video tiene demasiadas redirecciones."
+        );
       }
-      current = parseRemoteVideoUrl(new URL(response.location, current).toString());
+
+      current = parseRemoteVideoUrl(
+        new URL(response.location, current).toString()
+      );
       continue;
     }
 
     if (!response.contentType || !response.bytes) {
-      throw new Error("El video remoto no pudo descargarse.");
+      throw new Error(
+        "El video remoto no pudo descargarse."
+      );
     }
+
     return {
       bytes: response.bytes,
       contentType: response.contentType,
@@ -235,27 +379,35 @@ export async function downloadRemoteEditorialVideo(
   value: string,
   destinationPath: string
 ): Promise<RemoteEditorialVideo> {
-  if (parseSupportedPlatformVideoUrl(value)) {
-    return downloadPlatformEditorialVideo(value, destinationPath);
-  }
-
   const parsed = parseRemoteVideoUrl(value);
+
   requireRemoteImportWorkerInProduction();
 
   if (mediaImportWorkerConfigured()) {
     const worker = await downloadViaMediaImportWorker(
-      { kind: "direct", url: parsed.toString() },
+      {
+        kind: "direct",
+        url: parsed.toString(),
+      },
       destinationPath
     );
-    if (worker.bytes <= 0 || worker.bytes > MAX_REMOTE_PREVIEW_BYTES) {
-      throw new Error("El worker multimedia produjo un archivo fuera del límite permitido.");
+
+    if (!allowedContentTypes.has(worker.contentType)) {
+      throw new Error(
+        "El worker multimedia no devolvió un tipo de video permitido."
+      );
     }
+
     return {
       bytes: worker.bytes,
       contentType: worker.contentType,
-      sourceUrl: worker.sourceUrl || parsed.toString(),
+      sourceUrl:
+        worker.sourceUrl || parsed.toString(),
     };
   }
 
-  return downloadDirectlyForDevelopment(parsed.toString(), destinationPath);
+  return downloadDirectlyForDevelopment(
+    parsed.toString(),
+    destinationPath
+  );
 }
