@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  useEffect,
   useState,
 } from "react";
 
@@ -18,6 +17,34 @@ type HoverPreviewMediaProps = {
   active: boolean;
 };
 
+type PreviewVideoProps = {
+  src: string;
+};
+
+function PreviewVideo({
+  src,
+}: PreviewVideoProps) {
+  const [playing, setPlaying] = useState(false);
+
+  return (
+    <video
+      className={`${styles.video} ${playing ? styles.videoReady : ""}`}
+      src={src}
+      muted
+      loop
+      playsInline
+      autoPlay
+      controls={false}
+      preload="none"
+      disablePictureInPicture
+      aria-hidden="true"
+      tabIndex={-1}
+      onPlaying={() => setPlaying(true)}
+      onError={() => setPlaying(false)}
+    />
+  );
+}
+
 export default function HoverPreviewMedia({
   imageSrc,
   imageAlt,
@@ -26,12 +53,6 @@ export default function HoverPreviewMedia({
   previewClip,
   active,
 }: HoverPreviewMediaProps) {
-  const [playing, setPlaying] = useState(false);
-
-  useEffect(() => {
-    if (!active) setPlaying(false);
-  }, [active]);
-
   return (
     <>
       <GameMedia
@@ -42,21 +63,9 @@ export default function HoverPreviewMedia({
       />
 
       {active && previewClip && (
-        <video
+        <PreviewVideo
           key={previewClip}
-          className={`${styles.video} ${playing ? styles.videoReady : ""}`}
           src={previewClip}
-          muted
-          loop
-          playsInline
-          autoPlay
-          controls={false}
-          preload="none"
-          disablePictureInPicture
-          aria-hidden="true"
-          tabIndex={-1}
-          onPlaying={() => setPlaying(true)}
-          onError={() => setPlaying(false)}
         />
       )}
     </>
