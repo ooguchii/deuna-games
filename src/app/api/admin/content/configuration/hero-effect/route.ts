@@ -23,11 +23,23 @@ export const runtime = "nodejs";
 const fields = [
   "expectedRevision",
   "effect",
+  "brightness",
+  "saturation",
+  "contrast",
+  "ambientBlur",
+  "ambientOpacity",
+  "overlayStrength",
 ] as const;
 
 const formSchema = z.object({
   expectedRevision: expectedRevisionSchema,
   effect: z.enum(["off", "on"]),
+  brightness: z.coerce.number().int().min(50).max(220),
+  saturation: z.coerce.number().int().min(0).max(200),
+  contrast: z.coerce.number().int().min(70).max(160),
+  ambientBlur: z.coerce.number().int().min(0).max(90),
+  ambientOpacity: z.coerce.number().int().min(0).max(100),
+  overlayStrength: z.coerce.number().int().min(0).max(100),
 });
 
 function redirectPath(state: string) {
@@ -90,6 +102,14 @@ export async function POST(request: NextRequest) {
       {
         ...item.payload,
         heroImageEffect: parsed.data.effect === "on",
+        heroImageTuning: {
+          brightness: parsed.data.brightness,
+          saturation: parsed.data.saturation,
+          contrast: parsed.data.contrast,
+          ambientBlur: parsed.data.ambientBlur,
+          ambientOpacity: parsed.data.ambientOpacity,
+          overlayStrength: parsed.data.overlayStrength,
+        },
       }
     );
 
@@ -105,7 +125,7 @@ export async function POST(request: NextRequest) {
     );
   } catch {
     console.error(
-      "No se pudo guardar el efecto visual del Hero."
+      "No se pudo guardar el ajuste visual del Hero."
     );
     return adminUnavailableResponse();
   }
