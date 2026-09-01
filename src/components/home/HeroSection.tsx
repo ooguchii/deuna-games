@@ -199,9 +199,11 @@ function logicalIndexFromPhysical(
 export default function HeroSection({
   games,
   copy,
+  imageEffect = false,
 }: {
   games: Game[];
   copy: HomeCopy["hero"];
+  imageEffect?: boolean;
 }) {
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const trackRef = useRef<HTMLDivElement | null>(null);
@@ -487,7 +489,9 @@ export default function HeroSection({
 
   return (
     <section
-      className={styles.heroSection}
+      className={`${styles.heroSection} ${
+        imageEffect ? styles.heroImageEffect : styles.heroImageClean
+      }`}
       aria-label="Juegos destacados"
       aria-roledescription="carrusel"
       tabIndex={0}
@@ -510,12 +514,14 @@ export default function HeroSection({
         {copy.accessibleTitle}
       </h1>
 
-      <div className={styles.ambientBackdrop} aria-hidden="true">
-        <div key={activeGame.id} className={styles.ambientFrame}>
-          <ResponsiveArtwork game={activeGame} alt="" active ambient />
+      {imageEffect && (
+        <div className={styles.ambientBackdrop} aria-hidden="true">
+          <div key={activeGame.id} className={styles.ambientFrame}>
+            <ResponsiveArtwork game={activeGame} alt="" active ambient />
+          </div>
+          <div className={styles.ambientShade} />
         </div>
-        <div className={styles.ambientShade} />
-      </div>
+      )}
 
       <div
         ref={viewportRef}
