@@ -46,7 +46,20 @@ function errorState(error: unknown) {
     return "ffmpeg";
   }
 
-  if (message.includes("importación de YouTube en curso")) {
+  if (
+    message.includes("worker multimedia") ||
+    message.includes("DEUNA_MEDIA_IMPORT_WORKER")
+  ) {
+    if (message.includes("importación multimedia en curso")) {
+      return "youtube-ocupado";
+    }
+    return "media-worker";
+  }
+
+  if (
+    message.includes("importación de YouTube en curso") ||
+    message.includes("importación multimedia en curso")
+  ) {
     return "youtube-ocupado";
   }
 
