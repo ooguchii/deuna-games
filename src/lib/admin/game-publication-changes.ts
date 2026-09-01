@@ -133,13 +133,17 @@ export function evaluateGamePublicationChanges(
         coverImage: draft.coverImage,
         heroImage: draft.heroImage,
         screenshots: draft.screenshots,
+        previewMode: draft.previewMode,
         previewClip: draft.previewClip,
+        youtubePreview: draft.youtubePreview,
       },
       {
         coverImage: published.coverImage,
         heroImage: published.heroImage,
         screenshots: published.screenshots,
+        previewMode: published.previewMode,
         previewClip: published.previewClip,
+        youtubePreview: published.youtubePreview,
       }
     )
   ) {
@@ -147,7 +151,7 @@ export function evaluateGamePublicationChanges(
       id: "media",
       label: "Multimedia",
       detail:
-        "Cambian la portada, la imagen hero, las capturas o el WebM recortado usado como preview de las tarjetas.",
+        "Cambian la portada, la imagen hero, las capturas o el preview de tarjeta configurado como WebM local o tramo directo de YouTube.",
       section: "multimedia",
     });
   }
