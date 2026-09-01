@@ -112,10 +112,6 @@ export async function POST(
       parsed.url
     );
 
-    console.info(
-      `[preview-platform:${parsed.platform}] prepared bytes=${staged.bytes} durationMs=${Date.now() - startedAt}`
-    );
-
     return json({
       token: staged.token,
       src:
