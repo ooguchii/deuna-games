@@ -179,6 +179,15 @@ assert(
 );
 
 assert(
+  platformSource.includes('"web_embedded,default"') &&
+    !platformSource.includes('"default,web_embedded"') &&
+    !platformSource.includes('"--sleep-requests"') &&
+    wrapper.includes("web_embedded,default") &&
+    wrapper.includes("ejs:github"),
+  "YouTube debe priorizar el cliente web embebido sin PO Token, conservar los clientes automáticos como fallback y usar la misma política en desarrollo/producción."
+);
+
+assert(
   proxyRoute.includes("ensureStagedEditorialPreviewProxy") &&
     proxyRoute.includes("no-store"),
   "El proxy de edición debe seguir autenticado y sin cache pública."
