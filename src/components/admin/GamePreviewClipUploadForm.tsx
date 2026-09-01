@@ -1,15 +1,17 @@
 "use client";
 
 import {
+  type ChangeEvent,
   type FormEvent,
+  useEffect,
   useRef,
   useState,
 } from "react";
 
+import VideoTrimEditor from "@/components/admin/VideoTrimEditor";
 import {
   MAX_PREVIEW_SOURCE_BYTES,
-  MAX_PREVIEW_SOURCE_POSITION_SECONDS,
-  parsePreviewTrimWindow,
+  type PreviewTrimWindow,
 } from "@/lib/media/preview-video-policy";
 
 import styles from "../../app/admin/admin.module.css";
@@ -26,10 +28,32 @@ const acceptedTypes = new Set([
 
 type SourceMode = "file" | "url";
 
+type PreparedSource =
+  | {
+      mode: "file";
+      src: string;
+      label: string;
+      file: File;
+    }
+  | {
+      mode: "url";
+      src: string;
+      label: string;
+      token: string;
+      bytes: number;
+    };
+
 type GamePreviewClipUploadFormProps = {
   slug: string;
   revision: number;
   currentPreview?: string;
+};
+
+type StagedSourceResponse = {
+  token?: unknown;
+  src?: unknown;
+  bytes?: unknown;
+  error?: unknown;
 };
 
 function formatSize(bytes: number) {
@@ -44,13 +68,13 @@ function uploadError(state: string | null) {
     return "FFmpeg no está disponible en este servidor. Instálalo o configura DEUNA_FFMPEG_PATH y reinicia DeUna.";
   }
   if (state === "video-pesado") {
-    return "El preview final no pudo quedar por debajo del límite de 3 MB. Usa un fragmento con menos movimiento o menor resolución.";
+    return "El preview final no pudo quedar por debajo del límite de 3 MB. Elige un tramo con menos movimiento o de menor duración.";
   }
   if (state === "preview-recorte-invalido") {
-    return "El recorte no es válido. El final debe ser posterior al inicio y el tramo puede durar como máximo 30 segundos.";
+    return "El recorte no es válido. Ajusta los marcadores IN y OUT y vuelve a intentarlo.";
   }
-  if (state === "preview-url-invalida") {
-    return "No se pudo importar esa URL. Usa un enlace HTTPS público que apunte directamente al archivo de video, no a una página web.";
+  if (state === "preview-source-expirada") {
+    return "La vista previa remota venció o ya no está disponible. Vuelve a cargar la URL y selecciona el tramo otra vez.";
   }
   if (state === "solicitud") {
     return "La solicitud fue rechazada por seguridad. Recarga el editor y vuelve a intentarlo.";
@@ -59,6 +83,43 @@ function uploadError(state: string | null) {
     return "El archivo no pudo decodificarse como video compatible.";
   }
   return "No se pudo preparar el preview de la tarjeta.";
+}
+
+function validLocalFile(file: File) {
+  const extensionOk =
+    /\.(mp4|webm|mov|m4v|mkv|avi)$/i.test(
+      file.name
+    );
+
+  return !(
+    file.size <= 0 ||
+    file.size > MAX_PREVIEW_SOURCE_BYTES ||
+    (!extensionOk &&
+      file.type &&
+      !acceptedTypes.has(file.type.toLowerCase()))
+  );
+}
+
+function parsePublicHttpsUrl(value: string) {
+  let parsedUrl: URL;
+
+  try {
+    parsedUrl = new URL(value.trim());
+  } catch {
+    return null;
+  }
+
+  if (
+    parsedUrl.protocol !== "https:" ||
+    parsedUrl.username ||
+    parsedUrl.password ||
+    (parsedUrl.port && parsedUrl.port !== "443") ||
+    parsedUrl.toString().length > 2_048
+  ) {
+    return null;
+  }
+
+  return parsedUrl;
 }
 
 export default function GamePreviewClipUploadForm({
@@ -70,25 +131,162 @@ export default function GamePreviewClipUploadForm({
   const [sourceMode, setSourceMode] =
     useState<SourceMode>("file");
   const [sourceUrl, setSourceUrl] = useState("");
-  const [startSeconds, setStartSeconds] = useState("0");
-  const [endSeconds, setEndSeconds] = useState("30");
+  const [preparedSource, setPreparedSource] =
+    useState<PreparedSource | null>(null);
+  const [trim, setTrim] =
+    useState<PreviewTrimWindow | null>(null);
   const [busy, setBusy] = useState(false);
+  const [sourceBusy, setSourceBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
+
+  useEffect(() => {
+    const source = preparedSource;
+
+    return () => {
+      if (!source) return;
+
+      if (source.mode === "file") {
+        URL.revokeObjectURL(source.src);
+        return;
+      }
+
+      void fetch(source.src, {
+        method: "DELETE",
+        credentials: "same-origin",
+        cache: "no-store",
+        keepalive: true,
+      }).catch(() => undefined);
+    };
+  }, [preparedSource]);
+
+  function resetPreparedSource() {
+    setPreparedSource(null);
+    setTrim(null);
+  }
+
+  function handleLocalFile(
+    event: ChangeEvent<HTMLInputElement>
+  ) {
+    const file = event.target.files?.[0];
+    resetPreparedSource();
+    setStatus(null);
+
+    if (!file) return;
+
+    if (!validLocalFile(file)) {
+      event.target.value = "";
+      setStatus(
+        "Usa MP4, WebM, MOV, M4V, MKV o AVI de hasta 64 MB."
+      );
+      return;
+    }
+
+    const src = URL.createObjectURL(file);
+
+    setPreparedSource({
+      mode: "file",
+      src,
+      label: `${file.name} · ${formatSize(file.size)}`,
+      file,
+    });
+    setStatus(
+      "Vista previa local lista. Reproduce el video y mueve IN/OUT para elegir el tramo."
+    );
+  }
+
+  async function prepareRemoteSource() {
+    if (sourceBusy || busy) return;
+
+    const parsedUrl = parsePublicHttpsUrl(
+      sourceUrl
+    );
+
+    if (!parsedUrl) {
+      setStatus(
+        "Usa una URL HTTPS pública, sin credenciales ni puertos alternativos, que entregue directamente el archivo de video."
+      );
+      return;
+    }
+
+    resetPreparedSource();
+    setSourceBusy(true);
+    setStatus(
+      "Descargando el video remoto a staging privado para poder previsualizarlo…"
+    );
+
+    try {
+      const response = await fetch(
+        `/api/admin/content/games/${encodeURIComponent(slug)}/preview-source`,
+        {
+          method: "POST",
+          credentials: "same-origin",
+          cache: "no-store",
+          headers: {
+            "Content-Type":
+              "application/x-www-form-urlencoded;charset=UTF-8",
+          },
+          body: new URLSearchParams({
+            expectedRevision: String(revision),
+            url: parsedUrl.toString(),
+          }),
+        }
+      );
+      const result =
+        (await response.json()) as StagedSourceResponse;
+
+      if (
+        !response.ok ||
+        typeof result.token !== "string" ||
+        typeof result.src !== "string" ||
+        typeof result.bytes !== "number"
+      ) {
+        throw new Error(
+          typeof result.error === "string"
+            ? result.error
+            : "No se pudo preparar la vista previa remota."
+        );
+      }
+
+      setPreparedSource({
+        mode: "url",
+        src: result.src,
+        label:
+          `${parsedUrl.hostname} · ${formatSize(result.bytes)}`,
+        token: result.token,
+        bytes: result.bytes,
+      });
+      setStatus(
+        "Vista previa remota lista. El original permanece temporalmente en el servidor sólo mientras eliges el corte."
+      );
+    } catch (error) {
+      setStatus(
+        error instanceof Error
+          ? error.message
+          : "No se pudo preparar la vista previa remota."
+      );
+    } finally {
+      setSourceBusy(false);
+    }
+  }
 
   async function handleSubmit(
     event: FormEvent<HTMLFormElement>
   ) {
     event.preventDefault();
-    if (busy) return;
+    if (busy || sourceBusy) return;
 
-    const trim = parsePreviewTrimWindow(
-      startSeconds,
-      endSeconds
-    );
+    if (!preparedSource) {
+      setStatus(
+        sourceMode === "file"
+          ? "Selecciona primero un video para ver la preview y elegir el corte."
+          : "Carga primero la URL para ver la preview y elegir el corte."
+      );
+      return;
+    }
 
     if (!trim) {
       setStatus(
-        "Elige un inicio y un final válidos. El tramo debe durar como máximo 30 segundos."
+        "Selecciona un tramo válido con los marcadores IN y OUT."
       );
       return;
     }
@@ -96,34 +294,8 @@ export default function GamePreviewClipUploadForm({
     let endpoint: string;
     let body: FormData | URLSearchParams;
     let headers: HeadersInit | undefined;
-    let sourceDescription: string;
 
-    if (sourceMode === "file") {
-      const file = fileInput.current?.files?.[0];
-
-      if (!file) {
-        setStatus("Selecciona un video para continuar.");
-        return;
-      }
-
-      const extensionOk =
-        /\.(mp4|webm|mov|m4v|mkv|avi)$/i.test(
-          file.name
-        );
-
-      if (
-        file.size <= 0 ||
-        file.size > MAX_PREVIEW_SOURCE_BYTES ||
-        (!extensionOk &&
-          file.type &&
-          !acceptedTypes.has(file.type.toLowerCase()))
-      ) {
-        setStatus(
-          "Usa MP4, WebM, MOV, M4V, MKV o AVI de hasta 64 MB."
-        );
-        return;
-      }
-
+    if (preparedSource.mode === "file") {
       const upload = new FormData();
       upload.set("expectedRevision", String(revision));
       upload.set(
@@ -134,57 +306,29 @@ export default function GamePreviewClipUploadForm({
         "endSeconds",
         String(trim.endSeconds)
       );
-      upload.set("video", file);
+      upload.set("video", preparedSource.file);
 
       endpoint =
         `/api/admin/content/games/${encodeURIComponent(slug)}/preview-upload`;
       body = upload;
-      sourceDescription = formatSize(file.size);
     } else {
-      let parsedUrl: URL;
-
-      try {
-        parsedUrl = new URL(sourceUrl.trim());
-      } catch {
-        setStatus(
-          "Escribe una URL directa de video válida."
-        );
-        return;
-      }
-
-      if (
-        parsedUrl.protocol !== "https:" ||
-        parsedUrl.username ||
-        parsedUrl.password ||
-        (parsedUrl.port && parsedUrl.port !== "443") ||
-        parsedUrl.toString().length > 2_048
-      ) {
-        setStatus(
-          "La importación sólo admite una URL HTTPS pública, sin credenciales ni puertos alternativos."
-        );
-        return;
-      }
-
-      const importBody = new URLSearchParams({
+      endpoint =
+        `/api/admin/content/games/${encodeURIComponent(slug)}/preview-import`;
+      body = new URLSearchParams({
         expectedRevision: String(revision),
-        url: parsedUrl.toString(),
+        sourceToken: preparedSource.token,
         startSeconds: String(trim.startSeconds),
         endSeconds: String(trim.endSeconds),
       });
-
-      endpoint =
-        `/api/admin/content/games/${encodeURIComponent(slug)}/preview-import`;
-      body = importBody;
       headers = {
         "Content-Type":
           "application/x-www-form-urlencoded;charset=UTF-8",
       };
-      sourceDescription = "video remoto";
     }
 
     setBusy(true);
     setStatus(
-      `Preparando ${sourceDescription} · recorte ${trim.startSeconds}s → ${trim.endSeconds}s (${trim.durationSeconds}s) · WebM/VP9 sin audio…`
+      `Recortando ${trim.startSeconds}s → ${trim.endSeconds}s (${trim.durationSeconds}s) y generando WebM/VP9 optimizado…`
     );
 
     try {
@@ -206,7 +350,8 @@ export default function GamePreviewClipUploadForm({
         response.url,
         window.location.href
       );
-      const resultState = resultUrl.searchParams.get("estado");
+      const resultState =
+        resultUrl.searchParams.get("estado");
 
       if (resultState !== "preview-subido") {
         throw new Error(uploadError(resultState));
@@ -223,26 +368,21 @@ export default function GamePreviewClipUploadForm({
     }
   }
 
-  const currentTrim = parsePreviewTrimWindow(
-    startSeconds,
-    endSeconds
-  );
-
   return (
     <section className={styles.editorPanel}>
       <div className={styles.sectionHeading}>
         <div>
           <span>PREVIEW DE TARJETAS</span>
-          <h2>Video ultraliviano al mantener el mouse</h2>
+          <h2>Seleccionar y recortar visualmente</h2>
         </div>
         <p>
-          La portada sigue cargando normalmente. El WebM sólo se solicita si el visitante mantiene el puntero sobre una tarjeta durante 1 segundo.
+          Primero carga el video, míralo y elige el tramo con IN y OUT. Sólo al confirmar se recorta una vez, se convierte a WebM/VP9 y se descarta el original.
         </p>
       </div>
 
       {currentPreview && (
         <div className={`${styles.tableSummary} ${styles.fieldWide}`}>
-          <strong>Preview actual</strong>
+          <strong>Preview publicado en el borrador actual</strong>
           <span>{currentPreview}</span>
           <video
             src={currentPreview}
@@ -277,7 +417,9 @@ export default function GamePreviewClipUploadForm({
           <span>Origen del video</span>
           <select
             value={sourceMode}
+            disabled={busy || sourceBusy}
             onChange={(event) => {
+              resetPreparedSource();
               setSourceMode(
                 event.target.value as SourceMode
               );
@@ -295,91 +437,83 @@ export default function GamePreviewClipUploadForm({
 
         {sourceMode === "file" ? (
           <label className={styles.fieldWide}>
-            <span>
-              {currentPreview
-                ? "Reemplazar preview"
-                : "Archivo de video"}
-            </span>
+            <span>Archivo de video</span>
             <input
               ref={fileInput}
               type="file"
               name="video"
               accept="video/mp4,video/webm,video/quicktime,video/x-m4v,video/x-matroska,video/x-msvideo,.mp4,.webm,.mov,.m4v,.mkv,.avi"
-              required
+              disabled={busy || sourceBusy}
+              onChange={handleLocalFile}
             />
             <small>
-              MP4, WebM, MOV, M4V, MKV o AVI de hasta 64 MB.
+              MP4, WebM, MOV, M4V, MKV o AVI de hasta 64 MB. La vista previa se reproduce directamente desde tu equipo y no se sube hasta que confirmas el recorte.
             </small>
           </label>
         ) : (
-          <label className={styles.fieldWide}>
-            <span>URL directa del video</span>
-            <input
-              type="url"
-              inputMode="url"
-              value={sourceUrl}
-              onChange={(event) =>
-                setSourceUrl(event.target.value)
-              }
-              maxLength={2048}
-              placeholder="https://cdn.example/video.mp4"
-              required
-            />
-            <small>
-              Debe ser un enlace HTTPS público que entregue directamente el archivo de video. No se aceptan páginas de YouTube, TikTok u otros reproductores.
-            </small>
-          </label>
+          <>
+            <label className={styles.fieldWide}>
+              <span>URL directa del video</span>
+              <input
+                type="url"
+                inputMode="url"
+                value={sourceUrl}
+                disabled={busy || sourceBusy}
+                onChange={(event) => {
+                  if (
+                    preparedSource?.mode === "url"
+                  ) {
+                    resetPreparedSource();
+                  }
+                  setSourceUrl(event.target.value);
+                  setStatus(null);
+                }}
+                maxLength={2048}
+                placeholder="https://cdn.example/video.mp4"
+              />
+              <small>
+                Debe ser un enlace HTTPS público al archivo de video. DeUna lo descarga una vez a staging privado para que puedas reproducirlo y recortarlo sin depender del servidor externo durante la edición.
+              </small>
+            </label>
+
+            <div className={styles.formActions}>
+              <p>
+                La URL se valida contra redes privadas/locales y redirecciones antes de descargarla. El staging vence automáticamente si abandonas la edición.
+              </p>
+              <button
+                type="button"
+                disabled={
+                  busy ||
+                  sourceBusy ||
+                  !sourceUrl.trim()
+                }
+                onClick={prepareRemoteSource}
+              >
+                {sourceBusy
+                  ? "Cargando vista previa…"
+                  : "Cargar vista previa de la URL"}
+              </button>
+            </div>
+          </>
         )}
 
-        <label>
-          <span>Desde el segundo</span>
-          <input
-            type="number"
-            inputMode="decimal"
-            min="0"
-            max={MAX_PREVIEW_SOURCE_POSITION_SECONDS}
-            step="0.1"
-            value={startSeconds}
-            onChange={(event) =>
-              setStartSeconds(event.target.value)
-            }
-            required
-          />
-        </label>
-
-        <label>
-          <span>Hasta el segundo</span>
-          <input
-            type="number"
-            inputMode="decimal"
-            min="0"
-            max={MAX_PREVIEW_SOURCE_POSITION_SECONDS}
-            step="0.1"
-            value={endSeconds}
-            onChange={(event) =>
-              setEndSeconds(event.target.value)
-            }
-            required
-          />
-        </label>
-
-        <div
-          className={`${styles.tableSummary} ${styles.fieldWide}`}
-        >
-          <strong>Recorte de una sola vez</strong>
-          <span>
-            {currentTrim
-              ? `Se conservarán ${currentTrim.durationSeconds} s: desde ${currentTrim.startSeconds} s hasta ${currentTrim.endSeconds} s.`
-              : "El final debe ser posterior al inicio y el tramo no puede superar 30 segundos."}
-          </span>
-        </div>
+        {preparedSource && (
+          <div className={styles.fieldWide}>
+            <VideoTrimEditor
+              key={preparedSource.src}
+              src={preparedSource.src}
+              sourceLabel={preparedSource.label}
+              onTrimChange={setTrim}
+            />
+          </div>
+        )}
 
         <div
           className={`${styles.tableSummary} ${styles.fieldWide}`}
         >
           <strong>Conversión final</strong>
           <span>
-            DeUna descarga o recibe el original una sola vez, toma únicamente el tramo elegido y genera WebM/VP9 sin audio. El perfil principal usa hasta 400 px y 15 fps; si hace falta utiliza 360 px y 12 fps. El objetivo es aproximadamente 1,5 MB y el límite duro continúa en 3 MB.
+            El editor sólo decide el corte. Al confirmar, DeUna procesa exclusivamente ese tramo, elimina audio, subtítulos, datos y metadatos, y genera el WebM/VP9 ultraliviano usado por las tarjetas.
           </span>
         </div>
 
@@ -396,14 +530,22 @@ export default function GamePreviewClipUploadForm({
 
         <div className={styles.formActions}>
           <p>
-            El archivo fuente, sea local o remoto, queda sólo en almacenamiento temporal privado durante la conversión y se elimina al terminar. El sitio conserva únicamente el WebM optimizado asociado al borrador del juego.
+            El botón se habilita cuando existe una fuente reproducible y un tramo IN/OUT válido de hasta 30 segundos. El corte no se vuelve a calcular para los visitantes: se hace una única vez al guardar.
           </p>
-          <button type="submit" disabled={busy}>
+          <button
+            type="submit"
+            disabled={
+              busy ||
+              sourceBusy ||
+              !preparedSource ||
+              !trim
+            }
+          >
             {busy
               ? "Recortando y convirtiendo…"
               : currentPreview
-                ? "Reemplazar preview"
-                : "Preparar preview"}
+                ? "Reemplazar con este recorte"
+                : "Crear preview con este recorte"}
           </button>
         </div>
       </form>
