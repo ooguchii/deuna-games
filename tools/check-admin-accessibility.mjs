@@ -23,7 +23,7 @@ const [
   contextBar,
   catalogCss,
   gamesCatalog,
-  updatesCatalog,
+  updateWorkspace,
   dashboard,
   publicationOverview,
   rootLayout,
@@ -48,7 +48,7 @@ const [
   source("src/components/admin/AdminContextBar.tsx"),
   source("src/components/admin/AdminCatalog.module.css"),
   source("src/components/admin/AdminGamesCatalog.tsx"),
-  source("src/components/admin/AdminUpdatesCatalog.tsx"),
+  source("src/app/admin/(protected)/juegos/[slug]/actualizacion/page.tsx"),
   source("src/app/admin/(protected)/page.tsx"),
   source("src/lib/admin/publication-overview.ts"),
   source("src/app/layout.tsx"),
@@ -236,19 +236,24 @@ assert(
   "Las insignias de rol administrativas deben derivar de la marca; sólo peligro/error puede conservar rojo semántico."
 );
 
-for (const [name, content] of [
-  ["Juegos", gamesCatalog],
-  ["Actualizaciones", updatesCatalog],
-]) {
-  assert(
-    content.includes('role="search"') &&
-      content.includes('role="status"') &&
-      content.includes('aria-live="polite"') &&
-      content.includes("<caption") &&
-      content.includes('className={styles.srOnly}'),
-    `${name} debe conservar búsqueda semántica, resultados anunciables y caption accesible.`
-  );
-}
+assert(
+  gamesCatalog.includes('role="search"') &&
+    gamesCatalog.includes('role="status"') &&
+    gamesCatalog.includes('aria-live="polite"') &&
+    gamesCatalog.includes("<caption") &&
+    gamesCatalog.includes('className={styles.srOnly}'),
+  "Juegos debe conservar búsqueda semántica, resultados anunciables y caption accesible."
+);
+
+assert(
+  updateWorkspace.includes("<form") &&
+    updateWorkspace.includes("<fieldset") &&
+    updateWorkspace.includes("<label>") &&
+    updateWorkspace.includes("<table>") &&
+    updateWorkspace.includes('scope="row"') &&
+    updateWorkspace.includes('role="status"'),
+  "El flujo integrado de actualización debe conservar formulario etiquetado, bloqueo semántico, avisos de estado e historial tabular accesible."
+);
 
 assert(
   gamesCatalog.includes("Todas las clasificaciones") &&
