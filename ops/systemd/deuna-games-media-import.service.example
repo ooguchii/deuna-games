@@ -1,0 +1,58 @@
+[Unit]
+Description=DeUna Games media import worker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=deuna-games
+Group=deuna-games
+WorkingDirectory=/usr/local/lib/deuna-games
+EnvironmentFile=/etc/deuna-games/media-import.env
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node /usr/local/lib/deuna-games/media-import-worker.mjs
+Restart=on-failure
+RestartSec=5s
+TimeoutStopSec=20s
+UMask=0077
+
+# Sólo recibe solicitudes de la aplicación principal por loopback.
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+
+# La importación editorial no debe competir con la navegación pública.
+Nice=10
+CPUQuota=35%
+MemoryHigh=256M
+MemoryMax=384M
+TasksMax=48
+
+# Bloquear redes privadas/no enrutables. El código además valida DNS y
+# limita yt-dlp a una allowlist explícita de plataformas públicas.
+IPAddressDeny=10.0.0.0/8
+IPAddressDeny=100.64.0.0/10
+IPAddressDeny=169.254.0.0/16
+IPAddressDeny=172.16.0.0/12
+IPAddressDeny=192.168.0.0/16
+IPAddressDeny=fc00::/7
+IPAddressDeny=fe80::/10
+
+NoNewPrivileges=true
+PrivateDevices=true
+PrivateTmp=true
+ProtectClock=true
+ProtectControlGroups=true
+ProtectHome=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectProc=invisible
+ProtectSystem=strict
+ProcSubset=pid
+LockPersonality=true
+RestrictNamespaces=true
+RestrictSUIDSGID=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+[Install]
+WantedBy=multi-user.target
