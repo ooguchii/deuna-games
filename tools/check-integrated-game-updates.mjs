@@ -45,22 +45,24 @@ expect(
   "Actualizaciones no debe seguir como módulo principal del menú administrativo."
 );
 expect(
-  entries.contextBar.includes('id: "actualizacion"') &&
+  entries.contextBar.includes('key: "distribucion"') &&
+    entries.contextBar.includes('key: "actualizacion"') &&
+    entries.contextBar.includes('label: "Nueva versión"') &&
     entries.contextBar.includes("/actualizacion") &&
     entries.contextBar.includes("publicacion|actualizacion"),
-  "Actualizar debe formar parte real de la navegación contextual del juego."
+  "Nueva versión debe formar parte real de Distribución en la navegación contextual del juego."
 );
 expect(
   entries.catalog.includes("/actualizacion") &&
-    entries.catalog.includes("Actualizar"),
-  "El catálogo de juegos debe ofrecer la acción Actualizar por juego."
+    entries.catalog.includes("Nueva versión"),
+  "El catálogo de juegos debe ofrecer la acción Nueva versión por juego publicado."
 );
 expect(
-  entries.workspace.includes("Publicar actualización") &&
+  entries.workspace.includes("Publicar nueva versión") &&
     entries.workspace.includes("GameDownloadEditor") &&
     entries.workspace.includes("expectedRevision") &&
     entries.workspace.includes("getPublicGameBySlug"),
-  "El espacio de actualización debe integrar versión, descargas, control de revisión y mostrar la referencia realmente pública."
+  "El espacio de nueva versión debe integrar versión, descargas, control de revisión y mostrar la referencia realmente pública."
 );
 expect(
   entries.route.includes("publishIntegratedGameUpdate") &&
@@ -71,7 +73,7 @@ expect(
 expect(
   entries.gameCoreRoute.includes("getGamePublicationIdentity") &&
     entries.gameCoreRoute.includes("version-por-actualizacion"),
-  "La ficha normal de un juego publicado no debe permitir cambiar versión evitando el flujo de Actualizar."
+  "La ficha normal de un juego publicado no debe permitir cambiar versión evitando el flujo de Nueva versión."
 );
 expect(
   entries.gameDownloadRoute.includes("saveGameDownloadDraft") &&
