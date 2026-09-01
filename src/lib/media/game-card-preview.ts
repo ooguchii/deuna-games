@@ -1,38 +1,17 @@
-import type {
-  Game,
-  GameDirectPreview,
-  GameYouTubePreview,
-} from "@/types/game";
+import type { Game } from "@/types/game";
 
-export type ResolvedGameCardPreview =
-  | {
-      kind: "webm";
-      src: string;
-    }
-  | {
-      kind: "youtube";
-      preview: GameYouTubePreview;
-    }
-  | {
-      kind: "direct";
-      preview: GameDirectPreview;
-    };
+export type ResolvedGameCardPreview = {
+  kind: "webm";
+  src: string;
+};
 
 export function resolveGameCardPreview(
-  game: Pick<
-    Game,
-    | "previewMode"
-    | "previewClip"
-    | "youtubePreview"
-    | "directPreview"
-  >
+  game: Pick<Game, "previewClip">
 ): ResolvedGameCardPreview | null {
   const local = game.previewClip?.trim();
 
-  // Contrato público actual: la plataforma externa es sólo una fuente de
-  // importación editorial. Las tarjetas nunca reproducen YouTube, Facebook ni
-  // otra red en runtime; sólo consumen el WebM ya recortado y almacenado por
-  // DeUna Games. Los campos externos se conservan temporalmente únicamente
-  // para poder migrar configuraciones creadas por versiones anteriores.
+  // La plataforma externa es sólo una fuente de importación editorial.
+  // La web pública consume exclusivamente el WebM recortado y almacenado por
+  // DeUna Games; nunca depende de un iframe o reproductor de terceros.
   return local ? { kind: "webm", src: local } : null;
 }
