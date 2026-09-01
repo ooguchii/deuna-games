@@ -30,6 +30,12 @@ const fields = [
   "colorMode",
   "customColor",
   "tintOpacity",
+  "imageOpacity",
+  "brightness",
+  "saturation",
+  "contrast",
+  "blur",
+  "shadeOpacity",
 ] as const;
 
 const assetIdPattern = /^[a-z0-9][a-z0-9._-]{0,159}$/;
@@ -54,6 +60,12 @@ const backgroundFormSchema = z.object({
   colorMode: z.enum(["brand", "custom"]),
   customColor: z.string().regex(/^#[0-9a-f]{6}$/i),
   tintOpacity: z.coerce.number().int().min(0).max(100),
+  imageOpacity: z.coerce.number().int().min(20).max(100),
+  brightness: z.coerce.number().int().min(40).max(220),
+  saturation: z.coerce.number().int().min(0).max(200),
+  contrast: z.coerce.number().int().min(70).max(160),
+  blur: z.coerce.number().int().min(0).max(30),
+  shadeOpacity: z.coerce.number().int().min(0).max(100),
 });
 
 function redirectPath(state: string) {
@@ -137,6 +149,12 @@ export async function POST(request: NextRequest) {
             colorMode: parsed.data.colorMode,
             customColor: parsed.data.customColor,
             tintOpacity: parsed.data.tintOpacity,
+            imageOpacity: parsed.data.imageOpacity,
+            brightness: parsed.data.brightness,
+            saturation: parsed.data.saturation,
+            contrast: parsed.data.contrast,
+            blur: parsed.data.blur,
+            shadeOpacity: parsed.data.shadeOpacity,
           },
         },
       }
