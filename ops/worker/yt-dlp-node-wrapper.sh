@@ -21,7 +21,7 @@ if [[ -n "${COOKIES_FILE}" ]]; then
     echo "El archivo de cookies configurado no es legible: ${COOKIES_FILE}." >&2
     exit 78
   fi
-  COOKIE_ARGS=(--cookies "${COOKIES_FILE}")
+  COOKIE_ARGS=("--cookies" "${COOKIES_FILE}")
 fi
 
 # Normalizamos las opciones que puede declarar el runtime web. El wrapper es la
@@ -108,8 +108,8 @@ if (( youtube_url )); then
 
   # EJS + Node siguen siendo necesarios para los desafíos modernos de YouTube.
   YOUTUBE_ARGS+=(
-    --js-runtimes "node:${NODE_BIN}"
-    --remote-components "ejs:github"
+    "--js-runtimes" "node:${NODE_BIN}"
+    "--remote-components" "ejs:github"
   )
 
   # Migración automática de la configuración que DeUna recomendaba antes.
@@ -120,7 +120,7 @@ if (( youtube_url )); then
 
   if [[ -n "${YOUTUBE_CLIENTS}" ]]; then
     YOUTUBE_ARGS+=(
-      --extractor-args "youtube:player_client=${YOUTUBE_CLIENTS}"
+      "--extractor-args" "youtube:player_client=${YOUTUBE_CLIENTS}"
     )
   fi
 fi
