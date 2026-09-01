@@ -34,6 +34,10 @@ const MAX_YTDLP_ERROR_CHARS = 8_000;
 const PLATFORM_DOWNLOAD_RATE = "8M";
 const YTDLP_JS_RUNTIME =
   process.env.DEUNA_YTDLP_JS_RUNTIME?.trim() || "node";
+const YTDLP_REMOTE_COMPONENT =
+  process.env.DEUNA_YTDLP_REMOTE_COMPONENT?.trim() || "ejs:github";
+const YTDLP_COOKIES_FILE =
+  process.env.DEUNA_YTDLP_COOKIES_FILE?.trim() || "";
 
 let platformImportActive = false;
 
@@ -59,13 +63,27 @@ function classifyYtDlpFailure(stderr: string) {
   const normalized = stderr.toLowerCase();
 
   if (
+    normalized.includes("sign in to confirm") &&
+      normalized.includes("not a bot") ||
+    normalized.includes("captcha")
+  ) {
+    return new Error(
+      YTDLP_COOKIES_FILE
+        ? "YouTube rechazó incluso la sesión configurada por su verificación anti-bot. Actualiza las cookies de YouTube y vuelve a intentarlo."
+        : "YouTube activó una verificación anti-bot para esta conexión. DeUna ya usa el solucionador JavaScript recomendado; si YouTube insiste, configura DEUNA_YTDLP_COOKIES_FILE con una sesión válida de YouTube."
+    );
+  }
+
+  if (
     normalized.includes("no supported javascript runtime") ||
     normalized.includes("javascript runtime") &&
       normalized.includes("unavailable") ||
-    normalized.includes("challenge solving failed")
+    normalized.includes("challenge solving failed") ||
+    normalized.includes("external javascript") &&
+      normalized.includes("component")
   ) {
     return new Error(
-      "YouTube requiere un runtime JavaScript compatible. DeUna usa Node automáticamente; confirma Node 22 o superior en el mismo entorno donde ejecutas npm run dev."
+      "YouTube no pudo resolver su desafío JavaScript. DeUna habilita Node y ejs:github automáticamente; confirma Node 22 o superior y acceso de red a los componentes oficiales de yt-dlp."
     );
   }
 
@@ -79,7 +97,7 @@ function classifyYtDlpFailure(stderr: string) {
     normalized.includes("unavailable")
   ) {
     return new Error(
-      "La plataforma no permite importar este video sin iniciar sesión, o el contenido no es público."
+      "La plataforma exige una sesión o el contenido no es público. Los videos públicos normales se importan sin login; para contenido que YouTube bloquee por sesión puede configurarse DEUNA_YTDLP_COOKIES_FILE."
     );
   }
 
@@ -119,6 +137,11 @@ function runYtDlp(
       "--no-config",
       "--js-runtimes",
       YTDLP_JS_RUNTIME,
+      "--remote-components",
+      YTDLP_REMOTE_COMPONENT,
+      ...(YTDLP_COOKIES_FILE
+        ? ["--cookies", YTDLP_COOKIES_FILE]
+        : []),
       "--no-playlist",
       "--max-downloads",
       "1",
