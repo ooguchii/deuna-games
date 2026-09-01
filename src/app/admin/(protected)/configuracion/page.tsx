@@ -27,7 +27,6 @@ const sections = [
 
 const appearancePanels: AppearancePanel[] = [
   "palette",
-  "hero",
   "backgrounds",
 ];
 
@@ -71,7 +70,7 @@ function pageHeading(section: ConfigurationSection) {
       return {
         title: "Apariencia del sitio",
         description:
-          "Un único espacio para administrar marca, Hero y fondos. Cada herramienta conserva su propio guardado en borrador y sólo llega al sitio al publicar.",
+          "Administra la marca y los fondos de las páginas desde un único espacio. Todo se guarda primero como borrador y sólo llega al sitio al publicar.",
       };
     case "publicacion":
       return {
@@ -253,8 +252,6 @@ export default async function AdminConfigurationPage({
           language={config.language}
           themeColor={config.themeColor}
           brandColor={config.brandColor}
-          heroImageEffect={item.payload.heroImageEffect ?? false}
-          heroImageTuning={item.payload.heroImageTuning}
           customAssets={config.backgroundLibrary ?? []}
           pageBackgrounds={config.pageBackgrounds ?? {}}
         />
