@@ -19,9 +19,11 @@ import {
 } from "@/lib/admin/media-request-security";
 import {
   isAcceptedPreviewSource,
-  parsePreviewTrimWindow,
   storeEditorialPreviewVideo,
 } from "@/lib/media/editorial-video";
+import {
+  parsePreviewTrimWindow,
+} from "@/lib/media/preview-video-policy";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
