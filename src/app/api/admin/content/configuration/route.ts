@@ -34,8 +34,11 @@ export async function POST(request: NextRequest) {
   const section = request.nextUrl.searchParams.get("seccion") === "apariencia"
     ? "apariencia"
     : "identidad";
+  const panel = section === "apariencia"
+    ? "&panel=palette"
+    : "";
   const redirectPath = (state: string) =>
-    `/admin/configuracion?seccion=${section}&estado=${state}`;
+    `/admin/configuracion?seccion=${section}${panel}&estado=${state}`;
   const authorized =
     await authorizeAdminFormRequest(request);
 
