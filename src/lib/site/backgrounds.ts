@@ -20,6 +20,25 @@ export type SiteBackgroundSetting = {
   colorMode: "brand" | "custom";
   customColor: string;
   tintOpacity: number;
+  imageOpacity?: number;
+  brightness?: number;
+  saturation?: number;
+  contrast?: number;
+  blur?: number;
+  shadeOpacity?: number;
+};
+
+export type ResolvedSiteBackgroundSetting = {
+  assetId: string | null;
+  colorMode: "brand" | "custom";
+  customColor: string;
+  tintOpacity: number;
+  imageOpacity: number;
+  brightness: number;
+  saturation: number;
+  contrast: number;
+  blur: number;
+  shadeOpacity: number;
 };
 
 export type SiteBackgroundMap = Partial<
@@ -70,14 +89,50 @@ export const bundledSiteBackgrounds: ReadonlyArray<SiteBackgroundAsset> = [
   },
 ];
 
+function clamp(value: number | undefined, minimum: number, maximum: number, fallback: number) {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return fallback;
+  }
+
+  return Math.min(maximum, Math.max(minimum, Math.round(value)));
+}
+
 export function createDefaultBackgroundSetting(
   brandColor: string
-): SiteBackgroundSetting {
+): ResolvedSiteBackgroundSetting {
   return {
     assetId: null,
     colorMode: "brand",
     customColor: brandColor,
     tintOpacity: 35,
+    imageOpacity: 72,
+    brightness: 100,
+    saturation: 90,
+    contrast: 104,
+    blur: 0,
+    shadeOpacity: 100,
+  };
+}
+
+export function resolveBackgroundSetting(
+  setting: SiteBackgroundSetting | undefined,
+  brandColor: string
+): ResolvedSiteBackgroundSetting {
+  const fallback = createDefaultBackgroundSetting(brandColor);
+
+  if (!setting) return fallback;
+
+  return {
+    assetId: setting.assetId,
+    colorMode: setting.colorMode,
+    customColor: setting.customColor,
+    tintOpacity: clamp(setting.tintOpacity, 0, 100, fallback.tintOpacity),
+    imageOpacity: clamp(setting.imageOpacity, 20, 100, fallback.imageOpacity),
+    brightness: clamp(setting.brightness, 40, 220, fallback.brightness),
+    saturation: clamp(setting.saturation, 0, 200, fallback.saturation),
+    contrast: clamp(setting.contrast, 70, 160, fallback.contrast),
+    blur: clamp(setting.blur, 0, 30, fallback.blur),
+    shadeOpacity: clamp(setting.shadeOpacity, 0, 100, fallback.shadeOpacity),
   };
 }
 

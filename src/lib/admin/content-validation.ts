@@ -123,6 +123,12 @@ const pageBackgroundSettingSchema = z
     colorMode: z.enum(["brand", "custom"]),
     customColor: z.string().regex(/^#[0-9a-f]{6}$/i),
     tintOpacity: z.number().int().min(0).max(100),
+    imageOpacity: z.number().int().min(20).max(100).optional(),
+    brightness: z.number().int().min(40).max(220).optional(),
+    saturation: z.number().int().min(0).max(200).optional(),
+    contrast: z.number().int().min(70).max(160).optional(),
+    blur: z.number().int().min(0).max(30).optional(),
+    shadeOpacity: z.number().int().min(0).max(100).optional(),
   })
   .strict();
 
@@ -133,6 +139,17 @@ const pageBackgroundsSchema = z
     updates: pageBackgroundSettingSchema.optional(),
     finder: pageBackgroundSettingSchema.optional(),
     about: pageBackgroundSettingSchema.optional(),
+  })
+  .strict();
+
+const heroImageTuningSchema = z
+  .object({
+    brightness: z.number().int().min(50).max(220),
+    saturation: z.number().int().min(0).max(200),
+    contrast: z.number().int().min(70).max(160),
+    ambientBlur: z.number().int().min(0).max(90),
+    ambientOpacity: z.number().int().min(0).max(100),
+    overlayStrength: z.number().int().min(0).max(100),
   })
   .strict();
 
@@ -579,6 +596,7 @@ export const editorialSiteConfigSchema = z
       .optional(),
     pageBackgrounds: pageBackgroundsSchema.optional(),
     heroImageEffect: z.boolean().optional(),
+    heroImageTuning: heroImageTuningSchema.optional(),
   })
   .strict();
 

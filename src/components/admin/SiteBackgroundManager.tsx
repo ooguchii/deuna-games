@@ -2,7 +2,10 @@
 
 import Image from "next/image";
 import {
+  type CSSProperties,
   type FormEvent,
+  useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -10,11 +13,12 @@ import {
 import {
   createDefaultBackgroundSetting,
   getSiteBackgroundAssets,
+  resolveBackgroundSetting,
   siteBackgroundPageOptions,
+  type ResolvedSiteBackgroundSetting,
   type SiteBackgroundAsset,
   type SiteBackgroundMap,
   type SiteBackgroundPage,
-  type SiteBackgroundSetting,
 } from "@/lib/site/backgrounds";
 
 import adminStyles from "../../app/admin/admin.module.css";
@@ -25,6 +29,32 @@ type SiteBackgroundManagerProps = {
   brandColor: string;
   customAssets?: SiteBackgroundAsset[];
   pageBackgrounds?: SiteBackgroundMap;
+};
+
+type SliderProps = {
+  label: string;
+  name: string;
+  value: number;
+  min: number;
+  max: number;
+  unit?: string;
+  hint?: string;
+  onChange: (value: number) => void;
+};
+
+type BackgroundPreset = {
+  label: string;
+  description: string;
+  values: Pick<
+    ResolvedSiteBackgroundSetting,
+    | "imageOpacity"
+    | "brightness"
+    | "saturation"
+    | "contrast"
+    | "blur"
+    | "shadeOpacity"
+    | "tintOpacity"
+  >;
 };
 
 const MAX_OUTPUT_BYTES = 6 * 1024 * 1024;
@@ -38,6 +68,97 @@ const acceptedTypes = new Set([
   "image/png",
   "image/webp",
 ]);
+
+const backgroundPresets: BackgroundPreset[] = [
+  {
+    label: "Nítido",
+    description: "Definido y equilibrado",
+    values: {
+      imageOpacity: 78,
+      brightness: 105,
+      saturation: 100,
+      contrast: 106,
+      blur: 0,
+      shadeOpacity: 88,
+      tintOpacity: 24,
+    },
+  },
+  {
+    label: "Luminoso",
+    description: "Más presencia y detalle",
+    values: {
+      imageOpacity: 92,
+      brightness: 145,
+      saturation: 108,
+      contrast: 100,
+      blur: 0,
+      shadeOpacity: 52,
+      tintOpacity: 18,
+    },
+  },
+  {
+    label: "Atmosférico",
+    description: "Profundidad suave de fondo",
+    values: {
+      imageOpacity: 72,
+      brightness: 92,
+      saturation: 118,
+      contrast: 104,
+      blur: 7,
+      shadeOpacity: 92,
+      tintOpacity: 38,
+    },
+  },
+  {
+    label: "Suave",
+    description: "Fondo discreto y difuso",
+    values: {
+      imageOpacity: 64,
+      brightness: 92,
+      saturation: 86,
+      contrast: 98,
+      blur: 15,
+      shadeOpacity: 100,
+      tintOpacity: 34,
+    },
+  },
+];
+
+function Slider({
+  label,
+  name,
+  value,
+  min,
+  max,
+  unit = "%",
+  hint,
+  onChange,
+}: SliderProps) {
+  const progress = ((value - min) / (max - min)) * 100;
+
+  return (
+    <label className={styles.sliderControl}>
+      <span className={styles.sliderHeading}>
+        <strong>{label}</strong>
+        <output htmlFor={name}>
+          {value}{unit}
+        </output>
+      </span>
+      <input
+        id={name}
+        type="range"
+        name={name}
+        min={min}
+        max={max}
+        step="1"
+        value={value}
+        style={{ "--range-progress": `${progress}%` } as CSSProperties}
+        onChange={(event) => onChange(Number(event.target.value))}
+      />
+      {hint && <small>{hint}</small>}
+    </label>
+  );
+}
 
 function encodeWebp(
   canvas: HTMLCanvasElement,
@@ -155,25 +276,39 @@ export default function SiteBackgroundManager({
 }: SiteBackgroundManagerProps) {
   const [page, setPage] = useState<SiteBackgroundPage>("home");
   const [drafts, setDrafts] = useState<
-    Record<SiteBackgroundPage, SiteBackgroundSetting>
+    Record<SiteBackgroundPage, ResolvedSiteBackgroundSetting>
   >(() =>
     Object.fromEntries(
       siteBackgroundPageOptions.map(({ key }) => [
         key,
-        pageBackgrounds[key] ??
-          createDefaultBackgroundSetting(brandColor),
+        resolveBackgroundSetting(pageBackgrounds[key], brandColor),
       ])
-    ) as Record<SiteBackgroundPage, SiteBackgroundSetting>
+    ) as Record<SiteBackgroundPage, ResolvedSiteBackgroundSetting>
   );
   const [uploadName, setUploadName] = useState("");
   const [uploadBusy, setUploadBusy] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<string | null>(null);
+  const [uploadPreview, setUploadPreview] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
-  const assets = getSiteBackgroundAssets(customAssets);
+  const assets = useMemo(
+    () => getSiteBackgroundAssets(customAssets),
+    [customAssets]
+  );
   const current = drafts[page];
+  const currentAsset = assets.find((asset) => asset.id === current.assetId);
+  const tintColor =
+    current.colorMode === "custom"
+      ? current.customColor
+      : brandColor;
+
+  useEffect(() => {
+    return () => {
+      if (uploadPreview) URL.revokeObjectURL(uploadPreview);
+    };
+  }, [uploadPreview]);
 
   function updateCurrent(
-    patch: Partial<SiteBackgroundSetting>
+    patch: Partial<ResolvedSiteBackgroundSetting>
   ) {
     setDrafts((previous) => ({
       ...previous,
@@ -182,6 +317,29 @@ export default function SiteBackgroundManager({
         ...patch,
       },
     }));
+  }
+
+  function applyPreset(preset: BackgroundPreset) {
+    updateCurrent(preset.values);
+  }
+
+  function resetCurrent() {
+    const defaults = createDefaultBackgroundSetting(brandColor);
+    updateCurrent({
+      ...defaults,
+      assetId: current.assetId,
+      colorMode: current.colorMode,
+      customColor: current.customColor,
+    });
+  }
+
+  function handleFileChange(file: File | undefined) {
+    if (uploadPreview) {
+      URL.revokeObjectURL(uploadPreview);
+    }
+
+    setUploadPreview(file ? URL.createObjectURL(file) : null);
+    setUploadStatus(null);
   }
 
   async function handleUpload(
@@ -254,152 +412,327 @@ export default function SiteBackgroundManager({
     }
   }
 
+  const previewScale = 1.015 + current.blur / 350;
+
   return (
     <section className={`${adminStyles.editorPanel} ${styles.panel}`}>
       <div className={styles.heading}>
         <span>FONDOS DE PÁGINA</span>
-        <h2>Imagen y color por sección</h2>
+        <h2>Biblioteca y editor visual</h2>
         <p>
-          Cada página puede usar un fondo distinto. Los cambios quedan en borrador y sólo llegan al sitio al publicar la configuración.
+          Selecciona una imagen, ajusta su aspecto sin modificar el archivo original y guarda una configuración distinta para cada página.
         </p>
+      </div>
+
+      <div className={styles.pageTabs} role="tablist" aria-label="Página a personalizar">
+        {siteBackgroundPageOptions.map((option) => (
+          <button
+            key={option.key}
+            type="button"
+            role="tab"
+            aria-selected={page === option.key}
+            className={page === option.key ? styles.pageTabActive : ""}
+            onClick={() => setPage(option.key)}
+          >
+            {option.label}
+          </button>
+        ))}
       </div>
 
       <div className={styles.managerGrid}>
         <form
-          className={adminStyles.editorForm}
+          className={styles.editorForm}
           method="post"
           action="/api/admin/content/configuration/background"
         >
-          <input
-            type="hidden"
-            name="expectedRevision"
-            value={revision}
-          />
+          <input type="hidden" name="expectedRevision" value={revision} />
+          <input type="hidden" name="page" value={page} />
 
-          <label className={adminStyles.fieldWide}>
-            <span>Página</span>
-            <select
-              name="page"
-              value={page}
-              onChange={(event) =>
-                setPage(event.target.value as SiteBackgroundPage)
-              }
-            >
-              {siteBackgroundPageOptions.map((option) => (
-                <option key={option.key} value={option.key}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
+          <section className={styles.editorBlock}>
+            <div className={styles.blockHeading}>
+              <div>
+                <span>01</span>
+                <div>
+                  <strong>Elige la imagen</strong>
+                  <p>Las imágenes propias aparecen junto con las opciones incluidas.</p>
+                </div>
+              </div>
+              <span className={styles.assetCount}>{assets.length} fondos</span>
+            </div>
 
-          <fieldset className={`${styles.assetFieldset} ${adminStyles.fieldWide}`}>
-            <legend>Imagen de fondo</legend>
-            <div className={styles.assetGrid}>
-              <label
-                className={`${styles.assetCard} ${current.assetId === null ? styles.assetCardSelected : ""}`}
-              >
-                <input
-                  type="radio"
-                  name="assetId"
-                  value=""
-                  checked={current.assetId === null}
-                  onChange={() => updateCurrent({ assetId: null })}
-                />
-                <span className={styles.noBackground}>Sin fondo</span>
-                <strong>Color base del sitio</strong>
-              </label>
-
-              {assets.map((asset) => (
+            <fieldset className={styles.assetFieldset}>
+              <legend className={styles.srOnly}>Imagen de fondo</legend>
+              <div className={styles.assetGrid}>
                 <label
-                  key={asset.id}
-                  className={`${styles.assetCard} ${current.assetId === asset.id ? styles.assetCardSelected : ""}`}
+                  className={`${styles.assetCard} ${current.assetId === null ? styles.assetCardSelected : ""}`}
                 >
                   <input
                     type="radio"
                     name="assetId"
-                    value={asset.id}
-                    checked={current.assetId === asset.id}
-                    onChange={() =>
-                      updateCurrent({ assetId: asset.id })
-                    }
+                    value=""
+                    checked={current.assetId === null}
+                    onChange={() => updateCurrent({ assetId: null })}
                   />
-                  <Image
-                    src={asset.image}
-                    alt=""
-                    width={320}
-                    height={180}
-                    sizes="(max-width: 720px) 45vw, 220px"
-                    unoptimized
-                  />
-                  <strong>{asset.name}</strong>
+                  <span className={styles.noBackground}>Sin imagen</span>
+                  <strong>Color base del sitio</strong>
+                  <span className={styles.assetMeta}>Fondo plano</span>
                 </label>
-              ))}
+
+                {assets.map((asset) => (
+                  <label
+                    key={asset.id}
+                    className={`${styles.assetCard} ${current.assetId === asset.id ? styles.assetCardSelected : ""}`}
+                  >
+                    <input
+                      type="radio"
+                      name="assetId"
+                      value={asset.id}
+                      checked={current.assetId === asset.id}
+                      onChange={() => updateCurrent({ assetId: asset.id })}
+                    />
+                    <Image
+                      src={asset.image}
+                      alt=""
+                      width={320}
+                      height={180}
+                      sizes="(max-width: 720px) 45vw, 220px"
+                      unoptimized
+                    />
+                    <strong>{asset.name}</strong>
+                    <span className={styles.assetMeta}>
+                      {asset.id.startsWith("custom-") ? "Subido" : "Incluido"}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          </section>
+
+          <section className={styles.editorBlock}>
+            <div className={styles.blockHeading}>
+              <div>
+                <span>02</span>
+                <div>
+                  <strong>Ajusta el aspecto</strong>
+                  <p>Los cambios se ven aquí al instante y no degradan la imagen.</p>
+                </div>
+              </div>
+              <button type="button" className={styles.resetButton} onClick={resetCurrent}>
+                Restablecer
+              </button>
             </div>
-          </fieldset>
 
-          <label>
-            <span>Color aplicado sobre la imagen</span>
-            <select
-              name="colorMode"
-              value={current.colorMode}
-              onChange={(event) =>
-                updateCurrent({
-                  colorMode: event.target.value as "brand" | "custom",
-                })
-              }
-            >
-              <option value="brand">Color de marca ({brandColor})</option>
-              <option value="custom">Color personalizado</option>
-            </select>
-          </label>
+            <div className={styles.previewShell}>
+              <div className={styles.previewViewport}>
+                {currentAsset ? (
+                  <div
+                    className={styles.previewImage}
+                    style={{
+                      backgroundImage: `url(${JSON.stringify(currentAsset.image)})`,
+                      opacity: current.imageOpacity / 100,
+                      filter: `brightness(${current.brightness}%) saturate(${current.saturation}%) contrast(${current.contrast}%) blur(${current.blur}px)`,
+                      transform: `scale(${previewScale.toFixed(3)})`,
+                    }}
+                  />
+                ) : (
+                  <div className={styles.previewEmpty} />
+                )}
+                <div
+                  className={styles.previewTint}
+                  style={{
+                    backgroundColor: tintColor,
+                    opacity: current.tintOpacity / 100,
+                  }}
+                />
+                <div
+                  className={styles.previewShade}
+                  style={{ opacity: current.shadeOpacity / 100 }}
+                />
+                <div className={styles.previewContent}>
+                  <div className={styles.previewHeader}>
+                    <span />
+                    <span />
+                    <span />
+                  </div>
+                  <div className={styles.previewHero}>
+                    <span>Vista previa</span>
+                    <strong>{siteBackgroundPageOptions.find((option) => option.key === page)?.label}</strong>
+                    <i />
+                  </div>
+                  <div className={styles.previewCards}>
+                    <span />
+                    <span />
+                    <span />
+                  </div>
+                </div>
+              </div>
+              <div className={styles.previewCaption}>
+                <strong>{currentAsset?.name ?? "Sin imagen"}</strong>
+                <span>Vista aproximada del fondo detrás del contenido</span>
+              </div>
+            </div>
 
-          <label>
-            <span>Color personalizado</span>
-            <input
-              type="color"
-              name="customColor"
-              value={current.customColor}
-              onChange={(event) =>
-                updateCurrent({ customColor: event.target.value })
-              }
-              aria-label="Color personalizado del fondo"
-            />
-          </label>
+            <div className={styles.presetSection}>
+              <div className={styles.subheading}>
+                <strong>Estilos rápidos</strong>
+                <span>Punto de partida; después puedes afinar cada valor.</span>
+              </div>
+              <div className={styles.presetGrid}>
+                {backgroundPresets.map((preset) => (
+                  <button
+                    key={preset.label}
+                    type="button"
+                    className={styles.presetButton}
+                    onClick={() => applyPreset(preset)}
+                  >
+                    <strong>{preset.label}</strong>
+                    <span>{preset.description}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
 
-          <label className={adminStyles.fieldWide}>
-            <span>Intensidad del color — {current.tintOpacity}%</span>
-            <input
-              type="range"
-              name="tintOpacity"
-              min="0"
-              max="100"
-              step="1"
-              value={current.tintOpacity}
-              onChange={(event) =>
-                updateCurrent({
-                  tintOpacity: Number(event.target.value),
-                })
-              }
-            />
-            <small>
-              La imagen mantiene un oscurecimiento fijo para que el contenido siga siendo legible.
-            </small>
-          </label>
+            <div className={styles.controlGroups}>
+              <div className={styles.controlGroup}>
+                <div className={styles.subheading}>
+                  <strong>Imagen</strong>
+                  <span>Luz, fuerza y definición de la fotografía.</span>
+                </div>
+                <div className={styles.sliderGrid}>
+                  <Slider
+                    label="Presencia"
+                    name="imageOpacity"
+                    value={current.imageOpacity}
+                    min={20}
+                    max={100}
+                    hint="Cuánto se ve la imagen antes de aplicar color y sombras."
+                    onChange={(imageOpacity) => updateCurrent({ imageOpacity })}
+                  />
+                  <Slider
+                    label="Brillo"
+                    name="brightness"
+                    value={current.brightness}
+                    min={40}
+                    max={220}
+                    hint="100% conserva el brillo original; puedes llevarlo hasta 220%."
+                    onChange={(brightness) => updateCurrent({ brightness })}
+                  />
+                  <Slider
+                    label="Saturación"
+                    name="saturation"
+                    value={current.saturation}
+                    min={0}
+                    max={200}
+                    onChange={(saturation) => updateCurrent({ saturation })}
+                  />
+                  <Slider
+                    label="Contraste"
+                    name="contrast"
+                    value={current.contrast}
+                    min={70}
+                    max={160}
+                    onChange={(contrast) => updateCurrent({ contrast })}
+                  />
+                  <Slider
+                    label="Desenfoque"
+                    name="blur"
+                    value={current.blur}
+                    min={0}
+                    max={30}
+                    unit=" px"
+                    hint="0 px mantiene la imagen completamente nítida."
+                    onChange={(blur) => updateCurrent({ blur })}
+                  />
+                </div>
+              </div>
 
-          <div className={adminStyles.formActions}>
-            <p>
-              Guarda sólo el fondo de la página elegida. No modifica las demás secciones.
-            </p>
+              <div className={styles.controlGroup}>
+                <div className={styles.subheading}>
+                  <strong>Color y legibilidad</strong>
+                  <span>Tinte de marca y separación respecto del contenido.</span>
+                </div>
+
+                <div className={styles.colorGrid}>
+                  <label>
+                    <span>Color aplicado</span>
+                    <select
+                      name="colorMode"
+                      value={current.colorMode}
+                      onChange={(event) =>
+                        updateCurrent({
+                          colorMode: event.target.value as "brand" | "custom",
+                        })
+                      }
+                    >
+                      <option value="brand">Color de marca ({brandColor})</option>
+                      <option value="custom">Color personalizado</option>
+                    </select>
+                  </label>
+
+                  <label className={styles.colorPicker} data-disabled={current.colorMode !== "custom"}>
+                    <span>Color personalizado</span>
+                    <div>
+                      <input
+                        type="color"
+                        name="customColor"
+                        value={current.customColor}
+                        disabled={current.colorMode !== "custom"}
+                        onChange={(event) =>
+                          updateCurrent({ customColor: event.target.value })
+                        }
+                        aria-label="Color personalizado del fondo"
+                      />
+                      <code>{current.customColor.toUpperCase()}</code>
+                    </div>
+                  </label>
+                </div>
+
+                {current.colorMode !== "custom" && (
+                  <input type="hidden" name="customColor" value={current.customColor} />
+                )}
+
+                <div className={styles.sliderGrid}>
+                  <Slider
+                    label="Intensidad del color"
+                    name="tintOpacity"
+                    value={current.tintOpacity}
+                    min={0}
+                    max={100}
+                    onChange={(tintOpacity) => updateCurrent({ tintOpacity })}
+                  />
+                  <Slider
+                    label="Oscurecimiento"
+                    name="shadeOpacity"
+                    value={current.shadeOpacity}
+                    min={0}
+                    max={100}
+                    hint="Reduce este valor si quieres que el fondo gane mucha más luz."
+                    onChange={(shadeOpacity) => updateCurrent({ shadeOpacity })}
+                  />
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <div className={styles.saveBar}>
+            <div>
+              <strong>Configuración de {siteBackgroundPageOptions.find((option) => option.key === page)?.label}</strong>
+              <span>Guardar no publica ni modifica las demás páginas.</span>
+            </div>
             <button type="submit">Guardar fondo</button>
           </div>
         </form>
 
-        <div className={styles.uploadPanel}>
-          <h3>Agregar imagen</h3>
-          <p>
-            Puedes sumar fondos propios. Se convierten a WebP seguro y quedan disponibles para cualquiera de las páginas.
-          </p>
+        <aside className={styles.uploadPanel}>
+          <div className={styles.uploadHeading}>
+            <span>03</span>
+            <div>
+              <h3>Agregar imagen</h3>
+              <p>
+                Sube un fondo propio a la biblioteca. El archivo se optimiza a WebP y los ajustes visuales se aplican después, sin alterar el original guardado.
+              </p>
+            </div>
+          </div>
 
           <form
             className={adminStyles.editorForm}
@@ -408,11 +741,7 @@ export default function SiteBackgroundManager({
             action="/api/admin/content/configuration/background-upload"
             onSubmit={handleUpload}
           >
-            <input
-              type="hidden"
-              name="expectedRevision"
-              value={revision}
-            />
+            <input type="hidden" name="expectedRevision" value={revision} />
 
             <label className={adminStyles.fieldWide}>
               <span>Nombre del fondo</span>
@@ -426,17 +755,33 @@ export default function SiteBackgroundManager({
               />
             </label>
 
-            <label className={adminStyles.fieldWide}>
+            <label className={`${adminStyles.fieldWide} ${styles.fileField}`}>
               <span>Archivo</span>
               <input
                 ref={fileInput}
                 type="file"
                 name="image"
                 accept="image/avif,image/jpeg,image/png,image/webp,.avif,.jpg,.jpeg,.png,.webp"
+                onChange={(event) => handleFileChange(event.target.files?.[0])}
                 required
               />
-              <small>PNG, JPEG, AVIF o WebP. Máximo 24 MB antes de convertir.</small>
+              <small>PNG, JPEG, AVIF o WebP · máximo 24 MB · salida optimizada hasta 6 MB.</small>
             </label>
+
+            <div className={styles.uploadPreview} data-empty={!uploadPreview}>
+              {uploadPreview ? (
+                <div
+                  className={styles.uploadPreviewImage}
+                  style={{ backgroundImage: `url(${JSON.stringify(uploadPreview)})` }}
+                  aria-label="Vista previa de la imagen elegida"
+                />
+              ) : (
+                <div className={styles.uploadPlaceholder}>
+                  <span>Vista previa</span>
+                  <strong>Selecciona una imagen</strong>
+                </div>
+              )}
+            </div>
 
             {uploadStatus && (
               <div
@@ -449,16 +794,16 @@ export default function SiteBackgroundManager({
               </div>
             )}
 
-            <div className={adminStyles.formActions}>
+            <div className={styles.uploadActions}>
               <p>
-                La carga se guarda en el mismo borrador de Configuración y conserva el control de revisiones del panel.
+                Después de agregarla aparecerá en la biblioteca para que puedas ajustar brillo, saturación, contraste, blur, tinte y oscuridad.
               </p>
               <button type="submit" disabled={uploadBusy}>
-                {uploadBusy ? "Preparando…" : "Agregar fondo"}
+                {uploadBusy ? "Preparando…" : "Agregar a biblioteca"}
               </button>
             </div>
           </form>
-        </div>
+        </aside>
       </div>
     </section>
   );
