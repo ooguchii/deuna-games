@@ -92,6 +92,31 @@ const notices = {
     message:
       "Imagen normalizada a WebP seguro, almacenada y guardada en el borrador. Aún no fue publicada.",
   },
+  "preview-subido": {
+    kind: "success",
+    message:
+      "Preview convertido a WebM/VP9 sin audio y guardado en el borrador. Las tarjetas públicas no cambiarán hasta publicar el juego.",
+  },
+  "preview-quitado": {
+    kind: "success",
+    message:
+      "Preview retirado del borrador. Al publicar, las tarjetas volverán a mostrar únicamente la portada.",
+  },
+  ffmpeg: {
+    kind: "error",
+    message:
+      "FFmpeg no está disponible en este servidor. Instálalo o configura DEUNA_FFMPEG_PATH y reinicia DeUna antes de convertir previews.",
+  },
+  "video-pesado": {
+    kind: "error",
+    message:
+      "El preview no pudo quedar dentro del límite de peso incluso después de la recompresión. Prueba un fragmento con menos movimiento o menor resolución.",
+  },
+  "video-invalido": {
+    kind: "error",
+    message:
+      "El archivo no pudo validarse o decodificarse como video. Usa MP4, WebM, MOV, M4V, MKV o AVI de hasta 64 MB.",
+  },
   conflicto: {
     kind: "warning",
     message:
