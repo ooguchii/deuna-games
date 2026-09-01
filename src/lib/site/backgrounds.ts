@@ -66,7 +66,7 @@ export const bundledSiteBackgrounds: ReadonlyArray<SiteBackgroundAsset> = [
   {
     id: "espacio-minimal",
     name: "Espacio Minimal",
-    image: "/images/backgrounds/espacio-minimal.webp",
+    image: "/images/backgrounds/espacio-minimal.jpg",
   },
 ];
 
