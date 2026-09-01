@@ -365,7 +365,8 @@ function parseStreamable(url: URL): ParsedDirectPlatformVideo | null {
   if (!hostnameMatches(url.hostname, "streamable.com")) return null;
 
   const parts = pathParts(url);
-  const id = parts[0]?.toLowerCase() === "e"
+  const first = parts[0]?.toLowerCase();
+  const id = first === "e" || first === "o"
     ? parts[1] ?? ""
     : parts[0] ?? "";
   if (!/^[A-Za-z0-9]{4,20}$/.test(id)) return null;
@@ -545,13 +546,13 @@ export function buildDirectPlatformEmbedUrl(
         `https://player.vimeo.com/video/${parsed.resourceId}`
       );
       embed.searchParams.set("playsinline", "1");
+      embed.searchParams.set("start_time", String(preview.startSeconds));
+      embed.searchParams.set("end_time", String(preview.endSeconds));
+      embed.searchParams.set("watch_full_video", "0");
       if (autoplay) embed.searchParams.set("autoplay", "1");
       if (muted) embed.searchParams.set("muted", "1");
       if (autoplay) embed.searchParams.set("controls", "0");
-      const base = embed.toString();
-      return preview.startSeconds > 0
-        ? `${base}#t=${preview.startSeconds}s`
-        : base;
+      return embed.toString();
     }
 
     case "x": {
@@ -610,7 +611,7 @@ export function buildDirectPlatformEmbedUrl(
 
     case "streamable": {
       const embed = new URL(
-        `https://streamable.com/e/${parsed.resourceId}`
+        `https://streamable.com/o/${parsed.resourceId}`
       );
       if (autoplay) embed.searchParams.set("autoplay", "1");
       if (muted) embed.searchParams.set("muted", "1");
