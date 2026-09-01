@@ -19,6 +19,7 @@ import {
 } from "@/lib/admin/media-request-security";
 import {
   isAcceptedPreviewSource,
+  parsePreviewTrimWindow,
   storeEditorialPreviewVideo,
 } from "@/lib/media/editorial-video";
 
@@ -27,6 +28,8 @@ export const runtime = "nodejs";
 
 const fields = [
   "expectedRevision",
+  "startSeconds",
+  "endSeconds",
   "video",
 ] as const;
 
@@ -59,6 +62,10 @@ function errorState(error: unknown) {
     message.includes("debajo de 3 MB")
   ) {
     return "video-pesado";
+  }
+
+  if (message.includes("recorte")) {
+    return "preview-recorte-invalido";
   }
 
   return "video-invalido";
@@ -108,6 +115,23 @@ export async function POST(
     authorized.form,
     "video"
   );
+  const trim = parsePreviewTrimWindow(
+    readSingleString(
+      authorized.form,
+      "startSeconds"
+    ),
+    readSingleString(
+      authorized.form,
+      "endSeconds"
+    )
+  );
+
+  if (!trim) {
+    return adminRedirect(
+      authorized.adminOrigin,
+      `${target}?estado=preview-recorte-invalido&seccion=multimedia`
+    );
+  }
 
   if (
     !revision.success ||
@@ -142,7 +166,8 @@ export async function POST(
 
     const upload = await storeEditorialPreviewVideo(
       slug,
-      video
+      video,
+      trim
     );
     const result = await saveGameMediaDraft(
       slug,
