@@ -337,7 +337,7 @@ function classifyYtDlpFailure(stderr, provider) {
     return new Error(`La copia temporal de ${label} supera 512 MB.`);
   }
   if (provider === "youtube" && normalized.includes("requested format is not available")) {
-    return new Error("YouTube no entregó un formato público compatible con este video. Actualiza yt-dlp; si ya está actualizado, prueba otro video público para descartar una restricción específica del contenido.");
+    return new Error("YouTube no expuso ningún formato utilizable incluso con la selección adaptativa de video y audio. Revisa el diagnóstico de yt-dlp para este contenido.");
   }
   return new Error(`No se pudo obtener el video público desde ${label}. yt-dlp rechazó los intentos disponibles para este proveedor.`);
 }
@@ -350,6 +350,16 @@ function youtubeRuntimeArgs(provider) {
 function platformSpecificArgs(provider, youtubeClients) {
   if (provider !== "youtube" || !youtubeClients) return [];
   return ["--extractor-args", `youtube:player_client=${youtubeClients}`];
+}
+
+function formatSelectionArgs(provider) {
+  if (provider === "youtube") {
+    return ["--format", "bv*+ba/b", "--format-sort", "res:480"];
+  }
+  return [
+    "--format",
+    "best[height<=480][vcodec^=avc1][ext=mp4]/best[height<=480][ext=mp4]/best[height<=480]/worst[ext=mp4]/worst",
+  ];
 }
 
 function runPlatformYtDlpAttempt(provider, sourceUrl, temporaryDirectory, youtubeClients) {
@@ -366,7 +376,7 @@ function runPlatformYtDlpAttempt(provider, sourceUrl, temporaryDirectory, youtub
       "--no-cache-dir", "--no-progress", "--no-part", "--no-mtime",
       "--no-write-subs", "--no-write-auto-subs", "--no-write-thumbnail",
       "--no-write-info-json", "--no-write-playlist-metafiles",
-      "--format", "best[height<=480][vcodec^=avc1][ext=mp4]/best[height<=480][ext=mp4]/best[height<=480]/worst[ext=mp4]/worst",
+      ...formatSelectionArgs(provider),
       "--max-filesize", "512M", "--output", outputTemplate, sourceUrl,
     ];
     const child = spawn(ytDlpExecutable(), args, { shell: false, windowsHide: true, stdio: ["ignore", "ignore", "pipe"] });
