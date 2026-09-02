@@ -1,20 +1,74 @@
-import { existsSync } from "node:fs";
 import { spawn } from "node:child_process";
+import { randomBytes } from "node:crypto";
+import { existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
+import { connect, createServer } from "node:net";
 import path from "node:path";
 import process from "node:process";
+import { parseEnv } from "node:util";
 
 const require = createRequire(import.meta.url);
 const nextCli = require.resolve(
   "next/dist/bin/next"
 );
 const argumentsForNext = process.argv.slice(2);
+const isDevelopment = argumentsForNext[0] === "dev";
+const MEDIA_ENV_KEYS = [
+  "DEUNA_FFMPEG_PATH",
+  "DEUNA_YTDLP_PATH",
+  "DEUNA_YTDLP_BINARY",
+  "DEUNA_YTDLP_JS_RUNTIME",
+  "DEUNA_YTDLP_REMOTE_COMPONENT",
+  "DEUNA_YTDLP_YOUTUBE_CLIENTS",
+  "DEUNA_YTDLP_COOKIES_FILE",
+  "DEUNA_YTDLP_PLUGIN_DIR",
+  "DEUNA_YTDLP_POT_PROVIDER_URL",
+  "DEUNA_YTDLP_DIAGNOSTICS",
+  "DEUNA_MEDIA_IMPORT_WORKER_URL",
+  "DEUNA_MEDIA_IMPORT_WORKER_TOKEN",
+];
 
-function mediaRuntimeEnvironment() {
-  if (
-    argumentsForNext[0] !== "dev" ||
-    process.platform === "win32"
-  ) {
+function developmentMediaEnvFromFiles() {
+  if (!isDevelopment) return {};
+
+  const result = {};
+  const files = [
+    ".env.development.local",
+    ".env.local",
+    ".env.development",
+    ".env",
+  ];
+
+  for (const filename of files) {
+    if (!existsSync(filename)) continue;
+
+    let parsed;
+    try {
+      parsed = parseEnv(readFileSync(filename, "utf8"));
+    } catch {
+      continue;
+    }
+
+    for (const key of MEDIA_ENV_KEYS) {
+      if (
+        process.env[key] === undefined &&
+        result[key] === undefined &&
+        typeof parsed[key] === "string"
+      ) {
+        result[key] = parsed[key];
+      }
+    }
+  }
+
+  return result;
+}
+
+function mediaValue(key, fileEnvironment) {
+  return process.env[key] ?? fileEnvironment[key] ?? "";
+}
+
+function mediaRuntimeEnvironment(fileEnvironment) {
+  if (!isDevelopment || process.platform === "win32") {
     return {};
   }
 
@@ -25,9 +79,9 @@ function mediaRuntimeEnvironment() {
   if (!existsSync(wrapper)) return {};
 
   const configuredPath =
-    process.env.DEUNA_YTDLP_PATH?.trim() ?? "";
+    mediaValue("DEUNA_YTDLP_PATH", fileEnvironment).trim();
   const configuredBinary =
-    process.env.DEUNA_YTDLP_BINARY?.trim() ?? "";
+    mediaValue("DEUNA_YTDLP_BINARY", fileEnvironment).trim();
 
   return {
     DEUNA_YTDLP_PATH: wrapper,
@@ -39,12 +93,215 @@ function mediaRuntimeEnvironment() {
   };
 }
 
-if (argumentsForNext.length === 0) {
-  console.error(
-    "Falta indicar el comando de Next.js."
+function configuredDevelopmentWorker(fileEnvironment) {
+  const raw = mediaValue(
+    "DEUNA_MEDIA_IMPORT_WORKER_URL",
+    fileEnvironment
+  ).trim();
+  if (!raw) return null;
+
+  let url;
+  try {
+    url = new URL(raw);
+  } catch {
+    throw new Error(
+      "DEUNA_MEDIA_IMPORT_WORKER_URL no es una URL válida."
+    );
+  }
+
+  const loopback = [
+    "127.0.0.1",
+    "localhost",
+    "[::1]",
+    "::1",
+  ].includes(url.hostname);
+  if (
+    url.protocol !== "http:" ||
+    !loopback ||
+    url.username ||
+    url.password ||
+    url.search ||
+    url.hash
+  ) {
+    throw new Error(
+      "El worker multimedia de desarrollo debe usar HTTP sobre loopback sin credenciales, query ni fragmento."
+    );
+  }
+
+  const token = mediaValue(
+    "DEUNA_MEDIA_IMPORT_WORKER_TOKEN",
+    fileEnvironment
+  ).trim();
+  if (token.length < 32 || token.length > 256) {
+    throw new Error(
+      "DEUNA_MEDIA_IMPORT_WORKER_TOKEN debe tener entre 32 y 256 caracteres."
+    );
+  }
+
+  return {
+    DEUNA_MEDIA_IMPORT_WORKER_URL: url.toString(),
+    DEUNA_MEDIA_IMPORT_WORKER_TOKEN: token,
+  };
+}
+
+function reserveLoopbackPort() {
+  return new Promise((resolve, reject) => {
+    const server = createServer();
+    server.unref();
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address();
+      const port =
+        address && typeof address === "object"
+          ? address.port
+          : 0;
+      server.close((error) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+        if (!Number.isInteger(port) || port <= 0) {
+          reject(new Error(
+            "No se pudo reservar un puerto loopback para el worker multimedia."
+          ));
+          return;
+        }
+        resolve(port);
+      });
+    });
+  });
+}
+
+function waitForWorker(child, port) {
+  return new Promise((resolve, reject) => {
+    const deadline = Date.now() + 5_000;
+    let settled = false;
+
+    const finish = (error) => {
+      if (settled) return;
+      settled = true;
+      child.removeListener("exit", onExit);
+      if (error) reject(error);
+      else resolve();
+    };
+
+    const onExit = (code) => {
+      finish(new Error(
+        `El worker multimedia local terminó antes de iniciar${code === null ? "" : ` (código ${code})`}.`
+      ));
+    };
+
+    const attempt = () => {
+      if (settled) return;
+      const socket = connect({
+        host: "127.0.0.1",
+        port,
+      });
+      socket.once("connect", () => {
+        socket.end();
+        finish(null);
+      });
+      socket.once("error", () => {
+        socket.destroy();
+        if (Date.now() >= deadline) {
+          finish(new Error(
+            "El worker multimedia local no respondió en loopback."
+          ));
+          return;
+        }
+        setTimeout(attempt, 75);
+      });
+    };
+
+    child.once("exit", onExit);
+    attempt();
+  });
+}
+
+function stopChild(child) {
+  if (!child || child.exitCode !== null || child.killed) return;
+  try {
+    child.kill();
+  } catch {}
+}
+
+async function startAutomaticDevelopmentWorker(
+  fileEnvironment,
+  runtimeEnvironment
+) {
+  const workerScript = path.resolve(
+    "ops/worker/media-import-worker.mjs"
   );
-  process.exitCode = 1;
-} else {
+  if (!existsSync(workerScript)) {
+    throw new Error(
+      "Falta ops/worker/media-import-worker.mjs; no se puede habilitar streaming parcial en desarrollo."
+    );
+  }
+
+  const port = await reserveLoopbackPort();
+  const token = randomBytes(32).toString("hex");
+  const workerEnvironment = {
+    ...fileEnvironment,
+    ...process.env,
+    ...runtimeEnvironment,
+    NODE_ENV: "development",
+    DEUNA_MEDIA_IMPORT_WORKER_PORT: String(port),
+    DEUNA_MEDIA_IMPORT_WORKER_TOKEN: token,
+  };
+  const child = spawn(
+    process.execPath,
+    [workerScript],
+    {
+      stdio: "inherit",
+      windowsHide: true,
+      env: workerEnvironment,
+    }
+  );
+
+  await waitForWorker(child, port);
+
+  return {
+    child,
+    nextEnvironment: {
+      DEUNA_MEDIA_IMPORT_WORKER_URL:
+        `http://127.0.0.1:${port}`,
+      DEUNA_MEDIA_IMPORT_WORKER_TOKEN: token,
+    },
+  };
+}
+
+async function main() {
+  if (argumentsForNext.length === 0) {
+    throw new Error(
+      "Falta indicar el comando de Next.js."
+    );
+  }
+
+  const fileEnvironment = developmentMediaEnvFromFiles();
+  const runtimeEnvironment =
+    mediaRuntimeEnvironment(fileEnvironment);
+  let worker = null;
+  let workerEnvironment = {};
+
+  if (isDevelopment) {
+    const configured =
+      configuredDevelopmentWorker(fileEnvironment);
+    if (configured) {
+      workerEnvironment = configured;
+    } else {
+      const automatic =
+        await startAutomaticDevelopmentWorker(
+          fileEnvironment,
+          runtimeEnvironment
+        );
+      worker = automatic.child;
+      workerEnvironment = automatic.nextEnvironment;
+      console.log(
+        "Media worker local: streaming parcial habilitado sobre loopback."
+      );
+    }
+  }
+
   const child = spawn(
     process.execPath,
     [nextCli, ...argumentsForNext],
@@ -52,13 +309,28 @@ if (argumentsForNext.length === 0) {
       stdio: "inherit",
       env: {
         ...process.env,
-        ...mediaRuntimeEnvironment(),
+        ...runtimeEnvironment,
+        ...workerEnvironment,
         NEXT_TELEMETRY_DISABLED: "1",
       },
     }
   );
 
+  let shuttingDown = false;
+
+  const shutdown = () => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    stopChild(child);
+    stopChild(worker);
+  };
+
+  process.once("SIGINT", shutdown);
+  process.once("SIGTERM", shutdown);
+
   child.once("error", () => {
+    shuttingDown = true;
+    stopChild(worker);
     console.error(
       "No se pudo iniciar Next.js."
     );
@@ -66,6 +338,29 @@ if (argumentsForNext.length === 0) {
   });
 
   child.once("exit", (code) => {
+    shuttingDown = true;
+    stopChild(worker);
     process.exitCode = code ?? 1;
   });
+
+  if (worker) {
+    worker.once("exit", (code) => {
+      if (shuttingDown || child.exitCode !== null || child.killed) return;
+      shuttingDown = true;
+      console.error(
+        `El worker multimedia local se detuvo inesperadamente${code === null ? "" : ` (código ${code})`}.`
+      );
+      stopChild(child);
+      process.exitCode = 1;
+    });
+  }
 }
+
+void main().catch((error) => {
+  console.error(
+    error instanceof Error
+      ? error.message
+      : "No se pudo preparar el launcher de Next.js."
+  );
+  process.exitCode = 1;
+});
