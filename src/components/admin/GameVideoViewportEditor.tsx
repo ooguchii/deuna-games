@@ -4,9 +4,9 @@ import { useState } from "react";
 
 import { contextualDialogStyles } from "@/components/admin/ContextualMediaDialog";
 import VideoTrimEditor from "@/components/admin/VideoTrimEditor";
+import { normalizeGameVideoViewport } from "@/lib/media/game-video-media";
 import {
   DEFAULT_PREVIEW_QUALITY,
-  normalizePreviewViewport,
   type PreviewViewport,
 } from "@/lib/media/preview-video-policy";
 import type { GameVideoViewport } from "@/types/game";
@@ -26,6 +26,7 @@ type Props = {
 };
 
 function ignoreTrim() {}
+function ignoreQuality() {}
 
 export default function GameVideoViewportEditor({
   slug,
@@ -38,7 +39,7 @@ export default function GameVideoViewportEditor({
   onClose,
 }: Props) {
   const [viewport, setViewport] = useState<PreviewViewport>(() =>
-    normalizePreviewViewport(initialViewport)
+    normalizeGameVideoViewport(initialViewport)
   );
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
@@ -99,7 +100,7 @@ export default function GameVideoViewportEditor({
         viewport={viewport}
         qualityDisabled
         layoutOnly
-        onQualityChange={() => {}}
+        onQualityChange={ignoreQuality}
         onViewportChange={setViewport}
         onTrimChange={ignoreTrim}
       />
