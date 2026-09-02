@@ -10,7 +10,6 @@ import GameEditorFormActions from "@/components/admin/GameEditorFormActions";
 import GameMultimediaEditor from "@/components/admin/GameMultimediaEditor";
 import GamePerformanceEditor from "@/components/admin/GamePerformanceEditor";
 import GamePlatformEditor from "@/components/admin/GamePlatformEditor";
-import GamePreviewClipUploadForm from "@/components/admin/GamePreviewClipUploadForm";
 import GameTaxonomyMultiSelect from "@/components/admin/GameTaxonomyMultiSelect";
 import {
   getEditorialItem,
@@ -192,7 +191,6 @@ export default async function AdminGameEditorPage({
   const advancedAction = `${coreAction}/advanced`;
   const requirementsAction = `${coreAction}/requirements`;
   const performanceAction = `${coreAction}/performance`;
-  const mediaAction = `${coreAction}/media`;
   const downloadAction = `${coreAction}/download`;
   const hasPublicVersion = publicationIdentity?.everPublished ?? false;
 
@@ -635,17 +633,9 @@ export default async function AdminGameEditorPage({
         <GameMultimediaEditor
           slug={slug}
           revision={item.revision}
-          mediaAction={mediaAction}
           coverImage={game.coverImage}
           heroImage={game.heroImage}
           screenshots={game.screenshots}
-          videoEditor={
-            <GamePreviewClipUploadForm
-              slug={slug}
-              revision={item.revision}
-              currentPreview={game.previewClip}
-            />
-          }
         />
       )}
 
