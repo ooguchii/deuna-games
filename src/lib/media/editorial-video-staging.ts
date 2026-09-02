@@ -349,7 +349,7 @@ export async function createStagedPlatformPreviewSource(
     try {
       return await stageRemoteProbe(slug, userId, { kind: "platform", provider, url: sourceUrl });
     } catch {
-      // Compatibilidad: si el origen no admite la ruta lazy, se conserva el staging completo.
+      // El staging completo sigue siendo el fallback de compatibilidad.
     }
   }
   return stageDownloadedSource(slug, userId, (destinationPath) =>
@@ -366,7 +366,7 @@ export async function createStagedDirectPreviewSource(
     try {
       return await stageRemoteProbe(slug, userId, { kind: "direct", url: sourceUrl });
     } catch {
-      // Compatibilidad: si el origen no admite la ruta lazy, se conserva el staging completo.
+      // El staging completo sigue siendo el fallback de compatibilidad.
     }
   }
   return stageDownloadedSource(slug, userId, (destinationPath) =>
