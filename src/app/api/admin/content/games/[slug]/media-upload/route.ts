@@ -18,6 +18,9 @@ import {
   hasExactAdminMediaFormFields,
 } from "@/lib/admin/media-request-security";
 import {
+  clearEditorialImageDeletionMarker,
+} from "@/lib/media/editorial-media-library";
+import {
   withoutGameVideoTarget,
 } from "@/lib/media/game-video-media";
 import {
@@ -149,6 +152,13 @@ export async function POST(
     const upload = await storeEditorialWebp(
       slug,
       image
+    );
+
+    // Si se vuelve a subir exactamente una imagen cuya eliminación estaba
+    // pendiente, el mismo hash representa una decisión explícita de recuperarla.
+    await clearEditorialImageDeletionMarker(
+      slug,
+      upload.publicPath
     );
 
     // Biblioteca es almacenamiento puro: el archivo ya quedó persistido por hash
