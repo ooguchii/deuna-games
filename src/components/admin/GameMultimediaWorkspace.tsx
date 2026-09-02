@@ -74,6 +74,16 @@ type Props = {
   videoEditor: ReactNode;
 };
 
+const editorDestinations: readonly {
+  id: Destination;
+  label: string;
+}[] = [
+  { id: "cover", label: "Portada" },
+  { id: "hero", label: "Hero" },
+  { id: "card", label: "Card" },
+  { id: "gallery", label: "Galería" },
+];
+
 function formatBytes(bytes: number) {
   if (bytes >= 1024 * 1024) {
     return `${(bytes / 1024 / 1024).toFixed(
@@ -250,7 +260,6 @@ function ResourcePicker({
   const available = resources.filter(
     (resource) => resource.kind === kind
   );
-  const unavailable = disabled || available.length === 0;
   const buttonContent = (
     <>
       {kind === "image" ? (
@@ -262,7 +271,24 @@ function ResourcePicker({
     </>
   );
 
-  if (unavailable) {
+  if (available.length === 0) {
+    return (
+      <div className={styles.resourcePicker}>
+        <button
+          type="button"
+          className={styles.selectResourceButton}
+          disabled
+        >
+          {buttonContent}
+        </button>
+        <p className={styles.emptyPicker}>
+          No hay {kind === "image" ? "imágenes" : "videos"} disponibles todavía.
+        </p>
+      </div>
+    );
+  }
+
+  if (disabled) {
     return (
       <button
         type="button"
@@ -652,8 +678,8 @@ export default function GameMultimediaWorkspace({
 
                       <div className={styles.usageRow}>
                         {labels.length ? (
-                          labels.map((label) => (
-                            <span key={label}>{label}</span>
+                          labels.map((usageLabel) => (
+                            <span key={usageLabel}>{usageLabel}</span>
                           ))
                         ) : (
                           <span className={styles.unusedBadge}>
@@ -1100,17 +1126,43 @@ export default function GameMultimediaWorkspace({
               </div>
             </div>
 
-            {selectedDestination === "hero" &&
-            heroDraftMode === "video" ? (
-              <div className={styles.videoEditorHost}>
-                {videoEditor}
-              </div>
-            ) : selectedDestination === "card" ? (
-              <div className={styles.videoEditorHost}>
-                {videoEditor}
-              </div>
-            ) : (
-              <div className={styles.focusEditor}>
+            <div className={styles.focusEditor}>
+              <nav
+                className={styles.editorSteps}
+                aria-label="Destinos del editor multimedia"
+              >
+                {editorDestinations.map((destination, index) => (
+                  <button
+                    key={destination.id}
+                    type="button"
+                    className={
+                      selectedDestination === destination.id
+                        ? styles.editorStepActive
+                        : ""
+                    }
+                    aria-current={
+                      selectedDestination === destination.id
+                        ? "step"
+                        : undefined
+                    }
+                    onClick={() => setSelectedDestination(destination.id)}
+                  >
+                    <strong>{index + 1}</strong>
+                    <span>{destination.label}</span>
+                  </button>
+                ))}
+              </nav>
+
+              {selectedDestination === "hero" &&
+              heroDraftMode === "video" ? (
+                <div className={styles.videoEditorHost}>
+                  {videoEditor}
+                </div>
+              ) : selectedDestination === "card" ? (
+                <div className={styles.videoEditorHost}>
+                  {videoEditor}
+                </div>
+              ) : (
                 <div className={styles.focusContent}>
                   <div className={styles.focusSource}>
                     <span>Fuente del recurso</span>
@@ -1176,8 +1228,8 @@ export default function GameMultimediaWorkspace({
                     </div>
                   )}
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </section>
 
           {stale && (
