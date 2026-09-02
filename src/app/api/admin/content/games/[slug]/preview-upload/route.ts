@@ -11,9 +11,11 @@ import {
   type GameVideoTarget,
 } from "@/lib/media/game-video-media";
 import {
+  DEFAULT_PREVIEW_FPS,
   DEFAULT_PREVIEW_QUALITY,
   DEFAULT_PREVIEW_VIEWPORT,
   MAX_PREVIEW_SOURCE_BYTES,
+  parsePreviewFps,
   parsePreviewQuality,
   parsePreviewTrimWindow,
   parsePreviewViewport,
@@ -42,8 +44,8 @@ function previewTarget(value: string | null): PreviewSaveTarget | null {
 
 function errorState(error: unknown) {
   const message = error instanceof Error ? error.message : "";
-  if (message.includes("FFmpeg no está disponible")) return "ffmpeg";
-  if (message.includes("demasiado pesado") || message.includes("debajo de 3 MB")) return "video-pesado";
+  if (message.includes("FFmpeg no está disponible") || message.includes("FFprobe no está disponible")) return "ffmpeg";
+  if (message.includes("supera el límite seguro") || message.includes("demasiado pesado")) return "video-pesado";
   if (message.includes("recorte")) return "preview-recorte-invalido";
   return "video-invalido";
 }
@@ -63,6 +65,10 @@ export async function POST(request: NextRequest, context: { params: Promise<{ sl
   const quality = qualityHeader === null || qualityHeader.trim() === ""
     ? DEFAULT_PREVIEW_QUALITY
     : parsePreviewQuality(qualityHeader);
+  const fpsHeader = request.headers.get("x-deuna-preview-fps");
+  const fps = fpsHeader === null || fpsHeader.trim() === ""
+    ? DEFAULT_PREVIEW_FPS
+    : parsePreviewFps(fpsHeader);
 
   const viewportHeaders = [
     request.headers.get("x-deuna-viewport-x"),
@@ -80,6 +86,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ sl
   if (!trim) return adminRedirect(authorized.adminOrigin, `${redirectTarget}?estado=preview-recorte-invalido&seccion=multimedia`);
   if (!target) return adminRedirect(authorized.adminOrigin, `${redirectTarget}?estado=preview-destino-invalido&seccion=multimedia`);
   if (!quality) return adminRedirect(authorized.adminOrigin, `${redirectTarget}?estado=preview-calidad-invalida&seccion=multimedia`);
+  if (!fps) return adminRedirect(authorized.adminOrigin, `${redirectTarget}?estado=preview-fps-invalido&seccion=multimedia`);
   if (!viewport) return adminRedirect(authorized.adminOrigin, `${redirectTarget}?estado=preview-encuadre-invalido&seccion=multimedia`);
   if (!revision.success || !request.body || (contentLength !== null && (!Number.isSafeInteger(contentLength) || contentLength <= 0 || contentLength > MAX_PREVIEW_SOURCE_BYTES)) || !isAcceptedStreamedPreviewSource(`source${extension}`, contentType, contentLength)) {
     return adminRedirect(authorized.adminOrigin, `${redirectTarget}?estado=video-invalido&seccion=multimedia`);
@@ -96,7 +103,8 @@ export async function POST(request: NextRequest, context: { params: Promise<{ sl
       staged.filePath,
       trim,
       quality,
-      target === "library" ? "hero" : target
+      target === "library" ? "hero" : target,
+      fps
     );
 
     if (target === "library") {
