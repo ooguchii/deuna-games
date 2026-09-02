@@ -65,6 +65,7 @@ type StagedSourceResponse = {
   token?: unknown;
   src?: unknown;
   bytes?: unknown;
+  delivery?: unknown;
   error?: unknown;
 };
 
@@ -116,7 +117,7 @@ function probeBrowserPlayback(src: string) {
     const finish = (playable: boolean) => {
       if (settled) return;
       settled = true;
-      clearTimeout(timeout);
+      window.clearTimeout(timeout);
       video.pause();
       video.removeAttribute("src");
       video.load();
@@ -174,12 +175,13 @@ export default function GameVideoLibraryEditor({
 }: Props) {
   const [sourceMode, setSourceMode] = useState<SourceMode>("file");
   const [sourceUrl, setSourceUrl] = useState("");
-  const [preparedSource, setPreparedSource] = useState<PreparedSource | null>(null);
+  const [preparedSource, setPreparedSource] =
+    useState<PreparedSource | null>(null);
   const [trim, setTrim] = useState<PreviewTrimWindow | null>(null);
   const [quality, setQuality] = useState<PreviewQualityId>(
     DEFAULT_PREVIEW_QUALITY
   );
-  const [viewport, setViewport] = useState<PreviewViewport>({
+  const [previewViewport, setPreviewViewport] = useState<PreviewViewport>({
     ...DEFAULT_PREVIEW_VIEWPORT,
   });
   const [sourceBusy, setSourceBusy] = useState(false);
@@ -190,9 +192,9 @@ export default function GameVideoLibraryEditor({
     sourceMode !== "file" && sourceMode !== "direct"
       ? getPreviewProvider(sourceMode)
       : null;
-  const selectedQuality = PREVIEW_HERO_QUALITY_OPTIONS.find(
-    (option) => option.id === quality
-  )!;
+  const selectedQuality =
+    PREVIEW_HERO_QUALITY_OPTIONS.find((option) => option.id === quality) ??
+    PREVIEW_HERO_QUALITY_OPTIONS[0]!;
   const normalizedRemoteUrl = useMemo(() => {
     if (sourceMode === "file") return null;
     if (sourceMode === "direct") {
@@ -221,21 +223,21 @@ export default function GameVideoLibraryEditor({
       if (!source) return;
       if (source.mode === "file") {
         URL.revokeObjectURL(source.src);
-      } else {
-        void fetch(stagedSourcePath(slug, source.token), {
-          method: "DELETE",
-          credentials: "same-origin",
-          cache: "no-store",
-          keepalive: true,
-        }).catch(() => undefined);
+        return;
       }
+      void fetch(stagedSourcePath(slug, source.token), {
+        method: "DELETE",
+        credentials: "same-origin",
+        cache: "no-store",
+        keepalive: true,
+      }).catch(() => undefined);
     };
   }, [preparedSource, slug]);
 
   function resetPreparedSource() {
     setPreparedSource(null);
     setTrim(null);
-    setViewport({ ...DEFAULT_PREVIEW_VIEWPORT });
+    setPreviewViewport({ ...DEFAULT_PREVIEW_VIEWPORT });
   }
 
   function switchSourceMode(mode: SourceMode) {
@@ -243,6 +245,14 @@ export default function GameVideoLibraryEditor({
     setSourceMode(mode);
     setSourceUrl("");
     setStatus(null);
+  }
+
+  async function removeStagedSource(token: string) {
+    await fetch(stagedSourcePath(slug, token), {
+      method: "DELETE",
+      credentials: "same-origin",
+      cache: "no-store",
+    }).catch(() => undefined);
   }
 
   async function createProxyForStagedToken(token: string) {
@@ -303,28 +313,34 @@ export default function GameVideoLibraryEditor({
           : "No se pudo preparar el archivo."
       );
     }
-    const proxySrc = await createProxyForStagedToken(result.token);
-    setPreparedSource({
-      mode: "staged",
-      src: proxySrc,
-      label: `${file.name} · ${formatSize(file.size)} · proxy de edición`,
-      token: result.token,
-      bytes: result.bytes,
-      delivery: "proxy",
-    });
-    setStatus(
-      "Proxy listo. El WebM de biblioteca se generará desde el archivo original."
-    );
+
+    try {
+      const proxySrc = await createProxyForStagedToken(result.token);
+      setPreparedSource({
+        mode: "staged",
+        src: proxySrc,
+        label: `${file.name} · ${formatSize(file.size)} · proxy de edición`,
+        token: result.token,
+        bytes: result.bytes,
+        delivery: "proxy",
+      });
+      setStatus(
+        "Proxy listo. El WebM de biblioteca se generará desde el archivo original."
+      );
+    } catch (error) {
+      await removeStagedSource(result.token);
+      throw error;
+    }
   }
 
   async function prepareLocalFile(file: File) {
     setSourceBusy(true);
     const src = URL.createObjectURL(file);
-    let keep = false;
+    let keepObjectUrl = false;
 
     try {
       if (await probeBrowserPlayback(src)) {
-        keep = true;
+        keepObjectUrl = true;
         setPreparedSource({
           mode: "file",
           src,
@@ -332,7 +348,7 @@ export default function GameVideoLibraryEditor({
           file,
         });
         setStatus(
-          "Archivo listo. Elige el tramo y la calidad; todavía no se subió el archivo grande."
+          "Archivo listo. Elige IN, OUT y calidad; todavía no se subió el archivo grande."
         );
       } else {
         await prepareLocalCodecFallback(file);
@@ -344,7 +360,7 @@ export default function GameVideoLibraryEditor({
           : "No se pudo preparar el archivo."
       );
     } finally {
-      if (!keep) URL.revokeObjectURL(src);
+      if (!keepObjectUrl) URL.revokeObjectURL(src);
       setSourceBusy(false);
     }
   }
@@ -423,7 +439,7 @@ export default function GameVideoLibraryEditor({
 
       if (!(await probeBrowserPlayback(editorSrc))) {
         setStatus(
-          `${label} no pudo editarse por streaming/códec directo. Activando la copia completa de compatibilidad y un proxy WebM…`
+          `${label} no pudo editarse por streaming/códec directo. Activando el fallback privado y un proxy WebM…`
         );
         editorSrc = await createProxyForStagedToken(result.token);
         delivery = "proxy";
@@ -451,11 +467,7 @@ export default function GameVideoLibraryEditor({
       );
     } catch (error) {
       if (stagedToken) {
-        void fetch(stagedSourcePath(slug, stagedToken), {
-          method: "DELETE",
-          credentials: "same-origin",
-          cache: "no-store",
-        }).catch(() => undefined);
+        await removeStagedSource(stagedToken);
       }
       setStatus(
         error instanceof Error
@@ -493,10 +505,10 @@ export default function GameVideoLibraryEditor({
         ),
         "X-Deuna-Preview-Quality": quality,
         "X-Deuna-Preview-Target": "library",
-        "X-Deuna-Viewport-X": String(viewport.x),
-        "X-Deuna-Viewport-Y": String(viewport.y),
-        "X-Deuna-Viewport-Zoom": String(viewport.zoom),
-        "X-Deuna-Viewport-Aspect": viewport.aspect,
+        "X-Deuna-Viewport-X": String(DEFAULT_PREVIEW_VIEWPORT.x),
+        "X-Deuna-Viewport-Y": String(DEFAULT_PREVIEW_VIEWPORT.y),
+        "X-Deuna-Viewport-Zoom": String(DEFAULT_PREVIEW_VIEWPORT.zoom),
+        "X-Deuna-Viewport-Aspect": DEFAULT_PREVIEW_VIEWPORT.aspect,
       };
     } else {
       endpoint = `/api/admin/content/games/${encodeURIComponent(slug)}/preview-import`;
@@ -506,10 +518,10 @@ export default function GameVideoLibraryEditor({
         startSeconds: String(trim.startSeconds),
         endSeconds: String(trim.endSeconds),
         quality,
-        viewportX: String(viewport.x),
-        viewportY: String(viewport.y),
-        viewportZoom: String(viewport.zoom),
-        viewportAspect: viewport.aspect,
+        viewportX: String(DEFAULT_PREVIEW_VIEWPORT.x),
+        viewportY: String(DEFAULT_PREVIEW_VIEWPORT.y),
+        viewportZoom: String(DEFAULT_PREVIEW_VIEWPORT.zoom),
+        viewportAspect: DEFAULT_PREVIEW_VIEWPORT.aspect,
         target: "library",
       });
       headers = {
@@ -647,7 +659,6 @@ export default function GameVideoLibraryEditor({
               disabled={busy || sourceBusy}
               onChange={(event) => {
                 setSourceUrl(event.target.value);
-                resetPreparedSource();
                 setStatus(null);
               }}
               maxLength={2048}
@@ -715,15 +726,13 @@ export default function GameVideoLibraryEditor({
 
       {preparedSource && (
         <div className={adminStyles.fieldWide}>
-          <div
-            className={`${adminStyles.tableSummary} ${adminStyles.fieldWide}`}
-          >
+          <div className={adminStyles.tableSummary}>
             <strong>Master reutilizable</strong>
             <span>
-              Elige una sola vez el tramo que formará el WebM de biblioteca.
-              El encuadre visual que ves aquí es sólo una referencia: Hero y
-              Card guardarán después su propia posición, zoom y relación sin
-              recodificar este archivo.
+              Elige una sola vez IN, OUT y calidad. El marco de área visible
+              sirve sólo para inspeccionar la fuente: el WebM se guarda con
+              el fotograma completo y Hero/Card reciben después su encuadre
+              independiente.
             </span>
           </div>
 
@@ -733,10 +742,10 @@ export default function GameVideoLibraryEditor({
             sourceLabel={preparedSource.label}
             quality={quality}
             qualityOptions={PREVIEW_HERO_QUALITY_OPTIONS}
-            viewport={viewport}
+            viewport={previewViewport}
             qualityDisabled={busy || sourceBusy}
             onQualityChange={setQuality}
-            onViewportChange={setViewport}
+            onViewportChange={setPreviewViewport}
             onTrimChange={setTrim}
           />
         </div>
@@ -755,9 +764,9 @@ export default function GameVideoLibraryEditor({
 
       <div className={adminStyles.formActions}>
         <p>
-          Crear el recurso no cambia Hero ni Card. Se guarda una sola vez en
-          la biblioteca como WebM/VP9 interno, silencioso, de hasta 30 segundos
-          y máximo 3 MB.
+          Agregar el recurso no cambia Hero ni Card. Se guarda una sola vez
+          como WebM/VP9 interno, silencioso, de hasta 30 segundos y máximo
+          3 MB.
         </p>
         <button
           type="submit"
