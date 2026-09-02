@@ -60,7 +60,7 @@ for (const provider of PREVIEW_PROVIDER_IDS) {
   assert(parsePreviewProviderUrl(provider, foreign) === null, `${provider} no debe aceptar una URL de otra plataforma.`);
 }
 
-const [form, providerRoute, directRoute, staging, platformSource, workerClient, resolver, card] = await Promise.all([
+const [form, providerRoute, directRoute, staging, platformSource, workerClient, resolver, card, importRoute, uploadRoute, removeRoute] = await Promise.all([
   source("src/components/admin/GamePreviewClipUploadForm.tsx"),
   source("src/app/api/admin/content/games/[slug]/preview-provider/[provider]/route.ts"),
   source("src/app/api/admin/content/games/[slug]/preview-direct/route.ts"),
@@ -69,14 +69,36 @@ const [form, providerRoute, directRoute, staging, platformSource, workerClient, 
   source("src/lib/media/media-import-worker-client.ts"),
   source("src/lib/media/game-card-preview.ts"),
   source("src/components/ui/UniversalGameCard.tsx"),
+  source("src/app/api/admin/content/games/[slug]/preview-import/route.ts"),
+  source("src/app/api/admin/content/games/[slug]/preview-upload/route.ts"),
+  source("src/app/api/admin/content/games/[slug]/preview-remove/route.ts"),
 ]);
 
 assert(form.includes("No hay detección automática") && form.includes("preview-provider/") && form.includes("preview-direct") && form.includes("buildPreviewProviderEmbed") && form.includes("VideoTrimEditor"), "La UI debe obligar a elegir fuente y mantener reproductor/recorte por ruta explícita.");
 assert(providerRoute.includes("parsePreviewProviderUrl(provider") && providerRoute.includes("createStagedPlatformPreviewSource"), "Cada proveedor debe validarse por el identificador elegido antes del staging.");
-assert(directRoute.includes("createStagedDirectPreviewSource") && !directRoute.includes("preview-provider"), "URL directa debe tener ruta propia y no reutilizar una plataforma.");
+assert(directRoute.includes("createStagedDirectPreviewSource") && !directRoute.includes("createStagedPlatformPreviewSource"), "URL directa debe tener ruta propia y no reutilizar el staging de plataformas.");
 assert(staging.includes("createStagedPlatformPreviewSource") && staging.includes("createStagedDirectPreviewSource") && !staging.includes("parseSupportedPlatformVideoUrl"), "Staging no debe detectar plataformas automáticamente.");
 assert(platformSource.includes("provider: PreviewProviderId") && platformSource.includes("parsePreviewProviderUrl(provider") && workerClient.includes("provider: PreviewProviderId"), "El proveedor explícito debe viajar hasta el worker multimedia.");
 assert(resolver.includes("const local = game.previewClip?.trim()") && card.includes("resolveGameCardPreview"), "La web pública debe seguir usando sólo el WebM interno.");
+
+const activePreviewSources = [
+  form,
+  providerRoute,
+  directRoute,
+  staging,
+  platformSource,
+  workerClient,
+  resolver,
+  importRoute,
+  uploadRoute,
+  removeRoute,
+];
+for (const legacyIdentifier of ["youtubePreview", "directPreview", "previewMode"]) {
+  assert(
+    activePreviewSources.every((text) => !text.includes(legacyIdentifier)),
+    `El subsistema activo de previews no debe volver a usar ${legacyIdentifier}.`
+  );
+}
 
 const forbidden = [
   "src/components/admin/GamePreviewAutoUrlEditor.tsx",
@@ -85,10 +107,14 @@ const forbidden = [
   "src/app/api/admin/content/games/[slug]/preview-platform/[platform]/route.ts",
   "src/app/api/admin/content/games/[slug]/preview-youtube/route.ts",
   "src/app/api/admin/content/games/[slug]/preview-direct/[platform]/route.ts",
+  "src/app/api/admin/content/games/[slug]/preview-state/route.ts",
+  "src/app/api/admin/content/games/[slug]/preview-source/route.ts",
   "src/lib/media/platform-video-url.ts",
   "src/lib/media/direct-platform-preview.ts",
   "src/lib/media/direct-platform-validation.ts",
+  "src/lib/media/isolated-platform-preview-source.ts",
   "src/lib/media/youtube-preview.ts",
+  "tools/check-card-preview-auto-url.mjs",
 ];
 for (const relative of forbidden) {
   try {
@@ -102,4 +128,4 @@ if (failures.length) {
   failures.forEach((failure) => console.error(`- ${failure}`));
   process.exit(1);
 }
-console.log("Preview de video por proveedor: OK (selección explícita → reproductor específico si existe → staging aislado → IN/OUT → WebM interno).");
+console.log("Preview de video por proveedor: OK (selección explícita → reproductor específico si existe → staging aislado → IN/OUT → WebM interno; sin rutas ni identificadores legacy en el subsistema activo).");
