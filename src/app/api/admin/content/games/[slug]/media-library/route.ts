@@ -14,13 +14,16 @@ import { hasExactAdminFormFields } from "@/lib/admin/request-security";
 import { verifyAdminSession } from "@/lib/admin/session";
 import {
   findEditorialMediaResource,
+  listAssignedBundledImageResources,
   listEditorialMediaLibrary,
+  mergeEditorialMediaResources,
 } from "@/lib/media/editorial-media-library";
 import {
   normalizeGameVideoViewport,
   withoutGameVideoTarget,
 } from "@/lib/media/game-video-media";
 import { DEFAULT_PREVIEW_VIEWPORT } from "@/lib/media/preview-video-policy";
+import type { Game } from "@/types/game";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -44,16 +47,26 @@ function redirectPath(slug: string, state: string) {
   return `/admin/juegos/${encodeURIComponent(slug)}?estado=${encodeURIComponent(state)}&seccion=multimedia`;
 }
 
+async function resourcesForGame(slug: string, game: Game) {
+  const [editorial, bundled] = await Promise.all([
+    listEditorialMediaLibrary(slug),
+    listAssignedBundledImageResources([
+      game.coverImage,
+      game.heroImage,
+      ...(game.screenshots ?? []),
+    ]),
+  ]);
+
+  return mergeEditorialMediaResources(editorial, bundled);
+}
+
 export async function GET(
   _request: NextRequest,
   context: { params: Promise<{ slug: string }> }
 ) {
   await verifyAdminSession();
   const { slug } = await context.params;
-  const [item, resources] = await Promise.all([
-    getEditorialItem("game", slug),
-    listEditorialMediaLibrary(slug),
-  ]);
+  const item = await getEditorialItem("game", slug);
 
   if (!item) {
     return NextResponse.json(
@@ -62,6 +75,7 @@ export async function GET(
     );
   }
 
+  const resources = await resourcesForGame(slug, item.payload);
   const heroVideo = item.payload.videoMedia?.hero ?? null;
   const cardVideo = item.payload.videoMedia?.card ?? null;
 
@@ -129,10 +143,10 @@ export async function POST(
     );
   }
 
-  const resources = await listEditorialMediaLibrary(slug);
+  const current = item.payload;
+  const resources = await resourcesForGame(slug, current);
   const imageResource = findEditorialMediaResource(resources, resource, "image");
   const videoResource = findEditorialMediaResource(resources, resource, "video");
-  const current = item.payload;
   const currentHeroViewport = normalizeGameVideoViewport(
     current.videoMedia?.hero?.viewport ?? DEFAULT_PREVIEW_VIEWPORT
   );
@@ -143,12 +157,22 @@ export async function POST(
   let update: Parameters<typeof saveGameMediaDraft>[3] | null = null;
 
   if (target.data === "cover-image") {
-    if (!imageResource) return adminRedirect(authorized.adminOrigin, redirectPath(slug, "recurso-invalido"));
+    if (!imageResource) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        redirectPath(slug, "recurso-invalido")
+      );
+    }
     update = { coverImage: imageResource.src };
   }
 
   if (target.data === "hero-image") {
-    if (!imageResource) return adminRedirect(authorized.adminOrigin, redirectPath(slug, "recurso-invalido"));
+    if (!imageResource) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        redirectPath(slug, "recurso-invalido")
+      );
+    }
     const withoutVideo = withoutGameVideoTarget(current, "hero");
     update = {
       heroImage: imageResource.src,
@@ -158,7 +182,12 @@ export async function POST(
   }
 
   if (target.data === "hero-video") {
-    if (!videoResource) return adminRedirect(authorized.adminOrigin, redirectPath(slug, "recurso-invalido"));
+    if (!videoResource) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        redirectPath(slug, "recurso-invalido")
+      );
+    }
     update = {
       videoMedia: {
         ...current.videoMedia,
@@ -171,7 +200,12 @@ export async function POST(
   }
 
   if (target.data === "card-video") {
-    if (!videoResource) return adminRedirect(authorized.adminOrigin, redirectPath(slug, "recurso-invalido"));
+    if (!videoResource) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        redirectPath(slug, "recurso-invalido")
+      );
+    }
     const sharesHero = current.videoMedia?.hero?.clip === videoResource.src;
     update = {
       videoMedia: {
@@ -193,7 +227,12 @@ export async function POST(
 
   if (target.data === "card-match-hero") {
     const hero = current.videoMedia?.hero;
-    if (!hero) return adminRedirect(authorized.adminOrigin, redirectPath(slug, "recurso-invalido"));
+    if (!hero) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        redirectPath(slug, "recurso-invalido")
+      );
+    }
     update = {
       videoMedia: {
         ...current.videoMedia,
@@ -207,7 +246,12 @@ export async function POST(
   }
 
   if (target.data === "gallery-image") {
-    if (!imageResource) return adminRedirect(authorized.adminOrigin, redirectPath(slug, "recurso-invalido"));
+    if (!imageResource) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        redirectPath(slug, "recurso-invalido")
+      );
+    }
     const screenshots = Array.from(
       new Set([...(current.screenshots ?? []), imageResource.src])
     );
