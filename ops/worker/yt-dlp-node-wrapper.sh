@@ -4,6 +4,8 @@ set -euo pipefail
 YTDLP_BIN="${DEUNA_YTDLP_BINARY:-/usr/bin/yt-dlp}"
 NODE_BIN="${DEUNA_NODE_BINARY:-/usr/bin/node}"
 REMOTE_COMPONENT="${DEUNA_YTDLP_REMOTE_COMPONENT:-ejs:github}"
+PLUGIN_DIR="${DEUNA_YTDLP_PLUGIN_DIR:-}"
+POT_PROVIDER_URL="${DEUNA_YTDLP_POT_PROVIDER_URL:-}"
 
 if [[ ! -x "${YTDLP_BIN}" ]]; then
   YTDLP_BIN="$(command -v yt-dlp 2>/dev/null || true)"
@@ -15,8 +17,8 @@ if [[ -z "${YTDLP_BIN}" || ! -x "${YTDLP_BIN}" ]]; then
 fi
 
 # El worker decide los clientes de cada proveedor. Este wrapper NO fuerza un
-# player_client de YouTube: su única responsabilidad especial es resolver una
-# ruta absoluta y compatible para Node y mantener un único componente EJS.
+# player_client de YouTube: resuelve Node/EJS y, sólo si se configuró de forma
+# explícita, habilita un PO Token Provider local para el extractor de YouTube.
 args=()
 youtube_url=0
 remote_component="${REMOTE_COMPONENT}"
@@ -74,6 +76,26 @@ if (( youtube_url )); then
     "--js-runtimes" "node:${NODE_BIN}"
     "--remote-components" "${remote_component}"
   )
+
+  if [[ -n "${PLUGIN_DIR}" || -n "${POT_PROVIDER_URL}" ]]; then
+    if [[ -z "${PLUGIN_DIR}" || -z "${POT_PROVIDER_URL}" ]]; then
+      echo "DEUNA_YTDLP_PLUGIN_DIR y DEUNA_YTDLP_POT_PROVIDER_URL deben configurarse juntos." >&2
+      exit 78
+    fi
+    if [[ ! -d "${PLUGIN_DIR}" ]]; then
+      echo "DEUNA_YTDLP_PLUGIN_DIR no existe o no es un directorio legible." >&2
+      exit 78
+    fi
+    if [[ ! "${POT_PROVIDER_URL}" =~ ^http://(127\.0\.0\.1|localhost|\[::1\]):[0-9]{2,5}/?$ ]]; then
+      echo "El PO Token Provider debe usar HTTP sobre loopback (127.0.0.1, localhost o ::1)." >&2
+      exit 78
+    fi
+
+    YOUTUBE_ARGS+=(
+      "--plugin-dirs" "${PLUGIN_DIR}"
+      "--extractor-args" "youtubepot-bgutilhttp:base_url=${POT_PROVIDER_URL}"
+    )
+  fi
 fi
 
 exec "${YTDLP_BIN}" \
