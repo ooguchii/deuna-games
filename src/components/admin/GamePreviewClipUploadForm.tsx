@@ -33,15 +33,18 @@ const acceptedExtensions = /\.(mp4|webm|mov|m4v|mkv|avi)$/i;
 const MEDIA_PROBE_TIMEOUT_MS = 10_000;
 
 type SourceMode = "file" | "direct" | PreviewProviderId;
+type RemoteDelivery = "stream" | "staged" | "proxy";
 
 type PreparedSource =
   | { mode: "file"; src: string; label: string; file: File }
-  | { mode: "staged"; src: string; label: string; token: string; bytes: number };
+  | { mode: "staged"; src: string; label: string; token: string; bytes: number; delivery: RemoteDelivery };
 
 type StagedSourceResponse = {
   token?: unknown;
   src?: unknown;
   bytes?: unknown;
+  delivery?: unknown;
+  durationSeconds?: unknown;
   error?: unknown;
   providerLabel?: unknown;
 };
@@ -105,7 +108,7 @@ function uploadError(state: string | null) {
   if (state === "ffmpeg") return "FFmpeg no está disponible para crear el WebM optimizado.";
   if (state === "video-pesado") return "El WebM final no pudo quedar por debajo de 3 MB. Elige un tramo más corto o con menos movimiento.";
   if (state === "preview-recorte-invalido") return "El recorte no es válido. Ajusta IN y OUT.";
-  if (state === "preview-source-expirada") return "La copia temporal venció. Prepara la fuente otra vez.";
+  if (state === "preview-source-expirada") return "La fuente temporal venció. Prepárala otra vez.";
   if (state === "solicitud") return "La solicitud fue rechazada por seguridad. Recarga el editor.";
   return "No se pudo guardar el preview de la tarjeta.";
 }
@@ -195,7 +198,7 @@ export default function GamePreviewClipUploadForm({
       throw new Error(typeof result.error === "string" ? result.error : "No se pudo preparar el archivo.");
     }
     const proxySrc = await createProxyForStagedToken(result.token);
-    setPreparedSource({ mode: "staged", src: proxySrc, label: `${file.name} · ${formatSize(file.size)} · proxy de edición`, token: result.token, bytes: result.bytes });
+    setPreparedSource({ mode: "staged", src: proxySrc, label: `${file.name} · ${formatSize(file.size)} · proxy de edición`, token: result.token, bytes: result.bytes, delivery: "proxy" });
     setStatus("Proxy listo. El WebM final se generará desde el archivo original.");
   }
 
@@ -244,7 +247,7 @@ export default function GamePreviewClipUploadForm({
     resetPreparedSource();
     setSourceBusy(true);
     const label = selectedProvider?.label ?? "URL directa";
-    setStatus(`Preparando ${label} por su ruta dedicada…`);
+    setStatus(`Analizando ${label} sin descargar el video completo…`);
     let stagedToken: string | null = null;
 
     try {
@@ -263,22 +266,26 @@ export default function GamePreviewClipUploadForm({
         throw new Error(typeof result.error === "string" ? result.error : `No se pudo preparar ${label}.`);
       }
       stagedToken = result.token;
+      const lazyDelivery = result.delivery === "stream";
       let editorSrc = result.src;
-      let proxy = false;
+      let delivery: RemoteDelivery = lazyDelivery ? "stream" : "staged";
       if (!(await probeBrowserPlayback(editorSrc))) {
-        setStatus(`${label} entregó un códec que el navegador no reproduce. Creando proxy WebM privado…`);
+        setStatus(`${label} no pudo editarse por streaming/códec directo. Activando la copia completa de compatibilidad y un proxy WebM…`);
         editorSrc = await createProxyForStagedToken(result.token);
-        proxy = true;
+        delivery = "proxy";
       }
       setPreparedSource({
         mode: "staged",
         src: editorSrc,
-        label: `${label} · ${formatSize(result.bytes)}${proxy ? " · proxy de edición" : " · copia temporal"}`,
+        label: `${label} · ${formatSize(result.bytes)} de fuente${delivery === "stream" ? " · streaming parcial" : delivery === "proxy" ? " · proxy de compatibilidad" : " · copia temporal"}`,
         token: result.token,
         bytes: result.bytes,
+        delivery,
       });
       stagedToken = null;
-      setStatus(`${label} listo para recortar. La tarjeta final no conservará ni consultará esta URL.`);
+      setStatus(delivery === "stream"
+        ? `${label} listo por streaming parcial. IN/OUT sólo navega por bloques; al guardar se obtiene únicamente el tramo elegido. Si el origen falla, DeUna conserva el fallback completo.`
+        : `${label} listo en modo compatible. La tarjeta final no conservará ni consultará esta URL.`);
     } catch (error) {
       if (stagedToken) {
         void fetch(stagedSourcePath(slug, stagedToken), { method: "DELETE", credentials: "same-origin", cache: "no-store" }).catch(() => undefined);
@@ -318,7 +325,9 @@ export default function GamePreviewClipUploadForm({
     }
 
     setBusy(true);
-    setStatus(`Generando WebM interno con el tramo ${trim.startSeconds}s → ${trim.endSeconds}s…`);
+    setStatus(preparedSource.mode === "staged" && preparedSource.delivery === "stream"
+      ? `Extrayendo sólo ${trim.startSeconds}s → ${trim.endSeconds}s y generando el WebM interno…`
+      : `Generando WebM interno con el tramo ${trim.startSeconds}s → ${trim.endSeconds}s…`);
     try {
       const response = await fetch(endpoint, { method: "POST", credentials: "same-origin", cache: "no-store", headers, body });
       if (!response.ok) throw new Error(response.status === 413 ? "El video supera el límite máximo permitido." : "El servidor rechazó la creación del preview.");
@@ -345,7 +354,7 @@ export default function GamePreviewClipUploadForm({
           <h2>Elige primero el origen</h2>
         </div>
         <p>
-          No hay detección automática. Cada botón abre un flujo exclusivo para esa fuente; el servidor rechaza cualquier URL que no corresponda a la opción elegida.
+          No hay detección automática. Cada botón abre un flujo exclusivo para esa fuente; cuando es posible DeUna previsualiza por rangos y evita descargar el video completo.
         </p>
       </div>
 
@@ -394,7 +403,7 @@ export default function GamePreviewClipUploadForm({
                   autoComplete="off"
                   spellCheck={false}
                 />
-                <small>{sourceMode === "direct" ? "Debe devolver bytes de video; una página HTML será rechazada." : `Sólo se acepta ${selectedProvider?.label}. Una URL de otra red será rechazada antes de descargar.`}</small>
+                <small>{sourceMode === "direct" ? "Debe devolver bytes de video; una página HTML será rechazada." : `Sólo se acepta ${selectedProvider?.label}. Una URL de otra red será rechazada antes de cualquier importación.`}</small>
               </label>
 
               {normalizedRemoteUrl && selectedProvider && (
@@ -411,14 +420,16 @@ export default function GamePreviewClipUploadForm({
                   </div>
                 ) : (
                   <div className={`${localStyles.nativeNotice} ${adminStyles.fieldWide}`}>
-                    {selectedProvider.label} no ofrece aquí un reproductor web controlable y estable que convenga integrar. DeUna no simula uno: importa una copia privada y usa su reproductor nativo para seleccionar el recorte.
+                    {selectedProvider.label} no ofrece aquí un reproductor web controlable y estable. DeUna intentará primero una fuente HTTP parcial; sólo si no es posible usará la copia privada completa de compatibilidad.
                   </div>
                 )
               )}
 
               <div className={`${adminStyles.tableSummary} ${adminStyles.fieldWide}`}>
                 <strong>Preparar esta fuente</strong>
-                <span>{sourceMode === "direct" ? "La URL directa usa el descargador seguro con protección SSRF y límite de 1 GB." : `La ruta de ${selectedProvider?.label} valida exclusivamente sus dominios y prepara una copia temporal de hasta 512 MB.`}</span>
+                <span>{sourceMode === "direct"
+                  ? "Primero se prueba acceso parcial por bytes con protección SSRF. La descarga completa de hasta 1 GB queda sólo como fallback."
+                  : `La ruta de ${selectedProvider?.label} intenta resolver un stream HTTP seekable sin descargarlo; si la plataforma no lo permite, conserva el fallback temporal de hasta 512 MB.`}</span>
                 <button type="button" disabled={busy || sourceBusy || !normalizedRemoteUrl} onClick={() => void prepareRemoteSource()}>
                   {sourceBusy ? "Preparando…" : `Preparar ${selectedProvider?.label ?? "URL directa"} para recortar`}
                 </button>

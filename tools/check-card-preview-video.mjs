@@ -58,10 +58,12 @@ const [
   form,
   providerRoute,
   directRoute,
+  sourceRoute,
   staging,
   platformSource,
   workerClient,
   importWorker,
+  workerEnv,
   ytDlpWrapper,
   potSetup,
   lanHttps,
@@ -75,10 +77,12 @@ const [
   source("src/components/admin/GamePreviewClipUploadForm.tsx"),
   source("src/app/api/admin/content/games/[slug]/preview-provider/[provider]/route.ts"),
   source("src/app/api/admin/content/games/[slug]/preview-direct/route.ts"),
+  source("src/app/api/admin/content/games/[slug]/preview-source/[token]/route.ts"),
   source("src/lib/media/editorial-video-staging.ts"),
   source("src/lib/media/platform-video-source.ts"),
   source("src/lib/media/media-import-worker-client.ts"),
   source("ops/worker/media-import-worker.mjs"),
+  source("ops/systemd/media-import.env.example"),
   source("ops/worker/yt-dlp-node-wrapper.sh"),
   source("tools/setup-youtube-pot-provider.mjs"),
   source("tools/run-lan-https.mjs"),
@@ -98,6 +102,39 @@ assert(platformSource.includes("provider: PreviewProviderId") && platformSource.
 assert(resolver.includes("const local = game.previewClip?.trim()") && card.includes("resolveGameCardPreview"), "La web pública debe seguir usando sólo el WebM interno.");
 
 assert(
+  staging.includes("probeViaMediaImportWorker") &&
+    staging.includes('kind: "remote"') &&
+    staging.includes("downloadSegmentViaMediaImportWorker") &&
+    staging.includes("materializeRemoteSource") &&
+    importRoute.includes("prepareStagedEditorialPreviewForTrim") &&
+    providerRoute.includes('delivery: staged.kind === "remote" ? "stream" : "staged"') &&
+    directRoute.includes('delivery: staged.kind === "remote" ? "stream" : "staged"'),
+  "El fast path debe guardar sólo un descriptor remoto, extraer IN/OUT bajo demanda y conservar materialización completa como fallback."
+);
+assert(
+  sourceRoute.includes("openMediaImportWorkerPreviewStream") &&
+    sourceRoute.includes("Readable.toWeb") &&
+    workerClient.includes('workerEndpoint(`/stream/${sessionId}`)') &&
+    importWorker.includes('parts[0] === "stream"') &&
+    importWorker.includes('parts[0] === "internal-stream"') &&
+    importWorker.includes("MAX_STREAM_CHUNK_BYTES") &&
+    importWorker.includes('Range: `bytes=${range.start}-${range.end}`'),
+  "La previsualización remota debe viajar por Range a través del worker aislado y nunca exponer la URL resuelta al navegador."
+);
+assert(
+  importWorker.includes('parts[0] === "probe"') &&
+    importWorker.includes('parts[0] === "segment"') &&
+    importWorker.includes('"--skip-download"') &&
+    importWorker.includes("probeSeekableUrl") &&
+    importWorker.includes("runSegmentFfmpeg") &&
+    importWorker.includes("internal-stream") &&
+    workerEnv.includes("DEUNA_FFMPEG_PATH=/usr/bin/ffmpeg") &&
+    form.includes("streaming parcial") &&
+    form.includes('result.delivery === "stream"'),
+  "Probe debe ser sin descarga; el guardado debe recortar sólo el tramo mediante FFmpeg sobre loopback y la UI debe comunicar el modo parcial."
+);
+
+assert(
   platformSource.includes('[null, "web_safari", "web_embedded", "mweb"]') &&
     platformSource.includes('youtubeClients === "web_safari"') &&
     platformSource.includes('b[protocol^=m3u8]') &&
@@ -106,6 +143,13 @@ assert(
     platformSource.includes("poTokenProviderConfigured") &&
     !platformSource.includes('return "web_embedded,default"'),
   "YouTube debe conservar auto → web_safari/HLS → web_embedded y añadir mweb sólo cuando el PO Token Provider esté configurado."
+);
+assert(
+  importWorker.includes("youtubeProbeAttempts") &&
+    importWorker.includes('return poTokenProviderConfigured() ? [null, "web_embedded", "mweb"] : [null, "web_embedded"]') &&
+    importWorker.includes("youtubeClientAttempts") &&
+    importWorker.includes('"--plugin-dirs", YTDLP_PLUGIN_DIR'),
+  "El worker debe intentar HTTP seekable para lazy preview sin perder los fallbacks completos ni el PO Token opcional."
 );
 assert(
   potSetup.includes('PROVIDER_VERSION = "1.3.2"') &&
@@ -138,7 +182,7 @@ assert(
   "El wrapper no debe imponer clientes y sólo puede habilitar el PO Token Provider explícito sobre loopback."
 );
 
-const activePreviewSources = [form, providerRoute, directRoute, staging, platformSource, workerClient, importWorker, resolver, importRoute, uploadRoute, removeRoute];
+const activePreviewSources = [form, providerRoute, directRoute, sourceRoute, staging, platformSource, workerClient, importWorker, resolver, importRoute, uploadRoute, removeRoute];
 for (const legacyIdentifier of ["youtubePreview", "directPreview", "previewMode"]) {
   assert(activePreviewSources.every((text) => !text.includes(legacyIdentifier)), `El subsistema activo de previews no debe volver a usar ${legacyIdentifier}.`);
 }
@@ -171,4 +215,4 @@ if (failures.length) {
   failures.forEach((failure) => console.error(`- ${failure}`));
   process.exit(1);
 }
-console.log("Preview de video por proveedor: OK (selección explícita → staging aislado → IN/OUT → WebM interno; YouTube auto → web_safari/HLS → web_embedded → mweb+PO Token opcional; sin legacy activo).");
+console.log("Preview de video por proveedor: OK (selección explícita → probe sin descarga → Range privado → IN/OUT → extracción del tramo → WebM interno; staging completo permanece sólo como fallback compatible).");

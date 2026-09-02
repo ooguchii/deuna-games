@@ -5,7 +5,11 @@ import { expectedRevisionSchema } from "@/lib/admin/content-forms";
 import { getEditorialItem, saveGameMediaDraft } from "@/lib/admin/content-service";
 import { hasExactAdminFormFields } from "@/lib/admin/request-security";
 import { storeEditorialPreviewVideoFromPath } from "@/lib/media/editorial-video";
-import { removeStagedEditorialPreviewSource, resolveStagedEditorialPreviewSource } from "@/lib/media/editorial-video-staging";
+import {
+  prepareStagedEditorialPreviewForTrim,
+  removeStagedEditorialPreviewSource,
+  resolveStagedEditorialPreviewSource,
+} from "@/lib/media/editorial-video-staging";
 import { parsePreviewTrimWindow } from "@/lib/media/preview-video-policy";
 
 export const dynamic = "force-dynamic";
@@ -38,12 +42,18 @@ export async function POST(request: NextRequest, context: { params: Promise<{ sl
     if (item.revision !== revision.data) return adminRedirect(authorized.adminOrigin, `${target}?estado=conflicto&seccion=multimedia`);
     const source = await resolveStagedEditorialPreviewSource(slug, authorized.session.userId, sourceToken);
     if (!source) return adminRedirect(authorized.adminOrigin, `${target}?estado=preview-source-expirada&seccion=multimedia`);
-    const upload = await storeEditorialPreviewVideoFromPath(slug, source.filePath, trim);
-    const result = await saveGameMediaDraft(slug, revision.data, authorized.session.userId, { previewClip: upload.publicPath });
-    if (result.outcome === "not_found") return adminRedirect(authorized.adminOrigin, "/admin/juegos?estado=no-encontrado");
-    if (result.outcome === "conflict") return adminRedirect(authorized.adminOrigin, `${target}?estado=conflicto&seccion=multimedia`);
-    await removeStagedEditorialPreviewSource(sourceToken);
-    return adminRedirect(authorized.adminOrigin, `${target}?estado=preview-subido&seccion=multimedia`);
+
+    const prepared = await prepareStagedEditorialPreviewForTrim(source, trim);
+    try {
+      const upload = await storeEditorialPreviewVideoFromPath(slug, prepared.filePath, prepared.trim);
+      const result = await saveGameMediaDraft(slug, revision.data, authorized.session.userId, { previewClip: upload.publicPath });
+      if (result.outcome === "not_found") return adminRedirect(authorized.adminOrigin, "/admin/juegos?estado=no-encontrado");
+      if (result.outcome === "conflict") return adminRedirect(authorized.adminOrigin, `${target}?estado=conflicto&seccion=multimedia`);
+      await removeStagedEditorialPreviewSource(sourceToken);
+      return adminRedirect(authorized.adminOrigin, `${target}?estado=preview-subido&seccion=multimedia`);
+    } finally {
+      await prepared.cleanup();
+    }
   } catch (error) {
     console.error("No se pudo preparar el preview remoto:", error instanceof Error ? error.message : "error no identificado");
     return adminRedirect(authorized.adminOrigin, `${target}?estado=${errorState(error)}&seccion=multimedia`);
