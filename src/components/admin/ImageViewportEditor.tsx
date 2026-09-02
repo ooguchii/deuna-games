@@ -9,7 +9,6 @@ import {
   useState,
 } from "react";
 
-import { contextualDialogStyles } from "@/components/admin/ContextualMediaDialog";
 import {
   DEFAULT_GAME_IMAGE_VIEWPORT,
   MAX_GAME_IMAGE_ZOOM,
@@ -17,6 +16,7 @@ import {
 } from "@/lib/media/image-viewport";
 import type { GameImageViewport } from "@/types/game";
 
+import dialogStyles from "./ContextualMediaDialog.module.css";
 import styles from "./ImageViewportEditor.module.css";
 
 type Target = "cover" | "hero" | "card";
@@ -82,7 +82,9 @@ export default function ImageViewportEditor({
   async function save() {
     if (busy) return;
     setBusy(true);
-    setStatus(`Guardando el encuadre de ${targetLabel(target)} sin crear otra imagen…`);
+    setStatus(
+      `Guardando el encuadre de ${targetLabel(target)} sin crear otra imagen…`
+    );
 
     try {
       const response = await fetch(
@@ -92,7 +94,8 @@ export default function ImageViewportEditor({
           credentials: "same-origin",
           cache: "no-store",
           headers: {
-            "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+            "Content-Type":
+              "application/x-www-form-urlencoded;charset=UTF-8",
           },
           body: new URLSearchParams({
             expectedRevision: String(revision),
@@ -186,7 +189,8 @@ export default function ImageViewportEditor({
             />
           </div>
           <p className={styles.previewHint}>
-            Arrastra el punto focal hacia la zona que quieres priorizar. El archivo original no se recorta ni se duplica.
+            Arrastra el punto focal hacia la zona que quieres priorizar. El
+            archivo original no se recorta ni se duplica.
           </p>
         </div>
 
@@ -252,13 +256,25 @@ export default function ImageViewportEditor({
           </div>
 
           <div className={styles.presets}>
-            <button type="button" disabled={busy} onClick={() => applySide(0)}>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => applySide(0)}
+            >
               Izquierda
             </button>
-            <button type="button" disabled={busy} onClick={() => applySide(0.5)}>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => applySide(0.5)}
+            >
               Centro
             </button>
-            <button type="button" disabled={busy} onClick={() => applySide(1)}>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => applySide(1)}
+            >
               Derecha
             </button>
           </div>
@@ -274,15 +290,17 @@ export default function ImageViewportEditor({
           </button>
 
           {status && (
-            <p className={styles.status} role="status">{status}</p>
+            <p className={styles.status} role="status">
+              {status}
+            </p>
           )}
         </div>
       </div>
 
-      <div className={contextualDialogStyles.actions}>
+      <div className={dialogStyles.actions}>
         <button
           type="button"
-          className={contextualDialogStyles.secondary}
+          className={dialogStyles.secondary}
           disabled={busy}
           onClick={onClose}
         >
@@ -290,7 +308,7 @@ export default function ImageViewportEditor({
         </button>
         <button
           type="button"
-          className={contextualDialogStyles.primary}
+          className={dialogStyles.primary}
           disabled={busy}
           onClick={() => void save()}
         >
