@@ -314,12 +314,6 @@
   opacity: 0.5;
 }
 
-.divider {
-  height: 1px;
-  background: #17232e;
-  margin: 12px 0;
-}
-
 @media (max-width: 860px) {
   .destinationGrid,
   .removeGrid {
