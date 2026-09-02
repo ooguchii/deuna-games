@@ -42,6 +42,9 @@ Desktop.ini
 # Plataformas de deploy
 .vercel/
 
+# Herramientas locales verificadas/descargadas fuera del repositorio
+/.deuna-local-tools/
+
 # Reportes y auditorías locales generadas
 PROJECT_CONTEXT*.md
 PROJECT_REVIEW*.md
