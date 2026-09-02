@@ -19,6 +19,11 @@ const SERVER_CERT = path.join(
   CERT_DIRECTORY,
   "deuna-games-lan.pem"
 );
+const YOUTUBE_POT_ROOT = path.resolve(".deuna-local-tools", "youtube-pot");
+const YOUTUBE_POT_PLUGIN_DIRECTORY = path.join(YOUTUBE_POT_ROOT, "yt-dlp-plugins");
+const YOUTUBE_POT_PLUGIN_FILE = path.join(YOUTUBE_POT_PLUGIN_DIRECTORY, "bgutil-ytdlp-pot-provider.zip");
+const YOUTUBE_POT_PROVIDER_URL = "http://127.0.0.1:4416";
+const YOUTUBE_POT_CONTAINER = "deuna-youtube-pot-provider";
 
 const virtualInterfacePattern =
   /(?:vEthernet|WSL|Docker|Hyper-V|VirtualBox|VMware|Tailscale|ZeroTier|Hamachi|Loopback|Npcap|Bluetooth)/i;
@@ -184,6 +189,37 @@ function certificateSupportsHost(host) {
   );
 }
 
+async function youtubePotProviderReady() {
+  try {
+    const response = await fetch(`${YOUTUBE_POT_PROVIDER_URL}/`, {
+      signal: AbortSignal.timeout(1_500),
+      headers: { "User-Agent": "DeUnaGames-YouTubePOT-Health/1.0" },
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+async function resolveYoutubePotProvider() {
+  if (!existsSync(YOUTUBE_POT_PLUGIN_FILE)) return false;
+  if (await youtubePotProviderReady()) return true;
+
+  const start = spawnSync("docker", ["start", YOUTUBE_POT_CONTAINER], {
+    encoding: "utf8",
+    windowsHide: true,
+    stdio: ["ignore", "pipe", "pipe"],
+    timeout: 8_000,
+  });
+  if (start.error || start.status !== 0) return false;
+
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 350));
+    if (await youtubePotProviderReady()) return true;
+  }
+  return false;
+}
+
 let lanHost;
 let port;
 
@@ -233,6 +269,7 @@ if (!certificateSupportsHost(lanHost)) {
 }
 
 const origin = `https://${lanHost}:${port}`;
+const youtubePotReady = await resolveYoutubePotProvider();
 
 console.log("\nDeUna Games - modo LAN HTTPS\n");
 console.log(`Sitio seguro: ${origin}`);
@@ -240,6 +277,11 @@ console.log(`Admin LAN seguro: ${origin}/admin`);
 console.log(
   "PostgreSQL continúa sólo en localhost; no se publica en la red."
 );
+if (youtubePotReady) {
+  console.log("YouTube Proof-of-Origin: PO Token Provider local listo (mweb queda disponible como último fallback)." );
+} else {
+  console.log("YouTube Proof-of-Origin: no configurado. Para Shorts/SABR protegidos ejecuta: npm run media:youtube:setup");
+}
 console.log(
   "La otra PC debe confiar la CA local generada por mobile:secure:setup para obtener un contexto HTTPS válido.\n"
 );
@@ -273,6 +315,10 @@ const child = spawn(
       DEUNA_ADMIN_ENABLED: "true",
       DEUNA_ADMIN_ORIGIN: origin,
       NEXT_TELEMETRY_DISABLED: "1",
+      ...(youtubePotReady ? {
+        DEUNA_YTDLP_PLUGIN_DIR: YOUTUBE_POT_PLUGIN_DIRECTORY,
+        DEUNA_YTDLP_POT_PROVIDER_URL: YOUTUBE_POT_PROVIDER_URL,
+      } : {}),
     },
   }
 );
