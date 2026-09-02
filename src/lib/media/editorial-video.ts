@@ -267,8 +267,11 @@ function buildVideoFilter(
 ) {
   const crop = buildViewportCropFilter(viewport);
   const filters = crop ? [crop] : [];
+  // `preset.width` representa el lado mayor objetivo. Así un encuadre 9:16
+  // en calidad Alta termina como 360x640 en lugar de conservar 1080 px de alto.
   filters.push(
-    `scale=w='min(${preset.width},iw)':h=-2:` +
+    `scale=w='if(gte(iw,ih),min(${preset.width},iw),-2)':` +
+      `h='if(gte(iw,ih),-2,min(${preset.width},ih))':` +
       "force_original_aspect_ratio=decrease:force_divisible_by=2"
   );
   filters.push(`fps=${preset.fps}`);
