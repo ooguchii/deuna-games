@@ -93,7 +93,10 @@ function probeBrowserPlayback(src: string) {
     const timeout = window.setTimeout(() => finish(false), MEDIA_PROBE_TIMEOUT_MS);
     video.muted = true;
     video.playsInline = true;
-    video.preload = "metadata";
+    // Para validar el códec necesitamos que el navegador decodifique el primer
+    // frame. `auto` se aborta apenas llega loadeddata; el worker remoto además
+    // limita cada lectura Range, por lo que este sondeo no abre una descarga total.
+    video.preload = "auto";
     video.disablePictureInPicture = true;
     video.disableRemotePlayback = true;
     video.addEventListener("loadeddata", () => finish(true), { once: true });
