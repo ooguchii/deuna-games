@@ -44,10 +44,7 @@ function hasImageForTarget(game: Game, target: z.infer<typeof targetSchema>) {
     return Boolean(game.heroImage) && !game.videoMedia?.hero;
   }
 
-  return (
-    Boolean(game.imageMedia?.cardSource ?? game.coverImage) &&
-    !resolveGameCardVideo(game)
-  );
+  return Boolean(game.coverImage) && !resolveGameCardVideo(game);
 }
 
 export async function POST(
