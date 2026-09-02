@@ -71,5 +71,3 @@ export default function ContextualMediaDialog({
     </dialog>
   );
 }
-
-export { styles as contextualDialogStyles };
