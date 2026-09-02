@@ -12,8 +12,10 @@ import {
 } from "@/lib/media/editorial-video-staging";
 import {
   DEFAULT_PREVIEW_QUALITY,
+  DEFAULT_PREVIEW_VIEWPORT,
   parsePreviewQuality,
   parsePreviewTrimWindow,
+  parsePreviewViewport,
 } from "@/lib/media/preview-video-policy";
 
 export const dynamic = "force-dynamic";
@@ -21,11 +23,19 @@ export const runtime = "nodejs";
 
 const legacyFields = ["expectedRevision", "sourceToken", "startSeconds", "endSeconds"] as const;
 const qualityFields = [...legacyFields, "quality"] as const;
+const viewportFields = [
+  ...qualityFields,
+  "viewportX",
+  "viewportY",
+  "viewportZoom",
+  "viewportAspect",
+] as const;
 
 function errorState(error: unknown) {
   const message = error instanceof Error ? error.message : "";
   if (message.includes("FFmpeg no está disponible")) return "ffmpeg";
   if (message.includes("demasiado pesado") || message.includes("debajo de 3 MB")) return "video-pesado";
+  if (message.includes("encuadre")) return "preview-encuadre-invalido";
   if (message.includes("recorte")) return "preview-recorte-invalido";
   return "video-invalido";
 }
@@ -35,9 +45,12 @@ export async function POST(request: NextRequest, context: { params: Promise<{ sl
   if (!authorized.authorized) return authorized.response;
   const { slug } = await context.params;
   const target = `/admin/juegos/${encodeURIComponent(slug)}`;
-  const hasQualityField = hasExactAdminFormFields(authorized.form, qualityFields);
-  const isLegacyRequest = !hasQualityField && hasExactAdminFormFields(authorized.form, legacyFields);
-  if (!hasQualityField && !isLegacyRequest) return adminRedirect(authorized.adminOrigin, `${target}?estado=solicitud&seccion=multimedia`);
+  const hasViewportFields = hasExactAdminFormFields(authorized.form, viewportFields);
+  const hasQualityFields = !hasViewportFields && hasExactAdminFormFields(authorized.form, qualityFields);
+  const isLegacyRequest = !hasViewportFields && !hasQualityFields && hasExactAdminFormFields(authorized.form, legacyFields);
+  if (!hasViewportFields && !hasQualityFields && !isLegacyRequest) {
+    return adminRedirect(authorized.adminOrigin, `${target}?estado=solicitud&seccion=multimedia`);
+  }
 
   const revision = expectedRevisionSchema.safeParse(authorized.form.get("expectedRevision"));
   const sourceToken = authorized.form.get("sourceToken")?.trim() ?? "";
@@ -45,9 +58,18 @@ export async function POST(request: NextRequest, context: { params: Promise<{ sl
   const quality = isLegacyRequest
     ? DEFAULT_PREVIEW_QUALITY
     : parsePreviewQuality(authorized.form.get("quality"));
+  const viewport = hasViewportFields
+    ? parsePreviewViewport(
+        authorized.form.get("viewportX"),
+        authorized.form.get("viewportY"),
+        authorized.form.get("viewportZoom"),
+        authorized.form.get("viewportAspect")
+      )
+    : DEFAULT_PREVIEW_VIEWPORT;
 
   if (!trim) return adminRedirect(authorized.adminOrigin, `${target}?estado=preview-recorte-invalido&seccion=multimedia`);
   if (!quality) return adminRedirect(authorized.adminOrigin, `${target}?estado=preview-calidad-invalida&seccion=multimedia`);
+  if (!viewport) return adminRedirect(authorized.adminOrigin, `${target}?estado=preview-encuadre-invalido&seccion=multimedia`);
   if (!revision.success || !/^[a-f0-9]{48}$/.test(sourceToken)) return adminRedirect(authorized.adminOrigin, `${target}?estado=preview-source-expirada&seccion=multimedia`);
 
   try {
@@ -59,7 +81,13 @@ export async function POST(request: NextRequest, context: { params: Promise<{ sl
 
     const prepared = await prepareStagedEditorialPreviewForTrim(source, trim);
     try {
-      const upload = await storeEditorialPreviewVideoFromPath(slug, prepared.filePath, prepared.trim, quality);
+      const upload = await storeEditorialPreviewVideoFromPath(
+        slug,
+        prepared.filePath,
+        prepared.trim,
+        quality,
+        viewport
+      );
       const result = await saveGameMediaDraft(slug, revision.data, authorized.session.userId, { previewClip: upload.publicPath });
       if (result.outcome === "not_found") return adminRedirect(authorized.adminOrigin, "/admin/juegos?estado=no-encontrado");
       if (result.outcome === "conflict") return adminRedirect(authorized.adminOrigin, `${target}?estado=conflicto&seccion=multimedia`);

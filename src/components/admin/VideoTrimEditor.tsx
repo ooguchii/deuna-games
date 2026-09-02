@@ -1,8 +1,10 @@
 "use client";
 
 import {
+  Move,
   Pause,
   Play,
+  RotateCcw,
   Scissors,
   SkipBack,
 } from "lucide-react";
@@ -16,11 +18,18 @@ import {
 } from "react";
 
 import {
+  DEFAULT_PREVIEW_VIEWPORT,
   MAX_PREVIEW_DURATION_SECONDS,
+  MAX_PREVIEW_VIEWPORT_ZOOM,
+  MIN_PREVIEW_VIEWPORT_ZOOM,
   PREVIEW_QUALITY_OPTIONS,
+  PREVIEW_VIEWPORT_ASPECT_OPTIONS,
   parsePreviewTrimWindow,
+  parsePreviewViewport,
+  resolvePreviewViewportCrop,
   type PreviewQualityId,
   type PreviewTrimWindow,
+  type PreviewViewport,
 } from "@/lib/media/preview-video-policy";
 
 import styles from "./VideoTrimEditor.module.css";
@@ -28,6 +37,8 @@ import styles from "./VideoTrimEditor.module.css";
 const MIN_SELECTION_SECONDS = 0.1;
 const KEYBOARD_STEP_SECONDS = 0.1;
 const KEYBOARD_LARGE_STEP_SECONDS = 1;
+const VIEWPORT_KEYBOARD_STEP = 0.02;
+const VIEWPORT_KEYBOARD_LARGE_STEP = 0.1;
 
 type DragEdge = "start" | "end";
 
@@ -36,12 +47,31 @@ type PendingDrag = {
   value: number;
 };
 
+type VideoBox = {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+};
+
+type ViewportDrag = {
+  pointerId: number;
+  startClientX: number;
+  startClientY: number;
+  startX: number;
+  startY: number;
+  travelX: number;
+  travelY: number;
+};
+
 type VideoTrimEditorProps = {
   src: string;
   sourceLabel: string;
   quality: PreviewQualityId;
+  viewport: PreviewViewport;
   qualityDisabled?: boolean;
   onQualityChange: (quality: PreviewQualityId) => void;
+  onViewportChange: (viewport: PreviewViewport) => void;
   onTrimChange: (
     trim: PreviewTrimWindow | null
   ) => void;
@@ -62,6 +92,10 @@ function roundSeconds(value: number) {
   return Math.round(value * 1_000) / 1_000;
 }
 
+function roundViewport(value: number) {
+  return Math.round(value * 10_000) / 10_000;
+}
+
 function formatTime(value: number) {
   if (!Number.isFinite(value) || value < 0) {
     return "00:00.0";
@@ -75,18 +109,34 @@ function formatTime(value: number) {
     .padStart(4, "0")}`;
 }
 
+function normalizeViewport(viewport: PreviewViewport) {
+  return parsePreviewViewport(
+    String(viewport.x),
+    String(viewport.y),
+    String(viewport.zoom),
+    viewport.aspect
+  );
+}
+
 export default function VideoTrimEditor({
   src,
   sourceLabel,
   quality,
+  viewport,
   qualityDisabled = false,
   onQualityChange,
+  onViewportChange,
   onTrimChange,
 }: VideoTrimEditorProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const previewStageRef = useRef<HTMLDivElement>(null);
+  const resultCanvasRef = useRef<HTMLCanvasElement>(null);
   const timelineRef = useRef<HTMLDivElement>(null);
   const dragFrameRef = useRef<number | null>(null);
   const pendingDragRef = useRef<PendingDrag | null>(null);
+  const viewportDragFrameRef = useRef<number | null>(null);
+  const pendingViewportRef = useRef<PreviewViewport | null>(null);
+  const viewportDragRef = useRef<ViewportDrag | null>(null);
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [startSeconds, setStartSeconds] = useState(0);
@@ -94,6 +144,12 @@ export default function VideoTrimEditor({
   const [playing, setPlaying] = useState(false);
   const [loopSelection, setLoopSelection] = useState(false);
   const [mediaError, setMediaError] = useState<string | null>(null);
+  const [sourceWidth, setSourceWidth] = useState(0);
+  const [sourceHeight, setSourceHeight] = useState(0);
+  const [videoBox, setVideoBox] = useState<VideoBox | null>(null);
+  const [viewportDraft, setViewportDraft] = useState<PreviewViewport>(
+    normalizeViewport(viewport) ?? DEFAULT_PREVIEW_VIEWPORT
+  );
 
   const trim = useMemo(
     () =>
@@ -104,18 +160,147 @@ export default function VideoTrimEditor({
     [startSeconds, endSeconds]
   );
 
+  const sourceCrop = useMemo(
+    () => resolvePreviewViewportCrop(
+      sourceWidth,
+      sourceHeight,
+      viewportDraft
+    ),
+    [sourceHeight, sourceWidth, viewportDraft]
+  );
+
+  const viewportRect = useMemo(() => {
+    if (
+      !sourceCrop ||
+      !videoBox ||
+      sourceWidth <= 0 ||
+      sourceHeight <= 0
+    ) {
+      return null;
+    }
+
+    return {
+      left:
+        videoBox.left +
+        (sourceCrop.x / sourceWidth) * videoBox.width,
+      top:
+        videoBox.top +
+        (sourceCrop.y / sourceHeight) * videoBox.height,
+      width:
+        (sourceCrop.width / sourceWidth) * videoBox.width,
+      height:
+        (sourceCrop.height / sourceHeight) * videoBox.height,
+    };
+  }, [sourceCrop, sourceHeight, sourceWidth, videoBox]);
+
   useEffect(() => {
     onTrimChange(trim);
   }, [onTrimChange, trim]);
+
+  useEffect(() => {
+    const stage = previewStageRef.current;
+    const video = videoRef.current;
+    if (!stage || !video) return;
+
+    const syncVideoBox = () => {
+      if (video.videoWidth <= 0 || video.videoHeight <= 0) {
+        setVideoBox(null);
+        return;
+      }
+
+      const stageRect = stage.getBoundingClientRect();
+      const videoRect = video.getBoundingClientRect();
+      const elementWidth = videoRect.width;
+      const elementHeight = videoRect.height;
+      const sourceRatio = video.videoWidth / video.videoHeight;
+      const elementRatio = elementWidth / elementHeight;
+
+      let renderedWidth = elementWidth;
+      let renderedHeight = elementHeight;
+
+      if (elementRatio > sourceRatio) {
+        renderedWidth = elementHeight * sourceRatio;
+      } else {
+        renderedHeight = elementWidth / sourceRatio;
+      }
+
+      setVideoBox({
+        left:
+          videoRect.left - stageRect.left +
+          (elementWidth - renderedWidth) / 2,
+        top:
+          videoRect.top - stageRect.top +
+          (elementHeight - renderedHeight) / 2,
+        width: renderedWidth,
+        height: renderedHeight,
+      });
+    };
+
+    const observer = typeof ResizeObserver === "undefined"
+      ? null
+      : new ResizeObserver(syncVideoBox);
+    observer?.observe(stage);
+    observer?.observe(video);
+    video.addEventListener("loadedmetadata", syncVideoBox);
+    syncVideoBox();
+
+    return () => {
+      observer?.disconnect();
+      video.removeEventListener("loadedmetadata", syncVideoBox);
+    };
+  }, [src]);
 
   useEffect(() => {
     return () => {
       if (dragFrameRef.current !== null) {
         cancelAnimationFrame(dragFrameRef.current);
       }
+      if (viewportDragFrameRef.current !== null) {
+        cancelAnimationFrame(viewportDragFrameRef.current);
+      }
       pendingDragRef.current = null;
+      pendingViewportRef.current = null;
+      viewportDragRef.current = null;
     };
   }, []);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    const canvas = resultCanvasRef.current;
+    if (!video || !canvas || !sourceCrop || video.readyState < 2) {
+      return;
+    }
+
+    const frame = requestAnimationFrame(() => {
+      const ratio = sourceCrop.width / sourceCrop.height;
+      const maxWidth = 320;
+      const maxHeight = 220;
+      let width = maxWidth;
+      let height = width / ratio;
+      if (height > maxHeight) {
+        height = maxHeight;
+        width = height * ratio;
+      }
+
+      canvas.width = Math.max(2, Math.round(width));
+      canvas.height = Math.max(2, Math.round(height));
+      const context = canvas.getContext("2d", { alpha: false });
+      if (!context) return;
+      context.drawImage(
+        video,
+        sourceCrop.x,
+        sourceCrop.y,
+        sourceCrop.width,
+        sourceCrop.height,
+        0,
+        0,
+        canvas.width,
+        canvas.height
+      );
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, [currentTime, sourceCrop]);
 
   function seek(value: number) {
     const video = videoRef.current;
@@ -354,9 +539,6 @@ export default function VideoTrimEditor({
   function cancelPointerDrag(
     event: PointerEvent<HTMLButtonElement>
   ) {
-    // pointercancel puede llegar sin coordenadas fiables (cambio de ventana,
-    // gesto del SO, etc.). Conservamos el último estado visual aplicado y no
-    // provocamos un seek remoto inesperado.
     clearPendingDrag();
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
@@ -392,6 +574,146 @@ export default function VideoTrimEditor({
     }
   }
 
+  function commitViewport(next: PreviewViewport) {
+    const normalized = normalizeViewport(next);
+    if (!normalized) return;
+    setViewportDraft(normalized);
+    onViewportChange(normalized);
+  }
+
+  function scheduleViewportDraft(next: PreviewViewport) {
+    pendingViewportRef.current = normalizeViewport(next);
+    if (viewportDragFrameRef.current !== null) return;
+
+    viewportDragFrameRef.current = requestAnimationFrame(() => {
+      viewportDragFrameRef.current = null;
+      const pending = pendingViewportRef.current;
+      pendingViewportRef.current = null;
+      if (pending) setViewportDraft(pending);
+    });
+  }
+
+  function viewportFromPointer(
+    event: PointerEvent<HTMLButtonElement>
+  ) {
+    const drag = viewportDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return null;
+
+    return {
+      ...viewportDraft,
+      x: drag.travelX <= 0
+        ? 0.5
+        : roundViewport(clamp(
+            drag.startX +
+              (event.clientX - drag.startClientX) / drag.travelX,
+            0,
+            1
+          )),
+      y: drag.travelY <= 0
+        ? 0.5
+        : roundViewport(clamp(
+            drag.startY +
+              (event.clientY - drag.startClientY) / drag.travelY,
+            0,
+            1
+          )),
+    };
+  }
+
+  function startViewportDrag(
+    event: PointerEvent<HTMLButtonElement>
+  ) {
+    if (!videoBox || !viewportRect || qualityDisabled) return;
+    event.stopPropagation();
+    videoRef.current?.pause();
+    setLoopSelection(false);
+    viewportDragRef.current = {
+      pointerId: event.pointerId,
+      startClientX: event.clientX,
+      startClientY: event.clientY,
+      startX: viewportDraft.x,
+      startY: viewportDraft.y,
+      travelX: Math.max(0, videoBox.width - viewportRect.width),
+      travelY: Math.max(0, videoBox.height - viewportRect.height),
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function moveViewportDrag(
+    event: PointerEvent<HTMLButtonElement>
+  ) {
+    if (!event.currentTarget.hasPointerCapture(event.pointerId)) return;
+    const next = viewportFromPointer(event);
+    if (next) scheduleViewportDraft(next);
+  }
+
+  function finishViewportDrag(
+    event: PointerEvent<HTMLButtonElement>
+  ) {
+    if (!event.currentTarget.hasPointerCapture(event.pointerId)) return;
+    const next = viewportFromPointer(event);
+    if (viewportDragFrameRef.current !== null) {
+      cancelAnimationFrame(viewportDragFrameRef.current);
+      viewportDragFrameRef.current = null;
+    }
+    pendingViewportRef.current = null;
+    viewportDragRef.current = null;
+    if (next) commitViewport(next);
+    event.currentTarget.releasePointerCapture(event.pointerId);
+  }
+
+  function cancelViewportDrag(
+    event: PointerEvent<HTMLButtonElement>
+  ) {
+    if (viewportDragFrameRef.current !== null) {
+      cancelAnimationFrame(viewportDragFrameRef.current);
+      viewportDragFrameRef.current = null;
+    }
+    pendingViewportRef.current = null;
+    viewportDragRef.current = null;
+    onViewportChange(viewportDraft);
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  }
+
+  function handleViewportKey(
+    event: KeyboardEvent<HTMLButtonElement>
+  ) {
+    const horizontal =
+      event.key === "ArrowLeft" || event.key === "ArrowRight";
+    const vertical =
+      event.key === "ArrowUp" || event.key === "ArrowDown";
+    if (!horizontal && !vertical) return;
+
+    event.preventDefault();
+    const step = event.shiftKey
+      ? VIEWPORT_KEYBOARD_LARGE_STEP
+      : VIEWPORT_KEYBOARD_STEP;
+    const next = { ...viewportDraft };
+
+    if (event.key === "ArrowLeft") next.x -= step;
+    if (event.key === "ArrowRight") next.x += step;
+    if (event.key === "ArrowUp") next.y -= step;
+    if (event.key === "ArrowDown") next.y += step;
+    next.x = roundViewport(clamp(next.x, 0, 1));
+    next.y = roundViewport(clamp(next.y, 0, 1));
+    commitViewport(next);
+  }
+
+  function quickViewport(side: "left" | "center" | "right") {
+    const x = side === "left" ? 0 : side === "right" ? 1 : 0.5;
+    commitViewport({
+      ...viewportDraft,
+      x,
+      y: 0.5,
+      zoom:
+        side === "center"
+          ? viewportDraft.zoom
+          : Math.max(2, viewportDraft.zoom),
+    });
+  }
+
   const startPercent = duration > 0
     ? (startSeconds / duration) * 100
     : 0;
@@ -404,95 +726,267 @@ export default function VideoTrimEditor({
 
   return (
     <div className={styles.editor}>
-      <div className={styles.previewStage}>
-        <video
-          ref={videoRef}
-          src={src}
-          muted
-          playsInline
-          preload="metadata"
-          disablePictureInPicture
-          disableRemotePlayback
-          controls={false}
-          onClick={togglePlayback}
-          onLoadedMetadata={(event) => {
-            const nextDuration =
-              event.currentTarget.duration;
+      <div className={styles.previewWorkspace}>
+        <div ref={previewStageRef} className={styles.previewStage}>
+          <video
+            ref={videoRef}
+            src={src}
+            muted
+            playsInline
+            preload="metadata"
+            disablePictureInPicture
+            disableRemotePlayback
+            controls={false}
+            onClick={togglePlayback}
+            onLoadedMetadata={(event) => {
+              const video = event.currentTarget;
+              const nextDuration = video.duration;
 
-            if (
-              !Number.isFinite(nextDuration) ||
-              nextDuration < MIN_SELECTION_SECONDS
-            ) {
+              if (
+                !Number.isFinite(nextDuration) ||
+                nextDuration < MIN_SELECTION_SECONDS ||
+                video.videoWidth <= 0 ||
+                video.videoHeight <= 0
+              ) {
+                setMediaError(
+                  "El video no informa una duración o dimensiones válidas para editar."
+                );
+                onTrimChange(null);
+                return;
+              }
+
+              const safeDuration = roundSeconds(nextDuration);
+              const initialEnd = roundSeconds(
+                Math.min(
+                  safeDuration,
+                  MAX_PREVIEW_DURATION_SECONDS
+                )
+              );
+
+              setSourceWidth(video.videoWidth);
+              setSourceHeight(video.videoHeight);
+              setDuration(safeDuration);
+              setCurrentTime(0);
+              setStartSeconds(0);
+              setEndSeconds(initialEnd);
+              setMediaError(null);
+            }}
+            onTimeUpdate={(event) => {
+              const video = event.currentTarget;
+              const next = roundSeconds(video.currentTime);
+
+              if (
+                loopSelection &&
+                trim &&
+                next >= trim.endSeconds - 0.02
+              ) {
+                video.currentTime = trim.startSeconds;
+                setCurrentTime(trim.startSeconds);
+                if (video.paused) void video.play();
+                return;
+              }
+
+              setCurrentTime(next);
+            }}
+            onPlay={() => setPlaying(true)}
+            onPause={() => setPlaying(false)}
+            onEnded={() => {
+              setPlaying(false);
+              setLoopSelection(false);
+            }}
+            onError={() => {
               setMediaError(
-                "El video no informa una duración válida para recortar."
+                "No se pudo reproducir esta fuente para seleccionar el recorte."
               );
               onTrimChange(null);
-              return;
-            }
+            }}
+          />
 
-            const safeDuration = roundSeconds(
-              nextDuration
-            );
-            const initialEnd = roundSeconds(
-              Math.min(
-                safeDuration,
-                MAX_PREVIEW_DURATION_SECONDS
-              )
-            );
-
-            setDuration(safeDuration);
-            setCurrentTime(0);
-            setStartSeconds(0);
-            setEndSeconds(initialEnd);
-            setMediaError(null);
-          }}
-          onTimeUpdate={(event) => {
-            const video = event.currentTarget;
-            const next = roundSeconds(
-              video.currentTime
-            );
-
-            if (
-              loopSelection &&
-              trim &&
-              next >= trim.endSeconds - 0.02
-            ) {
-              video.currentTime = trim.startSeconds;
-              setCurrentTime(trim.startSeconds);
-              if (video.paused) void video.play();
-              return;
-            }
-
-            setCurrentTime(next);
-          }}
-          onPlay={() => setPlaying(true)}
-          onPause={() => setPlaying(false)}
-          onEnded={() => {
-            setPlaying(false);
-            setLoopSelection(false);
-          }}
-          onError={() => {
-            setMediaError(
-              "No se pudo reproducir esta fuente para seleccionar el recorte."
-            );
-            onTrimChange(null);
-          }}
-        />
-
-        <button
-          type="button"
-          className={styles.centerPlay}
-          onClick={togglePlayback}
-          aria-label={
-            playing ? "Pausar video" : "Reproducir video"
-          }
-        >
-          {playing ? (
-            <Pause size={22} aria-hidden="true" />
-          ) : (
-            <Play size={22} aria-hidden="true" />
+          {viewportRect && (
+            <>
+              <div
+                className={styles.viewportFrame}
+                style={{
+                  left: viewportRect.left,
+                  top: viewportRect.top,
+                  width: viewportRect.width,
+                  height: viewportRect.height,
+                }}
+                aria-hidden="true"
+              >
+                <span className={`${styles.viewportCorner} ${styles.viewportCornerTopLeft}`} />
+                <span className={`${styles.viewportCorner} ${styles.viewportCornerTopRight}`} />
+                <span className={`${styles.viewportCorner} ${styles.viewportCornerBottomLeft}`} />
+                <span className={`${styles.viewportCorner} ${styles.viewportCornerBottomRight}`} />
+              </div>
+              <button
+                type="button"
+                className={styles.viewportMoveHandle}
+                style={{
+                  left: viewportRect.left + viewportRect.width / 2,
+                  top: viewportRect.top + viewportRect.height / 2,
+                }}
+                disabled={qualityDisabled}
+                aria-label="Mover el área visible del video"
+                title="Arrastra para elegir qué zona del video será visible"
+                onPointerDown={startViewportDrag}
+                onPointerMove={moveViewportDrag}
+                onPointerUp={finishViewportDrag}
+                onPointerCancel={cancelViewportDrag}
+                onKeyDown={handleViewportKey}
+              >
+                <Move size={19} aria-hidden="true" />
+              </button>
+            </>
           )}
-        </button>
+
+          <button
+            type="button"
+            className={`${styles.centerPlay} ${viewportRect ? styles.centerPlayViewport : ""}`}
+            onClick={togglePlayback}
+            aria-label={
+              playing ? "Pausar video" : "Reproducir video"
+            }
+          >
+            {playing ? (
+              <Pause size={22} aria-hidden="true" />
+            ) : (
+              <Play size={22} aria-hidden="true" />
+            )}
+          </button>
+        </div>
+
+        <aside className={styles.viewportPanel} aria-label="Área visible del video">
+          <div className={styles.viewportPanelHeading}>
+            <div>
+              <span>ÁREA VISIBLE</span>
+              <strong>Elige qué parte se verá</strong>
+            </div>
+            <small>
+              Lo que quede dentro del marco será lo que se codifique en el WebM final.
+            </small>
+          </div>
+
+          <div className={styles.viewportPositionGrid}>
+            <label>
+              <span>Posición X</span>
+              <input
+                type="number"
+                min="0"
+                max="100"
+                step="1"
+                value={Math.round(viewportDraft.x * 100)}
+                disabled={qualityDisabled}
+                onChange={(event) => commitViewport({
+                  ...viewportDraft,
+                  x: clamp(Number(event.target.value) / 100, 0, 1),
+                })}
+              />
+            </label>
+            <label>
+              <span>Posición Y</span>
+              <input
+                type="number"
+                min="0"
+                max="100"
+                step="1"
+                value={Math.round(viewportDraft.y * 100)}
+                disabled={qualityDisabled}
+                onChange={(event) => commitViewport({
+                  ...viewportDraft,
+                  y: clamp(Number(event.target.value) / 100, 0, 1),
+                })}
+              />
+            </label>
+          </div>
+
+          <label className={styles.viewportControl}>
+            <span>
+              Zoom
+              <strong>{Math.round(viewportDraft.zoom * 100)}%</strong>
+            </span>
+            <input
+              type="range"
+              min={MIN_PREVIEW_VIEWPORT_ZOOM * 100}
+              max={MAX_PREVIEW_VIEWPORT_ZOOM * 100}
+              step="5"
+              value={Math.round(viewportDraft.zoom * 100)}
+              disabled={qualityDisabled}
+              onChange={(event) => commitViewport({
+                ...viewportDraft,
+                zoom: Number(event.target.value) / 100,
+              })}
+            />
+          </label>
+
+          <label className={styles.viewportControl}>
+            <span>Relación del encuadre</span>
+            <select
+              value={viewportDraft.aspect}
+              disabled={qualityDisabled}
+              onChange={(event) => commitViewport({
+                ...viewportDraft,
+                aspect: event.target.value as PreviewViewport["aspect"],
+              })}
+            >
+              {PREVIEW_VIEWPORT_ASPECT_OPTIONS.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <div className={styles.viewportPresets} aria-label="Posiciones rápidas de encuadre">
+            <button
+              type="button"
+              disabled={qualityDisabled}
+              onClick={() => quickViewport("left")}
+            >
+              Izquierda
+            </button>
+            <button
+              type="button"
+              disabled={qualityDisabled}
+              onClick={() => quickViewport("center")}
+            >
+              Centro
+            </button>
+            <button
+              type="button"
+              disabled={qualityDisabled}
+              onClick={() => quickViewport("right")}
+            >
+              Derecha
+            </button>
+          </div>
+
+          <button
+            type="button"
+            className={styles.viewportReset}
+            disabled={qualityDisabled}
+            onClick={() => commitViewport({ ...DEFAULT_PREVIEW_VIEWPORT })}
+          >
+            <RotateCcw size={15} aria-hidden="true" />
+            Restablecer encuadre
+          </button>
+
+          <div className={styles.viewportResult}>
+            <span>Resultado final · fotograma actual</span>
+            <div>
+              <canvas
+                ref={resultCanvasRef}
+                role="img"
+                aria-label="Vista previa del área visible elegida"
+              >
+                Vista previa del encuadre seleccionado.
+              </canvas>
+            </div>
+            <small>
+              Para mostrar sólo una zona, aumenta el zoom y arrastra el control central. Los botones Izquierda/Derecha aplican al menos 200% de zoom.
+            </small>
+          </div>
+        </aside>
       </div>
 
       <div className={styles.sourceRow}>
@@ -746,7 +1240,7 @@ export default function VideoTrimEditor({
           </div>
 
           <p className={styles.help}>
-            Arrastra IN y OUT sobre la línea de tiempo. Durante el arrastre sólo se mueve la selección; el video busca la posición al soltar para evitar solicitudes remotas innecesarias. El recorte puede durar hasta 30 segundos.
+            Arrastra IN y OUT sobre la línea de tiempo. Durante el arrastre sólo se mueve la selección; el video busca la posición al soltar para evitar solicitudes remotas innecesarias. El recorte puede durar hasta 30 segundos. El encuadre visual se procesa únicamente al guardar.
           </p>
         </>
       )}

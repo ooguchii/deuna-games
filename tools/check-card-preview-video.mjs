@@ -4,11 +4,17 @@ import process from "node:process";
 
 import {
   DEFAULT_PREVIEW_QUALITY,
+  DEFAULT_PREVIEW_VIEWPORT,
   MAX_PREVIEW_DURATION_SECONDS,
   MAX_PREVIEW_SOURCE_BYTES,
+  MAX_PREVIEW_VIEWPORT_ZOOM,
+  MIN_PREVIEW_VIEWPORT_ZOOM,
   PREVIEW_QUALITY_IDS,
+  PREVIEW_VIEWPORT_ASPECT_IDS,
   parsePreviewQuality,
   parsePreviewTrimWindow,
+  parsePreviewViewport,
+  resolvePreviewViewportCrop,
 } from "../src/lib/media/preview-video-policy.ts";
 import { PREVIEW_PROVIDER_IDS, parsePreviewProviderUrl } from "../src/lib/media/preview-providers.ts";
 import { inspectSafeEditorialWebm, MAX_EDITORIAL_PREVIEW_BYTES } from "../src/lib/media/safe-webm.ts";
@@ -25,6 +31,28 @@ assert(inspectSafeEditorialWebm(syntheticWebm)?.bytes === syntheticWebm.length &
 assert(MAX_EDITORIAL_PREVIEW_BYTES === 3 * 1024 * 1024 && MAX_PREVIEW_SOURCE_BYTES === 1024 * 1024 * 1024 && MAX_PREVIEW_DURATION_SECONDS === 30, "Los límites editoriales de video cambiaron inesperadamente.");
 assert(parsePreviewTrimWindow("12", "42")?.durationSeconds === 30 && parsePreviewTrimWindow("12", "42.001") === null, "IN/OUT debe conservar máximo 30 segundos.");
 assert(PREVIEW_QUALITY_IDS.join(",") === "performance,balanced,high" && DEFAULT_PREVIEW_QUALITY === "balanced" && parsePreviewQuality("high") === "high" && parsePreviewQuality("ultra") === null, "La política de calidad debe conservar Ligera/Equilibrada/Alta con Equilibrada como default seguro.");
+assert(
+  PREVIEW_VIEWPORT_ASPECT_IDS.join(",") === "source,16:9,1:1,4:5,9:16" &&
+    DEFAULT_PREVIEW_VIEWPORT.x === 0.5 &&
+    DEFAULT_PREVIEW_VIEWPORT.y === 0.5 &&
+    DEFAULT_PREVIEW_VIEWPORT.zoom === 1 &&
+    DEFAULT_PREVIEW_VIEWPORT.aspect === "source" &&
+    MIN_PREVIEW_VIEWPORT_ZOOM === 1 &&
+    MAX_PREVIEW_VIEWPORT_ZOOM === 3,
+  "El encuadre debe conservar default original/centrado y límites 100%-300%."
+);
+const rightHalf = resolvePreviewViewportCrop(1920, 1080, { x: 1, y: 0.5, zoom: 2, aspect: "source" });
+assert(
+  rightHalf?.width === 960 && rightHalf?.height === 540 && rightHalf?.x === 960 && rightHalf?.y === 270,
+  "El encuadre 200% a la derecha debe resolver la mitad derecha del video sin ambigüedad."
+);
+assert(
+  parsePreviewViewport("1", "0.5", "2", "source")?.x === 1 &&
+    parsePreviewViewport("1.01", "0.5", "2", "source") === null &&
+    parsePreviewViewport("0.5", "0.5", "3.01", "source") === null &&
+    parsePreviewViewport("0.5", "0.5", "2", "ultra-wide") === null,
+  "X/Y, zoom y relación del encuadre deben validarse estrictamente."
+);
 
 const cases = {
   youtube: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
@@ -148,10 +176,29 @@ assert(
   "La calidad Ligera/Equilibrada/Alta debe validarse de UI a servidor y degradarse automáticamente sin encodes redundantes para respetar el límite de peso."
 );
 assert(
+  trimEditor.includes("resolvePreviewViewportCrop") &&
+    trimEditor.includes("viewportFrame") &&
+    trimEditor.includes("viewportMoveHandle") &&
+    trimEditor.includes("resultCanvasRef") &&
+    trimEditor.includes("scheduleViewportDraft") &&
+    trimEditor.includes("Lo que quede dentro del marco") &&
+    form.includes("X-Deuna-Viewport-X") &&
+    form.includes("viewportAspect") &&
+    importRoute.includes("viewportFields") &&
+    importRoute.includes("parsePreviewViewport") &&
+    uploadRoute.includes("x-deuna-viewport-zoom") &&
+    uploadRoute.includes("DEFAULT_PREVIEW_VIEWPORT") &&
+    editorialVideo.includes("buildViewportCropFilter") &&
+    editorialVideo.includes("crop=w=") &&
+    editorialVideo.includes("viewport: PreviewViewport"),
+  "El encuadre visual debe viajar de UI a servidor, moverse sin recodificar y aplicarse con crop de FFmpeg sólo al guardar."
+);
+assert(
   importRoute.includes("legacyFields") &&
     importRoute.includes("isLegacyRequest") &&
-    importRoute.includes("DEFAULT_PREVIEW_QUALITY"),
-  "El endpoint remoto debe mantener compatibilidad con pestañas anteriores usando calidad Equilibrada por defecto."
+    importRoute.includes("DEFAULT_PREVIEW_QUALITY") &&
+    importRoute.includes("DEFAULT_PREVIEW_VIEWPORT"),
+  "El endpoint remoto debe mantener compatibilidad con pestañas anteriores usando calidad Equilibrada y encuadre original por defecto."
 );
 
 assert(
@@ -268,4 +315,4 @@ if (failures.length) {
   failures.forEach((failure) => console.error(`- ${failure}`));
   process.exit(1);
 }
-console.log("Preview de video por proveedor: OK (un solo editor activo → Range privado → IN/OUT sin seek continuo → calidad adaptativa → WebM interno; staging completo permanece sólo como fallback compatible).");
+console.log("Preview de video por proveedor: OK (un solo editor activo → Range privado → IN/OUT sin seek continuo → encuadre visual → calidad adaptativa → WebM interno; staging completo permanece sólo como fallback compatible).");

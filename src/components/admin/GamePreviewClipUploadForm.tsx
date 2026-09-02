@@ -19,10 +19,12 @@ import {
 } from "@/lib/media/preview-providers";
 import {
   DEFAULT_PREVIEW_QUALITY,
+  DEFAULT_PREVIEW_VIEWPORT,
   MAX_PREVIEW_SOURCE_BYTES,
   PREVIEW_QUALITY_OPTIONS,
   type PreviewQualityId,
   type PreviewTrimWindow,
+  type PreviewViewport,
 } from "@/lib/media/preview-video-policy";
 
 import adminStyles from "../../app/admin/admin.module.css";
@@ -117,6 +119,7 @@ function uploadError(state: string | null) {
   if (state === "video-pesado") return "El WebM final no pudo quedar por debajo de 3 MB incluso después de reducir calidad. Prueba un tramo más corto, con menos movimiento o el perfil Ligera.";
   if (state === "preview-recorte-invalido") return "El recorte no es válido. Ajusta IN y OUT.";
   if (state === "preview-calidad-invalida") return "La calidad elegida no es válida. Vuelve a seleccionar Ligera, Equilibrada o Alta.";
+  if (state === "preview-encuadre-invalido") return "El encuadre elegido no es válido. Restablécelo y vuelve a intentarlo.";
   if (state === "preview-source-expirada") return "La fuente temporal venció. Prepárala otra vez.";
   if (state === "solicitud") return "La solicitud fue rechazada por seguridad. Recarga el editor.";
   return "No se pudo guardar el preview de la tarjeta.";
@@ -132,6 +135,7 @@ export default function GamePreviewClipUploadForm({
   const [preparedSource, setPreparedSource] = useState<PreparedSource | null>(null);
   const [trim, setTrim] = useState<PreviewTrimWindow | null>(null);
   const [quality, setQuality] = useState<PreviewQualityId>(DEFAULT_PREVIEW_QUALITY);
+  const [viewport, setViewport] = useState<PreviewViewport>({ ...DEFAULT_PREVIEW_VIEWPORT });
   const [sourceBusy, setSourceBusy] = useState(false);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
@@ -167,6 +171,7 @@ export default function GamePreviewClipUploadForm({
   function resetPreparedSource() {
     setPreparedSource(null);
     setTrim(null);
+    setViewport({ ...DEFAULT_PREVIEW_VIEWPORT });
   }
 
   function leaveEditor() {
@@ -226,7 +231,7 @@ export default function GamePreviewClipUploadForm({
       if (await probeBrowserPlayback(src)) {
         keep = true;
         setPreparedSource({ mode: "file", src, label: `${file.name} · ${formatSize(file.size)}`, file });
-        setStatus("Archivo listo. Elige IN, OUT y calidad; todavía no se subió el archivo grande.");
+        setStatus("Archivo listo. Elige IN, OUT, encuadre y calidad; todavía no se subió el archivo grande.");
       } else {
         await prepareLocalCodecFallback(file);
       }
@@ -300,8 +305,8 @@ export default function GamePreviewClipUploadForm({
       });
       stagedToken = null;
       setStatus(delivery === "stream"
-        ? `${label} listo por streaming parcial. El reproductor externo se cerró y el editor interno quedó como única vista. Al guardar se obtiene únicamente el tramo elegido.`
-        : `${label} listo en modo compatible. El editor interno quedó como única vista y la tarjeta final no conservará ni consultará esta URL.`);
+        ? `${label} listo por streaming parcial. El editor permite elegir tiempo, encuadre y calidad sin descargar el video completo; al guardar se obtiene únicamente el tramo elegido.`
+        : `${label} listo en modo compatible. El editor interno permite elegir el encuadre y la tarjeta final no conservará ni consultará esta URL.`);
     } catch (error) {
       if (stagedToken) {
         void fetch(stagedSourcePath(slug, stagedToken), { method: "DELETE", credentials: "same-origin", cache: "no-store" }).catch(() => undefined);
@@ -331,6 +336,10 @@ export default function GamePreviewClipUploadForm({
         "X-Deuna-Trim-End": String(trim.endSeconds),
         "X-Deuna-Source-Extension": sourceExtension(preparedSource.file.name),
         "X-Deuna-Preview-Quality": quality,
+        "X-Deuna-Viewport-X": String(viewport.x),
+        "X-Deuna-Viewport-Y": String(viewport.y),
+        "X-Deuna-Viewport-Zoom": String(viewport.zoom),
+        "X-Deuna-Viewport-Aspect": viewport.aspect,
       };
     } else {
       endpoint = `/api/admin/content/games/${encodeURIComponent(slug)}/preview-import`;
@@ -340,14 +349,18 @@ export default function GamePreviewClipUploadForm({
         startSeconds: String(trim.startSeconds),
         endSeconds: String(trim.endSeconds),
         quality,
+        viewportX: String(viewport.x),
+        viewportY: String(viewport.y),
+        viewportZoom: String(viewport.zoom),
+        viewportAspect: viewport.aspect,
       });
       headers = { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" };
     }
 
     setBusy(true);
     setStatus(preparedSource.mode === "staged" && preparedSource.delivery === "stream"
-      ? `Extrayendo sólo ${trim.startSeconds}s → ${trim.endSeconds}s y generando calidad ${selectedQuality.label}…`
-      : `Generando WebM ${selectedQuality.label} con el tramo ${trim.startSeconds}s → ${trim.endSeconds}s…`);
+      ? `Extrayendo sólo ${trim.startSeconds}s → ${trim.endSeconds}s, aplicando el encuadre y generando calidad ${selectedQuality.label}…`
+      : `Aplicando encuadre y generando WebM ${selectedQuality.label} con el tramo ${trim.startSeconds}s → ${trim.endSeconds}s…`);
     try {
       const response = await fetch(endpoint, { method: "POST", credentials: "same-origin", cache: "no-store", headers, body });
       if (!response.ok) throw new Error(response.status === 413 ? "El video supera el límite máximo permitido." : "El servidor rechazó la creación del preview.");
@@ -371,11 +384,11 @@ export default function GamePreviewClipUploadForm({
       <div className={adminStyles.sectionHeading}>
         <div>
           <span>PREVIEW DE TARJETAS · FUENTES AISLADAS</span>
-          <h2>{preparedSource ? "Recorta y optimiza el preview" : "Elige primero el origen"}</h2>
+          <h2>{preparedSource ? "Recorta, encuadra y optimiza el preview" : "Elige primero el origen"}</h2>
         </div>
         <p>
           {preparedSource
-            ? "El editor interno es la única vista activa. Ajusta IN, OUT y calidad antes de guardar."
+            ? "El editor interno es la única vista activa. Ajusta IN, OUT, área visible y calidad antes de guardar."
             : "No hay detección automática. Cada botón abre un flujo exclusivo para esa fuente; cuando es posible DeUna previsualiza por rangos y evita descargar el video completo."}
         </p>
       </div>
@@ -474,7 +487,7 @@ export default function GamePreviewClipUploadForm({
                 <div>
                   <span>EDITOR ACTIVO</span>
                   <strong>{preparedSource.label}</strong>
-                  <small>Calidad actual: {selectedQuality.label} · hasta {selectedQuality.targetWidth} px · {selectedQuality.targetFps} FPS</small>
+                  <small>Calidad actual: {selectedQuality.label} · hasta {selectedQuality.targetWidth} px · {selectedQuality.targetFps} FPS · encuadre {Math.round(viewport.zoom * 100)}%</small>
                 </div>
                 <button type="button" disabled={busy || sourceBusy} onClick={leaveEditor}>
                   Cambiar fuente
@@ -486,8 +499,10 @@ export default function GamePreviewClipUploadForm({
                 src={preparedSource.src}
                 sourceLabel={preparedSource.label}
                 quality={quality}
+                viewport={viewport}
                 qualityDisabled={busy || sourceBusy}
                 onQualityChange={setQuality}
+                onViewportChange={setViewport}
                 onTrimChange={setTrim}
               />
             </div>
@@ -500,7 +515,7 @@ export default function GamePreviewClipUploadForm({
           )}
 
           <div className={adminStyles.formActions}>
-            <p>El resultado publicado siempre es un WebM/VP9 interno, silencioso, de hasta 30 segundos y máximo 3 MB. La calidad elegida es un objetivo: DeUna puede reducirla automáticamente para mantener rendimiento y compatibilidad.</p>
+            <p>El resultado publicado siempre es un WebM/VP9 interno, silencioso, de hasta 30 segundos y máximo 3 MB. El encuadre se aplica sólo al guardar; moverlo en el editor no genera nuevas conversiones.</p>
             <button type="submit" disabled={busy || sourceBusy || !trim || !preparedSource}>
               {busy ? "Recortando y convirtiendo…" : `Crear preview WebM · ${selectedQuality.label}`}
             </button>

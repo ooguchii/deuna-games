@@ -8,9 +8,11 @@ import { authorizeAdminStreamingMediaRequest } from "@/lib/admin/streaming-media
 import { storeEditorialPreviewVideoFromPath } from "@/lib/media/editorial-video";
 import {
   DEFAULT_PREVIEW_QUALITY,
+  DEFAULT_PREVIEW_VIEWPORT,
   MAX_PREVIEW_SOURCE_BYTES,
   parsePreviewQuality,
   parsePreviewTrimWindow,
+  parsePreviewViewport,
 } from "@/lib/media/preview-video-policy";
 import { isAcceptedStreamedPreviewSource, stageStreamedPreviewSource } from "@/lib/media/streamed-preview-source";
 
@@ -28,6 +30,7 @@ function errorState(error: unknown) {
   const message = error instanceof Error ? error.message : "";
   if (message.includes("FFmpeg no está disponible")) return "ffmpeg";
   if (message.includes("demasiado pesado") || message.includes("debajo de 3 MB")) return "video-pesado";
+  if (message.includes("encuadre")) return "preview-encuadre-invalido";
   if (message.includes("recorte")) return "preview-recorte-invalido";
   return "video-invalido";
 }
@@ -47,8 +50,22 @@ export async function POST(request: NextRequest, context: { params: Promise<{ sl
     ? DEFAULT_PREVIEW_QUALITY
     : parsePreviewQuality(qualityHeader);
 
+  const viewportHeaders = [
+    request.headers.get("x-deuna-viewport-x"),
+    request.headers.get("x-deuna-viewport-y"),
+    request.headers.get("x-deuna-viewport-zoom"),
+    request.headers.get("x-deuna-viewport-aspect"),
+  ] as const;
+  const hasViewportHeaders = viewportHeaders.some(
+    (value) => value !== null && value.trim() !== ""
+  );
+  const viewport = hasViewportHeaders
+    ? parsePreviewViewport(...viewportHeaders)
+    : DEFAULT_PREVIEW_VIEWPORT;
+
   if (!trim) return adminRedirect(authorized.adminOrigin, `${target}?estado=preview-recorte-invalido&seccion=multimedia`);
   if (!quality) return adminRedirect(authorized.adminOrigin, `${target}?estado=preview-calidad-invalida&seccion=multimedia`);
+  if (!viewport) return adminRedirect(authorized.adminOrigin, `${target}?estado=preview-encuadre-invalido&seccion=multimedia`);
   if (!revision.success || !request.body || (contentLength !== null && (!Number.isSafeInteger(contentLength) || contentLength <= 0 || contentLength > MAX_PREVIEW_SOURCE_BYTES)) || !isAcceptedStreamedPreviewSource(`source${extension}`, contentType, contentLength)) {
     return adminRedirect(authorized.adminOrigin, `${target}?estado=video-invalido&seccion=multimedia`);
   }
@@ -59,7 +76,13 @@ export async function POST(request: NextRequest, context: { params: Promise<{ sl
     if (item.revision !== revision.data) return adminRedirect(authorized.adminOrigin, `${target}?estado=conflicto&seccion=multimedia`);
     const staged = await stageStreamedPreviewSource(request.body, contentLength);
     temporaryDirectory = staged.directory;
-    const upload = await storeEditorialPreviewVideoFromPath(slug, staged.filePath, trim, quality);
+    const upload = await storeEditorialPreviewVideoFromPath(
+      slug,
+      staged.filePath,
+      trim,
+      quality,
+      viewport
+    );
     const result = await saveGameMediaDraft(slug, revision.data, authorized.session.userId, { previewClip: upload.publicPath });
     if (result.outcome === "not_found") return adminRedirect(authorized.adminOrigin, "/admin/juegos?estado=no-encontrado");
     if (result.outcome === "conflict") return adminRedirect(authorized.adminOrigin, `${target}?estado=conflicto&seccion=multimedia`);
