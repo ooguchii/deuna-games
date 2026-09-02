@@ -91,10 +91,15 @@ export type GameImageViewport = {
 };
 
 export type GameImageMedia = {
-  /* Cada destino conserva su encuadre sin duplicar ni modificar el WebP. */
+  /* Cada destino conserva su encuadre sin duplicar ni modificar la imagen. */
   cover?: GameImageViewport;
   hero?: GameImageViewport;
   card?: GameImageViewport;
+  /*
+   * La Card puede apuntar a cualquier imagen segura de la biblioteca.
+   * Si falta, conserva compatibilidad usando coverImage como fuente estática.
+   */
+  cardSource?: string;
 };
 
 export type GameVideoViewportAspect =
@@ -169,8 +174,9 @@ export type Game = {
   screenshots?: string[];
 
   /*
-   * imageMedia guarda sólo instrucciones de presentación. Portada, Hero y
-   * Card pueden usar el mismo archivo físico con encuadres independientes.
+   * imageMedia guarda sólo instrucciones/referencias de presentación. Portada,
+   * Hero y Card pueden reutilizar el mismo archivo físico con encuadres
+   * independientes; cardSource sólo cambia qué imagen usa la Card.
    */
   imageMedia?: GameImageMedia;
 
