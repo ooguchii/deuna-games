@@ -44,7 +44,10 @@ function hasImageForTarget(game: Game, target: z.infer<typeof targetSchema>) {
     return Boolean(game.heroImage) && !game.videoMedia?.hero;
   }
 
-  return Boolean(game.coverImage) && !resolveGameCardVideo(game);
+  return (
+    Boolean(game.imageMedia?.cardSource ?? game.coverImage) &&
+    !resolveGameCardVideo(game)
+  );
 }
 
 export async function POST(
@@ -106,16 +109,12 @@ export async function POST(
     ...item.payload.imageMedia,
     [target.data]: viewport,
   };
-  const update = {
-    imageMedia,
-  } as Pick<Game, "imageMedia"> &
-    Parameters<typeof saveGameMediaDraft>[3];
 
   const result = await saveGameMediaDraft(
     slug,
     revision.data,
     authorized.session.userId,
-    update
+    { imageMedia }
   );
 
   if (result.outcome === "not_found") {
