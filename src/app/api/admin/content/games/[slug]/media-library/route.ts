@@ -41,6 +41,7 @@ const assignmentTargetSchema = z.enum([
   "card-video",
   "card-match-hero",
   "gallery-image",
+  "gallery-remove",
 ]);
 
 const fields = [
@@ -292,7 +293,39 @@ export async function POST(
         redirectPath(slug, "galeria-llena")
       );
     }
-    update = { screenshots };
+    update = mediaUpdate(
+      { screenshots },
+      {
+        ...current.imageMedia,
+        gallery: {
+          ...current.imageMedia?.gallery,
+          [imageResource.src]: current.imageMedia?.gallery?.[imageResource.src]
+            ?? { ...DEFAULT_GAME_IMAGE_VIEWPORT },
+        },
+      }
+    );
+  }
+
+  if (target.data === "gallery-remove") {
+    const currentScreenshots = current.screenshots ?? [];
+    if (!currentScreenshots.includes(resource)) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        redirectPath(slug, "recurso-invalido")
+      );
+    }
+
+    const screenshots = currentScreenshots.filter((src) => src !== resource);
+    const gallery = { ...current.imageMedia?.gallery };
+    delete gallery[resource];
+
+    update = mediaUpdate(
+      { screenshots },
+      {
+        ...current.imageMedia,
+        ...(Object.keys(gallery).length ? { gallery } : { gallery: undefined }),
+      }
+    );
   }
 
   if (!update) {
@@ -324,6 +357,9 @@ export async function POST(
 
   return adminRedirect(
     authorized.adminOrigin,
-    redirectPath(slug, "recurso-asignado")
+    redirectPath(
+      slug,
+      target.data === "gallery-remove" ? "galeria-actualizada" : "recurso-asignado"
+    )
   );
 }

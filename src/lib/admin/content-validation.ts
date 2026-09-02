@@ -18,11 +18,17 @@ const imageViewportSchema = z
   })
   .strict();
 
+const galleryImageMediaSchema = z.record(
+  z.string().min(1).max(400),
+  imageViewportSchema
+);
+
 const imageMediaSchema = z
   .object({
     cover: imageViewportSchema.optional(),
     hero: imageViewportSchema.optional(),
     card: imageViewportSchema.optional(),
+    gallery: galleryImageMediaSchema.optional(),
   })
   .strict();
 

@@ -25,20 +25,24 @@ import type {
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const targetSchema = z.enum(["cover", "hero", "card"]);
-const fields = [
+const targetSchema = z.enum(["cover", "hero", "card", "gallery"]);
+const baseFields = [
   "expectedRevision",
   "target",
   "viewportX",
   "viewportY",
   "viewportZoom",
 ] as const;
+const galleryFields = [...baseFields, "resource"] as const;
 
 function redirectPath(slug: string, state: string) {
   return `/admin/juegos/${encodeURIComponent(slug)}?estado=${encodeURIComponent(state)}&seccion=multimedia`;
 }
 
-function hasImageForTarget(game: Game, target: z.infer<typeof targetSchema>) {
+function hasImageForTarget(
+  game: Game,
+  target: Exclude<z.infer<typeof targetSchema>, "gallery">
+) {
   if (target === "cover") return Boolean(game.coverImage);
   if (target === "hero") {
     return Boolean(game.heroImage) && !game.videoMedia?.hero;
@@ -55,8 +59,20 @@ export async function POST(
   if (!authorized.authorized) return authorized.response;
 
   const { slug } = await context.params;
+  const target = targetSchema.safeParse(authorized.form.get("target"));
+  if (!target.success) {
+    return adminRedirect(
+      authorized.adminOrigin,
+      redirectPath(slug, "imagen-encuadre-invalido")
+    );
+  }
 
-  if (!hasExactAdminFormFields(authorized.form, fields)) {
+  const expectsGalleryResource = target.data === "gallery";
+  const validFields = expectsGalleryResource
+    ? hasExactAdminFormFields(authorized.form, galleryFields)
+    : hasExactAdminFormFields(authorized.form, baseFields);
+
+  if (!validFields) {
     return adminRedirect(
       authorized.adminOrigin,
       redirectPath(slug, "solicitud")
@@ -66,16 +82,15 @@ export async function POST(
   const revision = expectedRevisionSchema.safeParse(
     authorized.form.get("expectedRevision")
   );
-  const target = targetSchema.safeParse(
-    authorized.form.get("target")
-  );
   const viewport = parseGameImageViewport(
     authorized.form.get("viewportX"),
     authorized.form.get("viewportY"),
     authorized.form.get("viewportZoom")
   );
+  const resourceValue = authorized.form.get("resource");
+  const resource = typeof resourceValue === "string" ? resourceValue : "";
 
-  if (!revision.success || !target.success || !viewport) {
+  if (!revision.success || !viewport) {
     return adminRedirect(
       authorized.adminOrigin,
       redirectPath(slug, "imagen-encuadre-invalido")
@@ -95,17 +110,34 @@ export async function POST(
       redirectPath(slug, "conflicto")
     );
   }
-  if (!hasImageForTarget(item.payload, target.data)) {
+
+  if (target.data === "gallery") {
+    if (!resource || !(item.payload.screenshots ?? []).includes(resource)) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        redirectPath(slug, "recurso-invalido")
+      );
+    }
+  } else if (!hasImageForTarget(item.payload, target.data)) {
     return adminRedirect(
       authorized.adminOrigin,
       redirectPath(slug, "recurso-invalido")
     );
   }
 
-  const imageMedia: GameImageMedia = {
-    ...item.payload.imageMedia,
-    [target.data]: viewport,
-  };
+  const imageMedia: GameImageMedia = target.data === "gallery"
+    ? {
+        ...item.payload.imageMedia,
+        gallery: {
+          ...item.payload.imageMedia?.gallery,
+          [resource]: viewport,
+        },
+      }
+    : {
+        ...item.payload.imageMedia,
+        [target.data]: viewport,
+      };
+
   const mediaUpdate = {
     coverImage: item.payload.coverImage,
     imageMedia,

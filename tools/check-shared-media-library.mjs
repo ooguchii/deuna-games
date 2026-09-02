@@ -18,6 +18,7 @@ const [
   multimediaEditor,
   multimediaCss,
   contextualCss,
+  contextualDialog,
   videoLibraryEditor,
   videoViewportEditor,
   imageViewportEditor,
@@ -27,6 +28,7 @@ const [
   heroSection,
   gameMedia,
   universalCard,
+  publicGameDetail,
 ] = await Promise.all([
   source("src/lib/media/editorial-media-library.ts"),
   source("src/app/api/admin/content/games/[slug]/media-library/route.ts"),
@@ -36,6 +38,7 @@ const [
   source("src/components/admin/GameMultimediaEditor.tsx"),
   source("src/components/admin/GameMultimediaEditor.module.css"),
   source("src/components/admin/GameMultimediaWorkspaceContextual.module.css"),
+  source("src/components/admin/ContextualMediaDialog.tsx"),
   source("src/components/admin/GameVideoLibraryEditor.tsx"),
   source("src/components/admin/GameVideoViewportEditor.tsx"),
   source("src/components/admin/ImageViewportEditor.tsx"),
@@ -45,6 +48,7 @@ const [
   source("src/components/home/HeroSection.tsx"),
   source("src/components/ui/GameMedia.tsx"),
   source("src/components/ui/UniversalGameCard.tsx"),
+  source("src/app/juegos/[slug]/page.tsx"),
 ]);
 
 assert(
@@ -87,12 +91,22 @@ assert(
     libraryRoute.includes('"card-video"') &&
     libraryRoute.includes('"card-match-hero"') &&
     libraryRoute.includes('"gallery-image"') &&
+    libraryRoute.includes('"gallery-remove"') &&
     libraryRoute.includes("imageMedia") &&
     libraryRoute.includes("saveGameMediaDraft") &&
     !libraryRoute.includes("storeEditorialPreviewVideo") &&
     !libraryRoute.includes("spawn(") &&
     !libraryRoute.includes("writeFile("),
-  "Asignar desde biblioteca debe estar autenticado, aceptar sólo recursos ya validados y modificar referencias/metadata sin copiar ni recodificar archivos."
+  "Asignar o quitar desde biblioteca debe estar autenticado, aceptar sólo referencias válidas y modificar metadata sin copiar ni recodificar archivos."
+);
+
+assert(
+  libraryRoute.includes('target.data === "gallery-remove"') &&
+    libraryRoute.includes("currentScreenshots.filter") &&
+    libraryRoute.includes("delete gallery[resource]") &&
+    !libraryRoute.includes("unlink(") &&
+    !libraryRoute.includes("rm("),
+  "Quitar una captura de Galería debe eliminar sólo su asignación/encuadre y nunca borrar el recurso físico de la biblioteca."
 );
 
 assert(
@@ -129,6 +143,8 @@ for (const label of [
   "Editar destino",
   "Igualar al Hero",
   "Agregar nuevo recurso",
+  "Gestionar galería",
+  "Quitar",
 ]) {
   assert(
     workspace.includes(label),
@@ -145,18 +161,21 @@ assert(
     workspace.includes('target="card-video"') &&
     workspace.includes('target="card-match-hero"') &&
     workspace.includes('target="gallery-image"') &&
+    workspace.includes('value="gallery-remove"') &&
+    workspace.includes("editingGalleryImage") &&
+    workspace.includes("galleryManagerOpen") &&
+    workspace.includes('target="gallery"') &&
     workspace.includes("ContextualMediaDialog") &&
     workspace.includes("ImageViewportEditor") &&
     workspace.includes("GameVideoViewportEditor") &&
     workspace.includes("editingDestination") &&
-    workspace.includes("setAddResourceKind") &&
     workspace.includes("libraryOnly") &&
     workspace.includes("GameMediaUploadForm") &&
     workspace.includes("videoEditor") &&
     !workspace.includes("Editor del destino seleccionado") &&
     !workspace.includes("Origen de la Card") &&
     !workspace.includes("Usar recurso propio"),
-  "Portada, Hero, Card y Galería deben seleccionar desde una biblioteca única y abrir editores sólo de forma contextual, sin restaurar el editor permanente antiguo."
+  "Portada, Hero, Card y Galería deben seleccionar desde una biblioteca única y abrir editores sólo de forma contextual, con gestión real de capturas."
 );
 
 assert(
@@ -170,10 +189,11 @@ assert(
 
 assert(
   multimediaEditor.includes("GameMultimediaWorkspaceContextual") &&
-    multimediaEditor.includes("Opciones avanzadas · rutas manuales") &&
-    multimediaEditor.includes("Guardar y continuar a Distribución") &&
-    !multimediaEditor.includes("GameMultimediaWorkspace\n"),
-  "El editor principal debe usar el workspace contextual y conservar las rutas manuales sólo como mantenimiento avanzado."
+    !multimediaEditor.includes("Opciones avanzadas · rutas manuales") &&
+    !multimediaEditor.includes("Ruta de portada") &&
+    !multimediaEditor.includes("screenshotsText") &&
+    !multimediaEditor.includes("GameEditorFormActions"),
+  "El editor principal debe usar sólo el workspace contextual; las rutas manuales y su barra de guardado ya no deben formar parte de Multimedia."
 );
 
 assert(
@@ -182,10 +202,26 @@ assert(
     multimediaCss.includes(".assignmentGrid") &&
     multimediaCss.includes(".helpRail") &&
     multimediaCss.includes("@media (max-width: 680px)") &&
+    !multimediaCss.includes(".advancedForm") &&
+    !multimediaCss.includes(".advancedDetails") &&
+    !multimediaCss.includes(".advancedFields") &&
     contextualCss.includes(".pickerFooter") &&
     contextualCss.includes("position: sticky") &&
-    contextualCss.includes(".pickerAddButton"),
-  "El layout debe separar Resumen/Biblioteca/Asignación/Ayuda y mantener visible la acción de agregar recurso dentro del selector."
+    contextualCss.includes(".pickerAddButton") &&
+    contextualCss.includes(".galleryManageGrid") &&
+    contextualCss.includes(".galleryRemoveButton"),
+  "El layout debe separar Biblioteca/Asignación/Ayuda, quitar CSS manual obsoleto y soportar gestión contextual de Galería."
+);
+
+assert(
+  contextualDialog.includes("createPortal") &&
+    contextualDialog.includes("document.body") &&
+    contextualDialog.includes('event.key === "Escape"') &&
+    contextualDialog.includes('aria-modal="true"') &&
+    contextualDialog.includes('document.body.style.overflow = "hidden"') &&
+    !contextualDialog.includes("showModal()") &&
+    !contextualDialog.includes("<dialog"),
+  "Editar destino debe usar un overlay React robusto con Escape, foco y bloqueo de scroll, sin depender del <dialog> nativo."
 );
 
 assert(
@@ -226,26 +262,31 @@ assert(
 );
 
 assert(
-  imageViewportEditor.includes("image-layout") &&
+  imageViewportEditor.includes('"gallery"') &&
+    imageViewportEditor.includes("resource?: string") &&
+    imageViewportEditor.includes("image-layout") &&
     imageViewportEditor.includes("viewportX") &&
     imageViewportEditor.includes("viewportY") &&
     imageViewportEditor.includes("viewportZoom") &&
     imageViewportEditor.includes("Restablecer encuadre") &&
     !imageViewportEditor.includes("media-upload") &&
     !imageViewportEditor.includes("storeEditorialWebp"),
-  "Editar un destino de imagen debe guardar foco/zoom como metadata y nunca volver a subir ni recodificar la imagen."
+  "El mismo editor de imagen debe servir a Portada/Hero/Card/Galería y guardar sólo foco/zoom como metadata."
 );
 
 assert(
-  imageLayoutRoute.includes("authorizeAdminFormRequest") &&
+  imageLayoutRoute.includes('"gallery"') &&
+    imageLayoutRoute.includes("galleryFields") &&
+    imageLayoutRoute.includes("authorizeAdminFormRequest") &&
     imageLayoutRoute.includes("hasExactAdminFormFields") &&
     imageLayoutRoute.includes("parseGameImageViewport") &&
     imageLayoutRoute.includes("expectedRevision") &&
     imageLayoutRoute.includes("imageMedia") &&
+    imageLayoutRoute.includes("screenshots") &&
     !imageLayoutRoute.includes("writeFile(") &&
     !imageLayoutRoute.includes("spawn(") &&
     !imageLayoutRoute.includes("storeEditorialWebp"),
-  "La ruta de encuadre de imagen debe validar sesión, campos, revisión y límites sin tocar los bytes físicos."
+  "La ruta de encuadre debe validar sesión, campos, revisión y pertenencia de la captura sin tocar bytes físicos."
 );
 
 assert(
@@ -253,8 +294,10 @@ assert(
     gameMedia.includes("normalizeGameImageViewport") &&
     gameMedia.includes("--game-image-zoom") &&
     gameMedia.includes("--game-image-position") &&
-    universalCard.includes("game.imageMedia?.card ?? game.imageMedia?.cover"),
-  "Los encuadres guardados deben llegar al Hero, a GameMedia y a las Cards públicas, con fallback compatible para juegos antiguos."
+    universalCard.includes("game.imageMedia?.card ?? game.imageMedia?.cover") &&
+    publicGameDetail.includes("game.imageMedia?.cover") &&
+    publicGameDetail.includes("game.imageMedia?.gallery?.[image]"),
+  "Los encuadres guardados deben llegar al Hero, Portada, Cards y Galería públicas, con fallback compatible para juegos antiguos."
 );
 
 if (failures.length) {
@@ -264,5 +307,5 @@ if (failures.length) {
 }
 
 console.log(
-  "Biblioteca multimedia contextual: OK (almacén validado → recurso único → asignación por destino → editores contextuales metadata-only → master de video completo reutilizable)."
+  "Biblioteca multimedia contextual: OK (biblioteca única → asignación segura → editores contextuales robustos → Galería editable/quitable sin borrar archivos → framing público)."
 );

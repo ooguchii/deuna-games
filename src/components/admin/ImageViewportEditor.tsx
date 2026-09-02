@@ -1,9 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import {
-  RotateCcw,
-} from "lucide-react";
+import { RotateCcw } from "lucide-react";
 import {
   type PointerEvent,
   useState,
@@ -19,7 +17,7 @@ import type { GameImageViewport } from "@/types/game";
 import dialogStyles from "./ContextualMediaDialog.module.css";
 import styles from "./ImageViewportEditor.module.css";
 
-type Target = "cover" | "hero" | "card";
+type Target = "cover" | "hero" | "card" | "gallery";
 
 type Props = {
   slug: string;
@@ -28,6 +26,7 @@ type Props = {
   src: string;
   label: string;
   initialViewport?: GameImageViewport;
+  resource?: string;
   onClose: () => void;
 };
 
@@ -42,6 +41,7 @@ function round(value: number) {
 function targetLabel(target: Target) {
   if (target === "cover") return "Portada";
   if (target === "hero") return "Hero";
+  if (target === "gallery") return "Galería";
   return "Card";
 }
 
@@ -52,6 +52,7 @@ export default function ImageViewportEditor({
   src,
   label,
   initialViewport,
+  resource,
   onClose,
 }: Props) {
   const [viewport, setViewport] = useState<GameImageViewport>(() =>
@@ -82,11 +83,24 @@ export default function ImageViewportEditor({
   async function save() {
     if (busy) return;
     setBusy(true);
-    setStatus(
-      `Guardando el encuadre de ${targetLabel(target)} sin crear otra imagen…`
-    );
+    setStatus(`Guardando el encuadre de ${targetLabel(target)} sin crear otra imagen…`);
 
     try {
+      const fields: Record<string, string> = {
+        expectedRevision: String(revision),
+        target,
+        viewportX: String(viewport.x),
+        viewportY: String(viewport.y),
+        viewportZoom: String(viewport.zoom),
+      };
+
+      if (target === "gallery") {
+        if (!resource) {
+          throw new Error("La captura de Galería ya no está disponible.");
+        }
+        fields.resource = resource;
+      }
+
       const response = await fetch(
         `/api/admin/content/games/${encodeURIComponent(slug)}/image-layout`,
         {
@@ -94,16 +108,9 @@ export default function ImageViewportEditor({
           credentials: "same-origin",
           cache: "no-store",
           headers: {
-            "Content-Type":
-              "application/x-www-form-urlencoded;charset=UTF-8",
+            "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
           },
-          body: new URLSearchParams({
-            expectedRevision: String(revision),
-            target,
-            viewportX: String(viewport.x),
-            viewportY: String(viewport.y),
-            viewportZoom: String(viewport.zoom),
-          }),
+          body: new URLSearchParams(fields),
         }
       );
       const resultUrl = new URL(response.url, window.location.href);
@@ -189,8 +196,7 @@ export default function ImageViewportEditor({
             />
           </div>
           <p className={styles.previewHint}>
-            Arrastra el punto focal hacia la zona que quieres priorizar. El
-            archivo original no se recorta ni se duplica.
+            Arrastra el punto focal hacia la zona que quieres priorizar. El archivo original no se recorta ni se duplica.
           </p>
         </div>
 
@@ -256,25 +262,13 @@ export default function ImageViewportEditor({
           </div>
 
           <div className={styles.presets}>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => applySide(0)}
-            >
+            <button type="button" disabled={busy} onClick={() => applySide(0)}>
               Izquierda
             </button>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => applySide(0.5)}
-            >
+            <button type="button" disabled={busy} onClick={() => applySide(0.5)}>
               Centro
             </button>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => applySide(1)}
-            >
+            <button type="button" disabled={busy} onClick={() => applySide(1)}>
               Derecha
             </button>
           </div>
@@ -290,9 +284,7 @@ export default function ImageViewportEditor({
           </button>
 
           {status && (
-            <p className={styles.status} role="status">
-              {status}
-            </p>
+            <p className={styles.status} role="status">{status}</p>
           )}
         </div>
       </div>

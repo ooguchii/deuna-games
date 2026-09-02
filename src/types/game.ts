@@ -95,6 +95,8 @@ export type GameImageMedia = {
   cover?: GameImageViewport;
   hero?: GameImageViewport;
   card?: GameImageViewport;
+  /* La galería guarda un encuadre por recurso asignado. */
+  gallery?: Record<string, GameImageViewport>;
 };
 
 export type GameVideoViewportAspect =
@@ -169,8 +171,9 @@ export type Game = {
   screenshots?: string[];
 
   /*
-   * imageMedia guarda sólo instrucciones de presentación. Portada, Hero y
-   * Card pueden reutilizar el mismo archivo físico con encuadres distintos.
+   * imageMedia guarda sólo instrucciones de presentación. Portada, Hero,
+   * Card y cada imagen de Galería pueden reutilizar el mismo archivo físico
+   * con encuadres distintos.
    */
   imageMedia?: GameImageMedia;
 

@@ -150,7 +150,12 @@ const notices = {
   "galeria-llena": {
     kind: "warning",
     message:
-      "La galería ya contiene ocho capturas. Retira una ruta antes de añadir otra imagen.",
+      "La galería ya contiene ocho capturas. Quita una de las capturas asignadas antes de añadir otra imagen.",
+  },
+  "galeria-actualizada": {
+    kind: "success",
+    message:
+      "Galería actualizada. La captura se quitó sólo de este destino y su archivo sigue disponible en la biblioteca compartida.",
   },
   datos: {
     kind: "error",
@@ -160,7 +165,7 @@ const notices = {
   asset: {
     kind: "error",
     message:
-      "Una de las imágenes indicadas no existe en el almacén permitido. Corrige la ruta antes de guardar.",
+      "Una de las imágenes indicadas no existe en el almacén permitido. Corrige la selección antes de guardar.",
   },
   "imagen-invalida": {
     kind: "error",

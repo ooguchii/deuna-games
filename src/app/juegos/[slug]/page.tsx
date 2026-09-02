@@ -342,6 +342,7 @@ export default async function GameDetailPage({
               sizes="100vw"
               priority
               variant="hero"
+              viewport={game.heroImage ? game.imageMedia?.hero : game.imageMedia?.cover}
             />
             <div className={styles.heroShade} />
           </div>
@@ -352,6 +353,7 @@ export default async function GameDetailPage({
                 src={game.coverImage}
                 alt={game.imageAlt}
                 sizes="(max-width: 700px) 52vw, 260px"
+                viewport={game.imageMedia?.cover}
               />
             </div>
 
@@ -630,6 +632,10 @@ export default async function GameDetailPage({
                     src={image}
                     alt={`${game.title} — imagen ${index + 1}`}
                     sizes="(max-width: 700px) 100vw, 33vw"
+                    viewport={
+                      game.imageMedia?.gallery?.[image]
+                      ?? (image === game.heroImage ? game.imageMedia?.hero : undefined)
+                    }
                   />
                 </figure>
               ))}
