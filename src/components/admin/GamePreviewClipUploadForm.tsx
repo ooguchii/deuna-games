@@ -406,7 +406,7 @@ export default function GamePreviewClipUploadForm({
                       allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
                       allowFullScreen
                       loading="lazy"
-                      referrerPolicy="no-referrer"
+                      referrerPolicy="strict-origin-when-cross-origin"
                     />
                   </div>
                 ) : (
