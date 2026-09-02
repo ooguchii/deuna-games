@@ -118,7 +118,7 @@ function classifyYtDlpFailure(stderr: string, provider: PreviewProviderId) {
     return new Error(`La copia temporal de ${label} supera 512 MB.`);
   }
   if (provider === "youtube" && normalized.includes("requested format is not available")) {
-    return new Error("YouTube no entregó un formato público compatible con este video. Actualiza yt-dlp; si ya está actualizado, prueba otro video público para descartar una restricción específica del contenido.");
+    return new Error("YouTube no expuso ningún formato utilizable incluso con la selección adaptativa de video y audio. Revisa el diagnóstico de yt-dlp para este contenido.");
   }
   return new Error(`No se pudo obtener el video público desde ${label}. yt-dlp rechazó los intentos disponibles para este proveedor.`);
 }
@@ -134,6 +134,20 @@ function youtubeRuntimeArgs(provider: PreviewProviderId) {
 function platformSpecificArgs(provider: PreviewProviderId, youtubeClients: string | null) {
   if (provider !== "youtube" || !youtubeClients) return [];
   return ["--extractor-args", `youtube:player_client=${youtubeClients}`];
+}
+
+function formatSelectionArgs(provider: PreviewProviderId) {
+  if (provider === "youtube") {
+    // YouTube suele entregar video y audio como streams adaptativos separados.
+    // Usamos el selector recomendado por yt-dlp y sólo ordenamos hacia 480p:
+    // si no existe <=480p, yt-dlp elige automáticamente la menor resolución disponible.
+    return ["--format", "bv*+ba/b", "--format-sort", "res:480"];
+  }
+
+  return [
+    "--format",
+    "best[height<=480][vcodec^=avc1][ext=mp4]/best[height<=480][ext=mp4]/best[height<=480]/worst[ext=mp4]/worst",
+  ];
 }
 
 function runYtDlpAttempt(
@@ -165,7 +179,7 @@ function runYtDlpAttempt(
       "--no-write-thumbnail",
       "--no-write-info-json",
       "--no-write-playlist-metafiles",
-      "--format", "best[height<=480][vcodec^=avc1][ext=mp4]/best[height<=480][ext=mp4]/best[height<=480]/worst[ext=mp4]/worst",
+      ...formatSelectionArgs(provider),
       "--max-filesize", "512M",
       "--output", outputTemplate,
       sourceUrl,
