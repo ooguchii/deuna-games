@@ -563,7 +563,7 @@ export default function GameMultimediaWorkspaceContextual({
     setAddResourceKind(kind);
   }
 
-  function GalleryAssignedItems({ compact = false }: { compact?: boolean }) {
+  function renderGalleryAssignedItems(compact = false) {
     if (!screenshots.length) {
       return (
         <div className={contextualStyles.galleryEmpty}>
@@ -921,7 +921,7 @@ export default function GameMultimediaWorkspaceContextual({
                   </div>
                 </div>
 
-                <GalleryAssignedItems compact />
+                {renderGalleryAssignedItems(true)}
 
                 <div className={styles.assignmentActions}>
                   <ResourcePicker
@@ -1052,7 +1052,7 @@ export default function GameMultimediaWorkspaceContextual({
               onAddResource={openAddResource}
             />
           </div>
-          <GalleryAssignedItems />
+          {renderGalleryAssignedItems()}
         </ContextualMediaDialog>
       )}
 
