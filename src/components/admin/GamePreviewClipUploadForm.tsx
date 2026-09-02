@@ -18,7 +18,10 @@ import {
   type PreviewProviderId,
 } from "@/lib/media/preview-providers";
 import {
+  DEFAULT_PREVIEW_QUALITY,
   MAX_PREVIEW_SOURCE_BYTES,
+  PREVIEW_QUALITY_OPTIONS,
+  type PreviewQualityId,
   type PreviewTrimWindow,
 } from "@/lib/media/preview-video-policy";
 
@@ -90,8 +93,10 @@ function probeBrowserPlayback(src: string) {
     const timeout = window.setTimeout(() => finish(false), MEDIA_PROBE_TIMEOUT_MS);
     video.muted = true;
     video.playsInline = true;
-    video.preload = "auto";
-    video.addEventListener("canplay", () => finish(true), { once: true });
+    video.preload = "metadata";
+    video.disablePictureInPicture = true;
+    video.disableRemotePlayback = true;
+    video.addEventListener("loadeddata", () => finish(true), { once: true });
     video.addEventListener("error", () => finish(false), { once: true });
     video.src = src;
     video.load();
@@ -106,8 +111,9 @@ function validLocalFile(file: File) {
 function uploadError(state: string | null) {
   if (state === "conflicto") return "Otra pestaña guardó una revisión más reciente. Recarga el editor y vuelve a intentarlo.";
   if (state === "ffmpeg") return "FFmpeg no está disponible para crear el WebM optimizado.";
-  if (state === "video-pesado") return "El WebM final no pudo quedar por debajo de 3 MB. Elige un tramo más corto o con menos movimiento.";
+  if (state === "video-pesado") return "El WebM final no pudo quedar por debajo de 3 MB incluso después de reducir calidad. Prueba un tramo más corto, con menos movimiento o el perfil Ligera.";
   if (state === "preview-recorte-invalido") return "El recorte no es válido. Ajusta IN y OUT.";
+  if (state === "preview-calidad-invalida") return "La calidad elegida no es válida. Vuelve a seleccionar Ligera, Equilibrada o Alta.";
   if (state === "preview-source-expirada") return "La fuente temporal venció. Prepárala otra vez.";
   if (state === "solicitud") return "La solicitud fue rechazada por seguridad. Recarga el editor.";
   return "No se pudo guardar el preview de la tarjeta.";
@@ -122,6 +128,7 @@ export default function GamePreviewClipUploadForm({
   const [sourceUrl, setSourceUrl] = useState("");
   const [preparedSource, setPreparedSource] = useState<PreparedSource | null>(null);
   const [trim, setTrim] = useState<PreviewTrimWindow | null>(null);
+  const [quality, setQuality] = useState<PreviewQualityId>(DEFAULT_PREVIEW_QUALITY);
   const [sourceBusy, setSourceBusy] = useState(false);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
@@ -129,6 +136,7 @@ export default function GamePreviewClipUploadForm({
   const selectedProvider = sourceMode !== "file" && sourceMode !== "direct"
     ? getPreviewProvider(sourceMode)
     : null;
+  const selectedQuality = PREVIEW_QUALITY_OPTIONS.find((option) => option.id === quality)!;
   const normalizedRemoteUrl = useMemo(() => {
     if (sourceMode === "file") return null;
     if (sourceMode === "direct") return parseDirectVideoUrl(sourceUrl);
@@ -156,6 +164,11 @@ export default function GamePreviewClipUploadForm({
   function resetPreparedSource() {
     setPreparedSource(null);
     setTrim(null);
+  }
+
+  function leaveEditor() {
+    resetPreparedSource();
+    setStatus(null);
   }
 
   function switchSourceMode(mode: SourceMode) {
@@ -210,7 +223,7 @@ export default function GamePreviewClipUploadForm({
       if (await probeBrowserPlayback(src)) {
         keep = true;
         setPreparedSource({ mode: "file", src, label: `${file.name} · ${formatSize(file.size)}`, file });
-        setStatus("Archivo listo. Elige IN y OUT; todavía no se subió el archivo grande.");
+        setStatus("Archivo listo. Elige IN, OUT y calidad; todavía no se subió el archivo grande.");
       } else {
         await prepareLocalCodecFallback(file);
       }
@@ -284,8 +297,8 @@ export default function GamePreviewClipUploadForm({
       });
       stagedToken = null;
       setStatus(delivery === "stream"
-        ? `${label} listo por streaming parcial. IN/OUT sólo navega por bloques; al guardar se obtiene únicamente el tramo elegido. Si el origen falla, DeUna conserva el fallback completo.`
-        : `${label} listo en modo compatible. La tarjeta final no conservará ni consultará esta URL.`);
+        ? `${label} listo por streaming parcial. El reproductor externo se cerró y el editor interno quedó como única vista. Al guardar se obtiene únicamente el tramo elegido.`
+        : `${label} listo en modo compatible. El editor interno quedó como única vista y la tarjeta final no conservará ni consultará esta URL.`);
     } catch (error) {
       if (stagedToken) {
         void fetch(stagedSourcePath(slug, stagedToken), { method: "DELETE", credentials: "same-origin", cache: "no-store" }).catch(() => undefined);
@@ -314,20 +327,24 @@ export default function GamePreviewClipUploadForm({
         "X-Deuna-Trim-Start": String(trim.startSeconds),
         "X-Deuna-Trim-End": String(trim.endSeconds),
         "X-Deuna-Source-Extension": sourceExtension(preparedSource.file.name),
+        "X-Deuna-Preview-Quality": quality,
       };
     } else {
       endpoint = `/api/admin/content/games/${encodeURIComponent(slug)}/preview-import`;
       body = new URLSearchParams({
-        expectedRevision: String(revision), sourceToken: preparedSource.token,
-        startSeconds: String(trim.startSeconds), endSeconds: String(trim.endSeconds),
+        expectedRevision: String(revision),
+        sourceToken: preparedSource.token,
+        startSeconds: String(trim.startSeconds),
+        endSeconds: String(trim.endSeconds),
+        quality,
       });
       headers = { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" };
     }
 
     setBusy(true);
     setStatus(preparedSource.mode === "staged" && preparedSource.delivery === "stream"
-      ? `Extrayendo sólo ${trim.startSeconds}s → ${trim.endSeconds}s y generando el WebM interno…`
-      : `Generando WebM interno con el tramo ${trim.startSeconds}s → ${trim.endSeconds}s…`);
+      ? `Extrayendo sólo ${trim.startSeconds}s → ${trim.endSeconds}s y generando calidad ${selectedQuality.label}…`
+      : `Generando WebM ${selectedQuality.label} con el tramo ${trim.startSeconds}s → ${trim.endSeconds}s…`);
     try {
       const response = await fetch(endpoint, { method: "POST", credentials: "same-origin", cache: "no-store", headers, body });
       if (!response.ok) throw new Error(response.status === 413 ? "El video supera el límite máximo permitido." : "El servidor rechazó la creación del preview.");
@@ -351,103 +368,125 @@ export default function GamePreviewClipUploadForm({
       <div className={adminStyles.sectionHeading}>
         <div>
           <span>PREVIEW DE TARJETAS · FUENTES AISLADAS</span>
-          <h2>Elige primero el origen</h2>
+          <h2>{preparedSource ? "Recorta y optimiza el preview" : "Elige primero el origen"}</h2>
         </div>
         <p>
-          No hay detección automática. Cada botón abre un flujo exclusivo para esa fuente; cuando es posible DeUna previsualiza por rangos y evita descargar el video completo.
+          {preparedSource
+            ? "El editor interno es la única vista activa. Ajusta IN, OUT y calidad antes de guardar."
+            : "No hay detección automática. Cada botón abre un flujo exclusivo para esa fuente; cuando es posible DeUna previsualiza por rangos y evita descargar el video completo."}
         </p>
       </div>
 
       <div className={localStyles.workspace}>
-        <div className={localStyles.sourceGrid} aria-label="Tipos de fuente de video">
-          <button type="button" className={`${localStyles.sourceButton} ${sourceMode === "file" ? localStyles.sourceButtonActive : ""}`} onClick={() => switchSourceMode("file")} disabled={busy || sourceBusy}>Archivo de mi equipo</button>
-          <button type="button" className={`${localStyles.sourceButton} ${sourceMode === "direct" ? localStyles.sourceButtonActive : ""}`} onClick={() => switchSourceMode("direct")} disabled={busy || sourceBusy}>URL directa</button>
-          {providerOptions.map((provider) => (
-            <button key={provider.id} type="button" className={`${localStyles.sourceButton} ${sourceMode === provider.id ? localStyles.sourceButtonActive : ""}`} onClick={() => switchSourceMode(provider.id)} disabled={busy || sourceBusy}>
-              {provider.label}
-            </button>
-          ))}
-        </div>
+        {!preparedSource && (
+          <div className={localStyles.sourceGrid} aria-label="Tipos de fuente de video">
+            <button type="button" className={`${localStyles.sourceButton} ${sourceMode === "file" ? localStyles.sourceButtonActive : ""}`} onClick={() => switchSourceMode("file")} disabled={busy || sourceBusy}>Archivo de mi equipo</button>
+            <button type="button" className={`${localStyles.sourceButton} ${sourceMode === "direct" ? localStyles.sourceButtonActive : ""}`} onClick={() => switchSourceMode("direct")} disabled={busy || sourceBusy}>URL directa</button>
+            {providerOptions.map((provider) => (
+              <button key={provider.id} type="button" className={`${localStyles.sourceButton} ${sourceMode === provider.id ? localStyles.sourceButtonActive : ""}`} onClick={() => switchSourceMode(provider.id)} disabled={busy || sourceBusy}>
+                {provider.label}
+              </button>
+            ))}
+          </div>
+        )}
 
-        {currentPreview && (
+        {currentPreview && !preparedSource && (
           <div className={`${adminStyles.tableSummary} ${adminStyles.fieldWide}`}>
             <strong>Preview WebM activo</strong>
             <span>{currentPreview}</span>
-            <video src={currentPreview} controls muted playsInline preload="metadata" style={{ width: "min(480px, 100%)", marginTop: 12, borderRadius: 10, background: "#05080d" }} />
+            <video src={currentPreview} controls muted playsInline preload="metadata" disablePictureInPicture disableRemotePlayback style={{ width: "min(480px, 100%)", marginTop: 12, borderRadius: 10, background: "#05080d" }} />
           </div>
         )}
 
         <form className={adminStyles.editorForm} onSubmit={handleSubmit}>
-          {sourceMode === "file" ? (
-            <label className={adminStyles.fieldWide}>
-              <span>Archivo · máximo 1 GB</span>
-              <input type="file" accept="video/mp4,video/webm,video/quicktime,video/x-m4v,video/x-matroska,video/x-msvideo,.mp4,.webm,.mov,.m4v,.mkv,.avi" disabled={busy || sourceBusy} onChange={handleLocalFile} />
-              <small>Se edita localmente si el navegador soporta el códec; de lo contrario se crea un proxy privado.</small>
-            </label>
-          ) : (
-            <>
-              <div className={`${localStyles.providerHeader} ${adminStyles.fieldWide}`}>
-                <strong>{selectedProvider?.label ?? "URL directa"}</strong>
-                <span className={localStyles.providerBadge}>{sourceMode === "direct" ? "archivo / stream" : "proveedor aislado"}</span>
-              </div>
+          {!preparedSource ? (
+            sourceMode === "file" ? (
               <label className={adminStyles.fieldWide}>
-                <span>{sourceMode === "direct" ? "URL HTTP/HTTPS del archivo o stream" : `URL de ${selectedProvider?.label}`}</span>
-                <input
-                  type="text"
-                  inputMode="url"
-                  value={sourceUrl}
-                  disabled={busy || sourceBusy}
-                  onChange={(event) => { setSourceUrl(event.target.value); resetPreparedSource(); setStatus(null); }}
-                  maxLength={2048}
-                  placeholder={sourceMode === "direct" ? "https://servidor/video.mp4" : selectedProvider?.placeholder}
-                  autoComplete="off"
-                  spellCheck={false}
-                />
-                <small>{sourceMode === "direct" ? "Debe devolver bytes de video; una página HTML será rechazada." : `Sólo se acepta ${selectedProvider?.label}. Una URL de otra red será rechazada antes de cualquier importación.`}</small>
+                <span>Archivo · máximo 1 GB</span>
+                <input type="file" accept="video/mp4,video/webm,video/quicktime,video/x-m4v,video/x-matroska,video/x-msvideo,.mp4,.webm,.mov,.m4v,.mkv,.avi" disabled={busy || sourceBusy} onChange={handleLocalFile} />
+                <small>Se edita localmente si el navegador soporta el códec; de lo contrario se crea un proxy privado.</small>
               </label>
+            ) : (
+              <>
+                <div className={`${localStyles.providerHeader} ${adminStyles.fieldWide}`}>
+                  <strong>{selectedProvider?.label ?? "URL directa"}</strong>
+                  <span className={localStyles.providerBadge}>{sourceMode === "direct" ? "archivo / stream" : "proveedor aislado"}</span>
+                </div>
+                <label className={adminStyles.fieldWide}>
+                  <span>{sourceMode === "direct" ? "URL HTTP/HTTPS del archivo o stream" : `URL de ${selectedProvider?.label}`}</span>
+                  <input
+                    type="text"
+                    inputMode="url"
+                    value={sourceUrl}
+                    disabled={busy || sourceBusy}
+                    onChange={(event) => { setSourceUrl(event.target.value); resetPreparedSource(); setStatus(null); }}
+                    maxLength={2048}
+                    placeholder={sourceMode === "direct" ? "https://servidor/video.mp4" : selectedProvider?.placeholder}
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
+                  <small>{sourceMode === "direct" ? "Debe devolver bytes de video; una página HTML será rechazada." : `Sólo se acepta ${selectedProvider?.label}. Una URL de otra red será rechazada antes de cualquier importación.`}</small>
+                </label>
 
-              {normalizedRemoteUrl && selectedProvider && (
-                providerEmbed ? (
-                  <div className={`${localStyles.embedStage} ${adminStyles.fieldWide}`}>
-                    <iframe
-                      src={providerEmbed.src}
-                      title={providerEmbed.title}
-                      allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
-                      allowFullScreen
-                      loading="lazy"
-                      referrerPolicy="strict-origin-when-cross-origin"
-                    />
-                  </div>
-                ) : (
-                  <div className={`${localStyles.nativeNotice} ${adminStyles.fieldWide}`}>
-                    {selectedProvider.label} no ofrece aquí un reproductor web controlable y estable. DeUna intentará primero una fuente HTTP parcial; sólo si no es posible usará la copia privada completa de compatibilidad.
-                  </div>
-                )
-              )}
+                {normalizedRemoteUrl && selectedProvider && (
+                  providerEmbed ? (
+                    <div className={`${localStyles.embedStage} ${adminStyles.fieldWide}`}>
+                      <iframe
+                        src={providerEmbed.src}
+                        title={providerEmbed.title}
+                        allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+                        allowFullScreen
+                        loading="lazy"
+                        referrerPolicy="strict-origin-when-cross-origin"
+                      />
+                    </div>
+                  ) : (
+                    <div className={`${localStyles.nativeNotice} ${adminStyles.fieldWide}`}>
+                      {selectedProvider.label} no ofrece aquí un reproductor web controlable y estable. DeUna intentará primero una fuente HTTP parcial; sólo si no es posible usará la copia privada completa de compatibilidad.
+                    </div>
+                  )
+                )}
 
-              <div className={`${adminStyles.tableSummary} ${adminStyles.fieldWide}`}>
-                <strong>Preparar esta fuente</strong>
-                <span>{sourceMode === "direct"
-                  ? "Primero se prueba acceso parcial por bytes con protección SSRF. La descarga completa de hasta 1 GB queda sólo como fallback."
-                  : `La ruta de ${selectedProvider?.label} intenta resolver un stream HTTP seekable sin descargarlo; si la plataforma no lo permite, conserva el fallback temporal de hasta 512 MB.`}</span>
-                <button type="button" disabled={busy || sourceBusy || !normalizedRemoteUrl} onClick={() => void prepareRemoteSource()}>
-                  {sourceBusy ? "Preparando…" : `Preparar ${selectedProvider?.label ?? "URL directa"} para recortar`}
+                <div className={`${adminStyles.tableSummary} ${adminStyles.fieldWide}`}>
+                  <strong>Preparar esta fuente</strong>
+                  <span>{sourceMode === "direct"
+                    ? "Primero se prueba acceso parcial por bytes con protección SSRF. La descarga completa de hasta 1 GB queda sólo como fallback."
+                    : `La ruta de ${selectedProvider?.label} intenta resolver un stream HTTP seekable sin descargarlo; si la plataforma no lo permite, conserva el fallback temporal de hasta 512 MB.`}</span>
+                  <button type="button" disabled={busy || sourceBusy || !normalizedRemoteUrl} onClick={() => void prepareRemoteSource()}>
+                    {sourceBusy ? "Preparando…" : `Preparar ${selectedProvider?.label ?? "URL directa"} para recortar`}
+                  </button>
+                </div>
+
+                {sourceUrl.trim() && !normalizedRemoteUrl && (
+                  <div className={`${adminStyles.tableSummary} ${adminStyles.fieldWide}`} role="status">
+                    <strong>URL rechazada para esta opción</strong>
+                    <span>{sourceMode === "direct" ? "Revisa que sea una URL HTTP/HTTPS pública." : `Esta entrada acepta únicamente enlaces válidos de ${selectedProvider?.label}.`}</span>
+                  </div>
+                )}
+              </>
+            )
+          ) : (
+            <div className={adminStyles.fieldWide}>
+              <div className={localStyles.editorModeHeader}>
+                <div>
+                  <span>EDITOR ACTIVO</span>
+                  <strong>{preparedSource.label}</strong>
+                  <small>Calidad actual: {selectedQuality.label} · hasta {selectedQuality.targetWidth} px · {selectedQuality.targetFps} FPS</small>
+                </div>
+                <button type="button" disabled={busy || sourceBusy} onClick={leaveEditor}>
+                  Cambiar fuente
                 </button>
               </div>
-
-              {sourceUrl.trim() && !normalizedRemoteUrl && (
-                <div className={`${adminStyles.tableSummary} ${adminStyles.fieldWide}`} role="status">
-                  <strong>URL rechazada para esta opción</strong>
-                  <span>{sourceMode === "direct" ? "Revisa que sea una URL HTTP/HTTPS pública." : `Esta entrada acepta únicamente enlaces válidos de ${selectedProvider?.label}.`}</span>
-                </div>
-              )}
-            </>
-          )}
-
-          {preparedSource && (
-            <div className={adminStyles.fieldWide}>
               <div className={localStyles.divider} />
-              <VideoTrimEditor key={preparedSource.src} src={preparedSource.src} sourceLabel={preparedSource.label} onTrimChange={setTrim} />
+              <VideoTrimEditor
+                key={preparedSource.src}
+                src={preparedSource.src}
+                sourceLabel={preparedSource.label}
+                quality={quality}
+                qualityDisabled={busy || sourceBusy}
+                onQualityChange={setQuality}
+                onTrimChange={setTrim}
+              />
             </div>
           )}
 
@@ -458,9 +497,9 @@ export default function GamePreviewClipUploadForm({
           )}
 
           <div className={adminStyles.formActions}>
-            <p>El resultado publicado siempre es un WebM/VP9 interno de DeUna, silencioso y de hasta 30 segundos.</p>
+            <p>El resultado publicado siempre es un WebM/VP9 interno, silencioso, de hasta 30 segundos y máximo 3 MB. La calidad elegida es un objetivo: DeUna puede reducirla automáticamente para mantener rendimiento y compatibilidad.</p>
             <button type="submit" disabled={busy || sourceBusy || !trim || !preparedSource}>
-              {busy ? "Recortando y convirtiendo…" : "Crear preview WebM con este recorte"}
+              {busy ? "Recortando y convirtiendo…" : `Crear preview WebM · ${selectedQuality.label}`}
             </button>
           </div>
         </form>
