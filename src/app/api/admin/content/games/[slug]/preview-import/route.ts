@@ -10,11 +10,17 @@ import {
   removeStagedEditorialPreviewSource,
   resolveStagedEditorialPreviewSource,
 } from "@/lib/media/editorial-video-staging";
-import { parsePreviewTrimWindow } from "@/lib/media/preview-video-policy";
+import {
+  DEFAULT_PREVIEW_QUALITY,
+  parsePreviewQuality,
+  parsePreviewTrimWindow,
+} from "@/lib/media/preview-video-policy";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-const fields = ["expectedRevision", "sourceToken", "startSeconds", "endSeconds"] as const;
+
+const legacyFields = ["expectedRevision", "sourceToken", "startSeconds", "endSeconds"] as const;
+const qualityFields = [...legacyFields, "quality"] as const;
 
 function errorState(error: unknown) {
   const message = error instanceof Error ? error.message : "";
@@ -29,11 +35,19 @@ export async function POST(request: NextRequest, context: { params: Promise<{ sl
   if (!authorized.authorized) return authorized.response;
   const { slug } = await context.params;
   const target = `/admin/juegos/${encodeURIComponent(slug)}`;
-  if (!hasExactAdminFormFields(authorized.form, fields)) return adminRedirect(authorized.adminOrigin, `${target}?estado=solicitud&seccion=multimedia`);
+  const hasQualityField = hasExactAdminFormFields(authorized.form, qualityFields);
+  const isLegacyRequest = !hasQualityField && hasExactAdminFormFields(authorized.form, legacyFields);
+  if (!hasQualityField && !isLegacyRequest) return adminRedirect(authorized.adminOrigin, `${target}?estado=solicitud&seccion=multimedia`);
+
   const revision = expectedRevisionSchema.safeParse(authorized.form.get("expectedRevision"));
   const sourceToken = authorized.form.get("sourceToken")?.trim() ?? "";
   const trim = parsePreviewTrimWindow(authorized.form.get("startSeconds"), authorized.form.get("endSeconds"));
+  const quality = isLegacyRequest
+    ? DEFAULT_PREVIEW_QUALITY
+    : parsePreviewQuality(authorized.form.get("quality"));
+
   if (!trim) return adminRedirect(authorized.adminOrigin, `${target}?estado=preview-recorte-invalido&seccion=multimedia`);
+  if (!quality) return adminRedirect(authorized.adminOrigin, `${target}?estado=preview-calidad-invalida&seccion=multimedia`);
   if (!revision.success || !/^[a-f0-9]{48}$/.test(sourceToken)) return adminRedirect(authorized.adminOrigin, `${target}?estado=preview-source-expirada&seccion=multimedia`);
 
   try {
@@ -45,7 +59,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ sl
 
     const prepared = await prepareStagedEditorialPreviewForTrim(source, trim);
     try {
-      const upload = await storeEditorialPreviewVideoFromPath(slug, prepared.filePath, prepared.trim);
+      const upload = await storeEditorialPreviewVideoFromPath(slug, prepared.filePath, prepared.trim, quality);
       const result = await saveGameMediaDraft(slug, revision.data, authorized.session.userId, { previewClip: upload.publicPath });
       if (result.outcome === "not_found") return adminRedirect(authorized.adminOrigin, "/admin/juegos?estado=no-encontrado");
       if (result.outcome === "conflict") return adminRedirect(authorized.adminOrigin, `${target}?estado=conflicto&seccion=multimedia`);
