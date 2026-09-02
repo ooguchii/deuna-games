@@ -10,6 +10,34 @@ import type {
 
 export * from "./content-validation-core.ts";
 
+const bundledImagePattern =
+  /^\/images\/[A-Za-z0-9/_.,@+() -]+\.(?:avif|gif|jpe?g|png|webp)$/i;
+const editorialMediaPattern =
+  /^\/media\/editorial\/[a-z0-9][a-z0-9._-]{0,159}\/[a-f0-9]{64}\.webp$/;
+
+function isSafeLocalImagePath(value: string) {
+  if (editorialMediaPattern.test(value)) {
+    return true;
+  }
+
+  if (
+    !bundledImagePattern.test(value) ||
+    value.includes("\\") ||
+    value.includes("//")
+  ) {
+    return false;
+  }
+
+  return !value
+    .split("/")
+    .some((segment) => segment === "." || segment === "..");
+}
+
+const localImageSchema = z
+  .string()
+  .max(400)
+  .refine(isSafeLocalImagePath);
+
 const imageViewportSchema = z
   .object({
     x: z.number().min(0).max(1),
@@ -23,6 +51,7 @@ const imageMediaSchema = z
     cover: imageViewportSchema.optional(),
     hero: imageViewportSchema.optional(),
     card: imageViewportSchema.optional(),
+    cardSource: localImageSchema.optional(),
   })
   .strict();
 
