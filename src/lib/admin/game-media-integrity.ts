@@ -14,6 +14,22 @@ export type GameMediaIntegrityResult = {
   missing: string[];
 };
 
+export function listGameImageReferences(
+  game: Game
+) {
+  return Array.from(
+    new Set(
+      [
+        game.coverImage,
+        game.heroImage,
+        ...(game.screenshots ?? []),
+      ].filter(
+        (value): value is string => Boolean(value)
+      )
+    )
+  );
+}
+
 async function fileIsRegular(
   absolutePath: string
 ) {
@@ -105,9 +121,7 @@ export async function inspectGameMediaIntegrity(
   game: Game
 ): Promise<GameMediaIntegrityResult> {
   const mediaPaths = [
-    game.coverImage,
-    game.heroImage,
-    ...(game.screenshots ?? []),
+    ...listGameImageReferences(game),
     game.previewClip,
   ].filter(
     (value): value is string => Boolean(value)
