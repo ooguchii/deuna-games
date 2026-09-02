@@ -12,8 +12,14 @@ import {
   getEditorialMediaRoot,
   isEditorialMediaSlug,
 } from "./editorial-media";
-import { inspectSafeEditorialWebm } from "./safe-webm";
-import { inspectSafeEditorialWebp } from "./safe-webp";
+import {
+  inspectSafeEditorialWebm,
+  MAX_EDITORIAL_PREVIEW_BYTES,
+} from "./safe-webm";
+import {
+  inspectSafeEditorialWebp,
+  MAX_EDITORIAL_IMAGE_BYTES,
+} from "./safe-webp";
 
 export type EditorialMediaLibraryImage = {
   kind: "image";
@@ -66,6 +72,7 @@ export async function listEditorialMediaLibrary(
 
   const candidates = entries
     .filter((entry) => entry.isFile() && MEDIA_FILENAME.test(entry.name))
+    .sort((left, right) => left.name.localeCompare(right.name))
     .slice(0, MAX_LIBRARY_RESOURCES);
   const resources: EditorialMediaLibraryResource[] = [];
 
@@ -75,7 +82,18 @@ export async function listEditorialMediaLibrary(
 
     const filePath = path.join(directory, entry.name);
     const stats = await lstat(filePath);
-    if (!stats.isFile() || stats.isSymbolicLink() || stats.size <= 0) continue;
+    const maximumBytes =
+      match[2] === "webp"
+        ? MAX_EDITORIAL_IMAGE_BYTES
+        : MAX_EDITORIAL_PREVIEW_BYTES;
+    if (
+      !stats.isFile() ||
+      stats.isSymbolicLink() ||
+      stats.size <= 0 ||
+      stats.size > maximumBytes
+    ) {
+      continue;
+    }
 
     const buffer = await readFile(filePath);
     const publicPath = buildEditorialMediaPublicPath(slug, entry.name);
@@ -104,7 +122,7 @@ export async function listEditorialMediaLibrary(
     });
   }
 
-  return resources.sort((left, right) => left.src.localeCompare(right.src));
+  return resources;
 }
 
 export function findEditorialMediaResource(
