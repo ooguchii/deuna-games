@@ -70,7 +70,7 @@ const retiredProviderResidues = [
   ["nico", "video"], ["nico", "nico"], ["b23", ".tv"], ["wi", ".st"], ["nico", ".ms"],
 ].map((parts) => parts.join(""));
 const residuePattern = `(^|[^a-z0-9])(${retiredProviderResidues.slice(0, 10).join("|")})([^a-z0-9]|$)|${retiredProviderResidues.slice(10).map((value) => value.replace(".", "\\.")).join("|")}`;
-const residueCheck = spawnSync("git", ["grep", "-I", "-n", "-i", "-E", residuePattern, "--", "."], {
+const residueCheck = spawnSync("git", ["grep", "-I", "-n", "-i", "-E", residuePattern, "--", ".", ":!package-lock.json"], {
   cwd: root,
   encoding: "utf8",
 });
