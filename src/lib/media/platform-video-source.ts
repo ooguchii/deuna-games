@@ -20,6 +20,8 @@ const PLATFORM_DOWNLOAD_RATE = "8M";
 const YTDLP_JS_RUNTIME = process.env.DEUNA_YTDLP_JS_RUNTIME?.trim() || "node";
 const YTDLP_REMOTE_COMPONENT = process.env.DEUNA_YTDLP_REMOTE_COMPONENT?.trim() || "ejs:github";
 const YTDLP_COOKIES_FILE = process.env.DEUNA_YTDLP_COOKIES_FILE?.trim() || "";
+const YTDLP_PLUGIN_DIR = process.env.DEUNA_YTDLP_PLUGIN_DIR?.trim() || "";
+const YTDLP_POT_PROVIDER_URL = process.env.DEUNA_YTDLP_POT_PROVIDER_URL?.trim() || "";
 const YTDLP_DIAGNOSTICS = process.env.DEUNA_YTDLP_DIAGNOSTICS?.trim() === "1" || process.env.NODE_ENV !== "production";
 let platformImportActive = false;
 
@@ -38,10 +40,16 @@ function configuredYouTubeClients() {
   return configured;
 }
 
+function poTokenProviderConfigured() {
+  return Boolean(YTDLP_PLUGIN_DIR && YTDLP_POT_PROVIDER_URL);
+}
+
 function youtubeClientAttempts() {
   const configured = configuredYouTubeClients();
   if (configured) return [configured] as const;
-  return [null, "web_safari", "web_embedded"] as const;
+  return poTokenProviderConfigured()
+    ? [null, "web_safari", "web_embedded", "mweb"] as const
+    : [null, "web_safari", "web_embedded"] as const;
 }
 
 function ytDlpExecutable() {
@@ -65,6 +73,9 @@ function classifyYtDlpFailure(stderr: string, provider: PreviewProviderId) {
   if (normalized.includes("no such option: --js-runtimes") || normalized.includes("no such option: --remote-components") || normalized.includes("unrecognized arguments: --js-runtimes") || normalized.includes("unrecognized arguments: --remote-components")) {
     return new Error("La instalación de yt-dlp es demasiado antigua para el extractor actual de YouTube. Actualiza yt-dlp a una versión 2026 reciente y vuelve a intentar.");
   }
+  if (provider === "youtube" && (normalized.includes("po token providers: none") || normalized.includes("connection refused") || normalized.includes("econnrefused")) && poTokenProviderConfigured()) {
+    return new Error("El fallback Proof-of-Origin de YouTube está configurado pero su PO Token Provider no respondió correctamente. Ejecuta npm run media:youtube:setup y vuelve a intentar.");
+  }
   if (provider === "youtube" && (normalized.includes("javascript runtime") || normalized.includes("js runtime")) && (normalized.includes("not found") || normalized.includes("not available") || normalized.includes("unsupported"))) {
     return new Error("YouTube necesita un runtime JavaScript compatible. DeUna está configurado para Node 22 o superior; revisa que Node esté disponible para yt-dlp.");
   }
@@ -75,13 +86,17 @@ function classifyYtDlpFailure(stderr: string, provider: PreviewProviderId) {
     return new Error("YouTube bloqueó temporalmente esta IP (HTTP 429). Evita reintentos repetidos y vuelve a probar después o desde otra IP.");
   }
   if (provider === "youtube" && (normalized.includes("captcha") || normalized.includes("sign in to confirm"))) {
-    return new Error("YouTube activó una verificación anti-bot para esta IP. El reproductor puede funcionar aunque la descarga sea bloqueada; mantén yt-dlp actualizado y usa un PO Token Provider sólo si YouTube lo exige.");
+    return new Error("YouTube activó una verificación anti-bot para esta IP. El reproductor puede funcionar aunque la descarga sea bloqueada; el fallback PO Token de DeUna sólo se usa para contenido público y no sustituye autenticación.");
   }
   if (provider === "youtube" && (normalized.includes("http error 403") || normalized.includes("forbidden"))) {
-    return new Error("YouTube permitió reproducir el video, pero rechazó la descarga del stream. DeUna ya probó auto, web_safari/HLS y web_embedded; YouTube puede estar exigiendo Proof-of-Origin para esta IP o este contenido.");
+    return new Error(poTokenProviderConfigured()
+      ? "YouTube rechazó el stream incluso después del fallback mweb + PO Token Provider. El contenido puede tener una restricción adicional o YouTube pudo cambiar nuevamente su enforcement."
+      : "YouTube permitió reproducir el video, pero rechazó la descarga del stream. DeUna ya probó auto, web_safari/HLS y web_embedded; ejecuta npm run media:youtube:setup para habilitar el fallback Proof-of-Origin.");
   }
   if (provider === "youtube" && (normalized.includes("requested format is not available") || normalized.includes("only images are available") || normalized.includes("forcing sabr") || normalized.includes("only sabr formats available"))) {
-    return new Error("YouTube no expuso un stream descargable convencional. DeUna probó auto, web_safari/HLS y web_embedded; YouTube está forzando SABR o Proof-of-Origin para este contenido/IP. Para cubrir estos casos hace falta un PO Token Provider automático.");
+    return new Error(poTokenProviderConfigured()
+      ? "YouTube no expuso un stream utilizable incluso con mweb + PO Token Provider. El contenido puede tener una restricción adicional o un cambio reciente de YouTube."
+      : "YouTube está forzando SABR o Proof-of-Origin para este contenido/IP. Ejecuta npm run media:youtube:setup para instalar el PO Token Provider automático y vuelve a intentar.");
   }
   if (normalized.includes("private") || normalized.includes("members-only")) return new Error(`${label} no permite importar este contenido porque es privado o exclusivo para miembros.`);
   if (normalized.includes("sign in") || normalized.includes("login") || normalized.includes("unavailable") || normalized.includes("not available")) return new Error(`${label} no entregó un stream público descargable para este enlace.`);
@@ -93,6 +108,14 @@ function classifyYtDlpFailure(stderr: string, provider: PreviewProviderId) {
 function youtubeRuntimeArgs(provider: PreviewProviderId) {
   if (provider !== "youtube") return [];
   return ["--js-runtimes", YTDLP_JS_RUNTIME, "--remote-components", YTDLP_REMOTE_COMPONENT];
+}
+
+function youtubePluginArgs(provider: PreviewProviderId) {
+  if (provider !== "youtube" || !poTokenProviderConfigured()) return [];
+  return [
+    "--plugin-dirs", YTDLP_PLUGIN_DIR,
+    "--extractor-args", `youtubepot-bgutilhttp:base_url=${YTDLP_POT_PROVIDER_URL}`,
+  ];
 }
 
 function platformSpecificArgs(provider: PreviewProviderId, youtubeClients: string | null) {
@@ -117,6 +140,7 @@ function runYtDlpAttempt(provider: PreviewProviderId, sourceUrl: string, tempora
     const outputTemplate = path.join(temporaryDirectory, "source.%(ext)s");
     const args = [
       "--no-config",
+      ...youtubePluginArgs(provider),
       ...youtubeRuntimeArgs(provider),
       ...(YTDLP_COOKIES_FILE ? ["--cookies", YTDLP_COOKIES_FILE] : []),
       ...platformSpecificArgs(provider, youtubeClients),
