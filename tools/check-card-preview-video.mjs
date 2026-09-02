@@ -54,7 +54,24 @@ for (const provider of PREVIEW_PROVIDER_IDS) {
   assert(parsePreviewProviderUrl(provider, foreign) === null, `${provider} no debe aceptar una URL de otra plataforma.`);
 }
 
-const [form, providerRoute, directRoute, staging, platformSource, workerClient, importWorker, ytDlpWrapper, resolver, card, importRoute, uploadRoute, removeRoute] = await Promise.all([
+const [
+  form,
+  providerRoute,
+  directRoute,
+  staging,
+  platformSource,
+  workerClient,
+  importWorker,
+  ytDlpWrapper,
+  potSetup,
+  lanHttps,
+  packageJson,
+  resolver,
+  card,
+  importRoute,
+  uploadRoute,
+  removeRoute,
+] = await Promise.all([
   source("src/components/admin/GamePreviewClipUploadForm.tsx"),
   source("src/app/api/admin/content/games/[slug]/preview-provider/[provider]/route.ts"),
   source("src/app/api/admin/content/games/[slug]/preview-direct/route.ts"),
@@ -63,6 +80,9 @@ const [form, providerRoute, directRoute, staging, platformSource, workerClient, 
   source("src/lib/media/media-import-worker-client.ts"),
   source("ops/worker/media-import-worker.mjs"),
   source("ops/worker/yt-dlp-node-wrapper.sh"),
+  source("tools/setup-youtube-pot-provider.mjs"),
+  source("tools/run-lan-https.mjs"),
+  source("package.json"),
   source("src/lib/media/game-card-preview.ts"),
   source("src/components/ui/UniversalGameCard.tsx"),
   source("src/app/api/admin/content/games/[slug]/preview-import/route.ts"),
@@ -78,20 +98,44 @@ assert(platformSource.includes("provider: PreviewProviderId") && platformSource.
 assert(resolver.includes("const local = game.previewClip?.trim()") && card.includes("resolveGameCardPreview"), "La web pública debe seguir usando sólo el WebM interno.");
 
 assert(
-  platformSource.includes('return [null, "web_safari", "web_embedded"] as const') &&
+  platformSource.includes('[null, "web_safari", "web_embedded", "mweb"]') &&
     platformSource.includes('youtubeClients === "web_safari"') &&
     platformSource.includes('b[protocol^=m3u8]') &&
-    platformSource.includes("Proof-of-Origin") &&
+    platformSource.includes('"--plugin-dirs", YTDLP_PLUGIN_DIR') &&
+    platformSource.includes("youtubepot-bgutilhttp:base_url=") &&
+    platformSource.includes("poTokenProviderConfigured") &&
     !platformSource.includes('return "web_embedded,default"'),
-  "YouTube en desarrollo debe usar auto → web_safari/HLS → web_embedded y diagnosticar SABR/PO Token."
+  "YouTube debe conservar auto → web_safari/HLS → web_embedded y añadir mweb sólo cuando el PO Token Provider esté configurado."
+);
+assert(
+  potSetup.includes('PROVIDER_VERSION = "1.3.2"') &&
+    potSetup.includes('d51cf1c54e487137df749bd8778cceaa62304e6c5054c955b95f028f93ad6d57') &&
+    potSetup.includes('"127.0.0.1:4416:4416"') &&
+    potSetup.includes('"--restart", "unless-stopped"') &&
+    potSetup.includes("sha256(buffer)"),
+  "El setup local del PO Token debe fijar versión, verificar SHA-256 y publicar el proveedor sólo sobre loopback."
+);
+assert(
+  lanHttps.includes("YOUTUBE_POT_PLUGIN_FILE") &&
+    lanHttps.includes("youtubePotProviderReady") &&
+    lanHttps.includes("DEUNA_YTDLP_PLUGIN_DIR") &&
+    lanHttps.includes("DEUNA_YTDLP_POT_PROVIDER_URL") &&
+    packageJson.includes('"media:youtube:setup": "node ./tools/setup-youtube-pot-provider.mjs"'),
+  "mobile:secure debe detectar el proveedor local sin convertirlo en una dependencia obligatoria del arranque."
 );
 assert(
   importWorker.includes("--js-runtimes") && importWorker.includes("--remote-components") && importWorker.includes("classifyYtDlpFailure"),
   "El worker aislado debe conservar Node/EJS y errores sanitizados."
 );
 assert(
-  !ytDlpWrapper.includes("YOUTUBE_CLIENTS") && !ytDlpWrapper.includes("player_client=") && ytDlpWrapper.includes("Node 22 o superior") && ytDlpWrapper.includes("--remote-components"),
-  "El wrapper de producción no debe imponer clientes de YouTube; sólo normaliza Node/EJS."
+  !ytDlpWrapper.includes("YOUTUBE_CLIENTS") &&
+    !ytDlpWrapper.includes("player_client=") &&
+    ytDlpWrapper.includes("Node 22 o superior") &&
+    ytDlpWrapper.includes("--remote-components") &&
+    ytDlpWrapper.includes("--plugin-dirs") &&
+    ytDlpWrapper.includes("127\\.0\\.0\\.1") &&
+    ytDlpWrapper.includes("youtubepot-bgutilhttp:base_url="),
+  "El wrapper no debe imponer clientes y sólo puede habilitar el PO Token Provider explícito sobre loopback."
 );
 
 const activePreviewSources = [form, providerRoute, directRoute, staging, platformSource, workerClient, importWorker, resolver, importRoute, uploadRoute, removeRoute];
@@ -127,4 +171,4 @@ if (failures.length) {
   failures.forEach((failure) => console.error(`- ${failure}`));
   process.exit(1);
 }
-console.log("Preview de video por proveedor: OK (selección explícita → staging aislado → IN/OUT → WebM interno; YouTube auto → web_safari/HLS → web_embedded; diagnóstico SABR/PO Token; sin legacy activo).");
+console.log("Preview de video por proveedor: OK (selección explícita → staging aislado → IN/OUT → WebM interno; YouTube auto → web_safari/HLS → web_embedded → mweb+PO Token opcional; sin legacy activo).");
