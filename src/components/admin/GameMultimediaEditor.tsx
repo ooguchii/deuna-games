@@ -1,7 +1,6 @@
-import type { ReactNode } from "react";
-
 import GameEditorFormActions from "@/components/admin/GameEditorFormActions";
 import GameMultimediaWorkspace from "@/components/admin/GameMultimediaWorkspace";
+import GamePreviewClipUploadForm from "@/components/admin/GamePreviewClipUploadForm";
 
 import adminStyles from "../../app/admin/admin.module.css";
 import styles from "./GameMultimediaEditor.module.css";
@@ -13,7 +12,6 @@ type GameMultimediaEditorProps = {
   coverImage?: string;
   heroImage?: string;
   screenshots?: readonly string[];
-  videoEditor: ReactNode;
 };
 
 export default function GameMultimediaEditor({
@@ -23,7 +21,6 @@ export default function GameMultimediaEditor({
   coverImage,
   heroImage,
   screenshots = [],
-  videoEditor,
 }: GameMultimediaEditorProps) {
   return (
     <>
@@ -34,7 +31,22 @@ export default function GameMultimediaEditor({
         initialCoverImage={coverImage}
         initialHeroImage={heroImage}
         initialScreenshots={screenshots}
-        videoEditor={videoEditor}
+        heroVideoEditor={
+          <GamePreviewClipUploadForm
+            key="hero-video-editor"
+            slug={slug}
+            revision={revision}
+            focusedTarget="hero"
+          />
+        }
+        cardVideoEditor={
+          <GamePreviewClipUploadForm
+            key="card-video-editor"
+            slug={slug}
+            revision={revision}
+            focusedTarget="card"
+          />
+        }
       />
 
       <form

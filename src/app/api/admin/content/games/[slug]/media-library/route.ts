@@ -35,6 +35,7 @@ const assignmentTargetSchema = z.enum([
   "card-video",
   "card-match-hero",
   "gallery-image",
+  "gallery-remove",
 ]);
 
 const fields = [
@@ -262,6 +263,19 @@ export async function POST(
       );
     }
     update = { screenshots };
+  }
+
+  if (target.data === "gallery-remove") {
+    const screenshots = current.screenshots ?? [];
+    if (!screenshots.includes(resource)) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        redirectPath(slug, "recurso-invalido")
+      );
+    }
+    update = {
+      screenshots: screenshots.filter((src) => src !== resource),
+    };
   }
 
   if (!update) {

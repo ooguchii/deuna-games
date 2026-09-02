@@ -12,11 +12,13 @@ import {
   MonitorPlay,
   Plus,
   Sparkles,
+  Trash2,
   Upload,
 } from "lucide-react";
 import {
   type ReactNode,
   useEffect,
+  useMemo,
   useState,
 } from "react";
 
@@ -47,8 +49,9 @@ type ResourceVideo = {
 };
 
 type LibraryResource = ResourceImage | ResourceVideo;
-type Destination = "cover" | "hero" | "card" | "gallery";
+type Destination = "cover" | "hero" | "card";
 type HeroDraftMode = "image" | "video";
+const EMPTY_LIBRARY_RESOURCES: LibraryResource[] = [];
 
 type LibraryState = {
   revision: number;
@@ -71,18 +74,9 @@ type Props = {
   initialCoverImage?: string;
   initialHeroImage?: string;
   initialScreenshots?: readonly string[];
-  videoEditor: ReactNode;
+  heroVideoEditor: ReactNode;
+  cardVideoEditor: ReactNode;
 };
-
-const editorDestinations: readonly {
-  id: Destination;
-  label: string;
-}[] = [
-  { id: "cover", label: "Portada" },
-  { id: "hero", label: "Hero" },
-  { id: "card", label: "Card" },
-  { id: "gallery", label: "Galería" },
-];
 
 function formatBytes(bytes: number) {
   if (bytes >= 1024 * 1024) {
@@ -204,6 +198,25 @@ function ResourceArtwork({
         alt={alt}
         fill
         sizes="(max-width: 760px) 88vw, 280px"
+      />
+    </div>
+  );
+}
+
+function ImageArtwork({
+  src,
+  alt,
+}: {
+  src: string;
+  alt: string;
+}) {
+  return (
+    <div className={styles.resourceArtwork}>
+      <Image
+        src={src}
+        alt={alt}
+        fill
+        sizes="(max-width: 760px) 88vw, 320px"
       />
     </div>
   );
@@ -363,15 +376,16 @@ export default function GameMultimediaWorkspace({
   initialCoverImage,
   initialHeroImage,
   initialScreenshots = [],
-  videoEditor,
+  heroVideoEditor,
+  cardVideoEditor,
 }: Props) {
   const [state, setState] = useState<LibraryState | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedDestination, setSelectedDestination] =
-    useState<Destination>("hero");
-  const [heroDraftMode, setHeroDraftMode] =
-    useState<HeroDraftMode>("image");
+  const [selectedDestination, setSelectedDestination] = useState<Destination>("hero");
+  const [heroDraftMode, setHeroDraftMode] = useState<HeroDraftMode>("image");
+  const [libraryOpen, setLibraryOpen] = useState(false);
+  const [galleryOpen, setGalleryOpen] = useState(false);
 
   const endpoint =
     `/api/admin/content/games/${encodeURIComponent(slug)}/media-library`;
@@ -414,14 +428,14 @@ export default function GameMultimediaWorkspace({
     };
   }, [endpoint]);
 
-  const resources = state?.resources ?? [];
-  const images = resources.filter(
-    (resource): resource is ResourceImage =>
-      resource.kind === "image"
+  const resources = state?.resources ?? EMPTY_LIBRARY_RESOURCES;
+  const images = useMemo(
+    () => resources.filter((resource): resource is ResourceImage => resource.kind === "image"),
+    [resources]
   );
-  const videos = resources.filter(
-    (resource): resource is ResourceVideo =>
-      resource.kind === "video"
+  const videos = useMemo(
+    () => resources.filter((resource): resource is ResourceVideo => resource.kind === "video"),
+    [resources]
   );
   const coverImage =
     state?.assignments.coverImage ?? initialCoverImage ?? null;
@@ -445,7 +459,9 @@ export default function GameMultimediaWorkspace({
 
   const coverResource = imageBySrc(coverImage);
   const heroResource = imageBySrc(heroImage);
-  const firstGalleryResource = imageBySrc(screenshots[0] ?? null);
+  const activeHeroVideo = videos.find(
+    (resource) => resource.src === heroVideo?.clip
+  ) ?? null;
   const activeCardVideo = videos.find(
     (resource) => resource.src === resolvedCardClip
   ) ?? null;
@@ -479,117 +495,45 @@ export default function GameMultimediaWorkspace({
       >
         <div className={styles.compactHeading}>
           <div>
-            <span>RESUMEN MULTIMEDIA</span>
-            <h2 id="multimedia-summary-heading">
-              Estado actual de los destinos
-            </h2>
+            <h2 id="multimedia-summary-heading">Resumen multimedia</h2>
           </div>
-          <p>
-            Una vista rápida antes de entrar a la biblioteca o al editor.
-          </p>
+          <p>Estado real del borrador y de los recursos asignados.</p>
         </div>
 
         <div className={styles.summaryGrid}>
           <article className={styles.summaryCard}>
-            {coverResource ? (
-              <span className={styles.summaryThumb}>
-                <Image
-                  src={coverResource.src}
-                  alt=""
-                  fill
-                  sizes="88px"
-                />
-              </span>
-            ) : (
-              <span className={styles.summaryIcon}>
-                <ImageIcon size={22} aria-hidden="true" />
-              </span>
-            )}
-            <div>
-              <span>PORTADA</span>
-              <strong>
-                {coverImage ? shortName(coverImage) : "Sin asignar"}
-              </strong>
-              <small>
-                <CheckCircle2 size={13} aria-hidden="true" />
-                {coverImage ? "Asignada" : "Pendiente"}
-              </small>
-            </div>
+            {coverImage ? (
+              <span className={styles.summaryThumb}><Image src={coverImage} alt="" fill sizes="88px" /></span>
+            ) : <span className={styles.summaryIcon}><ImageIcon size={22} /></span>}
+            <div><span>PORTADA</span><strong>{coverImage ? shortName(coverImage) : "Sin asignar"}</strong><small><CheckCircle2 size={13} /> {coverImage ? "Asignada" : "Pendiente"}</small></div>
           </article>
 
           <article className={styles.summaryCard}>
             {currentHeroMode === "video" ? (
-              <span className={styles.summaryIcon}>
-                <MonitorPlay size={22} aria-hidden="true" />
-              </span>
-            ) : heroResource ? (
-              <span className={styles.summaryThumb}>
-                <Image
-                  src={heroResource.src}
-                  alt=""
-                  fill
-                  sizes="88px"
-                />
-              </span>
-            ) : (
-              <span className={styles.summaryIcon}>
-                <ImageIcon size={22} aria-hidden="true" />
-              </span>
-            )}
-            <div>
-              <span>HERO</span>
-              <strong>
-                {currentHeroMode === "video"
-                  ? heroVideo
-                    ? shortName(heroVideo.clip)
-                    : "Video pendiente"
-                  : heroImage
-                    ? shortName(heroImage)
-                    : "Sin asignar"}
-              </strong>
-              <small>
-                <CheckCircle2 size={13} aria-hidden="true" />
-                {currentHeroMode === "video"
-                  ? "Modo video"
-                  : "Modo imagen"}
-              </small>
-            </div>
+              <span className={styles.summaryIcon}><MonitorPlay size={22} /></span>
+            ) : heroImage ? (
+              <span className={styles.summaryThumb}><Image src={heroImage} alt="" fill sizes="88px" /></span>
+            ) : <span className={styles.summaryIcon}><ImageIcon size={22} /></span>}
+            <div><span>HERO</span><strong>{currentHeroMode === "video" ? (heroVideo ? shortName(heroVideo.clip) : "Video pendiente") : (heroImage ? shortName(heroImage) : "Sin asignar")}</strong><small><CheckCircle2 size={13} /> {currentHeroMode === "video" ? "Modo video" : "Modo imagen"}</small></div>
           </article>
 
           <article className={styles.summaryCard}>
-            <span className={styles.summaryIcon}>
-              <Clapperboard size={22} aria-hidden="true" />
-            </span>
-            <div>
-              <span>CARD</span>
-              <strong>
-                {resolvedCardClip
-                  ? shortName(resolvedCardClip)
-                  : "Portada estática"}
-              </strong>
-              <small>
-                <CheckCircle2 size={13} aria-hidden="true" />
-                {state?.assignments.cardVideo?.source === "hero"
-                  ? "Comparte Hero"
-                  : resolvedCardClip
-                    ? "Preview asignado"
-                    : "Sin video"}
-              </small>
-            </div>
+            {resolvedCardClip ? (
+              <span className={styles.summaryIcon}><Clapperboard size={22} /></span>
+            ) : coverImage ? (
+              <span className={styles.summaryThumb}><Image src={coverImage} alt="" fill sizes="88px" /></span>
+            ) : <span className={styles.summaryIcon}><ImageIcon size={22} /></span>}
+            <div><span>CARD</span><strong>{resolvedCardClip ? shortName(resolvedCardClip) : "Portada estática"}</strong><small><CheckCircle2 size={13} /> {state?.assignments.cardVideo?.source === "hero" ? "Comparte Hero" : resolvedCardClip ? "Preview asignado" : "Sin video"}</small></div>
           </article>
-
-          <article className={styles.summaryCard}>
-            <span className={styles.summaryIcon}>
-              <Images size={22} aria-hidden="true" />
-            </span>
-            <div>
-              <span>GALERÍA</span>
-              <strong>{screenshots.length} de 8 capturas</strong>
-              <small>
-                <CheckCircle2 size={13} aria-hidden="true" />
-                {screenshots.length ? "Disponible" : "Pendiente"}
-              </small>
+          <article className={`${styles.summaryCard} ${styles.summaryGalleryCard}`}>
+            <div className={styles.summaryGalleryThumbs} aria-hidden="true">
+              {screenshots.slice(0, 4).map((src) => (
+                <span key={src}><Image src={src} alt="" fill sizes="56px" /></span>
+              ))}
+              {screenshots.length === 0 && <span className={styles.summaryIcon}><Images size={22} /></span>}
+              {screenshots.length > 4 && <b>+{screenshots.length - 4}</b>}
             </div>
+            <div><span>GALERÍA</span><strong>{screenshots.length} de 8 capturas</strong><small><CheckCircle2 size={13} /> {screenshots.length ? "Disponible" : "Pendiente"}</small></div>
           </article>
         </div>
       </section>
@@ -626,79 +570,106 @@ export default function GameMultimediaWorkspace({
                 Comprobando recursos multimedia seguros…
               </div>
             ) : error ? (
-              <div className={styles.libraryStatus} role="alert">
-                {error}
-              </div>
-            ) : resources.length === 0 ? (
-              <div className={styles.emptyLibrary}>
-                <FolderOpen size={30} aria-hidden="true" />
-                <strong>La biblioteca todavía está vacía</strong>
-                <span>
-                  Sube la primera imagen o crea un video editorial para empezar.
-                </span>
-              </div>
+              <div className={styles.libraryStatus} role="alert">{error}</div>
             ) : (
-              <div className={styles.libraryGrid}>
-                {resources.map((resource) => {
-                  const labels = usageLabels(resource);
+              <>
+                <div className={styles.libraryOverviewGrid}>
+                  <article className={styles.librarySlot}>
+                    <header><span>PORTADA BASE</span><small>{coverResource ? coverResource.origin === "editorial" ? "En almacén" : "Recurso existente" : coverImage ? "Referencia heredada" : "Pendiente"}</small></header>
+                    {coverImage ? <ImageArtwork src={coverImage} alt="Portada actualmente asignada" /> : <div className={styles.slotEmpty}><ImageIcon size={25} /><span>Sin portada asignada</span></div>}
+                    <strong>{coverImage ? shortName(coverImage) : "Selecciona una imagen"}</strong>
+                    <div className={styles.usageRow}><span>Usable en Portada</span><span>Card estática</span></div>
+                    <small className={styles.resourceDetails}>{coverResource ? imageMeta(coverResource) : coverImage ? "Asignada fuera del almacén reutilizable" : "Sin recurso"}</small>
+                  </article>
 
-                  return (
-                    <article
-                      key={resource.src}
-                      className={styles.libraryCard}
-                    >
-                      <div className={styles.libraryCardHeading}>
-                        <div>
-                          <span>
-                            {resource.kind === "video"
-                              ? "VIDEO"
-                              : resource.origin === "bundled"
-                                ? "IMAGEN EXISTENTE"
-                                : "IMAGEN"}
-                          </span>
-                          <strong>{shortName(resource.src)}</strong>
-                        </div>
-                        <small>{formatBytes(resource.bytes)}</small>
+                  <article className={styles.librarySlot}>
+                    <header><span>HERO IMAGEN</span><small>{heroResource ? heroResource.origin === "editorial" ? "En almacén" : "Recurso existente" : heroImage ? "Referencia heredada" : "Pendiente"}</small></header>
+                    {heroImage ? <ImageArtwork src={heroImage} alt="Imagen actualmente asignada al Hero" /> : <div className={styles.slotEmpty}><ImageIcon size={25} /><span>Sin imagen del Hero</span></div>}
+                    <strong>{heroImage ? shortName(heroImage) : "Selecciona una imagen"}</strong>
+                    <div className={styles.usageRow}><span>Usable en Hero</span></div>
+                    <small className={styles.resourceDetails}>{heroResource ? imageMeta(heroResource) : heroImage ? "Se conserva aunque el Hero use video" : "Sin recurso"}</small>
+                  </article>
+
+                  <article className={styles.librarySlot}>
+                    <header><span>HERO VIDEO MASTER</span><small>{activeHeroVideo ? "En biblioteca" : heroVideo ? "Referencia no disponible" : "Opcional"}</small></header>
+                    <div className={styles.videoPlaceholder}>
+                      <MonitorPlay size={30} />
+                      <span>{heroVideo ? "WebM interno" : "Sin video master"}</span>
+                      <small>Se abre sólo dentro del editor.</small>
+                    </div>
+                    <strong>{heroVideo ? shortName(heroVideo.clip) : "Crea o asigna un video"}</strong>
+                    <div className={styles.usageRow}><span>Usable en Hero</span><span>Compartible con Card</span></div>
+                    <small className={styles.resourceDetails}>{activeHeroVideo ? `WebM · ${formatBytes(activeHeroVideo.bytes)}` : "No se descarga para mostrar este resumen"}</small>
+                  </article>
+
+                  <article className={styles.librarySlot}>
+                    <header><span>GALERÍA</span><small>{screenshots.length} de 8</small></header>
+                    <div className={styles.galleryStrip}>
+                      {screenshots.slice(0, 6).map((src) => (
+                        <span key={src}><Image src={src} alt="" fill sizes="96px" /></span>
+                      ))}
+                      {screenshots.length === 0 && <div className={styles.slotEmpty}><Images size={25} /><span>Sin capturas</span></div>}
+                      {screenshots.length > 6 && <b>+{screenshots.length - 6}</b>}
+                    </div>
+                    <button type="button" className={styles.manageGalleryButton} onClick={() => setGalleryOpen((open) => !open)} aria-expanded={galleryOpen} aria-controls="media-gallery-manager">
+                      {galleryOpen ? "Cerrar galería" : "Gestionar galería"}
+                    </button>
+                    <small className={styles.resourceDetails}>Las capturas asignadas siguen siendo referencias del borrador.</small>
+                  </article>
+                </div>
+
+                {galleryOpen && (
+                  <div className={styles.galleryManager} id="media-gallery-manager">
+                    <div className={styles.galleryManagerHeading}>
+                      <div><strong>Galería asignada</strong><span>Añade desde la biblioteca o retira una referencia del borrador.</span></div>
+                      <ResourcePicker action={endpoint} revision={assignmentRevision} target="gallery-image" resources={resources} kind="image" label="Añadir captura" disabled={stale || screenshots.length >= 8} />
+                    </div>
+                    {screenshots.length === 0 ? (
+                      <p className={styles.emptyPicker}>No hay capturas asignadas. Puedes elegir una imagen existente sin volver a subirla.</p>
+                    ) : (
+                      <div className={styles.galleryManagerGrid}>
+                        {screenshots.map((src) => (
+                          <AssignmentForm key={src} action={endpoint} revision={assignmentRevision} target="gallery-remove" resource={src} disabled={stale}>
+                            <span className={styles.choiceThumb}><Image src={src} alt="" fill sizes="96px" /></span>
+                            <span className={styles.choiceMeta}><strong>{shortName(src)}</strong><small>Retirar de la galería · el archivo no se borra</small></span>
+                            <Trash2 size={17} />
+                          </AssignmentForm>
+                        ))}
                       </div>
+                    )}
+                  </div>
+                )}
 
-                      {resource.kind === "image" ? (
-                        <ResourceArtwork
-                          resource={resource}
-                          alt="Recurso de la biblioteca multimedia"
-                        />
-                      ) : (
-                        <div className={styles.videoPlaceholder}>
-                          <MonitorPlay size={30} aria-hidden="true" />
-                          <span>WebM interno</span>
-                          <small>
-                            No se reproduce hasta abrir el editor.
-                          </small>
-                        </div>
-                      )}
-
-                      <div className={styles.usageRow}>
-                        {labels.length ? (
-                          labels.map((usageLabel) => (
-                            <span key={usageLabel}>{usageLabel}</span>
-                          ))
-                        ) : (
-                          <span className={styles.unusedBadge}>
-                            Disponible
-                          </span>
-                        )}
-                      </div>
-
-                      <small className={styles.resourceDetails}>
-                        {resource.kind === "image"
-                          ? resource.origin === "bundled"
-                            ? `${imageFormat(resource.src)} existente · reutilizable por referencia`
-                            : `${resource.width}×${resource.height} · WebP seguro`
-                          : "WebM validado · master reutilizable"}
-                      </small>
-                    </article>
-                  );
-                })}
-              </div>
+                <details className={styles.libraryInventory} onToggle={(event) => setLibraryOpen(event.currentTarget.open)}>
+                  <summary><FolderOpen size={17} /><span>Ver biblioteca completa</span><small>{resources.length} recurso{resources.length === 1 ? "" : "s"} disponible{resources.length === 1 ? "" : "s"}</small></summary>
+                  {libraryOpen && (resources.length === 0 ? (
+                    <div className={styles.emptyLibrary}>
+                      <FolderOpen size={30} />
+                      <strong>La biblioteca todavía está vacía</strong>
+                      <span>Sube la primera imagen o crea un video editorial para empezar.</span>
+                    </div>
+                  ) : (
+                    <div className={styles.libraryGrid}>
+                      {resources.map((resource) => {
+                        const labels = usageLabels(resource);
+                        return (
+                          <article key={resource.src} className={styles.libraryCard}>
+                            <div className={styles.libraryCardHeading}>
+                              <div><span>{resource.kind === "video" ? "VIDEO" : resource.origin === "bundled" ? "IMAGEN EXISTENTE" : "IMAGEN"}</span><strong>{shortName(resource.src)}</strong></div>
+                              <small>{formatBytes(resource.bytes)}</small>
+                            </div>
+                            {resource.kind === "image" ? <ResourceArtwork resource={resource} alt="Recurso de la biblioteca multimedia" /> : (
+                              <div className={styles.videoPlaceholder}><MonitorPlay size={30} /><span>WebM interno</span><small>No se reproduce hasta abrir el editor.</small></div>
+                            )}
+                            <div className={styles.usageRow}>{labels.length ? labels.map((label) => <span key={label}>{label}</span>) : <span className={styles.unusedBadge}>Disponible</span>}</div>
+                            <small className={styles.resourceDetails}>{resource.kind === "image" ? resource.origin === "bundled" ? `${imageFormat(resource.src)} existente · reutilizable por referencia` : `${imageMeta(resource)} · WebP seguro` : "WebM validado · master reutilizable"}</small>
+                          </article>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </details>
+              </>
             )}
 
             <details
@@ -1032,71 +1003,6 @@ export default function GameMultimediaWorkspace({
                 </small>
               </article>
 
-              <article
-                className={`${styles.assignmentCard} ${
-                  selectedDestination === "gallery"
-                    ? styles.assignmentActive
-                    : ""
-                }`}
-              >
-                <header>
-                  <div>
-                    <span>D</span>
-                    <h3>Galería del juego</h3>
-                  </div>
-                  <small>Hasta 8 imágenes</small>
-                </header>
-
-                <div className={styles.currentResource}>
-                  {firstGalleryResource ? (
-                    <span className={styles.currentThumb}>
-                      <Image
-                        src={firstGalleryResource.src}
-                        alt=""
-                        fill
-                        sizes="72px"
-                      />
-                    </span>
-                  ) : (
-                    <span className={styles.currentIcon}>
-                      <Images size={20} aria-hidden="true" />
-                    </span>
-                  )}
-                  <div>
-                    <span>Capturas asignadas</span>
-                    <strong>{screenshots.length} de 8</strong>
-                    <small>
-                      Añade imágenes existentes desde la misma biblioteca sin volver a subirlas.
-                    </small>
-                  </div>
-                </div>
-
-                <div className={styles.assignmentActions}>
-                  <ResourcePicker
-                    action={endpoint}
-                    revision={assignmentRevision}
-                    target="gallery-image"
-                    resources={resources}
-                    kind="image"
-                    label="Añadir desde biblioteca"
-                    disabled={stale || screenshots.length >= 8}
-                  />
-                  <button
-                    type="button"
-                    className={styles.editDestinationButton}
-                    onClick={() => setSelectedDestination("gallery")}
-                  >
-                    Editar destino
-                  </button>
-                </div>
-
-                <small className={styles.assignmentStatus}>
-                  <CheckCircle2 size={13} aria-hidden="true" />
-                  {screenshots.length
-                    ? `${screenshots.length} captura${screenshots.length === 1 ? "" : "s"}`
-                    : "Pendiente"}
-                </small>
-              </article>
             </div>
           </section>
 
@@ -1117,104 +1023,72 @@ export default function GameMultimediaWorkspace({
                         ? "Portada del juego"
                         : selectedDestination === "hero"
                           ? `Hero de inicio · ${heroDraftMode === "video" ? "Video" : "Imagen"}`
-                          : selectedDestination === "card"
-                            ? "Card del juego"
-                            : "Galería del juego"}
+                          : "Card del juego"}
                     </strong>
                   </p>
                 </div>
               </div>
             </div>
 
-            <div className={styles.focusEditor}>
-              <nav
-                className={styles.editorSteps}
-                aria-label="Destinos del editor multimedia"
-              >
-                {editorDestinations.map((destination, index) => (
-                  <button
-                    key={destination.id}
-                    type="button"
-                    className={
-                      selectedDestination === destination.id
-                        ? styles.editorStepActive
-                        : ""
-                    }
-                    aria-current={
-                      selectedDestination === destination.id
-                        ? "step"
-                        : undefined
-                    }
-                    onClick={() => setSelectedDestination(destination.id)}
-                  >
-                    <strong>{index + 1}</strong>
-                    <span>{destination.label}</span>
-                  </button>
-                ))}
-              </nav>
-
-              {selectedDestination === "hero" &&
-              heroDraftMode === "video" ? (
-                <div className={styles.videoEditorHost}>
-                  {videoEditor}
-                </div>
-              ) : selectedDestination === "card" ? (
-                <div className={styles.videoEditorHost}>
-                  {videoEditor}
-                </div>
-              ) : (
+            {selectedDestination === "hero" && heroDraftMode === "video" ? (
+              <div className={styles.videoEditorHost}>{heroVideoEditor}</div>
+            ) : selectedDestination === "card" ? (
+              <div className={styles.videoEditorHost}>{cardVideoEditor}</div>
+            ) : (
+              <div className={styles.focusEditor}>
+                <nav className={styles.editorSteps} aria-label="Secciones del editor multimedia">
+                  <span className={styles.editorStepActive}>1 <b>Fuente actual</b></span>
+                  <span>2 <b>Asignación</b></span>
+                  <span>3 <b>Vista previa</b></span>
+                  <a href="#subir-recurso">4 <b>Ajuste al subir</b></a>
+                </nav>
                 <div className={styles.focusContent}>
                   <div className={styles.focusSource}>
                     <span>Fuente del recurso</span>
-                    <strong>Biblioteca compartida</strong>
-                    <p>
-                      {selectedDestination === "gallery"
-                        ? "Añade capturas desde la biblioteca o sube un WebP nuevo. La galería conserva hasta ocho referencias sin duplicar archivos."
-                        : "Usa “Seleccionar recurso” en la tarjeta del destino o sube una imagen nueva. La preparación segura sigue disponible en el cargador de la biblioteca."}
-                    </p>
-                    <a
-                      href="#subir-recurso"
-                      className={styles.secondaryAction}
-                    >
+                    <strong>
+                      {selectedDestination === "cover"
+                        ? coverResource
+                          ? coverResource.origin === "editorial"
+                            ? "Almacén editorial"
+                            : "Recurso existente"
+                          : coverImage
+                            ? "Referencia heredada"
+                            : "Sin recurso"
+                        : heroResource
+                          ? heroResource.origin === "editorial"
+                            ? "Almacén editorial"
+                            : "Recurso existente"
+                          : heroImage
+                            ? "Referencia heredada"
+                            : "Sin recurso"}
+                    </strong>
+                    <p>Selecciona una imagen disponible o sube una nueva. Reasignar una referencia existente no duplica el archivo.</p>
+                    <ResourcePicker
+                      action={endpoint}
+                      revision={assignmentRevision}
+                      target={selectedDestination === "cover" ? "cover-image" : "hero-image"}
+                      resources={resources}
+                      kind="image"
+                      disabled={stale}
+                    />
+                    <a href="#subir-recurso" className={styles.secondaryAction}>
                       <Upload size={16} aria-hidden="true" />
                       Subir nueva imagen
                     </a>
                   </div>
-
                   <div className={styles.focusPreview}>
                     <span>Vista previa</span>
-                    {selectedDestination === "cover" && coverResource ? (
-                      <ResourceArtwork
-                        resource={coverResource}
-                        alt="Vista previa de portada"
-                      />
-                    ) : selectedDestination === "hero" && heroResource ? (
-                      <ResourceArtwork
-                        resource={heroResource}
-                        alt="Vista previa del Hero"
-                      />
-                    ) : selectedDestination === "gallery" &&
-                      firstGalleryResource ? (
-                      <ResourceArtwork
-                        resource={firstGalleryResource}
-                        alt="Primera captura de la galería"
-                      />
+                    {selectedDestination === "cover" && coverImage ? (
+                      <ImageArtwork src={coverImage} alt="Vista previa de portada" />
+                    ) : selectedDestination === "hero" && heroImage ? (
+                      <ImageArtwork src={heroImage} alt="Vista previa del Hero" />
                     ) : (
                       <div className={styles.emptyPreview}>
-                        {selectedDestination === "gallery" ? (
-                          <Images size={28} aria-hidden="true" />
-                        ) : (
-                          <ImageIcon size={28} aria-hidden="true" />
-                        )}
-                        <span>
-                          {selectedDestination === "gallery"
-                            ? `${screenshots.length} capturas asignadas`
-                            : "Sin imagen asignada"}
-                        </span>
+                        <ImageIcon size={28} aria-hidden="true" />
+                        <span>Sin imagen asignada</span>
                       </div>
                     )}
                   </div>
-
                   {selectedDestination === "hero" && (
                     <div className={styles.disabledVideoCard}>
                       <div>
@@ -1222,14 +1096,12 @@ export default function GameMultimediaWorkspace({
                         <span>VIDEO EDITORIAL · HERO + CARD</span>
                       </div>
                       <strong>Deshabilitado en modo Imagen</strong>
-                      <p>
-                        Cambia el modo del Hero a Video para abrir el editor de master, recorte y encuadre.
-                      </p>
+                      <p>Cambia el modo del Hero a Video para abrir el editor de master, recorte y encuadre.</p>
                     </div>
                   )}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </section>
 
           {stale && (

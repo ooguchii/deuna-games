@@ -40,8 +40,11 @@ assert(
     library.includes("inspectSafeEditorialWebp") &&
     library.includes("inspectSafeEditorialWebm") &&
     library.includes("stats.isSymbolicLink()") &&
-    library.includes("MAX_LIBRARY_RESOURCES"),
-  "La biblioteca compartida debe enumerar sólo archivos editoriales acotados, hash-nombrados, no simbólicos y volver a validar WebP/WebM antes de exponerlos."
+    library.includes("MAX_LIBRARY_RESOURCES") &&
+    library.includes("MAX_CACHED_INSPECTIONS") &&
+    library.includes("inspectionCache") &&
+    library.includes("fileSignature"),
+  "La biblioteca compartida debe enumerar sólo archivos editoriales acotados, hash-nombrados y no simbólicos; puede reutilizar inspecciones sólo mientras la identidad física no cambie."
 );
 
 assert(
@@ -69,6 +72,8 @@ assert(
     libraryRoute.includes('"card-video"') &&
     libraryRoute.includes('"card-match-hero"') &&
     libraryRoute.includes('"gallery-image"') &&
+    libraryRoute.includes('"gallery-remove"') &&
+    libraryRoute.includes("screenshots.includes(resource)") &&
     libraryRoute.includes("saveGameMediaDraft") &&
     !libraryRoute.includes("storeEditorialPreviewVideo") &&
     !libraryRoute.includes("spawn(") &&
@@ -103,7 +108,7 @@ assert(
 );
 
 for (const label of [
-  "RESUMEN MULTIMEDIA",
+  "Resumen multimedia",
   "Biblioteca multimedia compartida",
   "Asignación de destinos",
   "Editor del destino seleccionado",
@@ -126,14 +131,17 @@ assert(
     workspace.includes('target="card-video"') &&
     workspace.includes('target="card-match-hero"') &&
     workspace.includes('target="gallery-image"') &&
+    workspace.includes('target="gallery-remove"') &&
     workspace.includes("libraryOnly") &&
     workspace.includes("IMAGEN EXISTENTE") &&
     workspace.includes("GameMediaUploadForm") &&
-    workspace.includes("videoEditor") &&
+    workspace.includes("heroVideoEditor") &&
+    workspace.includes("cardVideoEditor") &&
+    workspace.includes("libraryOpen &&") &&
     !workspace.includes("Origen de la Card") &&
     !workspace.includes("Usar recurso propio") &&
-    !workspace.includes("useMemo"),
-  "Portada, Hero, Card y Galería deben seleccionar desde una biblioteca única, sin estados derivados inestables ni el selector redundante de orígenes."
+    !workspace.includes('setSelectedDestination("gallery")'),
+  "Portada, Hero y Card deben seleccionar desde una biblioteca única; la galería se gestiona por referencias y cada destino de video abre sólo su editor enfocado."
 );
 
 assert(
@@ -167,6 +175,8 @@ assert(
 
 assert(
   videoEditor.includes("0 copias extra") &&
+    videoEditor.includes("focusedTarget?: VideoTarget") &&
+    videoEditor.includes("Editar encuadre actual") &&
     videoEditor.includes("ENCUADRE SIN RECODIFICAR") &&
     videoEditor.includes("no se recodifica el video") &&
     videoEditor.includes("X-Deuna-Preview-Target"),

@@ -139,6 +139,41 @@
   height: 52px;
 }
 
+.summaryGalleryCard {
+  align-items: stretch;
+}
+
+.summaryGalleryThumbs {
+  display: grid;
+  min-width: 128px;
+  grid-template-columns: repeat(3, minmax(34px, 1fr));
+  gap: 4px;
+}
+
+.summaryGalleryThumbs > span,
+.summaryGalleryThumbs > b {
+  position: relative;
+  display: grid;
+  overflow: hidden;
+  min-height: 24px;
+  place-items: center;
+  border: 1px solid #253442;
+  border-radius: 5px;
+  background: #0b131c;
+  color: #cbd6df;
+  font-size: 11px;
+}
+
+.summaryGalleryThumbs > span img {
+  object-fit: cover;
+}
+
+.summaryGalleryThumbs .summaryIcon {
+  width: auto;
+  height: auto;
+  grid-column: 1 / -1;
+}
+
 .mainGrid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 300px;
@@ -226,6 +261,200 @@
 .emptyLibrary strong {
   color: #e1e7ed;
   font-size: 14px;
+}
+
+.libraryOverviewGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.librarySlot {
+  display: grid;
+  min-width: 0;
+  align-content: start;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid #1e2c38;
+  border-radius: 10px;
+  background: #080e15;
+}
+
+.librarySlot > header {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.librarySlot > header > span {
+  color: #ff7a18;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.055em;
+}
+
+.librarySlot > header > small,
+.librarySlot > strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.librarySlot > header > small {
+  color: #8295a7;
+  font-size: 11px;
+}
+
+.librarySlot > strong {
+  color: #dfe7ed;
+  font-size: 12px;
+}
+
+.slotEmpty {
+  display: grid;
+  width: 100%;
+  min-height: 112px;
+  place-items: center;
+  align-content: center;
+  gap: 7px;
+  color: #748798;
+  border: 1px dashed #263746;
+  border-radius: 8px;
+  background: #070c12;
+  font-size: 11px;
+}
+
+.galleryStrip {
+  display: grid;
+  min-height: 112px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.galleryStrip > span,
+.galleryStrip > b {
+  position: relative;
+  display: grid;
+  overflow: hidden;
+  min-height: 52px;
+  place-items: center;
+  color: #cbd6df;
+  border: 1px solid #253441;
+  border-radius: 6px;
+  background: #0b131c;
+  font-size: 12px;
+}
+
+.galleryStrip > span img {
+  object-fit: cover;
+}
+
+.galleryStrip .slotEmpty {
+  min-height: 112px;
+  grid-column: 1 / -1;
+}
+
+.manageGalleryButton {
+  min-height: 34px;
+  color: #dbe4ec;
+  border: 1px solid #2a3947;
+  border-radius: 8px;
+  background: #0d151e;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.manageGalleryButton:hover {
+  border-color: rgba(255, 122, 24, 0.58);
+  background: #121b25;
+}
+
+.galleryManager,
+.libraryInventory {
+  margin-top: 12px;
+  border: 1px solid #243441;
+  border-radius: 10px;
+  background: #080e15;
+}
+
+.galleryManager {
+  padding: 12px;
+}
+
+.galleryManagerHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.galleryManagerHeading > div {
+  display: grid;
+  gap: 3px;
+}
+
+.galleryManagerHeading strong {
+  color: #e5ebf0;
+  font-size: 13px;
+}
+
+.galleryManagerHeading span {
+  color: #8799a9;
+  font-size: 11px;
+}
+
+.galleryManagerHeading .resourcePicker {
+  width: min(220px, 100%);
+}
+
+.galleryManagerGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.galleryManagerGrid form {
+  min-width: 0;
+}
+
+.galleryManagerGrid .resourceChoice > svg {
+  flex: 0 0 auto;
+  margin-left: auto;
+  color: #db7d72;
+}
+
+.libraryInventory > summary {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  color: #dce5ec;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.libraryInventory > summary > small {
+  margin-left: auto;
+  color: #8193a4;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.libraryInventory[open] > summary {
+  border-bottom: 1px solid #1d2a35;
+}
+
+.libraryInventory .libraryGrid,
+.libraryInventory .emptyLibrary {
+  margin: 12px;
 }
 
 .libraryGrid {
@@ -643,7 +872,8 @@
   background: #080e15;
 }
 
-.editorSteps button {
+.editorSteps > span,
+.editorSteps > a {
   display: flex;
   min-height: 38px;
   align-items: center;
@@ -655,6 +885,11 @@
   background: transparent;
   font-size: 12px;
   text-align: left;
+  text-decoration: none;
+}
+
+.editorSteps b {
+  font: inherit;
 }
 
 .editorSteps .editorStepActive {
@@ -897,6 +1132,10 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .libraryOverviewGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .focusContent {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -933,11 +1172,25 @@
 
   .summaryGrid,
   .libraryGrid,
+  .libraryOverviewGrid,
   .assignmentGrid,
   .focusContent,
   .helpRail,
   .advancedFields,
   .resourceChoiceGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .galleryManagerHeading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .galleryManagerHeading .resourcePicker {
+    width: 100%;
+  }
+
+  .galleryManagerGrid {
     grid-template-columns: 1fr;
   }
 

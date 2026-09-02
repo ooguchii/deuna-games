@@ -3,6 +3,38 @@
   gap: 16px;
 }
 
+.focusedPanel {
+  margin-top: 0;
+  padding: 14px;
+  border-color: #1f2e3a;
+  background: #080e15;
+}
+
+.focusedDestination {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px 16px;
+  padding: 11px 12px;
+  border: 1px solid #223142;
+  border-radius: 10px;
+  background: #0a1119;
+}
+
+.focusedDestination > p {
+  grid-column: 1;
+  margin: 0;
+  color: #8798a8;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.focusedDestination > .destinationActions {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  min-width: 260px;
+}
+
 .destinationGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -322,6 +354,20 @@
 }
 
 @media (max-width: 720px) {
+  .focusedDestination {
+    grid-template-columns: 1fr;
+  }
+
+  .focusedDestination > p,
+  .focusedDestination > .destinationActions {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .focusedDestination > .destinationActions {
+    min-width: 0;
+  }
+
   .editorModeHeader {
     align-items: stretch;
     flex-direction: column;
