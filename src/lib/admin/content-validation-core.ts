@@ -144,6 +144,56 @@ const youtubePreviewSchema = z
     }
   });
 
+const videoViewportSchema = z
+  .object({
+    x: z.number().min(0).max(1),
+    y: z.number().min(0).max(1),
+    zoom: z.number().min(1).max(3),
+    aspect: z.enum(["source", "16:9", "1:1", "4:5", "9:16"]),
+  })
+  .strict();
+
+const heroVideoSchema = z
+  .object({
+    clip: localPreviewClipSchema,
+    viewport: videoViewportSchema,
+  })
+  .strict();
+
+const cardHeroVideoSchema = z
+  .object({
+    source: z.literal("hero"),
+    viewport: videoViewportSchema,
+  })
+  .strict();
+
+const cardIndependentVideoSchema = z
+  .object({
+    source: z.literal("independent"),
+    clip: localPreviewClipSchema,
+    viewport: videoViewportSchema,
+  })
+  .strict();
+
+const gameVideoMediaSchema = z
+  .object({
+    hero: heroVideoSchema.optional(),
+    card: z
+      .union([cardHeroVideoSchema, cardIndependentVideoSchema])
+      .optional(),
+  })
+  .strict()
+  .superRefine((media, context) => {
+    if (media.card?.source === "hero" && !media.hero) {
+      context.addIssue({
+        code: "custom",
+        path: ["card", "source"],
+        message:
+          "La Card sólo puede compartir el video del Hero cuando existe un Hero de video configurado.",
+      });
+    }
+  });
+
 const pageBackgroundAssetSchema = z
   .object({
     id: identifierSchema,
@@ -589,6 +639,7 @@ export const editorialGameSchema: z.ZodType<Game> = z
       .array(localImageSchema)
       .max(20)
       .optional(),
+    videoMedia: gameVideoMediaSchema.optional(),
     previewMode: z.enum(["webm", "youtube"]).optional(),
     previewClip: localPreviewClipSchema.optional(),
     youtubePreview: youtubePreviewSchema.optional(),
