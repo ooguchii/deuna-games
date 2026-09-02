@@ -348,8 +348,8 @@ export async function createStagedPlatformPreviewSource(
   if (mediaImportWorkerConfigured()) {
     try {
       return await stageRemoteProbe(slug, userId, { kind: "platform", provider, url: sourceUrl });
-    } catch (error) {
-      console.warn(`[preview-lazy:${provider}] Streaming parcial no disponible; usando staging completo:`, error instanceof Error ? error.message : "fallo no identificado");
+    } catch {
+      // Compatibilidad: si el origen no admite la ruta lazy, se conserva el staging completo.
     }
   }
   return stageDownloadedSource(slug, userId, (destinationPath) =>
@@ -365,8 +365,8 @@ export async function createStagedDirectPreviewSource(
   if (mediaImportWorkerConfigured()) {
     try {
       return await stageRemoteProbe(slug, userId, { kind: "direct", url: sourceUrl });
-    } catch (error) {
-      console.warn("[preview-lazy:direct] Streaming parcial no disponible; usando staging completo:", error instanceof Error ? error.message : "fallo no identificado");
+    } catch {
+      // Compatibilidad: si el origen no admite la ruta lazy, se conserva el staging completo.
     }
   }
   return stageDownloadedSource(slug, userId, (destinationPath) =>
@@ -510,9 +510,8 @@ export async function prepareStagedEditorialPreviewForTrim(
       delivery: "segment",
       cleanup: () => rm(directory, { recursive: true, force: true }),
     };
-  } catch (segmentError) {
+  } catch {
     await rm(directory, { recursive: true, force: true });
-    console.warn("[preview-lazy:segment] No se pudo extraer sólo el tramo; usando copia completa compatible:", segmentError instanceof Error ? segmentError.message : "fallo no identificado");
     const materialized = await materializeRemoteSource(source);
     return {
       filePath: materialized.filePath,
