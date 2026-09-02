@@ -1,9 +1,10 @@
-import type { NextRequest } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 
 import { adminRedirect, authorizeAdminFormRequest } from "@/lib/admin/admin-route";
 import { expectedRevisionSchema } from "@/lib/admin/content-forms";
 import { getEditorialItem, saveGameMediaDraft } from "@/lib/admin/content-service";
 import { hasExactAdminFormFields } from "@/lib/admin/request-security";
+import { verifyAdminSession } from "@/lib/admin/session";
 import {
   withGameVideoLayout,
   type GameCardVideoSource,
@@ -30,6 +31,36 @@ function parseTarget(value: string | null): GameVideoTarget | null {
 
 function parseSource(value: string | null): GameCardVideoSource | null {
   return value === "hero" || value === "independent" ? value : null;
+}
+
+export async function GET(
+  _request: NextRequest,
+  context: { params: Promise<{ slug: string }> }
+) {
+  await verifyAdminSession();
+  const { slug } = await context.params;
+  const item = await getEditorialItem("game", slug);
+
+  if (!item) {
+    return NextResponse.json(
+      { error: "Juego no encontrado." },
+      {
+        status: 404,
+        headers: { "Cache-Control": "no-store" },
+      }
+    );
+  }
+
+  return NextResponse.json(
+    {
+      revision: item.revision,
+      videoMedia: item.payload.videoMedia ?? null,
+      legacyPreviewClip: item.payload.previewClip ?? null,
+    },
+    {
+      headers: { "Cache-Control": "no-store" },
+    }
+  );
 }
 
 export async function POST(
