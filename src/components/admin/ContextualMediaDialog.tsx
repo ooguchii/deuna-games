@@ -6,7 +6,7 @@ import {
   type ReactNode,
   useEffect,
   useRef,
-  useState,
+  useSyncExternalStore,
 } from "react";
 import { createPortal } from "react-dom";
 
@@ -20,6 +20,10 @@ type Props = {
   onClose: () => void;
 };
 
+const subscribeClient = () => () => {};
+const getClientSnapshot = () => true;
+const getServerSnapshot = () => false;
+
 export default function ContextualMediaDialog({
   eyebrow,
   title,
@@ -27,7 +31,11 @@ export default function ContextualMediaDialog({
   children,
   onClose,
 }: Props) {
-  const [mounted, setMounted] = useState(false);
+  const mounted = useSyncExternalStore(
+    subscribeClient,
+    getClientSnapshot,
+    getServerSnapshot
+  );
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const onCloseRef = useRef(onClose);
@@ -37,7 +45,8 @@ export default function ContextualMediaDialog({
   }, [onClose]);
 
   useEffect(() => {
-    setMounted(true);
+    if (!mounted) return;
+
     previousFocusRef.current = document.activeElement instanceof HTMLElement
       ? document.activeElement
       : null;
@@ -61,7 +70,7 @@ export default function ContextualMediaDialog({
       document.body.style.overflow = previousOverflow;
       previousFocusRef.current?.focus();
     };
-  }, []);
+  }, [mounted]);
 
   function handleBackdropClick(event: MouseEvent<HTMLDivElement>) {
     if (event.target === event.currentTarget) onClose();
