@@ -28,6 +28,7 @@ import {
   parsePreviewViewport,
   resolvePreviewViewportCrop,
   type PreviewQualityId,
+  type PreviewQualityOption,
   type PreviewTrimWindow,
   type PreviewViewport,
 } from "@/lib/media/preview-video-policy";
@@ -70,6 +71,8 @@ type VideoTrimEditorProps = {
   quality: PreviewQualityId;
   viewport: PreviewViewport;
   qualityDisabled?: boolean;
+  qualityOptions?: readonly PreviewQualityOption[];
+  layoutOnly?: boolean;
   onQualityChange: (quality: PreviewQualityId) => void;
   onViewportChange: (viewport: PreviewViewport) => void;
   onTrimChange: (
@@ -124,6 +127,8 @@ export default function VideoTrimEditor({
   quality,
   viewport,
   qualityDisabled = false,
+  qualityOptions = PREVIEW_QUALITY_OPTIONS,
+  layoutOnly = false,
   onQualityChange,
   onViewportChange,
   onTrimChange,
@@ -796,7 +801,7 @@ export default function VideoTrimEditor({
             }}
             onError={() => {
               setMediaError(
-                "No se pudo reproducir esta fuente para seleccionar el recorte."
+                "No se pudo reproducir esta fuente para seleccionar el encuadre."
               );
               onTrimChange(null);
             }}
@@ -863,7 +868,7 @@ export default function VideoTrimEditor({
               <strong>Elige qué parte se verá</strong>
             </div>
             <small>
-              Lo que quede dentro del marco será lo que se codifique en el WebM final.
+              El marco sólo define la presentación. Hero y Card pueden guardar encuadres distintos sobre los mismos bytes de video.
             </small>
           </div>
 
@@ -983,7 +988,7 @@ export default function VideoTrimEditor({
               </canvas>
             </div>
             <small>
-              Para mostrar sólo una zona, aumenta el zoom y arrastra el control central. Los botones Izquierda/Derecha aplican al menos 200% de zoom.
+              Para mostrar sólo una zona, aumenta el zoom y arrastra el control central. Izquierda/Derecha aplican al menos 200% de zoom.
             </small>
           </div>
         </aside>
@@ -1002,6 +1007,10 @@ export default function VideoTrimEditor({
         <div className={styles.error} role="alert">
           {mediaError}
         </div>
+      ) : layoutOnly ? (
+        <p className={styles.help}>
+          Modo de encuadre: sólo se guardan posición, zoom y relación. El archivo, su duración y su calidad permanecen intactos; no se ejecuta FFmpeg.
+        </p>
       ) : (
         <>
           <div
@@ -1167,12 +1176,12 @@ export default function VideoTrimEditor({
             className={styles.qualityPanel}
             disabled={qualityDisabled}
           >
-            <legend>Calidad del preview guardado</legend>
+            <legend>Calidad del video guardado</legend>
             <p>
-              La fuente remota sigue usando extracción parcial. Este ajuste controla el WebM final; si un tramo supera el límite de 3 MB, DeUna reduce calidad automáticamente antes de fallar.
+              La fuente remota sigue usando extracción parcial. La calidad controla el master WebM; si supera 3 MB, DeUna reduce calidad automáticamente antes de fallar.
             </p>
             <div className={styles.qualityGrid}>
-              {PREVIEW_QUALITY_OPTIONS.map((option) => (
+              {qualityOptions.map((option) => (
                 <label
                   key={option.id}
                   className={`${styles.qualityOption} ${quality === option.id ? styles.qualityOptionActive : ""}`}
@@ -1240,7 +1249,7 @@ export default function VideoTrimEditor({
           </div>
 
           <p className={styles.help}>
-            Arrastra IN y OUT sobre la línea de tiempo. Durante el arrastre sólo se mueve la selección; el video busca la posición al soltar para evitar solicitudes remotas innecesarias. El recorte puede durar hasta 30 segundos. El encuadre visual se procesa únicamente al guardar.
+            Arrastra IN y OUT sobre la línea de tiempo. Durante el arrastre sólo se mueve la selección; el video busca la posición al soltar para evitar solicitudes remotas innecesarias. El tramo puede durar hasta 30 segundos. El encuadre se guarda como metadata y puede cambiar de forma independiente entre Hero y Card.
           </p>
         </>
       )}
