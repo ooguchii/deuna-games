@@ -186,6 +186,34 @@ const uploadForm = await readFile(
   ),
   "utf8"
 );
+const mediaLibraryRoute = await readFile(
+  path.join(
+    root,
+    "src/app/api/admin/content/games/[slug]/media-library/route.ts"
+  ),
+  "utf8"
+);
+const mediaWorkspace = await readFile(
+  path.join(
+    root,
+    "src/components/admin/GameMultimediaWorkspace.tsx"
+  ),
+  "utf8"
+);
+const previewUploadForm = await readFile(
+  path.join(
+    root,
+    "src/components/admin/GamePreviewClipUploadForm.tsx"
+  ),
+  "utf8"
+);
+const editorialMediaLibrary = await readFile(
+  path.join(
+    root,
+    "src/lib/media/editorial-media-library.ts"
+  ),
+  "utf8"
+);
 const remoteSource = await readFile(
   path.join(
     root,
@@ -268,6 +296,49 @@ assert(
     uploadForm.includes("resultState !== expectedState") &&
     uploadForm.includes("uploadRedirectError"),
   "El editor debe normalizar PNG/JPEG/AVIF/WebP, importar por URL, distinguir carga directa de biblioteca y conservar la pantalla si el servidor rechaza el intento."
+);
+assert(
+  uploadRoute.includes('"library"') &&
+    uploadRoute.includes('kind.data === "library"') &&
+    uploadRoute.includes("estado=recurso-subido") &&
+    uploadRoute.includes("storeEditorialWebp") &&
+    uploadRoute.includes("saveGameMediaDraft"),
+  "La carga pura de biblioteca debe persistir por hash sin crear una revisión ni asignar el recurso automáticamente."
+);
+assert(
+  mediaLibraryRoute.includes("hasExactAdminFormFields") &&
+    mediaLibraryRoute.includes('"gallery-image"') &&
+    mediaLibraryRoute.includes('"gallery-remove"') &&
+    mediaLibraryRoute.includes("findEditorialMediaResource") &&
+    mediaLibraryRoute.includes("screenshots.includes(resource)") &&
+    mediaLibraryRoute.includes("saveGameMediaDraft"),
+  "Las asignaciones de biblioteca deben validar campos y recursos; añadir o retirar una captura sólo cambia referencias del borrador."
+);
+assert(
+  mediaWorkspace.includes("libraryOnly") &&
+    mediaWorkspace.includes('target="gallery-remove"') &&
+    mediaWorkspace.includes("libraryOpen &&") &&
+    mediaWorkspace.includes("heroVideoEditor") &&
+    mediaWorkspace.includes("cardVideoEditor") &&
+    mediaWorkspace.includes("La Card usa la portada mientras no tenga preview de video."),
+  "El workspace debe exponer almacenamiento puro, galería real, inventario diferido y editores enfocados sin fingir una imagen compartida para Card."
+);
+assert(
+  previewUploadForm.includes("focusedTarget?: VideoTarget") &&
+    previewUploadForm.includes('focusedTarget ? "source" : null') &&
+    previewUploadForm.includes("Editar encuadre actual") &&
+    previewUploadForm.includes("!focusedTarget || focusedTarget === \"hero\"") &&
+    previewUploadForm.includes("!focusedTarget || focusedTarget === \"card\""),
+  "Los editores enfocados de Hero y Card deben conservar encuadre y borrado por destino sin repetir ambos paneles."
+);
+assert(
+  editorialMediaLibrary.includes("MAX_CACHED_INSPECTIONS") &&
+    editorialMediaLibrary.includes("inspectionCache") &&
+    editorialMediaLibrary.includes("await lstat(filePath)") &&
+    editorialMediaLibrary.includes("inspectSafeEditorialWebp") &&
+    editorialMediaLibrary.includes("inspectSafeEditorialWebm") &&
+  editorialMediaLibrary.includes("inspection?.digest === match[1]"),
+  "El listado puede cachear inspecciones inmutables, pero debe revalidar la identidad física y conservar la comprobación del hash de contenido."
 );
 assert(
   remoteRoute.includes(

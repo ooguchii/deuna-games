@@ -81,6 +81,7 @@ type Props = {
   slug: string;
   revision: number;
   currentPreview?: string;
+  focusedTarget?: VideoTarget;
 };
 
 const providerOptions = previewProviderList();
@@ -198,15 +199,22 @@ function targetLabel(target: VideoTarget) {
   return target === "hero" ? "Hero de inicio" : "Card del juego";
 }
 
+function shortMediaPath(src: string) {
+  const filename = src.split("/").filter(Boolean).at(-1) ?? src;
+  if (filename.length <= 34) return filename;
+  return `${filename.slice(0, 16)}…${filename.slice(-15)}`;
+}
+
 export default function GamePreviewClipUploadForm({
   slug,
   revision,
   currentPreview,
+  focusedTarget,
 }: Props) {
   const [config, setConfig] = useState<LoadedVideoConfig | null>(null);
   const [configBusy, setConfigBusy] = useState(true);
-  const [activeTarget, setActiveTarget] = useState<VideoTarget | null>(null);
-  const [editorMode, setEditorMode] = useState<EditorMode | null>(null);
+  const [activeTarget, setActiveTarget] = useState<VideoTarget | null>(focusedTarget ?? null);
+  const [editorMode, setEditorMode] = useState<EditorMode | null>(focusedTarget ? "source" : null);
   const [layoutSource, setLayoutSource] = useState<LayoutSource | null>(null);
   const [layoutClip, setLayoutClip] = useState<string | null>(null);
   const [sourceMode, setSourceMode] = useState<SourceMode>("file");
@@ -247,6 +255,8 @@ export default function GamePreviewClipUploadForm({
       : legacyCardClip;
   const cardViewport = configuredCard?.viewport ?? DEFAULT_PREVIEW_VIEWPORT;
   const staleConfig = config !== null && config.revision !== revision;
+  const focusedClip = focusedTarget === "hero" ? hero?.clip : focusedTarget === "card" ? cardClip : null;
+  const focusedViewport = focusedTarget === "hero" ? hero?.viewport : cardViewport;
 
   useEffect(() => {
     let cancelled = false;
@@ -629,18 +639,44 @@ export default function GamePreviewClipUploadForm({
   const disableActions = busy || sourceBusy || configBusy || staleConfig;
 
   return (
-    <section className={adminStyles.editorPanel}>
+    <section className={`${adminStyles.editorPanel} ${focusedTarget ? localStyles.focusedPanel : ""}`}>
       <div className={adminStyles.sectionHeading}>
         <div>
-          <span>VIDEO EDITORIAL · HERO + CARD</span>
-          <h2>Un master compartido cuando conviene, dos encuadres independientes</h2>
+          <span>{focusedTarget ? `VIDEO EDITORIAL · ${targetLabel(focusedTarget).toUpperCase()}` : "VIDEO EDITORIAL · HERO + CARD"}</span>
+          <h2>{focusedTarget ? "Fuente, recorte y encuadre" : "Un master compartido cuando conviene, dos encuadres independientes"}</h2>
         </div>
         <p>
-          Hero y Card pueden usar exactamente el mismo WebM sin duplicarlo. También puedes dar a la Card un video propio. Posición, zoom y relación se guardan como metadata y no obligan a recodificar.
+          {focusedTarget
+            ? focusedTarget === "hero"
+              ? "Crea o reemplaza el master del Hero. Su fotograma completo queda disponible para que Hero y Card guarden encuadres independientes."
+              : "La Card puede compartir el WebM del Hero o usar uno propio. Cambiar sólo el encuadre actualiza metadata y no duplica el archivo."
+            : "Hero y Card pueden usar exactamente el mismo WebM sin duplicarlo. También puedes dar a la Card un video propio. Posición, zoom y relación se guardan como metadata y no obligan a recodificar."}
         </p>
       </div>
 
       <div className={localStyles.workspace}>
+        {focusedTarget ? (
+          <article className={localStyles.focusedDestination}>
+            <div className={localStyles.destinationHeading}>
+              <div>
+                <span>{focusedTarget === "hero" ? "HERO DE INICIO" : "CARD DEL JUEGO"}</span>
+                <strong>{focusedClip ? shortMediaPath(focusedClip) : "Sin video asignado"}</strong>
+              </div>
+              <span className={focusedClip ? localStyles.statusReady : localStyles.statusEmpty}>{focusedClip ? "ASIGNADO" : "PENDIENTE"}</span>
+            </div>
+            <p>{focusedClip ? "Puedes editar el encuadre sin recodificar o preparar una fuente nueva para reemplazarlo." : "Prepara una fuente para crear el primer WebM interno de este destino."}</p>
+            <div className={localStyles.destinationActions}>
+              {focusedClip && focusedViewport && (
+                <button type="button" disabled={disableActions} onClick={() => openLayoutEditor(focusedTarget, focusedTarget === "card" && cardSource === "hero" ? "hero" : focusedTarget === "card" ? "independent" : "hero", focusedClip, focusedViewport)}>
+                  Editar encuadre actual
+                </button>
+              )}
+              <button type="button" disabled={disableActions} onClick={() => openSourceEditor(focusedTarget)}>
+                {focusedClip ? "Preparar otro video" : "Crear video"}
+              </button>
+            </div>
+          </article>
+        ) : (
         <div className={localStyles.destinationGrid}>
           <article className={localStyles.destinationCard}>
             <div className={localStyles.destinationHeading}>
@@ -760,6 +796,7 @@ export default function GamePreviewClipUploadForm({
             </div>
           </article>
         </div>
+        )}
 
         {configBusy && (
           <div className={`${adminStyles.tableSummary} ${adminStyles.fieldWide}`} role="status">
@@ -940,7 +977,7 @@ export default function GamePreviewClipUploadForm({
         )}
 
         <div className={localStyles.removeGrid}>
-          {hero && (
+          {hero && (!focusedTarget || focusedTarget === "hero") && (
             <form method="post" action={`/api/admin/content/games/${encodeURIComponent(slug)}/preview-remove`} className={adminStyles.formActions}>
               <input type="hidden" name="expectedRevision" value={revision} />
               <input type="hidden" name="target" value="hero" />
@@ -948,7 +985,7 @@ export default function GamePreviewClipUploadForm({
               <button type="submit" disabled={disableActions}>Quitar Hero</button>
             </form>
           )}
-          {cardClip && (
+          {cardClip && (!focusedTarget || focusedTarget === "card") && (
             <form method="post" action={`/api/admin/content/games/${encodeURIComponent(slug)}/preview-remove`} className={adminStyles.formActions}>
               <input type="hidden" name="expectedRevision" value={revision} />
               <input type="hidden" name="target" value="card" />

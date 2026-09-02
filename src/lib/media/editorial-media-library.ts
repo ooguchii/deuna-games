@@ -47,6 +47,41 @@ const MEDIA_FILENAME = /^([a-f0-9]{64})\.(webp|webm)$/;
 const BUNDLED_IMAGE_PATTERN =
   /^\/images\/[A-Za-z0-9/_.,@+() -]+\.(?:avif|gif|jpe?g|png|webp)$/i;
 const MAX_LIBRARY_RESOURCES = 80;
+const MAX_CACHED_INSPECTIONS = 320;
+
+type CachedInspection = {
+  signature: string;
+  resource: EditorialMediaLibraryResource | null;
+};
+
+// Los archivos son inmutables y direccionados por SHA-256. Se sigue haciendo
+// lstat en cada listado, pero sólo se releen y vuelven a hashear si cambia su
+// identidad física. Así abrir Multimedia no lee hasta cientos de MB en cada GET.
+const inspectionCache = new Map<string, CachedInspection>();
+
+function fileSignature(stats: Awaited<ReturnType<typeof lstat>>) {
+  return [
+    stats.dev,
+    stats.ino,
+    stats.size,
+    stats.mtimeMs,
+    stats.ctimeMs,
+  ].join(":");
+}
+
+function rememberInspection(
+  filePath: string,
+  inspection: CachedInspection
+) {
+  inspectionCache.delete(filePath);
+  inspectionCache.set(filePath, inspection);
+
+  while (inspectionCache.size > MAX_CACHED_INSPECTIONS) {
+    const oldest = inspectionCache.keys().next().value;
+    if (typeof oldest !== "string") break;
+    inspectionCache.delete(oldest);
+  }
+}
 
 function isMissingDirectory(error: unknown) {
   return (
@@ -132,33 +167,46 @@ export async function listEditorialMediaLibrary(
       continue;
     }
 
-    const buffer = await readFile(filePath);
-    const publicPath = buildEditorialMediaPublicPath(slug, entry.name);
+    const signature = fileSignature(stats);
+    const cached = inspectionCache.get(filePath);
 
-    if (match[2] === "webp") {
-      const inspection = inspectSafeEditorialWebp(buffer);
-      if (!inspection || inspection.digest !== match[1]) continue;
-      resources.push({
-        kind: "image",
-        origin: "editorial",
-        src: publicPath,
-        digest: inspection.digest,
-        bytes: inspection.bytes,
-        width: inspection.width,
-        height: inspection.height,
-      });
+    if (cached?.signature === signature) {
+      if (cached.resource) resources.push(cached.resource);
       continue;
     }
 
-    const inspection = inspectSafeEditorialWebm(buffer);
-    if (!inspection || inspection.digest !== match[1]) continue;
-    resources.push({
-      kind: "video",
-      origin: "editorial",
-      src: publicPath,
-      digest: inspection.digest,
-      bytes: inspection.bytes,
-    });
+    const buffer = await readFile(filePath);
+    const publicPath = buildEditorialMediaPublicPath(slug, entry.name);
+    let resource: EditorialMediaLibraryResource | null = null;
+
+    if (match[2] === "webp") {
+      const inspection = inspectSafeEditorialWebp(buffer);
+      if (inspection?.digest === match[1]) {
+        resource = {
+          kind: "image",
+          origin: "editorial",
+          src: publicPath,
+          digest: inspection.digest,
+          bytes: inspection.bytes,
+          width: inspection.width,
+          height: inspection.height,
+        };
+      }
+    } else {
+      const inspection = inspectSafeEditorialWebm(buffer);
+      if (inspection?.digest === match[1]) {
+        resource = {
+          kind: "video",
+          origin: "editorial",
+          src: publicPath,
+          digest: inspection.digest,
+          bytes: inspection.bytes,
+        };
+      }
+    }
+
+    rememberInspection(filePath, { signature, resource });
+    if (resource) resources.push(resource);
   }
 
   return resources;
