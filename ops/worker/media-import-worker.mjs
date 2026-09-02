@@ -22,6 +22,10 @@ const DIRECT_TIMEOUT_MS = 60_000;
 const PLATFORM_TIMEOUT_MS = 10 * 60 * 1_000;
 const PLATFORM_DOWNLOAD_RATE = "8M";
 const MAX_ERROR_CHARS = 8_000;
+const YTDLP_JS_RUNTIME = process.env.DEUNA_YTDLP_JS_RUNTIME?.trim() || "node";
+const YTDLP_REMOTE_COMPONENT = process.env.DEUNA_YTDLP_REMOTE_COMPONENT?.trim() || "ejs:github";
+const YTDLP_COOKIES_FILE = process.env.DEUNA_YTDLP_COOKIES_FILE?.trim() || "";
+const YTDLP_DIAGNOSTICS = process.env.DEUNA_YTDLP_DIAGNOSTICS?.trim() === "1";
 
 if (!Number.isSafeInteger(PORT) || PORT < 1024 || PORT > 65_535) throw new Error("DEUNA_MEDIA_IMPORT_WORKER_PORT debe ser un puerto local válido entre 1024 y 65535.");
 if (TOKEN.length < 32 || TOKEN.length > 256) throw new Error("DEUNA_MEDIA_IMPORT_WORKER_TOKEN debe tener entre 32 y 256 caracteres.");
@@ -56,6 +60,31 @@ const providerHosts = {
   nicovideo: ["nicovideo.jp", "nico.ms"],
 };
 
+const providerLabels = {
+  youtube: "YouTube",
+  facebook: "Facebook",
+  instagram: "Instagram",
+  tiktok: "TikTok",
+  vimeo: "Vimeo",
+  x: "X / Twitter",
+  twitch: "Twitch",
+  dailymotion: "Dailymotion",
+  streamable: "Streamable",
+  kick: "Kick",
+  reddit: "Reddit",
+  rumble: "Rumble",
+  odysee: "Odysee",
+  bilibili: "Bilibili",
+  vk: "VK",
+  imgur: "Imgur",
+  pinterest: "Pinterest",
+  tumblr: "Tumblr",
+  snapchat: "Snapchat",
+  loom: "Loom",
+  wistia: "Wistia",
+  nicovideo: "Niconico",
+};
+
 const blockedAddresses = new BlockList();
 for (const [network, prefix] of [
   ["0.0.0.0", 8], ["10.0.0.0", 8], ["100.64.0.0", 10], ["127.0.0.0", 8],
@@ -69,6 +98,14 @@ for (const [network, prefix] of [
 ]) blockedAddresses.addSubnet(network, prefix, "ipv6");
 
 let activeJob = false;
+
+class YtDlpCommandError extends Error {
+  constructor(stderr) {
+    super("yt-dlp terminó con error.");
+    this.name = "YtDlpCommandError";
+    this.stderr = stderr;
+  }
+}
 
 function jsonError(response, status, message) {
   const body = Buffer.from(message, "utf8");
@@ -170,7 +207,7 @@ function requestDirectVideo(url, resolved, destinationPath) {
       method: "GET",
       headers: {
         Accept: "video/webm,video/mp4,video/quicktime,video/x-m4v,video/x-matroska,video/x-msvideo,application/octet-stream;q=0.8,*/*;q=0.1",
-        "User-Agent": "DeUnaGames-MediaImportWorker/4.0",
+        "User-Agent": "DeUnaGames-MediaImportWorker/4.1",
       },
       lookup: (_hostname, _options, callback) => callback(null, resolved.address, resolved.family),
     }, (response) => {
@@ -237,11 +274,93 @@ function contentTypeFromFilename(filename) {
   return "application/octet-stream";
 }
 
-function runPlatformYtDlp(sourceUrl, temporaryDirectory) {
+function configuredYouTubeClients() {
+  const configured = process.env.DEUNA_YTDLP_YOUTUBE_CLIENTS?.trim() ?? "";
+  if (!configured || configured.toLowerCase() === "auto") return null;
+  return configured;
+}
+
+function youtubeClientAttempts() {
+  const configured = configuredYouTubeClients();
+  if (configured) return [configured];
+  return [null, "web_embedded"];
+}
+
+function classifyYtDlpFailure(stderr, provider) {
+  const normalized = stderr.toLowerCase();
+  const label = providerLabels[provider] ?? provider;
+
+  if (
+    normalized.includes("no such option: --js-runtimes") ||
+    normalized.includes("no such option: --remote-components") ||
+    normalized.includes("unrecognized arguments: --js-runtimes") ||
+    normalized.includes("unrecognized arguments: --remote-components")
+  ) {
+    return new Error("La instalación de yt-dlp es demasiado antigua para el extractor actual de YouTube. Actualiza yt-dlp a una versión 2026 reciente y vuelve a intentar.");
+  }
+  if (
+    provider === "youtube" &&
+    (normalized.includes("javascript runtime") || normalized.includes("js runtime")) &&
+    (normalized.includes("not found") || normalized.includes("not available") || normalized.includes("unsupported"))
+  ) {
+    return new Error("YouTube necesita un runtime JavaScript compatible. DeUna está configurado para Node 22 o superior; revisa que Node esté disponible para yt-dlp.");
+  }
+  if (
+    provider === "youtube" &&
+    (normalized.includes("challenge solving failed") ||
+      normalized.includes("failed to solve") ||
+      normalized.includes("signature solving") ||
+      normalized.includes("yt-dlp-ejs") ||
+      normalized.includes("ejs:github"))
+  ) {
+    return new Error("YouTube no pudo resolver su desafío JavaScript. Actualiza yt-dlp y verifica que el componente EJS pueda cargarse; DeUna usa Node + ejs:github.");
+  }
+  if (provider === "youtube" && (normalized.includes("http error 429") || normalized.includes("too many requests"))) {
+    return new Error("YouTube bloqueó temporalmente esta IP (HTTP 429). Evita reintentos repetidos y vuelve a probar después o desde otra IP.");
+  }
+  if (provider === "youtube" && (normalized.includes("captcha") || normalized.includes("sign in to confirm"))) {
+    return new Error("YouTube activó una verificación anti-bot para esta IP. El reproductor puede funcionar aunque la descarga sea bloqueada; mantén yt-dlp actualizado y usa un PO Token Provider sólo si YouTube lo exige.");
+  }
+  if (provider === "youtube" && (normalized.includes("http error 403") || normalized.includes("forbidden"))) {
+    return new Error("YouTube permitió reproducir el video, pero rechazó la descarga del stream (HTTP 403). DeUna ya probó el cliente automático y el fallback embebido; actualiza yt-dlp y, si persiste, la IP puede requerir Proof-of-Origin.");
+  }
+  if (normalized.includes("private") || normalized.includes("members-only")) {
+    return new Error(`${label} no permite importar este contenido porque es privado o exclusivo para miembros.`);
+  }
+  if (normalized.includes("sign in") || normalized.includes("login") || normalized.includes("unavailable") || normalized.includes("not available")) {
+    return new Error(`${label} no entregó un stream público descargable para este enlace.`);
+  }
+  if (normalized.includes("unsupported url") || normalized.includes("no suitable extractor")) {
+    return new Error(`El enlace pertenece a ${label}, pero el extractor no reconoce ese formato. Actualiza yt-dlp y vuelve a intentarlo.`);
+  }
+  if (normalized.includes("max-filesize") || normalized.includes("file is larger")) {
+    return new Error(`La copia temporal de ${label} supera 512 MB.`);
+  }
+  if (provider === "youtube" && normalized.includes("requested format is not available")) {
+    return new Error("YouTube no entregó un formato público compatible con este video. Actualiza yt-dlp; si ya está actualizado, prueba otro video público para descartar una restricción específica del contenido.");
+  }
+  return new Error(`No se pudo obtener el video público desde ${label}. yt-dlp rechazó los intentos disponibles para este proveedor.`);
+}
+
+function youtubeRuntimeArgs(provider) {
+  if (provider !== "youtube") return [];
+  return ["--js-runtimes", YTDLP_JS_RUNTIME, "--remote-components", YTDLP_REMOTE_COMPONENT];
+}
+
+function platformSpecificArgs(provider, youtubeClients) {
+  if (provider !== "youtube" || !youtubeClients) return [];
+  return ["--extractor-args", `youtube:player_client=${youtubeClients}`];
+}
+
+function runPlatformYtDlpAttempt(provider, sourceUrl, temporaryDirectory, youtubeClients) {
   return new Promise((resolve, reject) => {
     const outputTemplate = path.join(temporaryDirectory, "source.%(ext)s");
     const args = [
-      "--no-config", "--no-playlist", "--max-downloads", "1",
+      "--no-config",
+      ...youtubeRuntimeArgs(provider),
+      ...(YTDLP_COOKIES_FILE ? ["--cookies", YTDLP_COOKIES_FILE] : []),
+      ...platformSpecificArgs(provider, youtubeClients),
+      "--no-playlist", "--max-downloads", "1",
       "--concurrent-fragments", "1", "--limit-rate", PLATFORM_DOWNLOAD_RATE,
       "--retries", "2", "--fragment-retries", "2", "--socket-timeout", "20",
       "--no-cache-dir", "--no-progress", "--no-part", "--no-mtime",
@@ -267,15 +386,48 @@ function runPlatformYtDlp(sourceUrl, temporaryDirectory) {
       settled = true;
       clearTimeout(timeout);
       if (signal) return reject(new Error("La importación de plataforma excedió el tiempo permitido."));
-      if (code !== 0) return reject(new Error(stderr.slice(-MAX_ERROR_CHARS) || "La plataforma rechazó la importación."));
+      if (code !== 0) return reject(new YtDlpCommandError(stderr));
       resolve();
     });
   });
 }
 
+async function clearPlatformOutputs(temporaryDirectory) {
+  const entries = await readdir(temporaryDirectory);
+  await Promise.all(
+    entries
+      .filter((entry) => entry.startsWith("source."))
+      .map((entry) => rm(path.join(temporaryDirectory, entry), { recursive: true, force: true }))
+  );
+}
+
+async function runPlatformYtDlp(provider, sourceUrl, temporaryDirectory) {
+  const attempts = provider === "youtube" ? youtubeClientAttempts() : [null];
+  const diagnostics = [];
+
+  for (let index = 0; index < attempts.length; index += 1) {
+    const youtubeClients = attempts[index] ?? null;
+    if (index > 0) await clearPlatformOutputs(temporaryDirectory);
+
+    try {
+      await runPlatformYtDlpAttempt(provider, sourceUrl, temporaryDirectory, youtubeClients);
+      return;
+    } catch (error) {
+      if (!(error instanceof YtDlpCommandError)) throw error;
+      const attemptLabel = provider === "youtube" ? (youtubeClients ?? "auto") : provider;
+      diagnostics.push(`[${attemptLabel}] ${error.stderr}`);
+      if (YTDLP_DIAGNOSTICS && error.stderr.trim()) {
+        console.error(`[yt-dlp:${provider}:${attemptLabel}] ${error.stderr.slice(-MAX_ERROR_CHARS)}`);
+      }
+    }
+  }
+
+  throw classifyYtDlpFailure(diagnostics.join("\n--- siguiente intento ---\n"), provider);
+}
+
 async function downloadPlatformVideo(provider, value, temporaryDirectory) {
   const sourceUrl = parsePlatformUrl(provider, value).toString();
-  await runPlatformYtDlp(sourceUrl, temporaryDirectory);
+  await runPlatformYtDlp(provider, sourceUrl, temporaryDirectory);
   const entries = await readdir(temporaryDirectory);
   const candidates = entries.filter((entry) => entry.startsWith("source.") && !entry.endsWith(".part") && !entry.endsWith(".ytdl") && !entry.endsWith(".json"));
   if (candidates.length !== 1) throw new Error("La plataforma no produjo una única fuente temporal válida.");
