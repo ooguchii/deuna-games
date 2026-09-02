@@ -231,6 +231,8 @@ export default function UniversalGameCard({
     ];
   const resolvedPreview =
     resolveGameCardPreview(game);
+  const imageViewport =
+    game.imageMedia?.card ?? game.imageMedia?.cover;
 
   function cancelTiltFrame() {
     if (tiltFrame.current !== null) {
@@ -367,6 +369,7 @@ export default function UniversalGameCard({
           <HoverPreviewMedia
             imageSrc={game.coverImage}
             imageAlt={game.imageAlt}
+            imageViewport={imageViewport}
             previewClip={resolvedPreview?.src}
             previewViewport={resolvedPreview?.viewport}
             active={previewActive}
