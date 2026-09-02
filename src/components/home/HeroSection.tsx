@@ -24,6 +24,7 @@ import {
 
 import FramedVideo from "@/components/ui/FramedVideo";
 import type { HomeCopy } from "@/data/home-config";
+import { normalizeGameImageViewport } from "@/lib/media/image-viewport";
 import { resolveGameHeroVideo } from "@/lib/media/game-video-media";
 import {
   resolveHeroImageTuning,
@@ -72,6 +73,19 @@ function ResponsiveArtwork({
     : `${styles.heroArtwork} ${artworkStyles.artwork} ${
         active ? artworkStyles.activeArtwork : ""
       }`;
+  const framed = ambient
+    ? null
+    : normalizeGameImageViewport(game.imageMedia?.hero);
+  const framedPosition = framed
+    ? `${(framed.x * 100).toFixed(2)}% ${(framed.y * 100).toFixed(2)}%`
+    : null;
+  const artworkInlineStyle = framed
+    ? ({
+        ...style,
+        "--hero-image-zoom": framed.zoom,
+        "--hero-image-position": framedPosition,
+      } as CSSProperties)
+    : style;
 
   return (
     <picture className={ambient ? undefined : styles.heroPicture}>
@@ -83,7 +97,7 @@ function ResponsiveArtwork({
         src={fallbackSrc}
         alt={alt}
         className={artworkClassName}
-        style={style}
+        style={artworkInlineStyle}
         loading={active ? "eager" : "lazy"}
         fetchPriority={active ? "high" : "auto"}
         decoding="async"
