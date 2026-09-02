@@ -118,18 +118,19 @@ assert(
   "Al preparar una fuente debe desmontarse la previsualización externa/anterior y quedar un único editor activo."
 );
 assert(
-  form.includes('video.preload = "metadata"') &&
+  form.includes('video.preload = "auto"') &&
     form.includes('video.addEventListener("loadeddata"') &&
     form.includes("disableRemotePlayback"),
-  "El sondeo del navegador debe pedir sólo lo necesario y evitar capacidades de reproducción remota innecesarias."
+  "El sondeo del navegador debe abortarse tras el primer frame decodificable y evitar capacidades de reproducción remota innecesarias."
 );
 assert(
   trimEditor.includes("requestAnimationFrame") &&
     trimEditor.includes("scheduleDrag") &&
     trimEditor.includes("updateStart(value, false)") &&
     trimEditor.includes("updateEnd(value, false)") &&
-    trimEditor.includes("finishPointerDrag"),
-  "Arrastrar IN/OUT debe actualizar visualmente por animation frame y hacer seek real sólo al finalizar el gesto."
+    trimEditor.includes("finishPointerDrag") &&
+    trimEditor.includes("cancelPointerDrag"),
+  "Arrastrar IN/OUT debe actualizar visualmente por animation frame, hacer seek al finalizar y tolerar pointercancel sin saltos."
 );
 assert(
   trimEditor.includes("PREVIEW_QUALITY_OPTIONS") &&
@@ -142,8 +143,9 @@ assert(
     editorialVideo.includes("performance:") &&
     editorialVideo.includes("balanced:") &&
     editorialVideo.includes("high:") &&
-    editorialVideo.includes("profile.preferredBytes"),
-  "La calidad Ligera/Equilibrada/Alta debe validarse de UI a servidor y degradarse automáticamente para respetar el límite de peso."
+    editorialVideo.includes("profile.preferredBytes") &&
+    editorialVideo.includes("preferredBytes: MAX_EDITORIAL_PREVIEW_BYTES"),
+  "La calidad Ligera/Equilibrada/Alta debe validarse de UI a servidor y degradarse automáticamente sin encodes redundantes para respetar el límite de peso."
 );
 assert(
   importRoute.includes("legacyFields") &&
@@ -228,7 +230,7 @@ assert(
     ytDlpWrapper.includes("Node 22 o superior") &&
     ytDlpWrapper.includes("--remote-components") &&
     ytDlpWrapper.includes("--plugin-dirs") &&
-    ytDlpWrapper.includes("127\\.0\\.0\\.1") &&
+    ytDlpWrapper.includes("127\\.0\\.1") &&
     ytDlpWrapper.includes("youtubepot-bgutilhttp:base_url="),
   "El wrapper no debe imponer clientes y sólo puede habilitar el PO Token Provider explícito sobre loopback."
 );
