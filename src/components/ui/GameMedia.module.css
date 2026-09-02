@@ -1,5 +1,18 @@
+.frame {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.viewportLayer {
+  position: absolute;
+  inset: 0;
+  transform: scale(var(--game-image-zoom, 1));
+  transform-origin: var(--game-image-position, 50% 50%);
+}
+
 .image {
-  object-position: center;
+  object-position: var(--game-image-position, 50% 50%);
 }
 
 .coverImage,
