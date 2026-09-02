@@ -90,8 +90,95 @@
   padding: 12px;
 }
 
+.editorModeHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 13px;
+  border: 1px solid color-mix(in srgb, var(--brand) 24%, #263445);
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--brand) 6%, #0b121a);
+}
+
+.editorModeHeader > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.editorModeHeader span {
+  color: var(--brand);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+}
+
+.editorModeHeader strong,
+.editorModeHeader small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.editorModeHeader strong {
+  color: #f1f5f9;
+  font-size: 13px;
+}
+
+.editorModeHeader small {
+  color: #8fa0b2;
+  font-size: 11px;
+}
+
+.editorModeHeader button {
+  flex: none;
+  min-height: 38px;
+  padding: 8px 12px;
+  border: 1px solid #2d3d4f;
+  border-radius: 9px;
+  background: #101923;
+  color: #e7edf4;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.editorModeHeader button:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--brand) 45%, #334155);
+  background: color-mix(in srgb, var(--brand) 7%, #121c27);
+}
+
+.editorModeHeader button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 .divider {
   height: 1px;
   background: #17232e;
-  margin: 2px 0;
+  margin: 12px 0;
+}
+
+@media (max-width: 720px) {
+  .editorModeHeader {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .editorModeHeader button {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sourceButton {
+    transition: none;
+  }
+
+  .sourceButton:hover:not(:disabled) {
+    transform: none;
+  }
 }

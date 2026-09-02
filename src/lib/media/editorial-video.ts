@@ -18,8 +18,10 @@ import {
   isEditorialMediaSlug,
 } from "./editorial-media";
 import {
+  DEFAULT_PREVIEW_QUALITY,
   MAX_PREVIEW_SOURCE_BYTES,
   parsePreviewTrimWindow,
+  type PreviewQualityId,
   type PreviewTrimWindow,
 } from "./preview-video-policy";
 import {
@@ -32,9 +34,11 @@ export {
   MAX_PREVIEW_SOURCE_BYTES,
   MAX_PREVIEW_SOURCE_POSITION_SECONDS,
 } from "./preview-video-policy";
-export type { PreviewTrimWindow } from "./preview-video-policy";
+export type {
+  PreviewQualityId,
+  PreviewTrimWindow,
+} from "./preview-video-policy";
 
-const PREFERRED_PREVIEW_BYTES = 1_572_864;
 const FFMPEG_TIMEOUT_MS = 90_000;
 const MAX_FFMPEG_ERROR_CHARS = 8_000;
 
@@ -61,12 +65,43 @@ type PreviewPreset = {
   width: number;
   fps: number;
   crf: number;
+  cpuUsed: number;
 };
 
-const presets: PreviewPreset[] = [
-  { width: 400, fps: 15, crf: 41 },
-  { width: 360, fps: 12, crf: 44 },
-];
+type PreviewQualityProfile = {
+  preferredBytes: number;
+  presets: readonly PreviewPreset[];
+};
+
+const qualityProfiles: Record<
+  PreviewQualityId,
+  PreviewQualityProfile
+> = {
+  performance: {
+    preferredBytes: 1_048_576,
+    presets: [
+      { width: 360, fps: 12, crf: 44, cpuUsed: 6 },
+      { width: 320, fps: 10, crf: 46, cpuUsed: 6 },
+    ],
+  },
+  balanced: {
+    preferredBytes: 1_572_864,
+    presets: [
+      { width: 480, fps: 15, crf: 41, cpuUsed: 5 },
+      { width: 360, fps: 12, crf: 44, cpuUsed: 6 },
+    ],
+  },
+  high: {
+    // Alta acepta el primer encode seguro por debajo del límite duro. Sólo
+    // reintenta si realmente supera 3 MB, evitando codificaciones redundantes.
+    preferredBytes: MAX_EDITORIAL_PREVIEW_BYTES,
+    presets: [
+      { width: 640, fps: 20, crf: 38, cpuUsed: 4 },
+      { width: 480, fps: 15, crf: 41, cpuUsed: 5 },
+      { width: 360, fps: 12, crf: 44, cpuUsed: 6 },
+    ],
+  },
+};
 
 export type EditorialPreviewUploadResult = {
   publicPath: string;
@@ -190,6 +225,8 @@ function runFfmpeg(
       "-1",
       "-map_chapters",
       "-1",
+      "-filter_threads",
+      "1",
       "-vf",
       filter,
       "-c:v",
@@ -201,7 +238,7 @@ function runFfmpeg(
       "-deadline",
       "good",
       "-cpu-used",
-      "4",
+      String(preset.cpuUsed),
       "-row-mt",
       "1",
       "-g",
@@ -291,16 +328,19 @@ function isAlreadyExistsError(error: unknown) {
 async function transcodePreview(
   inputPath: string,
   temporaryDirectory: string,
-  trim: PreviewTrimWindow
+  trim: PreviewTrimWindow,
+  quality: PreviewQualityId
 ) {
   assertPreviewTrimWindow(trim);
   await assertSafeSourcePath(inputPath);
 
-  for (let index = 0; index < presets.length; index += 1) {
-    const preset = presets[index]!;
+  const profile = qualityProfiles[quality];
+
+  for (let index = 0; index < profile.presets.length; index += 1) {
+    const preset = profile.presets[index]!;
     const outputPath = path.join(
       temporaryDirectory,
-      `preview-${index}.webm`
+      `preview-${quality}-${index}.webm`
     );
 
     await runFfmpeg(
@@ -312,11 +352,11 @@ async function transcodePreview(
 
     const output = await readFile(outputPath);
     const inspection = inspectSafeEditorialWebm(output);
-    const isLastPreset = index === presets.length - 1;
+    const isLastPreset = index === profile.presets.length - 1;
 
     if (
       inspection &&
-      (output.length <= PREFERRED_PREVIEW_BYTES || isLastPreset)
+      (output.length <= profile.preferredBytes || isLastPreset)
     ) {
       return {
         buffer: output,
@@ -337,7 +377,7 @@ async function transcodePreview(
   }
 
   throw new Error(
-    "El preview sigue siendo demasiado pesado después de optimizarlo. Usa un fragmento con menos movimiento o menor resolución de origen."
+    "El preview sigue siendo demasiado pesado después de reducir automáticamente su calidad. Usa un fragmento con menos movimiento, un tramo más corto o el perfil Ligera."
   );
 }
 
@@ -405,12 +445,14 @@ async function convertSourcePath(
   slug: string,
   inputPath: string,
   temporaryDirectory: string,
-  trim: PreviewTrimWindow
+  trim: PreviewTrimWindow,
+  quality: PreviewQualityId
 ) {
   const converted = await transcodePreview(
     inputPath,
     temporaryDirectory,
-    trim
+    trim,
+    quality
   );
 
   return persistConvertedPreview(slug, converted);
@@ -419,7 +461,8 @@ async function convertSourcePath(
 export async function storeEditorialPreviewVideoFromPath(
   slug: string,
   inputPath: string,
-  trim: PreviewTrimWindow
+  trim: PreviewTrimWindow,
+  quality: PreviewQualityId = DEFAULT_PREVIEW_QUALITY
 ): Promise<EditorialPreviewUploadResult> {
   if (!isEditorialMediaSlug(slug)) {
     throw new Error(
@@ -439,7 +482,8 @@ export async function storeEditorialPreviewVideoFromPath(
       slug,
       inputPath,
       temporaryDirectory,
-      trim
+      trim,
+      quality
     );
   } finally {
     await rm(temporaryDirectory, {
@@ -452,7 +496,8 @@ export async function storeEditorialPreviewVideoFromPath(
 export async function storeEditorialPreviewVideo(
   slug: string,
   file: File,
-  trim: PreviewTrimWindow
+  trim: PreviewTrimWindow,
+  quality: PreviewQualityId = DEFAULT_PREVIEW_QUALITY
 ): Promise<EditorialPreviewUploadResult> {
   if (!isEditorialMediaSlug(slug)) {
     throw new Error(
@@ -462,7 +507,7 @@ export async function storeEditorialPreviewVideo(
 
   if (!isAcceptedPreviewSource(file)) {
     throw new Error(
-      "Usa MP4, WebM, MOV, M4V, MKV o AVI de hasta 64 MB."
+      "Usa MP4, WebM, MOV, M4V, MKV o AVI de hasta 1 GB."
     );
   }
 
@@ -487,7 +532,8 @@ export async function storeEditorialPreviewVideo(
       slug,
       inputPath,
       temporaryDirectory,
-      trim
+      trim,
+      quality
     );
   } finally {
     await rm(temporaryDirectory, {
