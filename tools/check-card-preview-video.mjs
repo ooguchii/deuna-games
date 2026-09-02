@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import { access, readFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
@@ -63,6 +64,23 @@ const approvedProviders = [
   "youtube", "facebook", "instagram", "tiktok", "vimeo", "x", "twitch",
   "dailymotion", "streamable", "kick", "reddit", "pinterest", "snapchat",
 ];
+const retiredProviderResidues = [
+  ["ru", "mble"], ["ody", "see"], ["bili", "bili"], ["v", "k"],
+  ["img", "ur"], ["tum", "blr"], ["lo", "om"], ["wis", "tia"],
+  ["nico", "video"], ["nico", "nico"], ["b23", ".tv"], ["wi", ".st"], ["nico", ".ms"],
+].map((parts) => parts.join(""));
+const residuePattern = `(^|[^a-z0-9])(${retiredProviderResidues.slice(0, 10).join("|")})([^a-z0-9]|$)|${retiredProviderResidues.slice(10).map((value) => value.replace(".", "\\.")).join("|")}`;
+const residueCheck = spawnSync("git", ["grep", "-I", "-n", "-i", "-E", residuePattern, "--", "."], {
+  cwd: root,
+  encoding: "utf8",
+});
+assert(
+  residueCheck.status === 1,
+  residueCheck.status === 0
+    ? `Quedaron referencias de proveedores retirados:\n${residueCheck.stdout.trim()}`
+    : `No se pudo verificar la ausencia de residuos de proveedores (git grep terminó con ${residueCheck.status ?? "error"}).`
+);
+
 const cases = {
   youtube: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
   facebook: "https://www.facebook.com/watch/?v=123456789012345",
