@@ -6,7 +6,12 @@ import { expectedRevisionSchema } from "@/lib/admin/content-forms";
 import { getEditorialItem, saveGameMediaDraft } from "@/lib/admin/content-service";
 import { authorizeAdminStreamingMediaRequest } from "@/lib/admin/streaming-media-admin-route";
 import { storeEditorialPreviewVideoFromPath } from "@/lib/media/editorial-video";
-import { MAX_PREVIEW_SOURCE_BYTES, parsePreviewTrimWindow } from "@/lib/media/preview-video-policy";
+import {
+  DEFAULT_PREVIEW_QUALITY,
+  MAX_PREVIEW_SOURCE_BYTES,
+  parsePreviewQuality,
+  parsePreviewTrimWindow,
+} from "@/lib/media/preview-video-policy";
 import { isAcceptedStreamedPreviewSource, stageStreamedPreviewSource } from "@/lib/media/streamed-preview-source";
 
 export const dynamic = "force-dynamic";
@@ -37,7 +42,13 @@ export async function POST(request: NextRequest, context: { params: Promise<{ sl
   const extension = request.headers.get("x-deuna-source-extension") ?? "";
   const revision = expectedRevisionSchema.safeParse(request.headers.get("x-deuna-expected-revision"));
   const trim = parsePreviewTrimWindow(request.headers.get("x-deuna-trim-start"), request.headers.get("x-deuna-trim-end"));
+  const qualityHeader = request.headers.get("x-deuna-preview-quality");
+  const quality = qualityHeader === null || qualityHeader.trim() === ""
+    ? DEFAULT_PREVIEW_QUALITY
+    : parsePreviewQuality(qualityHeader);
+
   if (!trim) return adminRedirect(authorized.adminOrigin, `${target}?estado=preview-recorte-invalido&seccion=multimedia`);
+  if (!quality) return adminRedirect(authorized.adminOrigin, `${target}?estado=preview-calidad-invalida&seccion=multimedia`);
   if (!revision.success || !request.body || (contentLength !== null && (!Number.isSafeInteger(contentLength) || contentLength <= 0 || contentLength > MAX_PREVIEW_SOURCE_BYTES)) || !isAcceptedStreamedPreviewSource(`source${extension}`, contentType, contentLength)) {
     return adminRedirect(authorized.adminOrigin, `${target}?estado=video-invalido&seccion=multimedia`);
   }
@@ -48,7 +59,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ sl
     if (item.revision !== revision.data) return adminRedirect(authorized.adminOrigin, `${target}?estado=conflicto&seccion=multimedia`);
     const staged = await stageStreamedPreviewSource(request.body, contentLength);
     temporaryDirectory = staged.directory;
-    const upload = await storeEditorialPreviewVideoFromPath(slug, staged.filePath, trim);
+    const upload = await storeEditorialPreviewVideoFromPath(slug, staged.filePath, trim, quality);
     const result = await saveGameMediaDraft(slug, revision.data, authorized.session.userId, { previewClip: upload.publicPath });
     if (result.outcome === "not_found") return adminRedirect(authorized.adminOrigin, "/admin/juegos?estado=no-encontrado");
     if (result.outcome === "conflict") return adminRedirect(authorized.adminOrigin, `${target}?estado=conflicto&seccion=multimedia`);
