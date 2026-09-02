@@ -36,85 +36,40 @@ const allowedContentTypes = new Set([
 ]);
 
 const providerHosts = {
-  youtube: ["youtube.com", "youtu.be", "youtube-nocookie.com"],
-  facebook: ["facebook.com", "fb.watch", "fb.com"],
-  instagram: ["instagram.com", "instagr.am"],
-  tiktok: ["tiktok.com"],
-  vimeo: ["vimeo.com"],
-  x: ["x.com", "twitter.com", "t.co"],
-  twitch: ["twitch.tv"],
-  dailymotion: ["dailymotion.com", "dai.ly"],
-  streamable: ["streamable.com"],
-  kick: ["kick.com"],
-  reddit: ["reddit.com", "redd.it"],
-  rumble: ["rumble.com"],
-  odysee: ["odysee.com"],
-  bilibili: ["bilibili.com", "b23.tv"],
-  vk: ["vk.com"],
-  imgur: ["imgur.com"],
-  pinterest: ["pinterest.com", "pin.it"],
-  tumblr: ["tumblr.com"],
-  snapchat: ["snapchat.com"],
-  loom: ["loom.com"],
-  wistia: ["wistia.com", "wistia.net", "wi.st"],
-  nicovideo: ["nicovideo.jp", "nico.ms"],
+  youtube: ["youtube.com", "youtu.be", "youtube-nocookie.com"], facebook: ["facebook.com", "fb.watch", "fb.com"],
+  instagram: ["instagram.com", "instagr.am"], tiktok: ["tiktok.com"], vimeo: ["vimeo.com"],
+  x: ["x.com", "twitter.com", "t.co"], twitch: ["twitch.tv"], dailymotion: ["dailymotion.com", "dai.ly"],
+  streamable: ["streamable.com"], kick: ["kick.com"], reddit: ["reddit.com", "redd.it"], rumble: ["rumble.com"],
+  odysee: ["odysee.com"], bilibili: ["bilibili.com", "b23.tv"], vk: ["vk.com"], imgur: ["imgur.com"],
+  pinterest: ["pinterest.com", "pin.it"], tumblr: ["tumblr.com"], snapchat: ["snapchat.com"], loom: ["loom.com"],
+  wistia: ["wistia.com", "wistia.net", "wi.st"], nicovideo: ["nicovideo.jp", "nico.ms"],
 };
 
 const providerLabels = {
-  youtube: "YouTube",
-  facebook: "Facebook",
-  instagram: "Instagram",
-  tiktok: "TikTok",
-  vimeo: "Vimeo",
-  x: "X / Twitter",
-  twitch: "Twitch",
-  dailymotion: "Dailymotion",
-  streamable: "Streamable",
-  kick: "Kick",
-  reddit: "Reddit",
-  rumble: "Rumble",
-  odysee: "Odysee",
-  bilibili: "Bilibili",
-  vk: "VK",
-  imgur: "Imgur",
-  pinterest: "Pinterest",
-  tumblr: "Tumblr",
-  snapchat: "Snapchat",
-  loom: "Loom",
-  wistia: "Wistia",
-  nicovideo: "Niconico",
+  youtube: "YouTube", facebook: "Facebook", instagram: "Instagram", tiktok: "TikTok", vimeo: "Vimeo",
+  x: "X / Twitter", twitch: "Twitch", dailymotion: "Dailymotion", streamable: "Streamable", kick: "Kick",
+  reddit: "Reddit", rumble: "Rumble", odysee: "Odysee", bilibili: "Bilibili", vk: "VK", imgur: "Imgur",
+  pinterest: "Pinterest", tumblr: "Tumblr", snapchat: "Snapchat", loom: "Loom", wistia: "Wistia", nicovideo: "Niconico",
 };
 
 const blockedAddresses = new BlockList();
 for (const [network, prefix] of [
-  ["0.0.0.0", 8], ["10.0.0.0", 8], ["100.64.0.0", 10], ["127.0.0.0", 8],
-  ["169.254.0.0", 16], ["172.16.0.0", 12], ["192.0.0.0", 24], ["192.0.2.0", 24],
-  ["192.168.0.0", 16], ["198.18.0.0", 15], ["198.51.100.0", 24], ["203.0.113.0", 24],
-  ["224.0.0.0", 4], ["240.0.0.0", 4],
+  ["0.0.0.0", 8], ["10.0.0.0", 8], ["100.64.0.0", 10], ["127.0.0.0", 8], ["169.254.0.0", 16], ["172.16.0.0", 12],
+  ["192.0.0.0", 24], ["192.0.2.0", 24], ["192.168.0.0", 16], ["198.18.0.0", 15], ["198.51.100.0", 24],
+  ["203.0.113.0", 24], ["224.0.0.0", 4], ["240.0.0.0", 4],
 ]) blockedAddresses.addSubnet(network, prefix, "ipv4");
-for (const [network, prefix] of [
-  ["::", 128], ["::1", 128], ["::ffff:0:0", 96], ["2001:db8::", 32],
-  ["fc00::", 7], ["fe80::", 10], ["ff00::", 8],
-]) blockedAddresses.addSubnet(network, prefix, "ipv6");
+for (const [network, prefix] of [["::", 128], ["::1", 128], ["::ffff:0:0", 96], ["2001:db8::", 32], ["fc00::", 7], ["fe80::", 10], ["ff00::", 8]]) {
+  blockedAddresses.addSubnet(network, prefix, "ipv6");
+}
 
 let activeJob = false;
-
 class YtDlpCommandError extends Error {
-  constructor(stderr) {
-    super("yt-dlp terminó con error.");
-    this.name = "YtDlpCommandError";
-    this.stderr = stderr;
-  }
+  constructor(stderr) { super("yt-dlp terminó con error."); this.name = "YtDlpCommandError"; this.stderr = stderr; }
 }
 
 function jsonError(response, status, message) {
   const body = Buffer.from(message, "utf8");
-  response.writeHead(status, {
-    "Content-Type": "text/plain; charset=utf-8",
-    "Content-Length": String(body.length),
-    "Cache-Control": "no-store, max-age=0",
-    "X-Content-Type-Options": "nosniff",
-  });
+  response.writeHead(status, { "Content-Type": "text/plain; charset=utf-8", "Content-Length": String(body.length), "Cache-Control": "no-store, max-age=0", "X-Content-Type-Options": "nosniff" });
   response.end(body);
 }
 
@@ -127,8 +82,7 @@ function authorized(request) {
 }
 
 async function readJsonBody(request) {
-  const chunks = [];
-  let total = 0;
+  const chunks = []; let total = 0;
   for await (const chunk of request) {
     const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
     total += buffer.length;
@@ -146,54 +100,34 @@ function parsePublicUrl(value) {
   const candidate = /^[a-z][a-z0-9+.-]*:\/\//i.test(raw) ? raw : `https://${raw}`;
   let url;
   try { url = new URL(candidate); } catch { throw new Error("La URL del video no es válida."); }
-  const isHttp = url.protocol === "http:";
-  const isHttps = url.protocol === "https:";
+  const isHttp = url.protocol === "http:"; const isHttps = url.protocol === "https:";
   const validPort = !url.port || (isHttp && url.port === "80") || (isHttps && url.port === "443");
-  if ((!isHttp && !isHttps) || url.username || url.password || !url.hostname || !validPort || url.toString().length > 2_048) {
-    throw new Error("El video remoto debe usar una URL HTTP o HTTPS pública sin credenciales ni puertos alternativos.");
-  }
+  if ((!isHttp && !isHttps) || url.username || url.password || !url.hostname || !validPort || url.toString().length > 2_048) throw new Error("El video remoto debe usar una URL HTTP o HTTPS pública sin credenciales ni puertos alternativos.");
   return url;
 }
 
-function hostnameMatches(hostname, allowedHost) {
-  return hostname === allowedHost || hostname.endsWith(`.${allowedHost}`);
-}
-
+function hostnameMatches(hostname, allowedHost) { return hostname === allowedHost || hostname.endsWith(`.${allowedHost}`); }
 function parsePlatformUrl(provider, value) {
   const hosts = providerHosts[provider];
   if (!hosts) throw new Error("Proveedor multimedia no permitido.");
   const url = parsePublicUrl(value);
   const hostname = url.hostname.trim().toLowerCase().replace(/\.$/, "");
-  if (!hosts.some((allowedHost) => hostnameMatches(hostname, allowedHost))) {
-    throw new Error(`El enlace no pertenece al proveedor declarado: ${provider}.`);
-  }
+  if (!hosts.some((allowedHost) => hostnameMatches(hostname, allowedHost))) throw new Error(`El enlace no pertenece al proveedor declarado: ${provider}.`);
   return url;
 }
 
-function normalizeHostname(hostname) {
-  return hostname.startsWith("[") && hostname.endsWith("]") ? hostname.slice(1, -1) : hostname;
-}
-
+function normalizeHostname(hostname) { return hostname.startsWith("[") && hostname.endsWith("]") ? hostname.slice(1, -1) : hostname; }
 async function resolvePublicAddress(hostname) {
-  const normalized = normalizeHostname(hostname);
-  const literalFamily = isIP(normalized);
+  const normalized = normalizeHostname(hostname); const literalFamily = isIP(normalized);
   const addresses = literalFamily ? [{ address: normalized, family: literalFamily }] : await lookup(normalized, { all: true, verbatim: true });
   if (addresses.length === 0) throw new Error("La URL no pudo resolverse.");
-  if (!addresses.every(({ address, family }) => !blockedAddresses.check(address, family === 4 ? "ipv4" : "ipv6"))) {
-    throw new Error("La URL apunta a una red no permitida.");
-  }
+  if (!addresses.every(({ address, family }) => !blockedAddresses.check(address, family === 4 ? "ipv4" : "ipv6"))) throw new Error("La URL apunta a una red no permitida.");
   return addresses[0];
 }
 
 async function streamResponseToFile(input, destinationPath, maximumBytes) {
   let total = 0;
-  const limiter = new Transform({
-    transform(chunk, _encoding, callback) {
-      total += chunk.length;
-      if (total > maximumBytes) return callback(new Error("El video remoto supera el límite permitido."));
-      callback(null, chunk);
-    },
-  });
+  const limiter = new Transform({ transform(chunk, _encoding, callback) { total += chunk.length; if (total > maximumBytes) return callback(new Error("El video remoto supera el límite permitido.")); callback(null, chunk); } });
   const output = createWriteStream(destinationPath, { flags: "wx", mode: 0o600 });
   await pipeline(input, limiter, output);
   if (total <= 0) throw new Error("El video remoto está vacío.");
@@ -203,45 +137,18 @@ async function streamResponseToFile(input, destinationPath, maximumBytes) {
 function requestDirectVideo(url, resolved, destinationPath) {
   return new Promise((resolve, reject) => {
     const requestFn = url.protocol === "http:" ? httpRequest : httpsRequest;
-    const request = requestFn(url, {
-      method: "GET",
-      headers: {
-        Accept: "video/webm,video/mp4,video/quicktime,video/x-m4v,video/x-matroska,video/x-msvideo,application/octet-stream;q=0.8,*/*;q=0.1",
-        "User-Agent": "DeUnaGames-MediaImportWorker/4.1",
-      },
-      lookup: (_hostname, _options, callback) => callback(null, resolved.address, resolved.family),
-    }, (response) => {
-      const statusCode = response.statusCode ?? 0;
-      const location = response.headers.location;
-      if (statusCode >= 300 && statusCode < 400 && location) {
-        response.resume();
-        resolve({ statusCode, location });
-        return;
-      }
-      if (statusCode !== 200) {
-        response.resume();
-        reject(new Error("El servidor remoto no devolvió un video disponible."));
-        return;
-      }
+    const request = requestFn(url, { method: "GET", headers: { Accept: "video/webm,video/mp4,video/quicktime,video/x-m4v,video/x-matroska,video/x-msvideo,application/octet-stream;q=0.8,*/*;q=0.1", "User-Agent": "DeUnaGames-MediaImportWorker/4.1" }, lookup: (_hostname, _options, callback) => callback(null, resolved.address, resolved.family) }, (response) => {
+      const statusCode = response.statusCode ?? 0; const location = response.headers.location;
+      if (statusCode >= 300 && statusCode < 400 && location) { response.resume(); resolve({ statusCode, location }); return; }
+      if (statusCode !== 200) { response.resume(); reject(new Error("El servidor remoto no devolvió un video disponible.")); return; }
       const contentType = String(response.headers["content-type"] ?? "").split(";", 1)[0]?.trim().toLowerCase();
       const contentLength = Number(response.headers["content-length"] ?? 0);
-      if (!contentType || !allowedContentTypes.has(contentType)) {
-        response.resume();
-        reject(new Error("La URL directa debe devolver un archivo de video o un flujo binario; no una página web."));
-        return;
-      }
-      if (Number.isFinite(contentLength) && contentLength > MAX_DIRECT_SOURCE_BYTES) {
-        response.resume();
-        reject(new Error("El video remoto supera el límite de 1 GB."));
-        return;
-      }
-      void streamResponseToFile(response, destinationPath, MAX_DIRECT_SOURCE_BYTES)
-        .then((bytes) => resolve({ statusCode, contentType, bytes }))
-        .catch(reject);
+      if (!contentType || !allowedContentTypes.has(contentType)) { response.resume(); reject(new Error("La URL directa debe devolver un archivo de video o un flujo binario; no una página web.")); return; }
+      if (Number.isFinite(contentLength) && contentLength > MAX_DIRECT_SOURCE_BYTES) { response.resume(); reject(new Error("El video remoto supera el límite de 1 GB.")); return; }
+      void streamResponseToFile(response, destinationPath, MAX_DIRECT_SOURCE_BYTES).then((bytes) => resolve({ statusCode, contentType, bytes })).catch(reject);
     });
     request.setTimeout(DIRECT_TIMEOUT_MS, () => request.destroy(new Error("La descarga del video agotó el tiempo permitido.")));
-    request.on("error", reject);
-    request.end();
+    request.on("error", reject); request.end();
   });
 }
 
@@ -252,18 +159,14 @@ async function downloadDirectVideo(value, destinationPath) {
     const response = await requestDirectVideo(current, resolved, destinationPath);
     if (response.statusCode >= 300 && response.statusCode < 400 && response.location) {
       if (redirectCount === MAX_REDIRECTS) throw new Error("La URL del video tiene demasiadas redirecciones.");
-      current = parsePublicUrl(new URL(response.location, current).toString());
-      continue;
+      current = parsePublicUrl(new URL(response.location, current).toString()); continue;
     }
     return { filePath: destinationPath, bytes: response.bytes, contentType: response.contentType, sourceUrl: current.toString() };
   }
   throw new Error("El video remoto no pudo descargarse.");
 }
 
-function ytDlpExecutable() {
-  return process.env.DEUNA_YTDLP_PATH?.trim() || "yt-dlp";
-}
-
+function ytDlpExecutable() { return process.env.DEUNA_YTDLP_PATH?.trim() || "yt-dlp"; }
 function contentTypeFromFilename(filename) {
   const extension = path.extname(filename).toLowerCase();
   if (extension === ".mp4" || extension === ".m4v") return "video/mp4";
@@ -279,159 +182,65 @@ function configuredYouTubeClients() {
   if (!configured || configured.toLowerCase() === "auto") return null;
   return configured;
 }
-
-function youtubeClientAttempts() {
-  const configured = configuredYouTubeClients();
-  if (configured) return [configured];
-  return [null, "web_embedded"];
-}
+function youtubeClientAttempts() { const configured = configuredYouTubeClients(); return configured ? [configured] : [null, "web_safari", "web_embedded"]; }
 
 function classifyYtDlpFailure(stderr, provider) {
-  const normalized = stderr.toLowerCase();
-  const label = providerLabels[provider] ?? provider;
-
-  if (
-    normalized.includes("no such option: --js-runtimes") ||
-    normalized.includes("no such option: --remote-components") ||
-    normalized.includes("unrecognized arguments: --js-runtimes") ||
-    normalized.includes("unrecognized arguments: --remote-components")
-  ) {
-    return new Error("La instalación de yt-dlp es demasiado antigua para el extractor actual de YouTube. Actualiza yt-dlp a una versión 2026 reciente y vuelve a intentar.");
-  }
-  if (
-    provider === "youtube" &&
-    (normalized.includes("javascript runtime") || normalized.includes("js runtime")) &&
-    (normalized.includes("not found") || normalized.includes("not available") || normalized.includes("unsupported"))
-  ) {
-    return new Error("YouTube necesita un runtime JavaScript compatible. DeUna está configurado para Node 22 o superior; revisa que Node esté disponible para yt-dlp.");
-  }
-  if (
-    provider === "youtube" &&
-    (normalized.includes("challenge solving failed") ||
-      normalized.includes("failed to solve") ||
-      normalized.includes("signature solving") ||
-      normalized.includes("yt-dlp-ejs") ||
-      normalized.includes("ejs:github"))
-  ) {
-    return new Error("YouTube no pudo resolver su desafío JavaScript. Actualiza yt-dlp y verifica que el componente EJS pueda cargarse; DeUna usa Node + ejs:github.");
-  }
-  if (provider === "youtube" && (normalized.includes("http error 429") || normalized.includes("too many requests"))) {
-    return new Error("YouTube bloqueó temporalmente esta IP (HTTP 429). Evita reintentos repetidos y vuelve a probar después o desde otra IP.");
-  }
-  if (provider === "youtube" && (normalized.includes("captcha") || normalized.includes("sign in to confirm"))) {
-    return new Error("YouTube activó una verificación anti-bot para esta IP. El reproductor puede funcionar aunque la descarga sea bloqueada; mantén yt-dlp actualizado y usa un PO Token Provider sólo si YouTube lo exige.");
-  }
-  if (provider === "youtube" && (normalized.includes("http error 403") || normalized.includes("forbidden"))) {
-    return new Error("YouTube permitió reproducir el video, pero rechazó la descarga del stream (HTTP 403). DeUna ya probó el cliente automático y el fallback embebido; actualiza yt-dlp y, si persiste, la IP puede requerir Proof-of-Origin.");
-  }
-  if (normalized.includes("private") || normalized.includes("members-only")) {
-    return new Error(`${label} no permite importar este contenido porque es privado o exclusivo para miembros.`);
-  }
-  if (normalized.includes("sign in") || normalized.includes("login") || normalized.includes("unavailable") || normalized.includes("not available")) {
-    return new Error(`${label} no entregó un stream público descargable para este enlace.`);
-  }
-  if (normalized.includes("unsupported url") || normalized.includes("no suitable extractor")) {
-    return new Error(`El enlace pertenece a ${label}, pero el extractor no reconoce ese formato. Actualiza yt-dlp y vuelve a intentarlo.`);
-  }
-  if (normalized.includes("max-filesize") || normalized.includes("file is larger")) {
-    return new Error(`La copia temporal de ${label} supera 512 MB.`);
-  }
-  if (provider === "youtube" && normalized.includes("requested format is not available")) {
-    return new Error("YouTube no expuso ningún formato utilizable incluso con la selección adaptativa de video y audio. Revisa el diagnóstico de yt-dlp para este contenido.");
-  }
-  return new Error(`No se pudo obtener el video público desde ${label}. yt-dlp rechazó los intentos disponibles para este proveedor.`);
+  const normalized = stderr.toLowerCase(); const label = providerLabels[provider] ?? provider;
+  if (normalized.includes("no such option: --js-runtimes") || normalized.includes("no such option: --remote-components") || normalized.includes("unrecognized arguments: --js-runtimes") || normalized.includes("unrecognized arguments: --remote-components")) return new Error("La instalación de yt-dlp es demasiado antigua para el extractor actual de YouTube.");
+  if (provider === "youtube" && (normalized.includes("challenge solving failed") || normalized.includes("failed to solve") || normalized.includes("signature solving") || normalized.includes("yt-dlp-ejs") || normalized.includes("ejs:github"))) return new Error("YouTube no pudo resolver su desafío JavaScript. Revisa Node/EJS y la versión de yt-dlp.");
+  if (provider === "youtube" && (normalized.includes("http error 429") || normalized.includes("too many requests"))) return new Error("YouTube bloqueó temporalmente esta IP (HTTP 429).");
+  if (provider === "youtube" && (normalized.includes("captcha") || normalized.includes("sign in to confirm"))) return new Error("YouTube activó una verificación anti-bot para esta IP.");
+  if (provider === "youtube" && (normalized.includes("http error 403") || normalized.includes("forbidden"))) return new Error("YouTube rechazó la descarga del stream. DeUna ya probó auto, web_safari/HLS y web_embedded; puede requerirse Proof-of-Origin.");
+  if (provider === "youtube" && (normalized.includes("requested format is not available") || normalized.includes("only images are available") || normalized.includes("forcing sabr") || normalized.includes("only sabr formats available"))) return new Error("YouTube no expuso un stream descargable convencional tras auto, web_safari/HLS y web_embedded. Para estos casos hace falta un PO Token Provider automático.");
+  if (normalized.includes("private") || normalized.includes("members-only")) return new Error(`${label} no permite importar este contenido porque es privado o exclusivo para miembros.`);
+  if (normalized.includes("sign in") || normalized.includes("login") || normalized.includes("unavailable") || normalized.includes("not available")) return new Error(`${label} no entregó un stream público descargable para este enlace.`);
+  if (normalized.includes("unsupported url") || normalized.includes("no suitable extractor")) return new Error(`El enlace pertenece a ${label}, pero el extractor no reconoce ese formato.`);
+  if (normalized.includes("max-filesize") || normalized.includes("file is larger")) return new Error(`La copia temporal de ${label} supera 512 MB.`);
+  return new Error(`No se pudo obtener el video público desde ${label}.`);
 }
 
-function youtubeRuntimeArgs(provider) {
-  if (provider !== "youtube") return [];
-  return ["--js-runtimes", YTDLP_JS_RUNTIME, "--remote-components", YTDLP_REMOTE_COMPONENT];
-}
-
-function platformSpecificArgs(provider, youtubeClients) {
-  if (provider !== "youtube" || !youtubeClients) return [];
-  return ["--extractor-args", `youtube:player_client=${youtubeClients}`];
-}
-
-function formatSelectionArgs(provider) {
+function youtubeRuntimeArgs(provider) { return provider === "youtube" ? ["--js-runtimes", YTDLP_JS_RUNTIME, "--remote-components", YTDLP_REMOTE_COMPONENT] : []; }
+function platformSpecificArgs(provider, youtubeClients) { return provider === "youtube" && youtubeClients ? ["--extractor-args", `youtube:player_client=${youtubeClients}`] : []; }
+function formatSelectionArgs(provider, youtubeClients) {
   if (provider === "youtube") {
-    return ["--format", "bv*+ba/b", "--format-sort", "res:480"];
+    if (youtubeClients === "web_safari") return ["--format", "b[protocol^=m3u8][height<=480]/b[protocol^=m3u8]/bv*[height<=480]/bv*", "--format-sort", "res:480"];
+    return ["--format", "bv*[height<=480]/bv*/b[height<=480]/b", "--format-sort", "res:480"];
   }
-  return [
-    "--format",
-    "best[height<=480][vcodec^=avc1][ext=mp4]/best[height<=480][ext=mp4]/best[height<=480]/worst[ext=mp4]/worst",
-  ];
+  return ["--format", "best[height<=480][vcodec^=avc1][ext=mp4]/best[height<=480][ext=mp4]/best[height<=480]/worst[ext=mp4]/worst"];
 }
 
 function runPlatformYtDlpAttempt(provider, sourceUrl, temporaryDirectory, youtubeClients) {
   return new Promise((resolve, reject) => {
     const outputTemplate = path.join(temporaryDirectory, "source.%(ext)s");
-    const args = [
-      "--no-config",
-      ...youtubeRuntimeArgs(provider),
-      ...(YTDLP_COOKIES_FILE ? ["--cookies", YTDLP_COOKIES_FILE] : []),
-      ...platformSpecificArgs(provider, youtubeClients),
-      "--no-playlist", "--max-downloads", "1",
-      "--concurrent-fragments", "1", "--limit-rate", PLATFORM_DOWNLOAD_RATE,
-      "--retries", "2", "--fragment-retries", "2", "--socket-timeout", "20",
-      "--no-cache-dir", "--no-progress", "--no-part", "--no-mtime",
-      "--no-write-subs", "--no-write-auto-subs", "--no-write-thumbnail",
-      "--no-write-info-json", "--no-write-playlist-metafiles",
-      ...formatSelectionArgs(provider),
-      "--max-filesize", "512M", "--output", outputTemplate, sourceUrl,
-    ];
+    const args = ["--no-config", ...youtubeRuntimeArgs(provider), ...(YTDLP_COOKIES_FILE ? ["--cookies", YTDLP_COOKIES_FILE] : []), ...platformSpecificArgs(provider, youtubeClients), "--no-playlist", "--max-downloads", "1", "--concurrent-fragments", "1", "--limit-rate", PLATFORM_DOWNLOAD_RATE, "--retries", "2", "--fragment-retries", "2", "--socket-timeout", "20", "--no-cache-dir", "--no-progress", "--no-part", "--no-mtime", "--no-write-subs", "--no-write-auto-subs", "--no-write-thumbnail", "--no-write-info-json", "--no-write-playlist-metafiles", ...formatSelectionArgs(provider, youtubeClients), "--max-filesize", "512M", "--output", outputTemplate, sourceUrl];
     const child = spawn(ytDlpExecutable(), args, { shell: false, windowsHide: true, stdio: ["ignore", "ignore", "pipe"] });
-    let stderr = "";
-    let settled = false;
+    let stderr = ""; let settled = false;
     const timeout = setTimeout(() => { if (!settled) child.kill("SIGKILL"); }, PLATFORM_TIMEOUT_MS);
     child.stderr?.setEncoding("utf8");
     child.stderr?.on("data", (chunk) => { if (stderr.length < MAX_ERROR_CHARS) stderr += chunk.slice(0, MAX_ERROR_CHARS - stderr.length); });
-    child.once("error", (error) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timeout);
-      reject(error.code === "ENOENT" ? new Error("yt-dlp no está disponible en el worker multimedia.") : error);
-    });
-    child.once("close", (code, signal) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timeout);
-      if (signal) return reject(new Error("La importación de plataforma excedió el tiempo permitido."));
-      if (code !== 0) return reject(new YtDlpCommandError(stderr));
-      resolve();
-    });
+    child.once("error", (error) => { if (settled) return; settled = true; clearTimeout(timeout); reject(error.code === "ENOENT" ? new Error("yt-dlp no está disponible en el worker multimedia.") : error); });
+    child.once("close", (code, signal) => { if (settled) return; settled = true; clearTimeout(timeout); if (signal) return reject(new Error("La importación de plataforma excedió el tiempo permitido.")); if (code !== 0) return reject(new YtDlpCommandError(stderr)); resolve(); });
   });
 }
 
 async function clearPlatformOutputs(temporaryDirectory) {
   const entries = await readdir(temporaryDirectory);
-  await Promise.all(
-    entries
-      .filter((entry) => entry.startsWith("source."))
-      .map((entry) => rm(path.join(temporaryDirectory, entry), { recursive: true, force: true }))
-  );
+  await Promise.all(entries.filter((entry) => entry.startsWith("source.")).map((entry) => rm(path.join(temporaryDirectory, entry), { recursive: true, force: true })));
 }
 
 async function runPlatformYtDlp(provider, sourceUrl, temporaryDirectory) {
-  const attempts = provider === "youtube" ? youtubeClientAttempts() : [null];
-  const diagnostics = [];
-
+  const attempts = provider === "youtube" ? youtubeClientAttempts() : [null]; const diagnostics = [];
   for (let index = 0; index < attempts.length; index += 1) {
     const youtubeClients = attempts[index] ?? null;
     if (index > 0) await clearPlatformOutputs(temporaryDirectory);
-
-    try {
-      await runPlatformYtDlpAttempt(provider, sourceUrl, temporaryDirectory, youtubeClients);
-      return;
-    } catch (error) {
+    try { await runPlatformYtDlpAttempt(provider, sourceUrl, temporaryDirectory, youtubeClients); return; }
+    catch (error) {
       if (!(error instanceof YtDlpCommandError)) throw error;
       const attemptLabel = provider === "youtube" ? (youtubeClients ?? "auto") : provider;
       diagnostics.push(`[${attemptLabel}] ${error.stderr}`);
-      if (YTDLP_DIAGNOSTICS && error.stderr.trim()) {
-        console.error(`[yt-dlp:${provider}:${attemptLabel}] ${error.stderr.slice(-MAX_ERROR_CHARS)}`);
-      }
+      if (YTDLP_DIAGNOSTICS && error.stderr.trim()) console.error(`[yt-dlp:${provider}:${attemptLabel}] ${error.stderr.slice(-MAX_ERROR_CHARS)}`);
     }
   }
-
   throw classifyYtDlpFailure(diagnostics.join("\n--- siguiente intento ---\n"), provider);
 }
 
@@ -441,21 +250,13 @@ async function downloadPlatformVideo(provider, value, temporaryDirectory) {
   const entries = await readdir(temporaryDirectory);
   const candidates = entries.filter((entry) => entry.startsWith("source.") && !entry.endsWith(".part") && !entry.endsWith(".ytdl") && !entry.endsWith(".json"));
   if (candidates.length !== 1) throw new Error("La plataforma no produjo una única fuente temporal válida.");
-  const filename = candidates[0];
-  const filePath = path.join(temporaryDirectory, filename);
-  const stats = await lstat(filePath);
+  const filename = candidates[0]; const filePath = path.join(temporaryDirectory, filename); const stats = await lstat(filePath);
   if (!stats.isFile() || stats.isSymbolicLink() || stats.size <= 0 || stats.size > MAX_PLATFORM_SOURCE_BYTES) throw new Error("La copia temporal de la plataforma supera 512 MB o no es válida.");
   return { filePath, bytes: stats.size, contentType: contentTypeFromFilename(filename), sourceUrl };
 }
 
 async function sendFile(response, result) {
-  response.writeHead(200, {
-    "Content-Type": result.contentType,
-    "Content-Length": String(result.bytes),
-    "Cache-Control": "no-store, max-age=0",
-    "X-Content-Type-Options": "nosniff",
-    "X-Deuna-Source-Url": Buffer.from(result.sourceUrl, "utf8").toString("base64url"),
-  });
+  response.writeHead(200, { "Content-Type": result.contentType, "Content-Length": String(result.bytes), "Cache-Control": "no-store, max-age=0", "X-Content-Type-Options": "nosniff", "X-Deuna-Source-Url": Buffer.from(result.sourceUrl, "utf8").toString("base64url") });
   await pipeline(createReadStream(result.filePath), response);
 }
 
@@ -464,21 +265,13 @@ const server = createServer(async (request, response) => {
   if (request.method !== "POST" || request.url !== "/source") return jsonError(response, 404, "No encontrado.");
   if (!authorized(request)) return jsonError(response, 401, "No autorizado.");
   if (activeJob) return jsonError(response, 429, "Ya hay una importación multimedia en curso.");
-
   activeJob = true;
   const temporaryDirectory = await mkdtemp(path.join(os.tmpdir(), "deuna-media-import-worker-"));
   try {
-    const payload = await readJsonBody(request);
-    let result;
-    if (payload.kind === "direct") {
-      if (typeof payload.url !== "string") throw new Error("Falta la URL directa.");
-      result = await downloadDirectVideo(payload.url, path.join(temporaryDirectory, "source.video"));
-    } else if (payload.kind === "platform") {
-      if (typeof payload.provider !== "string" || typeof payload.url !== "string") throw new Error("Falta el proveedor o el enlace de plataforma.");
-      result = await downloadPlatformVideo(payload.provider, payload.url, temporaryDirectory);
-    } else {
-      throw new Error("Tipo de importación no permitido.");
-    }
+    const payload = await readJsonBody(request); let result;
+    if (payload.kind === "direct") { if (typeof payload.url !== "string") throw new Error("Falta la URL directa."); result = await downloadDirectVideo(payload.url, path.join(temporaryDirectory, "source.video")); }
+    else if (payload.kind === "platform") { if (typeof payload.provider !== "string" || typeof payload.url !== "string") throw new Error("Falta el proveedor o el enlace de plataforma."); result = await downloadPlatformVideo(payload.provider, payload.url, temporaryDirectory); }
+    else throw new Error("Tipo de importación no permitido.");
     await sendFile(response, result);
   } catch (error) {
     if (!response.headersSent) jsonError(response, 400, error instanceof Error ? error.message : "La importación multimedia falló.");
