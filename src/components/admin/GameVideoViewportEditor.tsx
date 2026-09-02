@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 
-import { contextualDialogStyles } from "@/components/admin/ContextualMediaDialog";
 import VideoTrimEditor from "@/components/admin/VideoTrimEditor";
 import { normalizeGameVideoViewport } from "@/lib/media/game-video-media";
 import {
@@ -10,6 +9,8 @@ import {
   type PreviewViewport,
 } from "@/lib/media/preview-video-policy";
 import type { GameVideoViewport } from "@/types/game";
+
+import dialogStyles from "./ContextualMediaDialog.module.css";
 
 type Target = "hero" | "card";
 type Source = "hero" | "independent";
@@ -165,10 +166,10 @@ export default function GameVideoViewportEditor({
         </p>
       )}
 
-      <div className={contextualDialogStyles.actions}>
+      <div className={dialogStyles.actions}>
         <button
           type="button"
-          className={contextualDialogStyles.secondary}
+          className={dialogStyles.secondary}
           disabled={busy}
           onClick={onClose}
         >
@@ -177,7 +178,7 @@ export default function GameVideoViewportEditor({
         {target === "card" && (
           <button
             type="button"
-            className={contextualDialogStyles.secondary}
+            className={dialogStyles.secondary}
             disabled={busy}
             onClick={() => void switchCardToStaticImage()}
           >
@@ -186,7 +187,7 @@ export default function GameVideoViewportEditor({
         )}
         <button
           type="button"
-          className={contextualDialogStyles.primary}
+          className={dialogStyles.primary}
           disabled={busy}
           onClick={() => void save()}
         >
