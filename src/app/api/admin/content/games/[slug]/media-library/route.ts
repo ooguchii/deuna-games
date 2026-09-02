@@ -19,11 +19,17 @@ import {
   mergeEditorialMediaResources,
 } from "@/lib/media/editorial-media-library";
 import {
+  DEFAULT_GAME_IMAGE_VIEWPORT,
+} from "@/lib/media/image-viewport";
+import {
   normalizeGameVideoViewport,
   withoutGameVideoTarget,
 } from "@/lib/media/game-video-media";
 import { DEFAULT_PREVIEW_VIEWPORT } from "@/lib/media/preview-video-policy";
-import type { Game } from "@/types/game";
+import type {
+  Game,
+  GameImageMedia,
+} from "@/types/game";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -60,6 +66,17 @@ async function resourcesForGame(slug: string, game: Game) {
   return mergeEditorialMediaResources(editorial, bundled);
 }
 
+function mediaUpdate(
+  update: Parameters<typeof saveGameMediaDraft>[3],
+  imageMedia?: GameImageMedia
+) {
+  return {
+    ...update,
+    ...(imageMedia ? { imageMedia } : {}),
+  } as Parameters<typeof saveGameMediaDraft>[3] &
+    Pick<Game, "imageMedia">;
+}
+
 export async function GET(
   _request: NextRequest,
   context: { params: Promise<{ slug: string }> }
@@ -87,6 +104,7 @@ export async function GET(
         coverImage: item.payload.coverImage ?? null,
         heroImage: item.payload.heroImage ?? null,
         screenshots: item.payload.screenshots ?? [],
+        imageMedia: item.payload.imageMedia ?? null,
         heroMode: heroVideo ? "video" : "image",
         heroVideo,
         cardVideo,
@@ -163,7 +181,14 @@ export async function POST(
         redirectPath(slug, "recurso-invalido")
       );
     }
-    update = { coverImage: imageResource.src };
+    update = mediaUpdate(
+      { coverImage: imageResource.src },
+      {
+        ...current.imageMedia,
+        cover: { ...DEFAULT_GAME_IMAGE_VIEWPORT },
+        card: { ...DEFAULT_GAME_IMAGE_VIEWPORT },
+      }
+    );
   }
 
   if (target.data === "hero-image") {
@@ -174,11 +199,17 @@ export async function POST(
       );
     }
     const withoutVideo = withoutGameVideoTarget(current, "hero");
-    update = {
-      heroImage: imageResource.src,
-      videoMedia: withoutVideo.videoMedia,
-      previewClip: withoutVideo.previewClip,
-    };
+    update = mediaUpdate(
+      {
+        heroImage: imageResource.src,
+        videoMedia: withoutVideo.videoMedia,
+        previewClip: withoutVideo.previewClip,
+      },
+      {
+        ...current.imageMedia,
+        hero: { ...DEFAULT_GAME_IMAGE_VIEWPORT },
+      }
+    );
   }
 
   if (target.data === "hero-video") {
