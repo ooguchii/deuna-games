@@ -100,21 +100,23 @@ function HeroVideoLayer({
   enabled: boolean;
 }) {
   const resolved = resolveGameHeroVideo(game);
-  const [failed, setFailed] = useState(false);
-  const [documentVisible, setDocumentVisible] = useState(true);
-
-  useEffect(() => {
-    setFailed(false);
-  }, [resolved?.src]);
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  const [documentVisible, setDocumentVisible] = useState(
+    () => typeof document === "undefined" || !document.hidden
+  );
 
   useEffect(() => {
     const syncVisibility = () => setDocumentVisible(!document.hidden);
-    syncVisibility();
     document.addEventListener("visibilitychange", syncVisibility);
     return () => document.removeEventListener("visibilitychange", syncVisibility);
   }, []);
 
-  if (!enabled || !resolved || failed || !documentVisible) {
+  if (
+    !enabled ||
+    !resolved ||
+    failedSrc === resolved.src ||
+    !documentVisible
+  ) {
     return null;
   }
 
@@ -135,7 +137,7 @@ function HeroVideoLayer({
         pointerEvents: "none",
         background: "transparent",
       }}
-      onError={() => setFailed(true)}
+      onError={() => setFailedSrc(resolved.src)}
     />
   );
 }
