@@ -59,7 +59,7 @@ type ResourceVideo = {
 
 type LibraryResource = ResourceImage | ResourceVideo;
 type Destination = "cover" | "hero" | "card";
-type HeroDraftMode = "image" | "video";
+type HeroDraftMode = "image" | "video" | "hover-video";
 type AddResourceKind = "image" | "video";
 
 type LibraryState = {
@@ -204,7 +204,9 @@ function parseLibraryState(value: unknown): LibraryState | null {
 
   const assignments = root.assignments as LibraryState["assignments"];
   if (
-    (assignments.heroMode !== "image" && assignments.heroMode !== "video") ||
+    (assignments.heroMode !== "image" &&
+      assignments.heroMode !== "video" &&
+      assignments.heroMode !== "hover-video") ||
     !Array.isArray(assignments.screenshots) ||
     (assignments.imageMedia !== null &&
       assignments.imageMedia !== undefined &&
@@ -477,6 +479,7 @@ export default function GameMultimediaWorkspaceContextual({
   const resolvedCardClip = cardClip(state);
   const assignmentRevision = state?.revision ?? revision;
   const stale = state !== null && state.revision !== revision;
+  const heroUsesVideo = heroDraftMode !== "image";
 
   function imageBySrc(src: string | null) {
     return src ? images.find((resource) => resource.src === src) ?? null : null;
@@ -491,11 +494,16 @@ export default function GameMultimediaWorkspaceContextual({
     const labels: string[] = [];
     if (resource.kind === "image") {
       if (resource.src === coverImage) labels.push("Portada");
-      if (resource.src === heroImage && currentHeroMode === "image") labels.push("Hero");
+      if (resource.src === heroImage) {
+        if (currentHeroMode === "image") labels.push("Hero");
+        if (currentHeroMode === "hover-video") labels.push("Hero base");
+      }
       if (screenshots.includes(resource.src)) labels.push("Galería");
       if (resource.src === coverImage) labels.push("Card base");
     } else {
-      if (resource.src === heroVideo?.clip) labels.push("Hero");
+      if (resource.src === heroVideo?.clip) {
+        labels.push(currentHeroMode === "hover-video" ? "Hero hover" : "Hero");
+      }
       if (resource.src === resolvedCardClip) labels.push("Card");
     }
     return labels;
@@ -509,7 +517,9 @@ export default function GameMultimediaWorkspaceContextual({
         source: "hero",
         clip: heroVideo.clip,
         viewport: heroVideo.viewport,
-        label: "Hero de inicio",
+        label: currentHeroMode === "hover-video"
+          ? "Hero de inicio · video al hover"
+          : "Hero de inicio",
       };
     }
 
@@ -589,7 +599,7 @@ export default function GameMultimediaWorkspaceContextual({
       setEditingDestination(destination);
       return;
     }
-    if (destination === "hero" && heroDraftMode === "video") {
+    if (destination === "hero" && heroDraftMode !== "image") {
       setAddResourceKind("video");
       return;
     }
@@ -701,7 +711,7 @@ export default function GameMultimediaWorkspaceContextual({
           </article>
 
           <article className={styles.summaryCard}>
-            {currentHeroMode === "video" ? (
+            {currentHeroMode !== "image" ? (
               <span className={styles.summaryIcon}><MonitorPlay size={22} aria-hidden="true" /></span>
             ) : heroResource ? (
               <span className={styles.summaryThumb}><Image src={heroResource.src} alt="" fill sizes="88px" /></span>
@@ -711,11 +721,18 @@ export default function GameMultimediaWorkspaceContextual({
             <div>
               <span>HERO</span>
               <strong>
-                {currentHeroMode === "video"
+                {currentHeroMode !== "image"
                   ? heroVideo ? shortName(heroVideo.clip) : "Video pendiente"
                   : heroImage ? shortName(heroImage) : "Sin asignar"}
               </strong>
-              <small><CheckCircle2 size={13} aria-hidden="true" />{currentHeroMode === "video" ? "Modo video" : "Modo imagen"}</small>
+              <small>
+                <CheckCircle2 size={13} aria-hidden="true" />
+                {currentHeroMode === "hover-video"
+                  ? "Imagen + video al hover"
+                  : currentHeroMode === "video"
+                    ? "Modo video"
+                    : "Modo imagen"}
+              </small>
             </div>
           </article>
 
@@ -874,32 +891,35 @@ export default function GameMultimediaWorkspaceContextual({
               </article>
 
               <article className={styles.assignmentCard}>
-                <header><div><span>B</span><h3>Hero de inicio</h3></div><small>Imagen o video</small></header>
+                <header><div><span>B</span><h3>Hero de inicio</h3></div><small>Imagen, video o hover</small></header>
                 <div className={styles.modeSwitch} role="group" aria-label="Modo del Hero">
                   <button type="button" className={heroDraftMode === "image" ? styles.modeActive : ""} onClick={() => setHeroDraftMode("image")}>Imagen</button>
                   <button type="button" className={heroDraftMode === "video" ? styles.modeActive : ""} onClick={() => setHeroDraftMode("video")}>Video</button>
+                  <button type="button" className={heroDraftMode === "hover-video" ? styles.modeActive : ""} onClick={() => setHeroDraftMode("hover-video")}>Imagen + hover</button>
                 </div>
                 <div className={styles.currentResource}>
                   {heroDraftMode === "image" && heroResource ? (
                     <span className={styles.currentThumb}><Image src={heroResource.src} alt="" fill sizes="72px" /></span>
                   ) : (
                     <span className={styles.currentIcon}>
-                      {heroDraftMode === "video" ? <MonitorPlay size={20} aria-hidden="true" /> : <ImageIcon size={20} aria-hidden="true" />}
+                      {heroUsesVideo ? <MonitorPlay size={20} aria-hidden="true" /> : <ImageIcon size={20} aria-hidden="true" />}
                     </span>
                   )}
                   <div>
                     <span>{heroModePending ? "Modo preparado" : "Recurso asignado"}</span>
                     <strong>
-                      {heroDraftMode === "video"
+                      {heroUsesVideo
                         ? heroVideo ? shortName(heroVideo.clip) : "Selecciona un video"
                         : heroImage ? shortName(heroImage) : "Selecciona una imagen"}
                     </strong>
                     <small>
                       {heroModePending
                         ? "El modo se aplica al elegir un recurso. La fuente anterior sigue en la biblioteca."
-                        : heroDraftMode === "video"
-                          ? "Video activo · encuadre editable sin recortar tiempo."
-                          : "Imagen activa · foco y zoom editables."}
+                        : heroDraftMode === "hover-video"
+                          ? "Muestra la imagen y reproduce el WebM sólo al pasar el mouse. En táctil conserva la imagen."
+                          : heroDraftMode === "video"
+                            ? "Video activo · encuadre editable sin recortar tiempo."
+                            : "Imagen activa · foco y zoom editables."}
                     </small>
                   </div>
                 </div>
@@ -907,9 +927,15 @@ export default function GameMultimediaWorkspaceContextual({
                   <ResourcePicker
                     action={endpoint}
                     revision={assignmentRevision}
-                    target={heroDraftMode === "video" ? "hero-video" : "hero-image"}
+                    target={
+                      heroDraftMode === "hover-video"
+                        ? "hero-hover-video"
+                        : heroDraftMode === "video"
+                          ? "hero-video"
+                          : "hero-image"
+                    }
                     resources={resources}
-                    kind={heroDraftMode}
+                    kind={heroUsesVideo ? "video" : "image"}
                     disabled={stale}
                     onAddResource={openAddResource}
                   />
@@ -917,7 +943,13 @@ export default function GameMultimediaWorkspaceContextual({
                 </div>
                 <small className={styles.assignmentStatus}>
                   <CheckCircle2 size={13} aria-hidden="true" />
-                  {heroModePending ? "Cambio pendiente de recurso" : currentHeroMode === "video" ? "Video activo" : heroImage ? "Imagen activa" : "Pendiente"}
+                  {heroModePending
+                    ? "Cambio pendiente de recurso"
+                    : currentHeroMode === "hover-video"
+                      ? "Imagen + video al hover"
+                      : currentHeroMode === "video"
+                        ? "Video activo"
+                        : heroImage ? "Imagen activa" : "Pendiente"}
                 </small>
               </article>
 
@@ -1029,7 +1061,7 @@ export default function GameMultimediaWorkspaceContextual({
           <section>
             <div className={styles.helpHeading}><Info size={18} aria-hidden="true" /><h2>Reglas y ayuda</h2></div>
             <div className={styles.helpRule}><FolderOpen size={20} aria-hidden="true" /><div><strong>Todo sale de la biblioteca</strong><span>Un recurso físico puede servir a varios destinos.</span></div></div>
-            <div className={styles.helpRule}><MonitorPlay size={20} aria-hidden="true" /><div><strong>Hero: imagen o video</strong><span>Nunca se muestran ambos a la vez.</span></div></div>
+            <div className={styles.helpRule}><MonitorPlay size={20} aria-hidden="true" /><div><strong>Hero: tres modos</strong><span>Imagen, video continuo o imagen con video al pasar el mouse.</span></div></div>
             <div className={styles.helpRule}><Link2 size={20} aria-hidden="true" /><div><strong>Encuadres independientes</strong><span>Card, Hero y Galería pueden mostrar zonas distintas del mismo archivo.</span></div></div>
             <div className={styles.helpRule}><Trash2 size={20} aria-hidden="true" /><div><strong>Quitar no es eliminar</strong><span>Quitar conserva la imagen en biblioteca; la × roja elimina el recurso de todos los destinos.</span></div></div>
           </section>

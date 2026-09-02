@@ -47,6 +47,7 @@ const assignmentTargetSchema = z.enum([
   "cover-image",
   "hero-image",
   "hero-video",
+  "hero-hover-video",
   "card-video",
   "card-match-hero",
   "gallery-image",
@@ -166,6 +167,11 @@ export async function GET(
   );
   const heroVideo = item.payload.videoMedia?.hero ?? null;
   const cardVideo = item.payload.videoMedia?.card ?? null;
+  const heroMode = heroVideo
+    ? heroVideo.playback === "hover"
+      ? "hover-video"
+      : "video"
+    : "image";
 
   return NextResponse.json(
     {
@@ -176,7 +182,7 @@ export async function GET(
         heroImage: item.payload.heroImage ?? null,
         screenshots: item.payload.screenshots ?? [],
         imageMedia: item.payload.imageMedia ?? null,
-        heroMode: heroVideo ? "video" : "image",
+        heroMode,
         heroVideo,
         cardVideo,
         legacyPreviewClip: item.payload.previewClip ?? null,
@@ -303,7 +309,7 @@ export async function POST(
     );
   }
 
-  if (target.data === "hero-video") {
+  if (target.data === "hero-video" || target.data === "hero-hover-video") {
     if (!videoResource) {
       return adminRedirect(
         authorized.adminOrigin,
@@ -316,6 +322,7 @@ export async function POST(
         hero: {
           clip: videoResource.src,
           viewport: currentHeroViewport,
+          playback: target.data === "hero-hover-video" ? "hover" : "always",
         },
       },
     };

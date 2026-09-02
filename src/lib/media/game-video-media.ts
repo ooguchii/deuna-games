@@ -7,6 +7,7 @@ import {
 import type {
   Game,
   GameCardVideo,
+  GameHeroVideoPlayback,
   GameVideoMedia,
   GameVideoViewport,
 } from "@/types/game";
@@ -37,6 +38,12 @@ export function normalizeGameVideoViewport(
       viewport.aspect
     ) ?? defaultViewport()
   );
+}
+
+export function resolveGameHeroVideoPlayback(
+  game: Game
+): GameHeroVideoPlayback {
+  return game.videoMedia?.hero?.playback === "hover" ? "hover" : "always";
 }
 
 export function resolveGameHeroVideo(
@@ -120,6 +127,7 @@ export function withSavedGameVideoClip(
         hero: {
           clip,
           viewport: normalizedViewport,
+          playback: "always",
         },
         card,
       },
