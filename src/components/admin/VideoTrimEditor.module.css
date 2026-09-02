@@ -13,11 +13,18 @@
     );
 }
 
+.previewWorkspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(250px, 300px);
+  gap: 12px;
+  align-items: stretch;
+}
+
 .previewStage {
   position: relative;
   display: grid;
   place-items: center;
-  min-height: 260px;
+  min-height: 320px;
   overflow: hidden;
   border: 1px solid #202b38;
   border-radius: 12px;
@@ -39,8 +46,82 @@
   cursor: pointer;
 }
 
+.viewportFrame {
+  position: absolute;
+  z-index: 2;
+  border: 2px solid color-mix(in srgb, var(--brand) 78%, #fff);
+  border-radius: 6px;
+  box-shadow:
+    0 0 0 9999px rgba(1, 4, 8, 0.58),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.16);
+  pointer-events: none;
+}
+
+.viewportCorner {
+  position: absolute;
+  width: 11px;
+  height: 11px;
+  border: 2px solid color-mix(in srgb, var(--brand) 78%, #fff);
+  background: #f8fafc;
+  box-shadow: 0 2px 7px rgba(0, 0, 0, 0.38);
+}
+
+.viewportCornerTopLeft {
+  top: -7px;
+  left: -7px;
+}
+
+.viewportCornerTopRight {
+  top: -7px;
+  right: -7px;
+}
+
+.viewportCornerBottomLeft {
+  bottom: -7px;
+  left: -7px;
+}
+
+.viewportCornerBottomRight {
+  right: -7px;
+  bottom: -7px;
+}
+
+.viewportMoveHandle {
+  position: absolute;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--brand) 58%, #64748b);
+  border-radius: 50%;
+  background: rgba(4, 8, 13, 0.82);
+  color: #fff;
+  cursor: grab;
+  transform: translate(-50%, -50%);
+  touch-action: none;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 7px 24px rgba(0, 0, 0, 0.38);
+}
+
+.viewportMoveHandle:active {
+  cursor: grabbing;
+}
+
+.viewportMoveHandle:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+}
+
+.viewportMoveHandle:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
 .centerPlay {
   position: absolute;
+  z-index: 6;
   inset: 50% auto auto 50%;
   display: grid;
   place-items: center;
@@ -64,6 +145,189 @@
 
 .centerPlay:hover {
   transform: translate(-50%, -50%) scale(1.04);
+}
+
+.centerPlayViewport {
+  inset: auto auto 14px 14px;
+  width: 42px;
+  height: 42px;
+  opacity: 0.82;
+  transform: none;
+}
+
+.centerPlayViewport:hover {
+  transform: scale(1.04);
+}
+
+.viewportPanel {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid #202b38;
+  border-radius: 12px;
+  background: #080e16;
+}
+
+.viewportPanelHeading {
+  display: grid;
+  gap: 6px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #1d2937;
+}
+
+.viewportPanelHeading > div {
+  display: grid;
+  gap: 3px;
+}
+
+.viewportPanelHeading span {
+  color: var(--brand);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+}
+
+.viewportPanelHeading strong {
+  color: var(--text, #f5f7fb);
+  font-size: 14px;
+}
+
+.viewportPanelHeading small,
+.viewportResult small {
+  color: var(--text-muted, #94a3b8);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.viewportPositionGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.viewportPositionGrid label,
+.viewportControl {
+  display: grid;
+  gap: 6px;
+}
+
+.viewportPositionGrid span,
+.viewportControl > span {
+  color: var(--text-muted, #a5b1c0);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.viewportPositionGrid input,
+.viewportControl select {
+  width: 100%;
+  min-height: 38px;
+  padding: 7px 9px;
+  border: 1px solid #2a3748;
+  border-radius: 8px;
+  background: #090e15;
+  color: var(--text, #f5f7fb);
+  font: inherit;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.viewportControl > span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.viewportControl > span strong {
+  color: var(--text, #f5f7fb);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.viewportControl input[type="range"] {
+  width: 100%;
+  min-height: 26px;
+  margin: 0;
+  accent-color: var(--brand);
+  cursor: pointer;
+}
+
+.viewportPresets {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.viewportPresets button,
+.viewportReset {
+  min-height: 36px;
+  padding: 7px 8px;
+  border: 1px solid #2a3748;
+  border-radius: 8px;
+  background: #101823;
+  color: var(--text, #f5f7fb);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.viewportPresets button:hover:not(:disabled),
+.viewportReset:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--brand) 48%, #334155);
+  background: color-mix(in srgb, var(--brand) 8%, #121b27);
+}
+
+.viewportPresets button:disabled,
+.viewportReset:disabled,
+.viewportPositionGrid input:disabled,
+.viewportControl select:disabled,
+.viewportControl input:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.viewportReset {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 100%;
+}
+
+.viewportResult {
+  display: grid;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid #1d2937;
+}
+
+.viewportResult > span {
+  color: var(--text, #f5f7fb);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.viewportResult > div {
+  display: grid;
+  place-items: center;
+  min-height: 116px;
+  overflow: hidden;
+  padding: 8px;
+  border: 1px solid #263445;
+  border-radius: 9px;
+  background: #020407;
+}
+
+.viewportResult canvas {
+  display: block;
+  max-width: 100%;
+  max-height: 220px;
+  border-radius: 7px;
+  background: #000;
 }
 
 .sourceRow {
@@ -417,6 +681,21 @@
   color: #fecaca;
 }
 
+@media (max-width: 1040px) {
+  .previewWorkspace {
+    grid-template-columns: 1fr;
+  }
+
+  .viewportPanel {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .viewportPanelHeading,
+  .viewportResult {
+    grid-column: 1 / -1;
+  }
+}
+
 @media (max-width: 720px) {
   .editor {
     padding: 12px;
@@ -424,6 +703,29 @@
 
   .previewStage {
     min-height: 190px;
+  }
+
+  .viewportPanel {
+    grid-template-columns: 1fr;
+    padding: 12px;
+  }
+
+  .viewportPanelHeading,
+  .viewportResult {
+    grid-column: auto;
+  }
+
+  .viewportPositionGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .viewportPresets {
+    grid-template-columns: 1fr;
+  }
+
+  .viewportMoveHandle {
+    width: 40px;
+    height: 40px;
   }
 
   .sourceRow {
