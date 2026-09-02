@@ -106,12 +106,16 @@ export async function POST(
     ...item.payload.imageMedia,
     [target.data]: viewport,
   };
+  const mediaUpdate = {
+    coverImage: item.payload.coverImage,
+    imageMedia,
+  };
 
   const result = await saveGameMediaDraft(
     slug,
     revision.data,
     authorized.session.userId,
-    { imageMedia }
+    mediaUpdate
   );
 
   if (result.outcome === "not_found") {
