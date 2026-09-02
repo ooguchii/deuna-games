@@ -4,6 +4,8 @@ import {
   lstat,
   readFile,
   readdir,
+  unlink,
+  writeFile,
 } from "node:fs/promises";
 import path from "node:path";
 
@@ -11,6 +13,7 @@ import {
   buildEditorialMediaPublicPath,
   getEditorialMediaRoot,
   isEditorialMediaSlug,
+  resolveEditorialMediaDiskPath,
 } from "./editorial-media";
 import {
   inspectSafeEditorialWebm,
@@ -44,17 +47,22 @@ export type EditorialMediaLibraryResource =
   | EditorialMediaLibraryVideo;
 
 const MEDIA_FILENAME = /^([a-f0-9]{64})\.(webp|webm)$/;
+const IMAGE_DELETE_MARKER = /^\.delete-([a-f0-9]{64}\.webp)$/;
 const BUNDLED_IMAGE_PATTERN =
   /^\/images\/[A-Za-z0-9/_.,@+() -]+\.(?:avif|gif|jpe?g|png|webp)$/i;
 const MAX_LIBRARY_RESOURCES = 80;
 
-function isMissingDirectory(error: unknown) {
+function hasErrorCode(error: unknown, code: string) {
   return (
     typeof error === "object" &&
     error !== null &&
     "code" in error &&
-    (error as { code?: unknown }).code === "ENOENT"
+    (error as { code?: unknown }).code === code
   );
+}
+
+function isMissingPath(error: unknown) {
+  return hasErrorCode(error, "ENOENT");
 }
 
 function isContainedBy(parent: string, candidate: string) {
@@ -90,6 +98,269 @@ function resolveBundledImagePath(publicPath: string) {
     : null;
 }
 
+function resolveEditorialImageResource(
+  slug: string,
+  resource: EditorialMediaLibraryImage
+) {
+  if (
+    !isEditorialMediaSlug(slug) ||
+    resource.kind !== "image" ||
+    resource.origin !== "editorial" ||
+    typeof resource.digest !== "string"
+  ) {
+    return null;
+  }
+
+  const resolved = resolveEditorialMediaDiskPath(resource.src);
+  if (
+    !resolved ||
+    resolved.slug !== slug ||
+    resolved.filename !== `${resource.digest}.webp` ||
+    buildEditorialMediaPublicPath(slug, resolved.filename) !== resource.src
+  ) {
+    return null;
+  }
+
+  return resolved;
+}
+
+function deletionMarkerPath(
+  gameDirectory: string,
+  filename: string
+) {
+  return path.join(
+    gameDirectory,
+    `.delete-${filename}`
+  );
+}
+
+async function isSafeDeletionMarker(markerPath: string) {
+  try {
+    const stats = await lstat(markerPath);
+    return stats.isFile() && !stats.isSymbolicLink();
+  } catch (error) {
+    if (isMissingPath(error)) return false;
+    throw error;
+  }
+}
+
+async function removeDeletionMarker(markerPath: string) {
+  if (!(await isSafeDeletionMarker(markerPath))) return;
+
+  try {
+    await unlink(markerPath);
+  } catch (error) {
+    if (!isMissingPath(error)) throw error;
+  }
+}
+
+async function inspectEditorialImageFile(
+  filePath: string,
+  expectedDigest: string
+) {
+  let stats;
+
+  try {
+    stats = await lstat(filePath);
+  } catch (error) {
+    if (isMissingPath(error)) return null;
+    throw error;
+  }
+
+  if (
+    !stats.isFile() ||
+    stats.isSymbolicLink() ||
+    stats.size <= 0 ||
+    stats.size > MAX_EDITORIAL_IMAGE_BYTES
+  ) {
+    throw new Error(
+      "El recurso editorial no supera la validación previa a su eliminación."
+    );
+  }
+
+  const buffer = await readFile(filePath);
+  const inspection = inspectSafeEditorialWebp(buffer);
+
+  if (!inspection || inspection.digest !== expectedDigest) {
+    throw new Error(
+      "La imagen editorial cambió desde que fue validada por la biblioteca."
+    );
+  }
+
+  return inspection;
+}
+
+async function deleteValidatedEditorialImage(
+  slug: string,
+  filename: string
+) {
+  const digest = filename.slice(0, 64);
+  const publicPath = buildEditorialMediaPublicPath(slug, filename);
+  const resolved = resolveEditorialMediaDiskPath(publicPath);
+
+  if (
+    !resolved ||
+    resolved.slug !== slug ||
+    resolved.filename !== filename
+  ) {
+    throw new Error("Ruta editorial no válida para eliminación.");
+  }
+
+  const markerPath = deletionMarkerPath(
+    resolved.gameDirectory,
+    resolved.filename
+  );
+  const inspection = await inspectEditorialImageFile(
+    resolved.filePath,
+    digest
+  );
+
+  if (inspection) {
+    try {
+      await unlink(resolved.filePath);
+    } catch (error) {
+      if (!isMissingPath(error)) throw error;
+    }
+  }
+
+  await removeDeletionMarker(markerPath);
+}
+
+export async function clearEditorialImageDeletionMarker(
+  slug: string,
+  publicPath: string
+) {
+  if (!isEditorialMediaSlug(slug)) return;
+
+  const resolved = resolveEditorialMediaDiskPath(publicPath);
+  if (
+    !resolved ||
+    resolved.slug !== slug ||
+    !resolved.filename.endsWith(".webp")
+  ) {
+    return;
+  }
+
+  await removeDeletionMarker(
+    deletionMarkerPath(
+      resolved.gameDirectory,
+      resolved.filename
+    )
+  );
+}
+
+export async function reconcileEditorialImageDeletions(
+  slug: string,
+  draftReferences: readonly string[],
+  publishedReferences: readonly string[]
+) {
+  if (!isEditorialMediaSlug(slug)) {
+    throw new Error("La identidad del juego no es válida para multimedia.");
+  }
+
+  const draft = new Set(draftReferences);
+  const published = new Set(publishedReferences);
+
+  for (const publicPath of draft) {
+    await clearEditorialImageDeletionMarker(slug, publicPath);
+  }
+
+  const directory = path.join(getEditorialMediaRoot(), slug);
+  let entries;
+
+  try {
+    entries = await readdir(directory, { withFileTypes: true });
+  } catch (error) {
+    if (isMissingPath(error)) return;
+    throw error;
+  }
+
+  for (const entry of entries) {
+    if (!entry.isFile()) continue;
+    const match = IMAGE_DELETE_MARKER.exec(entry.name);
+    if (!match) continue;
+
+    const filename = match[1]!;
+    const publicPath = buildEditorialMediaPublicPath(slug, filename);
+    const markerPath = path.join(directory, entry.name);
+
+    if (!(await isSafeDeletionMarker(markerPath))) continue;
+
+    if (draft.has(publicPath)) {
+      await removeDeletionMarker(markerPath);
+      continue;
+    }
+
+    if (published.has(publicPath)) continue;
+
+    await deleteValidatedEditorialImage(slug, filename);
+  }
+}
+
+export async function markEditorialImageForDeletion(
+  slug: string,
+  resource: EditorialMediaLibraryImage
+) {
+  const resolved = resolveEditorialImageResource(slug, resource);
+  if (!resolved || !resource.digest) {
+    throw new Error("La imagen no pertenece al almacén editorial del juego.");
+  }
+
+  const inspection = await inspectEditorialImageFile(
+    resolved.filePath,
+    resource.digest
+  );
+  if (!inspection) return "missing" as const;
+
+  const markerPath = deletionMarkerPath(
+    resolved.gameDirectory,
+    resolved.filename
+  );
+
+  if (await isSafeDeletionMarker(markerPath)) {
+    return "marked" as const;
+  }
+
+  try {
+    await writeFile(
+      markerPath,
+      `${resource.digest}\n`,
+      {
+        encoding: "utf8",
+        flag: "wx",
+        mode: 0o600,
+      }
+    );
+  } catch (error) {
+    if (
+      hasErrorCode(error, "EEXIST") &&
+      await isSafeDeletionMarker(markerPath)
+    ) {
+      return "marked" as const;
+    }
+    throw error;
+  }
+
+  return "marked" as const;
+}
+
+export async function deleteEditorialImageResource(
+  slug: string,
+  resource: EditorialMediaLibraryImage
+) {
+  const resolved = resolveEditorialImageResource(slug, resource);
+  if (!resolved || !resource.digest) {
+    throw new Error("La imagen no pertenece al almacén editorial del juego.");
+  }
+
+  await deleteValidatedEditorialImage(
+    slug,
+    resolved.filename
+  );
+
+  return "deleted" as const;
+}
+
 export async function listEditorialMediaLibrary(
   slug: string
 ): Promise<EditorialMediaLibraryResource[]> {
@@ -103,7 +374,7 @@ export async function listEditorialMediaLibrary(
   try {
     entries = await readdir(directory, { withFileTypes: true });
   } catch (error) {
-    if (isMissingDirectory(error)) return [];
+    if (isMissingPath(error)) return [];
     throw error;
   }
 
@@ -128,6 +399,15 @@ export async function listEditorialMediaLibrary(
       stats.isSymbolicLink() ||
       stats.size <= 0 ||
       stats.size > maximumBytes
+    ) {
+      continue;
+    }
+
+    if (
+      match[2] === "webp" &&
+      await isSafeDeletionMarker(
+        deletionMarkerPath(directory, entry.name)
+      )
     ) {
       continue;
     }

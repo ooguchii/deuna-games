@@ -15,6 +15,7 @@ import {
   Sparkles,
   Trash2,
   Upload,
+  X,
 } from "lucide-react";
 import {
   type ReactNode,
@@ -232,6 +233,49 @@ function ResourceArtwork({ resource, alt }: { resource: ResourceImage; alt: stri
         sizes="(max-width: 760px) 88vw, 280px"
       />
     </div>
+  );
+}
+
+function DeleteImageResourceForm({
+  action,
+  revision,
+  resource,
+  disabled,
+}: {
+  action: string;
+  revision: number;
+  resource: ResourceImage;
+  disabled?: boolean;
+}) {
+  const name = shortName(resource.src);
+  const confirmation = resource.origin === "editorial"
+    ? `¿Eliminar ${name} definitivamente?\n\nSe quitará de Portada, Hero, Card y Galería y dejará de estar disponible en la biblioteca. Si la versión pública todavía la usa, el archivo físico se conservará sólo hasta que publiques el cambio para no romper la web.`
+    : `¿Eliminar ${name} de este juego?\n\nSe quitará de Portada, Hero, Card y Galería. Como es un recurso base compartido, el archivo original se conservará por seguridad para no romper otras fichas.`;
+
+  return (
+    <form
+      method="post"
+      action={action}
+      className={contextualStyles.deleteResourceForm}
+      onSubmit={(event) => {
+        if (!window.confirm(confirmation)) {
+          event.preventDefault();
+        }
+      }}
+    >
+      <input type="hidden" name="expectedRevision" value={revision} />
+      <input type="hidden" name="target" value="image-delete" />
+      <input type="hidden" name="resource" value={resource.src} />
+      <button
+        type="submit"
+        className={contextualStyles.deleteResourceButton}
+        disabled={disabled}
+        title="Eliminar recurso"
+        aria-label={`Eliminar ${name} de todos los destinos`}
+      >
+        <X size={16} aria-hidden="true" />
+      </button>
+    </form>
   );
 }
 
@@ -586,6 +630,14 @@ export default function GameMultimediaWorkspaceContextual({
                   fill
                   sizes={compact ? "120px" : "240px"}
                 />
+                {resource && (
+                  <DeleteImageResourceForm
+                    action={endpoint}
+                    revision={assignmentRevision}
+                    resource={resource}
+                    disabled={stale}
+                  />
+                )}
               </div>
               <div className={contextualStyles.galleryItemMeta}>
                 <strong>{shortName(src)}</strong>
@@ -742,7 +794,18 @@ export default function GameMultimediaWorkspaceContextual({
                       </div>
 
                       {resource.kind === "image" ? (
-                        <ResourceArtwork resource={resource} alt="Recurso de la biblioteca multimedia" />
+                        <div className={contextualStyles.deletableArtwork}>
+                          <ResourceArtwork
+                            resource={resource}
+                            alt="Recurso de la biblioteca multimedia"
+                          />
+                          <DeleteImageResourceForm
+                            action={endpoint}
+                            revision={assignmentRevision}
+                            resource={resource}
+                            disabled={stale}
+                          />
+                        </div>
                       ) : (
                         <div className={styles.videoPlaceholder}>
                           <MonitorPlay size={30} aria-hidden="true" />
@@ -917,7 +980,7 @@ export default function GameMultimediaWorkspaceContextual({
                   <div>
                     <span>Capturas asignadas</span>
                     <strong>{screenshots.length} de 8</strong>
-                    <small>Cada captura se puede encuadrar o quitar sin borrar el recurso de la biblioteca.</small>
+                    <small>Editar cambia el encuadre; Quitar sólo la saca de Galería; la × elimina el recurso del juego.</small>
                   </div>
                 </div>
 
@@ -968,7 +1031,7 @@ export default function GameMultimediaWorkspaceContextual({
             <div className={styles.helpRule}><FolderOpen size={20} aria-hidden="true" /><div><strong>Todo sale de la biblioteca</strong><span>Un recurso físico puede servir a varios destinos.</span></div></div>
             <div className={styles.helpRule}><MonitorPlay size={20} aria-hidden="true" /><div><strong>Hero: imagen o video</strong><span>Nunca se muestran ambos a la vez.</span></div></div>
             <div className={styles.helpRule}><Link2 size={20} aria-hidden="true" /><div><strong>Encuadres independientes</strong><span>Card, Hero y Galería pueden mostrar zonas distintas del mismo archivo.</span></div></div>
-            <div className={styles.helpRule}><CheckCircle2 size={20} aria-hidden="true" /><div><strong>Editar no duplica</strong><span>Posición y zoom se guardan como metadata visual.</span></div></div>
+            <div className={styles.helpRule}><Trash2 size={20} aria-hidden="true" /><div><strong>Quitar no es eliminar</strong><span>Quitar conserva la imagen en biblioteca; la × roja elimina el recurso de todos los destinos.</span></div></div>
           </section>
           <section className={styles.tipCard}>
             <Sparkles size={20} aria-hidden="true" />
@@ -1033,7 +1096,7 @@ export default function GameMultimediaWorkspaceContextual({
         <ContextualMediaDialog
           eyebrow="GALERÍA DEL JUEGO"
           title="Gestionar capturas"
-          description="Edita el encuadre o quita una captura de la Galería. Quitarla no elimina el archivo de la biblioteca compartida."
+          description="Editar ajusta el encuadre. Quitar conserva el recurso en la biblioteca. Usa la × roja sólo cuando quieras eliminar esa imagen del juego por completo."
           onClose={() => setGalleryManagerOpen(false)}
         >
           <div className={contextualStyles.galleryManagerHeader}>

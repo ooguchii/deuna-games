@@ -10,13 +10,22 @@ import {
   getEditorialItem,
   saveGameMediaDraft,
 } from "@/lib/admin/content-service";
+import {
+  listGameImageReferences,
+} from "@/lib/admin/game-media-integrity";
+import {
+  getPublishedGameImageReferences,
+} from "@/lib/admin/publication-service";
 import { hasExactAdminFormFields } from "@/lib/admin/request-security";
 import { verifyAdminSession } from "@/lib/admin/session";
 import {
+  deleteEditorialImageResource,
   findEditorialMediaResource,
   listAssignedBundledImageResources,
   listEditorialMediaLibrary,
+  markEditorialImageForDeletion,
   mergeEditorialMediaResources,
+  reconcileEditorialImageDeletions,
 } from "@/lib/media/editorial-media-library";
 import {
   DEFAULT_GAME_IMAGE_VIEWPORT,
@@ -42,6 +51,7 @@ const assignmentTargetSchema = z.enum([
   "card-match-hero",
   "gallery-image",
   "gallery-remove",
+  "image-delete",
 ]);
 
 const fields = [
@@ -54,14 +64,22 @@ function redirectPath(slug: string, state: string) {
   return `/admin/juegos/${encodeURIComponent(slug)}?estado=${encodeURIComponent(state)}&seccion=multimedia`;
 }
 
-async function resourcesForGame(slug: string, game: Game) {
+async function resourcesForGame(
+  slug: string,
+  game: Game,
+  publishedImageReferences: readonly string[]
+) {
+  const imageReferences = listGameImageReferences(game);
+
+  await reconcileEditorialImageDeletions(
+    slug,
+    imageReferences,
+    publishedImageReferences
+  );
+
   const [editorial, bundled] = await Promise.all([
     listEditorialMediaLibrary(slug),
-    listAssignedBundledImageResources([
-      game.coverImage,
-      game.heroImage,
-      ...(game.screenshots ?? []),
-    ]),
+    listAssignedBundledImageResources(imageReferences),
   ]);
 
   return mergeEditorialMediaResources(editorial, bundled);
@@ -76,6 +94,52 @@ function mediaUpdate(
     ...(imageMedia ? { imageMedia } : {}),
   } as Parameters<typeof saveGameMediaDraft>[3] &
     Pick<Game, "imageMedia">;
+}
+
+function withoutImageResource(
+  game: Game,
+  resource: string
+) {
+  const imageMedia: GameImageMedia = {
+    ...game.imageMedia,
+  };
+
+  if (game.coverImage === resource) {
+    delete imageMedia.cover;
+    delete imageMedia.card;
+  }
+
+  if (game.heroImage === resource) {
+    delete imageMedia.hero;
+  }
+
+  const gallery = {
+    ...imageMedia.gallery,
+  };
+  delete gallery[resource];
+
+  if (Object.keys(gallery).length) {
+    imageMedia.gallery = gallery;
+  } else {
+    delete imageMedia.gallery;
+  }
+
+  return mediaUpdate(
+    {
+      coverImage:
+        game.coverImage === resource
+          ? undefined
+          : game.coverImage,
+      heroImage:
+        game.heroImage === resource
+          ? undefined
+          : game.heroImage,
+      screenshots: (game.screenshots ?? []).filter(
+        (src) => src !== resource
+      ),
+    },
+    imageMedia
+  );
 }
 
 export async function GET(
@@ -93,7 +157,13 @@ export async function GET(
     );
   }
 
-  const resources = await resourcesForGame(slug, item.payload);
+  const publishedImageReferences =
+    await getPublishedGameImageReferences(slug);
+  const resources = await resourcesForGame(
+    slug,
+    item.payload,
+    publishedImageReferences
+  );
   const heroVideo = item.payload.videoMedia?.hero ?? null;
   const cardVideo = item.payload.videoMedia?.card ?? null;
 
@@ -163,9 +233,29 @@ export async function POST(
   }
 
   const current = item.payload;
-  const resources = await resourcesForGame(slug, current);
-  const imageResource = findEditorialMediaResource(resources, resource, "image");
-  const videoResource = findEditorialMediaResource(resources, resource, "video");
+  const publishedImageReferences =
+    await getPublishedGameImageReferences(slug);
+  const resources = await resourcesForGame(
+    slug,
+    current,
+    publishedImageReferences
+  );
+  const imageResourceMatch = findEditorialMediaResource(
+    resources,
+    resource,
+    "image"
+  );
+  const imageResource = imageResourceMatch?.kind === "image"
+    ? imageResourceMatch
+    : undefined;
+  const videoResourceMatch = findEditorialMediaResource(
+    resources,
+    resource,
+    "video"
+  );
+  const videoResource = videoResourceMatch?.kind === "video"
+    ? videoResourceMatch
+    : undefined;
   const currentHeroViewport = normalizeGameVideoViewport(
     current.videoMedia?.hero?.viewport ?? DEFAULT_PREVIEW_VIEWPORT
   );
@@ -328,6 +418,17 @@ export async function POST(
     );
   }
 
+  if (target.data === "image-delete") {
+    if (!imageResource) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        redirectPath(slug, "recurso-invalido")
+      );
+    }
+
+    update = withoutImageResource(current, imageResource.src);
+  }
+
   if (!update) {
     return adminRedirect(
       authorized.adminOrigin,
@@ -353,6 +454,47 @@ export async function POST(
       authorized.adminOrigin,
       redirectPath(slug, "conflicto")
     );
+  }
+
+  if (target.data === "image-delete" && imageResource) {
+    if (imageResource.origin === "bundled") {
+      return adminRedirect(
+        authorized.adminOrigin,
+        redirectPath(slug, "recurso-eliminado-base")
+      );
+    }
+
+    try {
+      const deletion = await markEditorialImageForDeletion(
+        slug,
+        imageResource
+      );
+
+      if (deletion === "missing") {
+        return adminRedirect(
+          authorized.adminOrigin,
+          redirectPath(slug, "recurso-eliminado")
+        );
+      }
+
+      if (publishedImageReferences.includes(imageResource.src)) {
+        return adminRedirect(
+          authorized.adminOrigin,
+          redirectPath(slug, "recurso-eliminacion-pendiente")
+        );
+      }
+
+      await deleteEditorialImageResource(slug, imageResource);
+      return adminRedirect(
+        authorized.adminOrigin,
+        redirectPath(slug, "recurso-eliminado")
+      );
+    } catch {
+      return adminRedirect(
+        authorized.adminOrigin,
+        redirectPath(slug, "recurso-eliminacion-incompleta")
+      );
+    }
   }
 
   return adminRedirect(

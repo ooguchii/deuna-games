@@ -29,6 +29,8 @@ const [
   gameMedia,
   universalCard,
   publicGameDetail,
+  publicationService,
+  mediaIntegrity,
 ] = await Promise.all([
   source("src/lib/media/editorial-media-library.ts"),
   source("src/app/api/admin/content/games/[slug]/media-library/route.ts"),
@@ -49,6 +51,8 @@ const [
   source("src/components/ui/GameMedia.tsx"),
   source("src/components/ui/UniversalGameCard.tsx"),
   source("src/app/juegos/[slug]/page.tsx"),
+  source("src/lib/admin/publication-service.ts"),
+  source("src/lib/admin/game-media-integrity.ts"),
 ]);
 
 assert(
@@ -78,6 +82,22 @@ assert(
 );
 
 assert(
+  library.includes("IMAGE_DELETE_MARKER") &&
+    library.includes("markEditorialImageForDeletion") &&
+    library.includes("deleteEditorialImageResource") &&
+    library.includes("reconcileEditorialImageDeletions") &&
+    library.includes("clearEditorialImageDeletionMarker") &&
+    library.includes("resolveEditorialMediaDiskPath") &&
+    library.includes("inspectEditorialImageFile") &&
+    library.includes("inspection.digest !== expectedDigest") &&
+    library.includes("stats.isSymbolicLink()") &&
+    library.includes("unlink(") &&
+    library.includes("writeFile(") &&
+    library.includes('flag: "wx"'),
+  "La eliminación física de imágenes editoriales debe quedar centralizada, revalidar ruta/hash/WebP y usar marcadores seguros para diferir archivos todavía publicados."
+);
+
+assert(
   libraryRoute.includes("verifyAdminSession") &&
     libraryRoute.includes("authorizeAdminFormRequest") &&
     libraryRoute.includes("hasExactAdminFormFields") &&
@@ -92,12 +112,13 @@ assert(
     libraryRoute.includes('"card-match-hero"') &&
     libraryRoute.includes('"gallery-image"') &&
     libraryRoute.includes('"gallery-remove"') &&
+    libraryRoute.includes('"image-delete"') &&
     libraryRoute.includes("imageMedia") &&
     libraryRoute.includes("saveGameMediaDraft") &&
     !libraryRoute.includes("storeEditorialPreviewVideo") &&
     !libraryRoute.includes("spawn(") &&
     !libraryRoute.includes("writeFile("),
-  "Asignar o quitar desde biblioteca debe estar autenticado, aceptar sólo referencias válidas y modificar metadata sin copiar ni recodificar archivos."
+  "Asignar, quitar o eliminar desde biblioteca debe estar autenticado, aceptar sólo referencias válidas y mantener la escritura física fuera de la ruta HTTP."
 );
 
 assert(
@@ -107,6 +128,29 @@ assert(
     !libraryRoute.includes("unlink(") &&
     !libraryRoute.includes("rm("),
   "Quitar una captura de Galería debe eliminar sólo su asignación/encuadre y nunca borrar el recurso físico de la biblioteca."
+);
+
+assert(
+  libraryRoute.includes('target.data === "image-delete"') &&
+    libraryRoute.includes("withoutImageResource") &&
+    libraryRoute.includes("coverImage") &&
+    libraryRoute.includes("heroImage") &&
+    libraryRoute.includes("screenshots") &&
+    libraryRoute.includes("getPublishedGameImageReferences") &&
+    libraryRoute.includes("publishedImageReferences.includes") &&
+    libraryRoute.includes("markEditorialImageForDeletion") &&
+    libraryRoute.includes("deleteEditorialImageResource") &&
+    libraryRoute.includes('imageResource.origin === "bundled"'),
+  "Eliminar una imagen debe retirarla de todos los destinos y distinguir entre borradores, recursos publicados protegidos y assets base compartidos."
+);
+
+assert(
+  publicationService.includes("getPublishedGameImageReferences") &&
+    publicationService.includes("reconcilePublishedGameImageDeletions") &&
+    publicationService.includes("reconcileEditorialImageDeletions") &&
+    publicationService.includes("publishGameDraft") &&
+    mediaIntegrity.includes("listGameImageReferences"),
+  "La publicación del juego debe finalizar de forma segura cualquier eliminación física que fue diferida mientras la versión pública todavía usaba la imagen."
 );
 
 assert(
@@ -120,10 +164,11 @@ assert(
 assert(
   imageUploadRoute.includes('"library"') &&
     imageUploadRoute.includes("storeEditorialWebp") &&
+    imageUploadRoute.includes("clearEditorialImageDeletionMarker") &&
     imageUploadRoute.includes("withoutGameVideoTarget") &&
     imageUploadRoute.includes('kind.data === "hero"') &&
     imageUploadRoute.includes("recurso-subido"),
-  "Las nuevas imágenes deben quedar físicamente en la biblioteca y asignar una imagen al Hero debe desactivar su video sin borrar el archivo almacenado."
+  "Las nuevas imágenes deben quedar físicamente en la biblioteca y volver a subir el mismo hash debe cancelar una eliminación pendiente de forma explícita."
 );
 
 assert(
@@ -145,6 +190,7 @@ for (const label of [
   "Agregar nuevo recurso",
   "Gestionar galería",
   "Quitar",
+  "Eliminar recurso",
 ]) {
   assert(
     workspace.includes(label),
@@ -154,6 +200,11 @@ for (const label of [
 
 assert(
   workspace.includes("ResourcePicker") &&
+    workspace.includes("DeleteImageResourceForm") &&
+    workspace.includes("window.confirm") &&
+    workspace.includes('value="image-delete"') &&
+    workspace.includes("deleteResourceButton") &&
+    workspace.includes('value="gallery-remove"') &&
     workspace.includes("heroDraftMode") &&
     workspace.includes("currentHeroMode") &&
     workspace.includes("heroModePending") &&
@@ -161,7 +212,6 @@ assert(
     workspace.includes('target="card-video"') &&
     workspace.includes('target="card-match-hero"') &&
     workspace.includes('target="gallery-image"') &&
-    workspace.includes('value="gallery-remove"') &&
     workspace.includes("editingGalleryImage") &&
     workspace.includes("galleryManagerOpen") &&
     workspace.includes('target="gallery"') &&
@@ -175,7 +225,7 @@ assert(
     !workspace.includes("Editor del destino seleccionado") &&
     !workspace.includes("Origen de la Card") &&
     !workspace.includes("Usar recurso propio"),
-  "Portada, Hero, Card y Galería deben seleccionar desde una biblioteca única y abrir editores sólo de forma contextual, con gestión real de capturas."
+  "Portada, Hero, Card y Galería deben compartir biblioteca/editores y diferenciar Quitar de la eliminación destructiva confirmada."
 );
 
 assert(
@@ -209,8 +259,10 @@ assert(
     contextualCss.includes("position: sticky") &&
     contextualCss.includes(".pickerAddButton") &&
     contextualCss.includes(".galleryManageGrid") &&
-    contextualCss.includes(".galleryRemoveButton"),
-  "El layout debe separar Biblioteca/Asignación/Ayuda, quitar CSS manual obsoleto y soportar gestión contextual de Galería."
+    contextualCss.includes(".galleryRemoveButton") &&
+    contextualCss.includes(".deleteResourceButton") &&
+    contextualCss.includes(".deletableArtwork"),
+  "El layout debe mantener gestión contextual de Galería e incorporar una acción destructiva visible por imagen sin revivir CSS obsoleto."
 );
 
 assert(
@@ -307,5 +359,5 @@ if (failures.length) {
 }
 
 console.log(
-  "Biblioteca multimedia contextual: OK (biblioteca única → asignación segura → editores contextuales robustos → Galería editable/quitable sin borrar archivos → framing público)."
+  "Biblioteca multimedia contextual: OK (biblioteca única → Quitar reversible → eliminación destructiva confirmada → protección de recursos publicados → limpieza física segura tras publicar → framing público)."
 );

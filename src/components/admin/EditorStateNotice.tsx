@@ -107,6 +107,26 @@ const notices = {
     message:
       "Ese recurso ya no está disponible o no supera la validación del almacén editorial. Recarga Multimedia y selecciona otro archivo.",
   },
+  "recurso-eliminado": {
+    kind: "success",
+    message:
+      "Imagen eliminada de todos los destinos del juego y de la biblioteca editorial. El archivo físico también fue eliminado porque ya no estaba siendo usado por la versión pública.",
+  },
+  "recurso-eliminacion-pendiente": {
+    kind: "warning",
+    message:
+      "La imagen ya fue retirada del borrador, de Portada, Hero, Card y Galería, y dejó de aparecer en la biblioteca. Como todavía la usa la versión pública, el archivo físico se conservará hasta que publiques estos cambios; después se eliminará automáticamente.",
+  },
+  "recurso-eliminado-base": {
+    kind: "success",
+    message:
+      "Imagen retirada de todos los destinos de este juego. Era un recurso base compartido del proyecto, por eso el archivo original se conserva para no romper otras fichas que pudieran utilizarlo.",
+  },
+  "recurso-eliminacion-incompleta": {
+    kind: "warning",
+    message:
+      "La imagen fue retirada del borrador, pero la limpieza física no pudo completarse. Recarga Multimedia: el sistema volverá a validar y reintentará la limpieza sin poner en riesgo la versión pública.",
+  },
   "imagen-encuadre-guardado": {
     kind: "success",
     message:
