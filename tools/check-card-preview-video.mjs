@@ -230,7 +230,7 @@ assert(
     ytDlpWrapper.includes("Node 22 o superior") &&
     ytDlpWrapper.includes("--remote-components") &&
     ytDlpWrapper.includes("--plugin-dirs") &&
-    ytDlpWrapper.includes("127\\.0\\.1") &&
+    ytDlpWrapper.includes("127\\.0\\.0\\.1") &&
     ytDlpWrapper.includes("youtubepot-bgutilhttp:base_url="),
   "El wrapper no debe imponer clientes y sólo puede habilitar el PO Token Provider explícito sobre loopback."
 );
