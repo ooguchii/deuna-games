@@ -17,6 +17,11 @@
   margin-top: 0;
 }
 
+.videoColumn {
+  display: grid;
+  gap: 18px;
+}
+
 .videoColumn > section {
   margin-top: 0;
 }

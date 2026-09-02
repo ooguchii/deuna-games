@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import GameEditorFormActions from "@/components/admin/GameEditorFormActions";
 import GameMediaUploadForm from "@/components/admin/GameMediaUploadForm";
+import GamePreviewAutoUrlEditor from "@/components/admin/GamePreviewAutoUrlEditor";
 
 import adminStyles from "../../app/admin/admin.module.css";
 import styles from "./GameMultimediaEditor.module.css";
@@ -141,6 +142,10 @@ export default function GameMultimediaEditor({
       </div>
 
       <div className={`${styles.column} ${styles.videoColumn}`}>
+        <GamePreviewAutoUrlEditor
+          slug={slug}
+          revision={revision}
+        />
         {videoEditor}
       </div>
     </div>
