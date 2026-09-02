@@ -17,7 +17,9 @@ import {
 
 import {
   MAX_PREVIEW_DURATION_SECONDS,
+  PREVIEW_QUALITY_OPTIONS,
   parsePreviewTrimWindow,
+  type PreviewQualityId,
   type PreviewTrimWindow,
 } from "@/lib/media/preview-video-policy";
 
@@ -27,9 +29,19 @@ const MIN_SELECTION_SECONDS = 0.1;
 const KEYBOARD_STEP_SECONDS = 0.1;
 const KEYBOARD_LARGE_STEP_SECONDS = 1;
 
+type DragEdge = "start" | "end";
+
+type PendingDrag = {
+  edge: DragEdge;
+  value: number;
+};
+
 type VideoTrimEditorProps = {
   src: string;
   sourceLabel: string;
+  quality: PreviewQualityId;
+  qualityDisabled?: boolean;
+  onQualityChange: (quality: PreviewQualityId) => void;
   onTrimChange: (
     trim: PreviewTrimWindow | null
   ) => void;
@@ -66,10 +78,15 @@ function formatTime(value: number) {
 export default function VideoTrimEditor({
   src,
   sourceLabel,
+  quality,
+  qualityDisabled = false,
+  onQualityChange,
   onTrimChange,
 }: VideoTrimEditorProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const timelineRef = useRef<HTMLDivElement>(null);
+  const dragFrameRef = useRef<number | null>(null);
+  const pendingDragRef = useRef<PendingDrag | null>(null);
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [startSeconds, setStartSeconds] = useState(0);
@@ -91,6 +108,15 @@ export default function VideoTrimEditor({
     onTrimChange(trim);
   }, [onTrimChange, trim]);
 
+  useEffect(() => {
+    return () => {
+      if (dragFrameRef.current !== null) {
+        cancelAnimationFrame(dragFrameRef.current);
+      }
+      pendingDragRef.current = null;
+    };
+  }, []);
+
   function seek(value: number) {
     const video = videoRef.current;
     if (!video || duration <= 0) return;
@@ -104,7 +130,10 @@ export default function VideoTrimEditor({
     setCurrentTime(next);
   }
 
-  function updateStart(value: number) {
+  function updateStart(
+    value: number,
+    syncVideo = true
+  ) {
     if (duration <= 0 || endSeconds <= 0) return;
 
     const minimum = Math.max(
@@ -121,10 +150,13 @@ export default function VideoTrimEditor({
 
     setStartSeconds(next);
     setLoopSelection(false);
-    seek(next);
+    if (syncVideo) seek(next);
   }
 
-  function updateEnd(value: number) {
+  function updateEnd(
+    value: number,
+    syncVideo = true
+  ) {
     if (duration <= 0) return;
 
     const minimum = Math.min(
@@ -141,7 +173,7 @@ export default function VideoTrimEditor({
 
     setEndSeconds(next);
     setLoopSelection(false);
-    seek(next);
+    if (syncVideo) seek(next);
   }
 
   function markStartAtPlayhead() {
@@ -262,37 +294,62 @@ export default function VideoTrimEditor({
     seek(positionFromPointer(event));
   }
 
-  function handleStartPointerMove(
-    event: PointerEvent<HTMLButtonElement>
-  ) {
-    if (
-      !event.currentTarget.hasPointerCapture(
-        event.pointerId
-      )
-    ) {
-      return;
+  function applyDrag(edge: DragEdge, value: number) {
+    if (edge === "start") {
+      updateStart(value, false);
+    } else {
+      updateEnd(value, false);
     }
-
-    updateStart(positionFromPointer(event));
   }
 
-  function handleEndPointerMove(
-    event: PointerEvent<HTMLButtonElement>
+  function scheduleDrag(edge: DragEdge, value: number) {
+    pendingDragRef.current = { edge, value };
+    if (dragFrameRef.current !== null) return;
+
+    dragFrameRef.current = requestAnimationFrame(() => {
+      dragFrameRef.current = null;
+      const pending = pendingDragRef.current;
+      pendingDragRef.current = null;
+      if (pending) applyDrag(pending.edge, pending.value);
+    });
+  }
+
+  function handlePointerMove(
+    event: PointerEvent<HTMLButtonElement>,
+    edge: DragEdge
   ) {
-    if (
-      !event.currentTarget.hasPointerCapture(
-        event.pointerId
-      )
-    ) {
+    if (!event.currentTarget.hasPointerCapture(event.pointerId)) {
       return;
     }
 
-    updateEnd(positionFromPointer(event));
+    scheduleDrag(edge, positionFromPointer(event));
+  }
+
+  function finishPointerDrag(
+    event: PointerEvent<HTMLButtonElement>,
+    edge: DragEdge
+  ) {
+    if (dragFrameRef.current !== null) {
+      cancelAnimationFrame(dragFrameRef.current);
+      dragFrameRef.current = null;
+    }
+    pendingDragRef.current = null;
+
+    const value = positionFromPointer(event);
+    if (edge === "start") {
+      updateStart(value, true);
+    } else {
+      updateEnd(value, true);
+    }
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
   }
 
   function handleSliderKey(
     event: KeyboardEvent<HTMLButtonElement>,
-    edge: "start" | "end"
+    edge: DragEdge
   ) {
     if (
       event.key !== "ArrowLeft" &&
@@ -339,6 +396,7 @@ export default function VideoTrimEditor({
           playsInline
           preload="metadata"
           disablePictureInPicture
+          disableRemotePlayback
           controls={false}
           onClick={togglePlayback}
           onLoadedMetadata={(event) => {
@@ -484,7 +542,15 @@ export default function VideoTrimEditor({
                   event.pointerId
                 );
               }}
-              onPointerMove={handleStartPointerMove}
+              onPointerMove={(event) =>
+                handlePointerMove(event, "start")
+              }
+              onPointerUp={(event) =>
+                finishPointerDrag(event, "start")
+              }
+              onPointerCancel={(event) =>
+                finishPointerDrag(event, "start")
+              }
               onKeyDown={(event) =>
                 handleSliderKey(event, "start")
               }
@@ -515,7 +581,15 @@ export default function VideoTrimEditor({
                   event.pointerId
                 );
               }}
-              onPointerMove={handleEndPointerMove}
+              onPointerMove={(event) =>
+                handlePointerMove(event, "end")
+              }
+              onPointerUp={(event) =>
+                finishPointerDrag(event, "end")
+              }
+              onPointerCancel={(event) =>
+                finishPointerDrag(event, "end")
+              }
               onKeyDown={(event) =>
                 handleSliderKey(event, "end")
               }
@@ -583,6 +657,39 @@ export default function VideoTrimEditor({
             </button>
           </div>
 
+          <fieldset
+            className={styles.qualityPanel}
+            disabled={qualityDisabled}
+          >
+            <legend>Calidad del preview guardado</legend>
+            <p>
+              La fuente remota sigue usando extracción parcial. Este ajuste controla el WebM final; si un tramo supera el límite de 3 MB, DeUna reduce calidad automáticamente antes de fallar.
+            </p>
+            <div className={styles.qualityGrid}>
+              {PREVIEW_QUALITY_OPTIONS.map((option) => (
+                <label
+                  key={option.id}
+                  className={`${styles.qualityOption} ${quality === option.id ? styles.qualityOptionActive : ""}`}
+                >
+                  <input
+                    type="radio"
+                    name="preview-quality"
+                    value={option.id}
+                    checked={quality === option.id}
+                    onChange={() => onQualityChange(option.id)}
+                  />
+                  <span>
+                    <strong>{option.label}</strong>
+                    <small>
+                      Hasta {option.targetWidth} px · {option.targetFps} FPS
+                    </small>
+                  </span>
+                  <em>{option.detail}</em>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+
           <div className={styles.numericControls}>
             <label>
               <span>Inicio exacto (s)</span>
@@ -627,7 +734,7 @@ export default function VideoTrimEditor({
           </div>
 
           <p className={styles.help}>
-            Arrastra IN y OUT sobre la línea de tiempo. El recorte puede durar hasta 30 segundos. También puedes mover el cabezal y marcar el inicio o final en el punto exacto que estás viendo.
+            Arrastra IN y OUT sobre la línea de tiempo. Durante el arrastre sólo se mueve la selección; el video busca la posición al soltar para evitar solicitudes remotas innecesarias. El recorte puede durar hasta 30 segundos.
           </p>
         </>
       )}
