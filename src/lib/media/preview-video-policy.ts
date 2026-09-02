@@ -4,17 +4,14 @@ export const MAX_PREVIEW_SOURCE_POSITION_SECONDS = 86_400;
 export const MIN_PREVIEW_VIEWPORT_ZOOM = 1;
 export const MAX_PREVIEW_VIEWPORT_ZOOM = 3;
 
-export const PREVIEW_QUALITY_IDS = [
-  "performance",
-  "balanced",
-  "high",
-] as const;
+export const PREVIEW_QUALITY_IDS = ["720p", "1080p"] as const;
+export type PreviewQualityId = (typeof PREVIEW_QUALITY_IDS)[number];
+export const DEFAULT_PREVIEW_QUALITY: PreviewQualityId = "1080p";
 
-export type PreviewQualityId =
-  (typeof PREVIEW_QUALITY_IDS)[number];
-
-export const DEFAULT_PREVIEW_QUALITY: PreviewQualityId =
-  "balanced";
+export const PREVIEW_FPS_OPTIONS = [24, 25, 30, 50, 60] as const;
+export type PreviewFps = (typeof PREVIEW_FPS_OPTIONS)[number];
+export const DEFAULT_PREVIEW_FPS: PreviewFps = 50;
+export const MAX_PREVIEW_FPS: PreviewFps = 60;
 
 export type PreviewQualityOption = {
   id: PreviewQualityId;
@@ -26,51 +23,25 @@ export type PreviewQualityOption = {
 
 export const PREVIEW_QUALITY_OPTIONS: readonly PreviewQualityOption[] = [
   {
-    id: "performance",
-    label: "Ligera",
-    detail: "Menor consumo y peso. Ideal para muchas tarjetas o equipos modestos.",
-    targetWidth: 360,
-    targetFps: 12,
+    id: "720p",
+    label: "720p",
+    detail: "HD liviano. Mantiene el fotograma completo y reduce transferencia frente a 1080p.",
+    targetWidth: 1280,
+    targetFps: MAX_PREVIEW_FPS,
   },
   {
-    id: "balanced",
-    label: "Equilibrada",
-    detail: "Recomendada. Prioriza fluidez, nitidez y carga rápida.",
-    targetWidth: 480,
-    targetFps: 15,
-  },
-  {
-    id: "high",
-    label: "Alta",
-    detail: "Más detalle y movimiento, con mayor costo de codificación y descarga.",
-    targetWidth: 640,
-    targetFps: 20,
+    id: "1080p",
+    label: "1080p",
+    detail: "Full HD. Resolución recomendada para Hero, Card y pantallas grandes.",
+    targetWidth: 1920,
+    targetFps: MAX_PREVIEW_FPS,
   },
 ];
 
-export const PREVIEW_HERO_QUALITY_OPTIONS: readonly PreviewQualityOption[] = [
-  {
-    id: "performance",
-    label: "Ligera",
-    detail: "Hero liviano. Reduce transferencia manteniendo un fondo en movimiento nítido.",
-    targetWidth: 640,
-    targetFps: 15,
-  },
-  {
-    id: "balanced",
-    label: "Equilibrada",
-    detail: "Recomendada para inicio. Buen detalle panorámico sin disparar peso ni CPU.",
-    targetWidth: 960,
-    targetFps: 18,
-  },
-  {
-    id: "high",
-    label: "Alta",
-    detail: "Mayor detalle para pantallas grandes, siempre sujeto al límite seguro de 3 MB.",
-    targetWidth: 1280,
-    targetFps: 20,
-  },
-];
+// Hero y Card comparten exactamente la misma política de master. La diferencia
+// visual entre destinos se guarda como viewport metadata-only y nunca como una
+// segunda variante física del video.
+export const PREVIEW_HERO_QUALITY_OPTIONS = PREVIEW_QUALITY_OPTIONS;
 
 export const PREVIEW_VIEWPORT_ASPECT_IDS = [
   "source",
@@ -134,10 +105,26 @@ export function parsePreviewQuality(
   const normalized = value?.trim().toLowerCase();
   if (!normalized) return null;
 
-  return PREVIEW_QUALITY_IDS.includes(
-    normalized as PreviewQualityId
-  )
-    ? (normalized as PreviewQualityId)
+  if (PREVIEW_QUALITY_IDS.includes(normalized as PreviewQualityId)) {
+    return normalized as PreviewQualityId;
+  }
+
+  // Compatibilidad de entrada con formularios anteriores. Los perfiles viejos
+  // ya no son política activa y se normalizan a una resolución explícita.
+  if (normalized === "performance" || normalized === "balanced") return "720p";
+  if (normalized === "high") return "1080p";
+  return null;
+}
+
+export function parsePreviewFps(
+  value: string | number | null | undefined
+): PreviewFps | null {
+  if (value === null || value === undefined || String(value).trim() === "") {
+    return null;
+  }
+  const parsed = Number(value);
+  return PREVIEW_FPS_OPTIONS.includes(parsed as PreviewFps)
+    ? (parsed as PreviewFps)
     : null;
 }
 
@@ -268,13 +255,11 @@ export function parsePreviewTrimWindow(
 
   const startMilliseconds = Math.round(rawStart * 1_000);
   const endMilliseconds = Math.round(rawEnd * 1_000);
-  const durationMilliseconds =
-    endMilliseconds - startMilliseconds;
+  const durationMilliseconds = endMilliseconds - startMilliseconds;
 
   if (
     durationMilliseconds <= 0 ||
-    durationMilliseconds >
-      MAX_PREVIEW_DURATION_SECONDS * 1_000
+    durationMilliseconds > MAX_PREVIEW_DURATION_SECONDS * 1_000
   ) {
     return null;
   }
