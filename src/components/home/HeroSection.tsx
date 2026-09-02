@@ -25,7 +25,10 @@ import {
 import FramedVideo from "@/components/ui/FramedVideo";
 import type { HomeCopy } from "@/data/home-config";
 import { normalizeGameImageViewport } from "@/lib/media/image-viewport";
-import { resolveGameHeroVideo } from "@/lib/media/game-video-media";
+import {
+  resolveGameHeroVideo,
+  resolveGameHeroVideoPlayback,
+} from "@/lib/media/game-video-media";
 import {
   resolveHeroImageTuning,
   type HeroImageTuning,
@@ -37,6 +40,7 @@ import styles from "./HeroSection.module.css";
 
 const AUTOPLAY_TIME = 6500;
 const MOBILE_ART_MEDIA = "(max-width: 520px)";
+const FINE_HOVER_MEDIA = "(hover: hover) and (pointer: fine)";
 
 type TrackSlide = {
   key: string;
@@ -52,6 +56,10 @@ type ResponsiveArtworkProps = {
   ambient?: boolean;
   style?: CSSProperties;
 };
+
+function canUseFineHover() {
+  return typeof window !== "undefined" && window.matchMedia(FINE_HOVER_MEDIA).matches;
+}
 
 function ResponsiveArtwork({
   game,
@@ -187,6 +195,22 @@ const HeroSlide = forwardRef<HTMLElement, HeroSlideProps>(
   ) {
     const accessible = active && !clone;
     const hasArtwork = Boolean(game.heroImage || game.coverImage);
+    const hoverPlayback = resolveGameHeroVideoPlayback(game) === "hover";
+    const [hoverPreviewActive, setHoverPreviewActive] = useState(false);
+    const videoShouldRender =
+      videoEnabled && (!hoverPlayback || hoverPreviewActive);
+
+    function startHoverPreview() {
+      if (hoverPlayback && accessible && canUseFineHover()) {
+        setHoverPreviewActive(true);
+      }
+    }
+
+    function stopHoverPreview() {
+      if (hoverPlayback) {
+        setHoverPreviewActive(false);
+      }
+    }
 
     return (
       <article
@@ -196,6 +220,15 @@ const HeroSlide = forwardRef<HTMLElement, HeroSlideProps>(
         aria-roledescription={accessible ? "slide" : undefined}
         aria-label={accessible ? `${logicalIndex + 1} de ${total}` : undefined}
         aria-hidden={!accessible}
+        onMouseEnter={startHoverPreview}
+        onMouseLeave={stopHoverPreview}
+        onFocusCapture={startHoverPreview}
+        onBlurCapture={(event) => {
+          const nextTarget = event.relatedTarget;
+          if (!nextTarget || !event.currentTarget.contains(nextTarget as Node)) {
+            stopHoverPreview();
+          }
+        }}
       >
         <div className={styles.media}>
           {hasArtwork ? (
@@ -211,7 +244,7 @@ const HeroSlide = forwardRef<HTMLElement, HeroSlideProps>(
 
           <HeroVideoLayer
             game={game}
-            enabled={videoEnabled}
+            enabled={videoShouldRender}
           />
 
           {imageEffect && (
