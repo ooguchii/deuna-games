@@ -302,6 +302,14 @@ export default function VideoTrimEditor({
     }
   }
 
+  function clearPendingDrag() {
+    if (dragFrameRef.current !== null) {
+      cancelAnimationFrame(dragFrameRef.current);
+      dragFrameRef.current = null;
+    }
+    pendingDragRef.current = null;
+  }
+
   function scheduleDrag(edge: DragEdge, value: number) {
     pendingDragRef.current = { edge, value };
     if (dragFrameRef.current !== null) return;
@@ -329,11 +337,7 @@ export default function VideoTrimEditor({
     event: PointerEvent<HTMLButtonElement>,
     edge: DragEdge
   ) {
-    if (dragFrameRef.current !== null) {
-      cancelAnimationFrame(dragFrameRef.current);
-      dragFrameRef.current = null;
-    }
-    pendingDragRef.current = null;
+    clearPendingDrag();
 
     const value = positionFromPointer(event);
     if (edge === "start") {
@@ -342,6 +346,18 @@ export default function VideoTrimEditor({
       updateEnd(value, true);
     }
 
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  }
+
+  function cancelPointerDrag(
+    event: PointerEvent<HTMLButtonElement>
+  ) {
+    // pointercancel puede llegar sin coordenadas fiables (cambio de ventana,
+    // gesto del SO, etc.). Conservamos el último estado visual aplicado y no
+    // provocamos un seek remoto inesperado.
+    clearPendingDrag();
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
@@ -548,9 +564,7 @@ export default function VideoTrimEditor({
               onPointerUp={(event) =>
                 finishPointerDrag(event, "start")
               }
-              onPointerCancel={(event) =>
-                finishPointerDrag(event, "start")
-              }
+              onPointerCancel={cancelPointerDrag}
               onKeyDown={(event) =>
                 handleSliderKey(event, "start")
               }
@@ -587,9 +601,7 @@ export default function VideoTrimEditor({
               onPointerUp={(event) =>
                 finishPointerDrag(event, "end")
               }
-              onPointerCancel={(event) =>
-                finishPointerDrag(event, "end")
-              }
+              onPointerCancel={cancelPointerDrag}
               onKeyDown={(event) =>
                 handleSliderKey(event, "end")
               }
