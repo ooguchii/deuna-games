@@ -7,6 +7,9 @@ import type {
 import {
   PUBLIC_PAGES_EDITORIAL_KEY,
 } from "@/data/public-pages-config";
+import {
+  reconcileEditorialImageDeletions,
+} from "@/lib/media/editorial-media-library";
 
 import {
   hashEditorialPayload,
@@ -19,6 +22,9 @@ import {
   adminQuery,
   withAdminTransaction,
 } from "./database";
+import {
+  listGameImageReferences,
+} from "./game-media-integrity";
 import {
   verifyAdminSession,
 } from "./session";
@@ -46,6 +52,11 @@ type PublicationItemRow = {
   published_from_revision: number | null;
   publication_number: number;
   published_at: Date;
+  public_visible: boolean;
+};
+
+type PublishedGamePayloadRow = {
+  published_payload: unknown;
   public_visible: boolean;
 };
 
@@ -159,6 +170,50 @@ async function assertActor(
     throw new Error(
       "La sesión administrativa no coincide con el actor."
     );
+  }
+}
+
+export async function getPublishedGameImageReferences(
+  key: string
+) {
+  await verifyAdminSession();
+
+  const result = await adminQuery<PublishedGamePayloadRow>(
+    `SELECT
+       published_payload,
+       public_visible
+     FROM deuna_admin.editorial_items
+     WHERE item_type = 'game'
+       AND item_key = $1
+     LIMIT 1`,
+    [key]
+  );
+  const row = result.rows[0];
+
+  if (!row?.public_visible) return [];
+
+  try {
+    return listGameImageReferences(
+      parseEditorialPayload("game", row.published_payload)
+    );
+  } catch {
+    return [];
+  }
+}
+
+async function reconcilePublishedGameImageDeletions(
+  key: string
+) {
+  try {
+    const references = await getPublishedGameImageReferences(key);
+    await reconcileEditorialImageDeletions(
+      key,
+      references,
+      references
+    );
+  } catch {
+    // La publicación ya fue confirmada en PostgreSQL. Una limpieza física
+    // fallida queda pendiente y se reintentará al volver a abrir Multimedia.
   }
 }
 
@@ -549,17 +604,26 @@ export function getPublicPagesConfigPublicationState() {
   );
 }
 
-export function publishGameDraft(
+export async function publishGameDraft(
   key: string,
   expectedRevision: number,
   actorUserId: string
 ) {
-  return publishEditorialDraft(
+  const result = await publishEditorialDraft(
     "game",
     key,
     expectedRevision,
     actorUserId
   );
+
+  if (
+    result.outcome === "published" ||
+    result.outcome === "no_changes"
+  ) {
+    await reconcilePublishedGameImageDeletions(key);
+  }
+
+  return result;
 }
 
 export function publishUpdateDraft(
