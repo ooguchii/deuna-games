@@ -240,8 +240,22 @@ export async function POST(
     current,
     publishedImageReferences
   );
-  const imageResource = findEditorialMediaResource(resources, resource, "image");
-  const videoResource = findEditorialMediaResource(resources, resource, "video");
+  const imageResourceMatch = findEditorialMediaResource(
+    resources,
+    resource,
+    "image"
+  );
+  const imageResource = imageResourceMatch?.kind === "image"
+    ? imageResourceMatch
+    : undefined;
+  const videoResourceMatch = findEditorialMediaResource(
+    resources,
+    resource,
+    "video"
+  );
+  const videoResource = videoResourceMatch?.kind === "video"
+    ? videoResourceMatch
+    : undefined;
   const currentHeroViewport = normalizeGameVideoViewport(
     current.videoMedia?.hero?.viewport ?? DEFAULT_PREVIEW_VIEWPORT
   );
