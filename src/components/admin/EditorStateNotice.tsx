@@ -92,6 +92,21 @@ const notices = {
     message:
       "Imagen normalizada a WebP seguro, almacenada y guardada en el borrador. Aún no fue publicada.",
   },
+  "recurso-subido": {
+    kind: "success",
+    message:
+      "Recurso almacenado de forma segura en la biblioteca compartida. Todavía no modifica ningún destino hasta que lo asignes.",
+  },
+  "recurso-asignado": {
+    kind: "success",
+    message:
+      "Recurso asignado desde la biblioteca compartida sin duplicar ni recodificar el archivo físico.",
+  },
+  "recurso-invalido": {
+    kind: "error",
+    message:
+      "Ese recurso ya no está disponible o no supera la validación del almacén editorial. Recarga Multimedia y selecciona otro archivo.",
+  },
   "preview-subido": {
     kind: "success",
     message:
