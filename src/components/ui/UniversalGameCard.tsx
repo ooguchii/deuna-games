@@ -368,6 +368,7 @@ export default function UniversalGameCard({
             imageSrc={game.coverImage}
             imageAlt={game.imageAlt}
             previewClip={resolvedPreview?.src}
+            previewViewport={resolvedPreview?.viewport}
             active={previewActive}
             sizes="(max-width: 560px) 82vw, (max-width: 900px) 48vw, (max-width: 1250px) 30vw, 20vw"
             fallbackClassName={
