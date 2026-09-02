@@ -25,6 +25,8 @@ import {
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+type PreviewSaveTarget = GameVideoTarget | "library";
+
 const legacyFields = ["expectedRevision", "sourceToken", "startSeconds", "endSeconds"] as const;
 const qualityFields = [...legacyFields, "quality"] as const;
 const viewportFields = [
@@ -39,10 +41,10 @@ const targetViewportFields = [
   "target",
 ] as const;
 
-function previewTarget(value: string | null): GameVideoTarget | null {
+function previewTarget(value: string | null): PreviewSaveTarget | null {
   if (value === null || value.trim() === "") return "card";
   const normalized = value.trim().toLowerCase();
-  return normalized === "hero" || normalized === "card"
+  return normalized === "hero" || normalized === "card" || normalized === "library"
     ? normalized
     : null;
 }
@@ -106,8 +108,17 @@ export async function POST(request: NextRequest, context: { params: Promise<{ sl
         prepared.filePath,
         prepared.trim,
         quality,
-        target
+        target === "library" ? "hero" : target
       );
+
+      if (target === "library") {
+        await removeStagedEditorialPreviewSource(sourceToken);
+        return adminRedirect(
+          authorized.adminOrigin,
+          `${redirectTarget}?estado=recurso-subido&seccion=multimedia`
+        );
+      }
+
       const media = withSavedGameVideoClip(
         item.payload,
         target,
