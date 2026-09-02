@@ -1,15 +1,12 @@
-import type { ReactNode } from "react";
-
 import GameMultimediaWorkspaceContextual from "@/components/admin/GameMultimediaWorkspaceContextual";
+import GameVideoLibraryEditor from "@/components/admin/GameVideoLibraryEditor";
 
 type GameMultimediaEditorProps = {
   slug: string;
   revision: number;
-  mediaAction: string;
   coverImage?: string;
   heroImage?: string;
   screenshots?: readonly string[];
-  videoEditor: ReactNode;
 };
 
 export default function GameMultimediaEditor({
@@ -18,7 +15,6 @@ export default function GameMultimediaEditor({
   coverImage,
   heroImage,
   screenshots = [],
-  videoEditor,
 }: GameMultimediaEditorProps) {
   return (
     <GameMultimediaWorkspaceContextual
@@ -28,7 +24,12 @@ export default function GameMultimediaEditor({
       initialCoverImage={coverImage}
       initialHeroImage={heroImage}
       initialScreenshots={screenshots}
-      videoEditor={videoEditor}
+      videoEditor={
+        <GameVideoLibraryEditor
+          slug={slug}
+          revision={revision}
+        />
+      }
     />
   );
 }
