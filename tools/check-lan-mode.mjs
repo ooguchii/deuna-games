@@ -15,6 +15,10 @@ const secureSetup = await readFile(
   "tools/setup-lan-https.mjs",
   "utf8"
 );
+const nextRunner = await readFile(
+  "tools/run-next.mjs",
+  "utf8"
+);
 const nextConfig = await readFile(
   "next.config.ts",
   "utf8"
@@ -148,6 +152,34 @@ assert(
   "La cookie administrativa debe marcarse Secure también en HTTPS LAN de desarrollo."
 );
 
+assert(
+  nextRunner.includes("startAutomaticDevelopmentWorker") &&
+    nextRunner.includes("reserveLoopbackPort") &&
+    nextRunner.includes('randomBytes(32).toString("hex")') &&
+    nextRunner.includes("ops/worker/media-import-worker.mjs") &&
+    nextRunner.includes("DEUNA_MEDIA_IMPORT_WORKER_URL") &&
+    nextRunner.includes("DEUNA_MEDIA_IMPORT_WORKER_TOKEN"),
+  "El launcher de desarrollo debe levantar automáticamente un worker multimedia efímero sobre loopback para habilitar lazy preview."
+);
+assert(
+  nextRunner.includes("developmentMediaEnvFromFiles") &&
+    nextRunner.includes('".env.development.local"') &&
+    nextRunner.includes('".env.local"') &&
+    nextRunner.includes("configuredDevelopmentWorker"),
+  "El launcher debe respetar una configuración multimedia explícita antes de crear el worker automático."
+);
+assert(
+  nextRunner.includes('process.once("SIGINT", shutdown)') &&
+    nextRunner.includes('process.once("SIGTERM", shutdown)') &&
+    nextRunner.includes("stopChild(worker)"),
+  "El worker multimedia de desarrollo debe apagarse junto con Next y no quedar huérfano."
+);
+assert(
+  !nextRunner.includes("console.log(token") &&
+    !nextRunner.includes("console.error(token"),
+  "El token efímero del worker local nunca debe imprimirse en consola."
+);
+
 console.log(
-  "LAN mode invariants: OK (HTTP público conservador + HTTPS LAN con admin, certificado privado y cookie Secure)."
+  "LAN mode invariants: OK (HTTP público conservador + HTTPS LAN con admin, certificado privado, cookie Secure y worker multimedia lazy efímero en desarrollo)."
 );
