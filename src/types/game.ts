@@ -115,9 +115,13 @@ export type GameVideoViewport = {
   aspect: GameVideoViewportAspect;
 };
 
+export type GameHeroVideoPlayback = "always" | "hover";
+
 export type GameHeroVideo = {
   clip: string;
   viewport: GameVideoViewport;
+  /* Ausente conserva compatibilidad histórica: video siempre activo. */
+  playback?: GameHeroVideoPlayback;
 };
 
 export type GameCardVideo =
