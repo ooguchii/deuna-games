@@ -12,6 +12,7 @@
     "mobile": "npm run lan",
     "mobile:secure:setup": "node ./tools/setup-lan-https.mjs",
     "mobile:secure": "node ./tools/run-lan-https.mjs",
+    "media:youtube:setup": "node ./tools/setup-youtube-pot-provider.mjs",
     "local:setup": "bash ./tools/setup-local-server.sh",
     "dev:webpack": "node ./tools/run-next.mjs dev --webpack --hostname 127.0.0.1 --port 3000",
     "db:migrate": "node --env-file=.env.admin-migration.local ./tools/admin/migrate.ts",
