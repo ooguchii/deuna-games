@@ -50,17 +50,14 @@ const providerHosts = {
   youtube: ["youtube.com", "youtu.be", "youtube-nocookie.com"], facebook: ["facebook.com", "fb.watch", "fb.com"],
   instagram: ["instagram.com", "instagr.am"], tiktok: ["tiktok.com"], vimeo: ["vimeo.com"],
   x: ["x.com", "twitter.com", "t.co"], twitch: ["twitch.tv"], dailymotion: ["dailymotion.com", "dai.ly"],
-  streamable: ["streamable.com"], kick: ["kick.com"], reddit: ["reddit.com", "redd.it"], rumble: ["rumble.com"],
-  odysee: ["odysee.com"], bilibili: ["bilibili.com", "b23.tv"], vk: ["vk.com"], imgur: ["imgur.com"],
-  pinterest: ["pinterest.com", "pin.it"], tumblr: ["tumblr.com"], snapchat: ["snapchat.com"], loom: ["loom.com"],
-  wistia: ["wistia.com", "wistia.net", "wi.st"], nicovideo: ["nicovideo.jp", "nico.ms"],
+  streamable: ["streamable.com"], kick: ["kick.com"], reddit: ["reddit.com", "redd.it"],
+  pinterest: ["pinterest.com", "pin.it"], snapchat: ["snapchat.com"],
 };
 
 const providerLabels = {
   youtube: "YouTube", facebook: "Facebook", instagram: "Instagram", tiktok: "TikTok", vimeo: "Vimeo",
   x: "X / Twitter", twitch: "Twitch", dailymotion: "Dailymotion", streamable: "Streamable", kick: "Kick",
-  reddit: "Reddit", rumble: "Rumble", odysee: "Odysee", bilibili: "Bilibili", vk: "VK", imgur: "Imgur",
-  pinterest: "Pinterest", tumblr: "Tumblr", snapchat: "Snapchat", loom: "Loom", wistia: "Wistia", nicovideo: "Niconico",
+  reddit: "Reddit", pinterest: "Pinterest", snapchat: "Snapchat",
 };
 
 const blockedAddresses = new BlockList();
