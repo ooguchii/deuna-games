@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 import {
   parseEditorialPayload as parseCoreEditorialPayload,
 } from "./content-validation-core.ts";
@@ -8,18 +10,39 @@ import type {
 
 export * from "./content-validation-core.ts";
 
-function withoutLegacyExternalPreview(payload: unknown) {
+const imageViewportSchema = z
+  .object({
+    x: z.number().min(0).max(1),
+    y: z.number().min(0).max(1),
+    zoom: z.number().min(1).max(3),
+  })
+  .strict();
+
+const imageMediaSchema = z
+  .object({
+    cover: imageViewportSchema.optional(),
+    hero: imageViewportSchema.optional(),
+    card: imageViewportSchema.optional(),
+  })
+  .strict();
+
+function splitGameCompatibilityPayload(payload: unknown) {
   if (
     typeof payload !== "object" ||
     payload === null ||
     Array.isArray(payload)
   ) {
-    return payload;
+    return { core: payload, imageMedia: undefined };
   }
 
   const clean = {
     ...(payload as Record<string, unknown>),
   };
+  const imageMedia = clean.imageMedia === undefined
+    ? undefined
+    : imageMediaSchema.parse(clean.imageMedia);
+
+  delete clean.imageMedia;
 
   // Compatibilidad de lectura únicamente. Estas claves pertenecen a las
   // generaciones antiguas de previews externos y ya no forman parte del
@@ -28,7 +51,7 @@ function withoutLegacyExternalPreview(payload: unknown) {
   delete clean.youtubePreview;
   delete clean.directPreview;
 
-  return clean;
+  return { core: clean, imageMedia };
 }
 
 export function parseEditorialPayload<
@@ -37,10 +60,18 @@ export function parseEditorialPayload<
   type: Type,
   payload: unknown
 ): EditorialPayloadByType[Type] {
-  return parseCoreEditorialPayload(
-    type,
-    type === "game"
-      ? withoutLegacyExternalPreview(payload)
-      : payload
-  );
+  if (type !== "game") {
+    return parseCoreEditorialPayload(
+      type,
+      payload
+    );
+  }
+
+  const { core, imageMedia } = splitGameCompatibilityPayload(payload);
+  const game = parseCoreEditorialPayload("game", core);
+
+  return {
+    ...game,
+    ...(imageMedia ? { imageMedia } : {}),
+  } as EditorialPayloadByType[Type];
 }
