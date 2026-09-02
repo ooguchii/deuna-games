@@ -24,10 +24,6 @@ const previewFrameOrigins = [
   "https://geo.dailymotion.com",
   "https://streamable.com",
   "https://player.kick.com",
-  "https://www.loom.com",
-  "https://fast.wistia.net",
-  "https://player.bilibili.com",
-  "https://embed.nicovideo.jp",
 ].join(" ");
 
 const contentSecurityPolicy = [
