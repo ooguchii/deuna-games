@@ -25,7 +25,7 @@ const providers: Record<PreviewProviderId, PreviewProviderSpec> = {
   twitch: { id: "twitch", label: "Twitch", placeholder: "twitch.tv/videos/... · clips.twitch.tv/...", hosts: ["twitch.tv"], player: "twitch" },
   dailymotion: { id: "dailymotion", label: "Dailymotion", placeholder: "dailymotion.com/video/... · dai.ly/...", hosts: ["dailymotion.com", "dai.ly"], player: "dailymotion" },
   streamable: { id: "streamable", label: "Streamable", placeholder: "streamable.com/abc123", hosts: ["streamable.com"], player: "streamable" },
-  kick: { id: "kick", label: "Kick", placeholder: "kick.com/...", hosts: ["kick.com"], player: "kick" },
+  kick: { id: "kick", label: "Kick", placeholder: "kick.com/canal · VOD/clip también se importa", hosts: ["kick.com"], player: "kick" },
   reddit: { id: "reddit", label: "Reddit", placeholder: "reddit.com/... · redd.it/...", hosts: ["reddit.com", "redd.it"], player: "native" },
   rumble: { id: "rumble", label: "Rumble", placeholder: "rumble.com/v...", hosts: ["rumble.com"], player: "native" },
   odysee: { id: "odysee", label: "Odysee", placeholder: "odysee.com/@canal:1/video:2", hosts: ["odysee.com"], player: "native" },
@@ -36,7 +36,7 @@ const providers: Record<PreviewProviderId, PreviewProviderSpec> = {
   tumblr: { id: "tumblr", label: "Tumblr", placeholder: "tumblr.com/...", hosts: ["tumblr.com"], player: "native" },
   snapchat: { id: "snapchat", label: "Snapchat", placeholder: "snapchat.com/...", hosts: ["snapchat.com"], player: "native" },
   loom: { id: "loom", label: "Loom", placeholder: "loom.com/share/...", hosts: ["loom.com"], player: "loom" },
-  wistia: { id: "wistia", label: "Wistia", placeholder: "wistia.com/... · wistia.net/...", hosts: ["wistia.com", "wistia.net"], player: "wistia" },
+  wistia: { id: "wistia", label: "Wistia", placeholder: "wistia.com/... · wistia.net/... · wi.st/...", hosts: ["wistia.com", "wistia.net", "wi.st"], player: "wistia" },
   nicovideo: { id: "nicovideo", label: "Niconico", placeholder: "nicovideo.jp/watch/... · nico.ms/...", hosts: ["nicovideo.jp", "nico.ms"], player: "nicovideo" },
 };
 
@@ -125,13 +125,15 @@ export function buildPreviewProviderEmbed(
   switch (provider) {
     case "youtube": {
       const id = youtubeId(url);
-      return id ? { src: `https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}?controls=1&rel=0`, title: "Reproductor de YouTube" } : null;
+      return id ? { src: `https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}?controls=1&playsinline=1&rel=0`, title: "Reproductor de YouTube" } : null;
     }
     case "facebook":
       return { src: `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(normalizedUrl)}&show_text=false&autoplay=false`, title: "Reproductor de Facebook" };
     case "instagram": {
       const match = url.pathname.match(/^\/(reel|reels|p|tv)\/([^/]+)/i);
-      return match ? { src: `https://www.instagram.com/${match[1]}/${encodeURIComponent(match[2]!)}/embed/`, title: "Reproductor de Instagram" } : null;
+      if (!match) return null;
+      const kind = match[1]!.toLowerCase() === "reels" ? "reel" : match[1]!.toLowerCase();
+      return { src: `https://www.instagram.com/${kind}/${encodeURIComponent(match[2]!)}/embed/`, title: "Reproductor de Instagram" };
     }
     case "tiktok": {
       const id = url.pathname.match(/\/video\/(\d+)/)?.[1];
@@ -159,8 +161,10 @@ export function buildPreviewProviderEmbed(
       return id ? { src: `https://streamable.com/e/${encodeURIComponent(id)}`, title: "Reproductor de Streamable" } : null;
     }
     case "kick": {
-      const channel = url.pathname.split("/").filter(Boolean)[0];
-      return channel ? { src: `https://player.kick.com/${encodeURIComponent(channel)}`, title: "Reproductor de Kick" } : null;
+      const segments = url.pathname.split("/").filter(Boolean);
+      return segments.length === 1
+        ? { src: `https://player.kick.com/${encodeURIComponent(segments[0]!)}`, title: "Reproductor en vivo de Kick" }
+        : null;
     }
     case "loom": {
       const id = url.pathname.match(/\/(?:share|embed)\/([A-Za-z0-9]+)/)?.[1];
@@ -168,7 +172,7 @@ export function buildPreviewProviderEmbed(
     }
     case "wistia": {
       const id = url.pathname.match(/(?:iframe|medias)\/([A-Za-z0-9]+)/)?.[1] ?? url.pathname.split("/").filter(Boolean).at(-1);
-      return id ? { src: `https://fast.wistia.net/embed/iframe/${encodeURIComponent(id)}`, title: "Reproductor de Wistia" } : null;
+      return id ? { src: `https://fast.wistia.net/embed/iframe/${encodeURIComponent(id)}?web_component=true`, title: "Reproductor de Wistia" } : null;
     }
     case "bilibili": {
       const bvid = url.pathname.match(/\/video\/(BV[A-Za-z0-9]+)/i)?.[1];
