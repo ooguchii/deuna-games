@@ -157,6 +157,7 @@ const heroVideoSchema = z
   .object({
     clip: localPreviewClipSchema,
     viewport: videoViewportSchema,
+    playback: z.enum(["always", "hover"]).optional(),
   })
   .strict();
 
