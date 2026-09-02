@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import { access, readFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
@@ -59,6 +60,27 @@ assert(
   "X/Y, zoom y relación del encuadre deben validarse estrictamente."
 );
 
+const approvedProviders = [
+  "youtube", "facebook", "instagram", "tiktok", "vimeo", "x", "twitch",
+  "dailymotion", "streamable", "kick", "reddit", "pinterest", "snapchat",
+];
+const retiredProviderResidues = [
+  ["ru", "mble"], ["ody", "see"], ["bili", "bili"], ["v", "k"],
+  ["img", "ur"], ["tum", "blr"], ["lo", "om"], ["wis", "tia"],
+  ["nico", "video"], ["nico", "nico"], ["b23", ".tv"], ["wi", ".st"], ["nico", ".ms"],
+].map((parts) => parts.join(""));
+const residuePattern = `(^|[^a-z0-9])(${retiredProviderResidues.slice(0, 10).join("|")})([^a-z0-9]|$)|${retiredProviderResidues.slice(10).map((value) => value.replace(".", "\\.")).join("|")}`;
+const residueCheck = spawnSync("git", ["grep", "-I", "-n", "-i", "-E", residuePattern, "--", ".", ":!package-lock.json"], {
+  cwd: root,
+  encoding: "utf8",
+});
+assert(
+  residueCheck.status === 1,
+  residueCheck.status === 0
+    ? `Quedaron referencias de proveedores retirados:\n${residueCheck.stdout.trim()}`
+    : `No se pudo verificar la ausencia de residuos de proveedores (git grep terminó con ${residueCheck.status ?? "error"}).`
+);
+
 const cases = {
   youtube: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
   facebook: "https://www.facebook.com/watch/?v=123456789012345",
@@ -71,20 +93,14 @@ const cases = {
   streamable: "https://streamable.com/abc123",
   kick: "https://kick.com/deuna",
   reddit: "https://www.reddit.com/r/gaming/comments/abc123/example/",
-  rumble: "https://rumble.com/v123abc-example.html",
-  odysee: "https://odysee.com/@deuna:1/video:2",
-  bilibili: "https://www.bilibili.com/video/BV1xx411c7mD",
-  vk: "https://vk.com/video-1_123456",
-  imgur: "https://imgur.com/abc123",
   pinterest: "https://www.pinterest.com/pin/123456789/",
-  tumblr: "https://www.tumblr.com/deuna/123456789/example",
   snapchat: "https://www.snapchat.com/spotlight/example",
-  loom: "https://www.loom.com/share/0123456789abcdef0123456789abcdef",
-  wistia: "https://fast.wistia.net/embed/iframe/abc123def4",
-  nicovideo: "https://www.nicovideo.jp/watch/sm12345678",
 };
 
-assert(PREVIEW_PROVIDER_IDS.length === 22, "Deben existir 22 proveedores externos explícitos.");
+assert(
+  PREVIEW_PROVIDER_IDS.join(",") === approvedProviders.join(","),
+  "El catálogo explícito de previews debe contener sólo los proveedores aprobados."
+);
 for (const provider of PREVIEW_PROVIDER_IDS) {
   assert(Boolean(parsePreviewProviderUrl(provider, cases[provider])), `La ruta explícita de ${provider} debe aceptar su propio enlace.`);
   const foreign = provider === "youtube" ? cases.instagram : cases.youtube;
@@ -152,6 +168,10 @@ assert(providerRoute.includes("parsePreviewProviderUrl(provider") && providerRou
 assert(directRoute.includes("createStagedDirectPreviewSource") && !directRoute.includes("createStagedPlatformPreviewSource"), "URL directa debe tener ruta propia y no reutilizar el staging de plataformas.");
 assert(staging.includes("createStagedPlatformPreviewSource") && staging.includes("createStagedDirectPreviewSource") && !staging.includes("parseSupportedPlatformVideoUrl"), "Staging no debe detectar plataformas automáticamente.");
 assert(platformSource.includes("provider: PreviewProviderId") && platformSource.includes("parsePreviewProviderUrl(provider") && workerClient.includes("provider: PreviewProviderId"), "El proveedor explícito debe viajar hasta el worker multimedia.");
+assert(
+  approvedProviders.every((provider) => importWorker.includes(`${provider}:`)),
+  "El worker debe conservar una allowlist explícita para todos los proveedores aprobados."
+);
 
 assert(
   form.includes("VIDEO EDITORIAL · HERO + CARD") &&
