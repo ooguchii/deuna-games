@@ -95,11 +95,6 @@ export type GameImageMedia = {
   cover?: GameImageViewport;
   hero?: GameImageViewport;
   card?: GameImageViewport;
-  /*
-   * La Card puede apuntar a cualquier imagen segura de la biblioteca.
-   * Si falta, conserva compatibilidad usando coverImage como fuente estática.
-   */
-  cardSource?: string;
 };
 
 export type GameVideoViewportAspect =
@@ -174,9 +169,8 @@ export type Game = {
   screenshots?: string[];
 
   /*
-   * imageMedia guarda sólo instrucciones/referencias de presentación. Portada,
-   * Hero y Card pueden reutilizar el mismo archivo físico con encuadres
-   * independientes; cardSource sólo cambia qué imagen usa la Card.
+   * imageMedia guarda sólo instrucciones de presentación. Portada, Hero y
+   * Card pueden reutilizar el mismo archivo físico con encuadres distintos.
    */
   imageMedia?: GameImageMedia;
 
