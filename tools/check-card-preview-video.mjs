@@ -7,14 +7,8 @@ import {
   MAX_PREVIEW_SOURCE_BYTES,
   parsePreviewTrimWindow,
 } from "../src/lib/media/preview-video-policy.ts";
-import {
-  PREVIEW_PROVIDER_IDS,
-  parsePreviewProviderUrl,
-} from "../src/lib/media/preview-providers.ts";
-import {
-  inspectSafeEditorialWebm,
-  MAX_EDITORIAL_PREVIEW_BYTES,
-} from "../src/lib/media/safe-webm.ts";
+import { PREVIEW_PROVIDER_IDS, parsePreviewProviderUrl } from "../src/lib/media/preview-providers.ts";
+import { inspectSafeEditorialWebm, MAX_EDITORIAL_PREVIEW_BYTES } from "../src/lib/media/safe-webm.ts";
 
 const root = process.cwd();
 const failures = [];
@@ -60,21 +54,7 @@ for (const provider of PREVIEW_PROVIDER_IDS) {
   assert(parsePreviewProviderUrl(provider, foreign) === null, `${provider} no debe aceptar una URL de otra plataforma.`);
 }
 
-const [
-  form,
-  providerRoute,
-  directRoute,
-  staging,
-  platformSource,
-  workerClient,
-  importWorker,
-  ytDlpWrapper,
-  resolver,
-  card,
-  importRoute,
-  uploadRoute,
-  removeRoute,
-] = await Promise.all([
+const [form, providerRoute, directRoute, staging, platformSource, workerClient, importWorker, ytDlpWrapper, resolver, card, importRoute, uploadRoute, removeRoute] = await Promise.all([
   source("src/components/admin/GamePreviewClipUploadForm.tsx"),
   source("src/app/api/admin/content/games/[slug]/preview-provider/[provider]/route.ts"),
   source("src/app/api/admin/content/games/[slug]/preview-direct/route.ts"),
@@ -98,51 +78,25 @@ assert(platformSource.includes("provider: PreviewProviderId") && platformSource.
 assert(resolver.includes("const local = game.previewClip?.trim()") && card.includes("resolveGameCardPreview"), "La web pública debe seguir usando sólo el WebM interno.");
 
 assert(
-  platformSource.includes('return [null, "web_embedded"] as const') &&
-    platformSource.includes("if (!configured || configured.toLowerCase() === \"auto\") return null") &&
+  platformSource.includes('return [null, "web_safari", "web_embedded"] as const') &&
+    platformSource.includes('youtubeClients === "web_safari"') &&
+    platformSource.includes('b[protocol^=m3u8]') &&
+    platformSource.includes("Proof-of-Origin") &&
     !platformSource.includes('return "web_embedded,default"'),
-  "YouTube en desarrollo debe respetar auto: primero clientes upstream y luego web_embedded, sin volver a forzar la combinación legacy."
+  "YouTube en desarrollo debe usar auto → web_safari/HLS → web_embedded y diagnosticar SABR/PO Token."
 );
 assert(
-  platformSource.includes('"bv*+ba/b"') &&
-    platformSource.includes('"--format-sort", "res:480"') &&
-    importWorker.includes('"bv*+ba/b"') &&
-    importWorker.includes('"--format-sort", "res:480"'),
-  "YouTube debe aceptar streams adaptativos separados de video+audio y ordenar hacia 480p sin exigir un MP4/AVC combinado inexistente."
+  importWorker.includes("--js-runtimes") && importWorker.includes("--remote-components") && importWorker.includes("classifyYtDlpFailure"),
+  "El worker aislado debe conservar Node/EJS y errores sanitizados."
 );
 assert(
-  importWorker.includes('return [null, "web_embedded"]') &&
-    importWorker.includes("--js-runtimes") &&
-    importWorker.includes("--remote-components") &&
-    importWorker.includes("classifyYtDlpFailure"),
-  "El worker aislado debe aplicar la misma estrategia YouTube auto → web_embedded, con Node/EJS y errores sanitizados."
-);
-assert(
-  !ytDlpWrapper.includes("YOUTUBE_CLIENTS") &&
-    !ytDlpWrapper.includes("player_client=") &&
-    ytDlpWrapper.includes("Node 22 o superior") &&
-    ytDlpWrapper.includes("--remote-components"),
-  "El wrapper de producción no debe volver a imponer clientes de YouTube; sólo normaliza Node/EJS."
+  !ytDlpWrapper.includes("YOUTUBE_CLIENTS") && !ytDlpWrapper.includes("player_client=") && ytDlpWrapper.includes("Node 22 o superior") && ytDlpWrapper.includes("--remote-components"),
+  "El wrapper de producción no debe imponer clientes de YouTube; sólo normaliza Node/EJS."
 );
 
-const activePreviewSources = [
-  form,
-  providerRoute,
-  directRoute,
-  staging,
-  platformSource,
-  workerClient,
-  importWorker,
-  resolver,
-  importRoute,
-  uploadRoute,
-  removeRoute,
-];
+const activePreviewSources = [form, providerRoute, directRoute, staging, platformSource, workerClient, importWorker, resolver, importRoute, uploadRoute, removeRoute];
 for (const legacyIdentifier of ["youtubePreview", "directPreview", "previewMode"]) {
-  assert(
-    activePreviewSources.every((text) => !text.includes(legacyIdentifier)),
-    `El subsistema activo de previews no debe volver a usar ${legacyIdentifier}.`
-  );
+  assert(activePreviewSources.every((text) => !text.includes(legacyIdentifier)), `El subsistema activo de previews no debe volver a usar ${legacyIdentifier}.`);
 }
 
 const forbidden = [
@@ -173,4 +127,4 @@ if (failures.length) {
   failures.forEach((failure) => console.error(`- ${failure}`));
   process.exit(1);
 }
-console.log("Preview de video por proveedor: OK (selección explícita → reproductor específico si existe → staging aislado → IN/OUT → WebM interno; YouTube auto → web_embedded con streams adaptativos hasta ~480p; sin rutas ni identificadores legacy activos).");
+console.log("Preview de video por proveedor: OK (selección explícita → staging aislado → IN/OUT → WebM interno; YouTube auto → web_safari/HLS → web_embedded; diagnóstico SABR/PO Token; sin legacy activo).");
