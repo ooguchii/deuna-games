@@ -3,6 +3,164 @@
   gap: 16px;
 }
 
+.destinationGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.destinationCard {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  min-width: 0;
+  padding: 15px;
+  border: 1px solid #223142;
+  border-radius: 13px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--brand) 5%, #0b131c), #080e15);
+}
+
+.destinationHeading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.destinationHeading > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.destinationHeading > div > span {
+  color: var(--brand);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.09em;
+}
+
+.destinationHeading strong {
+  color: #f4f7fb;
+  font-size: 15px;
+  line-height: 1.3;
+}
+
+.statusReady,
+.statusEmpty {
+  flex: none;
+  padding: 5px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+}
+
+.statusReady {
+  border: 1px solid color-mix(in srgb, var(--brand) 42%, #34506a);
+  background: color-mix(in srgb, var(--brand) 12%, #0d1822);
+  color: #eff8ff;
+}
+
+.statusEmpty {
+  border: 1px solid #334155;
+  background: #111821;
+  color: #9ba9b8;
+}
+
+.destinationCard p {
+  margin: 0;
+  color: #92a1b0;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.mediaPath {
+  min-width: 0;
+  overflow: hidden;
+  padding: 8px 9px;
+  border: 1px solid #1c2936;
+  border-radius: 8px;
+  background: #070c12;
+  color: #718398;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.destinationActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.destinationActions button,
+.cardSourceChoices button {
+  min-height: 38px;
+  border: 1px solid #2b3a4b;
+  border-radius: 9px;
+  background: #101923;
+  color: #e8eef5;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.destinationActions button {
+  flex: 1 1 145px;
+  padding: 8px 11px;
+}
+
+.destinationActions button:hover:not(:disabled),
+.cardSourceChoices button:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--brand) 50%, #40566d);
+  background: color-mix(in srgb, var(--brand) 8%, #121d29);
+}
+
+.destinationActions button:disabled,
+.cardSourceChoices button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.cardSourceChoices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.cardSourceChoices button {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  text-align: left;
+}
+
+.cardSourceChoices strong {
+  font-size: 12px;
+}
+
+.cardSourceChoices span {
+  color: #8293a5;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.cardSourceChoices .choiceActive {
+  border-color: color-mix(in srgb, var(--brand) 72%, #fff);
+  background: color-mix(in srgb, var(--brand) 13%, #111c27);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--brand) 20%, transparent);
+}
+
+.removeGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
 .sourceGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
@@ -156,10 +314,11 @@
   opacity: 0.5;
 }
 
-.divider {
-  height: 1px;
-  background: #17232e;
-  margin: 12px 0;
+@media (max-width: 860px) {
+  .destinationGrid,
+  .removeGrid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 720px) {
@@ -170,6 +329,10 @@
 
   .editorModeHeader button {
     width: 100%;
+  }
+
+  .cardSourceChoices {
+    grid-template-columns: 1fr;
   }
 }
 

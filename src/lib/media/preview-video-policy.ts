@@ -48,6 +48,30 @@ export const PREVIEW_QUALITY_OPTIONS: readonly PreviewQualityOption[] = [
   },
 ];
 
+export const PREVIEW_HERO_QUALITY_OPTIONS: readonly PreviewQualityOption[] = [
+  {
+    id: "performance",
+    label: "Ligera",
+    detail: "Hero liviano. Reduce transferencia manteniendo un fondo en movimiento nítido.",
+    targetWidth: 640,
+    targetFps: 15,
+  },
+  {
+    id: "balanced",
+    label: "Equilibrada",
+    detail: "Recomendada para inicio. Buen detalle panorámico sin disparar peso ni CPU.",
+    targetWidth: 960,
+    targetFps: 18,
+  },
+  {
+    id: "high",
+    label: "Alta",
+    detail: "Mayor detalle para pantallas grandes, siempre sujeto al límite seguro de 3 MB.",
+    targetWidth: 1280,
+    targetFps: 20,
+  },
+];
+
 export const PREVIEW_VIEWPORT_ASPECT_IDS = [
   "source",
   "16:9",

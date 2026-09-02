@@ -11,6 +11,10 @@ import {
   resolveStagedEditorialPreviewSource,
 } from "@/lib/media/editorial-video-staging";
 import {
+  withSavedGameVideoClip,
+  type GameVideoTarget,
+} from "@/lib/media/game-video-media";
+import {
   DEFAULT_PREVIEW_QUALITY,
   DEFAULT_PREVIEW_VIEWPORT,
   parsePreviewQuality,
@@ -30,12 +34,23 @@ const viewportFields = [
   "viewportZoom",
   "viewportAspect",
 ] as const;
+const targetViewportFields = [
+  ...viewportFields,
+  "target",
+] as const;
+
+function previewTarget(value: string | null): GameVideoTarget | null {
+  if (value === null || value.trim() === "") return "card";
+  const normalized = value.trim().toLowerCase();
+  return normalized === "hero" || normalized === "card"
+    ? normalized
+    : null;
+}
 
 function errorState(error: unknown) {
   const message = error instanceof Error ? error.message : "";
   if (message.includes("FFmpeg no está disponible")) return "ffmpeg";
   if (message.includes("demasiado pesado") || message.includes("debajo de 3 MB")) return "video-pesado";
-  if (message.includes("encuadre")) return "preview-encuadre-invalido";
   if (message.includes("recorte")) return "preview-recorte-invalido";
   return "video-invalido";
 }
@@ -44,21 +59,25 @@ export async function POST(request: NextRequest, context: { params: Promise<{ sl
   const authorized = await authorizeAdminFormRequest(request);
   if (!authorized.authorized) return authorized.response;
   const { slug } = await context.params;
-  const target = `/admin/juegos/${encodeURIComponent(slug)}`;
-  const hasViewportFields = hasExactAdminFormFields(authorized.form, viewportFields);
-  const hasQualityFields = !hasViewportFields && hasExactAdminFormFields(authorized.form, qualityFields);
-  const isLegacyRequest = !hasViewportFields && !hasQualityFields && hasExactAdminFormFields(authorized.form, legacyFields);
-  if (!hasViewportFields && !hasQualityFields && !isLegacyRequest) {
-    return adminRedirect(authorized.adminOrigin, `${target}?estado=solicitud&seccion=multimedia`);
+  const redirectTarget = `/admin/juegos/${encodeURIComponent(slug)}`;
+  const hasTargetViewportFields = hasExactAdminFormFields(authorized.form, targetViewportFields);
+  const hasViewportFields = !hasTargetViewportFields && hasExactAdminFormFields(authorized.form, viewportFields);
+  const hasQualityFields = !hasTargetViewportFields && !hasViewportFields && hasExactAdminFormFields(authorized.form, qualityFields);
+  const isLegacyRequest = !hasTargetViewportFields && !hasViewportFields && !hasQualityFields && hasExactAdminFormFields(authorized.form, legacyFields);
+  if (!hasTargetViewportFields && !hasViewportFields && !hasQualityFields && !isLegacyRequest) {
+    return adminRedirect(authorized.adminOrigin, `${redirectTarget}?estado=solicitud&seccion=multimedia`);
   }
 
   const revision = expectedRevisionSchema.safeParse(authorized.form.get("expectedRevision"));
   const sourceToken = authorized.form.get("sourceToken")?.trim() ?? "";
   const trim = parsePreviewTrimWindow(authorized.form.get("startSeconds"), authorized.form.get("endSeconds"));
+  const target = previewTarget(
+    hasTargetViewportFields ? authorized.form.get("target") : null
+  );
   const quality = isLegacyRequest
     ? DEFAULT_PREVIEW_QUALITY
     : parsePreviewQuality(authorized.form.get("quality"));
-  const viewport = hasViewportFields
+  const viewport = hasTargetViewportFields || hasViewportFields
     ? parsePreviewViewport(
         authorized.form.get("viewportX"),
         authorized.form.get("viewportY"),
@@ -67,17 +86,18 @@ export async function POST(request: NextRequest, context: { params: Promise<{ sl
       )
     : DEFAULT_PREVIEW_VIEWPORT;
 
-  if (!trim) return adminRedirect(authorized.adminOrigin, `${target}?estado=preview-recorte-invalido&seccion=multimedia`);
-  if (!quality) return adminRedirect(authorized.adminOrigin, `${target}?estado=preview-calidad-invalida&seccion=multimedia`);
-  if (!viewport) return adminRedirect(authorized.adminOrigin, `${target}?estado=preview-encuadre-invalido&seccion=multimedia`);
-  if (!revision.success || !/^[a-f0-9]{48}$/.test(sourceToken)) return adminRedirect(authorized.adminOrigin, `${target}?estado=preview-source-expirada&seccion=multimedia`);
+  if (!trim) return adminRedirect(authorized.adminOrigin, `${redirectTarget}?estado=preview-recorte-invalido&seccion=multimedia`);
+  if (!target) return adminRedirect(authorized.adminOrigin, `${redirectTarget}?estado=preview-destino-invalido&seccion=multimedia`);
+  if (!quality) return adminRedirect(authorized.adminOrigin, `${redirectTarget}?estado=preview-calidad-invalida&seccion=multimedia`);
+  if (!viewport) return adminRedirect(authorized.adminOrigin, `${redirectTarget}?estado=preview-encuadre-invalido&seccion=multimedia`);
+  if (!revision.success || !/^[a-f0-9]{48}$/.test(sourceToken)) return adminRedirect(authorized.adminOrigin, `${redirectTarget}?estado=preview-source-expirada&seccion=multimedia`);
 
   try {
     const item = await getEditorialItem("game", slug);
     if (!item) return adminRedirect(authorized.adminOrigin, "/admin/juegos?estado=no-encontrado");
-    if (item.revision !== revision.data) return adminRedirect(authorized.adminOrigin, `${target}?estado=conflicto&seccion=multimedia`);
+    if (item.revision !== revision.data) return adminRedirect(authorized.adminOrigin, `${redirectTarget}?estado=conflicto&seccion=multimedia`);
     const source = await resolveStagedEditorialPreviewSource(slug, authorized.session.userId, sourceToken);
-    if (!source) return adminRedirect(authorized.adminOrigin, `${target}?estado=preview-source-expirada&seccion=multimedia`);
+    if (!source) return adminRedirect(authorized.adminOrigin, `${redirectTarget}?estado=preview-source-expirada&seccion=multimedia`);
 
     const prepared = await prepareStagedEditorialPreviewForTrim(source, trim);
     try {
@@ -86,18 +106,29 @@ export async function POST(request: NextRequest, context: { params: Promise<{ sl
         prepared.filePath,
         prepared.trim,
         quality,
+        target
+      );
+      const media = withSavedGameVideoClip(
+        item.payload,
+        target,
+        upload.publicPath,
         viewport
       );
-      const result = await saveGameMediaDraft(slug, revision.data, authorized.session.userId, { previewClip: upload.publicPath });
+      const result = await saveGameMediaDraft(
+        slug,
+        revision.data,
+        authorized.session.userId,
+        media
+      );
       if (result.outcome === "not_found") return adminRedirect(authorized.adminOrigin, "/admin/juegos?estado=no-encontrado");
-      if (result.outcome === "conflict") return adminRedirect(authorized.adminOrigin, `${target}?estado=conflicto&seccion=multimedia`);
+      if (result.outcome === "conflict") return adminRedirect(authorized.adminOrigin, `${redirectTarget}?estado=conflicto&seccion=multimedia`);
       await removeStagedEditorialPreviewSource(sourceToken);
-      return adminRedirect(authorized.adminOrigin, `${target}?estado=preview-subido&seccion=multimedia`);
+      return adminRedirect(authorized.adminOrigin, `${redirectTarget}?estado=preview-subido&seccion=multimedia`);
     } finally {
       await prepared.cleanup();
     }
   } catch (error) {
-    console.error("No se pudo preparar el preview remoto:", error instanceof Error ? error.message : "error no identificado");
-    return adminRedirect(authorized.adminOrigin, `${target}?estado=${errorState(error)}&seccion=multimedia`);
+    console.error("No se pudo preparar el video remoto:", error instanceof Error ? error.message : "error no identificado");
+    return adminRedirect(authorized.adminOrigin, `${redirectTarget}?estado=${errorState(error)}&seccion=multimedia`);
   }
 }

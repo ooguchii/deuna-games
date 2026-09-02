@@ -2,11 +2,13 @@
 
 import {
   useEffect,
-  useRef,
   useState,
 } from "react";
 
+import FramedVideo from "@/components/ui/FramedVideo";
 import GameMedia from "@/components/ui/GameMedia";
+import { DEFAULT_PREVIEW_VIEWPORT } from "@/lib/media/preview-video-policy";
+import type { GameVideoViewport } from "@/types/game";
 
 import styles from "./HoverPreviewMedia.module.css";
 
@@ -16,37 +18,29 @@ type HoverPreviewMediaProps = {
   sizes: string;
   fallbackClassName?: string;
   previewClip?: string;
+  previewViewport?: GameVideoViewport;
   active: boolean;
 };
 
 type PreviewVideoProps = {
   src: string;
+  viewport: GameVideoViewport;
 };
 
 function PreviewVideo({
   src,
+  viewport,
 }: PreviewVideoProps) {
-  const videoRef = useRef<HTMLVideoElement>(null);
   const [playing, setPlaying] = useState(false);
+  const [documentVisible, setDocumentVisible] = useState(true);
 
   useEffect(() => {
-    const mountedVideo = videoRef.current;
+    const syncDocumentVisibility = () => {
+      setDocumentVisible(!document.hidden);
+      if (document.hidden) setPlaying(false);
+    };
 
-    function syncDocumentVisibility() {
-      const video = videoRef.current;
-      if (!video) return;
-
-      if (document.hidden) {
-        video.pause();
-        setPlaying(false);
-        return;
-      }
-
-      void video.play().catch(() => {
-        setPlaying(false);
-      });
-    }
-
+    syncDocumentVisibility();
     document.addEventListener(
       "visibilitychange",
       syncDocumentVisibility
@@ -57,24 +51,21 @@ function PreviewVideo({
         "visibilitychange",
         syncDocumentVisibility
       );
-      mountedVideo?.pause();
     };
   }, []);
 
+  if (!documentVisible) return null;
+
   return (
-    <video
-      ref={videoRef}
+    <FramedVideo
       className={`${styles.video} ${playing ? styles.videoReady : ""}`}
       src={src}
+      viewport={viewport}
       muted
       loop
-      playsInline
       autoPlay
       controls={false}
       preload="none"
-      disablePictureInPicture
-      disableRemotePlayback
-      aria-hidden="true"
       tabIndex={-1}
       onPlaying={() => setPlaying(true)}
       onWaiting={() => setPlaying(false)}
@@ -90,6 +81,7 @@ export default function HoverPreviewMedia({
   sizes,
   fallbackClassName,
   previewClip,
+  previewViewport = DEFAULT_PREVIEW_VIEWPORT,
   active,
 }: HoverPreviewMediaProps) {
   return (
@@ -103,8 +95,9 @@ export default function HoverPreviewMedia({
 
       {active && previewClip && (
         <PreviewVideo
-          key={previewClip}
+          key={`${previewClip}:${previewViewport.x}:${previewViewport.y}:${previewViewport.zoom}:${previewViewport.aspect}`}
           src={previewClip}
+          viewport={previewViewport}
         />
       )}
     </>

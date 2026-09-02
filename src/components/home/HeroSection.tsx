@@ -22,7 +22,9 @@ import {
   useState,
 } from "react";
 
+import FramedVideo from "@/components/ui/FramedVideo";
 import type { HomeCopy } from "@/data/home-config";
+import { resolveGameHeroVideo } from "@/lib/media/game-video-media";
 import {
   resolveHeroImageTuning,
   type HeroImageTuning,
@@ -77,11 +79,6 @@ function ResponsiveArtwork({
         <source media={MOBILE_ART_MEDIA} srcSet={mobileSrc} />
       )}
 
-      {/*
-       * Las imágenes del catálogo ya están preoptimizadas en WebP.
-       * picture evita descargar hero + cover simultáneamente y deja
-       * que el navegador elija una sola variante por viewport.
-       */}
       <img
         src={fallbackSrc}
         alt={alt}
@@ -95,6 +92,56 @@ function ResponsiveArtwork({
   );
 }
 
+function HeroVideoLayer({
+  game,
+  enabled,
+}: {
+  game: Game;
+  enabled: boolean;
+}) {
+  const resolved = resolveGameHeroVideo(game);
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  const [documentVisible, setDocumentVisible] = useState(
+    () => typeof document === "undefined" || !document.hidden
+  );
+
+  useEffect(() => {
+    const syncVisibility = () => setDocumentVisible(!document.hidden);
+    document.addEventListener("visibilitychange", syncVisibility);
+    return () => document.removeEventListener("visibilitychange", syncVisibility);
+  }, []);
+
+  if (
+    !enabled ||
+    !resolved ||
+    failedSrc === resolved.src ||
+    !documentVisible
+  ) {
+    return null;
+  }
+
+  return (
+    <FramedVideo
+      key={resolved.src}
+      src={resolved.src}
+      viewport={resolved.viewport}
+      autoPlay
+      loop
+      controls={false}
+      preload="metadata"
+      tabIndex={-1}
+      frameStyle={{
+        position: "absolute",
+        inset: 0,
+        zIndex: 0,
+        pointerEvents: "none",
+        background: "transparent",
+      }}
+      onError={() => setFailedSrc(resolved.src)}
+    />
+  );
+}
+
 type HeroSlideProps = {
   game: Game;
   copy: HomeCopy["hero"];
@@ -105,6 +152,7 @@ type HeroSlideProps = {
   overlayOpacity: number;
   clone?: boolean;
   active?: boolean;
+  videoEnabled?: boolean;
 };
 
 const HeroSlide = forwardRef<HTMLElement, HeroSlideProps>(
@@ -119,6 +167,7 @@ const HeroSlide = forwardRef<HTMLElement, HeroSlideProps>(
       overlayOpacity,
       clone = false,
       active = false,
+      videoEnabled = false,
     },
     ref
   ) {
@@ -145,6 +194,11 @@ const HeroSlide = forwardRef<HTMLElement, HeroSlideProps>(
           ) : (
             <div className={styles.mediaFallback} aria-hidden="true" />
           )}
+
+          <HeroVideoLayer
+            game={game}
+            enabled={videoEnabled}
+          />
 
           {imageEffect && (
             <div
@@ -608,6 +662,11 @@ export default function HeroSection({
               overlayOpacity={overlayOpacity}
               clone={trackSlide.clone}
               active={trackIndex === physicalIndex}
+              videoEnabled={
+                trackIndex === physicalIndex &&
+                !trackSlide.clone &&
+                !reducedMotion
+              }
             />
           ))}
         </div>

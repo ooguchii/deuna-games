@@ -101,6 +101,45 @@ export type GameDirectPreview = {
   endSeconds: number;
 };
 
+export type GameVideoViewportAspect =
+  | "source"
+  | "16:9"
+  | "1:1"
+  | "4:5"
+  | "9:16";
+
+export type GameVideoViewport = {
+  /* Posición normalizada dentro del área desplazable del encuadre. */
+  x: number;
+  y: number;
+  /* 1 = fotograma completo; 3 = zoom máximo 300 %. */
+  zoom: number;
+  aspect: GameVideoViewportAspect;
+};
+
+export type GameHeroVideo = {
+  clip: string;
+  viewport: GameVideoViewport;
+};
+
+export type GameCardVideo =
+  | {
+      /* La Card referencia exactamente los mismos bytes que el Hero. */
+      source: "hero";
+      viewport: GameVideoViewport;
+    }
+  | {
+      /* La Card conserva un WebM propio únicamente cuando se solicita. */
+      source: "independent";
+      clip: string;
+      viewport: GameVideoViewport;
+    };
+
+export type GameVideoMedia = {
+  hero?: GameHeroVideo;
+  card?: GameCardVideo;
+};
+
 export type Game = {
   id: string;
   slug: string;
@@ -136,6 +175,15 @@ export type Game = {
   coverImage?: string;
   heroImage?: string;
   screenshots?: string[];
+
+  /*
+   * videoMedia es el contrato nuevo: el Hero guarda un único master temporal
+   * y la Card puede referenciarlo sin copiarlo o mantener un master propio.
+   * Los encuadres son metadata de presentación y nunca obligan a duplicar el
+   * archivo físico. Los campos preview* siguientes permanecen como fallback
+   * de payloads históricos y como reserva de una Card independiente previa.
+   */
+  videoMedia?: GameVideoMedia;
 
   /*
    * Los orígenes pueden coexistir. previewMode decide cuál usa la card.

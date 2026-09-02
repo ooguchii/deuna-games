@@ -9,6 +9,7 @@ import {
   MAX_PREVIEW_SOURCE_BYTES,
   MAX_PREVIEW_VIEWPORT_ZOOM,
   MIN_PREVIEW_VIEWPORT_ZOOM,
+  PREVIEW_HERO_QUALITY_OPTIONS,
   PREVIEW_QUALITY_IDS,
   PREVIEW_VIEWPORT_ASPECT_IDS,
   parsePreviewQuality,
@@ -31,6 +32,10 @@ assert(inspectSafeEditorialWebm(syntheticWebm)?.bytes === syntheticWebm.length &
 assert(MAX_EDITORIAL_PREVIEW_BYTES === 3 * 1024 * 1024 && MAX_PREVIEW_SOURCE_BYTES === 1024 * 1024 * 1024 && MAX_PREVIEW_DURATION_SECONDS === 30, "Los límites editoriales de video cambiaron inesperadamente.");
 assert(parsePreviewTrimWindow("12", "42")?.durationSeconds === 30 && parsePreviewTrimWindow("12", "42.001") === null, "IN/OUT debe conservar máximo 30 segundos.");
 assert(PREVIEW_QUALITY_IDS.join(",") === "performance,balanced,high" && DEFAULT_PREVIEW_QUALITY === "balanced" && parsePreviewQuality("high") === "high" && parsePreviewQuality("ultra") === null, "La política de calidad debe conservar Ligera/Equilibrada/Alta con Equilibrada como default seguro.");
+assert(
+  PREVIEW_HERO_QUALITY_OPTIONS.map((option) => `${option.id}:${option.targetWidth}:${option.targetFps}`).join(",") === "performance:640:15,balanced:960:18,high:1280:20",
+  "El Hero debe usar perfiles acotados pero mayores que la Card para evitar un fondo borroso sin superar el límite duro."
+);
 assert(
   PREVIEW_VIEWPORT_ASPECT_IDS.join(",") === "source,16:9,1:1,4:5,9:16" &&
     DEFAULT_PREVIEW_VIEWPORT.x === 0.5 &&
@@ -103,9 +108,15 @@ const [
   packageJson,
   resolver,
   card,
+  hoverPreview,
+  framedVideo,
+  heroSection,
   editorialVideo,
+  videoMedia,
+  validationCore,
   importRoute,
   uploadRoute,
+  layoutRoute,
   removeRoute,
 ] = await Promise.all([
   source("src/components/admin/GamePreviewClipUploadForm.tsx"),
@@ -124,32 +135,39 @@ const [
   source("package.json"),
   source("src/lib/media/game-card-preview.ts"),
   source("src/components/ui/UniversalGameCard.tsx"),
+  source("src/components/ui/HoverPreviewMedia.tsx"),
+  source("src/components/ui/FramedVideo.tsx"),
+  source("src/components/home/HeroSection.tsx"),
   source("src/lib/media/editorial-video.ts"),
+  source("src/lib/media/game-video-media.ts"),
+  source("src/lib/admin/content-validation-core.ts"),
   source("src/app/api/admin/content/games/[slug]/preview-import/route.ts"),
   source("src/app/api/admin/content/games/[slug]/preview-upload/route.ts"),
+  source("src/app/api/admin/content/games/[slug]/preview-layout/route.ts"),
   source("src/app/api/admin/content/games/[slug]/preview-remove/route.ts"),
 ]);
 
-assert(form.includes("No hay detección automática") && form.includes("preview-provider/") && form.includes("preview-direct") && form.includes("buildPreviewProviderEmbed") && form.includes("VideoTrimEditor"), "La UI debe obligar a elegir fuente y mantener reproductor/recorte por ruta explícita.");
+assert(form.includes("preview-provider/") && form.includes("preview-direct") && form.includes("buildPreviewProviderEmbed") && form.includes("VideoTrimEditor"), "La UI debe mantener fuentes explícitas y el editor interno por rutas aisladas.");
 assert(providerRoute.includes("parsePreviewProviderUrl(provider") && providerRoute.includes("createStagedPlatformPreviewSource"), "Cada proveedor debe validarse por el identificador elegido antes del staging.");
 assert(directRoute.includes("createStagedDirectPreviewSource") && !directRoute.includes("createStagedPlatformPreviewSource"), "URL directa debe tener ruta propia y no reutilizar el staging de plataformas.");
 assert(staging.includes("createStagedPlatformPreviewSource") && staging.includes("createStagedDirectPreviewSource") && !staging.includes("parseSupportedPlatformVideoUrl"), "Staging no debe detectar plataformas automáticamente.");
 assert(platformSource.includes("provider: PreviewProviderId") && platformSource.includes("parsePreviewProviderUrl(provider") && workerClient.includes("provider: PreviewProviderId"), "El proveedor explícito debe viajar hasta el worker multimedia.");
-assert(resolver.includes("const local = game.previewClip?.trim()") && card.includes("resolveGameCardPreview"), "La web pública debe seguir usando sólo el WebM interno.");
 
 assert(
-  form.includes("currentPreview && !preparedSource") &&
-    form.includes("{!preparedSource && (") &&
-    form.includes("EDITOR ACTIVO") &&
-    form.includes("El editor interno es la única vista activa") &&
-    form.includes("Cambiar fuente"),
-  "Al preparar una fuente debe desmontarse la previsualización externa/anterior y quedar un único editor activo."
+  form.includes("VIDEO EDITORIAL · HERO + CARD") &&
+    form.includes("Usar video del Hero") &&
+    form.includes("0 copias extra") &&
+    form.includes("Usar video propio") &&
+    form.includes("editorMode === \"layout\"") &&
+    form.includes("X-Deuna-Preview-Target") &&
+    form.includes("target: activeTarget"),
+  "El panel debe separar Hero/Card, permitir compartir o usar video propio y enviar el destino explícito al servidor."
 );
 assert(
   form.includes('video.preload = "auto"') &&
     form.includes('video.addEventListener("loadeddata"') &&
     form.includes("disableRemotePlayback"),
-  "El sondeo del navegador debe abortarse tras el primer frame decodificable y evitar capacidades de reproducción remota innecesarias."
+  "El sondeo del navegador debe abortarse tras el primer frame decodificable y evitar reproducción remota innecesaria."
 );
 assert(
   trimEditor.includes("requestAnimationFrame") &&
@@ -158,47 +176,97 @@ assert(
     trimEditor.includes("updateEnd(value, false)") &&
     trimEditor.includes("finishPointerDrag") &&
     trimEditor.includes("cancelPointerDrag"),
-  "Arrastrar IN/OUT debe actualizar visualmente por animation frame, hacer seek al finalizar y tolerar pointercancel sin saltos."
+  "Arrastrar IN/OUT debe actualizar visualmente por animation frame, hacer seek al finalizar y tolerar pointercancel."
 );
 assert(
-  trimEditor.includes("PREVIEW_QUALITY_OPTIONS") &&
-    trimEditor.includes("Calidad del preview guardado") &&
-    form.includes("X-Deuna-Preview-Quality") &&
-    form.includes("quality,") &&
-    importRoute.includes("parsePreviewQuality") &&
-    uploadRoute.includes("parsePreviewQuality") &&
-    editorialVideo.includes("qualityProfiles") &&
-    editorialVideo.includes("performance:") &&
-    editorialVideo.includes("balanced:") &&
-    editorialVideo.includes("high:") &&
-    editorialVideo.includes("profile.preferredBytes") &&
-    editorialVideo.includes("preferredBytes: MAX_EDITORIAL_PREVIEW_BYTES"),
-  "La calidad Ligera/Equilibrada/Alta debe validarse de UI a servidor y degradarse automáticamente sin encodes redundantes para respetar el límite de peso."
-);
-assert(
-  trimEditor.includes("resolvePreviewViewportCrop") &&
+  trimEditor.includes("layoutOnly") &&
+    trimEditor.includes("no se ejecuta FFmpeg") &&
+    trimEditor.includes("qualityOptions.map") &&
+    trimEditor.includes("resolvePreviewViewportCrop") &&
     trimEditor.includes("viewportFrame") &&
     trimEditor.includes("viewportMoveHandle") &&
     trimEditor.includes("resultCanvasRef") &&
-    trimEditor.includes("scheduleViewportDraft") &&
-    trimEditor.includes("Lo que quede dentro del marco") &&
-    form.includes("X-Deuna-Viewport-X") &&
-    form.includes("viewportAspect") &&
-    importRoute.includes("viewportFields") &&
-    importRoute.includes("parsePreviewViewport") &&
-    uploadRoute.includes("x-deuna-viewport-zoom") &&
-    uploadRoute.includes("DEFAULT_PREVIEW_VIEWPORT") &&
-    editorialVideo.includes("buildViewportCropFilter") &&
-    editorialVideo.includes("crop=w=") &&
-    editorialVideo.includes("viewport: PreviewViewport"),
-  "El encuadre visual debe viajar de UI a servidor, moverse sin recodificar y aplicarse con crop de FFmpeg sólo al guardar."
+    trimEditor.includes("scheduleViewportDraft"),
+  "El mismo editor debe reutilizar el encuadre en modo metadata-only sin presentar controles de recodificación."
 );
 assert(
-  importRoute.includes("legacyFields") &&
-    importRoute.includes("isLegacyRequest") &&
-    importRoute.includes("DEFAULT_PREVIEW_QUALITY") &&
-    importRoute.includes("DEFAULT_PREVIEW_VIEWPORT"),
-  "El endpoint remoto debe mantener compatibilidad con pestañas anteriores usando calidad Equilibrada y encuadre original por defecto."
+  editorialVideo.includes("cardQualityProfiles") &&
+    editorialVideo.includes("heroQualityProfiles") &&
+    editorialVideo.includes('PreviewVideoPurpose = "card" | "hero"') &&
+    editorialVideo.includes('purpose === "hero"') &&
+    editorialVideo.includes("profile.preferredBytes") &&
+    editorialVideo.includes("MAX_EDITORIAL_PREVIEW_BYTES") &&
+    !editorialVideo.includes("crop=w=") &&
+    !editorialVideo.includes("buildViewportCropFilter"),
+  "FFmpeg debe recortar sólo el tiempo, conservar el fotograma completo y seleccionar calidad según Card/Hero sin quemar el encuadre."
+);
+assert(
+  videoMedia.includes('source: "hero"') &&
+    videoMedia.includes('source: "independent"') &&
+    videoMedia.includes("return hero.clip") === false &&
+    videoMedia.includes("src: hero.clip") &&
+    videoMedia.includes("previewClip: clip") &&
+    videoMedia.includes("withGameVideoLayout") &&
+    videoMedia.includes("withoutGameVideoTarget"),
+  "La resolución editorial debe compartir la ruta física del Hero, conservar un video propio como fallback y permitir layouts sin copiar archivos."
+);
+assert(
+  validationCore.includes("gameVideoMediaSchema") &&
+    validationCore.includes('source: z.literal("hero")') &&
+    validationCore.includes('source: z.literal("independent")') &&
+    validationCore.includes("La Card sólo puede compartir el video del Hero") &&
+    validationCore.includes("videoMedia: gameVideoMediaSchema.optional()"),
+  "El payload debe validar estrictamente Hero/Card y prohibir una Card compartida sin Hero existente."
+);
+assert(
+  uploadRoute.includes("x-deuna-preview-target") &&
+    uploadRoute.includes("withSavedGameVideoClip") &&
+    importRoute.includes("targetViewportFields") &&
+    importRoute.includes("withSavedGameVideoClip") &&
+    importRoute.includes("legacyFields") &&
+    importRoute.includes("isLegacyRequest"),
+  "Upload/import deben aceptar destino explícito y conservar compatibilidad con requests históricos que siguen siendo Card."
+);
+assert(
+  layoutRoute.includes("export async function GET") &&
+    layoutRoute.includes("Cache-Control") &&
+    layoutRoute.includes("withGameVideoLayout") &&
+    layoutRoute.includes("hasExactAdminFormFields") &&
+    !layoutRoute.includes("storeEditorialPreviewVideo") &&
+    !layoutRoute.includes("FFmpeg"),
+  "Cambiar fuente compartida/encuadre debe ser una operación metadata-only autenticada, exacta y sin transcodificación."
+);
+assert(
+  removeRoute.includes("withoutGameVideoTarget") &&
+    removeRoute.includes('value="hero"') === false &&
+    removeRoute.includes("targetFields"),
+  "La eliminación debe distinguir Hero/Card y no borrar implícitamente el otro destino."
+);
+
+assert(
+  resolver.includes("resolveGameCardVideo") &&
+    card.includes("previewViewport={resolvedPreview?.viewport}") &&
+    hoverPreview.includes("FramedVideo") &&
+    hoverPreview.includes('preload="none"') &&
+    hoverPreview.includes("active && previewClip"),
+  "La Card pública debe resolver video compartido/independiente, aplicar viewport y conservar carga diferida sólo tras hover."
+);
+assert(
+  framedVideo.includes("resolvePreviewViewportCrop") &&
+    framedVideo.includes("bounds.width / crop.width") &&
+    framedVideo.includes("bounds.height / crop.height") &&
+    framedVideo.includes("ResizeObserver") &&
+    framedVideo.includes("opacity: layout ? 1 : 0"),
+  "La presentación pública debe aplicar encuadre por geometría del navegador sin crear otra variante física."
+);
+assert(
+  heroSection.includes("resolveGameHeroVideo") &&
+    heroSection.includes("HeroVideoLayer") &&
+    heroSection.includes("!trackSlide.clone") &&
+    heroSection.includes("!reducedMotion") &&
+    heroSection.includes('preload="metadata"') &&
+    heroSection.includes("documentVisible"),
+  "El Hero sólo debe montar el master en la diapositiva real activa, respetar reduced-motion y desmontarse con la pestaña oculta."
 );
 
 assert(
@@ -231,7 +299,7 @@ assert(
     workerEnv.includes("DEUNA_FFMPEG_PATH=/usr/bin/ffmpeg") &&
     form.includes("streaming parcial") &&
     form.includes('result.delivery === "stream"'),
-  "Probe debe ser sin descarga; el guardado debe recortar sólo el tramo mediante FFmpeg sobre loopback y la UI debe comunicar el modo parcial."
+  "Probe debe ser sin descarga; el guardado remoto debe recortar sólo el tramo mediante FFmpeg sobre loopback."
 );
 
 assert(
@@ -242,14 +310,14 @@ assert(
     platformSource.includes("youtubepot-bgutilhttp:base_url=") &&
     platformSource.includes("poTokenProviderConfigured") &&
     !platformSource.includes('return "web_embedded,default"'),
-  "YouTube debe conservar auto → web_safari/HLS → web_embedded y añadir mweb sólo cuando el PO Token Provider esté configurado."
+  "YouTube debe conservar auto → web_safari/HLS → web_embedded y añadir mweb sólo con PO Token Provider."
 );
 assert(
   importWorker.includes("youtubeProbeAttempts") &&
     importWorker.includes('return poTokenProviderConfigured() ? [null, "web_embedded", "mweb"] : [null, "web_embedded"]') &&
     importWorker.includes("youtubeClientAttempts") &&
     importWorker.includes('"--plugin-dirs", YTDLP_PLUGIN_DIR'),
-  "El worker debe intentar HTTP seekable para lazy preview sin perder los fallbacks completos ni el PO Token opcional."
+  "El worker debe intentar HTTP seekable sin perder fallbacks completos ni PO Token opcional."
 );
 assert(
   potSetup.includes('PROVIDER_VERSION = "1.3.2"') &&
@@ -257,7 +325,7 @@ assert(
     potSetup.includes('"127.0.0.1:4416:4416"') &&
     potSetup.includes('"--restart", "unless-stopped"') &&
     potSetup.includes("sha256(buffer)"),
-  "El setup local del PO Token debe fijar versión, verificar SHA-256 y publicar el proveedor sólo sobre loopback."
+  "El setup local del PO Token debe fijar versión, verificar SHA-256 y publicar sólo sobre loopback."
 );
 assert(
   lanHttps.includes("YOUTUBE_POT_PLUGIN_FILE") &&
@@ -265,7 +333,7 @@ assert(
     lanHttps.includes("DEUNA_YTDLP_PLUGIN_DIR") &&
     lanHttps.includes("DEUNA_YTDLP_POT_PROVIDER_URL") &&
     packageJson.includes('"media:youtube:setup": "node ./tools/setup-youtube-pot-provider.mjs"'),
-  "mobile:secure debe detectar el proveedor local sin convertirlo en una dependencia obligatoria del arranque."
+  "mobile:secure debe detectar el proveedor local sin convertirlo en dependencia obligatoria."
 );
 assert(
   importWorker.includes("--js-runtimes") && importWorker.includes("--remote-components") && importWorker.includes("classifyYtDlpFailure"),
@@ -282,9 +350,9 @@ assert(
   "El wrapper no debe imponer clientes y sólo puede habilitar el PO Token Provider explícito sobre loopback."
 );
 
-const activePreviewSources = [form, providerRoute, directRoute, sourceRoute, staging, platformSource, workerClient, importWorker, resolver, importRoute, uploadRoute, removeRoute];
+const activePreviewSources = [form, providerRoute, directRoute, sourceRoute, staging, platformSource, workerClient, importWorker, resolver, importRoute, uploadRoute, layoutRoute, removeRoute];
 for (const legacyIdentifier of ["youtubePreview", "directPreview", "previewMode"]) {
-  assert(activePreviewSources.every((text) => !text.includes(legacyIdentifier)), `El subsistema activo de previews no debe volver a usar ${legacyIdentifier}.`);
+  assert(activePreviewSources.every((text) => !text.includes(legacyIdentifier)), `El subsistema activo de video no debe volver a usar ${legacyIdentifier}.`);
 }
 
 const forbidden = [
@@ -311,8 +379,8 @@ for (const relative of forbidden) {
 }
 
 if (failures.length) {
-  console.error("\nPreview de video por proveedor: ERROR\n");
+  console.error("\nVideo editorial Hero/Card: ERROR\n");
   failures.forEach((failure) => console.error(`- ${failure}`));
   process.exit(1);
 }
-console.log("Preview de video por proveedor: OK (un solo editor activo → Range privado → IN/OUT sin seek continuo → encuadre visual → calidad adaptativa → WebM interno; staging completo permanece sólo como fallback compatible).");
+console.log("Video editorial Hero/Card: OK (un master compartible → dos encuadres metadata → Card opcional independiente → Hero activo único → Range privado → IN/OUT sin seek continuo → WebM interno; fallback compatible intacto).");

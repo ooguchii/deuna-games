@@ -148,6 +148,7 @@ export type GameMediaDraftInput = Pick<
   | "coverImage"
   | "heroImage"
   | "screenshots"
+  | "videoMedia"
   | "previewMode"
   | "previewClip"
   | "youtubePreview"
