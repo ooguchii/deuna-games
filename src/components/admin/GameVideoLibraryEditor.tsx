@@ -18,10 +18,13 @@ import {
   type PreviewProviderId,
 } from "@/lib/media/preview-providers";
 import {
+  DEFAULT_PREVIEW_FPS,
   DEFAULT_PREVIEW_QUALITY,
   DEFAULT_PREVIEW_VIEWPORT,
   MAX_PREVIEW_SOURCE_BYTES,
+  PREVIEW_FPS_OPTIONS,
   PREVIEW_HERO_QUALITY_OPTIONS,
+  type PreviewFps,
   type PreviewQualityId,
   type PreviewTrimWindow,
   type PreviewViewport,
@@ -149,16 +152,19 @@ function uploadError(state: string | null) {
     return "Otra pestaña guardó una revisión más reciente. Recarga Multimedia antes de continuar.";
   }
   if (state === "ffmpeg") {
-    return "FFmpeg no está disponible para crear el WebM optimizado.";
+    return "FFmpeg/FFprobe no está disponible para crear el WebM optimizado.";
   }
   if (state === "video-pesado") {
-    return "El WebM final no pudo quedar por debajo de 3 MB. Prueba un tramo más corto o una calidad menor.";
+    return "El master sigue superando el límite seguro de 32 MB. Acorta el tramo, usa 720p o reduce FPS.";
   }
   if (state === "preview-recorte-invalido") {
     return "El tramo no es válido. Ajusta IN y OUT.";
   }
   if (state === "preview-calidad-invalida") {
-    return "La calidad elegida no es válida.";
+    return "La resolución elegida no es válida.";
+  }
+  if (state === "preview-fps-invalido") {
+    return "Los FPS elegidos no son válidos. El máximo permitido es 60 FPS.";
   }
   if (state === "preview-source-expirada") {
     return "La fuente temporal venció. Prepárala otra vez.";
@@ -181,6 +187,7 @@ export default function GameVideoLibraryEditor({
   const [quality, setQuality] = useState<PreviewQualityId>(
     DEFAULT_PREVIEW_QUALITY
   );
+  const [fps, setFps] = useState<PreviewFps>(DEFAULT_PREVIEW_FPS);
   const [previewViewport, setPreviewViewport] = useState<PreviewViewport>({
     ...DEFAULT_PREVIEW_VIEWPORT,
   });
@@ -348,7 +355,7 @@ export default function GameVideoLibraryEditor({
           file,
         });
         setStatus(
-          "Archivo listo. Elige IN, OUT y calidad; todavía no se subió el archivo grande."
+          "Archivo listo. Elige IN, OUT, resolución y FPS; todavía no se subió el archivo grande."
         );
       } else {
         await prepareLocalCodecFallback(file);
@@ -504,6 +511,7 @@ export default function GameVideoLibraryEditor({
           preparedSource.file.name
         ),
         "X-Deuna-Preview-Quality": quality,
+        "X-Deuna-Preview-Fps": String(fps),
         "X-Deuna-Preview-Target": "library",
         "X-Deuna-Viewport-X": String(DEFAULT_PREVIEW_VIEWPORT.x),
         "X-Deuna-Viewport-Y": String(DEFAULT_PREVIEW_VIEWPORT.y),
@@ -518,6 +526,7 @@ export default function GameVideoLibraryEditor({
         startSeconds: String(trim.startSeconds),
         endSeconds: String(trim.endSeconds),
         quality,
+        fps: String(fps),
         viewportX: String(DEFAULT_PREVIEW_VIEWPORT.x),
         viewportY: String(DEFAULT_PREVIEW_VIEWPORT.y),
         viewportZoom: String(DEFAULT_PREVIEW_VIEWPORT.zoom),
@@ -532,7 +541,7 @@ export default function GameVideoLibraryEditor({
 
     setBusy(true);
     setStatus(
-      `Creando recurso ${selectedQuality.label} para la biblioteca con el tramo ${trim.startSeconds}s → ${trim.endSeconds}s…`
+      `Creando master ${selectedQuality.label} · hasta ${fps} FPS con el tramo ${trim.startSeconds}s → ${trim.endSeconds}s…`
     );
 
     try {
@@ -729,12 +738,32 @@ export default function GameVideoLibraryEditor({
           <div className={adminStyles.tableSummary}>
             <strong>Master reutilizable</strong>
             <span>
-              Elige una sola vez IN, OUT y calidad. El marco de área visible
-              sirve sólo para inspeccionar la fuente: el WebM se guarda con
-              el fotograma completo y Hero/Card reciben después su encuadre
+              Elige una sola vez IN, OUT, resolución y FPS. El marco de área
+              visible sirve sólo para inspeccionar la fuente: el WebM se guarda
+              con el fotograma completo y Hero/Card reciben después su encuadre
               independiente.
             </span>
           </div>
+
+          <label className={adminStyles.fieldWide}>
+            <span>Fotogramas por segundo · máximo 60</span>
+            <select
+              value={fps}
+              disabled={busy || sourceBusy}
+              onChange={(event) =>
+                setFps(Number(event.target.value) as PreviewFps)
+              }
+            >
+              {PREVIEW_FPS_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option} FPS{option === DEFAULT_PREVIEW_FPS ? " · recomendado" : ""}
+                </option>
+              ))}
+            </select>
+            <small>
+              Default 50 FPS. Si la fuente original tiene menos FPS, no se inventan fotogramas: se conserva su cadencia real.
+            </small>
+          </label>
 
           <VideoTrimEditor
             key={`library:${preparedSource.src}`}
@@ -765,8 +794,8 @@ export default function GameVideoLibraryEditor({
       <div className={adminStyles.formActions}>
         <p>
           Agregar el recurso no cambia Hero ni Card. Se guarda una sola vez
-          como WebM/VP9 interno, silencioso, de hasta 30 segundos y máximo
-          3 MB.
+          como WebM/VP9 interno, silencioso, de hasta 30 segundos y con un
+          límite duro de 32 MB para masters HD.
         </p>
         <button
           type="submit"
@@ -774,7 +803,7 @@ export default function GameVideoLibraryEditor({
         >
           {busy
             ? "Guardando…"
-            : `Agregar video · ${selectedQuality.label}`}
+            : `Agregar video · ${selectedQuality.label} · ${fps} FPS`}
         </button>
       </div>
     </form>
