@@ -13,6 +13,7 @@ const [
   library,
   libraryRoute,
   uploadRoute,
+  uploadForm,
   workspace,
   multimediaEditor,
   multimediaCss,
@@ -21,6 +22,7 @@ const [
   source("src/lib/media/editorial-media-library.ts"),
   source("src/app/api/admin/content/games/[slug]/media-library/route.ts"),
   source("src/app/api/admin/content/games/[slug]/media-upload/route.ts"),
+  source("src/components/admin/GameMediaUploadForm.tsx"),
   source("src/components/admin/GameMultimediaWorkspace.tsx"),
   source("src/components/admin/GameMultimediaEditor.tsx"),
   source("src/components/admin/GameMultimediaEditor.module.css"),
@@ -43,10 +45,24 @@ assert(
 );
 
 assert(
+  library.includes("listAssignedBundledImageResources") &&
+    library.includes("BUNDLED_IMAGE_PATTERN") &&
+    library.includes('origin: "bundled"') &&
+    library.includes("isContainedBy") &&
+    library.includes("publicRoot") &&
+    library.includes("imagesRoot") &&
+    library.includes("mergeEditorialMediaResources"),
+  "Las imágenes históricas ya asignadas bajo /images deben poder entrar en la biblioteca por referencia segura, sin copiarlas al almacén editorial."
+);
+
+assert(
   libraryRoute.includes("verifyAdminSession") &&
     libraryRoute.includes("authorizeAdminFormRequest") &&
     libraryRoute.includes("hasExactAdminFormFields") &&
     libraryRoute.includes("findEditorialMediaResource") &&
+    libraryRoute.includes("resourcesForGame") &&
+    libraryRoute.includes("listAssignedBundledImageResources") &&
+    libraryRoute.includes("mergeEditorialMediaResources") &&
     libraryRoute.includes('"cover-image"') &&
     libraryRoute.includes('"hero-image"') &&
     libraryRoute.includes('"hero-video"') &&
@@ -57,7 +73,7 @@ assert(
     !libraryRoute.includes("storeEditorialPreviewVideo") &&
     !libraryRoute.includes("spawn(") &&
     !libraryRoute.includes("writeFile("),
-  "Asignar desde biblioteca debe estar autenticado, usar campos exactos y modificar sólo metadata sin copiar ni recodificar archivos."
+  "Asignar desde biblioteca debe estar autenticado, aceptar sólo recursos del juego ya validados y modificar metadata sin copiar ni recodificar archivos."
 );
 
 assert(
@@ -77,6 +93,15 @@ assert(
   "Las nuevas imágenes deben quedar físicamente en la biblioteca y asignar una imagen al Hero debe desactivar su video sin borrar el archivo almacenado."
 );
 
+assert(
+  uploadForm.includes("libraryOnly?: boolean") &&
+    uploadForm.includes('name="kind" value="library"') &&
+    uploadForm.includes('"recurso-subido"') &&
+    uploadForm.includes("Preparar y guardar en biblioteca") &&
+    uploadForm.includes("no cambia Portada, Hero ni Galería"),
+  "El cargador de la biblioteca debe poder almacenar un WebP sin asignarlo todavía a ningún destino."
+);
+
 for (const label of [
   "RESUMEN MULTIMEDIA",
   "Biblioteca multimedia compartida",
@@ -86,28 +111,40 @@ for (const label of [
   "Igualar al Hero",
   "Todo sale de la biblioteca compartida",
 ]) {
-  assert(workspace.includes(label), `El workspace multimedia debe conservar la jerarquía y acción: ${label}.`);
+  assert(
+    workspace.includes(label),
+    `El workspace multimedia debe conservar la jerarquía y acción: ${label}.`
+  );
 }
 
 assert(
   workspace.includes("ResourcePicker") &&
     workspace.includes("heroDraftMode") &&
+    workspace.includes("currentHeroMode") &&
+    workspace.includes("heroModePending") &&
     workspace.includes('target="cover-image"') &&
     workspace.includes('target="card-video"') &&
     workspace.includes('target="card-match-hero"') &&
+    workspace.includes('target="gallery-image"') &&
+    workspace.includes("libraryOnly") &&
+    workspace.includes("IMAGEN EXISTENTE") &&
     workspace.includes("GameMediaUploadForm") &&
     workspace.includes("videoEditor") &&
     !workspace.includes("Origen de la Card") &&
-    !workspace.includes("Usar recurso propio"),
-  "Portada, Hero y Card deben seleccionar desde una biblioteca única; la Card no debe volver al selector redundante de orígenes."
+    !workspace.includes("Usar recurso propio") &&
+    !workspace.includes("useMemo"),
+  "Portada, Hero, Card y Galería deben seleccionar desde una biblioteca única, sin estados derivados inestables ni el selector redundante de orígenes."
 );
 
 assert(
   workspace.includes('setHeroDraftMode("image")') &&
     workspace.includes('setHeroDraftMode("video")') &&
-    workspace.includes('target={heroDraftMode === "video" ? "hero-video" : "hero-image"}') &&
-    workspace.includes("Deshabilitado en modo Imagen"),
-  "El Hero debe presentar Imagen/Video como modos excluyentes y mantener el editor de video fuera del modo Imagen."
+    workspace.includes('heroDraftMode === "video"') &&
+    workspace.includes('"hero-video"') &&
+    workspace.includes('"hero-image"') &&
+    workspace.includes("Deshabilitado en modo Imagen") &&
+    workspace.includes("Selecciona un recurso para aplicar el cambio de modo"),
+  "El Hero debe presentar Imagen/Video como modos excluyentes y distinguir el modo guardado de una elección todavía no asignada."
 );
 
 assert(
@@ -143,5 +180,5 @@ if (failures.length) {
 }
 
 console.log(
-  "Biblioteca multimedia compartida: OK (almacén hash validado → una copia física → selección por destino → Hero excluyente → Card compartible → editor focalizado)."
+  "Biblioteca multimedia compartida: OK (almacén hash + recursos históricos → una referencia física → selección por destino → Hero excluyente → Card compartible → Galería reutilizable)."
 );
