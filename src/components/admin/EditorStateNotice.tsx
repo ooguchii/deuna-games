@@ -107,6 +107,16 @@ const notices = {
     message:
       "Ese recurso ya no está disponible o no supera la validación del almacén editorial. Recarga Multimedia y selecciona otro archivo.",
   },
+  "imagen-encuadre-guardado": {
+    kind: "success",
+    message:
+      "Encuadre de imagen guardado como metadata del destino. El archivo original no fue recortado, duplicado ni recodificado.",
+  },
+  "imagen-encuadre-invalido": {
+    kind: "error",
+    message:
+      "El encuadre de la imagen no es válido. Restablécelo y vuelve a guardar sin cambiar el recurso original.",
+  },
   "preview-subido": {
     kind: "success",
     message:

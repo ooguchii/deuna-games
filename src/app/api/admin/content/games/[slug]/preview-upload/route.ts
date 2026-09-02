@@ -23,6 +23,8 @@ import { isAcceptedStreamedPreviewSource, stageStreamedPreviewSource } from "@/l
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+type PreviewSaveTarget = GameVideoTarget | "library";
+
 function contentLengthFromRequest(request: NextRequest) {
   const raw = request.headers.get("content-length");
   if (!raw) return null;
@@ -30,10 +32,10 @@ function contentLengthFromRequest(request: NextRequest) {
   return Number.isSafeInteger(value) ? value : Number.NaN;
 }
 
-function previewTarget(value: string | null): GameVideoTarget | null {
+function previewTarget(value: string | null): PreviewSaveTarget | null {
   if (value === null || value.trim() === "") return "card";
   const normalized = value.trim().toLowerCase();
-  return normalized === "hero" || normalized === "card"
+  return normalized === "hero" || normalized === "card" || normalized === "library"
     ? normalized
     : null;
 }
@@ -94,8 +96,16 @@ export async function POST(request: NextRequest, context: { params: Promise<{ sl
       staged.filePath,
       trim,
       quality,
-      target
+      target === "library" ? "hero" : target
     );
+
+    if (target === "library") {
+      return adminRedirect(
+        authorized.adminOrigin,
+        `${redirectTarget}?estado=recurso-subido&seccion=multimedia`
+      );
+    }
+
     const media = withSavedGameVideoClip(
       item.payload,
       target,

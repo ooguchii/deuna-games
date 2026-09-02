@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 import GameEditorFormActions from "@/components/admin/GameEditorFormActions";
-import GameMultimediaWorkspace from "@/components/admin/GameMultimediaWorkspace";
+import GameMultimediaWorkspaceContextual from "@/components/admin/GameMultimediaWorkspaceContextual";
 
 import adminStyles from "../../app/admin/admin.module.css";
 import styles from "./GameMultimediaEditor.module.css";
@@ -27,7 +27,7 @@ export default function GameMultimediaEditor({
 }: GameMultimediaEditorProps) {
   return (
     <>
-      <GameMultimediaWorkspace
+      <GameMultimediaWorkspaceContextual
         slug={slug}
         revision={revision}
         screenshotCount={screenshots.length}

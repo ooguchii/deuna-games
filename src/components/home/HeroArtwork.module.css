@@ -1,26 +1,30 @@
 .artwork.artwork {
   display: block;
-  transform: none;
+  object-position: var(--hero-image-position, 50% 50%);
+  transform: scale(var(--hero-image-zoom, 1));
+  transform-origin: var(--hero-image-position, 50% 50%);
   backface-visibility: visible;
   -webkit-backface-visibility: visible;
 }
 
 @media (min-width: 801px) {
   .artwork.artwork {
-    transform: scale(1);
+    transform: scale(var(--hero-image-zoom, 1));
     transition:
       transform 6.4s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   .artwork.activeArtwork {
-    transform: scale(1.028);
+    transform:
+      scale(var(--hero-image-zoom, 1))
+      scale(1.028);
   }
 }
 
 @media (max-width: 800px) {
   .artwork.artwork,
   .artwork.activeArtwork {
-    transform: none;
+    transform: scale(var(--hero-image-zoom, 1));
     transition: none;
   }
 }
@@ -28,7 +32,7 @@
 @media (prefers-reduced-motion: reduce) {
   .artwork.artwork,
   .artwork.activeArtwork {
-    transform: none;
+    transform: scale(var(--hero-image-zoom, 1));
     transition: none;
   }
 }
