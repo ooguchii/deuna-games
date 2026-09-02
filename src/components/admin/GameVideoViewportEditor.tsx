@@ -47,7 +47,9 @@ export default function GameVideoViewportEditor({
   async function save() {
     if (busy) return;
     setBusy(true);
-    setStatus("Guardando sólo el encuadre visual; el WebM físico no se modifica…");
+    setStatus(
+      "Guardando sólo el encuadre visual; el WebM físico no se modifica…"
+    );
 
     try {
       const response = await fetch(
@@ -57,7 +59,8 @@ export default function GameVideoViewportEditor({
           credentials: "same-origin",
           cache: "no-store",
           headers: {
-            "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+            "Content-Type":
+              "application/x-www-form-urlencoded;charset=UTF-8",
           },
           body: new URLSearchParams({
             expectedRevision: String(revision),
@@ -90,6 +93,50 @@ export default function GameVideoViewportEditor({
     }
   }
 
+  async function useStaticCardImage() {
+    if (busy || target !== "card") return;
+    setBusy(true);
+    setStatus(
+      "Quitando sólo el preview animado; el WebM seguirá disponible en la biblioteca…"
+    );
+
+    try {
+      const response = await fetch(
+        `/api/admin/content/games/${encodeURIComponent(slug)}/preview-remove`,
+        {
+          method: "POST",
+          credentials: "same-origin",
+          cache: "no-store",
+          headers: {
+            "Content-Type":
+              "application/x-www-form-urlencoded;charset=UTF-8",
+          },
+          body: new URLSearchParams({
+            expectedRevision: String(revision),
+            target: "card",
+          }),
+        }
+      );
+      const resultUrl = new URL(response.url, window.location.href);
+      const state = resultUrl.searchParams.get("estado");
+      if (state !== "preview-quitado") {
+        throw new Error(
+          state === "conflicto"
+            ? "Otra pestaña guardó una revisión más reciente. Recarga Multimedia antes de continuar."
+            : "No se pudo volver la Card a imagen estática."
+        );
+      }
+      window.location.assign(resultUrl.toString());
+    } catch (error) {
+      setStatus(
+        error instanceof Error
+          ? error.message
+          : "No se pudo actualizar la Card."
+      );
+      setBusy(false);
+    }
+  }
+
   return (
     <>
       <VideoTrimEditor
@@ -106,7 +153,14 @@ export default function GameVideoViewportEditor({
       />
 
       {status && (
-        <p role="status" style={{ margin: "12px 0 0", color: "#9db0c0", fontSize: 12 }}>
+        <p
+          role="status"
+          style={{
+            margin: "12px 0 0",
+            color: "#9db0c0",
+            fontSize: 12,
+          }}
+        >
           {status}
         </p>
       )}
@@ -120,6 +174,16 @@ export default function GameVideoViewportEditor({
         >
           Cancelar
         </button>
+        {target === "card" && (
+          <button
+            type="button"
+            className={contextualDialogStyles.secondary}
+            disabled={busy}
+            onClick={() => void useStaticCardImage()}
+          >
+            Usar imagen estática
+          </button>
+        )}
         <button
           type="button"
           className={contextualDialogStyles.primary}
