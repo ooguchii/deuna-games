@@ -18,6 +18,9 @@ import {
   hasExactAdminMediaFormFields,
 } from "@/lib/admin/media-request-security";
 import {
+  withoutGameVideoTarget,
+} from "@/lib/media/game-video-media";
+import {
   storeEditorialWebp,
 } from "@/lib/media/editorial-upload";
 
@@ -28,6 +31,7 @@ const mediaKindSchema = z.enum([
   "cover",
   "hero",
   "screenshot",
+  "library",
 ]);
 
 const fields = [
@@ -146,6 +150,16 @@ export async function POST(
       slug,
       image
     );
+
+    // Biblioteca es almacenamiento puro: el archivo ya quedó persistido por hash
+    // y no hace falta crear una revisión si todavía no fue asignado a un destino.
+    if (kind.data === "library") {
+      return adminRedirect(
+        authorized.adminOrigin,
+        `${target}?estado=recurso-subido&seccion=multimedia`
+      );
+    }
+
     const screenshots =
       kind.data === "screenshot"
         ? Array.from(
@@ -155,6 +169,10 @@ export async function POST(
             ])
           ).slice(0, 8)
         : item.payload.screenshots;
+    const heroVideoUpdate =
+      kind.data === "hero"
+        ? withoutGameVideoTarget(item.payload, "hero")
+        : null;
     const result = await saveGameMediaDraft(
       slug,
       revision.data,
@@ -169,6 +187,7 @@ export async function POST(
             ? upload.publicPath
             : item.payload.heroImage,
         screenshots,
+        ...(heroVideoUpdate ?? {}),
       }
     );
 
