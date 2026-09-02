@@ -262,9 +262,12 @@ assert(
     uploadForm.includes('value="manual"') &&
     uploadForm.includes("media-source") &&
     uploadForm.includes("application/x-www-form-urlencoded") &&
-    uploadForm.includes('resultState !== "imagen-subida"') &&
+    uploadForm.includes("const expectedState = libraryOnly") &&
+    uploadForm.includes('"recurso-subido"') &&
+    uploadForm.includes('"imagen-subida"') &&
+    uploadForm.includes("resultState !== expectedState") &&
     uploadForm.includes("uploadRedirectError"),
-  "El editor debe normalizar PNG/JPEG/AVIF/WebP, importar por URL y conservar la pantalla si el servidor rechaza el intento."
+  "El editor debe normalizar PNG/JPEG/AVIF/WebP, importar por URL, distinguir carga directa de biblioteca y conservar la pantalla si el servidor rechaza el intento."
 );
 assert(
   remoteRoute.includes(
