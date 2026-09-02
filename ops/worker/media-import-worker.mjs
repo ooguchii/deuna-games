@@ -52,7 +52,7 @@ const providerHosts = {
   tumblr: ["tumblr.com"],
   snapchat: ["snapchat.com"],
   loom: ["loom.com"],
-  wistia: ["wistia.com", "wistia.net"],
+  wistia: ["wistia.com", "wistia.net", "wi.st"],
   nicovideo: ["nicovideo.jp", "nico.ms"],
 };
 
