@@ -38,6 +38,7 @@ const assignmentTargetSchema = z.enum([
   "cover-image",
   "hero-image",
   "hero-video",
+  "card-image",
   "card-video",
   "card-match-hero",
   "gallery-image",
@@ -59,6 +60,7 @@ async function resourcesForGame(slug: string, game: Game) {
     listAssignedBundledImageResources([
       game.coverImage,
       game.heroImage,
+      game.imageMedia?.cardSource,
       ...(game.screenshots ?? []),
     ]),
   ]);
@@ -186,7 +188,9 @@ export async function POST(
       {
         ...current.imageMedia,
         cover: { ...DEFAULT_GAME_IMAGE_VIEWPORT },
-        card: { ...DEFAULT_GAME_IMAGE_VIEWPORT },
+        ...(!current.imageMedia?.cardSource
+          ? { card: { ...DEFAULT_GAME_IMAGE_VIEWPORT } }
+          : {}),
       }
     );
   }
@@ -228,6 +232,27 @@ export async function POST(
         },
       },
     };
+  }
+
+  if (target.data === "card-image") {
+    if (!imageResource) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        redirectPath(slug, "recurso-invalido")
+      );
+    }
+    const withoutVideo = withoutGameVideoTarget(current, "card");
+    update = mediaUpdate(
+      {
+        videoMedia: withoutVideo.videoMedia,
+        previewClip: withoutVideo.previewClip,
+      },
+      {
+        ...current.imageMedia,
+        cardSource: imageResource.src,
+        card: { ...DEFAULT_GAME_IMAGE_VIEWPORT },
+      }
+    );
   }
 
   if (target.data === "card-video") {
