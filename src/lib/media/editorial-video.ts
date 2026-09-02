@@ -19,10 +19,14 @@ import {
 } from "./editorial-media";
 import {
   DEFAULT_PREVIEW_QUALITY,
+  DEFAULT_PREVIEW_VIEWPORT,
   MAX_PREVIEW_SOURCE_BYTES,
   parsePreviewTrimWindow,
+  parsePreviewViewport,
   type PreviewQualityId,
   type PreviewTrimWindow,
+  type PreviewViewport,
+  type PreviewViewportAspectId,
 } from "./preview-video-policy";
 import {
   inspectSafeEditorialWebm,
@@ -37,6 +41,7 @@ export {
 export type {
   PreviewQualityId,
   PreviewTrimWindow,
+  PreviewViewport,
 } from "./preview-video-policy";
 
 const FFMPEG_TIMEOUT_MS = 90_000;
@@ -152,6 +157,29 @@ function assertPreviewTrimWindow(
   }
 }
 
+function assertPreviewViewport(
+  viewport: PreviewViewport
+) {
+  const normalized = parsePreviewViewport(
+    String(viewport.x),
+    String(viewport.y),
+    String(viewport.zoom),
+    viewport.aspect
+  );
+
+  if (
+    !normalized ||
+    normalized.x !== viewport.x ||
+    normalized.y !== viewport.y ||
+    normalized.zoom !== viewport.zoom ||
+    normalized.aspect !== viewport.aspect
+  ) {
+    throw new Error(
+      "El encuadre del preview no es válido."
+    );
+  }
+}
+
 async function assertWritableDirectory(
   directory: string,
   mode: number
@@ -193,17 +221,69 @@ function formatFfmpegSeconds(value: number) {
   return value.toFixed(3).replace(/0+$/, "").replace(/\.$/, "");
 }
 
+function formatFilterNumber(value: number) {
+  return value.toFixed(4).replace(/0+$/, "").replace(/\.$/, "");
+}
+
+function viewportAspectRatio(
+  aspect: PreviewViewportAspectId
+) {
+  if (aspect === "16:9") return 16 / 9;
+  if (aspect === "1:1") return 1;
+  if (aspect === "4:5") return 4 / 5;
+  if (aspect === "9:16") return 9 / 16;
+  return null;
+}
+
+function buildViewportCropFilter(
+  viewport: PreviewViewport
+) {
+  const noSpatialCrop =
+    viewport.aspect === "source" &&
+    viewport.zoom === 1;
+  if (noSpatialCrop) return null;
+
+  const x = formatFilterNumber(viewport.x);
+  const y = formatFilterNumber(viewport.y);
+  const zoom = formatFilterNumber(viewport.zoom);
+  const ratio = viewportAspectRatio(viewport.aspect);
+
+  const widthExpression = ratio === null
+    ? `max(2,trunc(iw/${zoom}/2)*2)`
+    : `max(2,trunc(min(iw,ih*${formatFilterNumber(ratio)})/${zoom}/2)*2)`;
+  const heightExpression = ratio === null
+    ? `max(2,trunc(ih/${zoom}/2)*2)`
+    : `max(2,trunc(min(ih,iw/${formatFilterNumber(ratio)})/${zoom}/2)*2)`;
+
+  return (
+    `crop=w='${widthExpression}':h='${heightExpression}':` +
+    `x='(iw-ow)*${x}':y='(ih-oh)*${y}'`
+  );
+}
+
+function buildVideoFilter(
+  preset: PreviewPreset,
+  viewport: PreviewViewport
+) {
+  const crop = buildViewportCropFilter(viewport);
+  const filters = crop ? [crop] : [];
+  filters.push(
+    `scale=w='min(${preset.width},iw)':h=-2:` +
+      "force_original_aspect_ratio=decrease:force_divisible_by=2"
+  );
+  filters.push(`fps=${preset.fps}`);
+  return filters.join(",");
+}
+
 function runFfmpeg(
   inputPath: string,
   outputPath: string,
   preset: PreviewPreset,
-  trim: PreviewTrimWindow
+  trim: PreviewTrimWindow,
+  viewport: PreviewViewport
 ) {
   return new Promise<void>((resolve, reject) => {
-    const filter =
-      `scale=w='min(${preset.width},iw)':h=-2:` +
-      "force_original_aspect_ratio=decrease:force_divisible_by=2," +
-      `fps=${preset.fps}`;
+    const filter = buildVideoFilter(preset, viewport);
     const args = [
       "-hide_banner",
       "-loglevel",
@@ -329,9 +409,11 @@ async function transcodePreview(
   inputPath: string,
   temporaryDirectory: string,
   trim: PreviewTrimWindow,
-  quality: PreviewQualityId
+  quality: PreviewQualityId,
+  viewport: PreviewViewport
 ) {
   assertPreviewTrimWindow(trim);
+  assertPreviewViewport(viewport);
   await assertSafeSourcePath(inputPath);
 
   const profile = qualityProfiles[quality];
@@ -347,7 +429,8 @@ async function transcodePreview(
       inputPath,
       outputPath,
       preset,
-      trim
+      trim,
+      viewport
     );
 
     const output = await readFile(outputPath);
@@ -446,13 +529,15 @@ async function convertSourcePath(
   inputPath: string,
   temporaryDirectory: string,
   trim: PreviewTrimWindow,
-  quality: PreviewQualityId
+  quality: PreviewQualityId,
+  viewport: PreviewViewport
 ) {
   const converted = await transcodePreview(
     inputPath,
     temporaryDirectory,
     trim,
-    quality
+    quality,
+    viewport
   );
 
   return persistConvertedPreview(slug, converted);
@@ -462,7 +547,8 @@ export async function storeEditorialPreviewVideoFromPath(
   slug: string,
   inputPath: string,
   trim: PreviewTrimWindow,
-  quality: PreviewQualityId = DEFAULT_PREVIEW_QUALITY
+  quality: PreviewQualityId = DEFAULT_PREVIEW_QUALITY,
+  viewport: PreviewViewport = DEFAULT_PREVIEW_VIEWPORT
 ): Promise<EditorialPreviewUploadResult> {
   if (!isEditorialMediaSlug(slug)) {
     throw new Error(
@@ -471,6 +557,7 @@ export async function storeEditorialPreviewVideoFromPath(
   }
 
   assertPreviewTrimWindow(trim);
+  assertPreviewViewport(viewport);
   await assertSafeSourcePath(inputPath);
 
   const temporaryDirectory = await mkdtemp(
@@ -483,7 +570,8 @@ export async function storeEditorialPreviewVideoFromPath(
       inputPath,
       temporaryDirectory,
       trim,
-      quality
+      quality,
+      viewport
     );
   } finally {
     await rm(temporaryDirectory, {
@@ -497,7 +585,8 @@ export async function storeEditorialPreviewVideo(
   slug: string,
   file: File,
   trim: PreviewTrimWindow,
-  quality: PreviewQualityId = DEFAULT_PREVIEW_QUALITY
+  quality: PreviewQualityId = DEFAULT_PREVIEW_QUALITY,
+  viewport: PreviewViewport = DEFAULT_PREVIEW_VIEWPORT
 ): Promise<EditorialPreviewUploadResult> {
   if (!isEditorialMediaSlug(slug)) {
     throw new Error(
@@ -512,6 +601,7 @@ export async function storeEditorialPreviewVideo(
   }
 
   assertPreviewTrimWindow(trim);
+  assertPreviewViewport(viewport);
 
   const temporaryDirectory = await mkdtemp(
     path.join(os.tmpdir(), "deuna-preview-")
@@ -533,7 +623,8 @@ export async function storeEditorialPreviewVideo(
       inputPath,
       temporaryDirectory,
       trim,
-      quality
+      quality,
+      viewport
     );
   } finally {
     await rm(temporaryDirectory, {
