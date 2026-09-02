@@ -3,8 +3,11 @@ import path from "node:path";
 import process from "node:process";
 
 import {
+  DEFAULT_PREVIEW_QUALITY,
   MAX_PREVIEW_DURATION_SECONDS,
   MAX_PREVIEW_SOURCE_BYTES,
+  PREVIEW_QUALITY_IDS,
+  parsePreviewQuality,
   parsePreviewTrimWindow,
 } from "../src/lib/media/preview-video-policy.ts";
 import { PREVIEW_PROVIDER_IDS, parsePreviewProviderUrl } from "../src/lib/media/preview-providers.ts";
@@ -21,6 +24,7 @@ syntheticWebm.write("webm", 24, "ascii");
 assert(inspectSafeEditorialWebm(syntheticWebm)?.bytes === syntheticWebm.length && inspectSafeEditorialWebm(Buffer.alloc(160)) === null, "El WebM editorial debe seguir validándose estrictamente.");
 assert(MAX_EDITORIAL_PREVIEW_BYTES === 3 * 1024 * 1024 && MAX_PREVIEW_SOURCE_BYTES === 1024 * 1024 * 1024 && MAX_PREVIEW_DURATION_SECONDS === 30, "Los límites editoriales de video cambiaron inesperadamente.");
 assert(parsePreviewTrimWindow("12", "42")?.durationSeconds === 30 && parsePreviewTrimWindow("12", "42.001") === null, "IN/OUT debe conservar máximo 30 segundos.");
+assert(PREVIEW_QUALITY_IDS.join(",") === "performance,balanced,high" && DEFAULT_PREVIEW_QUALITY === "balanced" && parsePreviewQuality("high") === "high" && parsePreviewQuality("ultra") === null, "La política de calidad debe conservar Ligera/Equilibrada/Alta con Equilibrada como default seguro.");
 
 const cases = {
   youtube: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
@@ -56,6 +60,7 @@ for (const provider of PREVIEW_PROVIDER_IDS) {
 
 const [
   form,
+  trimEditor,
   providerRoute,
   directRoute,
   sourceRoute,
@@ -70,11 +75,13 @@ const [
   packageJson,
   resolver,
   card,
+  editorialVideo,
   importRoute,
   uploadRoute,
   removeRoute,
 ] = await Promise.all([
   source("src/components/admin/GamePreviewClipUploadForm.tsx"),
+  source("src/components/admin/VideoTrimEditor.tsx"),
   source("src/app/api/admin/content/games/[slug]/preview-provider/[provider]/route.ts"),
   source("src/app/api/admin/content/games/[slug]/preview-direct/route.ts"),
   source("src/app/api/admin/content/games/[slug]/preview-source/[token]/route.ts"),
@@ -89,6 +96,7 @@ const [
   source("package.json"),
   source("src/lib/media/game-card-preview.ts"),
   source("src/components/ui/UniversalGameCard.tsx"),
+  source("src/lib/media/editorial-video.ts"),
   source("src/app/api/admin/content/games/[slug]/preview-import/route.ts"),
   source("src/app/api/admin/content/games/[slug]/preview-upload/route.ts"),
   source("src/app/api/admin/content/games/[slug]/preview-remove/route.ts"),
@@ -100,6 +108,49 @@ assert(directRoute.includes("createStagedDirectPreviewSource") && !directRoute.i
 assert(staging.includes("createStagedPlatformPreviewSource") && staging.includes("createStagedDirectPreviewSource") && !staging.includes("parseSupportedPlatformVideoUrl"), "Staging no debe detectar plataformas automáticamente.");
 assert(platformSource.includes("provider: PreviewProviderId") && platformSource.includes("parsePreviewProviderUrl(provider") && workerClient.includes("provider: PreviewProviderId"), "El proveedor explícito debe viajar hasta el worker multimedia.");
 assert(resolver.includes("const local = game.previewClip?.trim()") && card.includes("resolveGameCardPreview"), "La web pública debe seguir usando sólo el WebM interno.");
+
+assert(
+  form.includes("currentPreview && !preparedSource") &&
+    form.includes("{!preparedSource && (") &&
+    form.includes("EDITOR ACTIVO") &&
+    form.includes("El editor interno es la única vista activa") &&
+    form.includes("Cambiar fuente"),
+  "Al preparar una fuente debe desmontarse la previsualización externa/anterior y quedar un único editor activo."
+);
+assert(
+  form.includes('video.preload = "metadata"') &&
+    form.includes('video.addEventListener("loadeddata"') &&
+    form.includes("disableRemotePlayback"),
+  "El sondeo del navegador debe pedir sólo lo necesario y evitar capacidades de reproducción remota innecesarias."
+);
+assert(
+  trimEditor.includes("requestAnimationFrame") &&
+    trimEditor.includes("scheduleDrag") &&
+    trimEditor.includes("updateStart(value, false)") &&
+    trimEditor.includes("updateEnd(value, false)") &&
+    trimEditor.includes("finishPointerDrag"),
+  "Arrastrar IN/OUT debe actualizar visualmente por animation frame y hacer seek real sólo al finalizar el gesto."
+);
+assert(
+  trimEditor.includes("PREVIEW_QUALITY_OPTIONS") &&
+    trimEditor.includes("Calidad del preview guardado") &&
+    form.includes("X-Deuna-Preview-Quality") &&
+    form.includes("quality,") &&
+    importRoute.includes("parsePreviewQuality") &&
+    uploadRoute.includes("parsePreviewQuality") &&
+    editorialVideo.includes("qualityProfiles") &&
+    editorialVideo.includes("performance:") &&
+    editorialVideo.includes("balanced:") &&
+    editorialVideo.includes("high:") &&
+    editorialVideo.includes("profile.preferredBytes"),
+  "La calidad Ligera/Equilibrada/Alta debe validarse de UI a servidor y degradarse automáticamente para respetar el límite de peso."
+);
+assert(
+  importRoute.includes("legacyFields") &&
+    importRoute.includes("isLegacyRequest") &&
+    importRoute.includes("DEFAULT_PREVIEW_QUALITY"),
+  "El endpoint remoto debe mantener compatibilidad con pestañas anteriores usando calidad Equilibrada por defecto."
+);
 
 assert(
   staging.includes("probeViaMediaImportWorker") &&
@@ -215,4 +266,4 @@ if (failures.length) {
   failures.forEach((failure) => console.error(`- ${failure}`));
   process.exit(1);
 }
-console.log("Preview de video por proveedor: OK (selección explícita → probe sin descarga → Range privado → IN/OUT → extracción del tramo → WebM interno; staging completo permanece sólo como fallback compatible).");
+console.log("Preview de video por proveedor: OK (un solo editor activo → Range privado → IN/OUT sin seek continuo → calidad adaptativa → WebM interno; staging completo permanece sólo como fallback compatible).");
