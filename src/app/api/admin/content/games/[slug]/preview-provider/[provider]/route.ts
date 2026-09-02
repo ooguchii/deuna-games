@@ -64,6 +64,8 @@ export async function POST(
       bytes: staged.bytes,
       contentType: staged.contentType,
       expiresAt: staged.expiresAt,
+      durationSeconds: staged.durationSeconds,
+      delivery: staged.kind === "remote" ? "stream" : "staged",
       provider,
       providerLabel: spec.label,
     });

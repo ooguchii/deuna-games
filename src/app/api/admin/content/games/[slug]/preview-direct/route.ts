@@ -45,6 +45,8 @@ export async function POST(
       bytes: staged.bytes,
       contentType: staged.contentType,
       expiresAt: staged.expiresAt,
+      durationSeconds: staged.durationSeconds,
+      delivery: staged.kind === "remote" ? "stream" : "staged",
     });
   } catch (error) {
     return json({ error: error instanceof Error ? error.message : "No se pudo preparar la URL directa." }, 400);

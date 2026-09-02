@@ -1,3 +1,4 @@
+import { Readable } from "node:stream";
 import type { NextRequest } from "next/server";
 
 import {
@@ -12,6 +13,9 @@ import {
   resolveStagedEditorialPreviewSource,
 } from "@/lib/media/editorial-video-staging";
 import {
+  openMediaImportWorkerPreviewStream,
+} from "@/lib/media/media-import-worker-client";
+import {
   serveStagedPreviewFile,
 } from "@/lib/media/staged-preview-http";
 
@@ -23,6 +27,17 @@ function notFound() {
     status: 404,
     headers: {
       "Cache-Control": "no-store, max-age=0",
+      "X-Content-Type-Options": "nosniff",
+    },
+  });
+}
+
+function unavailable() {
+  return new Response("La vista previa remota no está disponible.", {
+    status: 502,
+    headers: {
+      "Cache-Control": "no-store, max-age=0",
+      "Content-Type": "text/plain; charset=utf-8",
       "X-Content-Type-Options": "nosniff",
     },
   });
@@ -69,11 +84,55 @@ async function serve(
 
   if (!source) return notFound();
 
-  return serveStagedPreviewFile(
-    request,
-    source,
-    headOnly
-  );
+  if (source.kind === "file") {
+    return serveStagedPreviewFile(
+      request,
+      source,
+      headOnly
+    );
+  }
+
+  if (headOnly) {
+    return new Response(null, {
+      status: 200,
+      headers: {
+        "Cache-Control": "private, no-store, max-age=0",
+        "Content-Type": source.contentType,
+        "Content-Length": String(source.bytes),
+        "Accept-Ranges": "bytes",
+        "Content-Disposition": "inline",
+        "X-Content-Type-Options": "nosniff",
+      },
+    });
+  }
+
+  try {
+    const streamed = await openMediaImportWorkerPreviewStream(
+      source.workerSessionId,
+      request.headers.get("range"),
+      false
+    );
+    if (!streamed.stream) return unavailable();
+    return new Response(
+      Readable.toWeb(streamed.stream) as ReadableStream<Uint8Array>,
+      {
+        status: streamed.statusCode,
+        headers: {
+          "Cache-Control": "private, no-store, max-age=0",
+          "Content-Type": streamed.contentType,
+          "Content-Length": String(streamed.contentLength),
+          "Accept-Ranges": "bytes",
+          "Content-Disposition": "inline",
+          "X-Content-Type-Options": "nosniff",
+          ...(streamed.contentRange
+            ? { "Content-Range": streamed.contentRange }
+            : {}),
+        },
+      }
+    );
+  } catch {
+    return unavailable();
+  }
 }
 
 export async function GET(
