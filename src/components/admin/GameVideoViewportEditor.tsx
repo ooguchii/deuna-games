@@ -93,7 +93,7 @@ export default function GameVideoViewportEditor({
     }
   }
 
-  async function useStaticCardImage() {
+  async function switchCardToStaticImage() {
     if (busy || target !== "card") return;
     setBusy(true);
     setStatus(
@@ -179,7 +179,7 @@ export default function GameVideoViewportEditor({
             type="button"
             className={contextualDialogStyles.secondary}
             disabled={busy}
-            onClick={() => void useStaticCardImage()}
+            onClick={() => void switchCardToStaticImage()}
           >
             Usar imagen estática
           </button>
