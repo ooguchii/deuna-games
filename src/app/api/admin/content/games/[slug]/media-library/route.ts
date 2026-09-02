@@ -451,20 +451,22 @@ export async function POST(
     }
 
     try {
-      if (publishedImageReferences.includes(imageResource.src)) {
-        const deletion = await markEditorialImageForDeletion(
-          slug,
-          imageResource
-        );
+      const deletion = await markEditorialImageForDeletion(
+        slug,
+        imageResource
+      );
 
+      if (deletion === "missing") {
         return adminRedirect(
           authorized.adminOrigin,
-          redirectPath(
-            slug,
-            deletion === "missing"
-              ? "recurso-eliminado"
-              : "recurso-eliminacion-pendiente"
-          )
+          redirectPath(slug, "recurso-eliminado")
+        );
+      }
+
+      if (publishedImageReferences.includes(imageResource.src)) {
+        return adminRedirect(
+          authorized.adminOrigin,
+          redirectPath(slug, "recurso-eliminacion-pendiente")
         );
       }
 
