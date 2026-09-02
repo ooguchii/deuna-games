@@ -250,7 +250,6 @@ export default function GamePreviewClipUploadForm({
 
   useEffect(() => {
     let cancelled = false;
-    setConfigBusy(true);
 
     void fetch(layoutPath(slug), {
       method: "GET",
