@@ -8,13 +8,17 @@ import {
 import FramedVideo from "@/components/ui/FramedVideo";
 import GameMedia from "@/components/ui/GameMedia";
 import { DEFAULT_PREVIEW_VIEWPORT } from "@/lib/media/preview-video-policy";
-import type { GameVideoViewport } from "@/types/game";
+import type {
+  GameImageViewport,
+  GameVideoViewport,
+} from "@/types/game";
 
 import styles from "./HoverPreviewMedia.module.css";
 
 type HoverPreviewMediaProps = {
   imageSrc?: string;
   imageAlt: string;
+  imageViewport?: GameImageViewport;
   sizes: string;
   fallbackClassName?: string;
   previewClip?: string;
@@ -78,6 +82,7 @@ function PreviewVideo({
 export default function HoverPreviewMedia({
   imageSrc,
   imageAlt,
+  imageViewport,
   sizes,
   fallbackClassName,
   previewClip,
@@ -89,6 +94,7 @@ export default function HoverPreviewMedia({
       <GameMedia
         src={imageSrc}
         alt={imageAlt}
+        viewport={imageViewport}
         sizes={sizes}
         fallbackClassName={fallbackClassName}
       />
