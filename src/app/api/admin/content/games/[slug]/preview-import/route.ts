@@ -15,8 +15,10 @@ import {
   type GameVideoTarget,
 } from "@/lib/media/game-video-media";
 import {
+  DEFAULT_PREVIEW_FPS,
   DEFAULT_PREVIEW_QUALITY,
   DEFAULT_PREVIEW_VIEWPORT,
+  parsePreviewFps,
   parsePreviewQuality,
   parsePreviewTrimWindow,
   parsePreviewViewport,
@@ -36,10 +38,8 @@ const viewportFields = [
   "viewportZoom",
   "viewportAspect",
 ] as const;
-const targetViewportFields = [
-  ...viewportFields,
-  "target",
-] as const;
+const targetViewportFields = [...viewportFields, "target"] as const;
+const targetViewportFpsFields = [...viewportFields, "fps", "target"] as const;
 
 function previewTarget(value: string | null): PreviewSaveTarget | null {
   if (value === null || value.trim() === "") return "card";
@@ -51,8 +51,8 @@ function previewTarget(value: string | null): PreviewSaveTarget | null {
 
 function errorState(error: unknown) {
   const message = error instanceof Error ? error.message : "";
-  if (message.includes("FFmpeg no está disponible")) return "ffmpeg";
-  if (message.includes("demasiado pesado") || message.includes("debajo de 3 MB")) return "video-pesado";
+  if (message.includes("FFmpeg no está disponible") || message.includes("FFprobe no está disponible")) return "ffmpeg";
+  if (message.includes("supera el límite seguro") || message.includes("demasiado pesado")) return "video-pesado";
   if (message.includes("recorte")) return "preview-recorte-invalido";
   return "video-invalido";
 }
@@ -62,11 +62,14 @@ export async function POST(request: NextRequest, context: { params: Promise<{ sl
   if (!authorized.authorized) return authorized.response;
   const { slug } = await context.params;
   const redirectTarget = `/admin/juegos/${encodeURIComponent(slug)}`;
-  const hasTargetViewportFields = hasExactAdminFormFields(authorized.form, targetViewportFields);
-  const hasViewportFields = !hasTargetViewportFields && hasExactAdminFormFields(authorized.form, viewportFields);
-  const hasQualityFields = !hasTargetViewportFields && !hasViewportFields && hasExactAdminFormFields(authorized.form, qualityFields);
-  const isLegacyRequest = !hasTargetViewportFields && !hasViewportFields && !hasQualityFields && hasExactAdminFormFields(authorized.form, legacyFields);
-  if (!hasTargetViewportFields && !hasViewportFields && !hasQualityFields && !isLegacyRequest) {
+
+  const hasTargetViewportFpsFields = hasExactAdminFormFields(authorized.form, targetViewportFpsFields);
+  const hasTargetViewportFields = !hasTargetViewportFpsFields && hasExactAdminFormFields(authorized.form, targetViewportFields);
+  const hasViewportFields = !hasTargetViewportFpsFields && !hasTargetViewportFields && hasExactAdminFormFields(authorized.form, viewportFields);
+  const hasQualityFields = !hasTargetViewportFpsFields && !hasTargetViewportFields && !hasViewportFields && hasExactAdminFormFields(authorized.form, qualityFields);
+  const isLegacyRequest = !hasTargetViewportFpsFields && !hasTargetViewportFields && !hasViewportFields && !hasQualityFields && hasExactAdminFormFields(authorized.form, legacyFields);
+
+  if (!hasTargetViewportFpsFields && !hasTargetViewportFields && !hasViewportFields && !hasQualityFields && !isLegacyRequest) {
     return adminRedirect(authorized.adminOrigin, `${redirectTarget}?estado=solicitud&seccion=multimedia`);
   }
 
@@ -74,12 +77,17 @@ export async function POST(request: NextRequest, context: { params: Promise<{ sl
   const sourceToken = authorized.form.get("sourceToken")?.trim() ?? "";
   const trim = parsePreviewTrimWindow(authorized.form.get("startSeconds"), authorized.form.get("endSeconds"));
   const target = previewTarget(
-    hasTargetViewportFields ? authorized.form.get("target") : null
+    hasTargetViewportFpsFields || hasTargetViewportFields
+      ? authorized.form.get("target")
+      : null
   );
   const quality = isLegacyRequest
     ? DEFAULT_PREVIEW_QUALITY
     : parsePreviewQuality(authorized.form.get("quality"));
-  const viewport = hasTargetViewportFields || hasViewportFields
+  const fps = hasTargetViewportFpsFields
+    ? parsePreviewFps(authorized.form.get("fps"))
+    : DEFAULT_PREVIEW_FPS;
+  const viewport = hasTargetViewportFpsFields || hasTargetViewportFields || hasViewportFields
     ? parsePreviewViewport(
         authorized.form.get("viewportX"),
         authorized.form.get("viewportY"),
@@ -91,6 +99,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ sl
   if (!trim) return adminRedirect(authorized.adminOrigin, `${redirectTarget}?estado=preview-recorte-invalido&seccion=multimedia`);
   if (!target) return adminRedirect(authorized.adminOrigin, `${redirectTarget}?estado=preview-destino-invalido&seccion=multimedia`);
   if (!quality) return adminRedirect(authorized.adminOrigin, `${redirectTarget}?estado=preview-calidad-invalida&seccion=multimedia`);
+  if (!fps) return adminRedirect(authorized.adminOrigin, `${redirectTarget}?estado=preview-fps-invalido&seccion=multimedia`);
   if (!viewport) return adminRedirect(authorized.adminOrigin, `${redirectTarget}?estado=preview-encuadre-invalido&seccion=multimedia`);
   if (!revision.success || !/^[a-f0-9]{48}$/.test(sourceToken)) return adminRedirect(authorized.adminOrigin, `${redirectTarget}?estado=preview-source-expirada&seccion=multimedia`);
 
@@ -108,7 +117,8 @@ export async function POST(request: NextRequest, context: { params: Promise<{ sl
         prepared.filePath,
         prepared.trim,
         quality,
-        target === "library" ? "hero" : target
+        target === "library" ? "hero" : target,
+        fps
       );
 
       if (target === "library") {
