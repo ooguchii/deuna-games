@@ -144,7 +144,7 @@ function runYtDlpAttempt(provider: PreviewProviderId, sourceUrl: string, tempora
       ...youtubeRuntimeArgs(provider),
       ...(YTDLP_COOKIES_FILE ? ["--cookies", YTDLP_COOKIES_FILE] : []),
       ...platformSpecificArgs(provider, youtubeClients),
-      "--no-playlist", "--max-downloads", "1", "--concurrent-fragments", "1",
+      "--no-playlist", "--concurrent-fragments", "1",
       "--limit-rate", PLATFORM_DOWNLOAD_RATE, "--retries", "2", "--fragment-retries", "2",
       "--socket-timeout", "20", "--no-cache-dir", "--no-progress", "--no-part", "--no-mtime",
       "--no-write-subs", "--no-write-auto-subs", "--no-write-thumbnail", "--no-write-info-json", "--no-write-playlist-metafiles",
