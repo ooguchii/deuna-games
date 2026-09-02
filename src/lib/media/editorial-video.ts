@@ -88,18 +88,17 @@ const qualityProfiles: Record<
     preferredBytes: 1_572_864,
     presets: [
       { width: 480, fps: 15, crf: 41, cpuUsed: 5 },
-      { width: 400, fps: 15, crf: 42, cpuUsed: 5 },
-      { width: 360, fps: 12, crf: 44, cpuUsed: 5 },
+      { width: 360, fps: 12, crf: 44, cpuUsed: 6 },
     ],
   },
   high: {
-    preferredBytes: 2_621_440,
+    // Alta acepta el primer encode seguro por debajo del límite duro. Sólo
+    // reintenta si realmente supera 3 MB, evitando codificaciones redundantes.
+    preferredBytes: MAX_EDITORIAL_PREVIEW_BYTES,
     presets: [
-      { width: 640, fps: 20, crf: 37, cpuUsed: 4 },
-      { width: 560, fps: 18, crf: 39, cpuUsed: 4 },
+      { width: 640, fps: 20, crf: 38, cpuUsed: 4 },
       { width: 480, fps: 15, crf: 41, cpuUsed: 5 },
-      { width: 400, fps: 15, crf: 42, cpuUsed: 5 },
-      { width: 360, fps: 12, crf: 44, cpuUsed: 5 },
+      { width: 360, fps: 12, crf: 44, cpuUsed: 6 },
     ],
   },
 };
