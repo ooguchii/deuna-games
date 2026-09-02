@@ -55,8 +55,8 @@ const providerLabels = {
 const blockedAddresses = new BlockList();
 for (const [network, prefix] of [
   ["0.0.0.0", 8], ["10.0.0.0", 8], ["100.64.0.0", 10], ["127.0.0.0", 8], ["169.254.0.0", 16], ["172.16.0.0", 12],
-  ["192.0.0.0", 24], ["192.0.2.0", 24], ["192.168.0.0", 16], ["198.18.0.0", 15], ["198.51.100.0", 24],
-  ["203.0.113.0", 24], ["224.0.0.0", 4], ["240.0.0.0", 4],
+  ["192.0.0.0", 24], ["192.0.2.0", 24], ["192.168.0.0", 16], ["198.18.0.0", 15], ["198.51.100.0", 24], ["203.0.113.0", 24],
+  ["224.0.0.0", 4], ["240.0.0.0", 4],
 ]) blockedAddresses.addSubnet(network, prefix, "ipv4");
 for (const [network, prefix] of [["::", 128], ["::1", 128], ["::ffff:0:0", 96], ["2001:db8::", 32], ["fc00::", 7], ["fe80::", 10], ["ff00::", 8]]) {
   blockedAddresses.addSubnet(network, prefix, "ipv6");
@@ -212,7 +212,7 @@ function formatSelectionArgs(provider, youtubeClients) {
 function runPlatformYtDlpAttempt(provider, sourceUrl, temporaryDirectory, youtubeClients) {
   return new Promise((resolve, reject) => {
     const outputTemplate = path.join(temporaryDirectory, "source.%(ext)s");
-    const args = ["--no-config", ...youtubeRuntimeArgs(provider), ...(YTDLP_COOKIES_FILE ? ["--cookies", YTDLP_COOKIES_FILE] : []), ...platformSpecificArgs(provider, youtubeClients), "--no-playlist", "--max-downloads", "1", "--concurrent-fragments", "1", "--limit-rate", PLATFORM_DOWNLOAD_RATE, "--retries", "2", "--fragment-retries", "2", "--socket-timeout", "20", "--no-cache-dir", "--no-progress", "--no-part", "--no-mtime", "--no-write-subs", "--no-write-auto-subs", "--no-write-thumbnail", "--no-write-info-json", "--no-write-playlist-metafiles", ...formatSelectionArgs(provider, youtubeClients), "--max-filesize", "512M", "--output", outputTemplate, sourceUrl];
+    const args = ["--no-config", ...youtubeRuntimeArgs(provider), ...(YTDLP_COOKIES_FILE ? ["--cookies", YTDLP_COOKIES_FILE] : []), ...platformSpecificArgs(provider, youtubeClients), "--no-playlist", "--concurrent-fragments", "1", "--limit-rate", PLATFORM_DOWNLOAD_RATE, "--retries", "2", "--fragment-retries", "2", "--socket-timeout", "20", "--no-cache-dir", "--no-progress", "--no-part", "--no-mtime", "--no-write-subs", "--no-write-auto-subs", "--no-write-thumbnail", "--no-write-info-json", "--no-write-playlist-metafiles", ...formatSelectionArgs(provider, youtubeClients), "--max-filesize", "512M", "--output", outputTemplate, sourceUrl];
     const child = spawn(ytDlpExecutable(), args, { shell: false, windowsHide: true, stdio: ["ignore", "ignore", "pipe"] });
     let stderr = ""; let settled = false;
     const timeout = setTimeout(() => { if (!settled) child.kill("SIGKILL"); }, PLATFORM_TIMEOUT_MS);
