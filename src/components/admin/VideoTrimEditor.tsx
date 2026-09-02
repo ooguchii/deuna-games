@@ -198,11 +198,6 @@ export default function VideoTrimEditor({
   }, [onTrimChange, trim]);
 
   useEffect(() => {
-    const normalized = normalizeViewport(viewport);
-    if (normalized) setViewportDraft(normalized);
-  }, [viewport]);
-
-  useEffect(() => {
     const stage = previewStageRef.current;
     const video = videoRef.current;
     if (!stage || !video) return;
@@ -577,12 +572,6 @@ export default function VideoTrimEditor({
         endSeconds + direction * step
       );
     }
-  }
-
-  function updateViewportDraft(next: PreviewViewport) {
-    const normalized = normalizeViewport(next);
-    if (!normalized) return;
-    setViewportDraft(normalized);
   }
 
   function commitViewport(next: PreviewViewport) {
