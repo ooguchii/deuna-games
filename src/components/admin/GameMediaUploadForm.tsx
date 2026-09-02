@@ -12,6 +12,7 @@ type GameMediaUploadFormProps = {
   slug: string;
   revision: number;
   screenshotCount: number;
+  libraryOnly?: boolean;
 };
 
 type SourceMode = "file" | "url";
@@ -209,13 +210,14 @@ function uploadRedirectError(state: string | null) {
     return "El servidor no pudo normalizar el WebP preparado. La selección se conserva para que puedas reintentar sin empezar de cero.";
   }
 
-  return "La imagen no pudo guardarse en el borrador. La selección y los ajustes se mantienen para reintentar.";
+  return "La imagen no pudo guardarse. La selección y los ajustes se mantienen para reintentar.";
 }
 
 export default function GameMediaUploadForm({
   slug,
   revision,
   screenshotCount,
+  libraryOnly = false,
 }: GameMediaUploadFormProps) {
   const fileInput = useRef<HTMLInputElement>(null);
   const [sourceMode, setSourceMode] =
@@ -330,9 +332,11 @@ export default function GameMediaUploadForm({
     const submittedForm = new FormData(
       event.currentTarget
     );
-    const kind = String(
-      submittedForm.get("kind") ?? "cover"
-    );
+    const kind = libraryOnly
+      ? "library"
+      : String(
+          submittedForm.get("kind") ?? "cover"
+        );
 
     setBusy(true);
     setStatus("Preparando imagen…");
@@ -361,7 +365,7 @@ export default function GameMediaUploadForm({
       );
 
       setStatus(
-        `WebP listo: ${normalized.width}×${normalized.height}, calidad ${normalized.quality}, ${(normalized.blob.size / 1024 / 1024).toFixed(2)} MB. Guardando borrador…`
+        `WebP listo: ${normalized.width}×${normalized.height}, calidad ${normalized.quality}, ${(normalized.blob.size / 1024 / 1024).toFixed(2)} MB. Guardando…`
       );
 
       const response = await fetch(
@@ -386,8 +390,11 @@ export default function GameMediaUploadForm({
       );
       const resultState =
         resultUrl.searchParams.get("estado");
+      const expectedState = libraryOnly
+        ? "recurso-subido"
+        : "imagen-subida";
 
-      if (resultState !== "imagen-subida") {
+      if (resultState !== expectedState) {
         throw new Error(
           uploadRedirectError(resultState)
         );
@@ -418,19 +425,33 @@ export default function GameMediaUploadForm({
         value={revision}
       />
 
-      <label>
-        <span>Destino de la imagen</span>
-        <select name="kind" defaultValue="cover" required>
-          <option value="cover">Portada</option>
-          <option value="hero">Imagen hero</option>
-          <option
-            value="screenshot"
-            disabled={screenshotCount >= 8}
+      {libraryOnly ? (
+        <>
+          <input type="hidden" name="kind" value="library" />
+          <div
+            className={`${styles.tableSummary} ${styles.fieldWide}`}
           >
-            Captura de galería
-          </option>
-        </select>
-      </label>
+            <strong>Destino · Biblioteca compartida</strong>
+            <span>
+              El archivo se almacena una sola vez por hash. Después podrás asignarlo a Portada, Hero o Galería sin volver a subirlo.
+            </span>
+          </div>
+        </>
+      ) : (
+        <label>
+          <span>Destino de la imagen</span>
+          <select name="kind" defaultValue="cover" required>
+            <option value="cover">Portada</option>
+            <option value="hero">Imagen hero</option>
+            <option
+              value="screenshot"
+              disabled={screenshotCount >= 8}
+            >
+              Captura de galería
+            </option>
+          </select>
+        </label>
+      )}
 
       <label>
         <span>Origen de la imagen</span>
@@ -556,12 +577,16 @@ export default function GameMediaUploadForm({
 
       <div className={styles.formActions}>
         <p>
-          La imagen se normaliza antes de salir del navegador. Las URLs se descargan mediante el panel privado, sólo desde HTTPS público. Si el servidor rechaza la carga, esta pantalla conserva la selección y los ajustes para poder corregir o reintentar.
+          {libraryOnly
+            ? "Subir aquí no cambia Portada, Hero ni Galería: sólo agrega el WebP seguro a la biblioteca para reutilizarlo después."
+            : "La imagen se normaliza antes de salir del navegador. Las URLs se descargan mediante el panel privado, sólo desde HTTPS público. Si el servidor rechaza la carga, esta pantalla conserva la selección y los ajustes para poder corregir o reintentar."}
         </p>
         <button type="submit" disabled={busy}>
           {busy
             ? "Preparando…"
-            : "Preparar, subir y guardar"}
+            : libraryOnly
+              ? "Preparar y guardar en biblioteca"
+              : "Preparar, subir y guardar"}
         </button>
       </div>
     </form>
