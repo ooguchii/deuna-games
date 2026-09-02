@@ -104,6 +104,13 @@ assert(
   "YouTube en desarrollo debe respetar auto: primero clientes upstream y luego web_embedded, sin volver a forzar la combinación legacy."
 );
 assert(
+  platformSource.includes('"bv*+ba/b"') &&
+    platformSource.includes('"--format-sort", "res:480"') &&
+    importWorker.includes('"bv*+ba/b"') &&
+    importWorker.includes('"--format-sort", "res:480"'),
+  "YouTube debe aceptar streams adaptativos separados de video+audio y ordenar hacia 480p sin exigir un MP4/AVC combinado inexistente."
+);
+assert(
   importWorker.includes('return [null, "web_embedded"]') &&
     importWorker.includes("--js-runtimes") &&
     importWorker.includes("--remote-components") &&
@@ -166,4 +173,4 @@ if (failures.length) {
   failures.forEach((failure) => console.error(`- ${failure}`));
   process.exit(1);
 }
-console.log("Preview de video por proveedor: OK (selección explícita → reproductor específico si existe → staging aislado → IN/OUT → WebM interno; YouTube auto → web_embedded; sin rutas ni identificadores legacy activos).");
+console.log("Preview de video por proveedor: OK (selección explícita → reproductor específico si existe → staging aislado → IN/OUT → WebM interno; YouTube auto → web_embedded con streams adaptativos hasta ~480p; sin rutas ni identificadores legacy activos).");
