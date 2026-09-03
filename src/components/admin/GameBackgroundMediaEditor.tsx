@@ -100,12 +100,8 @@ function RequirementButton({
   disabled?: boolean;
   onClick: () => void;
 }) {
-  const missingLabel = mediaKind === "image"
-    ? "Falta ajustar el foco de la imagen"
-    : "Falta ajustar el foco del video";
-  const completeLabel = mediaKind === "image"
-    ? "Foco adaptable de imagen confirmado"
-    : "Foco adaptable de video confirmado";
+  const medium = mediaKind === "image" ? "imagen" : "video";
+  const label = `Recorte adaptable · ${medium} ${complete ? "confirmado" : "no confirmado"}`;
 
   return (
     <button
@@ -114,10 +110,10 @@ function RequirementButton({
       data-requirement-state={complete ? "complete" : "missing"}
       disabled={disabled || !hasResource}
       onClick={onClick}
-      title={complete ? "Editar foco adaptable" : undefined}
+      title={complete ? "Editar recorte adaptable" : undefined}
     >
       <RequirementActionIcon complete={complete} />
-      {complete ? completeLabel : missingLabel}
+      {label}
     </button>
   );
 }
@@ -175,9 +171,7 @@ function ResourcePicker({
                   {resource.kind === "image" ? (
                     <Image src={resource.src} alt="" fill sizes="96px" />
                   ) : (
-                    <span className={styles.videoThumb}>
-                      <MonitorPlay size={22} aria-hidden="true" />
-                    </span>
+                    <span className={styles.videoThumb}><MonitorPlay size={22} aria-hidden="true" /></span>
                   )}
                 </span>
                 <span className={styles.resourceCopy}>
@@ -193,9 +187,7 @@ function ResourcePicker({
             No hay {kind === "image" ? "imágenes" : "videos"} disponibles. Agrégalos una sola vez desde la Biblioteca multimedia compartida.
           </p>
         )}
-        <a className={styles.libraryLink} href="#shared-library-heading">
-          Ir a Biblioteca multimedia compartida
-        </a>
+        <a className={styles.libraryLink} href="#shared-library-heading">Ir a Biblioteca multimedia compartida</a>
       </div>
     </details>
   );
@@ -227,7 +219,6 @@ export default function GameBackgroundMediaEditor({
       (!needsVideo || (videoSelected && videoCropReady))
   );
   const controlsDisabled = busy || stale;
-
   const currentLabel = !mode
     ? "Fondo global"
     : mode === "image"
@@ -235,7 +226,6 @@ export default function GameBackgroundMediaEditor({
       : mode === "video"
         ? "Video"
         : "Imagen + hover";
-
   const imageResource = resources.find(
     (resource): resource is ResourceImage => resource.kind === "image" && resource.src === assignment.image
   ) ?? null;
@@ -252,9 +242,7 @@ export default function GameBackgroundMediaEditor({
         method: "POST",
         credentials: "same-origin",
         cache: "no-store",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
-        },
+        headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
         body: new URLSearchParams({
           expectedRevision: String(revision),
           action,
@@ -285,7 +273,7 @@ export default function GameBackgroundMediaEditor({
       <article className={assignmentStyles.assignmentCard} aria-labelledby="game-background-heading">
         <header>
           <div><span>D</span><h3 id="game-background-heading">Fondo del juego</h3></div>
-          <small>Opcional · foco adaptable</small>
+          <small>Opcional · recorte adaptable</small>
         </header>
 
         <div className={assignmentStyles.modeSwitch} aria-label="Modo del Fondo del juego">
@@ -377,8 +365,8 @@ export default function GameBackgroundMediaEditor({
           {!mode
             ? "FONDO GLOBAL ACTIVO · DESTINO OPCIONAL"
             : activeReady
-              ? "FOCO ADAPTABLE CONFIRMADO"
-              : "COMPLETA LOS RECURSOS Y FOCOS"}
+              ? "RECORTE ADAPTABLE CONFIRMADO"
+              : "RECORTE ADAPTABLE NO CONFIRMADO"}
         </small>
 
         {error && <div className={styles.error} role="alert">{error}</div>}
@@ -387,8 +375,8 @@ export default function GameBackgroundMediaEditor({
       {editing === "image" && assignment.image && (
         <ContextualMediaDialog
           eyebrow="FONDO ADAPTABLE"
-          title="Ajustar foco de la imagen de fondo"
-          description="El archivo físico permanece intacto. El mismo foco se adapta a distintas proporciones de pantalla."
+          title="Recorte adaptable de la imagen de fondo"
+          description="El archivo físico permanece intacto. La posición y el zoom se adaptan a las distintas proporciones de pantalla."
           onClose={() => setEditing(null)}
         >
           <GameBackgroundViewportEditor
@@ -407,8 +395,8 @@ export default function GameBackgroundMediaEditor({
       {editing === "video" && assignment.video?.clip && (
         <ContextualMediaDialog
           eyebrow="FONDO ADAPTABLE"
-          title="Ajustar foco del video de fondo"
-          description="El WebM físico permanece intacto. Sólo se guarda posición y zoom para el fondo adaptable."
+          title="Recorte adaptable del video de fondo"
+          description="El WebM físico permanece intacto. Sólo se guardan posición y zoom para su presentación adaptable."
           onClose={() => setEditing(null)}
         >
           <GameBackgroundViewportEditor
