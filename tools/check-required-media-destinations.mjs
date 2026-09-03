@@ -235,7 +235,8 @@ assert(
 assert(
   has(
     imageLayoutRoute,
-    'const targetSchema = z.enum(["cover", "hero", "card", "detail", "gallery"])',
+    'const legacyImageTargets = ["cover", "hero", "card", "gallery"] as const',
+    'const targetSchema = z.enum([...legacyImageTargets, "detail"])',
     '"viewportAspect"',
     '"viewportAspectRatio"',
     "expectsGalleryResource",
