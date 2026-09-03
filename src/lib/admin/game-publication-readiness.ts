@@ -1,6 +1,7 @@
 import {
   resolvePerformanceProfile,
 } from "@/features/game-finder/performance-data";
+import { evaluateGameMediaRequirements } from "@/lib/media/game-media-requirements";
 import type { Game } from "@/types/game";
 
 export type GameReadinessSection =
@@ -72,6 +73,7 @@ function hasVisibleDownload(game: Game) {
 export function evaluateGamePublicationReadiness(
   game: Game
 ): GamePublicationReadiness {
+  const media = evaluateGameMediaRequirements(game);
   const items: GameReadinessItem[] = [
     {
       id: "core",
@@ -130,29 +132,40 @@ export function evaluateGamePublicationReadiness(
       label: "Estimación de FPS",
       detail: "Una calibración editorial o histórica permite adaptar los FPS al hardware de cada visitante.",
       section: "rendimiento",
-      complete: Boolean(
-        resolvePerformanceProfile(
-          game.slug,
-          game.performance
-        )
-      ),
+      complete: Boolean(resolvePerformanceProfile(game.slug, game.performance)),
       priority: "recommended",
     },
     {
-      id: "cover",
-      label: "Portada",
-      detail: "Una portada propia evita que la ficha dependa de un recurso visual vacío.",
+      id: "cover-crop",
+      label: "Portada · recorte 4:5",
+      detail: "La Portada debe tener una imagen asignada y su recorte 4:5 confirmado.",
       section: "multimedia",
-      complete: hasText(game.coverImage),
-      priority: "recommended",
+      complete: media.cover.cropReady,
+      priority: "essential",
     },
     {
-      id: "hero",
-      label: "Imagen hero",
-      detail: "El hero mejora la presentación; si falta, la web puede reutilizar la portada.",
+      id: "hero-crop",
+      label: "Hero · recorte 16:9",
+      detail: "El Hero debe tener el recurso activo y su recorte 16:9 confirmado. Imagen + hover requiere confirmar imagen y video.",
       section: "multimedia",
-      complete: hasText(game.heroImage) || hasText(game.coverImage),
-      priority: "recommended",
+      complete: media.hero.cropReady,
+      priority: "essential",
+    },
+    {
+      id: "card-crop",
+      label: "Card · recorte 3:2",
+      detail: "La Card debe confirmar su recorte 3:2 aunque reutilice la Portada o el video del Hero.",
+      section: "multimedia",
+      complete: media.card.cropReady,
+      priority: "essential",
+    },
+    {
+      id: "gallery-minimum",
+      label: "Galería · mínimo 1 imagen",
+      detail: "La Galería del juego debe contener al menos una imagen asignada.",
+      section: "multimedia",
+      complete: media.gallery.assigned,
+      priority: "essential",
     },
     {
       id: "downloads",
@@ -169,18 +182,14 @@ export function evaluateGamePublicationReadiness(
     .filter((item) => item.priority === "essential")
     .every((item) => item.complete);
   const recommendedMissing = items.filter(
-    (item) =>
-      item.priority === "recommended" &&
-      !item.complete
+    (item) => item.priority === "recommended" && !item.complete
   ).length;
 
   return {
     items,
     completed,
     total: items.length,
-    percentage: Math.round(
-      (completed / items.length) * 100
-    ),
+    percentage: Math.round((completed / items.length) * 100),
     essentialsReady,
     recommendedMissing,
   };

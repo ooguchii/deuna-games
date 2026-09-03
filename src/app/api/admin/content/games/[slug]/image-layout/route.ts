@@ -20,6 +20,7 @@ import {
 import type {
   Game,
   GameImageMedia,
+  GameImageViewport,
 } from "@/types/game";
 
 export const dynamic = "force-dynamic";
@@ -45,10 +46,18 @@ function hasImageForTarget(
 ) {
   if (target === "cover") return Boolean(game.coverImage);
   if (target === "hero") {
-    return Boolean(game.heroImage) && !game.videoMedia?.hero;
+    return Boolean(game.heroImage) &&
+      (!game.videoMedia?.hero || game.videoMedia.hero.playback === "hover");
   }
 
   return Boolean(game.coverImage) && !resolveGameCardVideo(game);
+}
+
+function confirmedViewport(viewport: GameImageViewport): GameImageViewport {
+  return {
+    ...viewport,
+    confirmed: true,
+  };
 }
 
 export async function POST(
@@ -125,17 +134,18 @@ export async function POST(
     );
   }
 
+  const savedViewport = confirmedViewport(viewport);
   const imageMedia: GameImageMedia = target.data === "gallery"
     ? {
         ...item.payload.imageMedia,
         gallery: {
           ...item.payload.imageMedia?.gallery,
-          [resource]: viewport,
+          [resource]: savedViewport,
         },
       }
     : {
         ...item.payload.imageMedia,
-        [target.data]: viewport,
+        [target.data]: savedViewport,
       };
 
   const mediaUpdate = {

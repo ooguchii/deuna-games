@@ -86,8 +86,7 @@
   white-space: nowrap;
 }
 
-.summaryCard small,
-.assignmentStatus {
+.summaryCard small {
   display: flex;
   align-items: center;
   gap: 5px;

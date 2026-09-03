@@ -28,16 +28,19 @@ import {
   reconcileEditorialImageDeletions,
 } from "@/lib/media/editorial-media-library";
 import {
+  evaluateGameMediaRequirements,
+  REQUIRED_DESTINATION_ASPECTS,
+} from "@/lib/media/game-media-requirements";
+import {
   DEFAULT_GAME_IMAGE_VIEWPORT,
 } from "@/lib/media/image-viewport";
 import {
-  normalizeGameVideoViewport,
   withoutGameVideoTarget,
 } from "@/lib/media/game-video-media";
-import { DEFAULT_PREVIEW_VIEWPORT } from "@/lib/media/preview-video-policy";
 import type {
   Game,
   GameImageMedia,
+  GameVideoViewport,
 } from "@/types/game";
 
 export const dynamic = "force-dynamic";
@@ -63,6 +66,17 @@ const fields = [
 
 function redirectPath(slug: string, state: string) {
   return `/admin/juegos/${encodeURIComponent(slug)}?estado=${encodeURIComponent(state)}&seccion=multimedia`;
+}
+
+function requiredVideoViewport(
+  target: "hero" | "card"
+): GameVideoViewport {
+  return {
+    x: 0.5,
+    y: 0.5,
+    zoom: 1,
+    aspect: REQUIRED_DESTINATION_ASPECTS[target],
+  };
 }
 
 async function resourcesForGame(
@@ -177,6 +191,7 @@ export async function GET(
     {
       revision: item.revision,
       resources,
+      requirements: evaluateGameMediaRequirements(item.payload),
       assignments: {
         coverImage: item.payload.coverImage ?? null,
         heroImage: item.payload.heroImage ?? null,
@@ -262,12 +277,6 @@ export async function POST(
   const videoResource = videoResourceMatch?.kind === "video"
     ? videoResourceMatch
     : undefined;
-  const currentHeroViewport = normalizeGameVideoViewport(
-    current.videoMedia?.hero?.viewport ?? DEFAULT_PREVIEW_VIEWPORT
-  );
-  const currentCardViewport = normalizeGameVideoViewport(
-    current.videoMedia?.card?.viewport ?? DEFAULT_PREVIEW_VIEWPORT
-  );
 
   let update: Parameters<typeof saveGameMediaDraft>[3] | null = null;
 
@@ -321,7 +330,7 @@ export async function POST(
         ...current.videoMedia,
         hero: {
           clip: videoResource.src,
-          viewport: currentHeroViewport,
+          viewport: requiredVideoViewport("hero"),
           playback: target.data === "hero-hover-video" ? "hover" : "always",
         },
       },
@@ -342,12 +351,12 @@ export async function POST(
         card: sharesHero
           ? {
               source: "hero",
-              viewport: currentCardViewport,
+              viewport: requiredVideoViewport("card"),
             }
           : {
               source: "independent",
               clip: videoResource.src,
-              viewport: currentCardViewport,
+              viewport: requiredVideoViewport("card"),
             },
       },
       previewClip: videoResource.src,
@@ -367,7 +376,7 @@ export async function POST(
         ...current.videoMedia,
         card: {
           source: "hero",
-          viewport: currentCardViewport,
+          viewport: requiredVideoViewport("card"),
         },
       },
       previewClip: hero.clip,

@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import VideoTrimEditor from "@/components/admin/VideoTrimEditor";
+import { REQUIRED_DESTINATION_ASPECTS } from "@/lib/media/game-media-requirements";
 import { normalizeGameVideoViewport } from "@/lib/media/game-video-media";
 import {
   DEFAULT_PREVIEW_QUALITY,
@@ -39,17 +40,30 @@ export default function GameVideoViewportEditor({
   initialViewport,
   onClose,
 }: Props) {
-  const [viewport, setViewport] = useState<PreviewViewport>(() =>
-    normalizeGameVideoViewport(initialViewport)
-  );
+  const requiredAspect = REQUIRED_DESTINATION_ASPECTS[target];
+  const [viewport, setViewport] = useState<PreviewViewport>(() => ({
+    ...normalizeGameVideoViewport(initialViewport),
+    aspect: requiredAspect,
+  }));
+  const [editorVersion, setEditorVersion] = useState(0);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
+
+  function updateViewport(next: PreviewViewport) {
+    if (next.aspect !== requiredAspect) {
+      setViewport({ ...next, aspect: requiredAspect });
+      setEditorVersion((value) => value + 1);
+      setStatus(`La relación de ${target === "hero" ? "Hero" : "Card"} es obligatoria: ${requiredAspect}.`);
+      return;
+    }
+    setViewport(next);
+  }
 
   async function save() {
     if (busy) return;
     setBusy(true);
     setStatus(
-      "Guardando sólo el encuadre visual; el WebM físico no se modifica…"
+      `Confirmando el recorte obligatorio ${requiredAspect}; el WebM físico no se modifica…`
     );
 
     try {
@@ -70,7 +84,7 @@ export default function GameVideoViewportEditor({
             viewportX: String(viewport.x),
             viewportY: String(viewport.y),
             viewportZoom: String(viewport.zoom),
-            viewportAspect: viewport.aspect,
+            viewportAspect: requiredAspect,
           }),
         }
       );
@@ -98,7 +112,7 @@ export default function GameVideoViewportEditor({
     if (busy || target !== "card") return;
     setBusy(true);
     setStatus(
-      "Quitando sólo el preview animado; el WebM seguirá disponible en la biblioteca…"
+      "Quitando sólo el preview animado; la Card volverá a exigir su recorte 3:2 de imagen…"
     );
 
     try {
@@ -140,16 +154,18 @@ export default function GameVideoViewportEditor({
 
   return (
     <>
+      <p style={{ margin: "0 0 12px", color: "#ff9b51", fontSize: 12, fontWeight: 800 }}>
+        RECORTE OBLIGATORIO · {requiredAspect} · Debes guardarlo para completar este destino.
+      </p>
       <VideoTrimEditor
-        key={`${target}:${source}:${clip}`}
+        key={`${target}:${source}:${clip}:${editorVersion}`}
         src={clip}
         sourceLabel={label}
         quality={DEFAULT_PREVIEW_QUALITY}
         viewport={viewport}
-        qualityDisabled
         layoutOnly
         onQualityChange={ignoreQuality}
-        onViewportChange={setViewport}
+        onViewportChange={updateViewport}
         onTrimChange={ignoreTrim}
       />
 
@@ -188,10 +204,11 @@ export default function GameVideoViewportEditor({
         <button
           type="button"
           className={dialogStyles.primary}
+          aria-label={`Guardar encuadre obligatorio ${requiredAspect}`}
           disabled={busy}
           onClick={() => void save()}
         >
-          {busy ? "Guardando…" : "Guardar encuadre"}
+          {busy ? "Guardando…" : `Confirmar recorte ${requiredAspect}`}
         </button>
       </div>
     </>

@@ -38,14 +38,12 @@ export const PREVIEW_QUALITY_OPTIONS: readonly PreviewQualityOption[] = [
   },
 ];
 
-// Hero y Card comparten exactamente la misma política de master. La diferencia
-// visual entre destinos se guarda como viewport metadata-only y nunca como una
-// segunda variante física del video.
 export const PREVIEW_HERO_QUALITY_OPTIONS = PREVIEW_QUALITY_OPTIONS;
 
 export const PREVIEW_VIEWPORT_ASPECT_IDS = [
   "source",
   "16:9",
+  "3:2",
   "1:1",
   "4:5",
   "9:16",
@@ -62,9 +60,10 @@ export type PreviewViewportAspectOption = {
 
 export const PREVIEW_VIEWPORT_ASPECT_OPTIONS: readonly PreviewViewportAspectOption[] = [
   { id: "source", label: "Original", ratio: null },
-  { id: "16:9", label: "16:9 · Horizontal", ratio: 16 / 9 },
+  { id: "16:9", label: "16:9 · Hero horizontal", ratio: 16 / 9 },
+  { id: "3:2", label: "3:2 · Card", ratio: 3 / 2 },
   { id: "1:1", label: "1:1 · Cuadrado", ratio: 1 },
-  { id: "4:5", label: "4:5 · Vertical", ratio: 4 / 5 },
+  { id: "4:5", label: "4:5 · Portada", ratio: 4 / 5 },
   { id: "9:16", label: "9:16 · Historia", ratio: 9 / 16 },
 ];
 
@@ -109,8 +108,6 @@ export function parsePreviewQuality(
     return normalized as PreviewQualityId;
   }
 
-  // Compatibilidad de entrada con formularios anteriores. Los perfiles viejos
-  // ya no son política activa y se normalizan a una resolución explícita.
   if (normalized === "performance" || normalized === "balanced") return "720p";
   if (normalized === "high") return "1080p";
   return null;
@@ -258,7 +255,7 @@ export function parsePreviewTrimWindow(
   const durationMilliseconds = endMilliseconds - startMilliseconds;
 
   if (
-    durationMilliseconds <= 0 ||
+    durationMilliseconds < 100 ||
     durationMilliseconds > MAX_PREVIEW_DURATION_SECONDS * 1_000
   ) {
     return null;

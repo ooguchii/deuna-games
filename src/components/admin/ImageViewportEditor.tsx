@@ -12,6 +12,7 @@ import {
   MAX_GAME_IMAGE_ZOOM,
   normalizeGameImageViewport,
 } from "@/lib/media/image-viewport";
+import { REQUIRED_DESTINATION_ASPECTS } from "@/lib/media/game-media-requirements";
 import type { GameImageViewport } from "@/types/game";
 
 import dialogStyles from "./ContextualMediaDialog.module.css";
@@ -45,6 +46,13 @@ function targetLabel(target: Target) {
   return "Card";
 }
 
+function targetAspect(target: Target) {
+  if (target === "cover") return { css: "4 / 5", label: REQUIRED_DESTINATION_ASPECTS.cover };
+  if (target === "hero") return { css: "16 / 9", label: REQUIRED_DESTINATION_ASPECTS.hero };
+  if (target === "card") return { css: "3 / 2", label: REQUIRED_DESTINATION_ASPECTS.card };
+  return { css: "16 / 9", label: "16:9" };
+}
+
 export default function ImageViewportEditor({
   slug,
   revision,
@@ -60,6 +68,7 @@ export default function ImageViewportEditor({
   );
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
+  const aspect = targetAspect(target);
 
   function updateFocus(event: PointerEvent<HTMLDivElement>) {
     if (busy) return;
@@ -83,7 +92,7 @@ export default function ImageViewportEditor({
   async function save() {
     if (busy) return;
     setBusy(true);
-    setStatus(`Guardando el encuadre de ${targetLabel(target)} sin crear otra imagen…`);
+    setStatus(`Confirmando el recorte ${aspect.label} de ${targetLabel(target)} sin crear otra imagen…`);
 
     try {
       const fields: Record<string, string> = {
@@ -141,7 +150,7 @@ export default function ImageViewportEditor({
         <div className={styles.previewColumn}>
           <div className={styles.previewHeader}>
             <div>
-              <span>VISTA DEL DESTINO</span>
+              <span>RECORTE REQUERIDO · {aspect.label}</span>
               <strong>{label}</strong>
             </div>
             <small>{targetLabel(target)} · metadata visual</small>
@@ -149,6 +158,7 @@ export default function ImageViewportEditor({
 
           <div
             className={styles.preview}
+            style={{ aspectRatio: aspect.css }}
             onPointerDown={(event) => {
               event.currentTarget.setPointerCapture(event.pointerId);
               updateFocus(event);
@@ -168,7 +178,7 @@ export default function ImageViewportEditor({
                 event.currentTarget.releasePointerCapture(event.pointerId);
               }
             }}
-            aria-label="Seleccionar punto focal de la imagen"
+            aria-label={`Seleccionar recorte ${aspect.label} de ${targetLabel(target)}`}
           >
             <div
               className={styles.imageLayer}
@@ -196,12 +206,12 @@ export default function ImageViewportEditor({
             />
           </div>
           <p className={styles.previewHint}>
-            Arrastra el punto focal hacia la zona que quieres priorizar. El archivo original no se recorta ni se duplica.
+            Este marco representa exactamente el formato requerido para {targetLabel(target)}. Arrastra el punto focal y guarda para confirmar el recorte obligatorio. El archivo original no se modifica.
           </p>
         </div>
 
         <div className={styles.controls}>
-          <span>ENCUADRE</span>
+          <span>ENCUADRE · {aspect.label}</span>
 
           <div className={styles.controlGroup}>
             <label htmlFor="image-viewport-zoom">
@@ -304,7 +314,7 @@ export default function ImageViewportEditor({
           disabled={busy}
           onClick={() => void save()}
         >
-          {busy ? "Guardando…" : "Guardar encuadre"}
+          {busy ? "Guardando…" : `Confirmar recorte ${aspect.label}`}
         </button>
       </div>
     </>
