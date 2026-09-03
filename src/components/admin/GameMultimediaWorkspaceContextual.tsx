@@ -29,6 +29,10 @@ import GameMediaUploadForm from "@/components/admin/GameMediaUploadForm";
 import GameVideoViewportEditor from "@/components/admin/GameVideoViewportEditor";
 import ImageViewportEditor from "@/components/admin/ImageViewportEditor";
 import { REQUIRED_DESTINATION_ASPECTS } from "@/lib/media/game-media-requirements";
+import {
+  GAME_IMAGE_CROP_ASPECTS,
+  gameImageCropAspectLabel,
+} from "@/lib/media/image-viewport";
 import { DEFAULT_PREVIEW_VIEWPORT } from "@/lib/media/preview-video-policy";
 import type {
   GameBackgroundVideo,
@@ -160,10 +164,21 @@ function cardClip(state: LibraryState | null) {
 function isViewport(value: unknown): value is GameImageViewport {
   if (!value || typeof value !== "object") return false;
   const viewport = value as Partial<GameImageViewport>;
+  const aspectValid = viewport.aspect === undefined ||
+    GAME_IMAGE_CROP_ASPECTS.includes(viewport.aspect);
+  const ratioValid = viewport.aspect === "free"
+    ? typeof viewport.aspectRatio === "number" &&
+      Number.isFinite(viewport.aspectRatio) &&
+      viewport.aspectRatio >= 0.1 &&
+      viewport.aspectRatio <= 10
+    : viewport.aspectRatio === undefined;
+
   return (
     typeof viewport.x === "number" && viewport.x >= 0 && viewport.x <= 1 &&
     typeof viewport.y === "number" && viewport.y >= 0 && viewport.y <= 1 &&
     typeof viewport.zoom === "number" && viewport.zoom >= 1 && viewport.zoom <= 3 &&
+    aspectValid &&
+    ratioValid &&
     (viewport.confirmed === undefined || viewport.confirmed === true)
   );
 }
@@ -656,14 +671,14 @@ export default function GameMultimediaWorkspaceContextual({
   const cardImageCropReady = Boolean(cardImage && imageMedia?.card?.confirmed);
   const cardVideoCropReady = Boolean(state?.assignments.cardVideo?.viewport.confirmed);
   const cardCropReady = cropReady(cardMode, cardImageCropReady, cardVideoCropReady);
-  const backgroundImageFocusReady = Boolean(backgroundImage && imageMedia?.background?.confirmed);
-  const backgroundVideoFocusReady = Boolean(
+  const backgroundImageCropReady = Boolean(backgroundImage && imageMedia?.background?.confirmed);
+  const backgroundVideoCropReady = Boolean(
     backgroundVideo?.viewport.confirmed && backgroundVideo.viewport.aspect === "source"
   );
   const backgroundReady = backgroundMode === null || cropReady(
     backgroundMode,
-    backgroundImageFocusReady,
-    backgroundVideoFocusReady
+    backgroundImageCropReady,
+    backgroundVideoCropReady
   );
   const gallerySelectionReady = screenshots.length >= 1;
   const pendingGalleryCrops = screenshots.filter(
@@ -784,7 +799,10 @@ export default function GameMultimediaWorkspaceContextual({
       <div className={compact ? contextualStyles.galleryMiniGrid : contextualStyles.galleryManageGrid}>
         {screenshots.map((src, index) => {
           const resource = imageBySrc(src);
-          const cropConfirmed = imageMedia?.gallery?.[src]?.confirmed === true;
+          const galleryViewport = imageMedia?.gallery?.[src];
+          const cropConfirmed = galleryViewport?.confirmed === true;
+          const cropAspectLabel = gameImageCropAspectLabel(galleryViewport);
+          const cropStateLabel = `Recorte ${cropAspectLabel} ${cropConfirmed ? "confirmado" : "no confirmado"}`;
           return (
             <article
               key={src}
@@ -798,19 +816,19 @@ export default function GameMultimediaWorkspaceContextual({
                 <small>{resource ? imageMeta(resource) : `Captura ${index + 1}`}</small>
                 <span className={cropConfirmed ? contextualStyles.galleryCropReady : contextualStyles.galleryCropMissing}>
                   {cropConfirmed ? <CheckCircle2 size={12} aria-hidden="true" /> : <Info size={12} aria-hidden="true" />}
-                  {cropConfirmed ? "Recorte 16:9 confirmado" : "Falta recortar la imagen"}
+                  {cropStateLabel}
                 </span>
               </div>
               <div className={contextualStyles.galleryItemActions}>
                 <button
                   type="button"
                   className={`${contextualStyles.galleryEditButton} ${requirementActionClass(cropConfirmed)}`}
-                  aria-label={cropConfirmed ? "Editar recorte confirmado" : "Editar recorte pendiente"}
+                  aria-label={cropConfirmed ? `Editar ${cropStateLabel}` : `Editar ${cropStateLabel}`}
                   disabled={stale}
                   onClick={() => openGalleryImage(src)}
                 >
                   {cropConfirmed ? <CheckCircle2 size={14} aria-hidden="true" /> : <Pencil size={14} aria-hidden="true" />}
-                  {cropConfirmed ? "Recorte confirmado" : "Falta recortar"}
+                  {cropStateLabel}
                 </button>
                 <form method="post" action={endpoint}>
                   <input type="hidden" name="expectedRevision" value={assignmentRevision} />
@@ -898,15 +916,15 @@ export default function GameMultimediaWorkspaceContextual({
   const galleryPendingLabel = !gallerySelectionReady
     ? "IMAGEN REQUERIDA"
     : pendingGalleryCrops.length === 1
-      ? "FALTA RECORTAR 1 IMAGEN"
-      : `FALTAN RECORTAR ${pendingGalleryCrops.length} IMÁGENES`;
+      ? "1 RECORTE NO CONFIRMADO"
+      : `${pendingGalleryCrops.length} RECORTES NO CONFIRMADOS`;
   const galleryCropActionLabel = galleryCropReady
-    ? "Recortes 16:9 confirmados"
+    ? "Recortes confirmados"
     : pendingGalleryCrops.length > 1
-      ? `Falta recortar ${pendingGalleryCrops.length} imágenes`
-      : "Falta recortar la imagen";
+      ? `${pendingGalleryCrops.length} recortes no confirmados`
+      : "Recorte no confirmado";
   const gatePendingLabel = !mandatoryRequirementsReady
-    ? "Confirma Portada 4:5, Hero 16:9, Card 3:2 y al menos una imagen de Galería con su recorte 16:9."
+    ? "Confirma Portada 4:5, Hero 16:9, Card 3:2 y al menos una imagen de Galería con su recorte confirmado."
     : "Completa el Fondo adaptable que activaste o vuelve a usar el fondo global.";
 
   return (
@@ -917,7 +935,7 @@ export default function GameMultimediaWorkspaceContextual({
             <span>RESUMEN MULTIMEDIA</span>
             <h2 id="multimedia-summary-heading">Requisitos obligatorios de destinos</h2>
           </div>
-          <p>Portada, Hero y Card tienen recurso, modo y recorte independientes. Cada imagen asignada a Galería también confirma su propio 16:9. Fondo permanece opcional mientras use el global.</p>
+          <p>Portada, Hero y Card tienen recurso, modo y recorte independientes. Cada imagen de Galería elige y confirma su propia relación. Fondo permanece opcional mientras use el global.</p>
         </div>
         <div className={styles.summaryGrid}>
           <article className={styles.summaryCard}>
@@ -943,7 +961,7 @@ export default function GameMultimediaWorkspaceContextual({
         <div className={styles.primaryColumn}>
           <section className={styles.numberedSection} aria-labelledby="destination-assignment-heading">
             <div className={styles.sectionTitleRow}>
-              <div><span>01</span><div><h2 id="destination-assignment-heading">Asignación de destinos</h2><p>Portada, Hero, Card y Fondo eligen su modo y recursos de forma independiente. Fondo es opcional y puede volver al global; Galería administra sus capturas aparte. Rojo indica lo que falta y verde confirma cada paso.</p></div></div>
+              <div><span>01</span><div><h2 id="destination-assignment-heading">Asignación de destinos</h2><p>Portada, Hero, Card y Fondo eligen su modo y recursos de forma independiente. Fondo es opcional y puede volver al global; Galería permite elegir la relación de cada captura. Rojo indica lo que falta y verde confirma cada paso.</p></div></div>
             </div>
 
             <div className={styles.assignmentGrid}>
@@ -994,10 +1012,10 @@ export default function GameMultimediaWorkspaceContextual({
               />
 
               <article className={`${styles.assignmentCard} ${contextualStyles.galleryAssignmentCard}`}>
-                <header><div><span>E</span><h3>Galería del juego</h3></div><small>Obligatoria · mínimo 1 imagen · recorte 16:9</small></header>
+                <header><div><span>E</span><h3>Galería del juego</h3></div><small>Obligatoria · mínimo 1 imagen · relación elegible</small></header>
                 <div className={styles.currentResource}>
                   {firstGalleryResource ? <span className={styles.currentThumb}><Image src={firstGalleryResource.src} alt="" fill sizes="72px" /></span> : <span className={styles.currentIcon}><Images size={20} aria-hidden="true" /></span>}
-                  <div><span>Capturas asignadas</span><strong>{screenshots.length} de 8</strong><small>Cada captura asignada debe confirmar su encuadre 16:9. Quitar una captura no destruye el recurso de la biblioteca.</small></div>
+                  <div><span>Capturas asignadas</span><strong>{screenshots.length} de 8</strong><small>Cada captura elige 16:9, 3:2, 1:1, 4:5, 9:16 o Libre y debe confirmar su recorte. Quitar una captura no destruye el recurso.</small></div>
                 </div>
                 {renderGalleryAssignedItems(true)}
                 <div className={styles.assignmentActions}>
@@ -1027,7 +1045,7 @@ export default function GameMultimediaWorkspaceContextual({
                     {galleryCropActionLabel}
                   </button>
                 </div>
-                <RequirementStatus ready={galleryReady} pending={galleryPendingLabel} readyLabel="REQUISITO CUMPLIDO · RECORTES 16:9 CONFIRMADOS" />
+                <RequirementStatus ready={galleryReady} pending={galleryPendingLabel} readyLabel="REQUISITO CUMPLIDO · RECORTES CONFIRMADOS" />
               </article>
             </div>
 
@@ -1085,8 +1103,8 @@ export default function GameMultimediaWorkspaceContextual({
             <div className={styles.helpRule}><MonitorPlay size={20} aria-hidden="true" /><div><strong>Portada · 4:5</strong><span>Imagen, Video o Imagen + hover; cada capa activa confirma selección y encuadre.</span></div></div>
             <div className={styles.helpRule}><MonitorPlay size={20} aria-hidden="true" /><div><strong>Hero · 16:9</strong><span>Imagen, Video o Imagen + hover; hover exige ambos recursos y ambos recortes.</span></div></div>
             <div className={styles.helpRule}><Clapperboard size={20} aria-hidden="true" /><div><strong>Card · 3:2</strong><span>Su imagen es independiente de Portada; selección y recorte se validan por separado.</span></div></div>
-            <div className={styles.helpRule}><Sparkles size={20} aria-hidden="true" /><div><strong>Fondo · adaptable</strong><span>Es opcional. Puede usar Imagen, Video o Imagen + hover con foco propio, o volver al fondo global.</span></div></div>
-            <div className={styles.helpRule}><Images size={20} aria-hidden="true" /><div><strong>Galería obligatoria · 16:9</strong><span>Mínimo una imagen; cada captura asignada confirma su propio recorte.</span></div></div>
+            <div className={styles.helpRule}><Sparkles size={20} aria-hidden="true" /><div><strong>Fondo · adaptable</strong><span>Es opcional. Puede usar Imagen, Video o Imagen + hover con recorte adaptable propio, o volver al fondo global.</span></div></div>
+            <div className={styles.helpRule}><Images size={20} aria-hidden="true" /><div><strong>Galería obligatoria · relación elegible</strong><span>Mínimo una imagen. Cada captura elige su relación; Libre habilita arrastre por bordes y esquinas.</span></div></div>
           </section>
           <section className={styles.tipCard}><Sparkles size={20} aria-hidden="true" /><div><strong>Reutilizar sin acoplar</strong><p>Puedes elegir el mismo archivo físico en dos destinos, pero cada asignación y recorte se conserva de forma independiente.</p></div></section>
         </aside>
@@ -1103,14 +1121,14 @@ export default function GameMultimediaWorkspaceContextual({
       )}
 
       {editingGalleryImage && galleryEditingResource && (
-        <ContextualMediaDialog eyebrow="EDITAR GALERÍA" title="Encuadre 16:9 de la captura" description="Ajusta sólo la zona visible de esta captura. La imagen original sigue intacta y reutilizable." onClose={() => setEditingGalleryImage(null)}>
+        <ContextualMediaDialog eyebrow="EDITAR GALERÍA" title="Recorte de la captura" description="Elige una relación o usa Libre para ajustar el marco con sus bordes y esquinas. La imagen original sigue intacta y reutilizable." onClose={() => setEditingGalleryImage(null)}>
           <ImageViewportEditor slug={slug} revision={assignmentRevision} target="gallery" src={editingGalleryImage} resource={editingGalleryImage} label={`Galería · ${shortName(editingGalleryImage)}`} initialViewport={imageMedia?.gallery?.[editingGalleryImage]} onClose={() => setEditingGalleryImage(null)} />
         </ContextualMediaDialog>
       )}
 
       {galleryManagerOpen && (
-        <ContextualMediaDialog eyebrow="GALERÍA DEL JUEGO" title="Gestionar capturas" description="Cada imagen asignada debe confirmar su recorte 16:9. Quitar conserva el recurso en la biblioteca; la eliminación definitiva sólo existe en la Biblioteca multimedia compartida." onClose={() => setGalleryManagerOpen(false)}>
-          <div className={contextualStyles.galleryManagerHeader}><div><strong>{screenshots.length} de 8 imágenes asignadas</strong><span>{pendingGalleryCrops.length ? `${pendingGalleryCrops.length} pendiente${pendingGalleryCrops.length === 1 ? "" : "s"} de recorte 16:9.` : "Todos los recortes 16:9 están confirmados."}</span></div><ResourcePicker action={endpoint} revision={assignmentRevision} target="gallery-image" resources={resources} kind="image" label="Añadir imagen" disabled={stale || screenshots.length >= 8} onAddResource={openAddResource} /></div>
+        <ContextualMediaDialog eyebrow="GALERÍA DEL JUEGO" title="Gestionar capturas" description="Cada imagen asignada elige su relación y debe confirmar el recorte. Libre permite redimensionar desde bordes y esquinas. Quitar conserva el recurso en la biblioteca." onClose={() => setGalleryManagerOpen(false)}>
+          <div className={contextualStyles.galleryManagerHeader}><div><strong>{screenshots.length} de 8 imágenes asignadas</strong><span>{pendingGalleryCrops.length ? `${pendingGalleryCrops.length} recorte${pendingGalleryCrops.length === 1 ? "" : "s"} pendiente${pendingGalleryCrops.length === 1 ? "" : "s"} de confirmar.` : "Todos los recortes están confirmados."}</span></div><ResourcePicker action={endpoint} revision={assignmentRevision} target="gallery-image" resources={resources} kind="image" label="Añadir imagen" disabled={stale || screenshots.length >= 8} onAddResource={openAddResource} /></div>
           {renderGalleryAssignedItems()}
         </ContextualMediaDialog>
       )}
