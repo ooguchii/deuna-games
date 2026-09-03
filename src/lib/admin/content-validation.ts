@@ -10,6 +10,30 @@ import type {
 
 export * from "./content-validation-core.ts";
 
+const bundledImagePattern =
+  /^\/images\/[A-Za-z0-9/_.,@+() -]+\.(?:avif|gif|jpe?g|png|webp)$/i;
+const editorialMediaPattern =
+  /^\/media\/editorial\/[a-z0-9][a-z0-9._-]{0,159}\/[a-f0-9]{64}\.webp$/;
+
+function isSafeLocalImagePath(value: string) {
+  if (editorialMediaPattern.test(value)) return true;
+  if (
+    !bundledImagePattern.test(value) ||
+    value.includes("\\") ||
+    value.includes("//")
+  ) {
+    return false;
+  }
+  return !value
+    .split("/")
+    .some((segment) => segment === "." || segment === "..");
+}
+
+const localImageSchema = z
+  .string()
+  .max(400)
+  .refine(isSafeLocalImagePath);
+
 const imageViewportSchema = z
   .object({
     x: z.number().min(0).max(1),
@@ -33,6 +57,20 @@ const imageMediaSchema = z
   })
   .strict();
 
+const mediaModeSchema = z.enum([
+  "image",
+  "video",
+  "hover-video",
+]);
+
+const mediaModesSchema = z
+  .object({
+    cover: mediaModeSchema.optional(),
+    hero: mediaModeSchema.optional(),
+    card: mediaModeSchema.optional(),
+  })
+  .strict();
+
 const localPreviewClipSchema = z
   .string()
   .max(400)
@@ -50,7 +88,7 @@ const videoViewportSchema = z
   })
   .strict();
 
-const heroVideoSchema = z
+const destinationVideoSchema = z
   .object({
     clip: localPreviewClipSchema,
     viewport: videoViewportSchema,
@@ -62,17 +100,20 @@ const cardVideoSchema = z.union([
   z.object({
     source: z.literal("hero"),
     viewport: videoViewportSchema,
+    playback: z.enum(["always", "hover"]).optional(),
   }).strict(),
   z.object({
     source: z.literal("independent"),
     clip: localPreviewClipSchema,
     viewport: videoViewportSchema,
+    playback: z.enum(["always", "hover"]).optional(),
   }).strict(),
 ]);
 
 const videoMediaSchema = z
   .object({
-    hero: heroVideoSchema.optional(),
+    cover: destinationVideoSchema.optional(),
+    hero: destinationVideoSchema.optional(),
     card: cardVideoSchema.optional(),
   })
   .strict()
@@ -92,20 +133,34 @@ function splitGameCompatibilityPayload(payload: unknown) {
     payload === null ||
     Array.isArray(payload)
   ) {
-    return { core: payload, imageMedia: undefined, videoMedia: undefined };
+    return {
+      core: payload,
+      cardImage: undefined,
+      imageMedia: undefined,
+      mediaModes: undefined,
+      videoMedia: undefined,
+    };
   }
 
   const clean = {
     ...(payload as Record<string, unknown>),
   };
+  const cardImage = clean.cardImage === undefined
+    ? undefined
+    : localImageSchema.parse(clean.cardImage);
   const imageMedia = clean.imageMedia === undefined
     ? undefined
     : imageMediaSchema.parse(clean.imageMedia);
+  const mediaModes = clean.mediaModes === undefined
+    ? undefined
+    : mediaModesSchema.parse(clean.mediaModes);
   const videoMedia = clean.videoMedia === undefined
     ? undefined
     : videoMediaSchema.parse(clean.videoMedia);
 
+  delete clean.cardImage;
   delete clean.imageMedia;
+  delete clean.mediaModes;
   delete clean.videoMedia;
 
   // Compatibilidad de lectura únicamente. Estas claves pertenecen a las
@@ -115,7 +170,19 @@ function splitGameCompatibilityPayload(payload: unknown) {
   delete clean.youtubePreview;
   delete clean.directPreview;
 
-  return { core: clean, imageMedia, videoMedia };
+  return { core: clean, cardImage, imageMedia, mediaModes, videoMedia };
+}
+
+function inferredMode(
+  explicit: "image" | "video" | "hover-video" | undefined,
+  video: { playback?: "always" | "hover" } | undefined,
+  image: string | undefined,
+  fallback: "video" | "hover-video"
+) {
+  if (explicit) return explicit;
+  if (video) return video.playback === "hover" ? "hover-video" : "video";
+  if (image) return "image";
+  return fallback;
 }
 
 export function parseEditorialPayload<
@@ -131,12 +198,45 @@ export function parseEditorialPayload<
     );
   }
 
-  const { core, imageMedia, videoMedia } = splitGameCompatibilityPayload(payload);
+  const {
+    core,
+    cardImage,
+    imageMedia,
+    mediaModes,
+    videoMedia,
+  } = splitGameCompatibilityPayload(payload);
   const game = parseCoreEditorialPayload("game", core);
+
+  // Migración compatible: una publicación histórica sin cardImage conserva
+  // exactamente su aspecto actual, pero captura la portada de ese snapshot
+  // como recurso propio. Cambiar la Portada después ya no cambia la Card.
+  const resolvedCardImage = cardImage ?? game.coverImage;
+  const resolvedMediaModes = {
+    cover: inferredMode(
+      mediaModes?.cover,
+      videoMedia?.cover,
+      game.coverImage,
+      "video"
+    ),
+    hero: inferredMode(
+      mediaModes?.hero,
+      videoMedia?.hero,
+      game.heroImage,
+      "hover-video"
+    ),
+    card: inferredMode(
+      mediaModes?.card,
+      videoMedia?.card,
+      resolvedCardImage,
+      "hover-video"
+    ),
+  };
 
   return {
     ...game,
+    ...(resolvedCardImage ? { cardImage: resolvedCardImage } : {}),
     ...(imageMedia ? { imageMedia } : {}),
+    mediaModes: resolvedMediaModes,
     ...(videoMedia ? { videoMedia } : {}),
   } as EditorialPayloadByType[Type];
 }
