@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import {
   CheckCircle2,
   Clapperboard,
@@ -27,6 +28,7 @@ import ContextualMediaDialog from "@/components/admin/ContextualMediaDialog";
 import GameMediaUploadForm from "@/components/admin/GameMediaUploadForm";
 import GameVideoViewportEditor from "@/components/admin/GameVideoViewportEditor";
 import ImageViewportEditor from "@/components/admin/ImageViewportEditor";
+import { REQUIRED_DESTINATION_ASPECTS } from "@/lib/media/game-media-requirements";
 import { DEFAULT_PREVIEW_VIEWPORT } from "@/lib/media/preview-video-policy";
 import type {
   GameCardVideo,
@@ -61,6 +63,7 @@ type LibraryResource = ResourceImage | ResourceVideo;
 type Destination = "cover" | "hero" | "card";
 type HeroDraftMode = "image" | "video" | "hover-video";
 type AddResourceKind = "image" | "video";
+type HeroEditLayer = "image" | "video";
 
 type LibraryState = {
   revision: number;
@@ -97,9 +100,7 @@ type VideoEditorConfig = {
 
 function formatBytes(bytes: number) {
   if (bytes >= 1024 * 1024) {
-    return `${(bytes / 1024 / 1024).toFixed(
-      bytes >= 10 * 1024 * 1024 ? 0 : 1
-    )} MB`;
+    return `${(bytes / 1024 / 1024).toFixed(bytes >= 10 * 1024 * 1024 ? 0 : 1)} MB`;
   }
   return `${Math.max(1, Math.round(bytes / 1024))} KB`;
 }
@@ -136,15 +137,10 @@ function isViewport(value: unknown): value is GameImageViewport {
   if (!value || typeof value !== "object") return false;
   const viewport = value as Partial<GameImageViewport>;
   return (
-    typeof viewport.x === "number" &&
-    viewport.x >= 0 &&
-    viewport.x <= 1 &&
-    typeof viewport.y === "number" &&
-    viewport.y >= 0 &&
-    viewport.y <= 1 &&
-    typeof viewport.zoom === "number" &&
-    viewport.zoom >= 1 &&
-    viewport.zoom <= 3
+    typeof viewport.x === "number" && viewport.x >= 0 && viewport.x <= 1 &&
+    typeof viewport.y === "number" && viewport.y >= 0 && viewport.y <= 1 &&
+    typeof viewport.zoom === "number" && viewport.zoom >= 1 && viewport.zoom <= 3 &&
+    (viewport.confirmed === undefined || viewport.confirmed === true)
   );
 }
 
@@ -158,6 +154,18 @@ function isImageMedia(value: unknown): value is GameImageMedia {
   if (media.gallery === undefined) return true;
   if (!media.gallery || typeof media.gallery !== "object") return false;
   return Object.values(media.gallery).every(isViewport);
+}
+
+function isVideoViewport(value: unknown): value is GameVideoViewport {
+  if (!value || typeof value !== "object") return false;
+  const viewport = value as Partial<GameVideoViewport>;
+  return (
+    typeof viewport.x === "number" &&
+    typeof viewport.y === "number" &&
+    typeof viewport.zoom === "number" &&
+    typeof viewport.aspect === "string" &&
+    (viewport.confirmed === undefined || viewport.confirmed === true)
+  );
 }
 
 function isLibraryResource(value: unknown): value is LibraryResource {
@@ -210,7 +218,11 @@ function parseLibraryState(value: unknown): LibraryState | null {
     !Array.isArray(assignments.screenshots) ||
     (assignments.imageMedia !== null &&
       assignments.imageMedia !== undefined &&
-      !isImageMedia(assignments.imageMedia))
+      !isImageMedia(assignments.imageMedia)) ||
+    (assignments.heroVideo !== null && assignments.heroVideo !== undefined &&
+      (!assignments.heroVideo.clip || !isVideoViewport(assignments.heroVideo.viewport))) ||
+    (assignments.cardVideo !== null && assignments.cardVideo !== undefined &&
+      !isVideoViewport(assignments.cardVideo.viewport))
   ) {
     return null;
   }
@@ -228,12 +240,7 @@ function parseLibraryState(value: unknown): LibraryState | null {
 function ResourceArtwork({ resource, alt }: { resource: ResourceImage; alt: string }) {
   return (
     <div className={styles.resourceArtwork}>
-      <Image
-        src={resource.src}
-        alt={alt}
-        fill
-        sizes="(max-width: 760px) 88vw, 280px"
-      />
+      <Image src={resource.src} alt={alt} fill sizes="(max-width: 760px) 88vw, 280px" />
     </div>
   );
 }
@@ -251,8 +258,8 @@ function DeleteImageResourceForm({
 }) {
   const name = shortName(resource.src);
   const confirmation = resource.origin === "editorial"
-    ? `¿Eliminar ${name} definitivamente?\n\nSe quitará de Portada, Hero, Card y Galería y dejará de estar disponible en la biblioteca. Si la versión pública todavía la usa, el archivo físico se conservará sólo hasta que publiques el cambio para no romper la web.`
-    : `¿Eliminar ${name} de este juego?\n\nSe quitará de Portada, Hero, Card y Galería. Como es un recurso base compartido, el archivo original se conservará por seguridad para no romper otras fichas.`;
+    ? `¿Eliminar ${name} definitivamente?\n\nSe quitará de Portada, Hero, Card y Galería y dejará de estar disponible en la biblioteca. Si la versión pública todavía la usa, el archivo físico se conservará sólo hasta que publiques el cambio.`
+    : `¿Eliminar ${name} de este juego?\n\nSe quitará de Portada, Hero, Card y Galería. El archivo base compartido se conservará por seguridad.`;
 
   return (
     <form
@@ -260,9 +267,7 @@ function DeleteImageResourceForm({
       action={action}
       className={contextualStyles.deleteResourceForm}
       onSubmit={(event) => {
-        if (!window.confirm(confirmation)) {
-          event.preventDefault();
-        }
+        if (!window.confirm(confirmation)) event.preventDefault();
       }}
     >
       <input type="hidden" name="expectedRevision" value={revision} />
@@ -330,21 +335,13 @@ function ResourcePicker({
   const available = resources.filter((resource) => resource.kind === kind);
   const buttonContent = (
     <>
-      {kind === "image" ? (
-        <ImageIcon size={18} aria-hidden="true" />
-      ) : (
-        <MonitorPlay size={18} aria-hidden="true" />
-      )}
+      {kind === "image" ? <ImageIcon size={18} aria-hidden="true" /> : <MonitorPlay size={18} aria-hidden="true" />}
       <span>{label}</span>
     </>
   );
 
   if (disabled) {
-    return (
-      <button type="button" className={styles.selectResourceButton} disabled>
-        {buttonContent}
-      </button>
-    );
+    return <button type="button" className={styles.selectResourceButton} disabled>{buttonContent}</button>;
   }
 
   return (
@@ -355,7 +352,6 @@ function ResourcePicker({
           <strong>{kind === "image" ? "Imágenes disponibles" : "Videos disponibles"}</strong>
           <span>{available.length} recurso{available.length === 1 ? "" : "s"}</span>
         </div>
-
         {available.length ? (
           <div className={styles.resourceChoiceGrid}>
             {available.map((resource) => (
@@ -367,43 +363,36 @@ function ResourcePicker({
                 resource={resource.src}
               >
                 {resource.kind === "image" ? (
-                  <span className={styles.choiceThumb}>
-                    <Image src={resource.src} alt="" fill sizes="96px" />
-                  </span>
+                  <span className={styles.choiceThumb}><Image src={resource.src} alt="" fill sizes="96px" /></span>
                 ) : (
-                  <span className={styles.choiceVideoIcon}>
-                    <Clapperboard size={21} aria-hidden="true" />
-                  </span>
+                  <span className={styles.choiceVideoIcon}><Clapperboard size={21} aria-hidden="true" /></span>
                 )}
                 <span className={styles.choiceMeta}>
                   <strong>{shortName(resource.src)}</strong>
-                  <small>
-                    {resource.kind === "image"
-                      ? imageMeta(resource)
-                      : `WebM · ${formatBytes(resource.bytes)}`}
-                  </small>
+                  <small>{resource.kind === "image" ? imageMeta(resource) : `WebM · ${formatBytes(resource.bytes)}`}</small>
                 </span>
               </AssignmentForm>
             ))}
           </div>
         ) : (
-          <p className={styles.emptyPicker}>
-            No hay {kind === "image" ? "imágenes" : "videos"} disponibles todavía.
-          </p>
+          <p className={styles.emptyPicker}>No hay {kind === "image" ? "imágenes" : "videos"} disponibles todavía.</p>
         )}
-
         <div className={contextualStyles.pickerFooter}>
-          <button
-            type="button"
-            className={contextualStyles.pickerAddButton}
-            onClick={() => onAddResource(kind)}
-          >
-            <Plus size={16} aria-hidden="true" />
-            Agregar nuevo recurso
+          <button type="button" className={contextualStyles.pickerAddButton} onClick={() => onAddResource(kind)}>
+            <Plus size={16} aria-hidden="true" />Agregar nuevo recurso
           </button>
         </div>
       </div>
     </details>
+  );
+}
+
+function RequirementStatus({ ready, pending }: { ready: boolean; pending: string }) {
+  return (
+    <small className={ready ? contextualStyles.requirementReady : contextualStyles.requirementPending}>
+      {ready ? <CheckCircle2 size={13} aria-hidden="true" /> : <Info size={13} aria-hidden="true" />}
+      {ready ? "RECORTE CONFIRMADO" : pending}
+    </small>
   );
 }
 
@@ -421,6 +410,7 @@ export default function GameMultimediaWorkspaceContextual({
   const [error, setError] = useState<string | null>(null);
   const [heroDraftMode, setHeroDraftMode] = useState<HeroDraftMode>("image");
   const [editingDestination, setEditingDestination] = useState<Destination | null>(null);
+  const [heroEditLayer, setHeroEditLayer] = useState<HeroEditLayer>("image");
   const [editingGalleryImage, setEditingGalleryImage] = useState<string | null>(null);
   const [galleryManagerOpen, setGalleryManagerOpen] = useState(false);
   const [addResourceKind, setAddResourceKind] = useState<AddResourceKind | null>(null);
@@ -429,46 +419,29 @@ export default function GameMultimediaWorkspaceContextual({
 
   useEffect(() => {
     let cancelled = false;
-    void fetch(endpoint, {
-      method: "GET",
-      credentials: "same-origin",
-      cache: "no-store",
-    })
+    void fetch(endpoint, { method: "GET", credentials: "same-origin", cache: "no-store" })
       .then(async (response) => {
         const payload = await response.json();
         const parsed = parseLibraryState(payload);
-        if (!response.ok || !parsed) {
-          throw new Error("No se pudo cargar la biblioteca multimedia compartida.");
-        }
+        if (!response.ok || !parsed) throw new Error("No se pudo cargar la biblioteca multimedia compartida.");
         if (cancelled) return;
         setState(parsed);
         setHeroDraftMode(parsed.assignments.heroMode);
       })
       .catch((reason) => {
         if (!cancelled) {
-          setError(
-            reason instanceof Error
-              ? reason.message
-              : "No se pudo cargar la biblioteca multimedia."
-          );
+          setError(reason instanceof Error ? reason.message : "No se pudo cargar la biblioteca multimedia.");
         }
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
-
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [endpoint]);
 
   const resources = state?.resources ?? [];
-  const images = resources.filter(
-    (resource): resource is ResourceImage => resource.kind === "image"
-  );
-  const videos = resources.filter(
-    (resource): resource is ResourceVideo => resource.kind === "video"
-  );
+  const images = resources.filter((resource): resource is ResourceImage => resource.kind === "image");
+  const videos = resources.filter((resource): resource is ResourceVideo => resource.kind === "video");
   const coverImage = state?.assignments.coverImage ?? initialCoverImage ?? null;
   const heroImage = state?.assignments.heroImage ?? initialHeroImage ?? null;
   const screenshots = state?.assignments.screenshots ?? [...initialScreenshots];
@@ -490,20 +463,29 @@ export default function GameMultimediaWorkspaceContextual({
   const firstGalleryResource = imageBySrc(screenshots[0] ?? null);
   const activeCardVideo = videos.find((resource) => resource.src === resolvedCardClip) ?? null;
 
+  const coverCropReady = Boolean(coverImage && imageMedia?.cover?.confirmed);
+  const heroImageCropReady = Boolean(heroImage && imageMedia?.hero?.confirmed);
+  const heroVideoCropReady = Boolean(heroVideo?.viewport.confirmed);
+  const heroCropReady = currentHeroMode === "image"
+    ? heroImageCropReady
+    : currentHeroMode === "hover-video"
+      ? heroImageCropReady && heroVideoCropReady
+      : heroVideoCropReady;
+  const cardCropReady = state?.assignments.cardVideo
+    ? Boolean(state.assignments.cardVideo.viewport.confirmed)
+    : Boolean(coverImage && imageMedia?.card?.confirmed);
+  const galleryReady = screenshots.length >= 1;
+  const allRequirementsReady = coverCropReady && heroCropReady && cardCropReady && galleryReady;
+
   function usageLabels(resource: LibraryResource) {
     const labels: string[] = [];
     if (resource.kind === "image") {
-      if (resource.src === coverImage) labels.push("Portada");
-      if (resource.src === heroImage) {
-        if (currentHeroMode === "image") labels.push("Hero");
-        if (currentHeroMode === "hover-video") labels.push("Hero base");
-      }
+      if (resource.src === coverImage) labels.push("Portada", "Card base");
+      if (resource.src === heroImage && currentHeroMode === "image") labels.push("Hero");
+      if (resource.src === heroImage && currentHeroMode === "hover-video") labels.push("Hero base");
       if (screenshots.includes(resource.src)) labels.push("Galería");
-      if (resource.src === coverImage) labels.push("Card base");
     } else {
-      if (resource.src === heroVideo?.clip) {
-        labels.push(currentHeroMode === "hover-video" ? "Hero hover" : "Hero");
-      }
+      if (resource.src === heroVideo?.clip) labels.push(currentHeroMode === "hover-video" ? "Hero hover" : "Hero");
       if (resource.src === resolvedCardClip) labels.push("Card");
     }
     return labels;
@@ -517,89 +499,55 @@ export default function GameMultimediaWorkspaceContextual({
         source: "hero",
         clip: heroVideo.clip,
         viewport: heroVideo.viewport,
-        label: currentHeroMode === "hover-video"
-          ? "Hero de inicio · video al hover"
-          : "Hero de inicio",
+        label: currentHeroMode === "hover-video" ? "Hero · video al hover" : "Hero de inicio",
       };
     }
-
     if (destination !== "card") return null;
     const card = state?.assignments.cardVideo;
     if (card?.source === "hero" && heroVideo) {
-      return {
-        target: "card",
-        source: "hero",
-        clip: heroVideo.clip,
-        viewport: card.viewport,
-        label: "Card · mismo WebM del Hero",
-      };
+      return { target: "card", source: "hero", clip: heroVideo.clip, viewport: card.viewport, label: "Card · mismo WebM del Hero" };
     }
     if (card?.source === "independent") {
-      return {
-        target: "card",
-        source: "independent",
-        clip: card.clip,
-        viewport: card.viewport,
-        label: "Card · WebM independiente",
-      };
+      return { target: "card", source: "independent", clip: card.clip, viewport: card.viewport, label: "Card · WebM independiente" };
     }
     if (state?.assignments.legacyPreviewClip) {
-      return {
-        target: "card",
-        source: "independent",
-        clip: state.assignments.legacyPreviewClip,
-        viewport: { ...DEFAULT_PREVIEW_VIEWPORT },
-        label: "Card · preview heredado",
-      };
+      return { target: "card", source: "independent", clip: state.assignments.legacyPreviewClip, viewport: { ...DEFAULT_PREVIEW_VIEWPORT }, label: "Card · preview heredado" };
     }
     return null;
   }
 
   function imageEditorConfig(destination: Destination) {
     if (destination === "cover" && coverImage) {
-      return {
-        target: "cover" as const,
-        src: coverImage,
-        viewport: imageMedia?.cover,
-        label: `Portada · ${shortName(coverImage)}`,
-      };
+      return { target: "cover" as const, src: coverImage, viewport: imageMedia?.cover, label: `Portada · ${shortName(coverImage)}` };
     }
-    if (destination === "hero" && heroDraftMode === "image" && heroImage) {
-      return {
-        target: "hero" as const,
-        src: heroImage,
-        viewport: imageMedia?.hero,
-        label: `Hero · ${shortName(heroImage)}`,
-      };
+    if (destination === "hero" && heroImage && (heroDraftMode === "image" || heroDraftMode === "hover-video")) {
+      return { target: "hero" as const, src: heroImage, viewport: imageMedia?.hero, label: `Hero · ${shortName(heroImage)}` };
     }
     if (destination === "card" && !resolvedCardClip && coverImage) {
-      return {
-        target: "card" as const,
-        src: coverImage,
-        viewport: imageMedia?.card ?? imageMedia?.cover,
-        label: `Card · ${shortName(coverImage)}`,
-      };
+      return { target: "card" as const, src: coverImage, viewport: imageMedia?.card, label: `Card · ${shortName(coverImage)}` };
     }
     return null;
   }
 
-  const editingVideo = editingDestination ? videoEditorConfig(editingDestination) : null;
+  const editingVideo = editingDestination && (editingDestination !== "hero" || heroEditLayer === "video")
+    ? videoEditorConfig(editingDestination)
+    : null;
   const editingImage = editingDestination && !editingVideo
     ? imageEditorConfig(editingDestination)
     : null;
-  const galleryEditingResource = editingGalleryImage
-    ? imageBySrc(editingGalleryImage)
-    : null;
+  const galleryEditingResource = editingGalleryImage ? imageBySrc(editingGalleryImage) : null;
 
-  function openDestination(destination: Destination) {
+  function openDestination(destination: Destination, layer?: HeroEditLayer) {
     if (stale) return;
-    const video = videoEditorConfig(destination);
-    const image = imageEditorConfig(destination);
+    if (destination === "hero" && layer) setHeroEditLayer(layer);
+    const wantsVideo = destination === "hero" && (layer ?? (heroDraftMode === "video" ? "video" : "image")) === "video";
+    const video = wantsVideo ? videoEditorConfig(destination) : destination === "card" ? videoEditorConfig(destination) : null;
+    const image = wantsVideo ? null : imageEditorConfig(destination);
     if (video || image) {
       setEditingDestination(destination);
       return;
     }
-    if (destination === "hero" && heroDraftMode !== "image") {
+    if (destination === "hero" && wantsVideo) {
       setAddResourceKind("video");
       return;
     }
@@ -622,7 +570,7 @@ export default function GameMultimediaWorkspaceContextual({
       return (
         <div className={contextualStyles.galleryEmpty}>
           <Images size={24} aria-hidden="true" />
-          <span>Todavía no hay imágenes asignadas a la Galería.</span>
+          <span>Se requiere al menos una imagen en la Galería.</span>
         </div>
       );
     }
@@ -634,47 +582,22 @@ export default function GameMultimediaWorkspaceContextual({
           return (
             <article key={src} className={contextualStyles.galleryItemCard}>
               <div className={contextualStyles.galleryItemPreview}>
-                <Image
-                  src={src}
-                  alt={`Captura ${index + 1}`}
-                  fill
-                  sizes={compact ? "120px" : "240px"}
-                />
-                {resource && (
-                  <DeleteImageResourceForm
-                    action={endpoint}
-                    revision={assignmentRevision}
-                    resource={resource}
-                    disabled={stale}
-                  />
-                )}
+                <Image src={src} alt={`Captura ${index + 1}`} fill sizes={compact ? "120px" : "240px"} />
               </div>
               <div className={contextualStyles.galleryItemMeta}>
                 <strong>{shortName(src)}</strong>
                 <small>{resource ? imageMeta(resource) : `Captura ${index + 1}`}</small>
               </div>
               <div className={contextualStyles.galleryItemActions}>
-                <button
-                  type="button"
-                  className={contextualStyles.galleryEditButton}
-                  disabled={stale}
-                  onClick={() => openGalleryImage(src)}
-                >
-                  <Pencil size={14} aria-hidden="true" />
-                  Editar
+                <button type="button" className={contextualStyles.galleryEditButton} disabled={stale} onClick={() => openGalleryImage(src)}>
+                  <Pencil size={14} aria-hidden="true" />Editar
                 </button>
                 <form method="post" action={endpoint}>
                   <input type="hidden" name="expectedRevision" value={assignmentRevision} />
                   <input type="hidden" name="target" value="gallery-remove" />
                   <input type="hidden" name="resource" value={src} />
-                  <button
-                    type="submit"
-                    className={contextualStyles.galleryRemoveButton}
-                    disabled={stale}
-                    aria-label={`Quitar ${shortName(src)} de la Galería`}
-                  >
-                    <Trash2 size={14} aria-hidden="true" />
-                    Quitar
+                  <button type="submit" className={contextualStyles.galleryRemoveButton} disabled={stale} aria-label={`Quitar ${shortName(src)} de la Galería`}>
+                    <Trash2 size={14} aria-hidden="true" />Quitar
                   </button>
                 </form>
               </div>
@@ -691,158 +614,145 @@ export default function GameMultimediaWorkspaceContextual({
         <div className={styles.compactHeading}>
           <div>
             <span>RESUMEN MULTIMEDIA</span>
-            <h2 id="multimedia-summary-heading">Estado actual de los destinos</h2>
+            <h2 id="multimedia-summary-heading">Requisitos obligatorios de destinos</h2>
           </div>
-          <p>Biblioteca única, recursos reutilizables y encuadres independientes sin duplicar archivos.</p>
+          <p>Portada, Hero y Card necesitan su recorte específico confirmado. La Galería necesita al menos una imagen.</p>
         </div>
-
         <div className={styles.summaryGrid}>
           <article className={styles.summaryCard}>
-            {coverResource ? (
-              <span className={styles.summaryThumb}><Image src={coverResource.src} alt="" fill sizes="88px" /></span>
-            ) : (
-              <span className={styles.summaryIcon}><ImageIcon size={22} aria-hidden="true" /></span>
-            )}
-            <div>
-              <span>PORTADA</span>
-              <strong>{coverImage ? shortName(coverImage) : "Sin asignar"}</strong>
-              <small><CheckCircle2 size={13} aria-hidden="true" />{coverImage ? "Asignada" : "Pendiente"}</small>
-            </div>
+            {coverResource ? <span className={styles.summaryThumb}><Image src={coverResource.src} alt="" fill sizes="88px" /></span> : <span className={styles.summaryIcon}><ImageIcon size={22} aria-hidden="true" /></span>}
+            <div><span>PORTADA · {REQUIRED_DESTINATION_ASPECTS.cover}</span><strong>{coverImage ? shortName(coverImage) : "Sin asignar"}</strong><RequirementStatus ready={coverCropReady} pending="RECORTE PENDIENTE" /></div>
           </article>
-
           <article className={styles.summaryCard}>
-            {currentHeroMode !== "image" ? (
-              <span className={styles.summaryIcon}><MonitorPlay size={22} aria-hidden="true" /></span>
-            ) : heroResource ? (
-              <span className={styles.summaryThumb}><Image src={heroResource.src} alt="" fill sizes="88px" /></span>
-            ) : (
-              <span className={styles.summaryIcon}><ImageIcon size={22} aria-hidden="true" /></span>
-            )}
-            <div>
-              <span>HERO</span>
-              <strong>
-                {currentHeroMode !== "image"
-                  ? heroVideo ? shortName(heroVideo.clip) : "Video pendiente"
-                  : heroImage ? shortName(heroImage) : "Sin asignar"}
-              </strong>
-              <small>
-                <CheckCircle2 size={13} aria-hidden="true" />
-                {currentHeroMode === "hover-video"
-                  ? "Imagen + video al hover"
-                  : currentHeroMode === "video"
-                    ? "Modo video"
-                    : "Modo imagen"}
-              </small>
-            </div>
+            <span className={styles.summaryIcon}>{currentHeroMode === "image" ? <ImageIcon size={22} aria-hidden="true" /> : <MonitorPlay size={22} aria-hidden="true" />}</span>
+            <div><span>HERO · {REQUIRED_DESTINATION_ASPECTS.hero}</span><strong>{currentHeroMode === "hover-video" ? "Imagen + hover" : currentHeroMode === "video" ? "Video" : heroImage ? shortName(heroImage) : "Sin asignar"}</strong><RequirementStatus ready={heroCropReady} pending="RECORTE PENDIENTE" /></div>
           </article>
-
           <article className={styles.summaryCard}>
             <span className={styles.summaryIcon}><Clapperboard size={22} aria-hidden="true" /></span>
-            <div>
-              <span>CARD</span>
-              <strong>{resolvedCardClip ? shortName(resolvedCardClip) : "Portada estática"}</strong>
-              <small>
-                <CheckCircle2 size={13} aria-hidden="true" />
-                {state?.assignments.cardVideo?.source === "hero"
-                  ? "Comparte Hero"
-                  : resolvedCardClip ? "Preview asignado" : "Imagen compartida"}
-              </small>
-            </div>
+            <div><span>CARD · {REQUIRED_DESTINATION_ASPECTS.card}</span><strong>{resolvedCardClip ? shortName(resolvedCardClip) : coverImage ? "Portada estática" : "Sin asignar"}</strong><RequirementStatus ready={cardCropReady} pending="RECORTE PENDIENTE" /></div>
           </article>
-
           <article className={styles.summaryCard}>
             <span className={styles.summaryIcon}><Images size={22} aria-hidden="true" /></span>
-            <div>
-              <span>GALERÍA</span>
-              <strong>{screenshots.length} de 8 capturas</strong>
-              <small><CheckCircle2 size={13} aria-hidden="true" />{screenshots.length ? "Disponible" : "Pendiente"}</small>
-            </div>
+            <div><span>GALERÍA · MÍNIMO 1</span><strong>{screenshots.length} de 8 capturas</strong><small className={galleryReady ? contextualStyles.requirementReady : contextualStyles.requirementPending}>{galleryReady ? <CheckCircle2 size={13} aria-hidden="true" /> : <Info size={13} aria-hidden="true" />}{galleryReady ? "REQUISITO CUMPLIDO" : "IMAGEN REQUERIDA"}</small></div>
           </article>
         </div>
       </section>
 
       <div className={styles.mainGrid}>
         <div className={styles.primaryColumn}>
-          <section className={styles.numberedSection} aria-labelledby="shared-library-heading">
+          <section className={styles.numberedSection} aria-labelledby="destination-assignment-heading">
             <div className={styles.sectionTitleRow}>
-              <div>
-                <span>01</span>
-                <div>
-                  <h2 id="shared-library-heading">Biblioteca multimedia compartida</h2>
-                  <p>Sube una vez y reutiliza. Portada, Hero, Card y Galería apuntan al mismo archivo físico cuando conviene.</p>
-                </div>
-              </div>
-              <button type="button" className={styles.secondaryAction} onClick={() => openAddResource("image")}>
-                <Upload size={16} aria-hidden="true" />
-                Agregar nuevo recurso
-              </button>
+              <div><span>01</span><div><h2 id="destination-assignment-heading">Asignación de destinos</h2><p>Primero asigna cada recurso y confirma su recorte obligatorio. No podrás avanzar a Descargas mientras exista un requisito pendiente.</p></div></div>
             </div>
 
+            <div className={styles.assignmentGrid}>
+              <article className={styles.assignmentCard}>
+                <header><div><span>A</span><h3>Portada del juego</h3></div><small>Recorte obligatorio · 4:5</small></header>
+                <div className={styles.currentResource}>
+                  {coverResource ? <span className={styles.currentThumb}><Image src={coverResource.src} alt="" fill sizes="72px" /></span> : <span className={styles.currentIcon}><ImageIcon size={20} aria-hidden="true" /></span>}
+                  <div><span>Recurso asignado</span><strong>{coverImage ? shortName(coverImage) : "Sin recurso"}</strong><small>{coverResource ? imageMeta(coverResource) : "Selecciona una imagen"}</small></div>
+                </div>
+                <div className={styles.assignmentActions}>
+                  <ResourcePicker action={endpoint} revision={assignmentRevision} target="cover-image" resources={resources} kind="image" disabled={stale} onAddResource={openAddResource} />
+                  <button type="button" className={`${styles.editDestinationButton} ${!coverImage ? contextualStyles.editButtonDisabled : ""}`} disabled={!coverImage || stale} onClick={() => openDestination("cover")}>Recortar 4:5</button>
+                </div>
+                <RequirementStatus ready={coverCropReady} pending={coverImage ? "RECORTE PENDIENTE · 4:5" : "RECURSO PENDIENTE"} />
+              </article>
+
+              <article className={styles.assignmentCard}>
+                <header><div><span>B</span><h3>Hero de inicio</h3></div><small>Recorte obligatorio · 16:9</small></header>
+                <div className={styles.modeSwitch} role="group" aria-label="Modo del Hero">
+                  <button type="button" className={heroDraftMode === "image" ? styles.modeActive : ""} onClick={() => setHeroDraftMode("image")}>Imagen</button>
+                  <button type="button" className={heroDraftMode === "video" ? styles.modeActive : ""} onClick={() => setHeroDraftMode("video")}>Video</button>
+                  <button type="button" className={heroDraftMode === "hover-video" ? styles.modeActive : ""} onClick={() => setHeroDraftMode("hover-video")}>Imagen + hover</button>
+                </div>
+                <div className={styles.currentResource}>
+                  {heroDraftMode === "image" && heroResource ? <span className={styles.currentThumb}><Image src={heroResource.src} alt="" fill sizes="72px" /></span> : <span className={styles.currentIcon}>{heroUsesVideo ? <MonitorPlay size={20} aria-hidden="true" /> : <ImageIcon size={20} aria-hidden="true" />}</span>}
+                  <div><span>{heroModePending ? "Modo preparado" : "Recurso asignado"}</span><strong>{heroUsesVideo ? heroVideo ? shortName(heroVideo.clip) : "Selecciona un video" : heroImage ? shortName(heroImage) : "Selecciona una imagen"}</strong><small>{heroDraftMode === "hover-video" ? "Este modo exige confirmar el recorte 16:9 de la imagen y del video." : "Este destino exige confirmar su recorte 16:9."}</small></div>
+                </div>
+                <div className={styles.assignmentActions}>
+                  <ResourcePicker action={endpoint} revision={assignmentRevision} target={heroDraftMode === "hover-video" ? "hero-hover-video" : heroDraftMode === "video" ? "hero-video" : "hero-image"} resources={resources} kind={heroUsesVideo ? "video" : "image"} disabled={stale} onAddResource={openAddResource} />
+                  {heroDraftMode === "hover-video" ? (
+                    <>
+                      <button type="button" className={styles.editDestinationButton} disabled={stale || !heroImage} onClick={() => openDestination("hero", "image")}>Recortar imagen 16:9</button>
+                      <button type="button" className={styles.editDestinationButton} disabled={stale || !heroVideo} onClick={() => openDestination("hero", "video")}>Recortar video 16:9</button>
+                    </>
+                  ) : (
+                    <button type="button" className={styles.editDestinationButton} disabled={stale || (heroDraftMode === "image" ? !heroImage : !heroVideo)} onClick={() => openDestination("hero", heroDraftMode === "video" ? "video" : "image")}>Recortar 16:9</button>
+                  )}
+                </div>
+                <RequirementStatus ready={!heroModePending && heroCropReady} pending={heroModePending ? "ASIGNA EL RECURSO DEL NUEVO MODO" : "RECORTE PENDIENTE · 16:9"} />
+              </article>
+
+              <article className={styles.assignmentCard}>
+                <header><div><span>C</span><h3>Card del juego</h3></div><small>Recorte obligatorio · 3:2</small></header>
+                <div className={styles.currentResource}>
+                  {activeCardVideo ? <span className={styles.currentIcon}><Clapperboard size={20} aria-hidden="true" /></span> : coverResource ? <span className={styles.currentThumb}><Image src={coverResource.src} alt="" fill sizes="72px" /></span> : <span className={styles.currentIcon}><ImageIcon size={20} aria-hidden="true" /></span>}
+                  <div><span>{activeCardVideo ? "Video asignado" : "Imagen compartida"}</span><strong>{activeCardVideo ? shortName(activeCardVideo.src) : coverImage ? shortName(coverImage) : "Sin recurso"}</strong><small>La Card siempre necesita confirmar su propio encuadre 3:2, aunque comparta bytes con Portada o Hero.</small></div>
+                </div>
+                <div className={styles.assignmentActions}>
+                  <ResourcePicker action={endpoint} revision={assignmentRevision} target="card-video" resources={resources} kind="video" disabled={stale} onAddResource={openAddResource} />
+                  <AssignmentForm action={endpoint} revision={assignmentRevision} target="card-match-hero" resource="" disabled={stale || !heroVideo}>
+                    <Link2 size={17} aria-hidden="true" /><span className={styles.choiceMeta}><strong>Igualar al Hero</strong><small>{heroVideo ? "Mismos bytes · recorte 3:2 independiente" : "Disponible cuando Hero usa video"}</small></span>
+                  </AssignmentForm>
+                  <button type="button" className={`${styles.editDestinationButton} ${!resolvedCardClip && !coverImage ? contextualStyles.editButtonDisabled : ""}`} disabled={stale || (!resolvedCardClip && !coverImage)} onClick={() => openDestination("card")}>Recortar 3:2</button>
+                </div>
+                <RequirementStatus ready={cardCropReady} pending={resolvedCardClip || coverImage ? "RECORTE PENDIENTE · 3:2" : "RECURSO PENDIENTE"} />
+              </article>
+
+              <article className={`${styles.assignmentCard} ${contextualStyles.galleryAssignmentCard}`}>
+                <header><div><span>D</span><h3>Galería del juego</h3></div><small>Obligatoria · mínimo 1 imagen</small></header>
+                <div className={styles.currentResource}>
+                  {firstGalleryResource ? <span className={styles.currentThumb}><Image src={firstGalleryResource.src} alt="" fill sizes="72px" /></span> : <span className={styles.currentIcon}><Images size={20} aria-hidden="true" /></span>}
+                  <div><span>Capturas asignadas</span><strong>{screenshots.length} de 8</strong><small>Se requiere al menos una imagen. Editar cambia el encuadre; Quitar la saca de Galería sin destruirla.</small></div>
+                </div>
+                {renderGalleryAssignedItems(true)}
+                <div className={styles.assignmentActions}>
+                  <ResourcePicker action={endpoint} revision={assignmentRevision} target="gallery-image" resources={resources} kind="image" label="Añadir desde biblioteca" disabled={stale || screenshots.length >= 8} onAddResource={openAddResource} />
+                  <button type="button" className={styles.editDestinationButton} disabled={stale} onClick={() => setGalleryManagerOpen(true)}>Gestionar galería</button>
+                </div>
+                <small className={galleryReady ? contextualStyles.requirementReady : contextualStyles.requirementPending}>{galleryReady ? <CheckCircle2 size={13} aria-hidden="true" /> : <Info size={13} aria-hidden="true" />}{galleryReady ? "REQUISITO CUMPLIDO" : "IMAGEN REQUERIDA · MÍNIMO 1"}</small>
+              </article>
+            </div>
+
+            <div className={contextualStyles.continueGate}>
+              <div>
+                <strong>{allRequirementsReady ? "Multimedia completa" : "No puedes avanzar todavía"}</strong>
+                <span>{allRequirementsReady ? "Todos los destinos obligatorios están listos." : "Confirma Portada 4:5, Hero 16:9, Card 3:2 y agrega al menos una imagen a Galería."}</span>
+              </div>
+              {allRequirementsReady ? (
+                <Link href={`/admin/juegos/${encodeURIComponent(slug)}?seccion=descargas`} className={contextualStyles.continueButton}>Continuar a Descargas</Link>
+              ) : (
+                <button type="button" className={contextualStyles.continueButton} disabled>Continuar a Descargas</button>
+              )}
+            </div>
+          </section>
+
+          <section className={styles.numberedSection} aria-labelledby="shared-library-heading">
+            <div className={styles.sectionTitleRow}>
+              <div><span>02</span><div><h2 id="shared-library-heading">Biblioteca multimedia compartida</h2><p>La biblioteca queda al final: administra aquí los archivos físicos que luego reutilizas en los destinos.</p></div></div>
+              <button type="button" className={styles.secondaryAction} onClick={() => openAddResource("image")}><Upload size={16} aria-hidden="true" />Agregar nuevo recurso</button>
+            </div>
             {loading ? (
               <div className={styles.libraryStatus} role="status">Comprobando recursos multimedia seguros…</div>
             ) : error ? (
               <div className={styles.libraryStatus} role="alert">{error}</div>
             ) : resources.length === 0 ? (
-              <div className={styles.emptyLibrary}>
-                <FolderOpen size={30} aria-hidden="true" />
-                <strong>La biblioteca todavía está vacía</strong>
-                <span>Agrega una imagen o crea un video editorial para empezar.</span>
-                <button type="button" className={styles.secondaryAction} onClick={() => openAddResource("image")}>
-                  <Plus size={16} aria-hidden="true" />
-                  Agregar primer recurso
-                </button>
-              </div>
+              <div className={styles.emptyLibrary}><FolderOpen size={30} aria-hidden="true" /><strong>La biblioteca todavía está vacía</strong><span>Agrega una imagen o crea un video editorial para empezar.</span><button type="button" className={styles.secondaryAction} onClick={() => openAddResource("image")}><Plus size={16} aria-hidden="true" />Agregar primer recurso</button></div>
             ) : (
               <div className={styles.libraryGrid}>
                 {resources.map((resource) => {
                   const labels = usageLabels(resource);
                   return (
                     <article key={resource.src} className={styles.libraryCard}>
-                      <div className={styles.libraryCardHeading}>
-                        <div>
-                          <span>
-                            {resource.kind === "video"
-                              ? "VIDEO"
-                              : resource.origin === "bundled" ? "IMAGEN EXISTENTE" : "IMAGEN"}
-                          </span>
-                          <strong>{shortName(resource.src)}</strong>
-                        </div>
-                        <small>{formatBytes(resource.bytes)}</small>
-                      </div>
-
+                      <div className={styles.libraryCardHeading}><div><span>{resource.kind === "video" ? "VIDEO" : resource.origin === "bundled" ? "IMAGEN EXISTENTE" : "IMAGEN"}</span><strong>{shortName(resource.src)}</strong></div><small>{formatBytes(resource.bytes)}</small></div>
                       {resource.kind === "image" ? (
-                        <div className={contextualStyles.deletableArtwork}>
-                          <ResourceArtwork
-                            resource={resource}
-                            alt="Recurso de la biblioteca multimedia"
-                          />
-                          <DeleteImageResourceForm
-                            action={endpoint}
-                            revision={assignmentRevision}
-                            resource={resource}
-                            disabled={stale}
-                          />
-                        </div>
+                        <div className={contextualStyles.deletableArtwork}><ResourceArtwork resource={resource} alt="Recurso de la biblioteca multimedia" /><DeleteImageResourceForm action={endpoint} revision={assignmentRevision} resource={resource} disabled={stale} /></div>
                       ) : (
-                        <div className={styles.videoPlaceholder}>
-                          <MonitorPlay size={30} aria-hidden="true" />
-                          <span>WebM interno</span>
-                          <small>No se reproduce hasta abrir un editor.</small>
-                        </div>
+                        <div className={styles.videoPlaceholder}><MonitorPlay size={30} aria-hidden="true" /><span>WebM interno</span><small>No se reproduce hasta abrir un editor.</small></div>
                       )}
-
-                      <div className={styles.usageRow}>
-                        {labels.length
-                          ? labels.map((usageLabel) => <span key={usageLabel}>{usageLabel}</span>)
-                          : <span className={styles.unusedBadge}>Disponible</span>}
-                      </div>
-                      <small className={styles.resourceDetails}>
-                        {resource.kind === "image"
-                          ? resource.origin === "bundled"
-                            ? `${imageFormat(resource.src)} existente · reutilizable por referencia`
-                            : `${resource.width}×${resource.height} · WebP seguro`
-                          : "WebM validado · master reutilizable"}
-                      </small>
+                      <div className={styles.usageRow}>{labels.length ? labels.map((usageLabel) => <span key={usageLabel}>{usageLabel}</span>) : <span className={styles.unusedBadge}>Disponible</span>}</div>
+                      <small className={styles.resourceDetails}>{resource.kind === "image" ? resource.origin === "bundled" ? `${imageFormat(resource.src)} existente · reutilizable por referencia` : `${resource.width}×${resource.height} · WebP seguro` : "WebM validado · master reutilizable"}</small>
                     </article>
                   );
                 })}
@@ -850,343 +760,51 @@ export default function GameMultimediaWorkspaceContextual({
             )}
           </section>
 
-          <section className={styles.numberedSection} aria-labelledby="destination-assignment-heading">
-            <div className={styles.sectionTitleRow}>
-              <div>
-                <span>02</span>
-                <div>
-                  <h2 id="destination-assignment-heading">Asignación de destinos</h2>
-                  <p>Selecciona el recurso y usa “Editar destino” para ajustar la zona visible. La edición abre sólo cuando la necesitas.</p>
-                </div>
-              </div>
-            </div>
-
-            <div className={styles.assignmentGrid}>
-              <article className={styles.assignmentCard}>
-                <header><div><span>A</span><h3>Portada del juego</h3></div><small>Imagen</small></header>
-                <div className={styles.currentResource}>
-                  {coverResource ? (
-                    <span className={styles.currentThumb}><Image src={coverResource.src} alt="" fill sizes="72px" /></span>
-                  ) : (
-                    <span className={styles.currentIcon}><ImageIcon size={20} aria-hidden="true" /></span>
-                  )}
-                  <div>
-                    <span>Recurso asignado</span>
-                    <strong>{coverImage ? shortName(coverImage) : "Sin recurso"}</strong>
-                    <small>{coverResource ? imageMeta(coverResource) : "Selecciona una imagen de la biblioteca"}</small>
-                  </div>
-                </div>
-                <div className={styles.assignmentActions}>
-                  <ResourcePicker action={endpoint} revision={assignmentRevision} target="cover-image" resources={resources} kind="image" disabled={stale} onAddResource={openAddResource} />
-                  <button
-                    type="button"
-                    className={`${styles.editDestinationButton} ${!coverImage ? contextualStyles.editButtonDisabled : ""}`}
-                    disabled={!coverImage || stale}
-                    onClick={() => openDestination("cover")}
-                  >
-                    Editar destino
-                  </button>
-                </div>
-                <small className={styles.assignmentStatus}><CheckCircle2 size={13} aria-hidden="true" />{coverImage ? "Asignada · encuadre editable" : "Pendiente"}</small>
-              </article>
-
-              <article className={styles.assignmentCard}>
-                <header><div><span>B</span><h3>Hero de inicio</h3></div><small>Imagen, video o hover</small></header>
-                <div className={styles.modeSwitch} role="group" aria-label="Modo del Hero">
-                  <button type="button" className={heroDraftMode === "image" ? styles.modeActive : ""} onClick={() => setHeroDraftMode("image")}>Imagen</button>
-                  <button type="button" className={heroDraftMode === "video" ? styles.modeActive : ""} onClick={() => setHeroDraftMode("video")}>Video</button>
-                  <button type="button" className={heroDraftMode === "hover-video" ? styles.modeActive : ""} onClick={() => setHeroDraftMode("hover-video")}>Imagen + hover</button>
-                </div>
-                <div className={styles.currentResource}>
-                  {heroDraftMode === "image" && heroResource ? (
-                    <span className={styles.currentThumb}><Image src={heroResource.src} alt="" fill sizes="72px" /></span>
-                  ) : (
-                    <span className={styles.currentIcon}>
-                      {heroUsesVideo ? <MonitorPlay size={20} aria-hidden="true" /> : <ImageIcon size={20} aria-hidden="true" />}
-                    </span>
-                  )}
-                  <div>
-                    <span>{heroModePending ? "Modo preparado" : "Recurso asignado"}</span>
-                    <strong>
-                      {heroUsesVideo
-                        ? heroVideo ? shortName(heroVideo.clip) : "Selecciona un video"
-                        : heroImage ? shortName(heroImage) : "Selecciona una imagen"}
-                    </strong>
-                    <small>
-                      {heroModePending
-                        ? "El modo se aplica al elegir un recurso. La fuente anterior sigue en la biblioteca."
-                        : heroDraftMode === "hover-video"
-                          ? "Muestra la imagen y reproduce el WebM sólo al pasar el mouse. En táctil conserva la imagen."
-                          : heroDraftMode === "video"
-                            ? "Video activo · encuadre editable sin recortar tiempo."
-                            : "Imagen activa · foco y zoom editables."}
-                    </small>
-                  </div>
-                </div>
-                <div className={styles.assignmentActions}>
-                  <ResourcePicker
-                    action={endpoint}
-                    revision={assignmentRevision}
-                    target={
-                      heroDraftMode === "hover-video"
-                        ? "hero-hover-video"
-                        : heroDraftMode === "video"
-                          ? "hero-video"
-                          : "hero-image"
-                    }
-                    resources={resources}
-                    kind={heroUsesVideo ? "video" : "image"}
-                    disabled={stale}
-                    onAddResource={openAddResource}
-                  />
-                  <button type="button" className={styles.editDestinationButton} disabled={stale} onClick={() => openDestination("hero")}>Editar destino</button>
-                </div>
-                <small className={styles.assignmentStatus}>
-                  <CheckCircle2 size={13} aria-hidden="true" />
-                  {heroModePending
-                    ? "Cambio pendiente de recurso"
-                    : currentHeroMode === "hover-video"
-                      ? "Imagen + video al hover"
-                      : currentHeroMode === "video"
-                        ? "Video activo"
-                        : heroImage ? "Imagen activa" : "Pendiente"}
-                </small>
-              </article>
-
-              <article className={styles.assignmentCard}>
-                <header><div><span>C</span><h3>Card del juego</h3></div><small>Imagen o preview</small></header>
-                <div className={styles.currentResource}>
-                  {activeCardVideo ? (
-                    <span className={styles.currentIcon}><Clapperboard size={20} aria-hidden="true" /></span>
-                  ) : coverResource ? (
-                    <span className={styles.currentThumb}><Image src={coverResource.src} alt="" fill sizes="72px" /></span>
-                  ) : (
-                    <span className={styles.currentIcon}><ImageIcon size={20} aria-hidden="true" /></span>
-                  )}
-                  <div>
-                    <span>{activeCardVideo ? "Video asignado" : "Imagen compartida"}</span>
-                    <strong>{activeCardVideo ? shortName(activeCardVideo.src) : coverImage ? shortName(coverImage) : "Sin recurso"}</strong>
-                    <small>
-                      {state?.assignments.cardVideo?.source === "hero"
-                        ? "Mismos bytes del Hero · encuadre propio"
-                        : activeCardVideo
-                          ? "WebM de biblioteca · encuadre propio"
-                          : "Usa la misma portada física con encuadre de Card independiente."}
-                    </small>
-                  </div>
-                </div>
-                <div className={styles.assignmentActions}>
-                  <ResourcePicker action={endpoint} revision={assignmentRevision} target="card-video" resources={resources} kind="video" disabled={stale} onAddResource={openAddResource} />
-                  <AssignmentForm action={endpoint} revision={assignmentRevision} target="card-match-hero" resource="" disabled={stale || !heroVideo}>
-                    <Link2 size={17} aria-hidden="true" />
-                    <span className={styles.choiceMeta}>
-                      <strong>Igualar al Hero</strong>
-                      <small>{heroVideo ? "Mismo WebM, sin duplicar" : "Disponible cuando Hero usa video"}</small>
-                    </span>
-                  </AssignmentForm>
-                  <button
-                    type="button"
-                    className={`${styles.editDestinationButton} ${!resolvedCardClip && !coverImage ? contextualStyles.editButtonDisabled : ""}`}
-                    disabled={stale || (!resolvedCardClip && !coverImage)}
-                    onClick={() => openDestination("card")}
-                  >
-                    Editar destino
-                  </button>
-                </div>
-                <small className={styles.assignmentStatus}>
-                  <CheckCircle2 size={13} aria-hidden="true" />
-                  {state?.assignments.cardVideo?.source === "hero"
-                    ? "Comparte Hero · encuadre propio"
-                    : activeCardVideo ? "Preview asignado" : coverImage ? "Imagen compartida · encuadre propio" : "Pendiente"}
-                </small>
-              </article>
-
-              <article className={`${styles.assignmentCard} ${contextualStyles.galleryAssignmentCard}`}>
-                <header><div><span>D</span><h3>Galería del juego</h3></div><small>Hasta 8 imágenes</small></header>
-                <div className={styles.currentResource}>
-                  {firstGalleryResource ? (
-                    <span className={styles.currentThumb}><Image src={firstGalleryResource.src} alt="" fill sizes="72px" /></span>
-                  ) : (
-                    <span className={styles.currentIcon}><Images size={20} aria-hidden="true" /></span>
-                  )}
-                  <div>
-                    <span>Capturas asignadas</span>
-                    <strong>{screenshots.length} de 8</strong>
-                    <small>Editar cambia el encuadre; Quitar sólo la saca de Galería; la × elimina el recurso del juego.</small>
-                  </div>
-                </div>
-
-                {renderGalleryAssignedItems(true)}
-
-                <div className={styles.assignmentActions}>
-                  <ResourcePicker
-                    action={endpoint}
-                    revision={assignmentRevision}
-                    target="gallery-image"
-                    resources={resources}
-                    kind="image"
-                    label="Añadir desde biblioteca"
-                    disabled={stale || screenshots.length >= 8}
-                    onAddResource={openAddResource}
-                  />
-                  <button
-                    type="button"
-                    className={styles.editDestinationButton}
-                    disabled={stale}
-                    onClick={() => setGalleryManagerOpen(true)}
-                  >
-                    Gestionar galería
-                  </button>
-                </div>
-                <small className={styles.assignmentStatus}>
-                  <CheckCircle2 size={13} aria-hidden="true" />
-                  {screenshots.length ? `${screenshots.length} captura${screenshots.length === 1 ? "" : "s"} · editables` : "Pendiente"}
-                </small>
-              </article>
-            </div>
-          </section>
-
-          {stale && (
-            <div className={styles.staleNotice} role="alert">
-              <Info size={18} aria-hidden="true" />
-              <div>
-                <strong>La revisión multimedia cambió</strong>
-                <span>Recarga esta página antes de asignar o editar otro recurso.</span>
-              </div>
-            </div>
-          )}
+          {stale && <div className={styles.staleNotice} role="alert"><Info size={18} aria-hidden="true" /><div><strong>La revisión multimedia cambió</strong><span>Recarga esta página antes de asignar o editar otro recurso.</span></div></div>}
         </div>
 
         <aside className={styles.helpRail}>
           <section>
-            <div className={styles.helpHeading}><Info size={18} aria-hidden="true" /><h2>Reglas y ayuda</h2></div>
-            <div className={styles.helpRule}><FolderOpen size={20} aria-hidden="true" /><div><strong>Todo sale de la biblioteca</strong><span>Un recurso físico puede servir a varios destinos.</span></div></div>
-            <div className={styles.helpRule}><MonitorPlay size={20} aria-hidden="true" /><div><strong>Hero: tres modos</strong><span>Imagen, video continuo o imagen con video al pasar el mouse.</span></div></div>
-            <div className={styles.helpRule}><Link2 size={20} aria-hidden="true" /><div><strong>Encuadres independientes</strong><span>Card, Hero y Galería pueden mostrar zonas distintas del mismo archivo.</span></div></div>
-            <div className={styles.helpRule}><Trash2 size={20} aria-hidden="true" /><div><strong>Quitar no es eliminar</strong><span>Quitar conserva la imagen en biblioteca; la × roja elimina el recurso de todos los destinos.</span></div></div>
+            <div className={styles.helpHeading}><Info size={18} aria-hidden="true" /><h2>Requisitos</h2></div>
+            <div className={styles.helpRule}><ImageIcon size={20} aria-hidden="true" /><div><strong>Portada · 4:5</strong><span>Debe tener un recorte confirmado.</span></div></div>
+            <div className={styles.helpRule}><MonitorPlay size={20} aria-hidden="true" /><div><strong>Hero · 16:9</strong><span>Imagen/video requieren encuadre propio; hover exige ambos.</span></div></div>
+            <div className={styles.helpRule}><Clapperboard size={20} aria-hidden="true" /><div><strong>Card · 3:2</strong><span>Siempre confirma su propio recorte aunque comparta archivo.</span></div></div>
+            <div className={styles.helpRule}><Images size={20} aria-hidden="true" /><div><strong>Galería obligatoria</strong><span>Mínimo una imagen para poder avanzar.</span></div></div>
           </section>
-          <section className={styles.tipCard}>
-            <Sparkles size={20} aria-hidden="true" />
-            <div><strong>Consejo avanzado</strong><p>Usa el punto focal para mantener personajes o elementos importantes dentro de la zona visible.</p></div>
-          </section>
+          <section className={styles.tipCard}><Sparkles size={20} aria-hidden="true" /><div><strong>Sin duplicar archivos</strong><p>Los recortes son metadata. El recurso físico sigue siendo único y reutilizable.</p></div></section>
         </aside>
       </div>
 
       {editingDestination && (editingVideo || editingImage) && (
-        <ContextualMediaDialog
-          eyebrow="EDITAR DESTINO"
-          title={editingDestination === "cover" ? "Encuadre de la Portada" : editingDestination === "hero" ? "Encuadre del Hero" : "Encuadre de la Card"}
-          description="Sólo cambia cómo se presenta el recurso en este destino. El archivo físico permanece intacto y reutilizable."
-          onClose={() => setEditingDestination(null)}
-        >
+        <ContextualMediaDialog eyebrow="RECORTE OBLIGATORIO" title={editingDestination === "cover" ? "Recorte 4:5 de la Portada" : editingDestination === "hero" ? "Recorte 16:9 del Hero" : "Recorte 3:2 de la Card"} description="Debes guardar este recorte para completar el destino. El archivo físico permanece intacto." onClose={() => setEditingDestination(null)}>
           {editingVideo ? (
-            <GameVideoViewportEditor
-              slug={slug}
-              revision={assignmentRevision}
-              target={editingVideo.target}
-              source={editingVideo.source}
-              clip={editingVideo.clip}
-              label={editingVideo.label}
-              initialViewport={editingVideo.viewport}
-              onClose={() => setEditingDestination(null)}
-            />
+            <GameVideoViewportEditor slug={slug} revision={assignmentRevision} target={editingVideo.target} source={editingVideo.source} clip={editingVideo.clip} label={editingVideo.label} initialViewport={editingVideo.viewport} onClose={() => setEditingDestination(null)} />
           ) : editingImage ? (
-            <ImageViewportEditor
-              slug={slug}
-              revision={assignmentRevision}
-              target={editingImage.target}
-              src={editingImage.src}
-              label={editingImage.label}
-              initialViewport={editingImage.viewport}
-              onClose={() => setEditingDestination(null)}
-            />
+            <ImageViewportEditor slug={slug} revision={assignmentRevision} target={editingImage.target} src={editingImage.src} label={editingImage.label} initialViewport={editingImage.viewport} onClose={() => setEditingDestination(null)} />
           ) : null}
         </ContextualMediaDialog>
       )}
 
       {editingGalleryImage && galleryEditingResource && (
-        <ContextualMediaDialog
-          eyebrow="EDITAR GALERÍA"
-          title="Encuadre de la captura"
-          description="Ajusta sólo la zona visible de esta captura. La imagen original sigue intacta y reutilizable."
-          onClose={() => setEditingGalleryImage(null)}
-        >
-          <ImageViewportEditor
-            slug={slug}
-            revision={assignmentRevision}
-            target="gallery"
-            src={editingGalleryImage}
-            resource={editingGalleryImage}
-            label={`Galería · ${shortName(editingGalleryImage)}`}
-            initialViewport={imageMedia?.gallery?.[editingGalleryImage]}
-            onClose={() => setEditingGalleryImage(null)}
-          />
+        <ContextualMediaDialog eyebrow="EDITAR GALERÍA" title="Encuadre de la captura" description="Ajusta sólo la zona visible de esta captura. La imagen original sigue intacta y reutilizable." onClose={() => setEditingGalleryImage(null)}>
+          <ImageViewportEditor slug={slug} revision={assignmentRevision} target="gallery" src={editingGalleryImage} resource={editingGalleryImage} label={`Galería · ${shortName(editingGalleryImage)}`} initialViewport={imageMedia?.gallery?.[editingGalleryImage]} onClose={() => setEditingGalleryImage(null)} />
         </ContextualMediaDialog>
       )}
 
       {galleryManagerOpen && (
-        <ContextualMediaDialog
-          eyebrow="GALERÍA DEL JUEGO"
-          title="Gestionar capturas"
-          description="Editar ajusta el encuadre. Quitar conserva el recurso en la biblioteca. Usa la × roja sólo cuando quieras eliminar esa imagen del juego por completo."
-          onClose={() => setGalleryManagerOpen(false)}
-        >
-          <div className={contextualStyles.galleryManagerHeader}>
-            <div>
-              <strong>{screenshots.length} de 8 imágenes asignadas</strong>
-              <span>Los cambios de encuadre son independientes para cada captura.</span>
-            </div>
-            <ResourcePicker
-              action={endpoint}
-              revision={assignmentRevision}
-              target="gallery-image"
-              resources={resources}
-              kind="image"
-              label="Añadir imagen"
-              disabled={stale || screenshots.length >= 8}
-              onAddResource={openAddResource}
-            />
-          </div>
+        <ContextualMediaDialog eyebrow="GALERÍA DEL JUEGO" title="Gestionar capturas" description="Editar ajusta el encuadre. Quitar conserva el recurso en la biblioteca. La eliminación definitiva sólo existe en la Biblioteca multimedia compartida." onClose={() => setGalleryManagerOpen(false)}>
+          <div className={contextualStyles.galleryManagerHeader}><div><strong>{screenshots.length} de 8 imágenes asignadas</strong><span>Se requiere al menos una imagen.</span></div><ResourcePicker action={endpoint} revision={assignmentRevision} target="gallery-image" resources={resources} kind="image" label="Añadir imagen" disabled={stale || screenshots.length >= 8} onAddResource={openAddResource} /></div>
           {renderGalleryAssignedItems()}
         </ContextualMediaDialog>
       )}
 
       {addResourceKind && (
-        <ContextualMediaDialog
-          eyebrow="BIBLIOTECA COMPARTIDA"
-          title="Agregar nuevo recurso"
-          description="Crea o importa el recurso una sola vez. Después podrás asignarlo y encuadrarlo por destino."
-          onClose={() => setAddResourceKind(null)}
-        >
-          <div className={`${styles.editorSteps} ${contextualStyles.addTabs}`}>
-            <button type="button" className={addResourceKind === "image" ? styles.editorStepActive : ""} onClick={() => setAddResourceKind("image")}>
-              <ImageIcon size={17} aria-hidden="true" />Imagen
-            </button>
-            <button type="button" className={addResourceKind === "video" ? styles.editorStepActive : ""} onClick={() => setAddResourceKind("video")}>
-              <Clapperboard size={17} aria-hidden="true" />Video
-            </button>
-          </div>
-
+        <ContextualMediaDialog eyebrow="BIBLIOTECA COMPARTIDA" title="Agregar nuevo recurso" description="Crea o importa el recurso una sola vez. Después podrás asignarlo y confirmar su recorte por destino." onClose={() => setAddResourceKind(null)}>
+          <div className={`${styles.editorSteps} ${contextualStyles.addTabs}`}><button type="button" className={addResourceKind === "image" ? styles.editorStepActive : ""} onClick={() => setAddResourceKind("image")}><ImageIcon size={17} aria-hidden="true" />Imagen</button><button type="button" className={addResourceKind === "video" ? styles.editorStepActive : ""} onClick={() => setAddResourceKind("video")}><Clapperboard size={17} aria-hidden="true" />Video</button></div>
           {addResourceKind === "image" ? (
-            <div className={`${styles.uploadDetails} ${styles.uploadBody}`}>
-              <p className={contextualStyles.addIntro}>
-                El WebP queda guardado en la biblioteca por hash. No cambia Portada, Hero, Card ni Galería hasta que lo selecciones.
-              </p>
-              <GameMediaUploadForm
-                slug={slug}
-                revision={assignmentRevision}
-                screenshotCount={screenshotCount}
-                libraryOnly
-              />
-            </div>
+            <div className={`${styles.uploadDetails} ${styles.uploadBody}`}><p className={contextualStyles.addIntro}>El WebP queda guardado en la biblioteca por hash. No completa ningún destino hasta que lo asignes y confirmes su recorte.</p><GameMediaUploadForm slug={slug} revision={assignmentRevision} screenshotCount={screenshotCount} libraryOnly /></div>
           ) : (
-            <div className={styles.videoEditorHost}>
-              <p className={contextualStyles.editorModeNote}>
-                <Info size={17} aria-hidden="true" />
-                <span><strong>Crear video editorial.</strong>{" "}Aquí eliges la fuente y el tramo una vez. Después, “Editar destino” sólo modifica el encuadre visual y nunca vuelve a cortar el tiempo.</span>
-              </p>
-              {videoEditor}
-            </div>
+            <div className={styles.videoEditorHost}><p className={contextualStyles.editorModeNote}><Info size={17} aria-hidden="true" /><span><strong>Crear video editorial.</strong>{" "}Aquí eliges fuente, tramo, resolución y FPS. El recorte obligatorio de Hero/Card se confirma después y no vuelve a ejecutar FFmpeg.</span></p>{videoEditor}</div>
           )}
         </ContextualMediaDialog>
       )}
