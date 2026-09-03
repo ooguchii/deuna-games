@@ -22,6 +22,11 @@
   box-shadow: 0 34px 100px rgba(0, 0, 0, 0.66);
 }
 
+.dialogWide {
+  width: min(1380px, calc(100vw - 24px));
+  max-height: calc(100dvh - 20px);
+}
+
 .header {
   display: flex;
   align-items: flex-start;
@@ -52,7 +57,7 @@
 }
 
 .heading p {
-  max-width: 760px;
+  max-width: 860px;
   margin: 0;
   color: #8fa1b2;
   font-size: 12px;
@@ -131,7 +136,8 @@
     padding: 8px;
   }
 
-  .dialog {
+  .dialog,
+  .dialogWide {
     width: 100%;
     max-height: calc(100dvh - 16px);
   }
