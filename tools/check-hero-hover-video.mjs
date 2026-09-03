@@ -131,8 +131,12 @@ assert(
     "onMouseLeave={stopHoverPreview}",
     "!reducedMotion",
     "<HeroVideoLayer",
-    "enabled={videoShouldRender}"
-  ),
+    "enabled={videoShouldRender}",
+    "const [documentVisible, setDocumentVisible] = useState(true)",
+    "syncVisibility();",
+    'document.addEventListener("visibilitychange", syncVisibility)'
+  ) &&
+    !heroSection.includes('typeof document === "undefined" || !document.hidden'),
   "El Hero público debe reproducir Video continuo o Imagen+hover según el modo, sólo con puntero compatible y respetando reduced-motion."
 );
 
