@@ -88,6 +88,8 @@ export type GameImageViewport = {
   y: number;
   /* 1 = encuadre base; 3 = zoom máximo 300 %. */
   zoom: number;
+  /* Sólo true significa que el editor confirmó explícitamente este recorte. */
+  confirmed?: true;
 };
 
 export type GameImageMedia = {
@@ -102,6 +104,7 @@ export type GameImageMedia = {
 export type GameVideoViewportAspect =
   | "source"
   | "16:9"
+  | "3:2"
   | "1:1"
   | "4:5"
   | "9:16";
@@ -113,6 +116,8 @@ export type GameVideoViewport = {
   /* 1 = fotograma completo; 3 = zoom máximo 300 %. */
   zoom: number;
   aspect: GameVideoViewportAspect;
+  /* Ausente = asignado pero todavía pendiente de confirmar en el editor. */
+  confirmed?: true;
 };
 
 export type GameHeroVideoPlayback = "always" | "hover";
