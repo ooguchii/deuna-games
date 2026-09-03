@@ -74,6 +74,18 @@ export function evaluateGamePublicationReadiness(
   game: Game
 ): GamePublicationReadiness {
   const media = evaluateGameMediaRequirements(game);
+  const backgroundItem: GameReadinessItem[] = media.background.active
+    ? [
+        {
+          id: "background-media",
+          label: "Fondo del juego · adaptable",
+          detail: "Cuando el Fondo propio está activo, las capas exigidas por Imagen, Video o Imagen + hover deben tener recurso y foco confirmados.",
+          section: "multimedia",
+          complete: media.background.cropReady,
+          priority: "essential",
+        },
+      ]
+    : [];
   const items: GameReadinessItem[] = [
     {
       id: "core",
@@ -159,6 +171,7 @@ export function evaluateGamePublicationReadiness(
       complete: media.card.cropReady,
       priority: "essential",
     },
+    ...backgroundItem,
     {
       id: "gallery-minimum",
       label: "Galería · imágenes y recortes 16:9",
