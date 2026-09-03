@@ -114,6 +114,7 @@ export default function MediaViewportEditor({
   const [duration, setDuration] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [mediaError, setMediaError] = useState<string | null>(null);
+  const [frameRevision, setFrameRevision] = useState(0);
 
   const sourceCrop = useMemo(
     () => resolvePreviewViewportCrop(
@@ -247,7 +248,7 @@ export default function MediaViewportEditor({
     });
 
     return () => cancelAnimationFrame(frame);
-  }, [currentTime, kind, sourceCrop]);
+  }, [currentTime, frameRevision, kind, sourceCrop]);
 
   function commitViewport(next: PreviewViewport) {
     const normalized = normalizeLockedViewport(next, requiredAspect);
@@ -390,6 +391,10 @@ export default function MediaViewportEditor({
     }
   }
 
+  function requestPreviewRedraw() {
+    setFrameRevision((value) => value + 1);
+  }
+
   const lockedAspectLabel = aspectLabel(requiredAspect);
 
   return (
@@ -418,6 +423,7 @@ export default function MediaViewportEditor({
                 setSourceWidth(image.naturalWidth);
                 setSourceHeight(image.naturalHeight);
                 setMediaError(null);
+                requestPreviewRedraw();
               }}
               onError={() => setMediaError("No se pudo cargar esta imagen para seleccionar el encuadre.")}
             />
@@ -444,6 +450,8 @@ export default function MediaViewportEditor({
                 setCurrentTime(video.currentTime || 0);
                 setMediaError(null);
               }}
+              onLoadedData={requestPreviewRedraw}
+              onSeeked={requestPreviewRedraw}
               onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)}
               onPlay={() => setPlaying(true)}
               onPause={() => setPlaying(false)}
