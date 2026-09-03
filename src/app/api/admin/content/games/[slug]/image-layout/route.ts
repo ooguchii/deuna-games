@@ -26,7 +26,7 @@ import type {
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const targetSchema = z.enum(["cover", "hero", "card", "gallery"]);
+const targetSchema = z.enum(["cover", "hero", "card", "detail", "gallery"]);
 const baseFields = [
   "expectedRevision",
   "target",
@@ -55,7 +55,8 @@ function hasImageForTarget(
 
   if (target === "cover") return Boolean(game.coverImage);
   if (target === "hero") return Boolean(game.heroImage);
-  return Boolean(game.cardImage);
+  if (target === "card") return Boolean(game.cardImage);
+  return Boolean(game.detailImage);
 }
 
 function confirmedViewport(viewport: GameImageViewport): GameImageViewport {
