@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 
@@ -20,10 +20,13 @@ const [
   multimediaCss,
   contextualCss,
   contextualDialog,
+  contextualDialogCss,
   videoLibraryEditor,
+  mediaViewportEditor,
   videoViewportEditor,
   imageViewportEditor,
   imageLayoutRoute,
+  previewLayoutRoute,
   previewUploadRoute,
   previewImportRoute,
   heroSection,
@@ -43,10 +46,13 @@ const [
   source("src/components/admin/GameMultimediaEditor.module.css"),
   source("src/components/admin/GameMultimediaWorkspaceContextual.module.css"),
   source("src/components/admin/ContextualMediaDialog.tsx"),
+  source("src/components/admin/ContextualMediaDialog.module.css"),
   source("src/components/admin/GameVideoLibraryEditor.tsx"),
+  source("src/components/admin/MediaViewportEditor.tsx"),
   source("src/components/admin/GameVideoViewportEditor.tsx"),
   source("src/components/admin/ImageViewportEditor.tsx"),
   source("src/app/api/admin/content/games/[slug]/image-layout/route.ts"),
+  source("src/app/api/admin/content/games/[slug]/preview-layout/route.ts"),
   source("src/app/api/admin/content/games/[slug]/preview-upload/route.ts"),
   source("src/app/api/admin/content/games/[slug]/preview-import/route.ts"),
   source("src/components/home/HeroSection.tsx"),
@@ -117,8 +123,6 @@ assert(
     "hasExactAdminFormFields",
     "findEditorialMediaResource",
     "resourcesForGame",
-    "listAssignedBundledImageResources",
-    "mergeEditorialMediaResources",
     '"cover-mode"',
     '"cover-image"',
     '"cover-video"',
@@ -181,7 +185,7 @@ assert(
     "publishGameDraft"
   ) &&
     has(mediaIntegrity, "listGameImageReferences", "game.cardImage"),
-  "La publicación debe completar de forma segura eliminaciones diferidas e incluir la imagen independiente de Card entre las referencias protegidas."
+  "La publicación debe completar eliminaciones diferidas e incluir la imagen independiente de Card entre las referencias protegidas."
 );
 
 assert(
@@ -194,7 +198,7 @@ assert(
     "previewClip: videoResource.src"
   ) &&
     !libraryRoute.includes('target.data === "card-match-hero"'),
-  "Card debe asignar un WebM por referencia independiente; puede elegir el mismo archivo físico que otro destino sin acoplar sus metadatos."
+  "Card debe asignar un WebM por referencia independiente y conservar metadata propia aunque reutilice los mismos bytes."
 );
 
 assert(
@@ -273,7 +277,6 @@ assert(
     "DeleteImageResourceForm",
     "window.confirm",
     'value="image-delete"',
-    "deleteResourceButton",
     'value="gallery-remove"',
     "ContextualMediaDialog",
     "ImageViewportEditor",
@@ -285,6 +288,35 @@ assert(
     "videoEditor"
   ),
   "Portada, Hero, Card y Galería deben compartir biblioteca/editores y distinguir Quitar de la eliminación destructiva."
+);
+
+assert(
+  has(
+    workspace,
+    "setState(parsed)",
+    "const coverImage = state?.assignments.coverImage ?? initialCoverImage ?? null",
+    "const heroImage = state?.assignments.heroImage ?? initialHeroImage ?? null",
+    "const cardImage = state?.assignments.cardImage ?? null",
+    "const screenshots = state?.assignments.screenshots ?? [...initialScreenshots]",
+    "const coverResource = imageBySrc(coverImage)",
+    "const heroResource = imageBySrc(heroImage)",
+    "const cardResource = imageBySrc(cardImage)",
+    "const firstGalleryResource = imageBySrc(screenshots[0] ?? null)",
+    "coverResource.src",
+    "heroResource.src",
+    "cardResource.src",
+    "firstGalleryResource.src"
+  ) &&
+    has(
+      libraryRoute,
+      "Cache-Control",
+      "no-store",
+      "coverImage: item.payload.coverImage ?? null",
+      "heroImage: item.payload.heroImage ?? null",
+      "cardImage: item.payload.cardImage ?? null",
+      "screenshots: item.payload.screenshots ?? []"
+    ),
+  "Las previsualizaciones del panel deben usar las asignaciones actuales devueltas sin caché por la API, incluida la imagen independiente de Card y la Galería."
 );
 
 assert(
@@ -309,76 +341,89 @@ assert(
     "document.body",
     'event.key === "Escape"',
     'aria-modal="true"',
-    'document.body.style.overflow = "hidden"'
+    'document.body.style.overflow = "hidden"',
+    "wide = true",
+    "styles.dialogWide"
   ) &&
+    has(contextualDialogCss, ".dialogWide", "1380px", "100dvh") &&
     !contextualDialog.includes("showModal()") &&
     !contextualDialog.includes("<dialog"),
-  "Los editores contextuales deben usar un overlay React robusto con Escape y bloqueo de scroll."
+  "Los editores contextuales deben usar un overlay React amplio, accesible, con Escape y bloqueo de scroll."
 );
 
 assert(
   has(
-    videoLibraryEditor,
-    '"X-Deuna-Preview-Target": "library"',
-    'target: "library"',
-    "PREVIEW_HERO_QUALITY_OPTIONS",
-    "preview-direct",
-    "preview-provider",
-    "preview-source-upload",
-    "DEFAULT_PREVIEW_VIEWPORT",
-    "el fotograma completo"
+    mediaViewportEditor,
+    'type MediaKind = "image" | "video"',
+    "resolvePreviewViewportCrop",
+    "viewportFrame",
+    "viewportMoveHandle",
+    "requestAnimationFrame",
+    "Posición X",
+    "Posición Y",
+    "Zoom",
+    "Relación del encuadre · obligatoria",
+    "requiredAspect",
+    "Izquierda",
+    "Centro",
+    "Derecha",
+    "Restablecer encuadre",
+    "resultCanvasRef",
+    "Resultado final",
+    'kind === "image"',
+    'kind === "video"',
+    'objectFit: "contain"',
+    "clamp(360px, 52vh, 560px)"
   ) &&
-    !videoLibraryEditor.includes("card-match-hero") &&
-    !videoLibraryEditor.includes("preview-remove"),
-  "Crear un video de biblioteca debe elegir fuente/tramo/calidad una vez y no administrar destinos."
-);
-
-for (const route of [previewUploadRoute, previewImportRoute]) {
-  assert(
-    has(
-      route,
-      'GameVideoTarget | "library"',
-      'normalized === "cover"',
-      'normalized === "library"',
-      'target === "card" ? "card" : "hero"',
-      "recurso-subido",
-      "withSavedGameVideoClip"
-    ),
-    "Las rutas local y remota deben aceptar Portada y library sin asignar library automáticamente a un destino."
-  );
-}
-
-assert(
-  has(
-    videoViewportEditor,
-    'type Target = "cover" | "hero" | "card"',
-    "layoutOnly",
-    "preview-layout",
-    "Confirmar recorte",
-    "REQUIRED_DESTINATION_ASPECTS[target]"
-  ) &&
-    !videoViewportEditor.includes("Usar imagen estática") &&
-    !videoViewportEditor.includes("preview-remove") &&
-    !videoViewportEditor.includes("preview-upload") &&
-    !videoViewportEditor.includes("preview-import"),
-  "Editar video debe modificar sólo metadata de encuadre para Portada/Hero/Card; el cambio de modo vive en Asignación de destinos."
+    !mediaViewportEditor.includes("storeEditorialWebp") &&
+    !mediaViewportEditor.includes("storeEditorialPreviewVideo") &&
+    !mediaViewportEditor.includes("spawn("),
+  "El motor único de encuadre debe mostrar la fuente completa, marco obligatorio, drag, zoom, presets y resultado final para imagen y video sin tocar bytes físicos."
 );
 
 assert(
   has(
     imageViewportEditor,
+    "MediaViewportEditor",
+    'kind="image"',
     '"gallery"',
     "resource?: string",
     "image-layout",
     "viewportX",
     "viewportY",
     "viewportZoom",
-    "Restablecer encuadre"
+    "requiredAspect"
   ) &&
     !imageViewportEditor.includes("media-upload") &&
-    !imageViewportEditor.includes("storeEditorialWebp"),
-  "El editor de imagen debe servir a Portada/Hero/Card/Galería y guardar sólo foco/zoom como metadata."
+    !imageViewportEditor.includes("storeEditorialWebp") &&
+    !imageViewportEditor.includes("<Image"),
+  "Imagen debe ser sólo un adaptador de persistencia sobre el motor común para Portada/Hero/Card/Galería."
 );
+
+assert(
+  has(
+    videoViewportEditor,
+    "MediaViewportEditor",
+    'kind="video"',
+    'type Target = "cover" | "hero" | "card"',
+    "preview-layout",
+    "Confirmar recorte",
+    "REQUIRED_DESTINATION_ASPECTS[target]"
+  ) &&
+    !videoViewportEditor.includes("VideoTrimEditor") &&
+    !videoViewportEditor.includes("Usar imagen estática") &&
+    !videoViewportEditor.includes("preview-remove") &&
+    !videoViewportEditor.includes("preview-upload") &&
+    !videoViewportEditor.includes("preview-import"),
+  "Video de destino debe ser sólo un adaptador de persistencia sobre el mismo motor común de imagen, sin recodificar ni administrar modos."
+);
+
+try {
+  await access(path.join(root, "src/components/admin/ImageViewportEditor.module.css"));
+  failures.push("El CSS del editor de imagen antiguo debe eliminarse cuando el motor común ya cubre la interacción.");
+} catch {
+  // Esperado: no debe quedar el stylesheet del editor paralelo anterior.
+}
 
 assert(
   has(
@@ -395,8 +440,53 @@ assert(
     !imageLayoutRoute.includes("writeFile(") &&
     !imageLayoutRoute.includes("spawn(") &&
     !imageLayoutRoute.includes("storeEditorialWebp"),
-  "La ruta de encuadre debe reconocer la imagen propia de Card y guardar sólo metadata validada."
+  "La ruta de imagen debe guardar sólo metadata de encuadre validada para Portada/Hero/Card/Galería."
 );
+
+assert(
+  has(
+    previewLayoutRoute,
+    "withGameVideoLayout",
+    "hasExactAdminFormFields",
+    "expectedRevision",
+    "viewportAspect"
+  ) &&
+    !previewLayoutRoute.includes("storeEditorialPreviewVideo") &&
+    !previewLayoutRoute.includes("spawn("),
+  "La ruta de video debe guardar sólo metadata del encuadre y nunca recodificar al editar un destino."
+);
+
+assert(
+  has(
+    videoLibraryEditor,
+    '"X-Deuna-Preview-Target": "library"',
+    'target: "library"',
+    "PREVIEW_HERO_QUALITY_OPTIONS",
+    "preview-direct",
+    "preview-provider",
+    "preview-source-upload",
+    "DEFAULT_PREVIEW_VIEWPORT",
+    "el fotograma completo"
+  ) &&
+    !videoLibraryEditor.includes("card-match-hero") &&
+    !videoLibraryEditor.includes("preview-remove"),
+  "Crear un master de video puede elegir fuente/tramo/calidad una vez; la asignación y el encuadre de destino permanecen separados."
+);
+
+for (const route of [previewUploadRoute, previewImportRoute]) {
+  assert(
+    has(
+      route,
+      'GameVideoTarget | "library"',
+      'normalized === "cover"',
+      'normalized === "library"',
+      'target === "card" ? "card" : "hero"',
+      "recurso-subido",
+      "withSavedGameVideoClip"
+    ),
+    "Las rutas local y remota deben aceptar Portada y library sin asignar library automáticamente a un destino."
+  );
+}
 
 assert(
   has(
@@ -421,7 +511,7 @@ assert(
       "game.imageMedia?.card"
     ) &&
     has(gameMedia, "normalizeGameImageViewport", "--game-image-zoom", "--game-image-position"),
-  "La web pública debe respetar los modos independientes de Portada, Hero y Card, manteniendo fallback histórico sólo para lecturas antiguas."
+  "La web pública debe respetar modos y encuadres independientes de Portada, Hero y Card, manteniendo fallback histórico sólo para snapshots antiguos."
 );
 
 assert(
@@ -434,7 +524,7 @@ assert(
     "game.videoMedia?.hero?.clip",
     'game.videoMedia?.card?.source === "independent"'
   ),
-  "La integridad física debe incluir las imágenes y videos independientes de los tres destinos."
+  "La integridad física debe incluir imágenes y videos independientes de los tres destinos."
 );
 
 if (failures.length) {
@@ -444,5 +534,5 @@ if (failures.length) {
 }
 
 console.log(
-  "Biblioteca multimedia contextual: OK (biblioteca segura → destinos independientes → modos Imagen/Video/Imagen+hover → recortes por destino → publicación y consumo público coherentes)."
+  "Biblioteca multimedia contextual: OK (biblioteca segura → previews actuales → motor único imagen/video → recortes por destino → publicación pública coherente)."
 );
