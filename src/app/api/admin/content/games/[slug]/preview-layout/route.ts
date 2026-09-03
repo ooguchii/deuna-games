@@ -10,7 +10,10 @@ import {
   type GameCardVideoSource,
   type GameVideoTarget,
 } from "@/lib/media/game-video-media";
-import { REQUIRED_DESTINATION_ASPECTS } from "@/lib/media/game-media-requirements";
+import {
+  GAME_DETAIL_VIEWPORT_ASPECT,
+  REQUIRED_DESTINATION_ASPECTS,
+} from "@/lib/media/game-media-requirements";
 import { parsePreviewViewport } from "@/lib/media/preview-video-policy";
 
 export const dynamic = "force-dynamic";
@@ -27,7 +30,10 @@ const fields = [
 ] as const;
 
 function parseTarget(value: string | null): GameVideoTarget | null {
-  return value === "cover" || value === "hero" || value === "card"
+  return value === "cover" ||
+    value === "hero" ||
+    value === "card" ||
+    value === "detail"
     ? value
     : null;
 }
@@ -88,7 +94,11 @@ export async function POST(
   );
   const target = parseTarget(authorized.form.get("target"));
   const source = parseSource(authorized.form.get("source"));
-  const requiredAspect = target ? REQUIRED_DESTINATION_ASPECTS[target] : null;
+  const requiredAspect = target === "detail"
+    ? GAME_DETAIL_VIEWPORT_ASPECT
+    : target
+      ? REQUIRED_DESTINATION_ASPECTS[target]
+      : null;
   const submittedAspect = authorized.form.get("viewportAspect");
   const viewport = requiredAspect
     ? parsePreviewViewport(
@@ -114,7 +124,7 @@ export async function POST(
 
   if (
     (target === "hero" && source !== "hero") ||
-    (target === "cover" && source !== "independent")
+    ((target === "cover" || target === "detail") && source !== "independent")
   ) {
     return adminRedirect(
       authorized.adminOrigin,

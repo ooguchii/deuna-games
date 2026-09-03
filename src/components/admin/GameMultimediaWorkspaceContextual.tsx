@@ -25,6 +25,7 @@ import {
 
 import ContextualMediaDialog from "@/components/admin/ContextualMediaDialog";
 import GameBackgroundMediaEditor from "@/components/admin/GameBackgroundMediaEditor";
+import GameDetailMediaEditor from "@/components/admin/GameDetailMediaEditor";
 import GameMediaUploadForm from "@/components/admin/GameMediaUploadForm";
 import GameVideoViewportEditor from "@/components/admin/GameVideoViewportEditor";
 import ImageViewportEditor from "@/components/admin/ImageViewportEditor";
@@ -39,6 +40,7 @@ import type {
   GameCardVideo,
   GameCoverVideo,
   GameDestinationMediaMode,
+  GameDetailVideo,
   GameHeroVideo,
   GameImageMedia,
   GameImageViewport,
@@ -78,16 +80,19 @@ type LibraryState = {
     coverImage: string | null;
     heroImage: string | null;
     cardImage: string | null;
+    detailImage: string | null;
     backgroundImage: string | null;
     screenshots: string[];
     imageMedia: GameImageMedia | null;
     coverMode: GameDestinationMediaMode;
     heroMode: GameDestinationMediaMode;
     cardMode: GameDestinationMediaMode;
+    detailMode: GameDestinationMediaMode;
     backgroundMode: GameDestinationMediaMode | null;
     coverVideo: GameCoverVideo | null;
     heroVideo: GameHeroVideo | null;
     cardVideo: GameCardVideo | null;
+    detailVideo: GameDetailVideo | null;
     backgroundVideo: GameBackgroundVideo | null;
     legacyPreviewClip: string | null;
   };
@@ -190,6 +195,7 @@ function isImageMedia(value: unknown): value is GameImageMedia {
     media.cover,
     media.hero,
     media.card,
+    media.detail,
     media.background,
   ].every(
     (viewport) => viewport === undefined || isViewport(viewport)
@@ -218,7 +224,7 @@ function isDestinationMode(value: unknown): value is GameDestinationMediaMode {
 
 function isDestinationVideo(
   value: unknown
-): value is GameCoverVideo | GameHeroVideo | GameBackgroundVideo {
+): value is GameCoverVideo | GameHeroVideo | GameDetailVideo | GameBackgroundVideo {
   if (!value || typeof value !== "object") return false;
   const video = value as Partial<GameCoverVideo>;
   return typeof video.clip === "string" && isVideoViewport(video.viewport);
@@ -279,6 +285,7 @@ function parseLibraryState(value: unknown): LibraryState | null {
     !isDestinationMode(assignments.coverMode) ||
     !isDestinationMode(assignments.heroMode) ||
     !isDestinationMode(assignments.cardMode) ||
+    !isDestinationMode(assignments.detailMode) ||
     (assignments.backgroundMode !== null &&
       assignments.backgroundMode !== undefined &&
       !isDestinationMode(assignments.backgroundMode)) ||
@@ -287,6 +294,7 @@ function parseLibraryState(value: unknown): LibraryState | null {
     (assignments.coverVideo !== null && assignments.coverVideo !== undefined && !isDestinationVideo(assignments.coverVideo)) ||
     (assignments.heroVideo !== null && assignments.heroVideo !== undefined && !isDestinationVideo(assignments.heroVideo)) ||
     (assignments.cardVideo !== null && assignments.cardVideo !== undefined && !isCardVideo(assignments.cardVideo)) ||
+    (assignments.detailVideo !== null && assignments.detailVideo !== undefined && !isDestinationVideo(assignments.detailVideo)) ||
     (assignments.backgroundVideo !== null && assignments.backgroundVideo !== undefined && !isDestinationVideo(assignments.backgroundVideo))
   ) {
     return null;
@@ -297,6 +305,8 @@ function parseLibraryState(value: unknown): LibraryState | null {
     resources: root.resources,
     assignments: {
       ...assignments,
+      detailImage: assignments.detailImage ?? null,
+      detailVideo: assignments.detailVideo ?? null,
       backgroundImage: assignments.backgroundImage ?? null,
       backgroundMode: assignments.backgroundMode ?? null,
       backgroundVideo: assignments.backgroundVideo ?? null,
@@ -326,8 +336,8 @@ function DeleteImageResourceForm({
 }) {
   const name = shortName(resource.src);
   const confirmation = resource.origin === "editorial"
-    ? `¿Eliminar ${name} definitivamente?\n\nSe quitará de Portada, Hero, Card, Fondo y Galería y dejará de estar disponible en la biblioteca. Si la versión pública todavía la usa, el archivo físico se conservará sólo hasta que publiques el cambio.`
-    : `¿Eliminar ${name} de este juego?\n\nSe quitará de Portada, Hero, Card, Fondo y Galería. El archivo base compartido se conservará por seguridad.`;
+    ? `¿Eliminar ${name} definitivamente?\n\nSe quitará de Portada, Hero, Card, Contenedor, Fondo y Galería y dejará de estar disponible en la biblioteca. Si la versión pública todavía la usa, el archivo físico se conservará sólo hasta que publiques el cambio.`
+    : `¿Eliminar ${name} de este juego?\n\nSe quitará de Portada, Hero, Card, Contenedor, Fondo y Galería. El archivo base compartido se conservará por seguridad.`;
 
   return (
     <form
@@ -636,15 +646,18 @@ export default function GameMultimediaWorkspaceContextual({
   const coverImage = state?.assignments.coverImage ?? initialCoverImage ?? null;
   const heroImage = state?.assignments.heroImage ?? initialHeroImage ?? null;
   const cardImage = state?.assignments.cardImage ?? null;
+  const detailImage = state?.assignments.detailImage ?? null;
   const backgroundImage = state?.assignments.backgroundImage ?? null;
   const screenshots = state?.assignments.screenshots ?? [...initialScreenshots];
   const imageMedia = state?.assignments.imageMedia ?? null;
   const coverMode = state?.assignments.coverMode ?? "video";
   const heroMode = state?.assignments.heroMode ?? "hover-video";
   const cardMode = state?.assignments.cardMode ?? "hover-video";
+  const detailMode = state?.assignments.detailMode ?? "image";
   const backgroundMode = state?.assignments.backgroundMode ?? null;
   const coverVideo = state?.assignments.coverVideo ?? null;
   const heroVideo = state?.assignments.heroVideo ?? null;
+  const detailVideo = state?.assignments.detailVideo ?? null;
   const backgroundVideo = state?.assignments.backgroundVideo ?? null;
   const resolvedCardClip = cardClip(state);
   const assignmentRevision = state?.revision ?? revision;
@@ -671,6 +684,15 @@ export default function GameMultimediaWorkspaceContextual({
   const cardImageCropReady = Boolean(cardImage && imageMedia?.card?.confirmed);
   const cardVideoCropReady = Boolean(state?.assignments.cardVideo?.viewport.confirmed);
   const cardCropReady = cropReady(cardMode, cardImageCropReady, cardVideoCropReady);
+  const detailImageCropReady = Boolean(detailImage && imageMedia?.detail?.confirmed);
+  const detailVideoCropReady = Boolean(
+    detailVideo?.viewport.confirmed && detailVideo.viewport.aspect === "source"
+  );
+  const detailCropReady = cropReady(
+    detailMode,
+    detailImageCropReady,
+    detailVideoCropReady
+  );
   const backgroundImageCropReady = Boolean(backgroundImage && imageMedia?.background?.confirmed);
   const backgroundVideoCropReady = Boolean(
     backgroundVideo?.viewport.confirmed && backgroundVideo.viewport.aspect === "source"
@@ -686,7 +708,7 @@ export default function GameMultimediaWorkspaceContextual({
   );
   const galleryCropReady = gallerySelectionReady && pendingGalleryCrops.length === 0;
   const galleryReady = gallerySelectionReady && galleryCropReady;
-  const mandatoryRequirementsReady = coverCropReady && heroCropReady && cardCropReady && galleryReady;
+  const mandatoryRequirementsReady = coverCropReady && heroCropReady && cardCropReady && detailCropReady && galleryReady;
   const allRequirementsReady = mandatoryRequirementsReady && backgroundReady;
 
   function usageLabels(resource: LibraryResource) {
@@ -695,12 +717,14 @@ export default function GameMultimediaWorkspaceContextual({
       if (resource.src === coverImage && coverMode !== "video") labels.push(coverMode === "hover-video" ? "Portada base" : "Portada");
       if (resource.src === heroImage && heroMode !== "video") labels.push(heroMode === "hover-video" ? "Hero base" : "Hero");
       if (resource.src === cardImage && cardMode !== "video") labels.push(cardMode === "hover-video" ? "Card base" : "Card");
+      if (resource.src === detailImage && detailMode !== "video") labels.push(detailMode === "hover-video" ? "Contenedor base" : "Contenedor");
       if (resource.src === backgroundImage && backgroundMode !== "video") labels.push(backgroundMode === "hover-video" ? "Fondo base" : "Fondo");
       if (screenshots.includes(resource.src)) labels.push("Galería");
     } else {
       if (resource.src === coverVideo?.clip && coverMode !== "image") labels.push(coverMode === "hover-video" ? "Portada hover" : "Portada");
       if (resource.src === heroVideo?.clip && heroMode !== "image") labels.push(heroMode === "hover-video" ? "Hero hover" : "Hero");
       if (resource.src === resolvedCardClip && cardMode !== "image") labels.push(cardMode === "hover-video" ? "Card hover" : "Card");
+      if (resource.src === detailVideo?.clip && detailMode !== "image") labels.push(detailMode === "hover-video" ? "Contenedor hover" : "Contenedor");
       if (resource.src === backgroundVideo?.clip && backgroundMode !== "image") labels.push(backgroundMode === "hover-video" ? "Fondo hover" : "Fondo");
     }
     return labels;
@@ -823,7 +847,7 @@ export default function GameMultimediaWorkspaceContextual({
                 <button
                   type="button"
                   className={`${contextualStyles.galleryEditButton} ${requirementActionClass(cropConfirmed)}`}
-                  aria-label={cropConfirmed ? `Editar ${cropStateLabel}` : `Editar ${cropStateLabel}`}
+                  aria-label={`Editar ${cropStateLabel}`}
                   disabled={stale}
                   onClick={() => openGalleryImage(src)}
                 >
@@ -924,7 +948,7 @@ export default function GameMultimediaWorkspaceContextual({
       ? `${pendingGalleryCrops.length} recortes no confirmados`
       : "Recorte no confirmado";
   const gatePendingLabel = !mandatoryRequirementsReady
-    ? "Confirma Portada 4:5, Hero 16:9, Card 3:2 y al menos una imagen de Galería con su recorte confirmado."
+    ? "Confirma Portada 4:5, Hero 16:9, Card 3:2, Contenedor adaptable y al menos una imagen de Galería con su recorte confirmado."
     : "Completa el Fondo adaptable que activaste o vuelve a usar el fondo global.";
 
   return (
@@ -935,7 +959,7 @@ export default function GameMultimediaWorkspaceContextual({
             <span>RESUMEN MULTIMEDIA</span>
             <h2 id="multimedia-summary-heading">Requisitos obligatorios de destinos</h2>
           </div>
-          <p>Portada, Hero y Card tienen recurso, modo y recorte independientes. Cada imagen de Galería elige y confirma su propia relación. Fondo permanece opcional mientras use el global.</p>
+          <p>Portada, Hero, Card y Contenedor tienen recurso, modo y recorte independientes. Cada imagen de Galería elige y confirma su propia relación. Fondo permanece opcional mientras use el global.</p>
         </div>
         <div className={styles.summaryGrid}>
           <article className={styles.summaryCard}>
@@ -951,6 +975,10 @@ export default function GameMultimediaWorkspaceContextual({
             <div><span>CARD · {REQUIRED_DESTINATION_ASPECTS.card}</span><strong>{modeLabel(cardMode)}</strong><RequirementStatus ready={cardCropReady} pending="RECORTE PENDIENTE" /></div>
           </article>
           <article className={styles.summaryCard}>
+            <span className={styles.summaryIcon}>{detailMode === "image" ? <ImageIcon size={22} aria-hidden="true" /> : <MonitorPlay size={22} aria-hidden="true" />}</span>
+            <div><span>CONTENEDOR · ADAPTABLE</span><strong>{modeLabel(detailMode)}</strong><RequirementStatus ready={detailCropReady} pending="RECORTE PENDIENTE" readyLabel="RECORTE ADAPTABLE CONFIRMADO" /></div>
+          </article>
+          <article className={styles.summaryCard}>
             <span className={styles.summaryIcon}><Images size={22} aria-hidden="true" /></span>
             <div><span>GALERÍA · MÍNIMO 1</span><strong>{screenshots.length} de 8 capturas</strong><RequirementStatus ready={galleryReady} pending={galleryPendingLabel} readyLabel="IMÁGENES Y RECORTES LISTOS" /></div>
           </article>
@@ -961,7 +989,7 @@ export default function GameMultimediaWorkspaceContextual({
         <div className={styles.primaryColumn}>
           <section className={styles.numberedSection} aria-labelledby="destination-assignment-heading">
             <div className={styles.sectionTitleRow}>
-              <div><span>01</span><div><h2 id="destination-assignment-heading">Asignación de destinos</h2><p>Portada, Hero, Card y Fondo eligen su modo y recursos de forma independiente. Fondo es opcional y puede volver al global; Galería permite elegir la relación de cada captura. Rojo indica lo que falta y verde confirma cada paso.</p></div></div>
+              <div><span>01</span><div><h2 id="destination-assignment-heading">Asignación de destinos</h2><p>Portada, Hero, Card, Contenedor y Fondo eligen su modo y recursos de forma independiente. Fondo es opcional y puede volver al global; Galería permite elegir la relación de cada captura. Rojo indica lo que falta y verde confirma cada paso.</p></div></div>
             </div>
 
             <div className={styles.assignmentGrid}>
@@ -1011,8 +1039,23 @@ export default function GameMultimediaWorkspaceContextual({
                 stale={stale}
               />
 
+              <GameDetailMediaEditor
+                slug={slug}
+                revision={assignmentRevision}
+                endpoint={endpoint}
+                resources={resources}
+                assignment={{
+                  mode: detailMode,
+                  image: detailImage,
+                  imageViewport: imageMedia?.detail ?? null,
+                  video: detailVideo,
+                }}
+                stale={stale}
+                onAddResource={openAddResource}
+              />
+
               <article className={`${styles.assignmentCard} ${contextualStyles.galleryAssignmentCard}`}>
-                <header><div><span>E</span><h3>Galería del juego</h3></div><small>Obligatoria · mínimo 1 imagen · relación elegible</small></header>
+                <header><div><span>F</span><h3>Galería del juego</h3></div><small>Obligatoria · mínimo 1 imagen · relación elegible</small></header>
                 <div className={styles.currentResource}>
                   {firstGalleryResource ? <span className={styles.currentThumb}><Image src={firstGalleryResource.src} alt="" fill sizes="72px" /></span> : <span className={styles.currentIcon}><Images size={20} aria-hidden="true" /></span>}
                   <div><span>Capturas asignadas</span><strong>{screenshots.length} de 8</strong><small>Cada captura elige 16:9, 3:2, 1:1, 4:5, 9:16 o Libre y debe confirmar su recorte. Quitar una captura no destruye el recurso.</small></div>
@@ -1052,7 +1095,7 @@ export default function GameMultimediaWorkspaceContextual({
             <div className={contextualStyles.continueGate}>
               <div>
                 <strong>{allRequirementsReady ? "Multimedia completa" : "No puedes avanzar todavía"}</strong>
-                <span>{allRequirementsReady ? "Todos los destinos obligatorios y cualquier Fondo activado están listos." : gatePendingLabel}</span>
+                <span>{allRequirementsReady ? "Portada, Hero, Card, Contenedor, Galería y cualquier Fondo activado están listos." : gatePendingLabel}</span>
               </div>
               {allRequirementsReady ? (
                 <Link href={`/admin/juegos/${encodeURIComponent(slug)}?seccion=descargas`} className={contextualStyles.continueButton}>Continuar a Descargas</Link>
@@ -1104,6 +1147,7 @@ export default function GameMultimediaWorkspaceContextual({
             <div className={styles.helpRule}><MonitorPlay size={20} aria-hidden="true" /><div><strong>Hero · 16:9</strong><span>Imagen, Video o Imagen + hover; hover exige ambos recursos y ambos recortes.</span></div></div>
             <div className={styles.helpRule}><Clapperboard size={20} aria-hidden="true" /><div><strong>Card · 3:2</strong><span>Su imagen es independiente de Portada; selección y recorte se validan por separado.</span></div></div>
             <div className={styles.helpRule}><Sparkles size={20} aria-hidden="true" /><div><strong>Fondo · adaptable</strong><span>Es opcional. Puede usar Imagen, Video o Imagen + hover con recorte adaptable propio, o volver al fondo global.</span></div></div>
+            <div className={styles.helpRule}><MonitorPlay size={20} aria-hidden="true" /><div><strong>Contenedor · adaptable</strong><span>Es obligatorio e independiente del Hero. La ficha adapta X/Y/zoom a su altura real en escritorio y móvil.</span></div></div>
             <div className={styles.helpRule}><Images size={20} aria-hidden="true" /><div><strong>Galería obligatoria · relación elegible</strong><span>Mínimo una imagen. Cada captura elige su relación; Libre habilita arrastre por bordes y esquinas.</span></div></div>
           </section>
           <section className={styles.tipCard}><Sparkles size={20} aria-hidden="true" /><div><strong>Reutilizar sin acoplar</strong><p>Puedes elegir el mismo archivo físico en dos destinos, pero cada asignación y recorte se conserva de forma independiente.</p></div></section>

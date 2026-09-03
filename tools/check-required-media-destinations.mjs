@@ -16,6 +16,7 @@ const [
   imageViewportPolicy,
   previewPolicy,
   workspace,
+  detailEditor,
   mediaViewportEditor,
   imageEditor,
   videoViewportEditor,
@@ -37,6 +38,7 @@ const [
   source("src/lib/media/image-viewport.ts"),
   source("src/lib/media/preview-video-policy.ts"),
   source("src/components/admin/GameMultimediaWorkspaceContextual.tsx"),
+  source("src/components/admin/GameDetailMediaEditor.tsx"),
   source("src/components/admin/MediaViewportEditor.tsx"),
   source("src/components/admin/ImageViewportEditor.tsx"),
   source("src/components/admin/GameVideoViewportEditor.tsx"),
@@ -60,13 +62,16 @@ assert(
     'cover: "4:5"',
     'hero: "16:9"',
     'card: "3:2"',
+    'GAME_DETAIL_VIEWPORT_ASPECT = "source"',
+    'const detailMode = resolveGameDestinationMediaMode(game, "detail")',
+    "detail.cropReady",
     "const galleryAssigned = screenshots.length > 0",
     "const galleryCropReady = galleryAssigned && screenshots.every(",
     "isImageCropConfirmed(game.imageMedia?.gallery?.[src])",
     "background.cropReady",
     "galleryCropReady"
   ),
-  "Portada/Hero/Card deben conservar 4:5/16:9/3:2; Fondo activado y Galería deben exigir recortes confirmados sin imponer 16:9 a Galería."
+  "Portada/Hero/Card deben conservar 4:5/16:9/3:2; Contenedor debe ser adaptable; Fondo activado y Galería deben exigir recortes confirmados."
 );
 
 assert(
@@ -81,9 +86,14 @@ assert(
     '| "free"',
     "aspect?: GameImageViewportAspect",
     "aspectRatio?: number",
+    "detail?: GameImageViewport",
+    "detail?: GameDestinationMediaMode",
+    "export type GameDetailVideo",
+    "detail?: GameDetailVideo",
+    "detailImage?: string",
     "confirmed?: true"
   ),
-  "El modelo de imagen debe persistir relación elegible y relación numérica exacta para recorte Libre."
+  "El modelo debe persistir Galería elegible y un Contenedor multimedia independiente sin duplicar archivos físicos."
 );
 
 assert(
@@ -120,11 +130,14 @@ assert(
     contentValidation,
     "imageViewportAspectSchema",
     '"free"',
+    "detail: fixedImageViewportSchema.optional()",
+    "detail: mediaModeSchema.optional()",
+    "detail: destinationVideoSchema.optional()",
     "aspectRatio: z.number().min(0.1).max(10).optional()",
     'viewport.aspect === "free" && viewport.aspectRatio === undefined',
     'viewport.aspect !== "free" && viewport.aspectRatio !== undefined'
   ),
-  "La validación editorial debe rechazar recortes libres sin relación y relaciones numéricas fuera del modo Libre."
+  "La validación editorial debe reservar relaciones elegibles para Galería y mantener el Contenedor sobre viewport adaptable fijo."
 );
 
 assert(
@@ -132,6 +145,8 @@ assert(
     workspace,
     "GAME_IMAGE_CROP_ASPECTS",
     "gameImageCropAspectLabel",
+    'import GameDetailMediaEditor from "@/components/admin/GameDetailMediaEditor"',
+    "Contenedor · adaptable",
     "Galería obligatoria · relación elegible",
     "16:9, 3:2, 1:1, 4:5, 9:16 o Libre",
     "Libre habilita arrastre por bordes y esquinas",
@@ -141,12 +156,31 @@ assert(
     "const pendingGalleryCrops = screenshots.filter(",
     "imageMedia?.gallery?.[src]?.confirmed !== true",
     "const galleryCropReady = gallerySelectionReady && pendingGalleryCrops.length === 0",
-    'title="Recorte de la captura"'
+    'title="Recorte de la captura"',
+    "<span>F</span><h3>Galería del juego</h3>"
   ) &&
     !workspace.includes("Galería obligatoria · 16:9") &&
     !workspace.includes("Cada captura asignada debe confirmar su encuadre 16:9") &&
     !workspace.includes("REQUISITO CUMPLIDO · RECORTES 16:9 CONFIRMADOS"),
-  "El workspace debe mostrar la relación real por captura y no volver a presentar Galería como 16:9 obligatoria."
+  "El workspace debe insertar Contenedor como destino E, mover Galería a F y conservar la relación real por captura."
+);
+
+assert(
+  has(
+    detailEditor,
+    "Contenedor de la ficha",
+    "Imagen + hover",
+    'value="detail-mode"',
+    'value={`detail-${kind}`}',
+    "Recorte adaptable ·",
+    "RECORTE ADAPTABLE CONFIRMADO",
+    "RECORTE ADAPTABLE NO CONFIRMADO",
+    'target="detail"',
+    'source="independent"',
+    "ImageViewportEditor",
+    "GameVideoViewportEditor"
+  ),
+  "Contenedor debe usar la misma Biblioteca y adaptadores de recorte, con tres modos y estados de selección/confirmación explícitos."
 );
 
 assert(
@@ -171,7 +205,7 @@ assert(
     "Resultado final",
     "GameMedia"
   ),
-  "Debe existir un único editor de imagen/video; sólo Libre habilita ocho tiradores de resize y los destinos rígidos mantienen su relación bloqueada."
+  "Debe existir un único editor de imagen/video; sólo Libre habilita ocho tiradores y los destinos rígidos/adaptables mantienen su relación bloqueada."
 );
 
 assert(
@@ -179,6 +213,8 @@ assert(
     imageEditor,
     "MediaViewportEditor",
     'target === "gallery"',
+    'target === "detail"',
+    "GAME_DETAIL_VIEWPORT_ASPECT",
     "GALLERY_ASPECT_OPTIONS",
     '"16:9"',
     '"3:2"',
@@ -189,17 +225,18 @@ assert(
     "selectableAspects",
     "viewportAspect",
     "viewportAspectRatio",
-    "Confirmar recorte"
+    "Confirmar recorte adaptable"
   ) &&
     !imageEditor.includes("resolvePreviewViewportCrop") &&
     !imageEditor.includes("storeEditorialWebp"),
-  "Galería debe usar el editor espacial común y persistir la relación elegida sin crear otro archivo."
+  "Galería y Contenedor deben usar el editor espacial común; sólo Galería persiste relación seleccionable."
 );
 
 assert(
   has(
     imageLayoutRoute,
-    'const targetSchema = z.enum(["cover", "hero", "card", "gallery"])',
+    'const legacyImageTargets = ["cover", "hero", "card", "gallery"] as const',
+    'const targetSchema = z.enum([...legacyImageTargets, "detail"])',
     '"viewportAspect"',
     '"viewportAspectRatio"',
     "expectsGalleryResource",
@@ -209,34 +246,43 @@ assert(
   ) &&
     !imageLayoutRoute.includes("storeEditorialWebp") &&
     !imageLayoutRoute.includes("spawn("),
-  "La API de recorte de imagen debe aceptar relación sólo para Galería y guardar exclusivamente metadata confirmada."
+  "La API de imagen debe guardar sólo metadata; relación/aspectRatio continúan reservados para Galería y detail guarda X/Y/zoom confirmado."
 );
 
 assert(
   has(
     videoViewportEditor,
-    "REQUIRED_DESTINATION_ASPECTS[target]",
+    "GAME_DETAIL_VIEWPORT_ASPECT",
+    "function targetAspect(target: Target)",
+    'target === "detail"',
     "MediaViewportEditor",
     'kind="video"'
   ) &&
     has(
       videoLayoutRoute,
-      "REQUIRED_DESTINATION_ASPECTS[target]",
+      "GAME_DETAIL_VIEWPORT_ASPECT",
+      'target === "detail"',
       "submittedAspect !== requiredAspect",
       "withGameVideoLayout"
     ),
-  "Los videos de Portada/Hero/Card deben conservar sus relaciones rígidas y no heredar el modo Libre de Galería."
+  "Portada/Hero/Card deben conservar relaciones rígidas; Contenedor usa source adaptable y ningún video hereda el modo Libre de Galería."
 );
 
 assert(
   has(
     mediaLibraryRoute,
+    '"detail-mode"',
+    '"detail-image"',
+    '"detail-video"',
     '"gallery-image"',
     '"gallery-remove"',
+    "detailImage: item.payload.detailImage ?? null",
+    'resolveGameDestinationMediaMode(item.payload, "detail")',
+    "detailVideo: item.payload.videoMedia?.detail ?? null",
     "DEFAULT_GAME_IMAGE_VIEWPORT",
     "gallery:"
   ),
-  "La Biblioteca debe seguir asignando capturas por referencia y crear metadata pendiente antes de editar su relación."
+  "La Biblioteca debe asignar Contenedor y Galería por referencia y crear metadata pendiente antes de editar sus recortes."
 );
 
 assert(
@@ -276,15 +322,22 @@ assert(
   "El renderer público debe permitir que una captura de Galería publicada respete la relación persistida, incluida Libre."
 );
 
-for (const id of ["cover-crop", "hero-crop", "card-crop", "gallery-minimum"]) {
+for (const id of [
+  "cover-crop",
+  "hero-crop",
+  "card-crop",
+  "detail-container-media",
+  "gallery-minimum",
+]) {
   assert(publicationReadiness.includes(`id: "${id}"`), `Publicación debe exigir ${id}.`);
 }
 assert(
-  publicationReadiness.includes("complete: media.gallery.cropReady") &&
+  publicationReadiness.includes("complete: media.detail.cropReady") &&
+    publicationReadiness.includes("complete: media.gallery.cropReady") &&
     publicationWorkspace.includes("!readiness.essentialsReady") &&
     has(publishRoute, "evaluateGamePublicationReadiness", "readiness.essentialsReady", "preparacion-incompleta") &&
     has(restoreRoute, "evaluateGamePublicationReadiness", "readiness.essentialsReady", "restauracion-incompleta"),
-  "Publicación y restauración deben seguir bloqueando cualquier recorte de Galería no confirmado, sin importar su relación."
+  "Publicación y restauración deben bloquear Contenedor o Galería incompletos."
 );
 
 if (failures.length) {
@@ -294,5 +347,5 @@ if (failures.length) {
 }
 
 console.log(
-  "Destinos multimedia: OK (Portada 4:5 · Hero 16:9 · Card 3:2 · Fondo adaptable · Galería con relación elegible y recorte Libre redimensionable)."
+  "Destinos multimedia: OK (Portada 4:5 · Hero 16:9 · Card 3:2 · Fondo adaptable · Contenedor adaptable independiente · Galería elegible/Libre)."
 );

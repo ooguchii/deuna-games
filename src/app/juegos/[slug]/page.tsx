@@ -18,6 +18,7 @@ import {
   Star,
 } from "lucide-react";
 
+import GameDetailContainerMedia from "@/components/games/GameDetailContainerMedia";
 import Footer from "@/components/layout/Footer";
 import Header from "@/components/layout/Header";
 import GameCoverMedia from "@/components/ui/GameCoverMedia";
@@ -38,6 +39,10 @@ import {
   getPublicGameBySlug,
   getPublicGames,
 } from "@/lib/games/public-catalog";
+import {
+  resolveGameDestinationImage,
+  resolveGameDestinationMediaMode,
+} from "@/lib/media/game-video-media";
 import {
   absoluteUrl,
 } from "@/lib/site";
@@ -204,6 +209,14 @@ export default async function GameDetailPage({
     recommended
   );
   const recentGameUpdates = gameUpdates.slice(0, 3);
+  const detailImage = resolveGameDestinationImage(game, "detail");
+  const detailImageViewport = game.imageMedia?.detail ??
+    (!game.detailImage
+      ? game.heroImage
+        ? game.imageMedia?.hero
+        : game.imageMedia?.cover
+      : undefined);
+  const detailMode = resolveGameDestinationMediaMode(game, "detail");
 
   const relatedGames = games
     .filter(
@@ -332,18 +345,17 @@ export default async function GameDetailPage({
         <section
           className={styles.hero}
           aria-labelledby="game-title"
+          data-game-detail-media-scope
         >
           <div
             className={styles.heroMedia}
             aria-hidden="true"
           >
-            <GameMedia
-              src={game.heroImage ?? game.coverImage}
-              alt=""
-              sizes="100vw"
-              priority
-              variant="hero"
-              viewport={game.heroImage ? game.imageMedia?.hero : game.imageMedia?.cover}
+            <GameDetailContainerMedia
+              mode={detailMode}
+              imageSrc={detailImage}
+              imageViewport={detailImageViewport}
+              video={game.videoMedia?.detail}
             />
             <div className={styles.heroShade} />
           </div>

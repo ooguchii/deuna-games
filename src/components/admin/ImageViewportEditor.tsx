@@ -3,7 +3,10 @@
 import { useState } from "react";
 
 import MediaViewportEditor from "@/components/admin/MediaViewportEditor";
-import { REQUIRED_DESTINATION_ASPECTS } from "@/lib/media/game-media-requirements";
+import {
+  GAME_DETAIL_VIEWPORT_ASPECT,
+  REQUIRED_DESTINATION_ASPECTS,
+} from "@/lib/media/game-media-requirements";
 import {
   DEFAULT_GALLERY_IMAGE_ASPECT,
   normalizeGameImageViewport,
@@ -16,9 +19,8 @@ import type { GameImageViewport } from "@/types/game";
 
 import dialogStyles from "./ContextualMediaDialog.module.css";
 
-type Target = "cover" | "hero" | "card" | "gallery";
-type FixedTarget = Exclude<Target, "gallery">;
-type FixedImageAspect = (typeof REQUIRED_DESTINATION_ASPECTS)[FixedTarget];
+type Target = "cover" | "hero" | "card" | "detail" | "gallery";
+type LockedTarget = Exclude<Target, "gallery">;
 
 type Props = {
   slug: string;
@@ -43,15 +45,18 @@ const GALLERY_ASPECT_OPTIONS: readonly PreviewViewportAspectId[] = [
 function targetLabel(target: Target) {
   if (target === "cover") return "Portada";
   if (target === "hero") return "Hero";
+  if (target === "detail") return "Contenedor de la ficha";
   if (target === "gallery") return "Galería";
   return "Card";
 }
 
-function targetAspect(target: FixedTarget): FixedImageAspect {
+function targetAspect(target: LockedTarget): PreviewViewportAspectId {
+  if (target === "detail") return GAME_DETAIL_VIEWPORT_ASPECT;
   return REQUIRED_DESTINATION_ASPECTS[target];
 }
 
 function cropLabel(viewport: PreviewViewport) {
+  if (viewport.aspect === "source") return "adaptable";
   if (viewport.aspect !== "free") return viewport.aspect;
   return `Libre · ${(viewport.customAspectRatio ?? 16 / 9).toFixed(2)}:1`;
 }
@@ -66,7 +71,7 @@ export default function ImageViewportEditor({
   resource,
   onClose,
 }: Props) {
-  const requiredAspect: FixedImageAspect | undefined =
+  const requiredAspect: PreviewViewportAspectId | undefined =
     target === "gallery" ? undefined : targetAspect(target);
   const [viewport, setViewport] = useState<PreviewViewport>(() => {
     const normalized = normalizeGameImageViewport(initialViewport);
@@ -83,17 +88,17 @@ export default function ImageViewportEditor({
       };
     }
 
-    const aspect = targetAspect(target);
     return {
       x: normalized.x,
       y: normalized.y,
       zoom: normalized.zoom,
-      aspect,
+      aspect: targetAspect(target),
     };
   });
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const currentCropLabel = cropLabel(viewport);
+  const adaptive = target === "detail";
 
   async function save() {
     if (busy) return;
@@ -168,6 +173,14 @@ export default function ImageViewportEditor({
         onViewportChange={setViewport}
       />
 
+      {adaptive && (
+        <p
+          style={{ margin: "12px 0 0", color: "#9db0c0", fontSize: 12, lineHeight: 1.55 }}
+        >
+          El Contenedor no tiene una relación fija: esta posición y zoom se aplican con cover al tamaño real de la ficha en escritorio y móvil.
+        </p>
+      )}
+
       {status && (
         <p
           role="status"
@@ -192,7 +205,11 @@ export default function ImageViewportEditor({
           disabled={busy}
           onClick={() => void save()}
         >
-          {busy ? "Guardando…" : `Confirmar recorte ${currentCropLabel}`}
+          {busy
+            ? "Guardando…"
+            : adaptive
+              ? "Confirmar recorte adaptable"
+              : `Confirmar recorte ${currentCropLabel}`}
         </button>
       </div>
     </>

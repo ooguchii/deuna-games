@@ -112,6 +112,8 @@ export type GameImageMedia = {
   cover?: GameImageViewport;
   hero?: GameImageViewport;
   card?: GameImageViewport;
+  /* Contenedor de la ficha: posición/zoom propios sobre una caja adaptable. */
+  detail?: GameImageViewport;
   /* Fondo adaptable: el mismo foco/zoom se interpreta según cada viewport público. */
   background?: GameImageViewport;
   /* La galería guarda un encuadre y relación editorial por recurso asignado. */
@@ -143,10 +145,11 @@ export type GameDestinationMediaMode =
   | "hover-video";
 
 export type GameMediaModes = {
-  /* Defaults editoriales: Portada=video, Hero/Card=hover-video. */
+  /* Defaults editoriales: Portada=video, Hero/Card=hover-video, Contenedor=imagen. */
   cover?: GameDestinationMediaMode;
   hero?: GameDestinationMediaMode;
   card?: GameDestinationMediaMode;
+  detail?: GameDestinationMediaMode;
   /* Ausente significa que la ficha conserva el fondo global de Juegos. */
   background?: GameDestinationMediaMode;
 };
@@ -163,6 +166,7 @@ export type GameDestinationVideo = {
 
 export type GameCoverVideo = GameDestinationVideo;
 export type GameHeroVideo = GameDestinationVideo;
+export type GameDetailVideo = GameDestinationVideo;
 export type GameBackgroundVideo = GameDestinationVideo;
 
 export type GameCardVideo =
@@ -184,6 +188,7 @@ export type GameVideoMedia = {
   cover?: GameCoverVideo;
   hero?: GameHeroVideo;
   card?: GameCardVideo;
+  detail?: GameDetailVideo;
   background?: GameBackgroundVideo;
 };
 
@@ -219,14 +224,16 @@ export type Game = {
   heroImage?: string;
   /* La Card tiene recurso base propio; nunca depende de cambios posteriores de Portada. */
   cardImage?: string;
+  /* Fondo multimedia del contenedor principal de la ficha; independiente del Hero. */
+  detailImage?: string;
   /* Override opcional del fondo global de Juegos para esta ficha. */
   backgroundImage?: string;
   screenshots?: string[];
 
   /*
    * imageMedia guarda sólo instrucciones de presentación. Portada, Hero,
-   * Card, Fondo y cada imagen de Galería pueden reutilizar el mismo archivo
-   * físico con encuadres/focos distintos.
+   * Card, Contenedor, Fondo y cada imagen de Galería pueden reutilizar el
+   * mismo archivo físico con encuadres/focos distintos.
    */
   imageMedia?: GameImageMedia;
 

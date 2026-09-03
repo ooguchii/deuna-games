@@ -1,4 +1,5 @@
 import {
+  resolveGameDestinationImage,
   resolveGameDestinationMediaMode,
 } from "./game-video-media";
 
@@ -16,6 +17,7 @@ export const REQUIRED_DESTINATION_ASPECTS = {
   card: "3:2",
 } as const;
 
+export const GAME_DETAIL_VIEWPORT_ASPECT = "source" as const;
 export const GAME_BACKGROUND_VIEWPORT_ASPECT = "source" as const;
 
 export type RequiredMediaDestination = keyof typeof REQUIRED_DESTINATION_ASPECTS;
@@ -74,6 +76,7 @@ export function evaluateGameMediaRequirements(game: Game) {
   const coverMode = resolveGameDestinationMediaMode(game, "cover");
   const heroMode = resolveGameDestinationMediaMode(game, "hero");
   const cardMode = resolveGameDestinationMediaMode(game, "card");
+  const detailMode = resolveGameDestinationMediaMode(game, "detail");
   const backgroundMode = resolveGameBackgroundMediaMode(game);
 
   const cover = destinationRequirement(
@@ -105,6 +108,21 @@ export function evaluateGameMediaRequirements(game: Game) {
     cardClipAssigned,
     cardVideo?.viewport,
     REQUIRED_DESTINATION_ASPECTS.card
+  );
+
+  const detailImage = resolveGameDestinationImage(game, "detail");
+  const legacyDetailViewport = !game.detailImage
+    ? game.heroImage
+      ? game.imageMedia?.hero
+      : game.imageMedia?.cover
+    : undefined;
+  const detail = destinationRequirement(
+    detailMode,
+    Boolean(detailImage),
+    game.imageMedia?.detail ?? legacyDetailViewport,
+    Boolean(game.videoMedia?.detail?.clip),
+    game.videoMedia?.detail?.viewport,
+    GAME_DETAIL_VIEWPORT_ASPECT
   );
 
   const background = backgroundMode
@@ -140,6 +158,11 @@ export function evaluateGameMediaRequirements(game: Game) {
       mode: cardMode,
       aspect: REQUIRED_DESTINATION_ASPECTS.card,
     },
+    detail: {
+      ...detail,
+      mode: detailMode,
+      aspect: "adaptive" as const,
+    },
     background: {
       ...background,
       active: backgroundMode !== null,
@@ -155,6 +178,7 @@ export function evaluateGameMediaRequirements(game: Game) {
       cover.cropReady &&
       hero.cropReady &&
       card.cropReady &&
+      detail.cropReady &&
       background.cropReady &&
       galleryCropReady,
   };
