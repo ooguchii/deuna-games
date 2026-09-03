@@ -3,6 +3,9 @@
 import { useState } from "react";
 
 import VideoTrimEditor from "@/components/admin/VideoTrimEditor";
+import {
+  REQUIRED_GAME_MEDIA_CROPS,
+} from "@/lib/media/game-media-readiness";
 import { normalizeGameVideoViewport } from "@/lib/media/game-video-media";
 import {
   DEFAULT_PREVIEW_QUALITY,
@@ -39,17 +42,26 @@ export default function GameVideoViewportEditor({
   initialViewport,
   onClose,
 }: Props) {
-  const [viewport, setViewport] = useState<PreviewViewport>(() =>
-    normalizeGameVideoViewport(initialViewport)
-  );
+  const requiredAspect = REQUIRED_GAME_MEDIA_CROPS[target];
+  const [viewport, setViewport] = useState<PreviewViewport>(() => ({
+    ...normalizeGameVideoViewport(initialViewport),
+    aspect: requiredAspect,
+  }));
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
+
+  function updateViewport(next: PreviewViewport) {
+    setViewport({
+      ...next,
+      aspect: requiredAspect,
+    });
+  }
 
   async function save() {
     if (busy) return;
     setBusy(true);
     setStatus(
-      "Guardando sólo el encuadre visual; el WebM físico no se modifica…"
+      `Confirmando recorte ${requiredAspect} para ${target === "hero" ? "Hero" : "Card"}; el WebM físico no se modifica…`
     );
 
     try {
@@ -70,7 +82,7 @@ export default function GameVideoViewportEditor({
             viewportX: String(viewport.x),
             viewportY: String(viewport.y),
             viewportZoom: String(viewport.zoom),
-            viewportAspect: viewport.aspect,
+            viewportAspect: requiredAspect,
           }),
         }
       );
@@ -80,7 +92,7 @@ export default function GameVideoViewportEditor({
         throw new Error(
           state === "conflicto"
             ? "Otra pestaña guardó una revisión más reciente. Recarga Multimedia antes de continuar."
-            : "El servidor rechazó el encuadre del video."
+            : "El servidor rechazó el recorte del video."
         );
       }
       window.location.assign(resultUrl.toString());
@@ -88,7 +100,7 @@ export default function GameVideoViewportEditor({
       setStatus(
         error instanceof Error
           ? error.message
-          : "No se pudo guardar el encuadre."
+          : "No se pudo guardar el recorte."
       );
       setBusy(false);
     }
@@ -140,16 +152,31 @@ export default function GameVideoViewportEditor({
 
   return (
     <>
+      <div
+        style={{
+          margin: "0 0 12px",
+          padding: "10px 12px",
+          border: "1px solid #2b3b48",
+          borderRadius: 8,
+          color: "#c7d2db",
+          background: "#0b131c",
+          fontSize: 12,
+        }}
+      >
+        <strong>Recorte obligatorio {requiredAspect}</strong>
+        {" · "}
+        Ajusta posición y zoom hasta dejar listo este destino. Guardar confirma el recorte requerido.
+      </div>
+
       <VideoTrimEditor
-        key={`${target}:${source}:${clip}`}
+        key={`${target}:${source}:${clip}:${requiredAspect}`}
         src={clip}
         sourceLabel={label}
         quality={DEFAULT_PREVIEW_QUALITY}
         viewport={viewport}
-        qualityDisabled
         layoutOnly
         onQualityChange={ignoreQuality}
-        onViewportChange={setViewport}
+        onViewportChange={updateViewport}
         onTrimChange={ignoreTrim}
       />
 
@@ -191,7 +218,7 @@ export default function GameVideoViewportEditor({
           disabled={busy}
           onClick={() => void save()}
         >
-          {busy ? "Guardando…" : "Guardar encuadre"}
+          {busy ? "Guardando…" : `Confirmar recorte ${requiredAspect}`}
         </button>
       </div>
     </>
