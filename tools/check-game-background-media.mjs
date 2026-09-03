@@ -20,6 +20,7 @@ const [
   admin,
   viewport,
   publicBackground,
+  publicBackgroundCss,
   publicLayout,
   multimediaEditor,
 ] = await Promise.all([
@@ -32,6 +33,7 @@ const [
   source("src/components/admin/GameBackgroundMediaEditor.tsx"),
   source("src/components/admin/GameBackgroundViewportEditor.tsx"),
   source("src/components/games/GameDetailBackground.tsx"),
+  source("src/components/games/GameDetailBackground.module.css"),
   source("src/app/juegos/[slug]/layout.tsx"),
   source("src/components/admin/GameMultimediaEditor.tsx"),
 ]);
@@ -159,11 +161,19 @@ assert(
     "mode === \"hover-video\"",
     "game.backgroundImage",
     "game.videoMedia?.background",
-    "objectPosition",
+    "mediaStyle(",
+    '"--game-background-position"',
+    '"--game-background-zoom"',
     "autoPlay",
     "failedVideo"
-  ),
-  "El runtime público debe usar imagen/video por referencia, hover fino, fallback de movimiento reducido y foco adaptable."
+  ) &&
+    has(
+      publicBackgroundCss,
+      "object-position: var(--game-background-position, 50% 50%)",
+      "transform-origin: var(--game-background-position, 50% 50%)",
+      "transform: scale(var(--game-background-zoom, 1))"
+    ),
+  "El runtime público debe usar imagen/video por referencia, hover fino, fallback de movimiento reducido y aplicar foco X/Y/zoom adaptable en el video."
 );
 
 assert(
