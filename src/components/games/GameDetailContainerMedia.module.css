@@ -1,0 +1,31 @@
+.root,
+.imageLayer,
+.videoLayer {
+  position: absolute;
+  inset: 0;
+}
+
+.root {
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.imageLayer {
+  z-index: 0;
+}
+
+.videoLayer {
+  z-index: 1;
+}
+
+.root :global(img),
+.root :global(video) {
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .videoLayer {
+    display: none;
+  }
+}
