@@ -23,6 +23,7 @@ export function listGameImageReferences(
         game.coverImage,
         game.heroImage,
         game.cardImage,
+        game.detailImage,
         game.backgroundImage,
         ...(game.screenshots ?? []),
       ].filter(
@@ -46,6 +47,7 @@ export function listGameVideoReferences(
         game.videoMedia?.cover?.clip,
         game.videoMedia?.hero?.clip,
         independentCardClip,
+        game.videoMedia?.detail?.clip,
         game.videoMedia?.background?.clip,
         game.previewClip,
       ].filter(
