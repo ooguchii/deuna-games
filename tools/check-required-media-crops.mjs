@@ -100,9 +100,11 @@ assert(
   has(
     mediaLibrary,
     "evaluateGameMediaReadiness",
-    "readiness: evaluateGameMediaReadiness(item.payload)"
+    "readiness: evaluateGameMediaReadiness(item.payload)",
+    "sameCover",
+    "sameHero"
   ),
-  "La Biblioteca debe exponer el estado obligatorio calculado por la misma política del servidor."
+  "La Biblioteca debe exponer el estado obligatorio y preservar el encuadre cuando se vuelve a elegir exactamente el mismo recurso."
 );
 
 assert(
@@ -157,7 +159,7 @@ for (const id of [
   "gallery-required",
 ]) {
   assert(
-    readiness.includes(`id: \"${id}\"`) &&
+    readiness.includes(`id: "${id}"`) &&
       readiness.includes('priority: "essential"'),
     `El control ${id} debe ser esencial para publicación.`
   );
