@@ -161,10 +161,10 @@ export function evaluateGamePublicationReadiness(
     },
     {
       id: "gallery-minimum",
-      label: "Galería · mínimo 1 imagen",
-      detail: "La Galería del juego debe contener al menos una imagen asignada.",
+      label: "Galería · imágenes y recortes 16:9",
+      detail: "La Galería debe contener al menos una imagen y cada captura asignada debe confirmar su encuadre 16:9.",
       section: "multimedia",
-      complete: media.gallery.assigned,
+      complete: media.gallery.cropReady,
       priority: "essential",
     },
     {
