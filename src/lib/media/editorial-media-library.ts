@@ -46,9 +46,7 @@ export type EditorialMediaLibraryResource =
   | EditorialMediaLibraryImage
   | EditorialMediaLibraryVideo;
 
-type EditorialDeletableResource =
-  | Extract<EditorialMediaLibraryImage, { origin: "editorial" }>
-  | EditorialMediaLibraryVideo;
+type EditorialDeletableResource = EditorialMediaLibraryResource;
 
 const MEDIA_FILENAME = /^([a-f0-9]{64})\.(webp|webm)$/;
 const DELETE_MARKER = /^\.delete-([a-f0-9]{64}\.(?:webp|webm))$/;
