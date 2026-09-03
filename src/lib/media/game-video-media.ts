@@ -35,7 +35,7 @@ function defaultViewport(): GameVideoViewport {
 export function normalizeGameVideoViewport(
   viewport: GameVideoViewport | PreviewViewport | undefined
 ): GameVideoViewport {
-  if (!viewport) return defaultViewport();
+  if (!viewport || viewport.aspect === "free") return defaultViewport();
 
   const parsed = parsePreviewViewport(
     String(viewport.x),
@@ -43,10 +43,13 @@ export function normalizeGameVideoViewport(
     String(viewport.zoom),
     viewport.aspect
   );
-  if (!parsed) return defaultViewport();
+  if (!parsed || parsed.aspect === "free") return defaultViewport();
 
   return {
-    ...parsed,
+    x: parsed.x,
+    y: parsed.y,
+    zoom: parsed.zoom,
+    aspect: parsed.aspect,
     ...(Boolean((viewport as GameVideoViewport).confirmed)
       ? { confirmed: true as const }
       : {}),
