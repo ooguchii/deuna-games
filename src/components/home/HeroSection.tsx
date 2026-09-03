@@ -26,8 +26,8 @@ import FramedVideo from "@/components/ui/FramedVideo";
 import type { HomeCopy } from "@/data/home-config";
 import { normalizeGameImageViewport } from "@/lib/media/image-viewport";
 import {
+  resolveGameDestinationMediaMode,
   resolveGameHeroVideo,
-  resolveGameHeroVideoPlayback,
 } from "@/lib/media/game-video-media";
 import {
   resolveHeroImageTuning,
@@ -211,10 +211,14 @@ const HeroSlide = forwardRef<HTMLElement, HeroSlideProps>(
   ) {
     const accessible = active && !clone;
     const hasArtwork = Boolean(game.heroImage || game.coverImage);
-    const hoverPlayback = resolveGameHeroVideoPlayback(game) === "hover";
+    const heroMode = resolveGameDestinationMediaMode(game, "hero");
+    const hoverPlayback = heroMode === "hover-video";
+    const videoModeEnabled = heroMode !== "image";
     const [hoverPreviewActive, setHoverPreviewActive] = useState(false);
     const videoShouldRender =
-      videoEnabled && (!hoverPlayback || hoverPreviewActive);
+      videoEnabled &&
+      videoModeEnabled &&
+      (!hoverPlayback || hoverPreviewActive);
 
     function startHoverPreview() {
       if (hoverPlayback && accessible && canUseFineHover()) {
