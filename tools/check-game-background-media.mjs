@@ -160,7 +160,7 @@ assert(
     "motionCapable",
     "mode === \"hover-video\"",
     "game.backgroundImage",
-    "game.videoMedia?.background",
+    "game?.videoMedia?.background",
     "mediaStyle(",
     '"--game-background-position"',
     '"--game-background-zoom"',
