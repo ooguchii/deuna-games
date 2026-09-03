@@ -30,6 +30,7 @@ import {
 import {
   evaluateGameMediaRequirements,
   REQUIRED_DESTINATION_ASPECTS,
+  resolveGameBackgroundMediaMode,
 } from "@/lib/media/game-media-requirements";
 import {
   DEFAULT_GAME_IMAGE_VIEWPORT,
@@ -111,7 +112,7 @@ async function resourcesForGame(
 }
 
 type MediaDraftUpdate = Parameters<typeof saveGameMediaDraft>[3] &
-  Partial<Pick<Game, "cardImage" | "mediaModes">>;
+  Partial<Pick<Game, "backgroundImage" | "cardImage" | "mediaModes">>;
 
 function mediaUpdate(
   update: MediaDraftUpdate,
@@ -143,6 +144,10 @@ function withoutImageResource(
     delete imageMedia.card;
   }
 
+  if (game.backgroundImage === resource) {
+    delete imageMedia.background;
+  }
+
   const gallery = {
     ...imageMedia.gallery,
   };
@@ -168,6 +173,10 @@ function withoutImageResource(
         game.cardImage === resource
           ? undefined
           : game.cardImage,
+      backgroundImage:
+        game.backgroundImage === resource
+          ? undefined
+          : game.backgroundImage,
       screenshots: (game.screenshots ?? []).filter(
         (src) => src !== resource
       ),
@@ -254,14 +263,17 @@ export async function GET(
         coverImage: item.payload.coverImage ?? null,
         heroImage: item.payload.heroImage ?? null,
         cardImage: item.payload.cardImage ?? null,
+        backgroundImage: item.payload.backgroundImage ?? null,
         screenshots: item.payload.screenshots ?? [],
         imageMedia: item.payload.imageMedia ?? null,
         coverMode: resolveGameDestinationMediaMode(item.payload, "cover"),
         heroMode: resolveGameDestinationMediaMode(item.payload, "hero"),
         cardMode: resolveGameDestinationMediaMode(item.payload, "card"),
+        backgroundMode: resolveGameBackgroundMediaMode(item.payload),
         coverVideo: item.payload.videoMedia?.cover ?? null,
         heroVideo: item.payload.videoMedia?.hero ?? null,
         cardVideo: item.payload.videoMedia?.card ?? null,
+        backgroundVideo: item.payload.videoMedia?.background ?? null,
         legacyPreviewClip: item.payload.previewClip ?? null,
       },
     },
