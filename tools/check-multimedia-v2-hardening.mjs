@@ -21,7 +21,6 @@ const [
   multimediaPage,
   multimediaEditor,
   workspace,
-  contextualCss,
 ] = await Promise.all([
   source("src/lib/media/preview-video-policy.ts"),
   source("src/lib/media/editorial-video.ts"),
@@ -31,7 +30,6 @@ const [
   source("src/app/admin/(protected)/juegos/[slug]/page.tsx"),
   source("src/components/admin/GameMultimediaEditor.tsx"),
   source("src/components/admin/GameMultimediaWorkspaceContextual.tsx"),
-  source("src/components/admin/GameMultimediaWorkspaceContextual.module.css"),
 ]);
 
 assert(
@@ -91,14 +89,23 @@ assert(
   "La pantalla multimedia no debe conservar el wrapper temporal ni el plumbing del formulario manual antiguo."
 );
 
+const galleryStart = workspace.indexOf("function renderGalleryAssignedItems");
+const galleryEnd = workspace.indexOf("\n  return (", galleryStart);
+const galleryRenderer = galleryStart >= 0 && galleryEnd > galleryStart
+  ? workspace.slice(galleryStart, galleryEnd)
+  : "";
+const libraryStart = workspace.indexOf("Biblioteca multimedia compartida");
+
 assert(
-  workspace.includes("DeleteImageResourceForm") &&
-    workspace.includes('value="gallery-remove"') &&
-    workspace.includes("Editar") &&
-    workspace.includes("Quitar") &&
-    contextualCss.includes(".galleryItemPreview .deleteResourceForm") &&
-    contextualCss.includes("display: none"),
-  "Galería debe ofrecer Editar/Quitar sin exponer la eliminación destructiva; la Biblioteca conserva su ×."
+  galleryRenderer.includes('value="gallery-remove"') &&
+    galleryRenderer.includes("Editar") &&
+    galleryRenderer.includes("Quitar") &&
+    !galleryRenderer.includes("DeleteImageResourceForm") &&
+    !galleryRenderer.includes('value="image-delete"') &&
+    workspace.includes("DeleteImageResourceForm") &&
+    libraryStart >= 0 &&
+    workspace.indexOf("<DeleteImageResourceForm", libraryStart) > libraryStart,
+  "Galería debe ofrecer Editar/Quitar sin renderizar eliminación destructiva; la Biblioteca conserva su ×."
 );
 
 try {
