@@ -45,6 +45,9 @@ Desktop.ini
 # Herramientas locales verificadas/descargadas fuera del repositorio
 /.deuna-local-tools/
 
+# Medios locales de prueba no versionados
+*.mp4
+
 # Reportes y auditorías locales generadas
 PROJECT_CONTEXT*.md
 PROJECT_REVIEW*.md
