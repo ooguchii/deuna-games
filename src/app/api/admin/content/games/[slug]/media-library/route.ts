@@ -29,6 +29,7 @@ import {
 } from "@/lib/media/editorial-media-library";
 import {
   evaluateGameMediaRequirements,
+  GAME_DETAIL_VIEWPORT_ASPECT,
   REQUIRED_DESTINATION_ASPECTS,
   resolveGameBackgroundMediaMode,
 } from "@/lib/media/game-media-requirements";
@@ -58,6 +59,9 @@ const assignmentTargetSchema = z.enum([
   "card-mode",
   "card-image",
   "card-video",
+  "detail-mode",
+  "detail-image",
+  "detail-video",
   "gallery-image",
   "gallery-remove",
   "image-delete",
@@ -80,13 +84,15 @@ function redirectPath(slug: string, state: string) {
 }
 
 function requiredVideoViewport(
-  target: "cover" | "hero" | "card"
+  target: "cover" | "hero" | "card" | "detail"
 ): GameVideoViewport {
   return {
     x: 0.5,
     y: 0.5,
     zoom: 1,
-    aspect: REQUIRED_DESTINATION_ASPECTS[target],
+    aspect: target === "detail"
+      ? GAME_DETAIL_VIEWPORT_ASPECT
+      : REQUIRED_DESTINATION_ASPECTS[target],
   };
 }
 
@@ -112,7 +118,7 @@ async function resourcesForGame(
 }
 
 type MediaDraftUpdate = Parameters<typeof saveGameMediaDraft>[3] &
-  Partial<Pick<Game, "backgroundImage" | "cardImage" | "mediaModes">>;
+  Partial<Pick<Game, "backgroundImage" | "cardImage" | "detailImage" | "mediaModes">>;
 
 function mediaUpdate(
   update: MediaDraftUpdate,
@@ -144,6 +150,10 @@ function withoutImageResource(
     delete imageMedia.card;
   }
 
+  if (game.detailImage === resource) {
+    delete imageMedia.detail;
+  }
+
   if (game.backgroundImage === resource) {
     delete imageMedia.background;
   }
@@ -173,6 +183,10 @@ function withoutImageResource(
         game.cardImage === resource
           ? undefined
           : game.cardImage,
+      detailImage:
+        game.detailImage === resource
+          ? undefined
+          : game.detailImage,
       backgroundImage:
         game.backgroundImage === resource
           ? undefined
@@ -187,7 +201,7 @@ function withoutImageResource(
 
 function mediaModeUpdate(
   game: Game,
-  target: "cover" | "hero" | "card",
+  target: "cover" | "hero" | "card" | "detail",
   mode: GameDestinationMediaMode
 ): MediaDraftUpdate {
   const playback: "hover" | "always" =
@@ -215,6 +229,14 @@ function mediaModeUpdate(
           ? {
               card: {
                 ...game.videoMedia.card,
+                playback,
+              },
+            }
+          : {}),
+        ...(target === "detail" && game.videoMedia.detail
+          ? {
+              detail: {
+                ...game.videoMedia.detail,
                 playback,
               },
             }
@@ -263,16 +285,19 @@ export async function GET(
         coverImage: item.payload.coverImage ?? null,
         heroImage: item.payload.heroImage ?? null,
         cardImage: item.payload.cardImage ?? null,
+        detailImage: item.payload.detailImage ?? null,
         backgroundImage: item.payload.backgroundImage ?? null,
         screenshots: item.payload.screenshots ?? [],
         imageMedia: item.payload.imageMedia ?? null,
         coverMode: resolveGameDestinationMediaMode(item.payload, "cover"),
         heroMode: resolveGameDestinationMediaMode(item.payload, "hero"),
         cardMode: resolveGameDestinationMediaMode(item.payload, "card"),
+        detailMode: resolveGameDestinationMediaMode(item.payload, "detail"),
         backgroundMode: resolveGameBackgroundMediaMode(item.payload),
         coverVideo: item.payload.videoMedia?.cover ?? null,
         heroVideo: item.payload.videoMedia?.hero ?? null,
         cardVideo: item.payload.videoMedia?.card ?? null,
+        detailVideo: item.payload.videoMedia?.detail ?? null,
         backgroundVideo: item.payload.videoMedia?.background ?? null,
         legacyPreviewClip: item.payload.previewClip ?? null,
       },
@@ -357,7 +382,8 @@ export async function POST(
   if (
     target.data === "cover-mode" ||
     target.data === "hero-mode" ||
-    target.data === "card-mode"
+    target.data === "card-mode" ||
+    target.data === "detail-mode"
   ) {
     const mode = mediaModeSchema.safeParse(resource);
     if (!mode.success) {
@@ -367,7 +393,7 @@ export async function POST(
       );
     }
     const destination = target.data.replace("-mode", "") as
-      "cover" | "hero" | "card";
+      "cover" | "hero" | "card" | "detail";
     update = mediaModeUpdate(current, destination, mode.data);
   }
 
@@ -415,6 +441,22 @@ export async function POST(
       {
         ...current.imageMedia,
         card: { ...DEFAULT_GAME_IMAGE_VIEWPORT },
+      }
+    );
+  }
+
+  if (target.data === "detail-image") {
+    if (!imageResource) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        redirectPath(slug, "recurso-invalido")
+      );
+    }
+    update = mediaUpdate(
+      { detailImage: imageResource.src },
+      {
+        ...current.imageMedia,
+        detail: { ...DEFAULT_GAME_IMAGE_VIEWPORT },
       }
     );
   }
@@ -478,6 +520,26 @@ export async function POST(
         },
       },
       previewClip: videoResource.src,
+    };
+  }
+
+  if (target.data === "detail-video") {
+    if (!videoResource) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        redirectPath(slug, "recurso-invalido")
+      );
+    }
+    const mode = resolveGameDestinationMediaMode(current, "detail");
+    update = {
+      videoMedia: {
+        ...current.videoMedia,
+        detail: {
+          clip: videoResource.src,
+          viewport: requiredVideoViewport("detail"),
+          playback: mode === "hover-video" ? "hover" : "always",
+        },
+      },
     };
   }
 
