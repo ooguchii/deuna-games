@@ -391,11 +391,17 @@ assert(
     'resolveGameDestinationMediaMode(game, "hero")',
     'heroMode === "hover-video"',
     'heroMode !== "image"',
-    "--hero-mobile-image-zoom",
-    "game.imageMedia?.cover"
+    "game.imageMedia?.hero",
+    '--hero-mobile-image-zoom',
+    'style={{ aspectRatio: "16 / 9" }}',
+    'aspectRatio: "16 / 9"',
+    'height: "auto"',
+    'bottom: "auto"'
   ) &&
+    !homeHero.includes("MOBILE_ART_MEDIA") &&
+    !homeHero.includes("mobileSrc = game.coverImage") &&
     has(homeHeroCss, "--hero-mobile-image-zoom", "--hero-mobile-image-position"),
-  "Hero público debe respetar modo y encuadres sin perder comportamiento móvil."
+  "Hero público debe mantener su recurso/encuadre propio y una región de destino 16:9 también en layouts móviles."
 );
 
 assert(
@@ -405,9 +411,11 @@ assert(
     "game.cardImage ?? game.coverImage",
     'cardMode === "video"',
     'cardMode === "hover-video"',
-    "game.imageMedia?.card"
+    "game.imageMedia?.card",
+    'aspectRatio: "3 / 2"',
+    'height: "auto"'
   ) && has(cardPreview, "resolveGameCardVideo"),
-  "UniversalGameCard debe consumir Card independiente y su modo explícito."
+  "UniversalGameCard debe consumir Card independiente dentro de un frame público 3:2 exacto."
 );
 
 assert(
@@ -417,9 +425,11 @@ assert(
     "resolveGameCoverVideo(game)",
     'mode === "video"',
     'mode === "hover-video"',
-    "game.imageMedia?.cover"
+    "game.imageMedia?.cover",
+    'width: "min(100%, 80cqh)"',
+    'aspectRatio: "4 / 5"'
   ),
-  "La ficha pública debe consumir Portada Imagen/Video/Imagen+hover con su recorte."
+  "La Portada pública debe consumir Imagen/Video/Imagen+hover dentro de un frame 4:5 exacto."
 );
 
 assert(
@@ -437,8 +447,8 @@ assert(
       "viewport={recommendation.imageViewport}",
       "viewport={notification.gameImageViewport}"
     ) &&
-    downloadPage.includes("viewport={game.imageMedia?.cover}"),
-  "Actualizaciones, Mi DeUna y Descargas deben propagar las imágenes/encuadres independientes correctos."
+    has(downloadPage, "GameCoverMedia", "game={game}"),
+  "Actualizaciones y Mi DeUna deben propagar Card; Descargas debe reutilizar el renderer 4:5 exacto de Portada."
 );
 
 assert(
@@ -453,5 +463,5 @@ if (failures.length) {
 }
 
 console.log(
-  "Destinos multimedia independientes: OK (4:5/16:9/3:2 obligatorios → motor único imagen/video → previews actuales → publicación y consumo público coherentes)."
+  "Destinos multimedia independientes: OK (4:5/16:9/3:2 obligatorios → motor único imagen/video → frames públicos exactos → publicación coherente)."
 );

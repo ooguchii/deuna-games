@@ -371,6 +371,11 @@ export default function UniversalGameCard({
       >
         <div
           className={`${styles.media} ${tiltStyles.tiltMedia}`}
+          style={{
+            width: "100%",
+            height: "auto",
+            aspectRatio: "3 / 2",
+          }}
         >
           <HoverPreviewMedia
             imageSrc={cardMode === "video" ? undefined : cardImage}

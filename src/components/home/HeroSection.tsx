@@ -39,7 +39,6 @@ import artworkStyles from "./HeroArtwork.module.css";
 import styles from "./HeroSection.module.css";
 
 const AUTOPLAY_TIME = 6500;
-const MOBILE_ART_MEDIA = "(max-width: 520px)";
 const FINE_HOVER_MEDIA = "(hover: hover) and (pointer: fine)";
 
 type TrackSlide = {
@@ -68,11 +67,9 @@ function ResponsiveArtwork({
   ambient = false,
   style,
 }: ResponsiveArtworkProps) {
-  const desktopSrc = game.heroImage ?? game.coverImage;
-  const mobileSrc = game.coverImage ?? game.heroImage;
-  const fallbackSrc = desktopSrc ?? mobileSrc;
+  const src = game.heroImage ?? game.coverImage;
 
-  if (!fallbackSrc) {
+  if (!src) {
     return null;
   }
 
@@ -84,41 +81,27 @@ function ResponsiveArtwork({
   const framed = ambient
     ? null
     : normalizeGameImageViewport(
-        desktopSrc === game.coverImage
-          ? game.imageMedia?.cover
-          : game.imageMedia?.hero
-      );
-  const mobileFramed = ambient
-    ? null
-    : normalizeGameImageViewport(
-        mobileSrc === game.coverImage
-          ? game.imageMedia?.cover
-          : game.imageMedia?.hero
+        game.heroImage
+          ? game.imageMedia?.hero
+          : undefined
       );
   const framedPosition = framed
     ? `${(framed.x * 100).toFixed(2)}% ${(framed.y * 100).toFixed(2)}%`
-    : null;
-  const mobileFramedPosition = mobileFramed
-    ? `${(mobileFramed.x * 100).toFixed(2)}% ${(mobileFramed.y * 100).toFixed(2)}%`
     : null;
   const artworkInlineStyle = framed
     ? ({
         ...style,
         "--hero-image-zoom": framed.zoom,
         "--hero-image-position": framedPosition,
-        "--hero-mobile-image-zoom": mobileFramed?.zoom ?? framed.zoom,
-        "--hero-mobile-image-position": mobileFramedPosition ?? framedPosition,
+        "--hero-mobile-image-zoom": framed.zoom,
+        "--hero-mobile-image-position": framedPosition,
       } as CSSProperties)
     : style;
 
   return (
     <picture className={ambient ? undefined : styles.heroPicture}>
-      {mobileSrc && mobileSrc !== desktopSrc && (
-        <source media={MOBILE_ART_MEDIA} srcSet={mobileSrc} />
-      )}
-
       <img
-        src={fallbackSrc}
+        src={src}
         alt={alt}
         className={artworkClassName}
         style={artworkInlineStyle}
@@ -236,6 +219,7 @@ const HeroSlide = forwardRef<HTMLElement, HeroSlideProps>(
       <article
         ref={ref}
         className={`${styles.slide} ${active ? styles.activeSlide : ""}`}
+        style={{ aspectRatio: "16 / 9" }}
         role={accessible ? "group" : undefined}
         aria-roledescription={accessible ? "slide" : undefined}
         aria-label={accessible ? `${logicalIndex + 1} de ${total}` : undefined}
@@ -250,7 +234,14 @@ const HeroSlide = forwardRef<HTMLElement, HeroSlideProps>(
           }
         }}
       >
-        <div className={styles.media}>
+        <div
+          className={styles.media}
+          style={{
+            aspectRatio: "16 / 9",
+            height: "auto",
+            bottom: "auto",
+          }}
+        >
           {hasArtwork ? (
             <ResponsiveArtwork
               game={game}

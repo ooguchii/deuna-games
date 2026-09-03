@@ -20,7 +20,7 @@ import {
 
 import Footer from "@/components/layout/Footer";
 import Header from "@/components/layout/Header";
-import GameMedia from "@/components/ui/GameMedia";
+import GameCoverMedia from "@/components/ui/GameCoverMedia";
 import {
   resolveGameDownload,
 } from "@/lib/games/download";
@@ -181,12 +181,9 @@ export default async function DownloadPage({
           aria-labelledby="download-title"
         >
           <div className={styles.cover}>
-            <GameMedia
-              src={game.coverImage}
-              alt={game.imageAlt}
+            <GameCoverMedia
+              game={game}
               sizes="(max-width: 680px) 42vw, 210px"
-              viewport={game.imageMedia?.cover}
-              priority
             />
           </div>
 
