@@ -134,7 +134,7 @@ assert(
     "backgroundImage: item.payload.backgroundImage ?? null",
     "backgroundMode: resolveGameBackgroundMediaMode(item.payload)",
     "backgroundVideo: item.payload.videoMedia?.background ?? null",
-    'Partial<Pick<Game, "backgroundImage" | "cardImage" | "mediaModes">>',
+    'Partial<Pick<Game, "backgroundImage" | "cardImage" | "detailImage" | "mediaModes">>',
     "game.backgroundImage === resource",
     "delete imageMedia.background",
     "backgroundImage:"
@@ -230,6 +230,7 @@ assert(
     has(
       multimediaWorkspace,
       'import GameBackgroundMediaEditor from "@/components/admin/GameBackgroundMediaEditor"',
+      'import GameDetailMediaEditor from "@/components/admin/GameDetailMediaEditor"',
       "backgroundImage: string | null",
       "backgroundMode: GameDestinationMediaMode | null",
       "backgroundVideo: GameBackgroundVideo | null",
@@ -238,10 +239,11 @@ assert(
       'labels.push(backgroundMode === "hover-video" ? "Fondo base" : "Fondo")',
       'labels.push(backgroundMode === "hover-video" ? "Fondo hover" : "Fondo")',
       "<GameBackgroundMediaEditor",
-      "<span>E</span><h3>Galería del juego</h3>",
+      "<GameDetailMediaEditor",
+      "<span>F</span><h3>Galería del juego</h3>",
       "Fondo · adaptable"
     ),
-  "Multimedia debe ordenar Portada → Hero → Card → Fondo → Galería en un único workspace y alinear gate/Biblioteca con el estado real de Fondo."
+  "Multimedia debe ordenar Portada → Hero → Card → Fondo → Contenedor → Galería en un único workspace y alinear gate/Biblioteca con el estado real de Fondo."
 );
 
 if (failures.length) {
