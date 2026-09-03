@@ -803,18 +803,18 @@ export default function MediaViewportEditor({
                 : "fotograma actual"}
             </span>
             <div>
-              {kind === "image" && resultPreviewSize ? (
+              {kind === "image" && resultPreviewSize && sourceCrop ? (
                 <div
                   style={{
                     position: "relative",
                     flex: "none",
-                    width: resultPreviewSize.width,
-                    height: resultPreviewSize.height,
-                    maxWidth: "100%",
+                    width: `min(100%, ${resultPreviewSize.width}px)`,
+                    aspectRatio: `${sourceCrop.width} / ${sourceCrop.height}`,
                     overflow: "hidden",
                     borderRadius: 7,
                     background: "#000",
                   }}
+                  data-preview-aspect={requiredAspect}
                   role="img"
                   aria-label="Vista previa exacta del área visible elegida"
                 >
