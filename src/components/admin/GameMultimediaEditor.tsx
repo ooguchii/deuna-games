@@ -18,22 +18,22 @@ export default function GameMultimediaEditor({
   screenshots = [],
 }: GameMultimediaEditorProps) {
   return (
-    <>
-      <GameMultimediaWorkspaceContextual
-        slug={slug}
-        revision={revision}
-        screenshotCount={screenshots.length}
-        initialCoverImage={coverImage}
-        initialHeroImage={heroImage}
-        initialScreenshots={screenshots}
-        videoEditor={
-          <GameVideoLibraryEditor
-            slug={slug}
-            revision={revision}
-          />
-        }
-      />
-      <GameBackgroundMediaEditor slug={slug} />
-    </>
+    <GameMultimediaWorkspaceContextual
+      slug={slug}
+      revision={revision}
+      screenshotCount={screenshots.length}
+      initialCoverImage={coverImage}
+      initialHeroImage={heroImage}
+      initialScreenshots={screenshots}
+      backgroundEditor={
+        <GameBackgroundMediaEditor slug={slug} />
+      }
+      videoEditor={
+        <GameVideoLibraryEditor
+          slug={slug}
+          revision={revision}
+        />
+      }
+    />
   );
 }
