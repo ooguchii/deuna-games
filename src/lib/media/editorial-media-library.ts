@@ -46,8 +46,12 @@ export type EditorialMediaLibraryResource =
   | EditorialMediaLibraryImage
   | EditorialMediaLibraryVideo;
 
+type EditorialDeletableResource =
+  | Extract<EditorialMediaLibraryImage, { origin: "editorial" }>
+  | EditorialMediaLibraryVideo;
+
 const MEDIA_FILENAME = /^([a-f0-9]{64})\.(webp|webm)$/;
-const IMAGE_DELETE_MARKER = /^\.delete-([a-f0-9]{64}\.webp)$/;
+const DELETE_MARKER = /^\.delete-([a-f0-9]{64}\.(?:webp|webm))$/;
 const BUNDLED_IMAGE_PATTERN =
   /^\/images\/[A-Za-z0-9/_.,@+() -]+\.(?:avif|gif|jpe?g|png|webp)$/i;
 const MAX_LIBRARY_RESOURCES = 80;
@@ -98,24 +102,24 @@ function resolveBundledImagePath(publicPath: string) {
     : null;
 }
 
-function resolveEditorialImageResource(
+function resolveEditorialResource(
   slug: string,
-  resource: EditorialMediaLibraryImage
+  resource: EditorialMediaLibraryResource
 ) {
   if (
     !isEditorialMediaSlug(slug) ||
-    resource.kind !== "image" ||
     resource.origin !== "editorial" ||
     typeof resource.digest !== "string"
   ) {
     return null;
   }
 
+  const extension = resource.kind === "image" ? "webp" : "webm";
   const resolved = resolveEditorialMediaDiskPath(resource.src);
   if (
     !resolved ||
     resolved.slug !== slug ||
-    resolved.filename !== `${resource.digest}.webp` ||
+    resolved.filename !== `${resource.digest}.${extension}` ||
     buildEditorialMediaPublicPath(slug, resolved.filename) !== resource.src
   ) {
     return null;
@@ -154,9 +158,10 @@ async function removeDeletionMarker(markerPath: string) {
   }
 }
 
-async function inspectEditorialImageFile(
+async function inspectEditorialResourceFile(
   filePath: string,
-  expectedDigest: string
+  expectedDigest: string,
+  kind: "image" | "video"
 ) {
   let stats;
 
@@ -167,11 +172,14 @@ async function inspectEditorialImageFile(
     throw error;
   }
 
+  const maximumBytes = kind === "image"
+    ? MAX_EDITORIAL_IMAGE_BYTES
+    : MAX_EDITORIAL_PREVIEW_BYTES;
   if (
     !stats.isFile() ||
     stats.isSymbolicLink() ||
     stats.size <= 0 ||
-    stats.size > MAX_EDITORIAL_IMAGE_BYTES
+    stats.size > maximumBytes
   ) {
     throw new Error(
       "El recurso editorial no supera la validación previa a su eliminación."
@@ -179,22 +187,30 @@ async function inspectEditorialImageFile(
   }
 
   const buffer = await readFile(filePath);
-  const inspection = inspectSafeEditorialWebp(buffer);
+  const inspection = kind === "image"
+    ? inspectSafeEditorialWebp(buffer)
+    : inspectSafeEditorialWebm(buffer);
 
   if (!inspection || inspection.digest !== expectedDigest) {
     throw new Error(
-      "La imagen editorial cambió desde que fue validada por la biblioteca."
+      `El ${kind === "image" ? "WebP" : "WebM"} editorial cambió desde que fue validado por la biblioteca.`
     );
   }
 
   return inspection;
 }
 
-async function deleteValidatedEditorialImage(
+async function deleteValidatedEditorialResource(
   slug: string,
   filename: string
 ) {
-  const digest = filename.slice(0, 64);
+  const match = MEDIA_FILENAME.exec(filename);
+  if (!match) {
+    throw new Error("Nombre editorial no válido para eliminación.");
+  }
+
+  const digest = match[1]!;
+  const kind = match[2] === "webp" ? "image" : "video";
   const publicPath = buildEditorialMediaPublicPath(slug, filename);
   const resolved = resolveEditorialMediaDiskPath(publicPath);
 
@@ -210,9 +226,10 @@ async function deleteValidatedEditorialImage(
     resolved.gameDirectory,
     resolved.filename
   );
-  const inspection = await inspectEditorialImageFile(
+  const inspection = await inspectEditorialResourceFile(
     resolved.filePath,
-    digest
+    digest,
+    kind
   );
 
   if (inspection) {
@@ -226,7 +243,7 @@ async function deleteValidatedEditorialImage(
   await removeDeletionMarker(markerPath);
 }
 
-export async function clearEditorialImageDeletionMarker(
+export async function clearEditorialMediaDeletionMarker(
   slug: string,
   publicPath: string
 ) {
@@ -236,7 +253,7 @@ export async function clearEditorialImageDeletionMarker(
   if (
     !resolved ||
     resolved.slug !== slug ||
-    !resolved.filename.endsWith(".webp")
+    !MEDIA_FILENAME.test(resolved.filename)
   ) {
     return;
   }
@@ -249,7 +266,7 @@ export async function clearEditorialImageDeletionMarker(
   );
 }
 
-export async function reconcileEditorialImageDeletions(
+export async function reconcileEditorialMediaDeletions(
   slug: string,
   draftReferences: readonly string[],
   publishedReferences: readonly string[]
@@ -262,7 +279,7 @@ export async function reconcileEditorialImageDeletions(
   const published = new Set(publishedReferences);
 
   for (const publicPath of draft) {
-    await clearEditorialImageDeletionMarker(slug, publicPath);
+    await clearEditorialMediaDeletionMarker(slug, publicPath);
   }
 
   const directory = path.join(getEditorialMediaRoot(), slug);
@@ -277,7 +294,7 @@ export async function reconcileEditorialImageDeletions(
 
   for (const entry of entries) {
     if (!entry.isFile()) continue;
-    const match = IMAGE_DELETE_MARKER.exec(entry.name);
+    const match = DELETE_MARKER.exec(entry.name);
     if (!match) continue;
 
     const filename = match[1]!;
@@ -293,22 +310,23 @@ export async function reconcileEditorialImageDeletions(
 
     if (published.has(publicPath)) continue;
 
-    await deleteValidatedEditorialImage(slug, filename);
+    await deleteValidatedEditorialResource(slug, filename);
   }
 }
 
-export async function markEditorialImageForDeletion(
+export async function markEditorialMediaForDeletion(
   slug: string,
-  resource: EditorialMediaLibraryImage
+  resource: EditorialMediaLibraryResource
 ) {
-  const resolved = resolveEditorialImageResource(slug, resource);
+  const resolved = resolveEditorialResource(slug, resource);
   if (!resolved || !resource.digest) {
-    throw new Error("La imagen no pertenece al almacén editorial del juego.");
+    throw new Error("El recurso no pertenece al almacén editorial del juego.");
   }
 
-  const inspection = await inspectEditorialImageFile(
+  const inspection = await inspectEditorialResourceFile(
     resolved.filePath,
-    resource.digest
+    resource.digest,
+    resource.kind
   );
   if (!inspection) return "missing" as const;
 
@@ -344,21 +362,64 @@ export async function markEditorialImageForDeletion(
   return "marked" as const;
 }
 
-export async function deleteEditorialImageResource(
+export async function deleteEditorialMediaResource(
   slug: string,
-  resource: EditorialMediaLibraryImage
+  resource: EditorialMediaLibraryResource
 ) {
-  const resolved = resolveEditorialImageResource(slug, resource);
+  const resolved = resolveEditorialResource(slug, resource);
   if (!resolved || !resource.digest) {
-    throw new Error("La imagen no pertenece al almacén editorial del juego.");
+    throw new Error("El recurso no pertenece al almacén editorial del juego.");
   }
 
-  await deleteValidatedEditorialImage(
+  await deleteValidatedEditorialResource(
     slug,
     resolved.filename
   );
 
   return "deleted" as const;
+}
+
+// Alias de compatibilidad para rutas y checkers que todavía expresan la
+// operación en términos de imagen. Toda la seguridad física vive arriba.
+export async function clearEditorialImageDeletionMarker(
+  slug: string,
+  publicPath: string
+) {
+  const resolved = resolveEditorialMediaDiskPath(publicPath);
+  if (!resolved?.filename.endsWith(".webp")) return;
+  await clearEditorialMediaDeletionMarker(slug, publicPath);
+}
+
+export async function reconcileEditorialImageDeletions(
+  slug: string,
+  draftReferences: readonly string[],
+  publishedReferences: readonly string[]
+) {
+  await reconcileEditorialMediaDeletions(
+    slug,
+    draftReferences,
+    publishedReferences
+  );
+}
+
+export async function markEditorialImageForDeletion(
+  slug: string,
+  resource: EditorialMediaLibraryImage
+) {
+  if (resource.origin !== "editorial") {
+    throw new Error("La imagen no pertenece al almacén editorial del juego.");
+  }
+  return markEditorialMediaForDeletion(slug, resource as EditorialDeletableResource);
+}
+
+export async function deleteEditorialImageResource(
+  slug: string,
+  resource: EditorialMediaLibraryImage
+) {
+  if (resource.origin !== "editorial") {
+    throw new Error("La imagen no pertenece al almacén editorial del juego.");
+  }
+  return deleteEditorialMediaResource(slug, resource as EditorialDeletableResource);
 }
 
 export async function listEditorialMediaLibrary(
@@ -404,7 +465,6 @@ export async function listEditorialMediaLibrary(
     }
 
     if (
-      match[2] === "webp" &&
       await isSafeDeletionMarker(
         deletionMarkerPath(directory, entry.name)
       )
