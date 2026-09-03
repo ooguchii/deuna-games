@@ -1,3 +1,7 @@
+import {
+  resolveGameDestinationMediaMode,
+} from "./game-video-media";
+
 import type {
   Game,
   GameImageViewport,
@@ -25,57 +29,87 @@ export function isVideoCropConfirmed(
     (!requiredAspect || viewport.aspect === requiredAspect);
 }
 
+function destinationRequirement(
+  mode: "image" | "video" | "hover-video",
+  imageAssigned: boolean,
+  imageViewport: GameImageViewport | undefined,
+  videoAssigned: boolean,
+  videoViewport: GameVideoViewport | undefined,
+  aspect: GameVideoViewportAspect
+) {
+  const imageReady = imageAssigned && isImageCropConfirmed(imageViewport);
+  const videoReady = videoAssigned && isVideoCropConfirmed(videoViewport, aspect);
+
+  if (mode === "image") {
+    return { assigned: imageAssigned, cropReady: imageReady };
+  }
+  if (mode === "video") {
+    return { assigned: videoAssigned, cropReady: videoReady };
+  }
+  return {
+    assigned: imageAssigned && videoAssigned,
+    cropReady: imageReady && videoReady,
+  };
+}
+
 export function evaluateGameMediaRequirements(game: Game) {
-  const heroVideo = game.videoMedia?.hero;
+  const coverMode = resolveGameDestinationMediaMode(game, "cover");
+  const heroMode = resolveGameDestinationMediaMode(game, "hero");
+  const cardMode = resolveGameDestinationMediaMode(game, "card");
+
+  const cover = destinationRequirement(
+    coverMode,
+    Boolean(game.coverImage),
+    game.imageMedia?.cover,
+    Boolean(game.videoMedia?.cover?.clip),
+    game.videoMedia?.cover?.viewport,
+    REQUIRED_DESTINATION_ASPECTS.cover
+  );
+
+  const hero = destinationRequirement(
+    heroMode,
+    Boolean(game.heroImage),
+    game.imageMedia?.hero,
+    Boolean(game.videoMedia?.hero?.clip),
+    game.videoMedia?.hero?.viewport,
+    REQUIRED_DESTINATION_ASPECTS.hero
+  );
+
   const cardVideo = game.videoMedia?.card;
-  const heroUsesVideo = Boolean(heroVideo);
-  const heroUsesHoverVideo = heroVideo?.playback === "hover";
-
-  const coverAssigned = Boolean(game.coverImage);
-  const coverCropReady = coverAssigned && isImageCropConfirmed(game.imageMedia?.cover);
-
-  const heroAssigned = heroUsesVideo
-    ? Boolean(heroVideo?.clip) && (!heroUsesHoverVideo || Boolean(game.heroImage))
-    : Boolean(game.heroImage);
-  const heroCropReady = heroUsesVideo
-    ? Boolean(heroVideo?.clip) &&
-      isVideoCropConfirmed(
-        heroVideo?.viewport,
-        REQUIRED_DESTINATION_ASPECTS.hero
-      ) &&
-      (!heroUsesHoverVideo || isImageCropConfirmed(game.imageMedia?.hero))
-    : Boolean(game.heroImage) && isImageCropConfirmed(game.imageMedia?.hero);
-
-  const cardAssigned = Boolean(cardVideo || game.coverImage);
-  const cardCropReady = cardVideo
-    ? isVideoCropConfirmed(
-        cardVideo.viewport,
-        REQUIRED_DESTINATION_ASPECTS.card
-      )
-    : Boolean(game.coverImage) && isImageCropConfirmed(game.imageMedia?.card);
+  const cardClipAssigned = cardVideo?.source === "hero"
+    ? Boolean(game.videoMedia?.hero?.clip)
+    : Boolean(cardVideo?.clip);
+  const card = destinationRequirement(
+    cardMode,
+    Boolean(game.cardImage ?? game.coverImage),
+    game.imageMedia?.card,
+    cardClipAssigned,
+    cardVideo?.viewport,
+    REQUIRED_DESTINATION_ASPECTS.card
+  );
 
   const galleryReady = Boolean(game.screenshots?.length);
 
   return {
     cover: {
-      assigned: coverAssigned,
-      cropReady: coverCropReady,
+      ...cover,
+      mode: coverMode,
       aspect: REQUIRED_DESTINATION_ASPECTS.cover,
     },
     hero: {
-      assigned: heroAssigned,
-      cropReady: heroCropReady,
+      ...hero,
+      mode: heroMode,
       aspect: REQUIRED_DESTINATION_ASPECTS.hero,
     },
     card: {
-      assigned: cardAssigned,
-      cropReady: cardCropReady,
+      ...card,
+      mode: cardMode,
       aspect: REQUIRED_DESTINATION_ASPECTS.card,
     },
     gallery: {
       assigned: galleryReady,
       minimum: 1,
     },
-    ready: coverCropReady && heroCropReady && cardCropReady && galleryReady,
+    ready: cover.cropReady && hero.cropReady && card.cropReady && galleryReady,
   };
 }
