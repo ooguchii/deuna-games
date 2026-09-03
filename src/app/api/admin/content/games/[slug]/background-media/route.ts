@@ -244,14 +244,14 @@ export async function POST(
 
   if (action.data === "layout-image") {
     if (!current.backgroundImage || current.backgroundImage !== resource) {
-      return jsonError("La imagen de fondo cambió antes de guardar el foco.", 409);
+      return jsonError("La imagen de fondo cambió antes de guardar el recorte adaptable.", 409);
     }
     const viewport = parseGameImageViewport(
       authorized.form.get("viewportX"),
       authorized.form.get("viewportY"),
       authorized.form.get("viewportZoom")
     );
-    if (!viewport) return jsonError("Foco de imagen inválido.");
+    if (!viewport) return jsonError("Recorte adaptable de imagen inválido.");
 
     update = {
       imageMedia: {
@@ -267,7 +267,7 @@ export async function POST(
   if (action.data === "layout-video") {
     const background = current.videoMedia?.background;
     if (!background?.clip || background.clip !== resource) {
-      return jsonError("El video de fondo cambió antes de guardar el foco.", 409);
+      return jsonError("El video de fondo cambió antes de guardar el recorte adaptable.", 409);
     }
     const viewport = parsePreviewViewport(
       authorized.form.get("viewportX"),
@@ -275,7 +275,9 @@ export async function POST(
       authorized.form.get("viewportZoom"),
       GAME_BACKGROUND_VIEWPORT_ASPECT
     );
-    if (!viewport) return jsonError("Foco de video inválido.");
+    if (!viewport || viewport.aspect === "free") {
+      return jsonError("Recorte adaptable de video inválido.");
+    }
 
     update = {
       videoMedia: {
@@ -283,7 +285,10 @@ export async function POST(
         background: {
           ...background,
           viewport: {
-            ...viewport,
+            x: viewport.x,
+            y: viewport.y,
+            zoom: viewport.zoom,
+            aspect: viewport.aspect,
             confirmed: true,
           },
         },
