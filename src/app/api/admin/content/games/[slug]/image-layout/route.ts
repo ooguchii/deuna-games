@@ -57,7 +57,8 @@ function hasImageForTarget(
   if (target === "cover") return Boolean(game.coverImage);
   if (target === "hero") return Boolean(game.heroImage);
   if (target === "card") return Boolean(game.cardImage);
-  return Boolean(game.detailImage);
+  if (target === "detail") return Boolean(game.detailImage);
+  return false;
 }
 
 function confirmedViewport(viewport: GameImageViewport): GameImageViewport {
