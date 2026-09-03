@@ -165,25 +165,15 @@
   opacity: 0.5;
 }
 
-.loading,
 .error {
   margin: 0;
   padding: 11px;
-  border-radius: 8px;
-  font-size: 12px;
-  line-height: 1.45;
-}
-
-.loading {
-  color: #98aaba;
-  border: 1px solid #263746;
-  background: #09111a;
-}
-
-.error {
   color: #ffb0b0;
   border: 1px solid rgba(238, 86, 96, 0.58);
+  border-radius: 8px;
   background: rgba(133, 30, 42, 0.13);
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 @media (max-width: 680px) {
