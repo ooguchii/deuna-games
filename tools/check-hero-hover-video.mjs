@@ -8,6 +8,7 @@ const source = (relativePath) => readFile(path.join(root, relativePath), "utf8")
 const assert = (condition, message) => {
   if (!condition) failures.push(message);
 };
+const has = (text, ...needles) => needles.every((needle) => text.includes(needle));
 
 const [
   gameTypes,
@@ -18,7 +19,7 @@ const [
   heroSection,
 ] = await Promise.all([
   source("src/types/game.ts"),
-  source("src/lib/admin/content-validation-core.ts"),
+  source("src/lib/admin/content-validation.ts"),
   source("src/lib/media/game-video-media.ts"),
   source("src/app/api/admin/content/games/[slug]/media-library/route.ts"),
   source("src/components/admin/GameMultimediaWorkspaceContextual.tsx"),
@@ -26,60 +27,95 @@ const [
 ]);
 
 assert(
-  gameTypes.includes('export type GameHeroVideoPlayback = "always" | "hover"') &&
-    gameTypes.includes("playback?: GameHeroVideoPlayback"),
-  "El contrato GameHeroVideo debe modelar explícitamente reproducción continua o al hover sin romper payloads antiguos."
+  has(
+    gameTypes,
+    'export type GameVideoPlayback = "always" | "hover"',
+    "export type GameHeroVideoPlayback = GameVideoPlayback",
+    "playback?: GameVideoPlayback",
+    'export type GameDestinationMediaMode =',
+    '| "hover-video"'
+  ),
+  "El contrato debe modelar reproducción always/hover y el modo editorial Imagen+hover."
 );
 
 assert(
-  contentValidation.includes('playback: z.enum(["always", "hover"]).optional()'),
-  "La validación editorial debe aceptar únicamente always/hover y conservar playback como opcional para compatibilidad hacia atrás."
+  has(
+    contentValidation,
+    'playback: z.enum(["always", "hover"]).optional()',
+    '"image",',
+    '"video",',
+    '"hover-video",',
+    "hero: inferredMode(",
+    '"hover-video"'
+  ),
+  "La validación editorial debe aceptar sólo modos/playback conocidos y usar Imagen+hover como default histórico del Hero cuando corresponde."
 );
 
 assert(
-  gameVideoMedia.includes("resolveGameHeroVideoPlayback") &&
-    gameVideoMedia.includes('playback === "hover" ? "hover" : "always"') &&
-    gameVideoMedia.includes('playback: "always"'),
-  "El runtime debe interpretar Hero históricos sin playback como video continuo y los nuevos masters normales como always."
+  has(
+    gameVideoMedia,
+    "resolveGameHeroVideoPlayback",
+    'resolveGameDestinationMediaMode(game, "hero") === "hover-video"',
+    'return "hover"',
+    'return "always"',
+    'hero: "hover-video"'
+  ),
+  "El runtime debe derivar playback del modo explícito del Hero y mantener Imagen+hover como default editorial."
 );
 
 assert(
-  libraryRoute.includes('"hero-hover-video"') &&
-    libraryRoute.includes('heroVideo.playback === "hover"') &&
-    libraryRoute.includes('? "hover-video"') &&
-    libraryRoute.includes('target.data === "hero-video" || target.data === "hero-hover-video"') &&
-    libraryRoute.includes('playback: target.data === "hero-hover-video" ? "hover" : "always"') &&
-    libraryRoute.includes("saveGameMediaDraft") &&
+  has(
+    libraryRoute,
+    '"hero-mode"',
+    '"hero-image"',
+    '"hero-video"',
+    "mediaModeUpdate",
+    'target.data === "hero-video"',
+    'mode === "hover-video" ? "hover" : "always"',
+    "saveGameMediaDraft"
+  ) &&
+    !libraryRoute.includes("hero-hover-video") &&
     !libraryRoute.includes("storeEditorialPreviewVideo") &&
     !libraryRoute.includes("spawn("),
-  "Cambiar entre Video y Imagen+hover debe guardar sólo metadata sobre un WebM validado, sin copiar ni recodificar el recurso."
+  "Cambiar Hero entre Imagen/Video/Imagen+hover debe guardar metadata y asignaciones, sin copiar ni recodificar el WebM."
 );
 
 assert(
-  workspace.includes('type HeroDraftMode = "image" | "video" | "hover-video"') &&
-    workspace.includes('setHeroDraftMode("image")') &&
-    workspace.includes('setHeroDraftMode("video")') &&
-    workspace.includes('setHeroDraftMode("hover-video")') &&
-    workspace.includes('"hero-hover-video"') &&
-    workspace.includes("Imagen + hover") &&
-    workspace.includes("En táctil conserva la imagen") &&
-    workspace.includes('heroDraftMode !== "image"') &&
-    workspace.includes("GameVideoViewportEditor"),
-  "El Admin debe ofrecer Imagen, Video e Imagen+hover y reutilizar el editor de encuadre de video para los dos modos WebM."
+  has(
+    workspace,
+    "MODE_OPTIONS",
+    '{ value: "image", label: "Imagen" }',
+    '{ value: "video", label: "Video" }',
+    '{ value: "hover-video", label: "Imagen + hover" }',
+    'target="hero"',
+    'const heroMode = state?.assignments.heroMode ?? "hover-video"',
+    'destinationActions("hero", heroMode',
+    "Recortar imagen ${aspect}",
+    "Recortar video ${aspect}",
+    "GameVideoViewportEditor"
+  ),
+  "El Admin debe ofrecer los tres modos del Hero y recortes independientes para imagen y video."
 );
 
 assert(
-  heroSection.includes("resolveGameHeroVideoPlayback") &&
-    heroSection.includes('const FINE_HOVER_MEDIA = "(hover: hover) and (pointer: fine)"') &&
-    heroSection.includes("canUseFineHover()") &&
-    heroSection.includes("hoverPreviewActive") &&
-    heroSection.includes("videoEnabled && (!hoverPlayback || hoverPreviewActive)") &&
-    heroSection.includes("onMouseEnter={startHoverPreview}") &&
-    heroSection.includes("onMouseLeave={stopHoverPreview}") &&
-    heroSection.includes("!reducedMotion") &&
-    heroSection.includes("<HeroVideoLayer") &&
-    heroSection.includes("enabled={videoShouldRender}"),
-  "El Hero público debe montar el video hover sólo con puntero fino sobre el slide activo y respetar prefers-reduced-motion."
+  has(
+    heroSection,
+    'const FINE_HOVER_MEDIA = "(hover: hover) and (pointer: fine)"',
+    'resolveGameDestinationMediaMode(game, "hero")',
+    'const hoverPlayback = heroMode === "hover-video"',
+    'const videoModeEnabled = heroMode !== "image"',
+    "canUseFineHover()",
+    "hoverPreviewActive",
+    "videoEnabled &&",
+    "videoModeEnabled &&",
+    "(!hoverPlayback || hoverPreviewActive)",
+    "onMouseEnter={startHoverPreview}",
+    "onMouseLeave={stopHoverPreview}",
+    "!reducedMotion",
+    "<HeroVideoLayer",
+    "enabled={videoShouldRender}"
+  ),
+  "El Hero público debe reproducir Video continuo o Imagen+hover según el modo, sólo con puntero compatible y respetando reduced-motion."
 );
 
 if (failures.length) {
@@ -89,5 +125,5 @@ if (failures.length) {
 }
 
 console.log(
-  "Hero hover video: OK (Imagen | Video continuo | Imagen+hover, sin duplicación ni recodificación y con fallback táctil/reduced-motion)."
+  "Hero hover video: OK (modo explícito Imagen | Video | Imagen+hover, recortes por capa y reproducción pública accesible)."
 );
