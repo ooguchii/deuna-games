@@ -3,14 +3,17 @@
 import { useState } from "react";
 
 import MediaViewportEditor from "@/components/admin/MediaViewportEditor";
-import { REQUIRED_DESTINATION_ASPECTS } from "@/lib/media/game-media-requirements";
+import {
+  GAME_DETAIL_VIEWPORT_ASPECT,
+  REQUIRED_DESTINATION_ASPECTS,
+} from "@/lib/media/game-media-requirements";
 import { normalizeGameVideoViewport } from "@/lib/media/game-video-media";
 import type { PreviewViewport } from "@/lib/media/preview-video-policy";
 import type { GameVideoViewport } from "@/types/game";
 
 import dialogStyles from "./ContextualMediaDialog.module.css";
 
-type Target = "cover" | "hero" | "card";
+type Target = "cover" | "hero" | "card" | "detail";
 type Source = "hero" | "independent";
 
 type Props = {
@@ -27,7 +30,14 @@ type Props = {
 function destinationLabel(target: Target) {
   if (target === "cover") return "Portada";
   if (target === "hero") return "Hero";
+  if (target === "detail") return "Contenedor de la ficha";
   return "Card";
+}
+
+function targetAspect(target: Target): PreviewViewport["aspect"] {
+  return target === "detail"
+    ? GAME_DETAIL_VIEWPORT_ASPECT
+    : REQUIRED_DESTINATION_ASPECTS[target];
 }
 
 export default function GameVideoViewportEditor({
@@ -40,7 +50,8 @@ export default function GameVideoViewportEditor({
   initialViewport,
   onClose,
 }: Props) {
-  const requiredAspect = REQUIRED_DESTINATION_ASPECTS[target] as PreviewViewport["aspect"];
+  const requiredAspect = targetAspect(target);
+  const adaptive = target === "detail";
   const [viewport, setViewport] = useState<PreviewViewport>(() => ({
     ...normalizeGameVideoViewport(initialViewport),
     aspect: requiredAspect,
@@ -52,7 +63,9 @@ export default function GameVideoViewportEditor({
     if (busy) return;
     setBusy(true);
     setStatus(
-      `Confirmando el recorte obligatorio ${requiredAspect} de ${destinationLabel(target)}; el WebM físico no se modifica…`
+      adaptive
+        ? `Confirmando el recorte adaptable de ${destinationLabel(target)}; el WebM físico no se modifica…`
+        : `Confirmando el recorte obligatorio ${requiredAspect} de ${destinationLabel(target)}; el WebM físico no se modifica…`
     );
 
     try {
@@ -109,6 +122,14 @@ export default function GameVideoViewportEditor({
         onViewportChange={setViewport}
       />
 
+      {adaptive && (
+        <p
+          style={{ margin: "12px 0 0", color: "#9db0c0", fontSize: 12, lineHeight: 1.55 }}
+        >
+          El Contenedor adapta este punto y zoom al tamaño real de la ficha. El WebM se reutiliza por referencia y no se vuelve a recodificar.
+        </p>
+      )}
+
       {status && (
         <p
           role="status"
@@ -130,11 +151,15 @@ export default function GameVideoViewportEditor({
         <button
           type="button"
           className={dialogStyles.primary}
-          aria-label={`Guardar encuadre obligatorio ${requiredAspect}`}
+          aria-label={adaptive ? "Guardar recorte adaptable" : `Guardar encuadre obligatorio ${requiredAspect}`}
           disabled={busy}
           onClick={() => void save()}
         >
-          {busy ? "Guardando…" : `Confirmar recorte ${requiredAspect}`}
+          {busy
+            ? "Guardando…"
+            : adaptive
+              ? "Confirmar recorte adaptable"
+              : `Confirmar recorte ${requiredAspect}`}
         </button>
       </div>
     </>
