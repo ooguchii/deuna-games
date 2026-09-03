@@ -138,7 +138,7 @@ export function evaluateGamePublicationReadiness(
     {
       id: "cover-crop",
       label: "Portada · recorte 4:5",
-      detail: "La Portada debe tener una imagen asignada y su recorte 4:5 confirmado.",
+      detail: "La Portada debe completar los recursos exigidos por su modo activo. Imagen + hover requiere confirmar imagen y video; Video sólo exige su video.",
       section: "multimedia",
       complete: media.cover.cropReady,
       priority: "essential",
@@ -146,7 +146,7 @@ export function evaluateGamePublicationReadiness(
     {
       id: "hero-crop",
       label: "Hero · recorte 16:9",
-      detail: "El Hero debe tener el recurso activo y su recorte 16:9 confirmado. Imagen + hover requiere confirmar imagen y video.",
+      detail: "El Hero debe completar los recursos exigidos por su modo activo. Imagen + hover requiere confirmar imagen y video.",
       section: "multimedia",
       complete: media.hero.cropReady,
       priority: "essential",
@@ -154,7 +154,7 @@ export function evaluateGamePublicationReadiness(
     {
       id: "card-crop",
       label: "Card · recorte 3:2",
-      detail: "La Card debe confirmar su recorte 3:2 aunque reutilice la Portada o el video del Hero.",
+      detail: "La Card tiene asignación independiente de la Portada y debe completar los recursos y recortes que exija su modo activo.",
       section: "multimedia",
       complete: media.card.cropReady,
       priority: "essential",
