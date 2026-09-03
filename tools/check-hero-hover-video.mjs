@@ -56,8 +56,8 @@ assert(
     gameVideoMedia,
     "resolveGameHeroVideoPlayback",
     'resolveGameDestinationMediaMode(game, "hero") === "hover-video"',
-    'return "hover"',
-    'return "always"',
+    '? "hover"',
+    ': "always"',
     'hero: "hover-video"'
   ),
   "El runtime debe derivar playback del modo explícito del Hero y mantener Imagen+hover como default editorial."
