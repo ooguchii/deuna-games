@@ -17,6 +17,7 @@ const [
   integrity,
   readiness,
   api,
+  mediaLibraryRoute,
   admin,
   viewport,
   publicBackground,
@@ -31,6 +32,7 @@ const [
   source("src/lib/admin/game-media-integrity.ts"),
   source("src/lib/admin/game-publication-readiness.ts"),
   source("src/app/api/admin/content/games/[slug]/background-media/route.ts"),
+  source("src/app/api/admin/content/games/[slug]/media-library/route.ts"),
   source("src/components/admin/GameBackgroundMediaEditor.tsx"),
   source("src/components/admin/GameBackgroundViewportEditor.tsx"),
   source("src/components/games/GameDetailBackground.tsx"),
@@ -124,6 +126,21 @@ assert(
 
 assert(
   has(
+    mediaLibraryRoute,
+    "resolveGameBackgroundMediaMode",
+    "backgroundImage: item.payload.backgroundImage ?? null",
+    "backgroundMode: resolveGameBackgroundMediaMode(item.payload)",
+    "backgroundVideo: item.payload.videoMedia?.background ?? null",
+    'Partial<Pick<Game, "backgroundImage" | "cardImage" | "mediaModes">>',
+    "game.backgroundImage === resource",
+    "delete imageMedia.background",
+    "backgroundImage:"
+  ),
+  "La Biblioteca compartida debe exponer Fondo y limpiar su asignación/foco al eliminar una imagen, sin dejar referencias fantasma."
+);
+
+assert(
+  has(
     admin,
     "Fondo del juego",
     "Opcional · foco adaptable",
@@ -139,9 +156,14 @@ assert(
     "assignmentStyles.assignmentCard",
     "assignmentStyles.modeSwitch",
     "assignmentStyles.currentResource",
-    "assignmentStyles.assignmentActions"
-  ),
-  "El Fondo debe verse como un destino más del workspace, con los mismos patrones de modo, recurso, estados y acciones."
+    "assignmentStyles.assignmentActions",
+    "revision: number",
+    "resources: LibraryResource[]",
+    "assignment: BackgroundAssignment"
+  ) &&
+    !admin.includes("useEffect(") &&
+    !admin.includes('fetch(endpoint, {\n          credentials: "same-origin"'),
+  "Fondo debe verse como un destino más y reutilizar la revisión/recursos ya cargados por el workspace en vez de abrir una segunda lectura de biblioteca."
 );
 
 assert(
@@ -194,19 +216,23 @@ assert(
 );
 
 assert(
-  has(
-    multimediaEditor,
-    "backgroundEditor={",
-    "<GameBackgroundMediaEditor slug={slug} />"
-  ) &&
+  multimediaEditor.includes("GameMultimediaWorkspaceContextual") &&
+    !multimediaEditor.includes("GameBackgroundMediaEditor") &&
     has(
       multimediaWorkspace,
-      "backgroundEditor: ReactNode",
-      "{backgroundEditor}",
+      'import GameBackgroundMediaEditor from "@/components/admin/GameBackgroundMediaEditor"',
+      "backgroundImage: string | null",
+      "backgroundMode: GameDestinationMediaMode | null",
+      "backgroundVideo: GameBackgroundVideo | null",
+      "const backgroundReady = backgroundMode === null || cropReady(",
+      "mandatoryRequirementsReady && backgroundReady",
+      'labels.push(backgroundMode === "hover-video" ? "Fondo base" : "Fondo")',
+      'labels.push(backgroundMode === "hover-video" ? "Fondo hover" : "Fondo")',
+      "<GameBackgroundMediaEditor",
       "<span>E</span><h3>Galería del juego</h3>",
       "Fondo · adaptable"
     ),
-  "Multimedia debe ordenar Portada → Hero → Card → Fondo → Galería dentro de Asignación de destinos, sin volver a montar Fondo como panel separado."
+  "Multimedia debe ordenar Portada → Hero → Card → Fondo → Galería en un único workspace y alinear gate/Biblioteca con el estado real de Fondo."
 );
 
 if (failures.length) {
@@ -216,5 +242,5 @@ if (failures.length) {
 }
 
 console.log(
-  "Game background media: OK (Fondo integrado en destinos, override opcional, bytes compartidos, foco adaptable y fallback global/móvil)."
+  "Game background media: OK (Fondo integrado en destinos, estado/biblioteca únicos, override opcional, bytes compartidos y foco adaptable)."
 );
