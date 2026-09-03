@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import {
   CheckCircle2,
@@ -23,6 +22,7 @@ import {
   useState,
 } from "react";
 
+import AdminMediaThumbnail from "@/components/admin/AdminMediaThumbnail";
 import ContextualMediaDialog from "@/components/admin/ContextualMediaDialog";
 import GameBackgroundMediaEditor from "@/components/admin/GameBackgroundMediaEditor";
 import GameDetailMediaEditor from "@/components/admin/GameDetailMediaEditor";
@@ -33,6 +33,7 @@ import { REQUIRED_DESTINATION_ASPECTS } from "@/lib/media/game-media-requirement
 import {
   GAME_IMAGE_CROP_ASPECTS,
   gameImageCropAspectLabel,
+  resolveGameImageCropAspectRatio,
 } from "@/lib/media/image-viewport";
 import { DEFAULT_PREVIEW_VIEWPORT } from "@/lib/media/preview-video-policy";
 import type {
@@ -317,9 +318,15 @@ function parseLibraryState(value: unknown): LibraryState | null {
 
 function ResourceArtwork({ resource, alt }: { resource: ResourceImage; alt: string }) {
   return (
-    <div className={styles.resourceArtwork}>
-      <Image src={resource.src} alt={alt} fill sizes="(max-width: 760px) 88vw, 280px" />
-    </div>
+    <AdminMediaThumbnail
+      kind="image"
+      src={resource.src}
+      mode="source"
+      label={alt}
+      badge="FUENTE"
+      sizes="(max-width: 760px) 88vw, 280px"
+      className={styles.resourceArtwork}
+    />
   );
 }
 
@@ -508,11 +515,14 @@ function ResourcePicker({
                 target={target}
                 resource={resource.src}
               >
-                {resource.kind === "image" ? (
-                  <span className={styles.choiceThumb}><Image src={resource.src} alt="" fill sizes="96px" /></span>
-                ) : (
-                  <span className={styles.choiceVideoIcon}><Clapperboard size={21} aria-hidden="true" /></span>
-                )}
+                <AdminMediaThumbnail
+                  kind={resource.kind}
+                  src={resource.src}
+                  mode="source"
+                  label={`Fuente ${shortName(resource.src)}`}
+                  sizes="96px"
+                  className={styles.choiceThumb}
+                />
                 <span className={styles.choiceMeta}>
                   <strong>{shortName(resource.src)}</strong>
                   <small>{resource.kind === "image" ? imageMeta(resource) : `WebM · ${formatBytes(resource.bytes)}`}</small>
@@ -599,6 +609,61 @@ function cropReady(
   return imageReady && videoReady;
 }
 
+function DestinationThumbnailSet({
+  mode,
+  imageSrc,
+  imageViewport,
+  videoSrc,
+  videoViewport,
+  frameAspect,
+  label,
+  adaptive = false,
+}: {
+  mode: GameDestinationMediaMode;
+  imageSrc: string | null;
+  imageViewport?: GameImageViewport;
+  videoSrc: string | null;
+  videoViewport?: GameVideoViewport;
+  frameAspect: number;
+  label: string;
+  adaptive?: boolean;
+}) {
+  const showImage = mode !== "video" && Boolean(imageSrc);
+  const showVideo = mode !== "image" && Boolean(videoSrc);
+  if (!showImage && !showVideo) return null;
+
+  return (
+    <span
+      className={`${styles.currentMediaSet} ${showImage && showVideo ? styles.currentMediaPair : ""}`}
+    >
+      {showImage && imageSrc && (
+        <AdminMediaThumbnail
+          kind="image"
+          src={imageSrc}
+          viewport={imageViewport}
+          mode="destination"
+          frameAspect={frameAspect}
+          label={`${label} · imagen`}
+          badge={adaptive ? "ADAPTABLE" : mode === "hover-video" ? "IMG" : undefined}
+          className={styles.currentThumb}
+        />
+      )}
+      {showVideo && videoSrc && (
+        <AdminMediaThumbnail
+          kind="video"
+          src={videoSrc}
+          viewport={videoViewport}
+          mode="destination"
+          frameAspect={frameAspect}
+          label={`${label} · video`}
+          badge={adaptive ? "ADAPTABLE" : mode === "hover-video" ? "VIDEO" : undefined}
+          className={styles.currentThumb}
+        />
+      )}
+    </span>
+  );
+}
+
 export default function GameMultimediaWorkspaceContextual({
   slug,
   revision,
@@ -674,6 +739,7 @@ export default function GameMultimediaWorkspaceContextual({
   const activeCoverVideo = videos.find((resource) => resource.src === coverVideo?.clip) ?? null;
   const activeHeroVideo = videos.find((resource) => resource.src === heroVideo?.clip) ?? null;
   const activeCardVideo = videos.find((resource) => resource.src === resolvedCardClip) ?? null;
+  const activeCardVideoViewport = state?.assignments.cardVideo?.viewport;
 
   const coverImageCropReady = Boolean(coverImage && imageMedia?.cover?.confirmed);
   const coverVideoCropReady = Boolean(coverVideo?.viewport.confirmed);
@@ -833,7 +899,15 @@ export default function GameMultimediaWorkspaceContextual({
               className={`${contextualStyles.galleryItemCard} ${cropConfirmed ? contextualStyles.galleryItemComplete : contextualStyles.galleryItemMissing}`}
             >
               <div className={contextualStyles.galleryItemPreview}>
-                <Image src={src} alt={`Captura ${index + 1}`} fill sizes={compact ? "120px" : "240px"} />
+                <AdminMediaThumbnail
+                  kind="image"
+                  src={src}
+                  viewport={galleryViewport}
+                  mode="destination"
+                  frameAspect={resolveGameImageCropAspectRatio(galleryViewport)}
+                  label={`Captura ${index + 1} · ${cropStateLabel}`}
+                  sizes={compact ? "120px" : "240px"}
+                />
               </div>
               <div className={contextualStyles.galleryItemMeta}>
                 <strong>{shortName(src)}</strong>
@@ -997,7 +1071,16 @@ export default function GameMultimediaWorkspaceContextual({
                 <header><div><span>A</span><h3>Portada del juego</h3></div><small>Recorte obligatorio · 4:5</small></header>
                 <ModeSwitch action={endpoint} revision={assignmentRevision} target="cover" mode={coverMode} disabled={stale} />
                 <div className={styles.currentResource}>
-                  {coverMode !== "video" && coverResource ? <span className={styles.currentThumb}><Image src={coverResource.src} alt="" fill sizes="72px" /></span> : <span className={styles.currentIcon}>{coverMode === "image" ? <ImageIcon size={20} aria-hidden="true" /> : <MonitorPlay size={20} aria-hidden="true" />}</span>}
+                  <DestinationThumbnailSet
+                    mode={coverMode}
+                    imageSrc={coverResource?.src ?? null}
+                    imageViewport={imageMedia?.cover}
+                    videoSrc={activeCoverVideo?.src ?? null}
+                    videoViewport={coverVideo?.viewport}
+                    frameAspect={4 / 5}
+                    label="Portada"
+                  />
+                  {!((coverMode !== "video" && coverResource) || (coverMode !== "image" && activeCoverVideo)) && <span className={styles.currentIcon}>{coverMode === "image" ? <ImageIcon size={20} aria-hidden="true" /> : <MonitorPlay size={20} aria-hidden="true" />}</span>}
                   <div><span>Modo activo</span><strong>{modeLabel(coverMode)}</strong><small>{coverMode === "hover-video" ? `${coverImage ? shortName(coverImage) : "Imagen pendiente"} + ${activeCoverVideo ? shortName(activeCoverVideo.src) : "video pendiente"}` : coverMode === "video" ? activeCoverVideo ? shortName(activeCoverVideo.src) : "Selecciona un video" : coverImage ? shortName(coverImage) : "Selecciona una imagen"}</small></div>
                 </div>
                 {destinationActions("cover", coverMode, Boolean(coverImage), Boolean(coverVideo), coverImageCropReady, coverVideoCropReady)}
@@ -1008,7 +1091,16 @@ export default function GameMultimediaWorkspaceContextual({
                 <header><div><span>B</span><h3>Hero de inicio</h3></div><small>Recorte obligatorio · 16:9</small></header>
                 <ModeSwitch action={endpoint} revision={assignmentRevision} target="hero" mode={heroMode} disabled={stale} />
                 <div className={styles.currentResource}>
-                  {heroMode !== "video" && heroResource ? <span className={styles.currentThumb}><Image src={heroResource.src} alt="" fill sizes="72px" /></span> : <span className={styles.currentIcon}>{heroMode === "image" ? <ImageIcon size={20} aria-hidden="true" /> : <MonitorPlay size={20} aria-hidden="true" />}</span>}
+                  <DestinationThumbnailSet
+                    mode={heroMode}
+                    imageSrc={heroResource?.src ?? null}
+                    imageViewport={imageMedia?.hero}
+                    videoSrc={activeHeroVideo?.src ?? null}
+                    videoViewport={heroVideo?.viewport}
+                    frameAspect={16 / 9}
+                    label="Hero"
+                  />
+                  {!((heroMode !== "video" && heroResource) || (heroMode !== "image" && activeHeroVideo)) && <span className={styles.currentIcon}>{heroMode === "image" ? <ImageIcon size={20} aria-hidden="true" /> : <MonitorPlay size={20} aria-hidden="true" />}</span>}
                   <div><span>Modo activo</span><strong>{modeLabel(heroMode)}</strong><small>{heroMode === "hover-video" ? `${heroImage ? shortName(heroImage) : "Imagen pendiente"} + ${activeHeroVideo ? shortName(activeHeroVideo.src) : "video pendiente"}` : heroMode === "video" ? activeHeroVideo ? shortName(activeHeroVideo.src) : "Selecciona un video" : heroImage ? shortName(heroImage) : "Selecciona una imagen"}</small></div>
                 </div>
                 {destinationActions("hero", heroMode, Boolean(heroImage), Boolean(heroVideo), heroImageCropReady, heroVideoCropReady)}
@@ -1019,7 +1111,16 @@ export default function GameMultimediaWorkspaceContextual({
                 <header><div><span>C</span><h3>Card del juego</h3></div><small>Recorte obligatorio · 3:2</small></header>
                 <ModeSwitch action={endpoint} revision={assignmentRevision} target="card" mode={cardMode} disabled={stale} />
                 <div className={styles.currentResource}>
-                  {cardMode !== "video" && cardResource ? <span className={styles.currentThumb}><Image src={cardResource.src} alt="" fill sizes="72px" /></span> : <span className={styles.currentIcon}>{cardMode === "image" ? <ImageIcon size={20} aria-hidden="true" /> : <Clapperboard size={20} aria-hidden="true" />}</span>}
+                  <DestinationThumbnailSet
+                    mode={cardMode}
+                    imageSrc={cardResource?.src ?? null}
+                    imageViewport={imageMedia?.card}
+                    videoSrc={activeCardVideo?.src ?? null}
+                    videoViewport={activeCardVideoViewport}
+                    frameAspect={3 / 2}
+                    label="Card"
+                  />
+                  {!((cardMode !== "video" && cardResource) || (cardMode !== "image" && activeCardVideo)) && <span className={styles.currentIcon}>{cardMode === "image" ? <ImageIcon size={20} aria-hidden="true" /> : <Clapperboard size={20} aria-hidden="true" />}</span>}
                   <div><span>Recurso independiente</span><strong>{modeLabel(cardMode)}</strong><small>{cardMode === "hover-video" ? `${cardImage ? shortName(cardImage) : "Imagen pendiente"} + ${activeCardVideo ? shortName(activeCardVideo.src) : "video pendiente"}` : cardMode === "video" ? activeCardVideo ? shortName(activeCardVideo.src) : "Selecciona un video" : cardImage ? shortName(cardImage) : "Selecciona una imagen propia para Card"}</small></div>
                 </div>
                 {destinationActions("card", cardMode, Boolean(cardImage), Boolean(resolvedCardClip), cardImageCropReady, cardVideoCropReady)}
@@ -1057,7 +1158,17 @@ export default function GameMultimediaWorkspaceContextual({
               <article className={`${styles.assignmentCard} ${contextualStyles.galleryAssignmentCard}`}>
                 <header><div><span>F</span><h3>Galería del juego</h3></div><small>Obligatoria · mínimo 1 imagen · relación elegible</small></header>
                 <div className={styles.currentResource}>
-                  {firstGalleryResource ? <span className={styles.currentThumb}><Image src={firstGalleryResource.src} alt="" fill sizes="72px" /></span> : <span className={styles.currentIcon}><Images size={20} aria-hidden="true" /></span>}
+                  {firstGalleryResource ? (
+                    <AdminMediaThumbnail
+                      kind="image"
+                      src={firstGalleryResource.src}
+                      viewport={imageMedia?.gallery?.[firstGalleryResource.src]}
+                      mode="destination"
+                      frameAspect={resolveGameImageCropAspectRatio(imageMedia?.gallery?.[firstGalleryResource.src])}
+                      label="Primera captura de Galería"
+                      className={styles.currentThumb}
+                    />
+                  ) : <span className={styles.currentIcon}><Images size={20} aria-hidden="true" /></span>}
                   <div><span>Capturas asignadas</span><strong>{screenshots.length} de 8</strong><small>Cada captura elige 16:9, 3:2, 1:1, 4:5, 9:16 o Libre y debe confirmar su recorte. Quitar una captura no destruye el recurso.</small></div>
                 </div>
                 {renderGalleryAssignedItems(true)}
@@ -1126,7 +1237,16 @@ export default function GameMultimediaWorkspaceContextual({
                       {resource.kind === "image" ? (
                         <div className={contextualStyles.deletableArtwork}><ResourceArtwork resource={resource} alt="Recurso de la biblioteca multimedia" /><DeleteImageResourceForm action={endpoint} revision={assignmentRevision} resource={resource} disabled={stale} /></div>
                       ) : (
-                        <div className={styles.videoPlaceholder}><MonitorPlay size={30} aria-hidden="true" /><span>WebM interno</span><small>No se reproduce hasta abrir un editor.</small></div>
+                        <AdminMediaThumbnail
+                          kind="video"
+                          src={resource.src}
+                          mode="source"
+                          label={`Fuente WebM ${shortName(resource.src)}`}
+                          badge="FUENTE"
+                          allowRetry
+                          sizes="(max-width: 760px) 88vw, 280px"
+                          className={styles.resourceArtwork}
+                        />
                       )}
                       <div className={styles.usageRow}>{labels.length ? labels.map((usageLabel) => <span key={usageLabel}>{usageLabel}</span>) : <span className={styles.unusedBadge}>Disponible</span>}</div>
                       <small className={styles.resourceDetails}>{resource.kind === "image" ? resource.origin === "bundled" ? `${imageFormat(resource.src)} existente · reutilizable por referencia` : `${resource.width}×${resource.height} · WebP seguro` : "WebM validado · master reutilizable"}</small>

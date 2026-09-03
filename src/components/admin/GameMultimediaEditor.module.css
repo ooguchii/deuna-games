@@ -105,15 +105,8 @@
   background: #0c131c;
 }
 
-.currentThumb img,
-.choiceThumb img,
-.resourceArtwork img {
-  object-fit: cover;
-}
-
 .summaryIcon,
-.currentIcon,
-.choiceVideoIcon {
+.currentIcon {
   display: grid;
   flex: 0 0 auto;
   place-items: center;
@@ -272,29 +265,6 @@
   background: #0a1119;
 }
 
-.videoPlaceholder {
-  display: grid;
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  place-items: center;
-  align-content: center;
-  gap: 5px;
-  color: #8799aa;
-  border: 1px solid #22313e;
-  border-radius: 8px;
-  background: radial-gradient(circle at 50% 45%, rgba(255, 122, 24, 0.08), transparent 44%), #070c12;
-}
-
-.videoPlaceholder span {
-  color: #bdc9d4;
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.videoPlaceholder small {
-  font-size: 12px;
-}
-
 .usageRow {
   display: flex;
   min-height: 22px;
@@ -419,6 +389,19 @@
 .currentIcon {
   width: 68px;
   height: 52px;
+}
+
+.currentMediaSet {
+  display: flex;
+  min-width: 68px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.currentMediaPair .currentThumb {
+  width: 62px;
 }
 
 .currentResource > div {
@@ -580,8 +563,7 @@
   cursor: not-allowed;
 }
 
-.choiceThumb,
-.choiceVideoIcon {
+.choiceThumb {
   width: 58px;
   height: 46px;
 }

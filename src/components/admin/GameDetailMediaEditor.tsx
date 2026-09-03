@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import {
   CheckCircle2,
   Info,
@@ -9,6 +8,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 
+import AdminMediaThumbnail from "@/components/admin/AdminMediaThumbnail";
 import ContextualMediaDialog from "@/components/admin/ContextualMediaDialog";
 import GameVideoViewportEditor from "@/components/admin/GameVideoViewportEditor";
 import ImageViewportEditor from "@/components/admin/ImageViewportEditor";
@@ -182,15 +182,14 @@ function ResourcePicker({
                   className={assignmentStyles.resourceChoice}
                   disabled={disabled}
                 >
-                  {resource.kind === "image" ? (
-                    <span className={assignmentStyles.choiceThumb}>
-                      <Image src={resource.src} alt="" fill sizes="96px" />
-                    </span>
-                  ) : (
-                    <span className={assignmentStyles.choiceVideoIcon}>
-                      <MonitorPlay size={21} aria-hidden="true" />
-                    </span>
-                  )}
+                  <AdminMediaThumbnail
+                    kind={resource.kind}
+                    src={resource.src}
+                    mode="source"
+                    label={`Fuente ${shortName(resource.src)}`}
+                    sizes="96px"
+                    className={assignmentStyles.choiceThumb}
+                  />
                   <span className={assignmentStyles.choiceMeta}>
                     <strong>{shortName(resource.src)}</strong>
                     <small>{resource.kind === "video" ? `WebM · ${formatBytes(resource.bytes)}` : formatBytes(resource.bytes)}</small>
@@ -300,9 +299,32 @@ export default function GameDetailMediaEditor({
         />
 
         <div className={assignmentStyles.currentResource}>
-          {assignment.mode !== "video" && imageResource ? (
-            <span className={assignmentStyles.currentThumb}>
-              <Image src={imageResource.src} alt="" fill sizes="72px" />
+          {(assignment.mode !== "video" && imageResource) || (assignment.mode !== "image" && videoResource) ? (
+            <span className={`${assignmentStyles.currentMediaSet} ${assignment.mode === "hover-video" && imageResource && videoResource ? assignmentStyles.currentMediaPair : ""}`}>
+              {assignment.mode !== "video" && imageResource && (
+                <AdminMediaThumbnail
+                  kind="image"
+                  src={imageResource.src}
+                  viewport={assignment.imageViewport ?? undefined}
+                  mode="destination"
+                  frameAspect={16 / 9}
+                  label="Contenedor adaptable · imagen"
+                  badge="ADAPTABLE"
+                  className={assignmentStyles.currentThumb}
+                />
+              )}
+              {assignment.mode !== "image" && videoResource && (
+                <AdminMediaThumbnail
+                  kind="video"
+                  src={videoResource.src}
+                  viewport={assignment.video?.viewport}
+                  mode="destination"
+                  frameAspect={16 / 9}
+                  label="Contenedor adaptable · video"
+                  badge="ADAPTABLE"
+                  className={assignmentStyles.currentThumb}
+                />
+              )}
             </span>
           ) : (
             <span className={assignmentStyles.currentIcon}>

@@ -24,6 +24,7 @@ const [
   card,
   hoverPreview,
   framedVideo,
+  framedLayout,
   videoMedia,
   validation,
   importRoute,
@@ -44,6 +45,7 @@ const [
   source("src/components/ui/UniversalGameCard.tsx"),
   source("src/components/ui/HoverPreviewMedia.tsx"),
   source("src/components/ui/FramedVideo.tsx"),
+  source("src/lib/media/framed-media-layout.ts"),
   source("src/lib/media/game-video-media.ts"),
   source("src/lib/admin/content-validation.ts"),
   source("src/app/api/admin/content/games/[slug]/preview-import/route.ts"),
@@ -244,7 +246,8 @@ assert(
 
 assert(
   has(hoverPreview, "FramedVideo", 'preload="none"', "active && previewClip") &&
-    has(framedVideo, "resolvePreviewViewportCrop", "ResizeObserver"),
+    has(framedVideo, "resolveFramedMediaLayout", "ResizeObserver") &&
+    has(framedLayout, "resolvePreviewViewportCrop", "frameWidth / crop.width", "frameHeight / crop.height"),
   "El hover de Card debe cargar diferido y aplicar el recorte lógico sin crear una segunda variante física."
 );
 
