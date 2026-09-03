@@ -113,6 +113,7 @@ export default function ImageViewportEditor({
   return (
     <>
       <MediaViewportEditor
+        key={`image:${target}:${src}:${requiredAspect}`}
         kind="image"
         src={src}
         sourceLabel={label}
