@@ -281,6 +281,7 @@ export default function ImageViewportEditor({
                     ...current,
                     x: round(clamp(Number(event.target.value) / 100)),
                   }))
+                }
               />
             </label>
             <label>
@@ -297,6 +298,7 @@ export default function ImageViewportEditor({
                     ...current,
                     y: round(clamp(Number(event.target.value) / 100)),
                   }))
+                }
               />
             </label>
           </div>
