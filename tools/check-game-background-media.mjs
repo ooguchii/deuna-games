@@ -23,6 +23,7 @@ const [
   publicBackgroundCss,
   publicLayout,
   multimediaEditor,
+  multimediaWorkspace,
 ] = await Promise.all([
   source("src/types/game.ts"),
   source("src/lib/admin/content-validation.ts"),
@@ -36,6 +37,7 @@ const [
   source("src/components/games/GameDetailBackground.module.css"),
   source("src/app/juegos/[slug]/layout.tsx"),
   source("src/components/admin/GameMultimediaEditor.tsx"),
+  source("src/components/admin/GameMultimediaWorkspaceContextual.tsx"),
 ]);
 
 assert(
@@ -123,8 +125,9 @@ assert(
 assert(
   has(
     admin,
-    "FONDO DEL JUEGO · ADAPTABLE",
-    'Imagen + hover',
+    "Fondo del juego",
+    "Opcional · foco adaptable",
+    "Imagen + hover",
     "Usar fondo global",
     "Falta seleccionar imagen",
     "Falta seleccionar video",
@@ -132,9 +135,13 @@ assert(
     "Falta ajustar el foco del video",
     "Imagen base seleccionada",
     "Video hover seleccionado",
-    "GameBackgroundViewportEditor"
+    "GameBackgroundViewportEditor",
+    "assignmentStyles.assignmentCard",
+    "assignmentStyles.modeSwitch",
+    "assignmentStyles.currentResource",
+    "assignmentStyles.assignmentActions"
   ),
-  "El Admin debe exponer tres modos, fallback global y estados rojo/verde por capa."
+  "El Fondo debe verse como un destino más del workspace, con los mismos patrones de modo, recurso, estados y acciones."
 );
 
 assert(
@@ -187,9 +194,19 @@ assert(
 );
 
 assert(
-  multimediaEditor.includes("GameBackgroundMediaEditor") &&
-    multimediaEditor.includes("<GameBackgroundMediaEditor slug={slug} />"),
-  "Multimedia debe presentar el módulo Fondo junto al workspace de destinos existentes."
+  has(
+    multimediaEditor,
+    "backgroundEditor={",
+    "<GameBackgroundMediaEditor slug={slug} />"
+  ) &&
+    has(
+      multimediaWorkspace,
+      "backgroundEditor: ReactNode",
+      "{backgroundEditor}",
+      "<span>E</span><h3>Galería del juego</h3>",
+      "Fondo · adaptable"
+    ),
+  "Multimedia debe ordenar Portada → Hero → Card → Fondo → Galería dentro de Asignación de destinos, sin volver a montar Fondo como panel separado."
 );
 
 if (failures.length) {
@@ -199,5 +216,5 @@ if (failures.length) {
 }
 
 console.log(
-  "Game background media: OK (override opcional, bytes compartidos, foco adaptable, modos imagen/video/hover y fallback global/móvil)."
+  "Game background media: OK (Fondo integrado en destinos, override opcional, bytes compartidos, foco adaptable y fallback global/móvil)."
 );
