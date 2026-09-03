@@ -16,6 +16,7 @@ const [
   gameVideoMedia,
   libraryRoute,
   workspace,
+  mediaViewportEditor,
   heroSection,
 ] = await Promise.all([
   source("src/types/game.ts"),
@@ -23,6 +24,7 @@ const [
   source("src/lib/media/game-video-media.ts"),
   source("src/app/api/admin/content/games/[slug]/media-library/route.ts"),
   source("src/components/admin/GameMultimediaWorkspaceContextual.tsx"),
+  source("src/components/admin/MediaViewportEditor.tsx"),
   source("src/components/home/HeroSection.tsx"),
 ]);
 
@@ -102,6 +104,18 @@ assert(
 
 assert(
   has(
+    mediaViewportEditor,
+    'width: `min(100%, ${resultPreviewSize.width}px)`',
+    'aspectRatio: `${sourceCrop.width} / ${sourceCrop.height}`',
+    "data-preview-aspect={requiredAspect}",
+    "resolvePreviewViewportCrop"
+  ) &&
+    !mediaViewportEditor.includes("height: resultPreviewSize.height"),
+  "El resultado final de imagen debe conservar 4:5/16:9/3:2 al adaptarse a paneles estrechos; el ancho responsive no puede deformar la altura del recorte."
+);
+
+assert(
+  has(
     heroSection,
     'const FINE_HOVER_MEDIA = "(hover: hover) and (pointer: fine)"',
     'resolveGameDestinationMediaMode(game, "hero")',
@@ -128,5 +142,5 @@ if (failures.length) {
 }
 
 console.log(
-  "Hero hover video: OK (modo explícito Imagen | Video | Imagen+hover, selección/recortes por capa y reproducción pública accesible)."
+  "Hero hover video: OK (modo explícito Imagen | Video | Imagen+hover, selección/recortes por capa, preview responsive exacto y reproducción pública accesible)."
 );
