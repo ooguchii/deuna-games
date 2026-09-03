@@ -38,9 +38,10 @@ const RESULT_PREVIEW_MAX_HEIGHT = 220;
 const DEFAULT_FREE_ASPECT_RATIO = 16 / 9;
 const FREE_RESIZE_KEYBOARD_STEP = 0.02;
 const FREE_RESIZE_KEYBOARD_LARGE_STEP = 0.08;
+const RESIZE_HANDLES = ["nw", "n", "ne", "e", "se", "s", "sw", "w"] as const;
 
 type MediaKind = "image" | "video";
-type ResizeHandle = "n" | "ne" | "e" | "se" | "s" | "sw" | "w" | "nw";
+type ResizeHandle = (typeof RESIZE_HANDLES)[number];
 
 type MediaBox = {
   left: number;
@@ -90,6 +91,13 @@ function clamp(value: number, minimum: number, maximum: number) {
 
 function roundViewport(value: number) {
   return Math.round(value * 10_000) / 10_000;
+}
+
+function isResizeHandle(value: string | undefined): value is ResizeHandle {
+  return Boolean(
+    value &&
+    (RESIZE_HANDLES as readonly string[]).includes(value)
+  );
 }
 
 function aspectOption(aspect: PreviewViewport["aspect"]) {
@@ -164,12 +172,9 @@ function viewportFromCrop(
   const ratio = crop.width / crop.height;
   const sourceRatio = sourceWidth / sourceHeight;
   let baseWidth = sourceWidth;
-  let baseHeight = sourceHeight;
 
   if (sourceRatio > ratio) {
     baseWidth = sourceHeight * ratio;
-  } else if (sourceRatio < ratio) {
-    baseHeight = sourceWidth / ratio;
   }
 
   const zoom = baseWidth / crop.width;
@@ -530,8 +535,9 @@ export default function MediaViewportEditor({
     return crop ? viewportFromCrop(sourceWidth, sourceHeight, crop) : null;
   }
 
-  function startResize(handle: ResizeHandle, event: PointerEvent<HTMLButtonElement>) {
-    if (!freeResizeEnabled || !sourceCrop || disabled) return;
+  function startResize(event: PointerEvent<HTMLButtonElement>) {
+    const handle = event.currentTarget.dataset.resizeHandle;
+    if (!isResizeHandle(handle) || !freeResizeEnabled || !sourceCrop || disabled) return;
     event.stopPropagation();
     videoRef.current?.pause();
     resizeDragRef.current = {
@@ -578,8 +584,9 @@ export default function MediaViewportEditor({
     }
   }
 
-  function handleResizeKey(handle: ResizeHandle, event: KeyboardEvent<HTMLButtonElement>) {
-    if (!freeResizeEnabled || !sourceCrop) return;
+  function handleResizeKey(event: KeyboardEvent<HTMLButtonElement>) {
+    const handle = event.currentTarget.dataset.resizeHandle;
+    if (!isResizeHandle(handle) || !freeResizeEnabled || !sourceCrop) return;
     const horizontal = event.key === "ArrowLeft" || event.key === "ArrowRight";
     const vertical = event.key === "ArrowUp" || event.key === "ArrowDown";
     if (!horizontal && !vertical) return;
@@ -650,7 +657,6 @@ export default function MediaViewportEditor({
 
   const currentAspectSummary = aspectSummary(viewportDraft);
   const lockedAspectLabel = requiredAspect ? aspectLabel(requiredAspect) : null;
-  const resizeHandles: ResizeHandle[] = ["nw", "n", "ne", "e", "se", "s", "sw", "w"];
 
   return (
     <div className={styles.editor}>
@@ -736,7 +742,7 @@ export default function MediaViewportEditor({
                 )}
               </div>
 
-              {freeResizeEnabled && resizeHandles.map((handle) => {
+              {freeResizeEnabled && RESIZE_HANDLES.map((handle) => {
                 const position = resizeHandlePosition(handle, viewportRect);
                 const sideHandle = handle.length === 1;
                 const horizontalSide = handle === "n" || handle === "s";
@@ -744,6 +750,7 @@ export default function MediaViewportEditor({
                   <button
                     key={handle}
                     type="button"
+                    data-resize-handle={handle}
                     disabled={disabled}
                     aria-label={`Redimensionar recorte desde ${handleLabel(handle)}`}
                     title="Arrastra para cambiar libremente el tamaño del recorte"
@@ -764,11 +771,11 @@ export default function MediaViewportEditor({
                       touchAction: "none",
                       opacity: disabled ? 0.48 : 1,
                     }}
-                    onPointerDown={(event) => startResize(handle, event)}
+                    onPointerDown={startResize}
                     onPointerMove={moveResize}
                     onPointerUp={finishResize}
                     onPointerCancel={cancelResize}
-                    onKeyDown={(event) => handleResizeKey(handle, event)}
+                    onKeyDown={handleResizeKey}
                   />
                 );
               })}
