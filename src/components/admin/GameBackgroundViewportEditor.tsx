@@ -55,7 +55,7 @@ function AdaptivePreview({
       <div className={styles.previewHeading}>
         <div>
           <span>PREVISUALIZACIÓN ADAPTABLE</span>
-          <strong>Un foco, distintas pantallas</strong>
+          <strong>Un recorte, distintas pantallas</strong>
         </div>
         <p>
           Estas dos ventanas usan la misma posición y zoom que se publicarán.
@@ -137,7 +137,7 @@ export default function GameBackgroundViewportEditor({
   async function save() {
     if (busy) return;
     setBusy(true);
-    setStatus(`Confirmando el foco adaptable de ${kind === "image" ? "la imagen" : "el video"}…`);
+    setStatus(`Confirmando el recorte adaptable de ${kind === "image" ? "la imagen" : "el video"}…`);
 
     try {
       const response = await fetch(
@@ -162,7 +162,7 @@ export default function GameBackgroundViewportEditor({
 
       const payload = await response.json().catch(() => null) as { error?: string } | null;
       if (!response.ok) {
-        throw new Error(payload?.error ?? "El servidor rechazó el foco del fondo.");
+        throw new Error(payload?.error ?? "El servidor rechazó el recorte adaptable del fondo.");
       }
 
       await onSaved();
@@ -171,7 +171,7 @@ export default function GameBackgroundViewportEditor({
       setStatus(
         error instanceof Error
           ? error.message
-          : "No se pudo guardar el foco del fondo."
+          : "No se pudo guardar el recorte adaptable del fondo."
       );
       setBusy(false);
     }
@@ -217,7 +217,7 @@ export default function GameBackgroundViewportEditor({
           disabled={busy}
           onClick={() => void save()}
         >
-          {busy ? "Guardando…" : "Confirmar foco adaptable"}
+          {busy ? "Guardando…" : "Confirmar recorte adaptable"}
         </button>
       </div>
     </>
