@@ -34,14 +34,41 @@ const localImageSchema = z
   .max(400)
   .refine(isSafeLocalImagePath);
 
+const imageViewportAspectSchema = z.enum([
+  "16:9",
+  "3:2",
+  "1:1",
+  "4:5",
+  "9:16",
+  "free",
+]);
+
 const imageViewportSchema = z
   .object({
     x: z.number().min(0).max(1),
     y: z.number().min(0).max(1),
     zoom: z.number().min(1).max(3),
+    aspect: imageViewportAspectSchema.optional(),
+    aspectRatio: z.number().min(0.1).max(10).optional(),
     confirmed: z.literal(true).optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((viewport, context) => {
+    if (viewport.aspect === "free" && viewport.aspectRatio === undefined) {
+      context.addIssue({
+        code: "custom",
+        path: ["aspectRatio"],
+        message: "Un recorte libre debe conservar su relación exacta.",
+      });
+    }
+    if (viewport.aspect !== "free" && viewport.aspectRatio !== undefined) {
+      context.addIssue({
+        code: "custom",
+        path: ["aspectRatio"],
+        message: "La relación numérica sólo corresponde a un recorte libre.",
+      });
+    }
+  });
 
 const galleryImageMediaSchema = z.record(
   z.string().min(1).max(400),
