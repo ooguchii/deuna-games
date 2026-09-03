@@ -642,7 +642,7 @@ export default function GameMultimediaWorkspaceContextual({
         <div className={styles.primaryColumn}>
           <section className={styles.numberedSection} aria-labelledby="destination-assignment-heading">
             <div className={styles.sectionTitleRow}>
-              <div><span>01</span><div><h2 id="destination-assignment-heading">Asignación de destinos</h2><p>Primero asigna cada recurso y confirma su recorte obligatorio. No podrás avanzar a Descargas mientras exista un requisito pendiente.</p></div></div>
+              <div><span>01</span><div><h2 id="destination-assignment-heading">Asignación de destinos</h2><p>Editar destino ahora significa confirmar el recorte obligatorio. No podrás avanzar a Descargas mientras exista un requisito pendiente.</p></div></div>
             </div>
 
             <div className={styles.assignmentGrid}>
