@@ -367,10 +367,6 @@ export default function MediaViewportEditor({
       ...viewportDraft,
       x,
       y: 0.5,
-      zoom:
-        side === "center"
-          ? viewportDraft.zoom
-          : Math.max(2, viewportDraft.zoom),
     });
   }
 
@@ -608,7 +604,7 @@ export default function MediaViewportEditor({
               </canvas>
             </div>
             <small>
-              La previsualización usa el mismo encuadre que se guardará para este destino. Izquierda/Derecha aplican al menos 200% de zoom.
+              La previsualización usa el mismo encuadre que se guardará para este destino. Los presets cambian sólo la posición; el zoom permanece bajo tu control.
             </small>
           </div>
         </aside>
