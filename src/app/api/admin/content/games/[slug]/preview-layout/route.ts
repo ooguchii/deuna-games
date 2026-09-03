@@ -10,6 +10,7 @@ import {
   type GameCardVideoSource,
   type GameVideoTarget,
 } from "@/lib/media/game-video-media";
+import { REQUIRED_DESTINATION_ASPECTS } from "@/lib/media/game-media-requirements";
 import { parsePreviewViewport } from "@/lib/media/preview-video-policy";
 
 export const dynamic = "force-dynamic";
@@ -85,14 +86,24 @@ export async function POST(
   );
   const target = parseTarget(authorized.form.get("target"));
   const source = parseSource(authorized.form.get("source"));
-  const viewport = parsePreviewViewport(
-    authorized.form.get("viewportX"),
-    authorized.form.get("viewportY"),
-    authorized.form.get("viewportZoom"),
-    authorized.form.get("viewportAspect")
-  );
+  const requiredAspect = target ? REQUIRED_DESTINATION_ASPECTS[target] : null;
+  const submittedAspect = authorized.form.get("viewportAspect");
+  const viewport = requiredAspect
+    ? parsePreviewViewport(
+        authorized.form.get("viewportX"),
+        authorized.form.get("viewportY"),
+        authorized.form.get("viewportZoom"),
+        requiredAspect
+      )
+    : null;
 
-  if (!revision.success || !target || !source || !viewport) {
+  if (
+    !revision.success ||
+    !target ||
+    !source ||
+    !viewport ||
+    submittedAspect !== requiredAspect
+  ) {
     return adminRedirect(
       authorized.adminOrigin,
       `${redirectTarget}?estado=preview-encuadre-invalido&seccion=multimedia`
