@@ -28,6 +28,9 @@ import {
   reconcileEditorialImageDeletions,
 } from "@/lib/media/editorial-media-library";
 import {
+  evaluateGameMediaReadiness,
+} from "@/lib/media/game-media-readiness";
+import {
   DEFAULT_GAME_IMAGE_VIEWPORT,
 } from "@/lib/media/image-viewport";
 import {
@@ -177,6 +180,7 @@ export async function GET(
     {
       revision: item.revision,
       resources,
+      readiness: evaluateGameMediaReadiness(item.payload),
       assignments: {
         coverImage: item.payload.coverImage ?? null,
         heroImage: item.payload.heroImage ?? null,
