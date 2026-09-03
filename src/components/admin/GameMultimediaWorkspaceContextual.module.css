@@ -161,8 +161,81 @@
   opacity: 0.72;
 }
 
+.libraryGroups {
+  display: grid;
+  gap: 18px;
+  margin-top: 16px;
+}
+
+.libraryGroup {
+  min-width: 0;
+  padding-top: 2px;
+}
+
+.libraryGroup + .libraryGroup {
+  padding-top: 17px;
+  border-top: 1px solid #1d2b37;
+}
+
+.libraryGroupHeading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.libraryGroupHeading > div {
+  display: grid;
+  gap: 3px;
+}
+
+.libraryGroupHeading strong {
+  color: #ff8d3a;
+  font-size: 12px;
+  font-weight: 950;
+  letter-spacing: 0.06em;
+}
+
+.libraryGroupHeading span,
+.libraryGroupHeading small,
+.libraryGroupEmpty {
+  color: #8294a5;
+  font-size: 12px;
+}
+
+.libraryGroupEmpty {
+  margin-top: 10px;
+  padding: 14px;
+  border: 1px dashed #283946;
+  border-radius: 9px;
+  background: #080e15;
+}
+
 .deletableArtwork {
   position: relative;
+}
+
+.libraryPreviewButton {
+  display: block;
+  width: 100%;
+  padding: 0;
+  overflow: hidden;
+  color: inherit;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  cursor: zoom-in;
+  text-align: inherit;
+}
+
+.libraryPreviewButton:hover {
+  outline: 1px solid rgba(255, 122, 24, 0.62);
+  outline-offset: 2px;
+}
+
+.libraryPreviewButton:focus-visible {
+  outline: 2px solid rgba(255, 151, 76, 0.95);
+  outline-offset: 2px;
 }
 
 .deleteResourceForm {
@@ -181,8 +254,8 @@
   padding: 0;
   color: #ffe4e4;
   border: 1px solid rgba(242, 104, 104, 0.72);
-  border-radius: 999px;
-  background: rgba(67, 18, 24, 0.9);
+  border-radius: 7px;
+  background: rgba(67, 18, 24, 0.92);
   box-shadow: 0 5px 16px rgba(0, 0, 0, 0.36);
   cursor: pointer;
   backdrop-filter: blur(7px);
@@ -388,12 +461,14 @@
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .deleteResourceButton {
+  .deleteResourceButton,
+  .libraryPreviewButton {
     transition:
       background 150ms ease,
       border-color 150ms ease,
       color 150ms ease,
-      transform 150ms ease;
+      transform 150ms ease,
+      outline-color 150ms ease;
   }
 
   .requirementActionComplete,
@@ -417,15 +492,16 @@
     position: static;
   }
 
-  .galleryMiniGrid,
-  .galleryManageGrid {
-    grid-template-columns: 1fr;
-  }
-
+  .libraryGroupHeading,
   .galleryManagerHeader,
   .continueGate {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .galleryMiniGrid,
+  .galleryManageGrid {
+    grid-template-columns: 1fr;
   }
 
   .continueButton {
