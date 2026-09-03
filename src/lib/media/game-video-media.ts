@@ -30,14 +30,20 @@ export function normalizeGameVideoViewport(
 ): GameVideoViewport {
   if (!viewport) return defaultViewport();
 
-  return (
-    parsePreviewViewport(
-      String(viewport.x),
-      String(viewport.y),
-      String(viewport.zoom),
-      viewport.aspect
-    ) ?? defaultViewport()
+  const parsed = parsePreviewViewport(
+    String(viewport.x),
+    String(viewport.y),
+    String(viewport.zoom),
+    viewport.aspect
   );
+  if (!parsed) return defaultViewport();
+
+  return {
+    ...parsed,
+    ...(Boolean((viewport as GameVideoViewport).confirmed)
+      ? { confirmed: true as const }
+      : {}),
+  };
 }
 
 export function resolveGameHeroVideoPlayback(
@@ -105,9 +111,6 @@ export function withSavedGameVideoClip(
   if (target === "hero") {
     let card = current?.card;
 
-    // La primera vez que se configura Hero, una Card sin video previo comparte
-    // ese mismo master. Si existe previewClip histórico lo preservamos como
-    // independiente para no cambiar visualmente un juego ya publicado.
     if (!card) {
       card = game.previewClip
         ? {
@@ -146,7 +149,6 @@ export function withSavedGameVideoClip(
       ...current,
       card,
     },
-    // Se espeja para clientes/payloads históricos que todavía lean previewClip.
     previewClip: clip,
   };
 }
@@ -157,7 +159,10 @@ export function withGameVideoLayout(
   source: GameCardVideoSource,
   viewport: PreviewViewport
 ): GameVideoMedia | null {
-  const normalizedViewport = normalizeGameVideoViewport(viewport);
+  const normalizedViewport: GameVideoViewport = {
+    ...normalizeGameVideoViewport(viewport),
+    confirmed: true,
+  };
   const current = game.videoMedia;
 
   if (target === "hero") {
