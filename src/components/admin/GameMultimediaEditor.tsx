@@ -1,4 +1,3 @@
-import GameBackgroundMediaEditor from "@/components/admin/GameBackgroundMediaEditor";
 import GameMultimediaWorkspaceContextual from "@/components/admin/GameMultimediaWorkspaceContextual";
 import GameVideoLibraryEditor from "@/components/admin/GameVideoLibraryEditor";
 
@@ -25,9 +24,6 @@ export default function GameMultimediaEditor({
       initialCoverImage={coverImage}
       initialHeroImage={heroImage}
       initialScreenshots={screenshots}
-      backgroundEditor={
-        <GameBackgroundMediaEditor slug={slug} />
-      }
       videoEditor={
         <GameVideoLibraryEditor
           slug={slug}
