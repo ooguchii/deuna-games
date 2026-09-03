@@ -13,7 +13,12 @@ const gameFinderRoot = path.join(
 
 const files = {
   games: path.join(root, "src", "data", "games.ts"),
-  updates: path.join(root, "src", "data", "updates.ts"),
+  updates: path.join(
+    root,
+    "src",
+    "data",
+    "update-records.ts"
+  ),
   performance: path.join(
     gameFinderRoot,
     "performance-data.ts"

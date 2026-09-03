@@ -62,7 +62,7 @@
   transform: translateZ(14px);
 }
 
-.tiltCard .tiltMedia > img {
+.tiltCard .tiltMedia img {
   transform:
     translate3d(var(--image-x), var(--image-y), 0)
     scale(1.015);
@@ -96,7 +96,7 @@
     opacity: 1;
   }
 
-  .tiltCard:hover .tiltMedia > img {
+  .tiltCard:hover .tiltMedia img {
     transform:
       translate3d(var(--image-x), var(--image-y), 0)
       scale(1.075);
@@ -122,7 +122,7 @@
     display: none;
   }
 
-  .tiltCard .tiltMedia > img {
+  .tiltCard .tiltMedia img {
     transform: none;
   }
 }
@@ -138,7 +138,7 @@
     display: none;
   }
 
-  .tiltCard .tiltMedia > img {
+  .tiltCard .tiltMedia img {
     transform: none;
     transition: none;
   }

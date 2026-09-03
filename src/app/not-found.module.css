@@ -55,7 +55,7 @@
   background:
     color-mix(
       in srgb,
-      var(--accent-violet) 14%,
+      var(--brand) 14%,
       transparent
     );
 
@@ -73,16 +73,16 @@
 
   margin: 0 auto 20px;
 
-  color: var(--accent-gold);
+  color: var(--brand-light);
 
   border:
     1px solid
-    color-mix(in srgb, var(--accent-gold) 30%, transparent);
+    color-mix(in srgb, var(--brand) 30%, transparent);
 
   border-radius: 18px;
 
   background:
-    color-mix(in srgb, var(--accent-gold) 7%, var(--surface));
+    color-mix(in srgb, var(--brand) 7%, var(--surface));
 }
 
 .code {
@@ -166,9 +166,9 @@
 }
 
 .primary {
-  color: #ffffff;
+  color: var(--text-on-brand);
 
-  background: var(--gradient-brand-gold);
+  background: var(--gradient-cta);
 
   box-shadow:
     0 12px 30px

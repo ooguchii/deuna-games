@@ -6,12 +6,13 @@ import {
 } from "lucide-react";
 
 import GameMedia from "@/components/ui/GameMedia";
-import {
-  latestUpdates,
-} from "@/data/home";
+import type { HomeCopy } from "@/data/home-config";
 import {
   formatUpdateDate,
 } from "@/lib/updates/catalog";
+import type {
+  ResolvedGameUpdate,
+} from "@/types/update";
 
 import styles from "./LatestUpdates.module.css";
 
@@ -23,7 +24,15 @@ const fallbackClassBySlug:
       "stellarBlade",
   };
 
-export default function LatestUpdates() {
+type LatestUpdatesProps = {
+  updates: readonly ResolvedGameUpdate[];
+  copy: HomeCopy["updates"];
+};
+
+export default function LatestUpdates({
+  updates,
+  copy,
+}: LatestUpdatesProps) {
   return (
     <section
       className={
@@ -36,14 +45,14 @@ export default function LatestUpdates() {
         }
       >
         <h2>
-          ÚLTIMAS{" "}
+          {copy.title}{" "}
           <span>
-            ACTUALIZACIONES
+            {copy.highlight}
           </span>
         </h2>
 
         <Link href="/actualizaciones">
-          Ver todas las actualizaciones
+          {copy.linkLabel}
         </Link>
       </div>
 
@@ -52,7 +61,7 @@ export default function LatestUpdates() {
           styles.grid
         }
       >
-        {latestUpdates.map(
+        {updates.map(
           (update) => {
             const fallbackClass =
               fallbackClassBySlug[
@@ -89,6 +98,14 @@ export default function LatestUpdates() {
                           .imageAlt
                       }
                       sizes="(max-width: 650px) 100vw, (max-width: 1150px) 240px, 13vw"
+                      viewport={
+                        update.game
+                          .imageMedia
+                          ?.card ??
+                        update.game
+                          .imageMedia
+                          ?.cover
+                      }
                       fallbackClassName={
                         fallbackClass
                           ? styles[
@@ -119,7 +136,7 @@ export default function LatestUpdates() {
                         styles.badge
                       }
                     >
-                      ACTUALIZADO
+                      {copy.badgeLabel}
                     </span>
                   </div>
 
@@ -172,7 +189,7 @@ export default function LatestUpdates() {
                         styles.details
                       }
                     >
-                      Ver juego
+                      {copy.detailsLabel}
                       <ChevronRight
                         size={16}
                       />

@@ -48,6 +48,7 @@ const requiredStageItems = [
   "next.config.ts",
   "tsconfig.json",
   "next-env.d.ts",
+  "tools/run-next.mjs",
   "tools/smoke-test.mjs",
 ];
 
@@ -607,6 +608,8 @@ for (const script of [
   "check:source",
   "check:encoding",
   "check:privacy",
+  "check:admin-security",
+  "check:admin-content",
   "check:data",
   "check:assets",
   "check:routes",

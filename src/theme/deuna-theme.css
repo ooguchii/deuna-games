@@ -3,21 +3,15 @@
 DEUNA GAMES — THEME SYSTEM V2
 ============================================================
 
-ESTE ES EL ARCHIVO QUE SE EDITA PARA CAMBIAR LA PALETA.
-
-CAMBIA SOLAMENTE EL BLOQUE "PALETA EDITABLE".
-El resto son tokens derivados y gradientes del sistema.
-
-La idea:
-- Crimson = identidad / acciones
-- Gold    = brillo / rating / datos destacados
-- Violet  = profundidad / ambient / hover
-- Dark    = base premium, no negro plano
+La identidad visible se deriva de --theme-brand y --theme-bg,
+que pueden ser publicados desde Configuración. Los tonos gold
+se reservan para datos/rating cuando tienen significado propio;
+los acentos puramente decorativos siguen la marca configurada.
 */
 
 :root {
   /* =========================================================
-     PALETA EDITABLE
+     PALETA BASE / FALLBACK
      ========================================================= */
 
   --theme-bg: #05060b;
@@ -35,14 +29,16 @@ La idea:
   --theme-text-muted: #7d8898;
 
   --theme-brand: #ff0847;
-  --theme-brand-light: #ff416f;
-  --theme-brand-dark: #d9003c;
+  --theme-brand-light: color-mix(in srgb, var(--theme-brand) 78%, white);
+  --theme-brand-dark: color-mix(in srgb, var(--theme-brand) 82%, black);
 
+  /* Gold queda disponible como acento semántico: rating/premio/dato. */
   --theme-gold: #ffc43d;
   --theme-gold-light: #ffdc72;
 
-  --theme-violet: #7b61ff;
-  --theme-violet-light: #a58fff;
+  /* Nombre legado: visualmente ya no es un violeta fijo. */
+  --theme-violet: color-mix(in srgb, var(--theme-brand) 72%, var(--theme-bg));
+  --theme-violet-light: color-mix(in srgb, var(--theme-brand) 72%, white);
 
   --theme-success: #20cf79;
   --theme-warning: #ffa51f;
@@ -60,7 +56,7 @@ La idea:
   --text: var(--theme-text);
   --text-soft: var(--theme-text-soft);
   --text-muted: var(--theme-text-muted);
-  --text-on-brand: #ffffff;
+  --text-on-brand: var(--theme-on-brand, #ffffff);
 
   --brand: var(--theme-brand);
   --brand-light: var(--theme-brand-light);
@@ -81,48 +77,48 @@ La idea:
   --panel-border-hover: color-mix(in srgb, var(--brand) 34%, transparent);
 
   --shadow-brand: 0 14px 38px color-mix(in srgb, var(--brand) 22%, transparent);
-  --shadow-violet: 0 18px 48px color-mix(in srgb, var(--accent-violet) 11%, transparent);
+  --shadow-violet: 0 18px 48px color-mix(in srgb, var(--brand) 11%, transparent);
   --shadow-gold: 0 16px 40px color-mix(in srgb, var(--accent-gold) 10%, transparent);
 
-  /* GRADIENTES GLOBALES */
+  /* GRADIENTES GLOBALES: decoración ligada a marca + fondo. */
   --gradient-page:
     radial-gradient(1050px 690px at 7% -8%, color-mix(in srgb, var(--brand) 14%, transparent), transparent 67%),
-    radial-gradient(960px 680px at 96% 13%, color-mix(in srgb, var(--accent-violet) 13%, transparent), transparent 69%),
-    radial-gradient(820px 540px at 52% 108%, color-mix(in srgb, var(--accent-gold) 6%, transparent), transparent 72%),
+    radial-gradient(960px 680px at 96% 13%, color-mix(in srgb, var(--brand) 9%, transparent), transparent 69%),
+    radial-gradient(820px 540px at 52% 108%, color-mix(in srgb, var(--brand) 4%, transparent), transparent 72%),
     linear-gradient(180deg, var(--background) 0%, var(--background-deep) 100%);
 
   --gradient-header:
-    radial-gradient(560px 180px at 77% -55%, color-mix(in srgb, var(--accent-violet) 13%, transparent), transparent 72%),
+    radial-gradient(560px 180px at 77% -55%, color-mix(in srgb, var(--brand) 10%, transparent), transparent 72%),
     linear-gradient(180deg, color-mix(in srgb, var(--surface) 94%, transparent), color-mix(in srgb, var(--background) 90%, transparent));
 
   --gradient-footer:
     radial-gradient(740px 300px at 12% 120%, color-mix(in srgb, var(--brand) 8%, transparent), transparent 70%),
-    radial-gradient(660px 280px at 90% 118%, color-mix(in srgb, var(--accent-violet) 8%, transparent), transparent 72%),
+    radial-gradient(660px 280px at 90% 118%, color-mix(in srgb, var(--brand) 6%, transparent), transparent 72%),
     linear-gradient(180deg, var(--surface) 0%, var(--background-deep) 100%);
 
   --gradient-panel:
-    radial-gradient(520px 270px at 98% -18%, color-mix(in srgb, var(--accent-violet) 8%, transparent), transparent 71%),
-    radial-gradient(430px 240px at 2% 115%, color-mix(in srgb, var(--accent-gold) 3.5%, transparent), transparent 72%),
+    radial-gradient(520px 270px at 98% -18%, color-mix(in srgb, var(--brand) 7%, transparent), transparent 71%),
+    radial-gradient(430px 240px at 2% 115%, color-mix(in srgb, var(--brand) 3.5%, transparent), transparent 72%),
     linear-gradient(155deg, var(--surface-2) 0%, var(--surface) 52%, var(--background) 100%);
 
   --gradient-panel-strong:
-    radial-gradient(620px 300px at 96% -12%, color-mix(in srgb, var(--accent-violet) 12%, transparent), transparent 70%),
-    radial-gradient(460px 250px at 5% 112%, color-mix(in srgb, var(--accent-gold) 5%, transparent), transparent 72%),
+    radial-gradient(620px 300px at 96% -12%, color-mix(in srgb, var(--brand) 10%, transparent), transparent 70%),
+    radial-gradient(460px 250px at 5% 112%, color-mix(in srgb, var(--brand) 4.5%, transparent), transparent 72%),
     linear-gradient(150deg, var(--surface-3) 0%, var(--surface-2) 44%, var(--surface) 100%);
 
   --gradient-card: linear-gradient(165deg, var(--surface-2) 0%, var(--surface) 48%, var(--background) 100%);
 
   --gradient-card-hover:
-    radial-gradient(340px 200px at 100% 0%, color-mix(in srgb, var(--accent-violet) 9%, transparent), transparent 68%),
+    radial-gradient(340px 200px at 100% 0%, color-mix(in srgb, var(--brand) 8%, transparent), transparent 68%),
     linear-gradient(165deg, var(--surface-3) 0%, var(--surface-2) 48%, var(--surface) 100%);
 
   --gradient-feature:
-    radial-gradient(520px 290px at 86% 20%, color-mix(in srgb, var(--accent-violet) 15%, transparent), transparent 68%),
-    radial-gradient(390px 220px at 10% 108%, color-mix(in srgb, var(--accent-gold) 7%, transparent), transparent 72%),
+    radial-gradient(520px 290px at 86% 20%, color-mix(in srgb, var(--brand) 12%, transparent), transparent 68%),
+    radial-gradient(390px 220px at 10% 108%, color-mix(in srgb, var(--brand) 6%, transparent), transparent 72%),
     linear-gradient(115deg, var(--surface-2) 0%, var(--surface) 50%, color-mix(in srgb, var(--brand) 7%, var(--background)) 100%);
 
-  --gradient-cta: linear-gradient(135deg, var(--brand-light) 0%, var(--brand) 62%, color-mix(in srgb, var(--accent-violet) 72%, var(--brand-dark)) 150%);
-  --gradient-brand-gold: linear-gradient(90deg, var(--brand) 0%, var(--brand-light) 58%, var(--accent-gold) 145%);
+  --gradient-cta: linear-gradient(135deg, var(--brand-light) 0%, var(--brand) 62%, var(--brand-dark) 118%);
+  --gradient-brand-gold: linear-gradient(90deg, var(--brand-dark) 0%, var(--brand) 48%, var(--brand-light) 100%);
   --gradient-gold: linear-gradient(135deg, var(--accent-gold-light), var(--accent-gold));
 }
 
@@ -138,43 +134,16 @@ body { background: var(--gradient-page); }
 }
 
 /*
-PRESETS RÁPIDOS
+PRESETS RÁPIDOS DE REFERENCIA
 
-VIOLET / GOLD
+VIOLET
 --theme-bg: #06050b;
---theme-bg-deep: #020207;
---theme-surface-1: #0e0c19;
---theme-surface-2: #171326;
---theme-surface-3: #211a35;
---theme-control: #100d1d;
---theme-control-focus: #181229;
---theme-text: #faf8ff;
---theme-text-soft: #c4bdd3;
---theme-text-muted: #8e849e;
 --theme-brand: #9a63ff;
---theme-brand-light: #b990ff;
---theme-brand-dark: #7040d8;
---theme-gold: #ffc43d;
---theme-gold-light: #ffdc7c;
---theme-violet: #ff3f75;
---theme-violet-light: #ff759a;
 
-ELECTRIC BLUE / GOLD
+ELECTRIC BLUE
 --theme-bg: #04070c;
---theme-bg-deep: #020409;
---theme-surface-1: #08101b;
---theme-surface-2: #0d1928;
---theme-surface-3: #13243a;
---theme-control: #09131f;
---theme-control-focus: #0e1d30;
---theme-text: #f6f9fc;
---theme-text-soft: #b5c2d2;
---theme-text-muted: #76879a;
 --theme-brand: #16a4ff;
---theme-brand-light: #5cc1ff;
---theme-brand-dark: #0876c5;
---theme-gold: #ffc43d;
---theme-gold-light: #ffda76;
---theme-violet: #7b61ff;
---theme-violet-light: #aa98ff;
+
+Los secundarios decorativos se calculan automáticamente a partir de
+--theme-brand. Gold permanece separado únicamente para usos semánticos.
 */

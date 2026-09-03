@@ -1,0 +1,485 @@
+import { readdir, readFile } from "node:fs/promises";
+import path from "node:path";
+import process from "node:process";
+
+const root = process.cwd();
+const issues = [];
+
+function fail(message) {
+  issues.push(message);
+}
+
+function requirePattern(content, pattern, message) {
+  if (!pattern.test(content)) {
+    fail(message);
+  }
+}
+
+function forbidPattern(content, pattern, message) {
+  if (pattern.test(content)) {
+    fail(message);
+  }
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function createTableBlock(sql, qualifiedName) {
+  const pattern = new RegExp(
+    `CREATE\\s+TABLE\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?${escapeRegExp(qualifiedName)}\\s*\\(([\\s\\S]*?)\\n\\);`,
+    "i"
+  );
+  const match = sql.match(pattern);
+
+  if (!match) {
+    fail(`No se encontró la definición de ${qualifiedName}.`);
+    return "";
+  }
+
+  return match[1] ?? "";
+}
+
+async function read(relativePath) {
+  return readFile(path.join(root, relativePath), "utf8");
+}
+
+async function walk(directory) {
+  const entries = await readdir(directory, { withFileTypes: true });
+  const files = [];
+
+  for (const entry of entries) {
+    const absolute = path.join(directory, entry.name);
+
+    if (entry.isDirectory()) {
+      files.push(...(await walk(absolute)));
+      continue;
+    }
+
+    if (entry.isFile() && /\.(?:ts|tsx|js|mjs)$/.test(entry.name)) {
+      files.push(absolute);
+    }
+  }
+
+  return files;
+}
+
+const migrationsDirectory = path.join(root, "database", "migrations");
+const migrationNames = (await readdir(migrationsDirectory))
+  .filter((name) => /^\d{3}_[a-z0-9_]+\.sql$/.test(name))
+  .sort();
+const migrations = (
+  await Promise.all(
+    migrationNames.map((name) =>
+      readFile(path.join(migrationsDirectory, name), "utf8")
+    )
+  )
+).join("\n\n");
+
+const accountMigration = await read("database/migrations/009_account_foundation.sql");
+const personalizationMigration = await read("database/migrations/010_account_personalization.sql");
+const rewardsMigration = await read("database/migrations/011_account_rewards.sql");
+const usersTable = createTableBlock(accountMigration, "deuna_accounts.users");
+const sessionsTable = createTableBlock(accountMigration, "deuna_accounts.sessions");
+const recoveryTable = createTableBlock(accountMigration, "deuna_accounts.recovery_codes");
+const preferencesTable = createTableBlock(personalizationMigration, "deuna_accounts.game_preferences");
+const hardwareTable = createTableBlock(personalizationMigration, "deuna_accounts.hardware_profiles");
+const rewardProfilesTable = createTableBlock(rewardsMigration, "deuna_accounts.reward_profiles");
+const rewardEventsTable = createTableBlock(rewardsMigration, "deuna_accounts.reward_events");
+const adminUsersTable = createTableBlock(migrations, "deuna_admin.admin_users");
+
+requirePattern(
+  accountMigration,
+  /CREATE\s+SCHEMA\s+IF\s+NOT\s+EXISTS\s+deuna_accounts/i,
+  "La migración de cuentas debe conservar un esquema PostgreSQL separado."
+);
+requirePattern(
+  accountMigration,
+  /REVOKE\s+ALL\s+ON\s+SCHEMA\s+deuna_accounts\s+FROM\s+PUBLIC/i,
+  "El esquema de cuentas debe revocar el acceso de PUBLIC."
+);
+requirePattern(
+  usersTable,
+  /^\s*email_encrypted\s+text\b/im,
+  "El correo opcional debe persistirse únicamente como email_encrypted."
+);
+forbidPattern(
+  usersTable,
+  /^\s*email\s+(?:text|varchar|char)\b/im,
+  "La tabla pública no puede contener una columna de correo en texto plano."
+);
+forbidPattern(
+  adminUsersTable,
+  /^\s*email(?:_encrypted)?\s+(?:text|varchar|char)\b/im,
+  "Las cuentas administrativas no deben almacenar correo."
+);
+
+const forbiddenColumnPatterns = [
+  /^\s*(?:ip|ip_address|client_ip|remote_ip)\s+/im,
+  /^\s*(?:user_agent|device|device_id|device_fingerprint|fingerprint)\s+/im,
+  /^\s*(?:location|latitude|longitude|postal_code|address|address_line)\s+/im,
+  /^\s*(?:phone|telephone|legal_name|document|document_id|date_of_birth|birth_date|gender)\s+/im,
+  /^\s*(?:referrer|referer|navigation_history|browsing_history|view_history|last_viewed_at)\s+/im,
+];
+
+for (const [tableName, block] of [
+  ["users", usersTable],
+  ["sessions", sessionsTable],
+  ["recovery_codes", recoveryTable],
+  ["game_preferences", preferencesTable],
+  ["hardware_profiles", hardwareTable],
+  ["reward_profiles", rewardProfilesTable],
+  ["reward_events", rewardEventsTable],
+]) {
+  for (const pattern of forbiddenColumnPatterns) {
+    if (pattern.test(block)) {
+      fail(`deuna_accounts.${tableName} contiene una columna incompatible con minimización de datos.`);
+    }
+  }
+
+  forbidPattern(
+    block,
+    /REFERENCES\s+deuna_admin\./i,
+    `deuna_accounts.${tableName} no puede depender de cuentas administrativas.`
+  );
+}
+
+requirePattern(
+  sessionsTable,
+  /^\s*token_hash\s+char\(64\)\s+NOT\s+NULL\s+UNIQUE/im,
+  "Las sesiones deben almacenar únicamente el hash del token."
+);
+forbidPattern(
+  sessionsTable,
+  /^\s*token\s+(?:text|varchar|char)\b/im,
+  "Las sesiones no pueden persistir tokens en texto plano."
+);
+requirePattern(
+  recoveryTable,
+  /^\s*code_hash\s+char\(64\)\s+NOT\s+NULL\s+UNIQUE/im,
+  "Los códigos de recuperación deben persistirse únicamente como hash."
+);
+forbidPattern(
+  recoveryTable,
+  /^\s*code\s+(?:text|varchar|char)\b/im,
+  "Los códigos de recuperación no pueden persistirse en texto plano."
+);
+
+for (const [name, block] of [
+  ["sessions", sessionsTable],
+  ["recovery_codes", recoveryTable],
+  ["game_preferences", preferencesTable],
+  ["hardware_profiles", hardwareTable],
+  ["reward_profiles", rewardProfilesTable],
+  ["reward_events", rewardEventsTable],
+]) {
+  requirePattern(
+    block,
+    /REFERENCES\s+deuna_accounts\.users\(id\)\s+ON\s+DELETE\s+CASCADE/i,
+    `deuna_accounts.${name} debe eliminarse por cascada al borrar la cuenta.`
+  );
+}
+
+requirePattern(
+  preferencesTable,
+  /^\s*game_slug\s+varchar\(160\)\s+NOT\s+NULL/im,
+  "Mis juegos debe persistir sólo una identidad de catálogo estable."
+);
+requirePattern(
+  preferencesTable,
+  /^\s*favorite\s+boolean\s+NOT\s+NULL/im,
+  "Favoritos debe ser una elección explícita booleana."
+);
+requirePattern(
+  preferencesTable,
+  /^\s*follow_updates\s+boolean\s+NOT\s+NULL/im,
+  "Seguir actualizaciones debe ser una elección explícita booleana."
+);
+forbidPattern(
+  preferencesTable,
+  /(?:click|impression|view_count|play_time|session_count|last_opened)/i,
+  "Mis juegos no puede convertirse en telemetría de uso."
+);
+
+for (const required of ["cpu_id", "gpu_id", "ram_gb", "memory_mode"]) {
+  requirePattern(
+    hardwareTable,
+    new RegExp(`^\\s*${required}\\s+`, "im"),
+    `Mi PC debe contener ${required}.`
+  );
+}
+forbidPattern(
+  hardwareTable,
+  /(?:renderer|vendor|platform|architecture|logical_processors|browser|user_agent|os\s+)/i,
+  "Mi PC sólo puede persistir componentes seleccionados, no detección cruda del navegador."
+);
+
+for (const required of [
+  "xp_total",
+  "credits_balance",
+  "streak_days",
+  "best_streak",
+  "last_claim_at",
+]) {
+  requirePattern(
+    rewardProfilesTable,
+    new RegExp(`^\\s*${required}\\s+`, "im"),
+    `Rewards debe contener ${required}.`
+  );
+}
+for (const required of [
+  "event_type",
+  "event_key",
+  "xp_delta",
+  "credits_delta",
+  "created_at",
+]) {
+  requirePattern(
+    rewardEventsTable,
+    new RegExp(`^\\s*${required}\\s+`, "im"),
+    `El ledger de Rewards debe contener ${required}.`
+  );
+}
+forbidPattern(
+  rewardEventsTable,
+  /(?:metadata|payload|url|route|page_path|referrer|referer|click|impression|view|play_time|session_count|user_agent|device|location)/i,
+  "El ledger de Rewards no puede convertirse en telemetría o almacenar metadata genérica."
+);
+requirePattern(
+  rewardEventsTable,
+  /UNIQUE\s*\(user_id,\s*event_type,\s*event_key\)/i,
+  "Rewards debe impedir cobrar dos veces el mismo hito o bonus idempotente."
+);
+
+const privateData = await read("src/lib/accounts/private-data.ts");
+requirePattern(
+  privateData,
+  /createCipheriv\(\s*"aes-256-gcm"/s,
+  "Los datos opcionales deben cifrarse con AES-256-GCM."
+);
+requirePattern(
+  privateData,
+  /process\.env\.DEUNA_ACCOUNT_DATA_KEY/,
+  "El cifrado debe depender de DEUNA_ACCOUNT_DATA_KEY."
+);
+requirePattern(
+  privateData,
+  /key\.length\s*!==\s*32/,
+  "La clave de datos debe validarse como 32 bytes."
+);
+
+const session = await read("src/lib/accounts/session.ts");
+requirePattern(session, /httpOnly:\s*true/, "La cookie pública debe ser HttpOnly.");
+requirePattern(session, /sameSite:\s*"lax"/, "La cookie pública debe conservar SameSite=Lax.");
+requirePattern(session, /hashAccountSessionToken\(token\)/, "El token de sesión debe hashearse antes de consultar PostgreSQL.");
+
+const service = await read("src/lib/accounts/service.ts");
+requirePattern(
+  service,
+  /DUMMY_RECOVERY_USER_ID[\s\S]*findUnusedRecoveryCode\([\s\S]*DUMMY_RECOVERY_USER_ID/s,
+  "La recuperación debe ejecutar una búsqueda ficticia para usuarios inexistentes."
+);
+requirePattern(
+  service,
+  /DELETE\s+FROM\s+deuna_accounts\.users\s+WHERE\s+id\s*=\s*\$1/i,
+  "La baja de cuenta debe ser física, no un soft delete."
+);
+requirePattern(
+  service,
+  /verifyAccountPassword\([\s\S]*password[\s\S]*user\.password_hash/s,
+  "La baja debe exigir verificación de la contraseña actual."
+);
+
+const personalizationService = await read("src/lib/accounts/personalization-service.ts");
+requirePattern(
+  personalizationService,
+  /resolveSavedHardwareProfile[\s\S]*cpuKnowledge:\s*"confirmed"[\s\S]*ramKnowledge:\s*"confirmed"/s,
+  "Mi PC guardada debe resolverse como selección explícitamente confirmada."
+);
+forbidPattern(
+  personalizationService,
+  /user_agent|navigator|geolocation|renderer|logicalProcessors/i,
+  "La personalización de cuenta no debe leer detección cruda ni seguimiento."
+);
+
+const rewardsService = await read("src/lib/accounts/rewards-service.ts");
+requirePattern(
+  rewardsService,
+  /ON\s+CONFLICT\s*\(user_id,\s*event_type,\s*event_key\)\s+DO\s+NOTHING/i,
+  "Los hitos de Rewards deben acreditarse de manera idempotente."
+);
+requirePattern(
+  rewardsService,
+  /FOR\s+UPDATE/i,
+  "El reclamo diario debe bloquear el perfil de Rewards dentro de una transacción."
+);
+forbidPattern(
+  rewardsService,
+  /navigator|headers\.get|user_agent|referrer|referer|click|impression|page_view|play_time/i,
+  "Rewards no debe depender de navegación o metadata del dispositivo."
+);
+
+const recoverRoute = await read("src/app/api/account/recover/route.ts");
+requirePattern(
+  recoverRoute,
+  /error:\s*"recuperacion"/,
+  "Los fallos válidos de recuperación deben responder con un error genérico."
+);
+forbidPattern(
+  recoverRoute,
+  /usuario\s+(?:no\s+existe|inexistente)|username_(?:missing|unknown)/i,
+  "La recuperación no debe revelar si el usuario existe."
+);
+
+const deleteRoute = await read("src/app/api/account/delete/route.ts");
+requirePattern(deleteRoute, /readTrustedAccountForm\(request\)/, "La baja debe validar origen y formato del formulario.");
+requirePattern(deleteRoute, /resolveAccountSession\(token\)/, "La baja debe exigir una sesión pública válida.");
+requirePattern(deleteRoute, /accountDeletionSchema\.safeParse/, "La baja debe validar estrictamente sus campos.");
+requirePattern(deleteRoute, /getExpiredAccountCookieOptions\(\)/, "La baja debe expirar la cookie de sesión.");
+
+const mutatingRoutes = [
+  "login",
+  "logout",
+  "profile",
+  "recover",
+  "register",
+  "delete",
+  "games",
+  "hardware",
+  "notifications/seen",
+  "rewards/claim",
+];
+for (const route of mutatingRoutes) {
+  const content = await read(`src/app/api/account/${route}/route.ts`);
+  requirePattern(
+    content,
+    /readTrustedAccountForm\(request\)/,
+    `/api/account/${route} debe usar la barrera de formulario de mismo origen.`
+  );
+}
+
+const accountSourceFiles = [
+  ...(await walk(path.join(root, "src", "lib", "accounts"))),
+  ...(await walk(path.join(root, "src", "app", "api", "account"))),
+  ...(await walk(path.join(root, "src", "app", "cuenta"))),
+];
+const forbiddenRuntimePatterns = [
+  /headers\.get\(\s*["'](?:user-agent|x-forwarded-for|cf-connecting-ip|true-client-ip|x-real-ip)["']\s*\)/i,
+  /navigator\.userAgent/i,
+  /navigator\.geolocation/i,
+  /deviceFingerprint|fingerprintjs|canvasFingerprint/i,
+  /\b(?:localStorage|sessionStorage|indexedDB)\b/,
+];
+
+for (const file of accountSourceFiles) {
+  const content = await readFile(file, "utf8");
+  const relative = path.relative(root, file).split(path.sep).join("/");
+
+  for (const pattern of forbiddenRuntimePatterns) {
+    if (pattern.test(content)) {
+      fail(`${relative} intenta recopilar o persistir metadatos de seguimiento no necesarios.`);
+    }
+  }
+
+  if (
+    relative.startsWith("src/lib/accounts/") ||
+    relative.startsWith("src/app/api/account/")
+  ) {
+    forbidPattern(
+      content,
+      /console\.(?:log|info|debug|warn|error)\s*\(/,
+      `${relative} no debe registrar datos del flujo de autenticación en consola.`
+    );
+  }
+}
+
+const migrate = await read("tools/admin/migrate.ts");
+const deleteGrantMatches = [...migrate.matchAll(
+  /GRANT\s+DELETE\s+ON\s+(deuna_accounts\.[a-z_]+)\s+TO\s+\$\{role\}/gi
+)].map((match) => match[1]);
+const expectedDeleteGrants = new Set([
+  "deuna_accounts.users",
+  "deuna_accounts.recovery_codes",
+  "deuna_accounts.game_preferences",
+  "deuna_accounts.hardware_profiles",
+]);
+
+if (
+  deleteGrantMatches.length !== expectedDeleteGrants.size ||
+  deleteGrantMatches.some((name) => !expectedDeleteGrants.has(name))
+) {
+  fail("El runtime sólo puede recibir DELETE sobre baja de cuenta, rotación y datos de personalización explícitamente removibles. Rewards debe conservar su ledger inmutable.");
+}
+
+requirePattern(
+  migrate,
+  /GRANT\s+SELECT\s*\([\s\S]*?xp_total[\s\S]*?credits_balance[\s\S]*?ON\s+deuna_accounts\.reward_profiles/s,
+  "El runtime debe recibir sólo columnas explícitas del perfil de Rewards."
+);
+requirePattern(
+  migrate,
+  /GRANT\s+INSERT\s*\([\s\S]*?event_type[\s\S]*?event_key[\s\S]*?ON\s+deuna_accounts\.reward_events/s,
+  "El runtime debe poder agregar eventos explícitos al ledger de Rewards."
+);
+forbidPattern(
+  migrate,
+  /GRANT\s+(?:UPDATE|DELETE)\b[\s\S]{0,180}ON\s+deuna_accounts\.reward_events/i,
+  "El runtime no puede editar ni borrar el ledger de Rewards."
+);
+
+const preflight = await read("tools/admin/preflight.ts");
+for (const table of expectedDeleteGrants) {
+  requirePattern(
+    preflight,
+    new RegExp(escapeRegExp(`"${table}"`)),
+    `El preflight debe verificar explícitamente DELETE sobre ${table}.`
+  );
+}
+for (const table of ["reward_profiles", "reward_events"]) {
+  requirePattern(
+    preflight,
+    new RegExp(`expectColumns\\(\\"deuna_accounts\\", \\"${table}\\"`),
+    `El preflight debe declarar permisos mínimos para deuna_accounts.${table}.`
+  );
+}
+
+const ranking = await read("src/lib/home/account-personalization.ts");
+requirePattern(
+  ranking,
+  /scoreHomeGame\([\s\S]*"recommended"/s,
+  "Las recomendaciones de cuenta deben reutilizar el ranking editorial existente como base."
+);
+requirePattern(
+  ranking,
+  /estimateGamePerformance\(/,
+  "Las recomendaciones de cuenta deben reutilizar el motor de FPS existente."
+);
+forbidPattern(
+  ranking,
+  /cookie|localStorage|sessionStorage|history|navigator|userAgent/i,
+  "El ranking personalizado sólo puede usar elecciones explícitas y hardware guardado."
+);
+
+const envExamples = [
+  await read(".env.example"),
+  await read("ops/systemd/runtime.env.example"),
+].join("\n");
+forbidPattern(
+  envExamples,
+  /DEUNA_ACCOUNT_DATA_KEY\s*=\s*[A-Za-z0-9_-]{43}\b/,
+  "DEUNA_ACCOUNT_DATA_KEY no puede contener una clave real versionada."
+);
+
+if (issues.length > 0) {
+  console.error("\nPrivacidad de cuentas: ERROR\n");
+
+  for (const issue of issues) {
+    console.error(`- ${issue}`);
+  }
+
+  process.exit(1);
+}
+
+console.log(
+  `Privacidad de cuentas: OK (${accountSourceFiles.length} archivos de cuenta revisados; minimización, cifrado, separación, personalización explícita, Rewards sin telemetría, recuperación y baja verificadas).`
+);

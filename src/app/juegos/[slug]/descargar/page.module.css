@@ -220,6 +220,11 @@
     box-shadow var(--ease-fast);
 }
 
+.sourceCardUnavailable {
+  border-color: color-mix(in srgb, var(--text-muted) 14%, transparent);
+  background: color-mix(in srgb, var(--surface-2) 60%, transparent);
+}
+
 .sourceMark {
   width: 54px;
   height: 54px;
@@ -237,6 +242,12 @@
     color-mix(in srgb, var(--brand) 8%, transparent);
   font-size: 23px;
   font-weight: 900;
+}
+
+.sourceCardUnavailable .sourceMark {
+  color: var(--text-muted);
+  border-color: color-mix(in srgb, var(--text-muted) 18%, transparent);
+  background: color-mix(in srgb, var(--surface-3) 72%, transparent);
 }
 
 .sourceCopy {
@@ -259,13 +270,25 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  color: var(--success);
   font-size: 11px;
   font-weight: 760;
   white-space: nowrap;
 }
 
+.sourceStatusAvailable {
+  color: var(--success);
+}
+
+.sourceStatusDown {
+  color: var(--brand-light);
+}
+
+.sourceStatusMaintenance {
+  color: #d8a46a;
+}
+
 .sourceAction,
+.sourceActionDisabled,
 .guideAction {
   min-height: 44px;
   display: inline-flex;
@@ -273,17 +296,29 @@
   justify-content: center;
   gap: 8px;
   padding: 0 16px;
-  color: var(--text);
-  border: 1px solid color-mix(in srgb, var(--brand) 35%, transparent);
   border-radius: 10px;
-  background: color-mix(in srgb, var(--brand) 6%, transparent);
   font-size: var(--font-xs);
   font-weight: 800;
+}
+
+.sourceAction,
+.guideAction {
+  color: var(--text);
+  border: 1px solid color-mix(in srgb, var(--brand) 35%, transparent);
+  background: color-mix(in srgb, var(--brand) 6%, transparent);
   transition:
     transform var(--ease-fast),
     border-color var(--ease-fast),
     background var(--ease-fast),
     box-shadow var(--ease-fast);
+}
+
+.sourceActionDisabled {
+  color: var(--text-muted);
+  border: 1px solid color-mix(in srgb, var(--text-muted) 16%, transparent);
+  background: color-mix(in srgb, var(--surface-3) 56%, transparent);
+  cursor: not-allowed;
+  user-select: none;
 }
 
 .securityNote {
@@ -356,7 +391,7 @@
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .sourceCard:hover {
+  .sourceCard:not(.sourceCardUnavailable):hover {
     transform: translateY(-2px);
     border-color: color-mix(in srgb, var(--brand) 32%, transparent);
     background: color-mix(in srgb, var(--surface-2) 92%, transparent);
@@ -377,7 +412,8 @@
     grid-template-columns: auto minmax(0, 1fr) auto;
   }
 
-  .sourceAction {
+  .sourceAction,
+  .sourceActionDisabled {
     grid-column: 1 / -1;
     width: 100%;
   }
@@ -439,7 +475,8 @@
     grid-column: 2;
   }
 
-  .sourceAction {
+  .sourceAction,
+  .sourceActionDisabled {
     grid-column: 1 / -1;
   }
 

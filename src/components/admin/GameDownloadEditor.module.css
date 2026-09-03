@@ -1,0 +1,255 @@
+.root {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 16px;
+  padding-top: 4px;
+}
+
+.heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.heading strong,
+.heading span {
+  display: block;
+}
+
+.heading strong {
+  color: #edf2f7;
+  font-size: 15px;
+}
+
+.heading span {
+  margin-top: 5px;
+  color: #9aa8b7;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.addButton,
+.removeButton,
+.sourceToolbar button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 42px;
+  padding: 0 13px;
+  border-radius: 8px;
+  outline: none;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  transition:
+    color 140ms ease,
+    border-color 140ms ease,
+    background 140ms ease,
+    transform 140ms ease,
+    box-shadow 140ms ease,
+    opacity 140ms ease;
+}
+
+.addButton {
+  flex-shrink: 0;
+  color: color-mix(in srgb, var(--brand) 34%, #ffffff);
+  border: 1px solid color-mix(in srgb, var(--brand) 38%, #465463);
+  background: color-mix(in srgb, var(--brand) 7%, #0d151e);
+}
+
+.addButton:hover:not(:disabled) {
+  color: #fff;
+  border-color: color-mix(in srgb, var(--brand) 54%, #536273);
+  background: color-mix(in srgb, var(--brand) 10%, #111b26);
+  transform: translateY(-1px);
+}
+
+.addButton:focus-visible,
+.removeButton:focus-visible,
+.sourceToolbar button:focus-visible {
+  box-shadow:
+    0 0 0 2px #0a1118,
+    0 0 0 4px color-mix(in srgb, var(--brand) 58%, #ffffff);
+}
+
+.addButton:disabled,
+.sourceToolbar button:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.list {
+  display: grid;
+  gap: 14px;
+}
+
+.source {
+  min-width: 0;
+  display: grid;
+  grid-template-columns:
+    minmax(0, 0.75fr)
+    minmax(0, 1fr)
+    minmax(150px, 0.65fr);
+  gap: 14px;
+  padding: 17px;
+  border: 1px solid #354252;
+  border-radius: 11px;
+  background: #0a1119;
+  transition:
+    border-color 150ms ease,
+    background 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.source:hover,
+.source:focus-within {
+  border-color: #435364;
+  background: #0d161f;
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--brand) 38%, #ffffff);
+}
+
+.source[data-enabled="false"] {
+  border-color: #293441;
+  background: #080d13;
+}
+
+.source legend {
+  padding: 0 8px;
+  color: #a6b2bf;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.source[data-enabled="false"] legend {
+  color: #7e8995;
+}
+
+.source label {
+  min-width: 0;
+}
+
+.sourceToolbar {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 7px;
+  padding-bottom: 11px;
+  border-bottom: 1px solid #2d3946;
+}
+
+.sourceToolbar button {
+  width: 40px;
+  min-height: 40px;
+  padding: 0;
+  color: #aab6c2;
+  border: 1px solid #354250;
+  background: #0b1118;
+}
+
+.sourceToolbar button:not(:disabled):hover {
+  color: #ffffff;
+  border-color: color-mix(in srgb, var(--brand) 45%, #465260);
+  background: color-mix(in srgb, var(--brand) 5%, #111b26);
+  transform: translateY(-1px);
+}
+
+.sourceToolbar .visibilityButton {
+  color: color-mix(in srgb, var(--brand) 38%, #ffffff);
+  border-color: color-mix(in srgb, var(--brand) 36%, #354250);
+  background: color-mix(in srgb, var(--brand) 6%, #0b1118);
+}
+
+.source[data-enabled="false"] .visibilityButton {
+  color: #8b96a2;
+  border-color: #354250;
+  background: #0b1118;
+}
+
+.hrefField {
+  grid-column: 1 / 3;
+}
+
+.removeButton {
+  grid-column: 3;
+  justify-self: end;
+  min-width: 108px;
+  color: #f0b3c2;
+  border: 1px solid rgba(255, 92, 130, 0.28);
+  background: transparent;
+}
+
+.removeButton:hover {
+  color: #ffd0d9;
+  border-color: rgba(255, 92, 130, 0.48);
+  background: rgba(255, 92, 130, 0.06);
+  transform: translateY(-1px);
+}
+
+.removeButton:focus-visible {
+  box-shadow:
+    0 0 0 2px #0a1118,
+    0 0 0 4px rgba(255, 92, 130, 0.48);
+}
+
+.empty {
+  padding: 22px;
+  color: #98a6b5;
+  border: 1px dashed #3a4755;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.55;
+  text-align: center;
+}
+
+@media (max-width: 900px) {
+  .source {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .hrefField {
+    grid-column: 1 / -1;
+  }
+
+  .removeButton {
+    grid-column: 2;
+  }
+}
+
+@media (max-width: 760px) {
+  .heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .addButton {
+    width: 100%;
+  }
+
+  .source {
+    grid-template-columns: 1fr;
+  }
+
+  .hrefField,
+  .removeButton {
+    grid-column: auto;
+  }
+
+  .removeButton {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .source,
+  .addButton,
+  .removeButton,
+  .sourceToolbar button {
+    transition: none;
+  }
+}

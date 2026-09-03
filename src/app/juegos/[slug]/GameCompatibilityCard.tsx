@@ -19,6 +19,9 @@ import type {
   PerformanceTier,
 } from "@/features/game-finder/types";
 import {
+  useGamePerformanceCalibration,
+} from "@/features/game-finder/useGamePerformanceCalibration";
+import {
   useResolvedHardwareProfile,
 } from "@/features/game-finder/useResolvedHardwareProfile";
 
@@ -81,6 +84,10 @@ export default function GameCompatibilityCard({
     profile,
     status,
   } = useResolvedHardwareProfile();
+  const {
+    calibration,
+    loading: calibrationLoading,
+  } = useGamePerformanceCalibration(slug);
 
   const estimate = useMemo(
     () =>
@@ -91,26 +98,29 @@ export default function GameCompatibilityCard({
             {
               resolution: "1080p",
               quality: "medium",
-            }
+            },
+            calibration ?? undefined
           )
         : null,
-    [profile, slug]
+    [calibration, profile, slug]
   );
 
   if (
+    calibrationLoading ||
     status !== "ready" ||
     !profile ||
     !estimate?.canEstimate
   ) {
-    const statusLabel =
-      status === "loading"
-        ? "Detectando"
-        : "Datos incompletos";
+    const loading =
+      calibrationLoading || status === "loading";
+    const statusLabel = loading
+      ? "Detectando"
+      : "Datos incompletos";
 
-    const description =
-      status === "loading"
-        ? "Estamos comprobando primero el perfil guardado y después los datos que el navegador pueda identificar."
-        : "La detección automática no obtuvo CPU, GPU y RAM suficientes para calcular un rango fiable.";
+    const description = loading
+      ? "Estamos comprobando la calibración publicada, el perfil guardado y los datos que el navegador pueda identificar."
+      : estimate?.reason ??
+        "La detección automática no obtuvo CPU, GPU y RAM suficientes para calcular un rango fiable.";
 
     return (
       <aside

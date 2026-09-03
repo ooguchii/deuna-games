@@ -72,7 +72,7 @@ const forbidden = [
   {
     label: "servicio de tracking externo",
     pattern:
-      /(?:google-analytics\.com|googletagmanager\.com|connect\.facebook\.net|hotjar\.com|posthog\.com|segment\.io)/giu,
+      /(?:google-analytics\.com|googletagmanager\.com|connect\.facebook\.net|hotjar\.com|posthog\.com|segment\.io|plausible\.io|umami\.is|matomo\.|mixpanel\.com|amplitude\.com|fullstory\.com|clarity\.ms|sentry\.io|newrelic\.com|datadoghq-browser-agent\.com)/giu,
   },
 ];
 

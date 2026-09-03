@@ -1,0 +1,20 @@
+.brandBadge {
+  color: color-mix(in srgb, var(--brand) 38%, #ffffff);
+  border-color: color-mix(in srgb, var(--brand) 30%, #263442);
+  background: color-mix(in srgb, var(--brand) 7%, transparent);
+}
+
+.brandBadge svg {
+  color: color-mix(in srgb, var(--brand) 52%, #ffffff);
+}
+
+.brandIcon.brandIcon,
+.brandButton.brandButton {
+  color: var(--text-on-brand);
+}
+
+.footnote.footnote {
+  color: #7f8b99;
+  font-size: 11px;
+  line-height: 1.55;
+}

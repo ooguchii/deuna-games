@@ -4,7 +4,6 @@ on:
   push:
     branches: [master]
   pull_request:
-    branches: [master]
 
 permissions:
   contents: read
@@ -39,7 +38,7 @@ jobs:
             exit 1
           fi
 
-          sensitive='(^|/)\.env($|\.)|\.(pem|key|p12|pfx|kdbx|crt|cer)$'
+          sensitive='(^|/)\.env($|\.)|\.(pem|key|p12|pfx|kdbx|crt|cer|backup|dump)$|\.sql\.gz$|(^|/)pg_dump[^/]*$'
           sensitive_matches="$(git ls-files | grep -E "$sensitive" | grep -v '^\.env\.example$' || true)"
 
           if [ -n "$sensitive_matches" ]; then
@@ -75,11 +74,20 @@ jobs:
       - name: Architecture
         run: npm run check:architecture
 
+      - name: Maintenance invariants
+        run: npm run check:maintenance
+
       - name: Source hygiene
         run: npm run check:source
 
-      - name: Public privacy
+      - name: Privacy invariants
         run: npm run check:privacy
+
+      - name: Admin security invariants
+        run: npm run check:admin-security
+
+      - name: Admin editorial import
+        run: npm run check:admin-content
 
       - name: Text encoding
         run: npm run check:encoding
@@ -110,3 +118,146 @@ jobs:
 
       - name: Dependency audit
         run: npm run audit:deps
+
+  postgres-foundation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      NEXT_PUBLIC_SITE_URL: https://example.invalid
+      NEXT_TELEMETRY_DISABLED: 1
+      DEUNA_ADMIN_ENABLED: "false"
+      DEUNA_ADMIN_SESSION_HOURS: "8"
+      DEUNA_ADMIN_ORIGIN: https://example.invalid
+      DEUNA_ACCOUNT_SESSION_DAYS: "30"
+      DEUNA_DATABASE_HOST: 127.0.0.1
+      DEUNA_DATABASE_PORT: "5432"
+      DEUNA_DATABASE_NAME: deuna_games
+      DEUNA_DATABASE_USER: deuna_runtime
+      DEUNA_DATABASE_MIGRATION_USER: deuna_migrator
+      DEUNA_DATABASE_SSL: "false"
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Provision isolated PostgreSQL roles
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          migration_credential="$(openssl rand -hex 32)"
+          runtime_credential="$(openssl rand -hex 32)"
+          account_data_key="$(node -e "console.log(require('node:crypto').randomBytes(32).toString('base64url'))")"
+
+          echo "::add-mask::$migration_credential"
+          echo "::add-mask::$runtime_credential"
+          echo "::add-mask::$account_data_key"
+
+          printf 'DEUNA_DATABASE_MIGRATION_PASSWORD=%s\n' "$migration_credential" >> "$GITHUB_ENV"
+          printf 'DEUNA_DATABASE_PASSWORD=%s\n' "$runtime_credential" >> "$GITHUB_ENV"
+          printf 'DEUNA_ACCOUNT_DATA_KEY=%s\n' "$account_data_key" >> "$GITHUB_ENV"
+
+          docker exec -i "${{ job.services.postgres.id }}" \
+            psql -v ON_ERROR_STOP=1 -U postgres <<'SQL'
+          CREATE ROLE deuna_migrator
+            LOGIN
+            NOINHERIT
+            NOSUPERUSER
+            NOCREATEDB
+            NOCREATEROLE
+            NOREPLICATION
+            NOBYPASSRLS;
+
+          CREATE ROLE deuna_runtime
+            LOGIN
+            NOINHERIT
+            NOSUPERUSER
+            NOCREATEDB
+            NOCREATEROLE
+            NOREPLICATION
+            NOBYPASSRLS;
+
+          CREATE DATABASE deuna_games
+            OWNER deuna_migrator
+            ENCODING 'UTF8'
+            TEMPLATE template0;
+
+          REVOKE ALL ON DATABASE deuna_games FROM PUBLIC;
+          GRANT CONNECT ON DATABASE deuna_games
+            TO deuna_migrator, deuna_runtime;
+          SQL
+
+      - name: Apply migrations 001-011
+        run: node ./tools/admin/migrate.ts
+
+      - name: Import editorial fixtures
+        run: node ./tools/admin/import-content.ts
+
+      - name: Create isolated owner fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          docker exec -i "${{ job.services.postgres.id }}" \
+            psql -v ON_ERROR_STOP=1 -U postgres -d deuna_games <<'SQL'
+          INSERT INTO deuna_admin.admin_users
+            (
+              id,
+              username,
+              username_key,
+              role,
+              password_hash,
+              display_name,
+              active
+            )
+          VALUES
+            (
+              '00000000-0000-4000-8000-000000000001',
+              'ci_owner',
+              'ci_owner',
+              'owner',
+              'ci-owner-password-hash-placeholder',
+              'CI Owner',
+              true
+            );
+          SQL
+
+      - name: Migration preflight against PostgreSQL
+        run: node ./tools/admin/preflight.ts --purpose=migration
+
+      - name: Runtime preflight against PostgreSQL
+        env:
+          NODE_ENV: production
+        run: node ./tools/admin/preflight.ts --purpose=runtime
+
+      - name: Runtime account privilege integration
+        env:
+          NODE_ENV: production
+        run: npm run check:account-postgres

@@ -9,50 +9,31 @@
 
 .srOnly {
   position: absolute;
-
   width: 1px;
   height: 1px;
-
   padding: 0;
   margin: -1px;
-
   overflow: hidden;
-
   clip: rect(0, 0, 0, 0);
-
   white-space: nowrap;
-
   border: 0;
 }
 
 .viewport {
   position: relative;
-
   width: 100%;
-
   overflow: hidden;
-
   border-radius: 18px;
-
   touch-action: pan-y;
 }
 
 .track {
   display: flex;
-
   gap: var(--slide-gap);
-
   width: max-content;
-
   opacity: 0;
-
   will-change: transform;
-
-  transition:
-    transform
-    620ms
-    cubic-bezier(0.22, 1, 0.36, 1);
-
+  transition: transform 620ms cubic-bezier(0.22, 1, 0.36, 1);
   backface-visibility: hidden;
 }
 
@@ -66,45 +47,15 @@
 
 .slide {
   position: relative;
-
-  flex:
-    0 0
-    calc(
-      100vw
-      - var(--preview-width)
-      - var(--slide-gap)
-    );
-
-  width:
-    calc(
-      100vw
-      - var(--preview-width)
-      - var(--slide-gap)
-    );
-
-  max-width:
-    calc(
-      var(--content-width)
-      - var(--preview-width)
-      - var(--slide-gap)
-    );
-
+  flex: 0 0 calc(100vw - var(--preview-width) - var(--slide-gap));
+  width: calc(100vw - var(--preview-width) - var(--slide-gap));
+  max-width: calc(var(--content-width) - var(--preview-width) - var(--slide-gap));
   min-height: 440px;
-
   overflow: hidden;
-
-  border:
-    1px solid
-    color-mix(in srgb, var(--text-soft) 15%, transparent);
-
+  border: 1px solid color-mix(in srgb, var(--text-soft) 15%, transparent);
   border-radius: 18px;
-
   background: var(--surface-control);
-
-  box-shadow:
-    0 24px 70px
-    rgba(0, 0, 0, 0.28);
-
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
   isolation: isolate;
 }
 
@@ -114,45 +65,27 @@
   }
 
   .slide {
-    flex-basis:
-      calc(
-        100cqw
-        - var(--preview-width)
-        - var(--slide-gap)
-      );
-
-    width:
-      calc(
-        100cqw
-        - var(--preview-width)
-        - var(--slide-gap)
-      );
-
+    flex-basis: calc(100cqw - var(--preview-width) - var(--slide-gap));
+    width: calc(100cqw - var(--preview-width) - var(--slide-gap));
     max-width: none;
   }
 }
 
 .media {
   position: absolute;
-
   inset: 0;
-
   z-index: 0;
-
   overflow: hidden;
-
   background: #070b11;
 }
 
 .mediaFallback {
   position: absolute;
-
   inset: 0;
-
   background:
     radial-gradient(
       circle at 73% 41%,
-      rgba(92, 67, 176, 0.34),
+      color-mix(in srgb, var(--brand) 18%, transparent),
       transparent 27%
     ),
     radial-gradient(
@@ -164,18 +97,15 @@
       110deg,
       #080c13 0%,
       #0a1019 45%,
-      #151126 72%,
+      color-mix(in srgb, var(--brand) 6%, #0a1019) 72%,
       #090b11 100%
     );
 }
 
 .mediaOverlay {
   position: absolute;
-
   inset: 0;
-
   z-index: 1;
-
   background:
     linear-gradient(
       90deg,
@@ -194,23 +124,11 @@
 
 .previewOverlay {
   position: absolute;
-
   inset: 0;
-
   z-index: 2;
-
   background:
-    linear-gradient(
-      90deg,
-      rgba(4, 7, 11, 0.18),
-      rgba(4, 7, 11, 0.04)
-    ),
-    linear-gradient(
-      180deg,
-      rgba(4, 7, 11, 0.08),
-      rgba(4, 7, 11, 0.28)
-    );
-
+    linear-gradient(90deg, rgba(4, 7, 11, 0.18), rgba(4, 7, 11, 0.04)),
+    linear-gradient(180deg, rgba(4, 7, 11, 0.08), rgba(4, 7, 11, 0.28));
   pointer-events: none;
 }
 
@@ -227,141 +145,87 @@
 
 .content {
   position: relative;
-
   z-index: 3;
-
   width: min(52%, 620px);
-
   padding: 50px 46px 60px;
 }
 
 .badges {
   display: flex;
-
   gap: 8px;
-
   margin-bottom: 21px;
 }
 
 .primaryBadge,
 .secondaryBadge {
   min-height: 26px;
-
   display: inline-flex;
   align-items: center;
-
   padding: 0 10px;
-
   border-radius: 6px;
-
   font-size: 9px;
   font-weight: 800;
-
   letter-spacing: 0.055em;
 }
 
 .primaryBadge {
-  color: #ffffff;
-
-  background:
-    linear-gradient(
-      135deg,
-      var(--brand-light),
-      var(--brand)
-    );
-
-  box-shadow:
-    0 7px 20px
-    color-mix(in srgb, var(--brand) 20%, transparent);
+  color: var(--text-on-brand);
+  background: linear-gradient(135deg, var(--brand-light), var(--brand));
+  box-shadow: 0 7px 20px color-mix(in srgb, var(--brand) 20%, transparent);
 }
 
 .secondaryBadge {
   color: #c4ccd6;
-
-  border:
-    1px solid
-    rgba(255, 255, 255, 0.045);
-
-  background:
-    rgba(22, 28, 37, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.045);
+  background: rgba(22, 28, 37, 0.9);
 }
 
 .title {
   display: flex;
-
   flex-direction: column;
-
   color: #ffffff;
-
-  font-size:
-    clamp(
-      41px,
-      3.4vw,
-      61px
-    );
-
+  font-size: clamp(41px, 3.4vw, 61px);
   line-height: 0.98;
-
   font-weight: 850;
-
   letter-spacing: -0.055em;
 }
 
 .title span {
   color: #ffffff;
-
-  text-shadow:
-    0 5px 25px
-    rgba(0, 0, 0, 0.35);
+  text-shadow: 0 5px 25px rgba(0, 0, 0, 0.35);
 }
 
 .title strong {
   color: var(--brand);
-
   font-weight: 850;
-
-  text-shadow:
-    0 10px 35px
-    color-mix(in srgb, var(--brand) 11%, transparent);
+  text-shadow: 0 10px 35px color-mix(in srgb, var(--brand) 11%, transparent);
 }
 
 .description {
   max-width: 510px;
-
   margin-top: 22px;
-
   color: #a5afbc;
-
   font-size: 14px;
-
   line-height: 1.72;
 }
 
 .actions {
   display: flex;
-
   gap: 11px;
-
   margin-top: 29px;
 }
 
 .primaryButton,
 .secondaryButton {
   min-height: 48px;
-
   display: inline-flex;
   align-items: center;
   justify-content: center;
-
   gap: 9px;
-
   padding: 0 20px;
-
   border-radius: 9px;
-
   font-size: 12px;
   font-weight: 750;
-
   transition:
     transform 160ms ease,
     box-shadow 160ms ease,
@@ -370,88 +234,46 @@
 }
 
 .primaryButton {
-  color: #ffffff;
-
-  background:
-    linear-gradient(
-      135deg,
-      var(--brand-light),
-      var(--brand)
-    );
-
-  box-shadow:
-    0 10px 28px
-    color-mix(in srgb, var(--brand) 20%, transparent);
+  color: var(--text-on-brand);
+  background: linear-gradient(135deg, var(--brand-light), var(--brand));
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--brand) 20%, transparent);
 }
 
 .primaryButton:hover {
   transform: translateY(-2px);
-
-  box-shadow:
-    0 15px 34px
-    color-mix(in srgb, var(--brand) 28%, transparent);
+  box-shadow: 0 15px 34px color-mix(in srgb, var(--brand) 28%, transparent);
 }
 
 .secondaryButton {
   color: #dce1e8;
-
-  border:
-    1px solid
-    color-mix(in srgb, var(--text-soft) 22%, transparent);
-
-  background:
-    rgba(13, 19, 28, 0.75);
-
+  border: 1px solid color-mix(in srgb, var(--text-soft) 22%, transparent);
+  background: rgba(13, 19, 28, 0.75);
   backdrop-filter: blur(12px);
 }
 
 .secondaryButton:hover {
   transform: translateY(-2px);
-
-  border-color:
-    rgba(255, 255, 255, 0.2);
-
-  background:
-    rgba(22, 29, 40, 0.95);
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(22, 29, 40, 0.95);
 }
 
 .arrow {
   position: absolute;
-
   z-index: 20;
-
   top: 50%;
-
   width: 44px;
   height: 44px;
-
   display: grid;
-
   place-items: center;
-
   padding: 0;
-
   color: var(--brand);
-
-  border:
-    1px solid
-    color-mix(in srgb, var(--brand) 48%, transparent);
-
+  border: 1px solid color-mix(in srgb, var(--brand) 48%, transparent);
   border-radius: 50%;
-
-  background:
-    rgba(4, 7, 11, 0.86);
-
+  background: rgba(4, 7, 11, 0.86);
   backdrop-filter: blur(12px);
-
-  box-shadow:
-    0 8px 28px
-    rgba(0, 0, 0, 0.3);
-
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.3);
   cursor: pointer;
-
   transform: translateY(-50%);
-
   transition:
     color 160ms ease,
     background 160ms ease,
@@ -460,15 +282,10 @@
 }
 
 .arrow:hover {
-  color: #ffffff;
-
+  color: var(--text-on-brand);
   border-color: var(--brand);
-
   background: var(--brand);
-
-  transform:
-    translateY(-50%)
-    scale(1.07);
+  transform: translateY(-50%) scale(1.07);
 }
 
 .arrowLeft {
@@ -481,72 +298,42 @@
 
 .previewAdvance {
   position: absolute;
-
   z-index: 9;
-
   top: 0;
   right: 0;
-
   width: var(--preview-width);
   height: 100%;
-
   padding: 0;
-
   border: 0;
-
   background: transparent;
-
   cursor: pointer;
 }
 
 .controls {
   position: absolute;
-
   z-index: 20;
-
   bottom: 17px;
-
-  left:
-    calc(
-      (
-        100%
-        - var(--preview-width)
-        - var(--slide-gap)
-      )
-      / 2
-    );
-
+  left: calc((100% - var(--preview-width) - var(--slide-gap)) / 2);
   width: 155px;
-
   transform: translateX(-50%);
 }
 
 .dots {
   display: flex;
-
   align-items: center;
   justify-content: center;
-
   gap: 7px;
 }
 
 .dots button {
   width: 22px;
   height: 5px;
-
   padding: 0;
-
   border: 0;
-
   border-radius: 999px;
-
   background: #3c4450;
-
   cursor: pointer;
-
-  transition:
-    width 180ms ease,
-    background 180ms ease;
+  transition: width 180ms ease, background 180ms ease;
 }
 
 .dots button:hover {
@@ -555,50 +342,27 @@
 
 .dots .activeDot {
   width: 32px;
-
-  background: var(--brand);
-
-  box-shadow:
-    0 0 13px
-    color-mix(in srgb, var(--brand) 50%, transparent);
+  background: linear-gradient(90deg, var(--brand), var(--brand-light));
+  box-shadow: 0 0 13px color-mix(in srgb, var(--brand) 50%, transparent);
 }
 
 .progress {
   width: 100%;
   height: 2px;
-
   margin-top: 9px;
-
   overflow: hidden;
-
   border-radius: 999px;
-
-  background:
-    rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.07);
 }
 
 .progressBar {
   display: block;
-
   width: 100%;
   height: 100%;
-
   transform-origin: left;
-
   border-radius: inherit;
-
-  background:
-    linear-gradient(
-      90deg,
-      var(--brand),
-      var(--brand-light)
-    );
-
-  animation:
-    heroProgress
-    6500ms
-    linear
-    forwards;
+  background: linear-gradient(90deg, var(--brand-dark), var(--brand), var(--brand-light));
+  animation: heroProgress 6500ms linear forwards;
 }
 
 @keyframes heroProgress {
@@ -618,7 +382,6 @@
 
   .content {
     width: 58%;
-
     padding: 44px 40px 58px;
   }
 }
@@ -631,9 +394,7 @@
 
   .slide {
     flex-basis: 100cqw;
-
     width: 100cqw;
-
     min-height: 500px;
   }
 
@@ -643,7 +404,6 @@
 
   .content {
     width: min(82%, 620px);
-
     padding: 34px 28px 70px;
   }
 
@@ -663,17 +423,11 @@
   }
 
   .title {
-    font-size:
-      clamp(
-        37px,
-        8vw,
-        52px
-      );
+    font-size: clamp(37px, 8vw, 52px);
   }
 
   .description {
     max-width: 530px;
-
     font-size: 13px;
   }
 
@@ -690,10 +444,7 @@
   }
 }
 
-/*
- * Solo en celular angosto se cambia la fuente
- * de heroImage a coverImage desde HeroSection.tsx.
- */
+/* Solo en celular angosto se cambia heroImage a coverImage. */
 @media (max-width: 520px) {
   .slide {
     min-height: 610px;
@@ -701,9 +452,6 @@
 
   .content {
     width: 100%;
-
-    /* Bajamos el bloque de texto en Android/celular
-       sin alterar tablet ni escritorio. */
     padding: 72px 28px 84px;
   }
 
@@ -715,20 +463,11 @@
         rgba(4, 7, 11, 0.48) 42%,
         rgba(4, 7, 11, 0.94) 100%
       ),
-      linear-gradient(
-        90deg,
-        rgba(4, 7, 11, 0.6),
-        rgba(4, 7, 11, 0.1)
-      );
+      linear-gradient(90deg, rgba(4, 7, 11, 0.6), rgba(4, 7, 11, 0.1));
   }
 
   .title {
-    font-size:
-      clamp(
-        38px,
-        11vw,
-        49px
-      );
+    font-size: clamp(38px, 11vw, 49px);
   }
 
   .description {
@@ -746,8 +485,7 @@
   }
 
   .content {
-    padding:
-      62px 22px 82px;
+    padding: 62px 22px 82px;
   }
 
   .title {
@@ -757,7 +495,6 @@
   .primaryButton,
   .secondaryButton {
     min-height: 46px;
-
     padding: 0 15px;
   }
 }
@@ -777,6 +514,7 @@
     transition: none;
   }
 }
+
 /* ==================================================
    HERO MEDIA ROBUSTO — TELÉFONO REAL
 ================================================== */
@@ -784,45 +522,26 @@
 .heroPicture {
   position: absolute;
   inset: 0;
-
   width: 100%;
   height: 100%;
-
   overflow: hidden;
 }
 
 .heroArtwork {
   position: absolute;
   inset: 0;
-
   width: 100%;
   height: 100%;
-
   display: block;
-
   object-fit: cover;
   object-position: center;
-
   background: #070b11;
-}
-
-/* En escritorio siempre usamos el hero panorámico. */
-/*
- * No forzamos una capa GPU sobre la imagen.
- * Algunos Android reales pueden mostrar negro cuando
- * una imagen WebP está dentro de varias capas transformadas.
- */
-.heroArtwork {
   transform: none;
   backface-visibility: visible;
   -webkit-backface-visibility: visible;
 }
 
 @media (max-width: 800px) {
-  /*
-   * En móvil/tablet evitamos optimizaciones agresivas de
-   * composición. El carrusel sigue animando con translateX().
-   */
   .track {
     will-change: auto;
     backface-visibility: visible;
@@ -830,8 +549,6 @@
 }
 
 @media (max-width: 520px) {
-  /* Celular: cover vertical real. */
-  /* En celular se navega por swipe + indicadores. */
   .arrow {
     display: none;
   }
@@ -842,32 +559,19 @@
 ================================================== */
 
 .viewport {
-  box-shadow:
-    0 26px 70px
-    rgba(0, 0, 0, 0.27);
+  box-shadow: 0 26px 70px rgba(0, 0, 0, 0.27);
 }
 
 .slide {
-  border-color:
-    rgba(145, 164, 187, 0.16);
-
-  background:
-    linear-gradient(
-      145deg,
-      var(--surface),
-      var(--background)
-    );
+  border-color: rgba(145, 164, 187, 0.16);
+  background: linear-gradient(145deg, var(--surface), var(--background));
 }
 
 .activeSlide {
-  border-color:
-    rgba(172, 191, 214, 0.19);
-
+  border-color: rgba(172, 191, 214, 0.19);
   box-shadow:
-    inset 0 1px 0
-      rgba(255, 255, 255, 0.025),
-    0 26px 74px
-      rgba(0, 0, 0, 0.3);
+    inset 0 1px 0 rgba(255, 255, 255, 0.025),
+    0 26px 74px rgba(0, 0, 0, 0.3);
 }
 
 .title {
@@ -881,86 +585,46 @@
 .primaryButton,
 .secondaryButton {
   position: relative;
-
   overflow: hidden;
 }
 
 .primaryButton::after {
   content: "";
-
   position: absolute;
-
   top: -80%;
   left: -45%;
-
   width: 34%;
   height: 260%;
-
-  background:
-    linear-gradient(
-      90deg,
-      transparent,
-      rgba(255, 255, 255, 0.24),
-      transparent
-    );
-
-  transform:
-    rotate(18deg)
-    translateX(-220%);
-
-  transition:
-    transform 520ms var(--ease-premium);
-
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.24), transparent);
+  transform: rotate(18deg) translateX(-220%);
+  transition: transform 520ms var(--ease-premium);
   pointer-events: none;
 }
 
 @media (hover: hover) and (pointer: fine) {
   .primaryButton:hover::after {
-    transform:
-      rotate(18deg)
-      translateX(760%);
+    transform: rotate(18deg) translateX(760%);
   }
 }
 
 .arrow {
-  border-color:
-    color-mix(in srgb, var(--brand) 38%, transparent);
-
-  background:
-    linear-gradient(
-      145deg,
-      rgba(12, 18, 27, 0.94),
-      rgba(4, 7, 11, 0.92)
-    );
-
+  border-color: color-mix(in srgb, var(--brand) 38%, transparent);
+  background: linear-gradient(145deg, rgba(12, 18, 27, 0.94), rgba(4, 7, 11, 0.92));
   box-shadow:
-    inset 0 1px 0
-      rgba(255, 255, 255, 0.025),
-    0 9px 30px
-      rgba(0, 0, 0, 0.34);
+    inset 0 1px 0 rgba(255, 255, 255, 0.025),
+    0 9px 30px rgba(0, 0, 0, 0.34);
 }
 
 .dots button {
-  background:
-    rgba(127, 139, 154, 0.48);
+  background: rgba(127, 139, 154, 0.48);
 }
 
 .dots .activeDot {
-  background:
-    linear-gradient(
-      90deg,
-      var(--brand),
-      var(--brand-light)
-    );
+  background: linear-gradient(90deg, var(--brand), var(--brand-light));
 }
 
 @media (min-width: 801px) {
-  /*
-   * El próximo juego ahora se ve realmente en el preview.
-   * Antes los overlays lo oscurecían demasiado.
-   */
-  .slide:not(.activeSlide)
-  .mediaOverlay {
+  .slide:not(.activeSlide) .mediaOverlay {
     background:
       linear-gradient(
         90deg,
@@ -968,41 +632,20 @@
         rgba(4, 7, 11, 0.025) 58%,
         rgba(4, 7, 11, 0.12)
       ),
-      linear-gradient(
-        180deg,
-        rgba(4, 7, 11, 0.03),
-        rgba(4, 7, 11, 0.24)
-      );
+      linear-gradient(180deg, rgba(4, 7, 11, 0.03), rgba(4, 7, 11, 0.24));
   }
 
-  .slide:not(.activeSlide)
-  .previewOverlay {
+  .slide:not(.activeSlide) .previewOverlay {
     background:
-      linear-gradient(
-        90deg,
-        rgba(4, 7, 11, 0.08),
-        transparent 62%
-      ),
-      linear-gradient(
-        180deg,
-        transparent 58%,
-        rgba(4, 7, 11, 0.18)
-      );
+      linear-gradient(90deg, rgba(4, 7, 11, 0.08), transparent 62%),
+      linear-gradient(180deg, transparent 58%, rgba(4, 7, 11, 0.18));
   }
-
-  /*
-   * Movimiento cinematográfico muy suave solo en escritorio.
-   * No se aplica en Android.
-   */
 }
 
 @media (max-width: 520px) {
   .viewport {
     border-radius: 17px;
-
-    box-shadow:
-      0 20px 50px
-      rgba(0, 0, 0, 0.26);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.26);
   }
 
   .slide {
@@ -1025,11 +668,9 @@
   .primaryButton,
   .secondaryButton {
     min-height: 48px;
-
     border-radius: 10px;
   }
 }
-
 
 /* ==================================================
    ACCESIBILIDAD — CONTROL DE AUTOPLAY
@@ -1037,40 +678,20 @@
 
 .pauseButton {
   min-height: 28px;
-
   display: inline-flex;
   align-items: center;
   justify-content: center;
-
   gap: 6px;
-
-  margin:
-    9px auto 0;
-
-  padding:
-    0 9px;
-
-  color:
-    #8f9aa8;
-
-  border:
-    1px solid
-    color-mix(in srgb, var(--text-soft) 15%, transparent);
-
-  border-radius:
-    999px;
-
-  background:
-    rgba(5, 8, 13, 0.68);
-
-  backdrop-filter:
-    blur(10px);
-
+  margin: 9px auto 0;
+  padding: 0 9px;
+  color: #8f9aa8;
+  border: 1px solid color-mix(in srgb, var(--text-soft) 15%, transparent);
+  border-radius: 999px;
+  background: rgba(5, 8, 13, 0.68);
+  backdrop-filter: blur(10px);
   cursor: pointer;
-
   font-size: 9px;
   font-weight: 750;
-
   transition:
     color 160ms ease,
     border-color 160ms ease,
@@ -1079,46 +700,34 @@
 
 .pauseButton:hover {
   color: #ffffff;
-
-  border-color:
-    color-mix(in srgb, var(--brand) 35%, transparent);
-
-  background:
-    color-mix(in srgb, var(--brand) 7%, transparent);
+  border-color: color-mix(in srgb, var(--brand) 35%, transparent);
+  background: color-mix(in srgb, var(--brand) 7%, transparent);
 }
 
 .pauseButton[aria-pressed="true"] {
-  color:
-    var(--brand-light);
-
-  border-color:
-    color-mix(in srgb, var(--brand) 32%, transparent);
-
-  background:
-    color-mix(in srgb, var(--brand) 5.5%, transparent);
+  color: var(--brand-light);
+  border-color: color-mix(in srgb, var(--brand) 32%, transparent);
+  background: color-mix(in srgb, var(--brand) 5.5%, transparent);
 }
 
 @media (max-width: 520px) {
   .pauseButton {
     min-height: 30px;
-
     margin-top: 8px;
-
-    padding:
-      0 10px;
-
+    padding: 0 10px;
     font-size: 9px;
   }
 }
+
 /* ==================================================
    HERO — FONDO AMBIENTAL SINCRONIZADO
-   Usa la misma imagen del juego activo y cambia junto
-   con el Hero. No reemplaza el fondo del slide: extiende
-   su arte alrededor para que la cabecera no se vea negra.
+   La imagen activa se extiende mucho más allá del banner,
+   se desenfoca y se funde con fondo + marca configurables.
 ================================================== */
 
 .heroSection {
   isolation: isolate;
+  filter: drop-shadow(0 24px 70px color-mix(in srgb, var(--brand) 8%, transparent));
 }
 
 .viewport {
@@ -1127,84 +736,70 @@
 
 .ambientBackdrop {
   position: absolute;
-
   z-index: 0;
-
-  top: -92px;
+  top: -150px;
   right: 50%;
-  bottom: -120px;
-
+  bottom: -340px;
   width: 100vw;
-
   overflow: hidden;
-
   transform: translateX(50%);
-
   pointer-events: none;
 }
 
 .ambientFrame {
   position: absolute;
-
-  inset: -7% -4%;
-
+  inset: -12% -7%;
   opacity: 0;
-
-  animation:
-    heroAmbientEnter
-    720ms
-    var(--ease-premium)
-    forwards;
+  animation: heroAmbientEnter 760ms var(--ease-premium) forwards;
 }
 
 .ambientImage {
   position: absolute;
-
   inset: 0;
-
   width: 100%;
   height: 100%;
-
   object-fit: cover;
   object-position: center;
-
-  opacity: 0.28;
-
+  opacity: 0.42;
   filter:
-    blur(34px)
-    saturate(1.18)
-    brightness(0.68);
-
-  transform:
-    scale(1.1);
+    blur(54px)
+    saturate(1.24)
+    brightness(0.72);
+  transform: scale(1.16);
 }
+
 .ambientShade {
   position: absolute;
-
   inset: 0;
-
   background:
+    radial-gradient(
+      ellipse at 50% 44%,
+      transparent 0%,
+      color-mix(in srgb, var(--brand) 5%, transparent) 46%,
+      color-mix(in srgb, var(--brand) 11%, var(--background)) 84%,
+      color-mix(in srgb, var(--brand) 9%, var(--background)) 100%
+    ),
     linear-gradient(
       180deg,
-      rgba(3, 5, 9, 0.74) 0%,
-      rgba(3, 5, 9, 0.30) 24%,
-      rgba(3, 5, 9, 0.18) 48%,
-      rgba(3, 5, 9, 0.56) 78%,
-      rgba(3, 5, 9, 0.96) 100%
+      color-mix(in srgb, var(--background) 82%, transparent) 0%,
+      color-mix(in srgb, var(--background) 28%, transparent) 20%,
+      color-mix(in srgb, var(--brand) 3%, transparent) 48%,
+      color-mix(in srgb, var(--brand) 9%, var(--background)) 78%,
+      color-mix(in srgb, var(--brand) 12%, var(--background)) 100%
     ),
     linear-gradient(
       90deg,
-      rgba(3, 5, 9, 0.72) 0%,
-      transparent 24%,
-      transparent 76%,
-      rgba(3, 5, 9, 0.72) 100%
+      color-mix(in srgb, var(--background) 72%, transparent) 0%,
+      transparent 20%,
+      transparent 80%,
+      color-mix(in srgb, var(--background) 72%, transparent) 100%
     );
 }
 
 @keyframes heroAmbientEnter {
   from {
     opacity: 0;
-    transform: scale(1.018);
+    transform: scale(1.025);
   }
 
   to {
@@ -1215,56 +810,54 @@
 
 @media (max-width: 800px) {
   .ambientBackdrop {
-    top: -72px;
-    bottom: -92px;
+    top: -105px;
+    bottom: -230px;
   }
 
   .ambientImage {
-    opacity: 0.25;
-
+    opacity: 0.36;
     filter:
-      blur(30px)
-      saturate(1.14)
-      brightness(0.63);
+      blur(42px)
+      saturate(1.2)
+      brightness(0.68);
+    transform: scale(1.17);
   }
 
   .ambientShade {
     background:
       linear-gradient(
         180deg,
-        rgba(3, 5, 9, 0.68) 0%,
-        rgba(3, 5, 9, 0.24) 24%,
-        rgba(3, 5, 9, 0.24) 58%,
-        rgba(3, 5, 9, 0.92) 100%
+        color-mix(in srgb, var(--background) 72%, transparent) 0%,
+        color-mix(in srgb, var(--background) 20%, transparent) 24%,
+        color-mix(in srgb, var(--brand) 5%, transparent) 56%,
+        color-mix(in srgb, var(--brand) 11%, var(--background)) 100%
       );
   }
 }
 
 @media (max-width: 520px) {
   .ambientBackdrop {
-    top: -58px;
-    bottom: -76px;
+    top: -80px;
+    bottom: -170px;
   }
-.ambientImage {
-    opacity: 0.30;
 
+  .ambientImage {
+    opacity: 0.38;
     filter:
-      blur(27px)
-      saturate(1.18)
-      brightness(0.62);
-
-    transform:
-      scale(1.14);
+      blur(34px)
+      saturate(1.2)
+      brightness(0.66);
+    transform: scale(1.18);
   }
 
   .ambientShade {
     background:
       linear-gradient(
         180deg,
-        rgba(3, 5, 9, 0.58) 0%,
-        rgba(3, 5, 9, 0.20) 24%,
-        rgba(3, 5, 9, 0.28) 60%,
-        rgba(3, 5, 9, 0.94) 100%
+        color-mix(in srgb, var(--background) 62%, transparent) 0%,
+        color-mix(in srgb, var(--background) 16%, transparent) 24%,
+        color-mix(in srgb, var(--brand) 4%, transparent) 58%,
+        color-mix(in srgb, var(--brand) 10%, var(--background)) 100%
       );
   }
 }
@@ -1275,8 +868,3 @@
     opacity: 1;
   }
 }
-
-/* THEME V2 — HOME HERO */
-.dots .activeDot { background: var(--accent-gold); box-shadow: 0 0 14px color-mix(in srgb, var(--accent-gold) 42%, transparent); }
-.progressBar { background: var(--gradient-brand-gold); }
-.heroSection { filter: drop-shadow(0 22px 55px color-mix(in srgb, var(--accent-violet) 5%, transparent)); }

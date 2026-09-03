@@ -1,95 +1,84 @@
 import Link from "next/link";
+import { ChevronRight } from "lucide-react";
+import type { CSSProperties } from "react";
 
+import TaxonomyIcon from "@/components/taxonomy/TaxonomyIcon";
+import type { HomeCopy } from "@/data/home-config";
 import {
-  Box,
-  Car,
-  ChevronRight,
-  Compass,
-  Puzzle,
-  Shield,
-  Zap,
-} from "lucide-react";
-
-import { games } from "@/data/games";
+  getOrderedClassificationStats,
+} from "@/lib/games/catalog";
+import {
+  getPublicTaxonomyPresentation,
+} from "@/lib/games/public-taxonomy";
+import {
+  resolveTaxonomyVisual,
+} from "@/lib/games/taxonomy-presentation";
+import type { Game } from "@/types/game";
 
 import styles from "./FeaturedCategories.module.css";
 
-const categories = [
-  {
-    name: "Acción",
-    icon: Zap,
-    tone: "red",
-  },
-  {
-    name: "Aventura",
-    icon: Compass,
-    tone: "purple",
-  },
-  {
-    name: "RPG",
-    icon: Shield,
-    tone: "violet",
-  },
-  {
-    name: "Carreras",
-    icon: Car,
-    tone: "blue",
-  },
-  {
-    name: "Puzzle",
-    icon: Puzzle,
-    tone: "green",
-  },
-  {
-    name: "Sandbox",
-    icon: Box,
-    tone: "orange",
-  },
-] as const;
+export default async function FeaturedCategories({
+  games,
+  copy,
+}: {
+  games: Game[];
+  copy: HomeCopy["classifications"];
+}) {
+  const taxonomy = await getPublicTaxonomyPresentation();
+  const classifications = getOrderedClassificationStats(
+    games,
+    taxonomy.classifications
+  );
 
-export default function FeaturedCategories() {
+  if (classifications.length === 0) return null;
+
   return (
     <section className={styles.section}>
       <div className={styles.header}>
         <h2>
-          CATEGORÍAS <span>DESTACADAS</span>
+          {copy.title} <span>{copy.highlight}</span>
         </h2>
 
         <Link href="/juegos">
-          Ver todo el catálogo
+          {copy.linkLabel}
           <ChevronRight size={19} />
         </Link>
       </div>
 
       <div className={styles.categories}>
-        {categories.map((category) => {
-          const Icon = category.icon;
-          const count = games.filter(
-            (game) => game.category === category.name
-          ).length;
+        {classifications.map(
+          ({ term, label, count }, index) => {
+            const visual = resolveTaxonomyVisual(term, index);
 
-          return (
-            <Link
-              key={category.name}
-              href={`/juegos?categoria=${encodeURIComponent(
-                category.name
-              )}`}
-              className={styles.category}
-            >
-              <div
-                className={`${styles.iconBox} ${styles[category.tone]}`}
+            return (
+              <Link
+                key={term.key}
+                href={`/juegos?categoria=${encodeURIComponent(label)}`}
+                className={styles.category}
+                style={
+                  {
+                    "--taxonomy-accent": visual.color,
+                  } as CSSProperties
+                }
               >
-                <Icon size={40} strokeWidth={1.8} />
-              </div>
+                <div className={styles.iconBox}>
+                  <TaxonomyIcon
+                    icon={visual.icon}
+                    asset={visual.iconAsset}
+                    size={40}
+                    strokeWidth={1.8}
+                  />
+                </div>
 
-              <h3>{category.name}</h3>
+                <h3>{label}</h3>
 
-              <p className={styles[category.tone]}>
-                {count} {count === 1 ? "juego" : "juegos"}
-              </p>
-            </Link>
-          );
-        })}
+                <p>
+                  {count} {count === 1 ? "juego" : "juegos"}
+                </p>
+              </Link>
+            );
+          }
+        )}
       </div>
     </section>
   );

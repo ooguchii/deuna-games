@@ -1,42 +1,71 @@
 import Link from "next/link";
 
-import { ChevronRight } from "lucide-react";
+import {
+  ChevronRight,
+  Sparkles,
+} from "lucide-react";
 
 import CardCarousel from "@/components/ui/CardCarousel";
 import UniversalGameCard from "@/components/ui/UniversalGameCard";
-import { recommendedGames } from "@/data/home";
+import type { HomeCopy } from "@/data/home-config";
+import type { Game } from "@/types/game";
 
 import styles from "./RecommendedGames.module.css";
 
-export default function RecommendedGames() {
+export default function RecommendedGames({
+  games,
+  copy,
+  personalized = false,
+  reasons = {},
+}: {
+  games: Game[];
+  copy: HomeCopy["recommended"];
+  personalized?: boolean;
+  reasons?: Record<string, string[]>;
+}) {
+  const explanation = games
+    .flatMap((game) => reasons[game.slug] ?? [])
+    .filter((reason, index, values) =>
+      values.indexOf(reason) === index
+    )
+    .slice(0, 2);
+
   return (
     <section className={styles.section}>
       <div className={styles.header}>
         <div>
           <span className={styles.eyebrow}>
-            PARA DESCUBRIR
+            {copy.eyebrow}
           </span>
 
           <h2>
-            JUEGOS <strong>RECOMENDADOS</strong>
+            {copy.title} <strong>{copy.highlight}</strong>
           </h2>
 
-          <p>
-            Una selección de juegos que creemos que vale la pena conocer.
-          </p>
+          <p>{copy.text}</p>
+
+          {personalized && (
+            <div className={styles.personalizedNote}>
+              <Sparkles size={14} aria-hidden="true" />
+              <span>
+                Personalizado con tus elecciones en Mi DeUna
+                {explanation[0] ? ` · ${explanation.join(" · ")}` : ""}
+              </span>
+            </div>
+          )}
         </div>
 
         <Link href="/juegos">
-          Ver catálogo
+          {copy.linkLabel}
           <ChevronRight size={18} aria-hidden="true" />
         </Link>
       </div>
 
       <CardCarousel
-        ariaLabel="Juegos recomendados"
+        ariaLabel={`${copy.title} ${copy.highlight}`}
         itemsDesktop={5}
       >
-        {recommendedGames.map((game) => (
+        {games.map((game) => (
           <UniversalGameCard
             key={game.slug}
             game={game}

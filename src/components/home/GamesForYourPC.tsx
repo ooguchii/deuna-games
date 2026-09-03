@@ -5,70 +5,88 @@ import {
   ChevronRight,
   Cpu,
   Monitor,
+  Sparkles,
   Star,
 } from "lucide-react";
 
 import CardCarousel from "@/components/ui/CardCarousel";
 import UniversalGameCard from "@/components/ui/UniversalGameCard";
-import { lowSpecGames } from "@/data/home";
+import type { HomeCopy } from "@/data/home-config";
+import type { Game } from "@/types/game";
 
 import styles from "./GamesForYourPC.module.css";
 
 const catalogOptions = [
   {
-    title: "Bajos recursos",
-    subtitle: "Juegos pensados para equipos modestos",
     href: "/juegos?equipo=lowSpec",
     icon: Cpu,
   },
   {
-    title: "Con requisitos cargados",
-    subtitle: "Compara memoria, gráficos y sistema",
     href: "/requisitos",
     icon: Monitor,
   },
   {
-    title: "Mejor puntuados",
-    subtitle: "Ordenados por valoración",
     href: "/juegos?orden=rating",
     icon: Star,
   },
   {
-    title: "Añadidos recientemente",
-    subtitle: "Los últimos títulos incorporados",
     href: "/juegos?estado=recent&orden=recientes",
     icon: CalendarDays,
   },
 ] as const;
 
-export default function GamesForYourPC() {
+export default function GamesForYourPC({
+  games,
+  copy,
+  personalized = false,
+  reasons = {},
+}: {
+  games: Game[];
+  copy: HomeCopy["lowSpec"];
+  personalized?: boolean;
+  reasons?: Record<string, string[]>;
+}) {
+  const explanation = games
+    .flatMap((game) => reasons[game.slug] ?? [])
+    .filter((reason, index, values) =>
+      values.indexOf(reason) === index
+    )
+    .slice(0, 2);
+
   return (
     <section className={styles.section}>
       <div className={styles.mainHeader}>
         <div>
           <span className={styles.eyebrow}>
-            SEGÚN TU EQUIPO
+            {copy.eyebrow}
           </span>
 
           <h2>
-            Encuentra juegos para{" "}
-            <strong>tu PC</strong>
+            {copy.title}{" "}
+            <strong>{copy.highlight}</strong>
           </h2>
 
-          <p>
-            Explora el catálogo usando los requisitos disponibles,
-            el rendimiento esperado y filtros que ya funcionan hoy.
-          </p>
+          <p>{copy.text}</p>
+
+          {personalized && (
+            <div className={styles.personalizedNote}>
+              <Sparkles size={14} aria-hidden="true" />
+              <span>
+                Ordenado con la PC que guardaste en Mi DeUna
+                {explanation[0] ? ` · ${explanation.join(" · ")}` : ""}
+              </span>
+            </div>
+          )}
         </div>
 
         <Link href="/requisitos">
-          Probar recomendador
-          <ChevronRight size={18} />
+          {copy.cta}
+          <ChevronRight size={18} aria-hidden="true" />
         </Link>
       </div>
 
       <div className={styles.hardwareGrid}>
-        {catalogOptions.map((option) => {
+        {catalogOptions.map((option, index) => {
           const Icon = option.icon;
 
           return (
@@ -78,17 +96,18 @@ export default function GamesForYourPC() {
               key={option.href}
             >
               <div className={styles.hardwareIcon}>
-                <Icon size={25} />
+                <Icon size={25} aria-hidden="true" />
               </div>
 
               <div>
-                <h3>{option.title}</h3>
-                <p>{option.subtitle}</p>
+                <h3>{copy.optionTitles[index]}</h3>
+                <p>{copy.optionSubtitles[index]}</p>
               </div>
 
               <ChevronRight
                 size={19}
                 className={styles.hardwareArrow}
+                aria-hidden="true"
               />
             </Link>
           );
@@ -99,21 +118,21 @@ export default function GamesForYourPC() {
 
       <div className={styles.gamesHeader}>
         <h3>
-          RECOMENDADOS PARA EQUIPOS{" "}
-          <span>DE BAJOS RECURSOS</span>
+          {personalized ? "Mejor resultado" : copy.listTitle}{" "}
+          <span>{personalized ? "en tu PC" : copy.listHighlight}</span>
         </h3>
 
-        <Link href="/juegos/bajos-recursos">
-          Ver todos
-          <ChevronRight size={18} />
+        <Link href={personalized ? "/cuenta#mi-pc" : "/juegos/bajos-recursos"}>
+          {personalized ? "Ver Mi PC" : copy.listLinkLabel}
+          <ChevronRight size={18} aria-hidden="true" />
         </Link>
       </div>
 
       <CardCarousel
-        ariaLabel="Juegos para equipos de bajos recursos"
+        ariaLabel={personalized ? "Juegos mejor estimados para tu PC" : `${copy.listTitle} ${copy.listHighlight}`}
         itemsDesktop={5}
       >
-        {lowSpecGames.map((game) => (
+        {games.map((game) => (
           <UniversalGameCard
             key={game.slug}
             game={game}

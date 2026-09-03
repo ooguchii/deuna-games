@@ -1,0 +1,54 @@
+[Unit]
+Description=DeUna Games (Next.js standalone)
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=deuna-games
+Group=deuna-games
+WorkingDirectory=/srv/deuna-games/current
+EnvironmentFile=/etc/deuna-games/runtime.env
+Environment=NODE_ENV=production
+Environment=HOSTNAME=127.0.0.1
+Environment=PORT=3000
+Environment=NEXT_TELEMETRY_DISABLED=1
+ExecStart=/usr/bin/node server.js
+Restart=on-failure
+RestartSec=5s
+TimeoutStopSec=30s
+UMask=0077
+
+# systemd crea /var/lib/deuna-games con propietario y permisos del servicio.
+# DEUNA_EDITORIAL_MEDIA_ROOT debe apuntar a un subdirectorio de este estado,
+# por ejemplo /var/lib/deuna-games/editorial-media.
+StateDirectory=deuna-games
+StateDirectoryMode=0750
+
+# El runtime sólo necesita Nginx y PostgreSQL en loopback.
+IPAddressDeny=any
+IPAddressAllow=localhost
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+
+# Aislamiento del proceso. Sólo el caché y el estado editorial son escribibles.
+NoNewPrivileges=true
+PrivateDevices=true
+PrivateTmp=true
+ProtectClock=true
+ProtectControlGroups=true
+ProtectHome=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectProc=invisible
+ProtectSystem=strict
+ProcSubset=pid
+LockPersonality=true
+RestrictNamespaces=true
+RestrictSUIDSGID=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+ReadWritePaths=-/srv/deuna-games/current/.next/cache /var/lib/deuna-games
+
+[Install]
+WantedBy=multi-user.target

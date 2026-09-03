@@ -14,6 +14,10 @@ import {
 
 import { useMemo } from "react";
 
+import type {
+  GamePerformanceCalibration,
+} from "@/types/game";
+
 import {
   estimateGamePerformance,
 } from "./performance-model";
@@ -23,6 +27,9 @@ import type {
   HardwareProfile,
   PerformanceTier,
 } from "./types";
+import {
+  useGamePerformanceCalibration,
+} from "./useGamePerformanceCalibration";
 import {
   useResolvedHardwareProfile,
 } from "./useResolvedHardwareProfile";
@@ -58,6 +65,7 @@ const tierMeta: Record<
 
 type GamePerformanceEstimateProps = {
   slug: string;
+  calibration?: GamePerformanceCalibration | null;
 };
 
 function sourceLabel(profile: HardwareProfile | null) {
@@ -88,11 +96,23 @@ function ramLabel(profile: HardwareProfile | null) {
 
 export default function GamePerformanceEstimate({
   slug,
+  calibration: previewCalibration,
 }: GamePerformanceEstimateProps) {
   const {
     profile: hardware,
     status,
   } = useResolvedHardwareProfile();
+  const {
+    calibration: publishedCalibration,
+    loading: publishedCalibrationLoading,
+  } = useGamePerformanceCalibration(slug);
+  const hasPreviewOverride =
+    previewCalibration !== undefined;
+  const calibration = hasPreviewOverride
+    ? previewCalibration
+    : publishedCalibration;
+  const calibrationLoading =
+    !hasPreviewOverride && publishedCalibrationLoading;
 
   const estimate = useMemo(
     () =>
@@ -100,10 +120,11 @@ export default function GamePerformanceEstimate({
         ? estimateGamePerformance(
             slug,
             hardware,
-            DEFAULT_SETTINGS
+            DEFAULT_SETTINGS,
+            calibration ?? undefined
           )
         : null,
-    [hardware, slug]
+    [calibration, hardware, slug]
   );
 
   const missingParts = useMemo(() => {
@@ -119,7 +140,7 @@ export default function GamePerformanceEstimate({
   const configurationHref =
     `/requisitos?juego=${encodeURIComponent(slug)}`;
 
-  if (status === "loading") {
+  if (status === "loading" || calibrationLoading) {
     return (
       <aside className={styles.panel} aria-live="polite">
         <div className={styles.header}>
@@ -139,10 +160,9 @@ export default function GamePerformanceEstimate({
           </span>
 
           <div className={styles.stateCopy}>
-            <strong>Comprobando tu perfil de hardware</strong>
+            <strong>Preparando la estimación</strong>
             <span>
-              Usamos primero tu configuración guardada y, si no existe,
-              intentamos una detección local desde el navegador.
+              Comprobamos la calibración del juego y el perfil de hardware disponible en este navegador.
             </span>
           </div>
         </div>
@@ -155,11 +175,13 @@ export default function GamePerformanceEstimate({
     !estimate?.canEstimate ||
     !hardware
   ) {
-    const missingText = missingParts.length
-      ? `Falta confirmar ${missingParts.join(", ")}.`
-      : status === "error"
-        ? "No se pudo completar la detección local del hardware."
-        : "No pudimos completar una lectura suficiente del hardware.";
+    const missingText =
+      estimate?.reason ??
+      (missingParts.length
+        ? `Falta confirmar ${missingParts.join(", ")}.`
+        : status === "error"
+          ? "No se pudo completar la detección local del hardware."
+          : "No pudimos completar una lectura suficiente del hardware.");
 
     return (
       <aside className={styles.panel} aria-live="polite">
@@ -190,7 +212,7 @@ export default function GamePerformanceEstimate({
           <p>
             El navegador no siempre puede revelar CPU, GPU o RAM con
             precisión. Puedes completar esos datos manualmente para obtener
-            una estimación útil.
+            una estimación útil cuando el juego tenga calibración disponible.
           </p>
 
           <Link href={configurationHref}>

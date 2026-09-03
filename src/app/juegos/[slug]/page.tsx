@@ -22,27 +22,36 @@ import Footer from "@/components/layout/Footer";
 import Header from "@/components/layout/Header";
 import GameMedia from "@/components/ui/GameMedia";
 import UniversalGameCard from "@/components/ui/UniversalGameCard";
-import {
-  games,
-  getGameBySlug,
-} from "@/data/games";
 import GamePerformanceEstimate from "@/features/game-finder/GamePerformanceEstimate";
-import {
-  resolvedGameUpdates,
-} from "@/data/updates";
 import { getPerformanceProfile } from "@/features/game-finder/performance-data";
+import {
+  getAccountGamePreference,
+} from "@/lib/accounts/personalization-service";
+import {
+  readAccountSession,
+} from "@/lib/accounts/session";
 import {
   resolveGameDownload,
 } from "@/lib/games/download";
 import {
+  getPublicGameBySlug,
+  getPublicGames,
+} from "@/lib/games/public-catalog";
+import {
   absoluteUrl,
-  siteConfig,
 } from "@/lib/site";
+import {
+  getPublicSiteConfig,
+} from "@/lib/site/public-site-config";
 import { safeJsonLd } from "@/lib/safe-json-ld";
+import {
+  getPublicUpdatesForGame,
+} from "@/lib/updates/public-updates";
 import type {
   GameHardwareRequirements,
 } from "@/types/game";
 
+import GameAccountActions from "./GameAccountActions";
 import GameCompatibilityCard from "./GameCompatibilityCard";
 import styles from "./page.module.css";
 
@@ -58,13 +67,8 @@ type RequirementRow = {
   recommended?: string;
 };
 
-export const dynamicParams = false;
-
-export function generateStaticParams() {
-  return games.map((game) => ({
-    slug: game.slug,
-  }));
-}
+export const dynamic = "force-dynamic";
+export const dynamicParams = true;
 
 function legacyRequirements(
   requirements: GameHardwareRequirements
@@ -108,7 +112,10 @@ export async function generateMetadata({
   params,
 }: GameDetailPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const game = getGameBySlug(slug);
+  const [game, publicSiteConfig] = await Promise.all([
+    getPublicGameBySlug(slug),
+    getPublicSiteConfig(),
+  ]);
 
   if (!game) {
     return {
@@ -131,7 +138,7 @@ export async function generateMetadata({
       canonical: `/juegos/${game.slug}`,
     },
     openGraph: {
-      title: `${title} | ${siteConfig.name}`,
+      title: `${title} | ${publicSiteConfig.name}`,
       description,
       url: `/juegos/${game.slug}`,
       type: "website",
@@ -146,7 +153,7 @@ export async function generateMetadata({
     },
     twitter: {
       card: "summary_large_image",
-      title: `${title} | ${siteConfig.name}`,
+      title: `${title} | ${publicSiteConfig.name}`,
       description,
       images: image ? [image] : undefined,
     },
@@ -157,12 +164,30 @@ export default async function GameDetailPage({
   params,
 }: GameDetailPageProps) {
   const { slug } = await params;
-  const game = getGameBySlug(slug);
+  const [
+    game,
+    games,
+    gameUpdates,
+    publicSiteConfig,
+    accountSession,
+  ] = await Promise.all([
+    getPublicGameBySlug(slug),
+    getPublicGames(),
+    getPublicUpdatesForGame(slug),
+    getPublicSiteConfig(),
+    readAccountSession(),
+  ]);
 
   if (!game) {
     notFound();
   }
 
+  const accountPreference = accountSession
+    ? await getAccountGamePreference(
+        accountSession.userId,
+        game.slug
+      )
+    : null;
   const download = resolveGameDownload(game);
   const performanceProfile = getPerformanceProfile(
     game.slug
@@ -177,13 +202,7 @@ export default async function GameDetailPage({
     minimum,
     recommended
   );
-
-  const gameUpdates = resolvedGameUpdates
-    .filter(
-      (update) =>
-        update.game.slug === game.slug
-    )
-    .slice(0, 3);
+  const recentGameUpdates = gameUpdates.slice(0, 3);
 
   const relatedGames = games
     .filter(
@@ -271,7 +290,7 @@ export default async function GameDetailPage({
     operatingSystem:
       minimum?.system ??
       recommended?.system,
-    inLanguage: siteConfig.language,
+    inLanguage: publicSiteConfig.language,
   };
 
   return (
@@ -323,6 +342,7 @@ export default async function GameDetailPage({
               sizes="100vw"
               priority
               variant="hero"
+              viewport={game.heroImage ? game.imageMedia?.hero : game.imageMedia?.cover}
             />
             <div className={styles.heroShade} />
           </div>
@@ -333,6 +353,7 @@ export default async function GameDetailPage({
                 src={game.coverImage}
                 alt={game.imageAlt}
                 sizes="(max-width: 700px) 52vw, 260px"
+                viewport={game.imageMedia?.cover}
               />
             </div>
 
@@ -387,6 +408,18 @@ export default async function GameDetailPage({
               )}
 
               <GamePerformanceEstimate slug={game.slug} />
+
+              <GameAccountActions
+                gameSlug={game.slug}
+                signedIn={accountSession !== null}
+                preference={accountPreference
+                  ? {
+                      favorite: accountPreference.favorite,
+                      libraryState: accountPreference.libraryState,
+                      followUpdates: accountPreference.followUpdates,
+                    }
+                  : null}
+              />
 
               <div className={styles.actions}>
                 {download ? (
@@ -486,7 +519,7 @@ export default async function GameDetailPage({
           {download && (
             <a href="#installation"><Download size={16} aria-hidden="true" />Instalación</a>
           )}
-          {gameUpdates.length > 0 && (
+          {recentGameUpdates.length > 0 && (
             <a href="#versions"><RefreshCcw size={16} aria-hidden="true" />Versiones</a>
           )}
         </nav>
@@ -599,6 +632,10 @@ export default async function GameDetailPage({
                     src={image}
                     alt={`${game.title} — imagen ${index + 1}`}
                     sizes="(max-width: 700px) 100vw, 33vw"
+                    viewport={
+                      game.imageMedia?.gallery?.[image]
+                      ?? (image === game.heroImage ? game.imageMedia?.hero : undefined)
+                    }
                   />
                 </figure>
               ))}
@@ -632,7 +669,7 @@ export default async function GameDetailPage({
           </section>
         )}
 
-        {gameUpdates.length > 0 && (
+        {recentGameUpdates.length > 0 && (
           <section
             id="versions"
             className={styles.sectionPanel}
@@ -652,7 +689,7 @@ export default async function GameDetailPage({
             </div>
 
             <div className={styles.versionList}>
-              {gameUpdates.map((update, index) => (
+              {recentGameUpdates.map((update, index) => (
                 <article
                   key={update.id}
                   className={styles.versionRow}

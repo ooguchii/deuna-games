@@ -1,92 +1,141 @@
-import { parseGameDate } from "@/lib/games/catalog";
+import {
+  parseGameDate,
+} from "@/lib/games/catalog";
+import type {
+  AccountGamePreference,
+} from "@/lib/accounts/personalization-types";
+import type {
+  HardwareProfile,
+} from "@/features/game-finder/types";
+import {
+  hasRecommendationSignals,
+  rankGamesForSavedHardware,
+  rankPersonalizedRecommendations,
+} from "@/lib/home/account-personalization";
+import {
+  resolveHomeCollectionGames,
+} from "@/lib/home/ranking";
 import type { Game } from "@/types/game";
 
 import {
-  games,
-  getGameBySlug,
-} from "./games";
+  resolveHomeConfig,
+  sourceHomeConfig,
+  type HomeConfig,
+} from "./home-config";
 
-import {
-  resolvedGameUpdates,
-} from "./updates";
+export type HomeAccountPersonalization = {
+  preferences: AccountGamePreference[];
+  hardware: HardwareProfile | null;
+};
 
-function getRequiredGame(
-  slug: string
-): Game {
-  const game =
-    getGameBySlug(slug);
+function fillUniqueGames(
+  preferred: readonly Game[],
+  fallback: readonly Game[],
+  limit: number
+) {
+  const selected: Game[] = [];
+  const seen = new Set<string>();
 
-  if (!game) {
-    throw new Error(
-      `No se encontró el juego "${slug}" en src/data/games.ts`
-    );
+  for (const game of [...preferred, ...fallback]) {
+    if (seen.has(game.slug)) continue;
+
+    selected.push(game);
+    seen.add(game.slug);
+
+    if (selected.length === limit) break;
   }
 
-  return game;
+  return selected;
 }
 
-function getGames(
-  slugs: string[]
+export function buildHomeGameCollections(
+  catalog: Game[],
+  config: HomeConfig = sourceHomeConfig,
+  personalization?: HomeAccountPersonalization
 ) {
-  return slugs.map(
-    getRequiredGame
+  const resolved = resolveHomeConfig(config);
+  const genericLowSpec = resolveHomeCollectionGames(
+    catalog,
+    "lowSpec",
+    resolved.curation.lowSpec.mode,
+    resolved.lowSpecSlugs,
+    7
   );
+  const genericRecommended = resolveHomeCollectionGames(
+    catalog,
+    "recommended",
+    resolved.curation.recommended.mode,
+    resolved.recommendedSlugs,
+    7
+  );
+  const personalizedRecommendations =
+    personalization &&
+    hasRecommendationSignals(
+      personalization.preferences,
+      personalization.hardware
+    )
+      ? rankPersonalizedRecommendations(
+          catalog,
+          personalization.preferences,
+          personalization.hardware
+        )
+      : [];
+  const personalizedPc = personalization?.hardware
+    ? rankGamesForSavedHardware(
+        catalog,
+        personalization.hardware
+      )
+    : [];
+  const recommendationReasons = Object.fromEntries(
+    personalizedRecommendations.map((entry) => [
+      entry.game.slug,
+      entry.reasons,
+    ])
+  );
+  const pcReasons = Object.fromEntries(
+    personalizedPc.map((entry) => [
+      entry.game.slug,
+      entry.reasons,
+    ])
+  );
+
+  return {
+    heroGames: resolveHomeCollectionGames(
+      catalog,
+      "hero",
+      resolved.curation.hero.mode,
+      resolved.heroSlugs,
+      4
+    ),
+    popularGames: resolveHomeCollectionGames(
+      catalog,
+      "popular",
+      resolved.curation.popular.mode,
+      resolved.popularSlugs,
+      7
+    ),
+    recentGames: [
+      ...catalog.filter((game) => Boolean(game.addedAt)),
+    ].sort(
+      (a, b) =>
+        parseGameDate(b.addedAt) -
+          parseGameDate(a.addedAt) ||
+        a.title.localeCompare(b.title, "es")
+    ),
+    lowSpecGames: fillUniqueGames(
+      personalizedPc.map((entry) => entry.game),
+      genericLowSpec,
+      7
+    ),
+    recommendedGames: fillUniqueGames(
+      personalizedRecommendations.map((entry) => entry.game),
+      genericRecommended,
+      7
+    ),
+    recommendedPersonalized:
+      personalizedRecommendations.length > 0,
+    pcPersonalized: personalizedPc.length > 0,
+    recommendationReasons,
+    pcReasons,
+  };
 }
-
-export const heroGames =
-  getGames([
-    "dragon-ball-sparking-zero",
-    "god-of-war-ragnarok",
-    "forza-horizon-5",
-    "resident-evil-4",
-  ]);
-
-export const popularGames =
-  getGames([
-    "god-of-war-ragnarok",
-    "elden-ring",
-    "forza-horizon-5",
-    "resident-evil-4",
-    "hogwarts-legacy",
-    "cyberpunk-2077",
-    "baldurs-gate-3",
-  ]);
-
-export const recentGames = [
-  ...games.filter((game) => Boolean(game.addedAt)),
-].sort(
-  (a, b) =>
-    parseGameDate(b.addedAt) -
-      parseGameDate(a.addedAt) ||
-    a.title.localeCompare(b.title, "es")
-);
-
-export const lowSpecGames =
-  getGames([
-    "minecraft-java-edition",
-    "left-4-dead-2",
-    "gta-san-andreas",
-    "terraria",
-    "half-life-2",
-    "portal-2",
-    "stardew-valley",
-  ]);
-
-export const recommendedGames =
-  getGames([
-    "cyberpunk-2077",
-    "baldurs-gate-3",
-    "red-dead-redemption-2",
-    "lies-of-p",
-    "armored-core-vi",
-    "god-of-war-ragnarok",
-    "elden-ring",
-  ]);
-
-export const latestUpdates =
-  resolvedGameUpdates.slice(
-    0,
-    3
-  );
-
-export { games };
