@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import {
-  CheckCircle2,
   ImageIcon,
   MonitorPlay,
   RefreshCw,
@@ -17,7 +16,6 @@ import {
   useState,
 } from "react";
 
-import GameMedia from "@/components/ui/GameMedia";
 import {
   getAdminVideoFrameSnapshot,
   requestAdminVideoFrame,
@@ -29,6 +27,7 @@ import {
   resolveFramedMediaLayout,
   type FramedMediaLayout,
 } from "@/lib/media/framed-media-layout";
+import { normalizeGameImageViewport } from "@/lib/media/image-viewport";
 import { DEFAULT_PREVIEW_VIEWPORT } from "@/lib/media/preview-video-policy";
 import type {
   GameImageViewport,
@@ -42,6 +41,8 @@ type CommonProps = {
   mode: "source" | "destination";
   frameAspect?: number;
   label?: string;
+  // Se conservan temporalmente por compatibilidad con editores que todavía
+  // pasan estas props. Ya no se dibujan overlays sobre miniaturas pequeñas.
   badge?: string;
   className?: string;
   sizes?: string;
@@ -157,18 +158,12 @@ function useVideoLayout(
   return { frameRef, layout };
 }
 
-function ThumbnailBadge({ children }: { children?: string }) {
-  if (!children) return null;
-  return <span className={styles.badge}>{children}</span>;
-}
-
 export default function AdminMediaThumbnail(props: Props) {
   const {
     src,
     mode,
     frameAspect,
     label,
-    badge,
     className,
     sizes = "96px",
     allowRetry = false,
@@ -183,7 +178,15 @@ export default function AdminMediaThumbnail(props: Props) {
   const frameStyle = frameAspect
     ? ({ "--admin-media-thumbnail-aspect": String(frameAspect) } as CSSProperties)
     : undefined;
-  const showPlayIndicator = props.playIndicator ?? isVideo;
+  const normalizedImageViewport = props.kind === "image"
+    ? normalizeGameImageViewport(props.viewport)
+    : null;
+  const destinationImageStyle = normalizedImageViewport
+    ? ({
+        "--admin-image-zoom": normalizedImageViewport.zoom,
+        "--admin-image-position": `${(normalizedImageViewport.x * 100).toFixed(2)}% ${(normalizedImageViewport.y * 100).toFixed(2)}%`,
+      } as CSSProperties)
+    : undefined;
 
   return (
     <span
@@ -203,18 +206,26 @@ export default function AdminMediaThumbnail(props: Props) {
       >
         {props.kind === "image" ? (
           mode === "destination" ? (
-            <GameMedia
-              src={src}
-              alt=""
-              sizes={sizes}
-              viewport={props.viewport}
-            />
+            <span
+              className={styles.destinationImageViewport}
+              style={destinationImageStyle}
+            >
+              <Image
+                src={src}
+                alt=""
+                fill
+                sizes={sizes}
+                draggable={false}
+                className={styles.destinationImage}
+              />
+            </span>
           ) : (
             <Image
               src={src}
               alt=""
               fill
               sizes={sizes}
+              draggable={false}
               className={styles.sourceImage}
             />
           )
@@ -273,20 +284,6 @@ export default function AdminMediaThumbnail(props: Props) {
           </span>
         )}
 
-        <ThumbnailBadge>{badge}</ThumbnailBadge>
-        {isVideo && frame.status === "ready" && (
-          <>
-            {showPlayIndicator && (
-              <span className={styles.playIndicator} aria-hidden="true">
-                <MonitorPlay size={12} />
-              </span>
-            )}
-            <span className={styles.verification} title="Vista comprobada">
-              <CheckCircle2 size={12} aria-hidden="true" />
-              <span className={styles.verificationText}>Vista comprobada</span>
-            </span>
-          </>
-        )}
         {isVideo && frame.status === "error" && (
           <span className={styles.screenReaderStatus} role="status">
             No se pudo generar la vista temporal del video. La asignación no cambió.
