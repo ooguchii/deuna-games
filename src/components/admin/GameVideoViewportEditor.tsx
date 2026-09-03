@@ -99,6 +99,7 @@ export default function GameVideoViewportEditor({
   return (
     <>
       <MediaViewportEditor
+        key={`video:${target}:${clip}:${requiredAspect}`}
         kind="video"
         src={clip}
         sourceLabel={label}
