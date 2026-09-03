@@ -35,10 +35,11 @@ import {
   DEFAULT_GAME_IMAGE_VIEWPORT,
 } from "@/lib/media/image-viewport";
 import {
-  withoutGameVideoTarget,
+  resolveGameDestinationMediaMode,
 } from "@/lib/media/game-video-media";
 import type {
   Game,
+  GameDestinationMediaMode,
   GameImageMedia,
   GameVideoViewport,
 } from "@/types/game";
@@ -47,15 +48,24 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 const assignmentTargetSchema = z.enum([
+  "cover-mode",
   "cover-image",
+  "cover-video",
+  "hero-mode",
   "hero-image",
   "hero-video",
-  "hero-hover-video",
+  "card-mode",
+  "card-image",
   "card-video",
-  "card-match-hero",
   "gallery-image",
   "gallery-remove",
   "image-delete",
+]);
+
+const mediaModeSchema = z.enum([
+  "image",
+  "video",
+  "hover-video",
 ]);
 
 const fields = [
@@ -69,7 +79,7 @@ function redirectPath(slug: string, state: string) {
 }
 
 function requiredVideoViewport(
-  target: "hero" | "card"
+  target: "cover" | "hero" | "card"
 ): GameVideoViewport {
   return {
     x: 0.5,
@@ -100,32 +110,37 @@ async function resourcesForGame(
   return mergeEditorialMediaResources(editorial, bundled);
 }
 
+type MediaDraftUpdate = Parameters<typeof saveGameMediaDraft>[3] &
+  Partial<Pick<Game, "cardImage" | "mediaModes">>;
+
 function mediaUpdate(
-  update: Parameters<typeof saveGameMediaDraft>[3],
+  update: MediaDraftUpdate,
   imageMedia?: GameImageMedia
-) {
+): MediaDraftUpdate {
   return {
     ...update,
     ...(imageMedia ? { imageMedia } : {}),
-  } as Parameters<typeof saveGameMediaDraft>[3] &
-    Pick<Game, "imageMedia">;
+  };
 }
 
 function withoutImageResource(
   game: Game,
   resource: string
-) {
+): MediaDraftUpdate {
   const imageMedia: GameImageMedia = {
     ...game.imageMedia,
   };
 
   if (game.coverImage === resource) {
     delete imageMedia.cover;
-    delete imageMedia.card;
   }
 
   if (game.heroImage === resource) {
     delete imageMedia.hero;
+  }
+
+  if (game.cardImage === resource) {
+    delete imageMedia.card;
   }
 
   const gallery = {
@@ -149,12 +164,61 @@ function withoutImageResource(
         game.heroImage === resource
           ? undefined
           : game.heroImage,
+      cardImage:
+        game.cardImage === resource
+          ? undefined
+          : game.cardImage,
       screenshots: (game.screenshots ?? []).filter(
         (src) => src !== resource
       ),
     },
     imageMedia
   );
+}
+
+function mediaModeUpdate(
+  game: Game,
+  target: "cover" | "hero" | "card",
+  mode: GameDestinationMediaMode
+): MediaDraftUpdate {
+  const playback = mode === "hover-video" ? "hover" : "always";
+  const videoMedia = game.videoMedia
+    ? {
+        ...game.videoMedia,
+        ...(target === "cover" && game.videoMedia.cover
+          ? {
+              cover: {
+                ...game.videoMedia.cover,
+                playback,
+              },
+            }
+          : {}),
+        ...(target === "hero" && game.videoMedia.hero
+          ? {
+              hero: {
+                ...game.videoMedia.hero,
+                playback,
+              },
+            }
+          : {}),
+        ...(target === "card" && game.videoMedia.card
+          ? {
+              card: {
+                ...game.videoMedia.card,
+                playback,
+              },
+            }
+          : {}),
+      }
+    : undefined;
+
+  return {
+    mediaModes: {
+      ...game.mediaModes,
+      [target]: mode,
+    },
+    ...(videoMedia ? { videoMedia } : {}),
+  };
 }
 
 export async function GET(
@@ -179,13 +243,6 @@ export async function GET(
     item.payload,
     publishedImageReferences
   );
-  const heroVideo = item.payload.videoMedia?.hero ?? null;
-  const cardVideo = item.payload.videoMedia?.card ?? null;
-  const heroMode = heroVideo
-    ? heroVideo.playback === "hover"
-      ? "hover-video"
-      : "video"
-    : "image";
 
   return NextResponse.json(
     {
@@ -195,11 +252,15 @@ export async function GET(
       assignments: {
         coverImage: item.payload.coverImage ?? null,
         heroImage: item.payload.heroImage ?? null,
+        cardImage: item.payload.cardImage ?? null,
         screenshots: item.payload.screenshots ?? [],
         imageMedia: item.payload.imageMedia ?? null,
-        heroMode,
-        heroVideo,
-        cardVideo,
+        coverMode: resolveGameDestinationMediaMode(item.payload, "cover"),
+        heroMode: resolveGameDestinationMediaMode(item.payload, "hero"),
+        cardMode: resolveGameDestinationMediaMode(item.payload, "card"),
+        coverVideo: item.payload.videoMedia?.cover ?? null,
+        heroVideo: item.payload.videoMedia?.hero ?? null,
+        cardVideo: item.payload.videoMedia?.card ?? null,
         legacyPreviewClip: item.payload.previewClip ?? null,
       },
     },
@@ -278,7 +339,24 @@ export async function POST(
     ? videoResourceMatch
     : undefined;
 
-  let update: Parameters<typeof saveGameMediaDraft>[3] | null = null;
+  let update: MediaDraftUpdate | null = null;
+
+  if (
+    target.data === "cover-mode" ||
+    target.data === "hero-mode" ||
+    target.data === "card-mode"
+  ) {
+    const mode = mediaModeSchema.safeParse(resource);
+    if (!mode.success) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        redirectPath(slug, "solicitud")
+      );
+    }
+    const destination = target.data.replace("-mode", "") as
+      "cover" | "hero" | "card";
+    update = mediaModeUpdate(current, destination, mode.data);
+  }
 
   if (target.data === "cover-image") {
     if (!imageResource) {
@@ -292,7 +370,6 @@ export async function POST(
       {
         ...current.imageMedia,
         cover: { ...DEFAULT_GAME_IMAGE_VIEWPORT },
-        card: { ...DEFAULT_GAME_IMAGE_VIEWPORT },
       }
     );
   }
@@ -304,13 +381,8 @@ export async function POST(
         redirectPath(slug, "recurso-invalido")
       );
     }
-    const withoutVideo = withoutGameVideoTarget(current, "hero");
     update = mediaUpdate(
-      {
-        heroImage: imageResource.src,
-        videoMedia: withoutVideo.videoMedia,
-        previewClip: withoutVideo.previewClip,
-      },
+      { heroImage: imageResource.src },
       {
         ...current.imageMedia,
         hero: { ...DEFAULT_GAME_IMAGE_VIEWPORT },
@@ -318,20 +390,57 @@ export async function POST(
     );
   }
 
-  if (target.data === "hero-video" || target.data === "hero-hover-video") {
+  if (target.data === "card-image") {
+    if (!imageResource) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        redirectPath(slug, "recurso-invalido")
+      );
+    }
+    update = mediaUpdate(
+      { cardImage: imageResource.src },
+      {
+        ...current.imageMedia,
+        card: { ...DEFAULT_GAME_IMAGE_VIEWPORT },
+      }
+    );
+  }
+
+  if (target.data === "cover-video") {
     if (!videoResource) {
       return adminRedirect(
         authorized.adminOrigin,
         redirectPath(slug, "recurso-invalido")
       );
     }
+    const mode = resolveGameDestinationMediaMode(current, "cover");
+    update = {
+      videoMedia: {
+        ...current.videoMedia,
+        cover: {
+          clip: videoResource.src,
+          viewport: requiredVideoViewport("cover"),
+          playback: mode === "hover-video" ? "hover" : "always",
+        },
+      },
+    };
+  }
+
+  if (target.data === "hero-video") {
+    if (!videoResource) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        redirectPath(slug, "recurso-invalido")
+      );
+    }
+    const mode = resolveGameDestinationMediaMode(current, "hero");
     update = {
       videoMedia: {
         ...current.videoMedia,
         hero: {
           clip: videoResource.src,
           viewport: requiredVideoViewport("hero"),
-          playback: target.data === "hero-hover-video" ? "hover" : "always",
+          playback: mode === "hover-video" ? "hover" : "always",
         },
       },
     };
@@ -344,42 +453,18 @@ export async function POST(
         redirectPath(slug, "recurso-invalido")
       );
     }
-    const sharesHero = current.videoMedia?.hero?.clip === videoResource.src;
-    update = {
-      videoMedia: {
-        ...current.videoMedia,
-        card: sharesHero
-          ? {
-              source: "hero",
-              viewport: requiredVideoViewport("card"),
-            }
-          : {
-              source: "independent",
-              clip: videoResource.src,
-              viewport: requiredVideoViewport("card"),
-            },
-      },
-      previewClip: videoResource.src,
-    };
-  }
-
-  if (target.data === "card-match-hero") {
-    const hero = current.videoMedia?.hero;
-    if (!hero) {
-      return adminRedirect(
-        authorized.adminOrigin,
-        redirectPath(slug, "recurso-invalido")
-      );
-    }
+    const mode = resolveGameDestinationMediaMode(current, "card");
     update = {
       videoMedia: {
         ...current.videoMedia,
         card: {
-          source: "hero",
+          source: "independent",
+          clip: videoResource.src,
           viewport: requiredVideoViewport("card"),
+          playback: mode === "hover-video" ? "hover" : "always",
         },
       },
-      previewClip: hero.clip,
+      previewClip: videoResource.src,
     };
   }
 
