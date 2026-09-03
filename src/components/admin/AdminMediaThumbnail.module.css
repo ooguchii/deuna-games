@@ -35,7 +35,24 @@
 }
 
 .sourceImage {
-  object-fit: contain;
+  object-fit: cover;
+}
+
+.root[data-admin-media-kind="image"][data-admin-media-mode="source"] .sourceImage {
+  transform: scale(1.015);
+}
+
+.destinationImageViewport {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  transform: scale(var(--admin-image-zoom, 1));
+  transform-origin: var(--admin-image-position, 50% 50%);
+}
+
+.destinationImage {
+  object-fit: cover;
+  object-position: var(--admin-image-position, 50% 50%);
 }
 
 .destinationVideoFrame {
@@ -104,64 +121,6 @@
   font-size: 11px;
   font-weight: 850;
   cursor: pointer;
-}
-
-.badge,
-.playIndicator,
-.verification {
-  position: absolute;
-  z-index: 2;
-  display: inline-flex;
-  align-items: center;
-  border: 1px solid rgba(215, 228, 238, 0.26);
-  background: rgba(5, 10, 15, 0.82);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(5px);
-}
-
-.badge {
-  top: 4px;
-  left: 4px;
-  min-height: 17px;
-  padding: 0 5px;
-  color: #e4ebf0;
-  border-radius: 5px;
-  font-size: 11px;
-  font-weight: 950;
-  letter-spacing: 0;
-}
-
-.playIndicator {
-  right: 4px;
-  bottom: 4px;
-  width: 21px;
-  height: 21px;
-  justify-content: center;
-  color: #fff2e8;
-  border-color: rgba(255, 137, 52, 0.54);
-  border-radius: 999px;
-  background: rgba(158, 62, 6, 0.88);
-}
-
-.verification {
-  bottom: 4px;
-  left: 4px;
-  min-height: 18px;
-  gap: 3px;
-  padding: 0 4px;
-  color: #7be3a3;
-  border-color: rgba(92, 207, 134, 0.35);
-  border-radius: 5px;
-}
-
-.verificationText {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  clip-path: inset(50%);
-  white-space: nowrap;
 }
 
 .screenReaderStatus {
