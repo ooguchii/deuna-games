@@ -91,6 +91,7 @@ type Props = {
   initialCoverImage?: string;
   initialHeroImage?: string;
   initialScreenshots?: readonly string[];
+  backgroundEditor: ReactNode;
   videoEditor: ReactNode;
 };
 
@@ -562,6 +563,7 @@ export default function GameMultimediaWorkspaceContextual({
   initialCoverImage,
   initialHeroImage,
   initialScreenshots = [],
+  backgroundEditor,
   videoEditor,
 }: Props) {
   const [state, setState] = useState<LibraryState | null>(null);
@@ -906,7 +908,7 @@ export default function GameMultimediaWorkspaceContextual({
         <div className={styles.primaryColumn}>
           <section className={styles.numberedSection} aria-labelledby="destination-assignment-heading">
             <div className={styles.sectionTitleRow}>
-              <div><span>01</span><div><h2 id="destination-assignment-heading">Asignación de destinos</h2><p>Cada destino elige su modo y recursos de forma independiente. Rojo indica lo que falta; verde confirma que ese paso ya está completo.</p></div></div>
+              <div><span>01</span><div><h2 id="destination-assignment-heading">Asignación de destinos</h2><p>Portada, Hero, Card y Fondo eligen su modo y recursos de forma independiente. Fondo es opcional y puede volver al global; Galería administra sus capturas aparte. Rojo indica lo que falta y verde confirma cada paso.</p></div></div>
             </div>
 
             <div className={styles.assignmentGrid}>
@@ -943,8 +945,10 @@ export default function GameMultimediaWorkspaceContextual({
                 <RequirementStatus ready={cardCropReady} pending="COMPLETA LOS RECURSOS Y RECORTES · 3:2" />
               </article>
 
+              {backgroundEditor}
+
               <article className={`${styles.assignmentCard} ${contextualStyles.galleryAssignmentCard}`}>
-                <header><div><span>D</span><h3>Galería del juego</h3></div><small>Obligatoria · mínimo 1 imagen · recorte 16:9</small></header>
+                <header><div><span>E</span><h3>Galería del juego</h3></div><small>Obligatoria · mínimo 1 imagen · recorte 16:9</small></header>
                 <div className={styles.currentResource}>
                   {firstGalleryResource ? <span className={styles.currentThumb}><Image src={firstGalleryResource.src} alt="" fill sizes="72px" /></span> : <span className={styles.currentIcon}><Images size={20} aria-hidden="true" /></span>}
                   <div><span>Capturas asignadas</span><strong>{screenshots.length} de 8</strong><small>Cada captura asignada debe confirmar su encuadre 16:9. Quitar una captura no destruye el recurso de la biblioteca.</small></div>
@@ -1035,6 +1039,7 @@ export default function GameMultimediaWorkspaceContextual({
             <div className={styles.helpRule}><MonitorPlay size={20} aria-hidden="true" /><div><strong>Portada · 4:5</strong><span>Imagen, Video o Imagen + hover; cada capa activa confirma selección y encuadre.</span></div></div>
             <div className={styles.helpRule}><MonitorPlay size={20} aria-hidden="true" /><div><strong>Hero · 16:9</strong><span>Imagen, Video o Imagen + hover; hover exige ambos recursos y ambos recortes.</span></div></div>
             <div className={styles.helpRule}><Clapperboard size={20} aria-hidden="true" /><div><strong>Card · 3:2</strong><span>Su imagen es independiente de Portada; selección y recorte se validan por separado.</span></div></div>
+            <div className={styles.helpRule}><Sparkles size={20} aria-hidden="true" /><div><strong>Fondo · adaptable</strong><span>Es opcional. Puede usar Imagen, Video o Imagen + hover con foco propio, o volver al fondo global.</span></div></div>
             <div className={styles.helpRule}><Images size={20} aria-hidden="true" /><div><strong>Galería obligatoria · 16:9</strong><span>Mínimo una imagen; cada captura asignada confirma su propio recorte.</span></div></div>
           </section>
           <section className={styles.tipCard}><Sparkles size={20} aria-hidden="true" /><div><strong>Reutilizar sin acoplar</strong><p>Puedes elegir el mismo archivo físico en dos destinos, pero cada asignación y recorte se conserva de forma independiente.</p></div></section>
