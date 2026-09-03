@@ -4,6 +4,7 @@ import {
 
 import type {
   Game,
+  GameDestinationMediaMode,
   GameImageViewport,
   GameVideoViewport,
   GameVideoViewportAspect,
@@ -14,6 +15,8 @@ export const REQUIRED_DESTINATION_ASPECTS = {
   hero: "16:9",
   card: "3:2",
 } as const;
+
+export const GAME_BACKGROUND_VIEWPORT_ASPECT = "source" as const;
 
 export type RequiredMediaDestination = keyof typeof REQUIRED_DESTINATION_ASPECTS;
 
@@ -52,10 +55,26 @@ function destinationRequirement(
   };
 }
 
+export function resolveGameBackgroundMediaMode(
+  game: Game
+): GameDestinationMediaMode | null {
+  const explicit = game.mediaModes?.background;
+  if (explicit) return explicit;
+
+  const video = game.videoMedia?.background;
+  if (video) {
+    return video.playback === "hover" ? "hover-video" : "video";
+  }
+
+  if (game.backgroundImage) return "image";
+  return null;
+}
+
 export function evaluateGameMediaRequirements(game: Game) {
   const coverMode = resolveGameDestinationMediaMode(game, "cover");
   const heroMode = resolveGameDestinationMediaMode(game, "hero");
   const cardMode = resolveGameDestinationMediaMode(game, "card");
+  const backgroundMode = resolveGameBackgroundMediaMode(game);
 
   const cover = destinationRequirement(
     coverMode,
@@ -88,6 +107,17 @@ export function evaluateGameMediaRequirements(game: Game) {
     REQUIRED_DESTINATION_ASPECTS.card
   );
 
+  const background = backgroundMode
+    ? destinationRequirement(
+        backgroundMode,
+        Boolean(game.backgroundImage),
+        game.imageMedia?.background,
+        Boolean(game.videoMedia?.background?.clip),
+        game.videoMedia?.background?.viewport,
+        GAME_BACKGROUND_VIEWPORT_ASPECT
+      )
+    : { assigned: true, cropReady: true };
+
   const screenshots = game.screenshots ?? [];
   const galleryAssigned = screenshots.length > 0;
   const galleryCropReady = galleryAssigned && screenshots.every(
@@ -110,6 +140,12 @@ export function evaluateGameMediaRequirements(game: Game) {
       mode: cardMode,
       aspect: REQUIRED_DESTINATION_ASPECTS.card,
     },
+    background: {
+      ...background,
+      active: backgroundMode !== null,
+      mode: backgroundMode,
+      aspect: "adaptive" as const,
+    },
     gallery: {
       assigned: galleryAssigned,
       cropReady: galleryCropReady,
@@ -119,6 +155,7 @@ export function evaluateGameMediaRequirements(game: Game) {
       cover.cropReady &&
       hero.cropReady &&
       card.cropReady &&
+      background.cropReady &&
       galleryCropReady,
   };
 }

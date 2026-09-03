@@ -23,6 +23,7 @@ export function listGameImageReferences(
         game.coverImage,
         game.heroImage,
         game.cardImage,
+        game.backgroundImage,
         ...(game.screenshots ?? []),
       ].filter(
         (value): value is string => Boolean(value)
@@ -45,6 +46,7 @@ export function listGameVideoReferences(
         game.videoMedia?.cover?.clip,
         game.videoMedia?.hero?.clip,
         independentCardClip,
+        game.videoMedia?.background?.clip,
         game.previewClip,
       ].filter(
         (value): value is string => Boolean(value)
