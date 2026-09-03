@@ -4,6 +4,7 @@ export const MAX_ADMIN_VIDEO_FRAME_DECODES = 2;
 
 const ADMIN_VIDEO_FRAME_TIME_SECONDS = 0.35;
 const ADMIN_VIDEO_FRAME_END_GUARD_SECONDS = 0.05;
+const ADMIN_VIDEO_FRAME_CALLBACK_GRACE_MS = 250;
 const ADMIN_VIDEO_FRAME_TIMEOUT_MS = 15_000;
 
 export type AdminVideoFrameStatus =
@@ -110,8 +111,10 @@ function captureAdminVideoFrame(src: string): Promise<CapturedAdminVideoFrame> {
     const video = document.createElement("video");
     let settled = false;
     let captureScheduled = false;
+    let drawStarted = false;
     let frameCallbackId: number | null = null;
     let animationFrameId: number | null = null;
+    let frameFallbackTimeoutId: number | null = null;
 
     const timeoutId = window.setTimeout(() => {
       finishError(new Error("La decodificación del fotograma excedió el tiempo disponible."));
@@ -124,6 +127,9 @@ function captureAdminVideoFrame(src: string): Promise<CapturedAdminVideoFrame> {
       }
       if (animationFrameId !== null) {
         window.cancelAnimationFrame(animationFrameId);
+      }
+      if (frameFallbackTimeoutId !== null) {
+        window.clearTimeout(frameFallbackTimeoutId);
       }
       video.onloadedmetadata = null;
       video.onloadeddata = null;
@@ -178,7 +184,8 @@ function captureAdminVideoFrame(src: string): Promise<CapturedAdminVideoFrame> {
     }
 
     function drawFrame() {
-      if (settled) return;
+      if (settled || drawStarted) return;
+      drawStarted = true;
       const sourceWidth = video.videoWidth;
       const sourceHeight = video.videoHeight;
       if (sourceWidth <= 0 || sourceHeight <= 0) {
@@ -218,9 +225,13 @@ function captureAdminVideoFrame(src: string): Promise<CapturedAdminVideoFrame> {
       } else {
         animationFrameId = window.requestAnimationFrame(() => drawFrame());
       }
+      frameFallbackTimeoutId = window.setTimeout(
+        drawFrame,
+        ADMIN_VIDEO_FRAME_CALLBACK_GRACE_MS
+      );
     }
 
-    video.preload = "metadata";
+    video.preload = "auto";
     video.muted = true;
     video.playsInline = true;
     video.disablePictureInPicture = true;
