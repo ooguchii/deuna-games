@@ -28,6 +28,9 @@ import {
   reconcileEditorialImageDeletions,
 } from "@/lib/media/editorial-media-library";
 import {
+  evaluateGameMediaReadiness,
+} from "@/lib/media/game-media-readiness";
+import {
   DEFAULT_GAME_IMAGE_VIEWPORT,
 } from "@/lib/media/image-viewport";
 import {
@@ -177,6 +180,7 @@ export async function GET(
     {
       revision: item.revision,
       resources,
+      readiness: evaluateGameMediaReadiness(item.payload),
       assignments: {
         coverImage: item.payload.coverImage ?? null,
         heroImage: item.payload.heroImage ?? null,
@@ -278,12 +282,17 @@ export async function POST(
         redirectPath(slug, "recurso-invalido")
       );
     }
+    const sameCover = current.coverImage === imageResource.src;
     update = mediaUpdate(
       { coverImage: imageResource.src },
       {
         ...current.imageMedia,
-        cover: { ...DEFAULT_GAME_IMAGE_VIEWPORT },
-        card: { ...DEFAULT_GAME_IMAGE_VIEWPORT },
+        cover: sameCover
+          ? current.imageMedia?.cover ?? { ...DEFAULT_GAME_IMAGE_VIEWPORT }
+          : { ...DEFAULT_GAME_IMAGE_VIEWPORT },
+        card: sameCover
+          ? current.imageMedia?.card ?? { ...DEFAULT_GAME_IMAGE_VIEWPORT }
+          : { ...DEFAULT_GAME_IMAGE_VIEWPORT },
       }
     );
   }
@@ -295,6 +304,7 @@ export async function POST(
         redirectPath(slug, "recurso-invalido")
       );
     }
+    const sameHero = current.heroImage === imageResource.src && !current.videoMedia?.hero;
     const withoutVideo = withoutGameVideoTarget(current, "hero");
     update = mediaUpdate(
       {
@@ -304,7 +314,9 @@ export async function POST(
       },
       {
         ...current.imageMedia,
-        hero: { ...DEFAULT_GAME_IMAGE_VIEWPORT },
+        hero: sameHero
+          ? current.imageMedia?.hero ?? { ...DEFAULT_GAME_IMAGE_VIEWPORT }
+          : { ...DEFAULT_GAME_IMAGE_VIEWPORT },
       }
     );
   }

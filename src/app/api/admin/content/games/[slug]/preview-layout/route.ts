@@ -6,11 +6,17 @@ import { getEditorialItem, saveGameMediaDraft } from "@/lib/admin/content-servic
 import { hasExactAdminFormFields } from "@/lib/admin/request-security";
 import { verifyAdminSession } from "@/lib/admin/session";
 import {
+  REQUIRED_GAME_MEDIA_CROPS,
+  mediaCropConfirmation,
+  resolveRequiredGameMediaResource,
+} from "@/lib/media/game-media-readiness";
+import {
   withGameVideoLayout,
   type GameCardVideoSource,
   type GameVideoTarget,
 } from "@/lib/media/game-video-media";
 import { parsePreviewViewport } from "@/lib/media/preview-video-policy";
+import type { Game } from "@/types/game";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -85,6 +91,9 @@ export async function POST(
   );
   const target = parseTarget(authorized.form.get("target"));
   const source = parseSource(authorized.form.get("source"));
+  const requiredAspect = target
+    ? REQUIRED_GAME_MEDIA_CROPS[target]
+    : null;
   const viewport = parsePreviewViewport(
     authorized.form.get("viewportX"),
     authorized.form.get("viewportY"),
@@ -92,7 +101,13 @@ export async function POST(
     authorized.form.get("viewportAspect")
   );
 
-  if (!revision.success || !target || !source || !viewport) {
+  if (
+    !revision.success ||
+    !target ||
+    !source ||
+    !viewport ||
+    viewport.aspect !== requiredAspect
+  ) {
     return adminRedirect(
       authorized.adminOrigin,
       `${redirectTarget}?estado=preview-encuadre-invalido&seccion=multimedia`
@@ -133,11 +148,37 @@ export async function POST(
     );
   }
 
+  const cropResource = resolveRequiredGameMediaResource(
+    { ...item.payload, videoMedia },
+    target
+  );
+  if (!cropResource) {
+    return adminRedirect(
+      authorized.adminOrigin,
+      `${redirectTarget}?estado=preview-destino-invalido&seccion=multimedia`
+    );
+  }
+
+  const mediaSetup = {
+    ...item.payload.mediaSetup,
+    crops: {
+      ...item.payload.mediaSetup?.crops,
+      [target]: mediaCropConfirmation(
+        cropResource,
+        REQUIRED_GAME_MEDIA_CROPS[target]
+      ),
+    },
+  };
+
   const result = await saveGameMediaDraft(
     slug,
     revision.data,
     authorized.session.userId,
-    { videoMedia }
+    {
+      videoMedia,
+      mediaSetup,
+    } as Parameters<typeof saveGameMediaDraft>[3] &
+      Pick<Game, "mediaSetup">
   );
 
   if (result.outcome === "not_found") {

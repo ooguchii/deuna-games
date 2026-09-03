@@ -16,6 +16,9 @@ import {
   inspectPublishedGameTaxonomyIntegrity,
 } from "@/lib/admin/game-publication-review";
 import {
+  evaluateGamePublicationReadiness,
+} from "@/lib/admin/game-publication-readiness";
+import {
   revalidatePublicGameSurfaces,
 } from "@/lib/admin/game-public-revalidation";
 import {
@@ -83,6 +86,16 @@ export async function POST(
       return adminRedirect(
         authorized.adminOrigin,
         `${target}?estado=conflicto`
+      );
+    }
+
+    const readiness = evaluateGamePublicationReadiness(
+      candidate.game
+    );
+    if (!readiness.essentialsReady) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        `/admin/juegos/${encodeURIComponent(slug)}?estado=multimedia-incompleta&seccion=multimedia`
       );
     }
 

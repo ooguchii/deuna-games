@@ -1,6 +1,9 @@
 import {
   resolvePerformanceProfile,
 } from "@/features/game-finder/performance-data";
+import {
+  evaluateGameMediaReadiness,
+} from "@/lib/media/game-media-readiness";
 import type { Game } from "@/types/game";
 
 export type GameReadinessSection =
@@ -72,6 +75,7 @@ function hasVisibleDownload(game: Game) {
 export function evaluateGamePublicationReadiness(
   game: Game
 ): GamePublicationReadiness {
+  const media = evaluateGameMediaReadiness(game);
   const items: GameReadinessItem[] = [
     {
       id: "core",
@@ -139,20 +143,36 @@ export function evaluateGamePublicationReadiness(
       priority: "recommended",
     },
     {
-      id: "cover",
-      label: "Portada",
-      detail: "Una portada propia evita que la ficha dependa de un recurso visual vacío.",
+      id: "cover-crop",
+      label: "Portada · recorte 4:5",
+      detail: "La Portada debe tener un recurso asignado y un recorte 4:5 confirmado en Multimedia.",
       section: "multimedia",
-      complete: hasText(game.coverImage),
-      priority: "recommended",
+      complete: media.crops.cover.confirmed,
+      priority: "essential",
     },
     {
-      id: "hero",
-      label: "Imagen hero",
-      detail: "El hero mejora la presentación; si falta, la web puede reutilizar la portada.",
+      id: "hero-crop",
+      label: "Hero · recorte 16:9",
+      detail: "El Hero debe tener una imagen o video asignado y un recorte 16:9 confirmado.",
       section: "multimedia",
-      complete: hasText(game.heroImage) || hasText(game.coverImage),
-      priority: "recommended",
+      complete: media.crops.hero.confirmed,
+      priority: "essential",
+    },
+    {
+      id: "card-crop",
+      label: "Card · recorte 4:5",
+      detail: "La Card debe confirmar su propio recorte 4:5 aunque reutilice la Portada o el video del Hero.",
+      section: "multimedia",
+      complete: media.crops.card.confirmed,
+      priority: "essential",
+    },
+    {
+      id: "gallery-required",
+      label: "Galería del juego",
+      detail: "La Galería debe contener al menos una imagen asignada.",
+      section: "multimedia",
+      complete: media.galleryReady,
+      priority: "essential",
     },
     {
       id: "downloads",

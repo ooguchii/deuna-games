@@ -12,6 +12,11 @@ import {
 } from "@/lib/admin/content-service";
 import { hasExactAdminFormFields } from "@/lib/admin/request-security";
 import {
+  REQUIRED_GAME_MEDIA_CROPS,
+  mediaCropConfirmation,
+  resolveRequiredGameMediaResource,
+} from "@/lib/media/game-media-readiness";
+import {
   parseGameImageViewport,
 } from "@/lib/media/image-viewport";
 import {
@@ -138,10 +143,32 @@ export async function POST(
         [target.data]: viewport,
       };
 
+  const mediaSetup = target.data === "gallery"
+    ? item.payload.mediaSetup
+    : (() => {
+        const cropResource = resolveRequiredGameMediaResource(
+          item.payload,
+          target.data
+        );
+        if (!cropResource) return item.payload.mediaSetup;
+        return {
+          ...item.payload.mediaSetup,
+          crops: {
+            ...item.payload.mediaSetup?.crops,
+            [target.data]: mediaCropConfirmation(
+              cropResource,
+              REQUIRED_GAME_MEDIA_CROPS[target.data]
+            ),
+          },
+        };
+      })();
+
   const mediaUpdate = {
     coverImage: item.payload.coverImage,
     imageMedia,
-  };
+    mediaSetup,
+  } as Parameters<typeof saveGameMediaDraft>[3] &
+    Pick<Game, "imageMedia" | "mediaSetup">;
 
   const result = await saveGameMediaDraft(
     slug,
