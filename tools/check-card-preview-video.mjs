@@ -16,6 +16,7 @@ const [
   providers,
   libraryEditor,
   trimEditor,
+  mediaViewportEditor,
   workspace,
   libraryRoute,
   viewportEditor,
@@ -35,6 +36,7 @@ const [
   source("src/lib/media/preview-providers.ts"),
   source("src/components/admin/GameVideoLibraryEditor.tsx"),
   source("src/components/admin/VideoTrimEditor.tsx"),
+  source("src/components/admin/MediaViewportEditor.tsx"),
   source("src/components/admin/GameMultimediaWorkspaceContextual.tsx"),
   source("src/app/api/admin/content/games/[slug]/media-library/route.ts"),
   source("src/components/admin/GameVideoViewportEditor.tsx"),
@@ -67,12 +69,7 @@ assert(
 );
 
 assert(
-  has(
-    safeWebm,
-    "MAX_EDITORIAL_PREVIEW_BYTES",
-    "inspectSafeEditorialWebm",
-    "digest"
-  ),
+  has(safeWebm, "MAX_EDITORIAL_PREVIEW_BYTES", "inspectSafeEditorialWebm", "digest"),
   "Los masters WebM editoriales deben seguir pasando por validación segura y hash."
 );
 
@@ -98,9 +95,11 @@ assert(
     "VideoTrimEditor",
     "PREVIEW_FPS_OPTIONS",
     '"X-Deuna-Preview-Fps"',
-    "DEFAULT_PREVIEW_FPS"
+    "DEFAULT_PREVIEW_FPS",
+    '"X-Deuna-Viewport-X": String(DEFAULT_PREVIEW_VIEWPORT.x)',
+    'viewportAspect: DEFAULT_PREVIEW_VIEWPORT.aspect'
   ),
-  "La biblioteca debe crear un master reutilizable una sola vez, con resolución/FPS explícitos y sin asignarlo automáticamente a Card."
+  "La biblioteca debe crear un master reutilizable una sola vez, con fotograma completo y resolución/FPS explícitos, sin asignarlo automáticamente a Card."
 );
 
 assert(
@@ -108,11 +107,33 @@ assert(
     trimEditor,
     "requestAnimationFrame",
     "scheduleDrag",
+    "parsePreviewTrimWindow",
+    "Marcar IN aquí",
+    "Marcar OUT aquí",
+    "Resolución del master",
+    "fotograma completo",
+    "sólo define el tramo temporal"
+  ) &&
+    !trimEditor.includes("scheduleViewportDraft") &&
+    !trimEditor.includes("viewportMoveHandle") &&
+    !trimEditor.includes("resultCanvasRef") &&
+    !trimEditor.includes("resolvePreviewViewportCrop"),
+  "El editor de creación del master debe limitarse a IN/OUT y calidad; no puede mantener un segundo motor de encuadre espacial."
+);
+
+assert(
+  has(
+    mediaViewportEditor,
+    'type MediaKind = "image" | "video"',
+    "resolvePreviewViewportCrop",
+    "viewportFrame",
+    "viewportMoveHandle",
     "scheduleViewportDraft",
     "resultCanvasRef",
-    "layoutOnly"
+    "requiredAspect",
+    "Resultado final"
   ),
-  "El editor debe conservar drag eficiente y un modo layout-only que no recodifica por cada ajuste."
+  "El encuadre espacial de imagen y video debe vivir en un único MediaViewportEditor."
 );
 
 assert(
@@ -154,17 +175,19 @@ assert(
 assert(
   has(
     viewportEditor,
+    "MediaViewportEditor",
+    'kind="video"',
     'type Target = "cover" | "hero" | "card"',
-    "layoutOnly",
     "preview-layout",
     "REQUIRED_DESTINATION_ASPECTS[target]",
     "Confirmar recorte"
   ) &&
+    !viewportEditor.includes("VideoTrimEditor") &&
     !viewportEditor.includes("preview-import") &&
     !viewportEditor.includes("preview-upload") &&
     !viewportEditor.includes("preview-remove") &&
     !viewportEditor.includes("Usar imagen estática"),
-  "Editar Card video debe cambiar sólo su viewport 3:2; el modo se controla exclusivamente desde Asignación de destinos."
+  "Editar Card video debe delegar el viewport 3:2 al motor común y persistir sólo metadata; el modo vive en Asignación de destinos."
 );
 
 assert(
@@ -174,11 +197,11 @@ assert(
     "resolveGameCardVideo",
     'card?.source === "hero"',
     'card?.source === "independent"',
-    "source: \"independent\"",
+    'source: "independent"',
     "withGameVideoLayout",
     "withoutGameVideoTarget"
   ),
-  "El resolver debe mantener compatibilidad histórica con Card→Hero pero las nuevas Cards deben poder persistir referencia y viewport independientes."
+  "El resolver debe mantener compatibilidad histórica con Card→Hero pero las nuevas Cards deben persistir referencia y viewport independientes."
 );
 
 assert(
@@ -220,17 +243,8 @@ assert(
 );
 
 assert(
-  has(
-    hoverPreview,
-    "FramedVideo",
-    'preload="none"',
-    "active && previewClip"
-  ) &&
-    has(
-      framedVideo,
-      "resolvePreviewViewportCrop",
-      "ResizeObserver"
-    ),
+  has(hoverPreview, "FramedVideo", 'preload="none"', "active && previewClip") &&
+    has(framedVideo, "resolvePreviewViewportCrop", "ResizeObserver"),
   "El hover de Card debe cargar diferido y aplicar el recorte lógico sin crear una segunda variante física."
 );
 
@@ -297,5 +311,5 @@ if (failures.length) {
 }
 
 console.log(
-  "Card preview video: OK (cardImage independiente → Imagen/Video/Imagen+hover → WebM único reutilizable → viewport 3:2 metadata-only → carga pública diferida)."
+  "Card preview video: OK (master temporal sin crop duplicado → motor único imagen/video → Card independiente 3:2 → WebM reutilizable → carga pública diferida)."
 );
