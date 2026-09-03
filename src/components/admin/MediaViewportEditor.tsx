@@ -149,16 +149,8 @@ export default function MediaViewportEditor({
   }, [mediaBox, sourceCrop, sourceHeight, sourceWidth]);
 
   useEffect(() => {
-    const next = normalizeLockedViewport(viewport, requiredAspect);
-    setViewportDraft(next);
-  }, [requiredAspect, viewport]);
-
-  useEffect(() => {
     const stage = stageRef.current;
-    if (!stage || sourceWidth <= 0 || sourceHeight <= 0) {
-      setMediaBox(null);
-      return;
-    }
+    if (!stage || sourceWidth <= 0 || sourceHeight <= 0) return;
 
     const syncMediaBox = () => {
       const rect = stage.getBoundingClientRect();
@@ -403,7 +395,11 @@ export default function MediaViewportEditor({
   return (
     <div className={styles.editor}>
       <div className={styles.previewWorkspace}>
-        <div ref={stageRef} className={styles.previewStage}>
+        <div
+          ref={stageRef}
+          className={styles.previewStage}
+          style={{ minHeight: "clamp(360px, 52vh, 560px)" }}
+        >
           {kind === "image" ? (
             <Image
               ref={imageRef}
