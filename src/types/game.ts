@@ -97,6 +97,8 @@ export type GameImageMedia = {
   cover?: GameImageViewport;
   hero?: GameImageViewport;
   card?: GameImageViewport;
+  /* Fondo adaptable: el mismo foco/zoom se interpreta según cada viewport público. */
+  background?: GameImageViewport;
   /* La galería guarda un encuadre por recurso asignado. */
   gallery?: Record<string, GameImageViewport>;
 };
@@ -130,6 +132,8 @@ export type GameMediaModes = {
   cover?: GameDestinationMediaMode;
   hero?: GameDestinationMediaMode;
   card?: GameDestinationMediaMode;
+  /* Ausente significa que la ficha conserva el fondo global de Juegos. */
+  background?: GameDestinationMediaMode;
 };
 
 export type GameVideoPlayback = "always" | "hover";
@@ -144,6 +148,7 @@ export type GameDestinationVideo = {
 
 export type GameCoverVideo = GameDestinationVideo;
 export type GameHeroVideo = GameDestinationVideo;
+export type GameBackgroundVideo = GameDestinationVideo;
 
 export type GameCardVideo =
   | {
@@ -164,6 +169,7 @@ export type GameVideoMedia = {
   cover?: GameCoverVideo;
   hero?: GameHeroVideo;
   card?: GameCardVideo;
+  background?: GameBackgroundVideo;
 };
 
 export type Game = {
@@ -198,12 +204,14 @@ export type Game = {
   heroImage?: string;
   /* La Card tiene recurso base propio; nunca depende de cambios posteriores de Portada. */
   cardImage?: string;
+  /* Override opcional del fondo global de Juegos para esta ficha. */
+  backgroundImage?: string;
   screenshots?: string[];
 
   /*
    * imageMedia guarda sólo instrucciones de presentación. Portada, Hero,
-   * Card y cada imagen de Galería pueden reutilizar el mismo archivo físico
-   * con encuadres distintos.
+   * Card, Fondo y cada imagen de Galería pueden reutilizar el mismo archivo
+   * físico con encuadres/focos distintos.
    */
   imageMedia?: GameImageMedia;
 
