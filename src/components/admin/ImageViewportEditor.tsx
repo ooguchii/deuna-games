@@ -4,8 +4,14 @@ import { useState } from "react";
 
 import MediaViewportEditor from "@/components/admin/MediaViewportEditor";
 import { REQUIRED_DESTINATION_ASPECTS } from "@/lib/media/game-media-requirements";
-import { normalizeGameImageViewport } from "@/lib/media/image-viewport";
-import type { PreviewViewport } from "@/lib/media/preview-video-policy";
+import {
+  DEFAULT_GALLERY_IMAGE_ASPECT,
+  normalizeGameImageViewport,
+} from "@/lib/media/image-viewport";
+import type {
+  PreviewViewport,
+  PreviewViewportAspectId,
+} from "@/lib/media/preview-video-policy";
 import type { GameImageViewport } from "@/types/game";
 
 import dialogStyles from "./ContextualMediaDialog.module.css";
@@ -23,6 +29,15 @@ type Props = {
   onClose: () => void;
 };
 
+const GALLERY_ASPECT_OPTIONS: readonly PreviewViewportAspectId[] = [
+  "16:9",
+  "3:2",
+  "1:1",
+  "4:5",
+  "9:16",
+  "free",
+];
+
 function targetLabel(target: Target) {
   if (target === "cover") return "Portada";
   if (target === "hero") return "Hero";
@@ -30,11 +45,15 @@ function targetLabel(target: Target) {
   return "Card";
 }
 
-function targetAspect(target: Target): PreviewViewport["aspect"] {
+function targetAspect(target: Exclude<Target, "gallery">): PreviewViewport["aspect"] {
   if (target === "cover") return REQUIRED_DESTINATION_ASPECTS.cover;
   if (target === "hero") return REQUIRED_DESTINATION_ASPECTS.hero;
-  if (target === "card") return REQUIRED_DESTINATION_ASPECTS.card;
-  return "16:9";
+  return REQUIRED_DESTINATION_ASPECTS.card;
+}
+
+function cropLabel(viewport: PreviewViewport) {
+  if (viewport.aspect !== "free") return viewport.aspect;
+  return `Libre · ${(viewport.customAspectRatio ?? 16 / 9).toFixed(2)}:1`;
 }
 
 export default function ImageViewportEditor({
@@ -47,19 +66,37 @@ export default function ImageViewportEditor({
   resource,
   onClose,
 }: Props) {
-  const requiredAspect = targetAspect(target);
-  const [viewport, setViewport] = useState<PreviewViewport>(() => ({
-    ...normalizeGameImageViewport(initialViewport),
-    aspect: requiredAspect,
-  }));
+  const requiredAspect = target === "gallery" ? undefined : targetAspect(target);
+  const [viewport, setViewport] = useState<PreviewViewport>(() => {
+    const normalized = normalizeGameImageViewport(initialViewport);
+    if (target === "gallery") {
+      const aspect = normalized.aspect ?? DEFAULT_GALLERY_IMAGE_ASPECT;
+      return {
+        x: normalized.x,
+        y: normalized.y,
+        zoom: normalized.zoom,
+        aspect,
+        ...(aspect === "free"
+          ? { customAspectRatio: normalized.aspectRatio ?? 16 / 9 }
+          : {}),
+      };
+    }
+    return {
+      x: normalized.x,
+      y: normalized.y,
+      zoom: normalized.zoom,
+      aspect: requiredAspect,
+    };
+  });
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
+  const currentCropLabel = cropLabel(viewport);
 
   async function save() {
     if (busy) return;
     setBusy(true);
     setStatus(
-      `Confirmando el recorte ${requiredAspect} de ${targetLabel(target)} sin crear otra imagen…`
+      `Confirmando el recorte ${currentCropLabel} de ${targetLabel(target)} sin crear otra imagen…`
     );
 
     try {
@@ -76,6 +113,10 @@ export default function ImageViewportEditor({
           throw new Error("La captura de Galería ya no está disponible.");
         }
         fields.resource = resource;
+        fields.viewportAspect = viewport.aspect;
+        fields.viewportAspectRatio = viewport.aspect === "free"
+          ? String(viewport.customAspectRatio ?? 16 / 9)
+          : "";
       }
 
       const response = await fetch(
@@ -113,12 +154,13 @@ export default function ImageViewportEditor({
   return (
     <>
       <MediaViewportEditor
-        key={`image:${target}:${src}:${requiredAspect}`}
+        key={`image:${target}:${src}:${requiredAspect ?? "selectable"}`}
         kind="image"
         src={src}
         sourceLabel={label}
         viewport={viewport}
         requiredAspect={requiredAspect}
+        selectableAspects={target === "gallery" ? GALLERY_ASPECT_OPTIONS : undefined}
         disabled={busy}
         onViewportChange={setViewport}
       />
@@ -147,7 +189,7 @@ export default function ImageViewportEditor({
           disabled={busy}
           onClick={() => void save()}
         >
-          {busy ? "Guardando…" : `Confirmar recorte ${requiredAspect}`}
+          {busy ? "Guardando…" : `Confirmar recorte ${currentCropLabel}`}
         </button>
       </div>
     </>
