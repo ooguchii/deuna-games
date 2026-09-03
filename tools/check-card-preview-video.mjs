@@ -82,7 +82,7 @@ assert(
   "IN/OUT debe conservar máximo 30 segundos."
 );
 assert(
-  PREVIEW_VIEWPORT_ASPECT_IDS.join(",") === "source,16:9,1:1,4:5,9:16" &&
+  PREVIEW_VIEWPORT_ASPECT_IDS.join(",") === "source,16:9,3:2,1:1,4:5,9:16" &&
     DEFAULT_PREVIEW_VIEWPORT.x === 0.5 &&
     DEFAULT_PREVIEW_VIEWPORT.y === 0.5 &&
     DEFAULT_PREVIEW_VIEWPORT.zoom === 1 &&

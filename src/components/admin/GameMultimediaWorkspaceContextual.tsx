@@ -668,7 +668,7 @@ export default function GameMultimediaWorkspaceContextual({
                 </div>
                 <div className={styles.currentResource}>
                   {heroDraftMode === "image" && heroResource ? <span className={styles.currentThumb}><Image src={heroResource.src} alt="" fill sizes="72px" /></span> : <span className={styles.currentIcon}>{heroUsesVideo ? <MonitorPlay size={20} aria-hidden="true" /> : <ImageIcon size={20} aria-hidden="true" />}</span>}
-                  <div><span>{heroModePending ? "Modo preparado" : "Recurso asignado"}</span><strong>{heroUsesVideo ? heroVideo ? shortName(heroVideo.clip) : "Selecciona un video" : heroImage ? shortName(heroImage) : "Selecciona una imagen"}</strong><small>{heroDraftMode === "hover-video" ? "Este modo exige confirmar el recorte 16:9 de la imagen y del video." : "Este destino exige confirmar su recorte 16:9."}</small></div>
+                  <div><span>{heroModePending ? "Modo preparado" : "Recurso asignado"}</span><strong>{heroUsesVideo ? heroVideo ? shortName(heroVideo.clip) : "Selecciona un video" : heroImage ? shortName(heroImage) : "Selecciona una imagen"}</strong><small>{heroDraftMode === "hover-video" ? "Este modo exige confirmar el recorte 16:9 de la imagen y del video. En táctil conserva la imagen." : "Este destino exige confirmar su recorte 16:9."}</small></div>
                 </div>
                 <div className={styles.assignmentActions}>
                   <ResourcePicker action={endpoint} revision={assignmentRevision} target={heroDraftMode === "hover-video" ? "hero-hover-video" : heroDraftMode === "video" ? "hero-video" : "hero-image"} resources={resources} kind={heroUsesVideo ? "video" : "image"} disabled={stale} onAddResource={openAddResource} />
