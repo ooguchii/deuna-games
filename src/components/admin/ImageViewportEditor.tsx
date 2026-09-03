@@ -17,6 +17,8 @@ import type { GameImageViewport } from "@/types/game";
 import dialogStyles from "./ContextualMediaDialog.module.css";
 
 type Target = "cover" | "hero" | "card" | "gallery";
+type FixedTarget = Exclude<Target, "gallery">;
+type FixedImageAspect = (typeof REQUIRED_DESTINATION_ASPECTS)[FixedTarget];
 
 type Props = {
   slug: string;
@@ -45,10 +47,8 @@ function targetLabel(target: Target) {
   return "Card";
 }
 
-function targetAspect(target: Exclude<Target, "gallery">): PreviewViewport["aspect"] {
-  if (target === "cover") return REQUIRED_DESTINATION_ASPECTS.cover;
-  if (target === "hero") return REQUIRED_DESTINATION_ASPECTS.hero;
-  return REQUIRED_DESTINATION_ASPECTS.card;
+function targetAspect(target: FixedTarget): FixedImageAspect {
+  return REQUIRED_DESTINATION_ASPECTS[target];
 }
 
 function cropLabel(viewport: PreviewViewport) {
@@ -66,7 +66,8 @@ export default function ImageViewportEditor({
   resource,
   onClose,
 }: Props) {
-  const requiredAspect = target === "gallery" ? undefined : targetAspect(target);
+  const requiredAspect: FixedImageAspect | undefined =
+    target === "gallery" ? undefined : targetAspect(target);
   const [viewport, setViewport] = useState<PreviewViewport>(() => {
     const normalized = normalizeGameImageViewport(initialViewport);
     if (target === "gallery") {
@@ -81,11 +82,13 @@ export default function ImageViewportEditor({
           : {}),
       };
     }
+
+    const aspect = targetAspect(target);
     return {
       x: normalized.x,
       y: normalized.y,
       zoom: normalized.zoom,
-      aspect: requiredAspect,
+      aspect,
     };
   });
   const [busy, setBusy] = useState(false);
