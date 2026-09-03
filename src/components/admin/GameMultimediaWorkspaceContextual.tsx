@@ -102,6 +102,12 @@ type VideoEditorConfig = {
   label: string;
 };
 
+type RequirementActionState = {
+  complete: boolean;
+  missingLabel: string;
+  completeLabel: string;
+};
+
 const MODE_OPTIONS: Array<{
   value: GameDestinationMediaMode;
   label: string;
@@ -375,6 +381,18 @@ function ModeSwitch({
   );
 }
 
+function requirementActionClass(complete: boolean) {
+  return complete
+    ? contextualStyles.requirementActionComplete
+    : contextualStyles.requirementActionMissing;
+}
+
+function RequirementActionIcon({ complete }: { complete: boolean }) {
+  return complete
+    ? <CheckCircle2 size={17} aria-hidden="true" />
+    : <Info size={17} aria-hidden="true" />;
+}
+
 function ResourcePicker({
   action,
   revision,
@@ -382,6 +400,7 @@ function ResourcePicker({
   resources,
   kind,
   label = "Seleccionar recurso",
+  requirement,
   disabled,
   onAddResource,
 }: {
@@ -391,24 +410,45 @@ function ResourcePicker({
   resources: LibraryResource[];
   kind: LibraryResource["kind"];
   label?: string;
+  requirement?: RequirementActionState;
   disabled?: boolean;
   onAddResource: (kind: AddResourceKind) => void;
 }) {
   const available = resources.filter((resource) => resource.kind === kind);
+  const visibleLabel = requirement
+    ? requirement.complete
+      ? requirement.completeLabel
+      : requirement.missingLabel
+    : label;
   const buttonContent = (
     <>
-      {kind === "image" ? <ImageIcon size={18} aria-hidden="true" /> : <MonitorPlay size={18} aria-hidden="true" />}
-      <span>{label}</span>
+      {requirement ? (
+        <RequirementActionIcon complete={requirement.complete} />
+      ) : kind === "image" ? (
+        <ImageIcon size={18} aria-hidden="true" />
+      ) : (
+        <MonitorPlay size={18} aria-hidden="true" />
+      )}
+      <span>{visibleLabel}</span>
     </>
   );
+  const buttonClassName = requirement
+    ? `${styles.selectResourceButton} ${requirementActionClass(requirement.complete)}`
+    : styles.selectResourceButton;
 
   if (disabled) {
-    return <button type="button" className={styles.selectResourceButton} disabled>{buttonContent}</button>;
+    return <button type="button" className={buttonClassName} disabled>{buttonContent}</button>;
   }
 
   return (
     <details className={styles.resourcePicker}>
-      <summary className={styles.selectResourceButton}>{buttonContent}</summary>
+      <summary
+        className={buttonClassName}
+        data-requirement-state={requirement ? (requirement.complete ? "complete" : "missing") : undefined}
+        title={requirement?.complete ? `Cambiar ${kind === "image" ? "imagen" : "video"}` : undefined}
+      >
+        {buttonContent}
+      </summary>
       <div className={styles.resourcePickerPanel}>
         <div className={styles.resourcePickerHeading}>
           <strong>{kind === "image" ? "Imágenes disponibles" : "Videos disponibles"}</strong>
@@ -449,11 +489,53 @@ function ResourcePicker({
   );
 }
 
-function RequirementStatus({ ready, pending }: { ready: boolean; pending: string }) {
+function CropRequirementButton({
+  complete,
+  hasResource,
+  mediaKind,
+  aspect,
+  disabled,
+  onClick,
+}: {
+  complete: boolean;
+  hasResource: boolean;
+  mediaKind: "image" | "video";
+  aspect: string;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  const missingLabel = mediaKind === "image"
+    ? "Falta recortar la imagen"
+    : "Falta recortar el video";
+
+  return (
+    <button
+      type="button"
+      className={`${styles.editDestinationButton} ${requirementActionClass(complete)}`}
+      data-requirement-state={complete ? "complete" : "missing"}
+      disabled={disabled || !hasResource}
+      onClick={onClick}
+      title={complete ? `Editar recorte ${aspect}` : undefined}
+    >
+      <RequirementActionIcon complete={complete} />
+      {complete ? `Recorte ${aspect} confirmado` : missingLabel}
+    </button>
+  );
+}
+
+function RequirementStatus({
+  ready,
+  pending,
+  readyLabel = "RECORTE CONFIRMADO",
+}: {
+  ready: boolean;
+  pending: string;
+  readyLabel?: string;
+}) {
   return (
     <small className={ready ? contextualStyles.requirementReady : contextualStyles.requirementPending}>
       {ready ? <CheckCircle2 size={13} aria-hidden="true" /> : <Info size={13} aria-hidden="true" />}
-      {ready ? "RECORTE CONFIRMADO" : pending}
+      {ready ? readyLabel : pending}
     </small>
   );
 }
@@ -552,7 +634,12 @@ export default function GameMultimediaWorkspaceContextual({
   const cardImageCropReady = Boolean(cardImage && imageMedia?.card?.confirmed);
   const cardVideoCropReady = Boolean(state?.assignments.cardVideo?.viewport.confirmed);
   const cardCropReady = cropReady(cardMode, cardImageCropReady, cardVideoCropReady);
-  const galleryReady = screenshots.length >= 1;
+  const gallerySelectionReady = screenshots.length >= 1;
+  const pendingGalleryCrops = screenshots.filter(
+    (src) => imageMedia?.gallery?.[src]?.confirmed !== true
+  );
+  const galleryCropReady = gallerySelectionReady && pendingGalleryCrops.length === 0;
+  const galleryReady = gallerySelectionReady && galleryCropReady;
   const allRequirementsReady = coverCropReady && heroCropReady && cardCropReady && galleryReady;
 
   function usageLabels(resource: LibraryResource) {
@@ -663,18 +750,32 @@ export default function GameMultimediaWorkspaceContextual({
       <div className={compact ? contextualStyles.galleryMiniGrid : contextualStyles.galleryManageGrid}>
         {screenshots.map((src, index) => {
           const resource = imageBySrc(src);
+          const cropConfirmed = imageMedia?.gallery?.[src]?.confirmed === true;
           return (
-            <article key={src} className={contextualStyles.galleryItemCard}>
+            <article
+              key={src}
+              className={`${contextualStyles.galleryItemCard} ${cropConfirmed ? contextualStyles.galleryItemComplete : contextualStyles.galleryItemMissing}`}
+            >
               <div className={contextualStyles.galleryItemPreview}>
                 <Image src={src} alt={`Captura ${index + 1}`} fill sizes={compact ? "120px" : "240px"} />
               </div>
               <div className={contextualStyles.galleryItemMeta}>
                 <strong>{shortName(src)}</strong>
                 <small>{resource ? imageMeta(resource) : `Captura ${index + 1}`}</small>
+                <span className={cropConfirmed ? contextualStyles.galleryCropReady : contextualStyles.galleryCropMissing}>
+                  {cropConfirmed ? <CheckCircle2 size={12} aria-hidden="true" /> : <Info size={12} aria-hidden="true" />}
+                  {cropConfirmed ? "Recorte 16:9 confirmado" : "Falta recortar la imagen"}
+                </span>
               </div>
               <div className={contextualStyles.galleryItemActions}>
-                <button type="button" className={contextualStyles.galleryEditButton} disabled={stale} onClick={() => openGalleryImage(src)}>
-                  <Pencil size={14} aria-hidden="true" />Editar
+                <button
+                  type="button"
+                  className={`${contextualStyles.galleryEditButton} ${requirementActionClass(cropConfirmed)}`}
+                  disabled={stale}
+                  onClick={() => openGalleryImage(src)}
+                >
+                  {cropConfirmed ? <CheckCircle2 size={14} aria-hidden="true" /> : <Pencil size={14} aria-hidden="true" />}
+                  {cropConfirmed ? "Recorte confirmado" : "Falta recortar"}
                 </button>
                 <form method="post" action={endpoint}>
                   <input type="hidden" name="expectedRevision" value={assignmentRevision} />
@@ -696,7 +797,9 @@ export default function GameMultimediaWorkspaceContextual({
     destination: Destination,
     mode: GameDestinationMediaMode,
     hasImage: boolean,
-    hasVideo: boolean
+    hasVideo: boolean,
+    imageCropReady: boolean,
+    videoCropReady: boolean
   ) {
     const aspect = REQUIRED_DESTINATION_ASPECTS[destination];
     return (
@@ -708,7 +811,11 @@ export default function GameMultimediaWorkspaceContextual({
             target={`${destination}-image`}
             resources={resources}
             kind="image"
-            label={mode === "hover-video" ? "Seleccionar imagen base" : "Seleccionar imagen"}
+            requirement={{
+              complete: hasImage,
+              missingLabel: mode === "hover-video" ? "Falta seleccionar imagen base" : "Falta seleccionar imagen",
+              completeLabel: mode === "hover-video" ? "Imagen base seleccionada" : "Imagen seleccionada",
+            }}
             disabled={stale}
             onAddResource={openAddResource}
           />
@@ -720,24 +827,49 @@ export default function GameMultimediaWorkspaceContextual({
             target={`${destination}-video`}
             resources={resources}
             kind="video"
-            label={mode === "hover-video" ? "Seleccionar video hover" : "Seleccionar video"}
+            requirement={{
+              complete: hasVideo,
+              missingLabel: mode === "hover-video" ? "Falta seleccionar video hover" : "Falta seleccionar video",
+              completeLabel: mode === "hover-video" ? "Video hover seleccionado" : "Video seleccionado",
+            }}
             disabled={stale}
             onAddResource={openAddResource}
           />
         )}
         {mode !== "video" && (
-          <button type="button" className={styles.editDestinationButton} disabled={stale || !hasImage} onClick={() => openDestination(destination, "image")}>
-            {mode === "hover-video" ? `Recortar imagen ${aspect}` : `Recortar ${aspect}`}
-          </button>
+          <CropRequirementButton
+            complete={imageCropReady}
+            hasResource={hasImage}
+            mediaKind="image"
+            aspect={aspect}
+            disabled={stale}
+            onClick={() => openDestination(destination, "image")}
+          />
         )}
         {mode !== "image" && (
-          <button type="button" className={styles.editDestinationButton} disabled={stale || !hasVideo} onClick={() => openDestination(destination, "video")}>
-            {mode === "hover-video" ? `Recortar video ${aspect}` : `Recortar ${aspect}`}
-          </button>
+          <CropRequirementButton
+            complete={videoCropReady}
+            hasResource={hasVideo}
+            mediaKind="video"
+            aspect={aspect}
+            disabled={stale}
+            onClick={() => openDestination(destination, "video")}
+          />
         )}
       </div>
     );
   }
+
+  const galleryPendingLabel = !gallerySelectionReady
+    ? "IMAGEN REQUERIDA"
+    : pendingGalleryCrops.length === 1
+      ? "FALTA RECORTAR 1 IMAGEN"
+      : `FALTAN RECORTAR ${pendingGalleryCrops.length} IMÁGENES`;
+  const galleryCropActionLabel = galleryCropReady
+    ? "Recortes 16:9 confirmados"
+    : pendingGalleryCrops.length > 1
+      ? `Falta recortar ${pendingGalleryCrops.length} imágenes`
+      : "Falta recortar la imagen";
 
   return (
     <div className={styles.mediaWorkspace}>
@@ -747,7 +879,7 @@ export default function GameMultimediaWorkspaceContextual({
             <span>RESUMEN MULTIMEDIA</span>
             <h2 id="multimedia-summary-heading">Requisitos obligatorios de destinos</h2>
           </div>
-          <p>Portada, Hero y Card tienen recurso, modo y recorte independientes. La Galería necesita al menos una imagen.</p>
+          <p>Portada, Hero y Card tienen recurso, modo y recorte independientes. Cada imagen asignada a Galería también confirma su propio 16:9.</p>
         </div>
         <div className={styles.summaryGrid}>
           <article className={styles.summaryCard}>
@@ -764,7 +896,7 @@ export default function GameMultimediaWorkspaceContextual({
           </article>
           <article className={styles.summaryCard}>
             <span className={styles.summaryIcon}><Images size={22} aria-hidden="true" /></span>
-            <div><span>GALERÍA · MÍNIMO 1</span><strong>{screenshots.length} de 8 capturas</strong><small className={galleryReady ? contextualStyles.requirementReady : contextualStyles.requirementPending}>{galleryReady ? <CheckCircle2 size={13} aria-hidden="true" /> : <Info size={13} aria-hidden="true" />}{galleryReady ? "REQUISITO CUMPLIDO" : "IMAGEN REQUERIDA"}</small></div>
+            <div><span>GALERÍA · MÍNIMO 1</span><strong>{screenshots.length} de 8 capturas</strong><RequirementStatus ready={galleryReady} pending={galleryPendingLabel} readyLabel="IMÁGENES Y RECORTES LISTOS" /></div>
           </article>
         </div>
       </section>
@@ -773,7 +905,7 @@ export default function GameMultimediaWorkspaceContextual({
         <div className={styles.primaryColumn}>
           <section className={styles.numberedSection} aria-labelledby="destination-assignment-heading">
             <div className={styles.sectionTitleRow}>
-              <div><span>01</span><div><h2 id="destination-assignment-heading">Asignación de destinos</h2><p>Cada destino elige su modo y recursos de forma independiente. Imagen + hover conserva la imagen base y activa el video sólo con interacción compatible.</p></div></div>
+              <div><span>01</span><div><h2 id="destination-assignment-heading">Asignación de destinos</h2><p>Cada destino elige su modo y recursos de forma independiente. Rojo indica lo que falta; verde confirma que ese paso ya está completo.</p></div></div>
             </div>
 
             <div className={styles.assignmentGrid}>
@@ -784,7 +916,7 @@ export default function GameMultimediaWorkspaceContextual({
                   {coverMode !== "video" && coverResource ? <span className={styles.currentThumb}><Image src={coverResource.src} alt="" fill sizes="72px" /></span> : <span className={styles.currentIcon}>{coverMode === "image" ? <ImageIcon size={20} aria-hidden="true" /> : <MonitorPlay size={20} aria-hidden="true" />}</span>}
                   <div><span>Modo activo</span><strong>{modeLabel(coverMode)}</strong><small>{coverMode === "hover-video" ? `${coverImage ? shortName(coverImage) : "Imagen pendiente"} + ${activeCoverVideo ? shortName(activeCoverVideo.src) : "video pendiente"}` : coverMode === "video" ? activeCoverVideo ? shortName(activeCoverVideo.src) : "Selecciona un video" : coverImage ? shortName(coverImage) : "Selecciona una imagen"}</small></div>
                 </div>
-                {destinationActions("cover", coverMode, Boolean(coverImage), Boolean(coverVideo))}
+                {destinationActions("cover", coverMode, Boolean(coverImage), Boolean(coverVideo), coverImageCropReady, coverVideoCropReady)}
                 <RequirementStatus ready={coverCropReady} pending="COMPLETA LOS RECURSOS Y RECORTES · 4:5" />
               </article>
 
@@ -795,7 +927,7 @@ export default function GameMultimediaWorkspaceContextual({
                   {heroMode !== "video" && heroResource ? <span className={styles.currentThumb}><Image src={heroResource.src} alt="" fill sizes="72px" /></span> : <span className={styles.currentIcon}>{heroMode === "image" ? <ImageIcon size={20} aria-hidden="true" /> : <MonitorPlay size={20} aria-hidden="true" />}</span>}
                   <div><span>Modo activo</span><strong>{modeLabel(heroMode)}</strong><small>{heroMode === "hover-video" ? `${heroImage ? shortName(heroImage) : "Imagen pendiente"} + ${activeHeroVideo ? shortName(activeHeroVideo.src) : "video pendiente"}` : heroMode === "video" ? activeHeroVideo ? shortName(activeHeroVideo.src) : "Selecciona un video" : heroImage ? shortName(heroImage) : "Selecciona una imagen"}</small></div>
                 </div>
-                {destinationActions("hero", heroMode, Boolean(heroImage), Boolean(heroVideo))}
+                {destinationActions("hero", heroMode, Boolean(heroImage), Boolean(heroVideo), heroImageCropReady, heroVideoCropReady)}
                 <RequirementStatus ready={heroCropReady} pending="COMPLETA LOS RECURSOS Y RECORTES · 16:9" />
               </article>
 
@@ -806,29 +938,51 @@ export default function GameMultimediaWorkspaceContextual({
                   {cardMode !== "video" && cardResource ? <span className={styles.currentThumb}><Image src={cardResource.src} alt="" fill sizes="72px" /></span> : <span className={styles.currentIcon}>{cardMode === "image" ? <ImageIcon size={20} aria-hidden="true" /> : <Clapperboard size={20} aria-hidden="true" />}</span>}
                   <div><span>Recurso independiente</span><strong>{modeLabel(cardMode)}</strong><small>{cardMode === "hover-video" ? `${cardImage ? shortName(cardImage) : "Imagen pendiente"} + ${activeCardVideo ? shortName(activeCardVideo.src) : "video pendiente"}` : cardMode === "video" ? activeCardVideo ? shortName(activeCardVideo.src) : "Selecciona un video" : cardImage ? shortName(cardImage) : "Selecciona una imagen propia para Card"}</small></div>
                 </div>
-                {destinationActions("card", cardMode, Boolean(cardImage), Boolean(resolvedCardClip))}
+                {destinationActions("card", cardMode, Boolean(cardImage), Boolean(resolvedCardClip), cardImageCropReady, cardVideoCropReady)}
                 <RequirementStatus ready={cardCropReady} pending="COMPLETA LOS RECURSOS Y RECORTES · 3:2" />
               </article>
 
               <article className={`${styles.assignmentCard} ${contextualStyles.galleryAssignmentCard}`}>
-                <header><div><span>D</span><h3>Galería del juego</h3></div><small>Obligatoria · mínimo 1 imagen</small></header>
+                <header><div><span>D</span><h3>Galería del juego</h3></div><small>Obligatoria · mínimo 1 imagen · recorte 16:9</small></header>
                 <div className={styles.currentResource}>
                   {firstGalleryResource ? <span className={styles.currentThumb}><Image src={firstGalleryResource.src} alt="" fill sizes="72px" /></span> : <span className={styles.currentIcon}><Images size={20} aria-hidden="true" /></span>}
-                  <div><span>Capturas asignadas</span><strong>{screenshots.length} de 8</strong><small>Se requiere al menos una imagen. Editar cambia el encuadre; Quitar la saca de Galería sin destruirla.</small></div>
+                  <div><span>Capturas asignadas</span><strong>{screenshots.length} de 8</strong><small>Cada captura asignada debe confirmar su encuadre 16:9. Quitar una captura no destruye el recurso de la biblioteca.</small></div>
                 </div>
                 {renderGalleryAssignedItems(true)}
                 <div className={styles.assignmentActions}>
-                  <ResourcePicker action={endpoint} revision={assignmentRevision} target="gallery-image" resources={resources} kind="image" label="Añadir desde biblioteca" disabled={stale || screenshots.length >= 8} onAddResource={openAddResource} />
-                  <button type="button" className={styles.editDestinationButton} disabled={stale} onClick={() => setGalleryManagerOpen(true)}>Gestionar galería</button>
+                  <ResourcePicker
+                    action={endpoint}
+                    revision={assignmentRevision}
+                    target="gallery-image"
+                    resources={resources}
+                    kind="image"
+                    requirement={{
+                      complete: gallerySelectionReady,
+                      missingLabel: "Falta seleccionar imagen",
+                      completeLabel: "Imagen seleccionada",
+                    }}
+                    disabled={stale || screenshots.length >= 8}
+                    onAddResource={openAddResource}
+                  />
+                  <button
+                    type="button"
+                    className={`${styles.editDestinationButton} ${requirementActionClass(galleryCropReady)}`}
+                    data-requirement-state={galleryCropReady ? "complete" : "missing"}
+                    disabled={stale || !gallerySelectionReady}
+                    onClick={() => setGalleryManagerOpen(true)}
+                  >
+                    <RequirementActionIcon complete={galleryCropReady} />
+                    {galleryCropActionLabel}
+                  </button>
                 </div>
-                <small className={galleryReady ? contextualStyles.requirementReady : contextualStyles.requirementPending}>{galleryReady ? <CheckCircle2 size={13} aria-hidden="true" /> : <Info size={13} aria-hidden="true" />}{galleryReady ? "REQUISITO CUMPLIDO" : "IMAGEN REQUERIDA · MÍNIMO 1"}</small>
+                <RequirementStatus ready={galleryReady} pending={galleryPendingLabel} readyLabel="REQUISITO CUMPLIDO · RECORTES 16:9 CONFIRMADOS" />
               </article>
             </div>
 
             <div className={contextualStyles.continueGate}>
               <div>
                 <strong>{allRequirementsReady ? "Multimedia completa" : "No puedes avanzar todavía"}</strong>
-                <span>{allRequirementsReady ? "Todos los destinos obligatorios están listos." : "Confirma Portada 4:5, Hero 16:9, Card 3:2 y agrega al menos una imagen a Galería."}</span>
+                <span>{allRequirementsReady ? "Todos los destinos obligatorios están listos." : "Confirma Portada 4:5, Hero 16:9, Card 3:2 y al menos una imagen de Galería con su recorte 16:9."}</span>
               </div>
               {allRequirementsReady ? (
                 <Link href={`/admin/juegos/${encodeURIComponent(slug)}?seccion=descargas`} className={contextualStyles.continueButton}>Continuar a Descargas</Link>
@@ -876,10 +1030,10 @@ export default function GameMultimediaWorkspaceContextual({
         <aside className={styles.helpRail}>
           <section>
             <div className={styles.helpHeading}><Info size={18} aria-hidden="true" /><h2>Requisitos</h2></div>
-            <div className={styles.helpRule}><MonitorPlay size={20} aria-hidden="true" /><div><strong>Portada · 4:5</strong><span>Imagen, Video o Imagen + hover; cada capa activa confirma su encuadre.</span></div></div>
-            <div className={styles.helpRule}><MonitorPlay size={20} aria-hidden="true" /><div><strong>Hero · 16:9</strong><span>Imagen, Video o Imagen + hover; hover exige ambos recortes.</span></div></div>
-            <div className={styles.helpRule}><Clapperboard size={20} aria-hidden="true" /><div><strong>Card · 3:2</strong><span>Su imagen ya es independiente de Portada; puede usar su propio video o hover.</span></div></div>
-            <div className={styles.helpRule}><Images size={20} aria-hidden="true" /><div><strong>Galería obligatoria</strong><span>Mínimo una imagen para poder avanzar.</span></div></div>
+            <div className={styles.helpRule}><MonitorPlay size={20} aria-hidden="true" /><div><strong>Portada · 4:5</strong><span>Imagen, Video o Imagen + hover; cada capa activa confirma selección y encuadre.</span></div></div>
+            <div className={styles.helpRule}><MonitorPlay size={20} aria-hidden="true" /><div><strong>Hero · 16:9</strong><span>Imagen, Video o Imagen + hover; hover exige ambos recursos y ambos recortes.</span></div></div>
+            <div className={styles.helpRule}><Clapperboard size={20} aria-hidden="true" /><div><strong>Card · 3:2</strong><span>Su imagen es independiente de Portada; selección y recorte se validan por separado.</span></div></div>
+            <div className={styles.helpRule}><Images size={20} aria-hidden="true" /><div><strong>Galería obligatoria · 16:9</strong><span>Mínimo una imagen; cada captura asignada confirma su propio recorte.</span></div></div>
           </section>
           <section className={styles.tipCard}><Sparkles size={20} aria-hidden="true" /><div><strong>Reutilizar sin acoplar</strong><p>Puedes elegir el mismo archivo físico en dos destinos, pero cada asignación y recorte se conserva de forma independiente.</p></div></section>
         </aside>
@@ -896,14 +1050,14 @@ export default function GameMultimediaWorkspaceContextual({
       )}
 
       {editingGalleryImage && galleryEditingResource && (
-        <ContextualMediaDialog eyebrow="EDITAR GALERÍA" title="Encuadre de la captura" description="Ajusta sólo la zona visible de esta captura. La imagen original sigue intacta y reutilizable." onClose={() => setEditingGalleryImage(null)}>
+        <ContextualMediaDialog eyebrow="EDITAR GALERÍA" title="Encuadre 16:9 de la captura" description="Ajusta sólo la zona visible de esta captura. La imagen original sigue intacta y reutilizable." onClose={() => setEditingGalleryImage(null)}>
           <ImageViewportEditor slug={slug} revision={assignmentRevision} target="gallery" src={editingGalleryImage} resource={editingGalleryImage} label={`Galería · ${shortName(editingGalleryImage)}`} initialViewport={imageMedia?.gallery?.[editingGalleryImage]} onClose={() => setEditingGalleryImage(null)} />
         </ContextualMediaDialog>
       )}
 
       {galleryManagerOpen && (
-        <ContextualMediaDialog eyebrow="GALERÍA DEL JUEGO" title="Gestionar capturas" description="Editar ajusta el encuadre. Quitar conserva el recurso en la biblioteca. La eliminación definitiva sólo existe en la Biblioteca multimedia compartida." onClose={() => setGalleryManagerOpen(false)}>
-          <div className={contextualStyles.galleryManagerHeader}><div><strong>{screenshots.length} de 8 imágenes asignadas</strong><span>Se requiere al menos una imagen.</span></div><ResourcePicker action={endpoint} revision={assignmentRevision} target="gallery-image" resources={resources} kind="image" label="Añadir imagen" disabled={stale || screenshots.length >= 8} onAddResource={openAddResource} /></div>
+        <ContextualMediaDialog eyebrow="GALERÍA DEL JUEGO" title="Gestionar capturas" description="Cada imagen asignada debe confirmar su recorte 16:9. Quitar conserva el recurso en la biblioteca; la eliminación definitiva sólo existe en la Biblioteca multimedia compartida." onClose={() => setGalleryManagerOpen(false)}>
+          <div className={contextualStyles.galleryManagerHeader}><div><strong>{screenshots.length} de 8 imágenes asignadas</strong><span>{pendingGalleryCrops.length ? `${pendingGalleryCrops.length} pendiente${pendingGalleryCrops.length === 1 ? "" : "s"} de recorte 16:9.` : "Todos los recortes 16:9 están confirmados."}</span></div><ResourcePicker action={endpoint} revision={assignmentRevision} target="gallery-image" resources={resources} kind="image" label="Añadir imagen" disabled={stale || screenshots.length >= 8} onAddResource={openAddResource} /></div>
           {renderGalleryAssignedItems()}
         </ContextualMediaDialog>
       )}
