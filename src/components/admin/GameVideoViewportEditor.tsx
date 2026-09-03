@@ -204,6 +204,7 @@ export default function GameVideoViewportEditor({
         <button
           type="button"
           className={dialogStyles.primary}
+          aria-label={`Guardar encuadre obligatorio ${requiredAspect}`}
           disabled={busy}
           onClick={() => void save()}
         >
