@@ -27,7 +27,9 @@ const fields = [
 ] as const;
 
 function parseTarget(value: string | null): GameVideoTarget | null {
-  return value === "hero" || value === "card" ? value : null;
+  return value === "cover" || value === "hero" || value === "card"
+    ? value
+    : null;
 }
 
 function parseSource(value: string | null): GameCardVideoSource | null {
@@ -110,7 +112,10 @@ export async function POST(
     );
   }
 
-  if (target === "hero" && source !== "hero") {
+  if (
+    (target === "hero" && source !== "hero") ||
+    (target === "cover" && source !== "independent")
+  ) {
     return adminRedirect(
       authorized.adminOrigin,
       `${redirectTarget}?estado=preview-destino-invalido&seccion=multimedia`
