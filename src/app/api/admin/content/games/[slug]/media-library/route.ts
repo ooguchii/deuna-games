@@ -181,7 +181,8 @@ function mediaModeUpdate(
   target: "cover" | "hero" | "card",
   mode: GameDestinationMediaMode
 ): MediaDraftUpdate {
-  const playback = mode === "hover-video" ? "hover" : "always";
+  const playback: "hover" | "always" =
+    mode === "hover-video" ? "hover" : "always";
   const videoMedia = game.videoMedia
     ? {
         ...game.videoMedia,
