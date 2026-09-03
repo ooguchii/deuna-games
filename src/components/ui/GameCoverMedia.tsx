@@ -53,36 +53,53 @@ export default function GameCoverMedia({ game, sizes }: Props) {
 
   return (
     <div
-      style={{ position: "absolute", inset: 0 }}
+      style={{
+        position: "absolute",
+        inset: 0,
+        display: "grid",
+        placeItems: "center",
+        overflow: "hidden",
+        background: "#070b11",
+        containerType: "size",
+      }}
       onMouseEnter={startHover}
       onMouseLeave={stopHover}
     >
-      <GameMedia
-        src={game.coverImage}
-        alt={game.imageAlt}
-        sizes={sizes}
-        viewport={game.imageMedia?.cover}
-      />
-
-      {videoActive && video && (
-        <FramedVideo
-          key={`${video.src}:${video.viewport.x}:${video.viewport.y}:${video.viewport.zoom}`}
-          src={video.src}
-          viewport={video.viewport}
-          autoPlay
-          loop
-          controls={false}
-          preload="metadata"
-          tabIndex={-1}
-          frameStyle={{
-            position: "absolute",
-            inset: 0,
-            zIndex: 1,
-            pointerEvents: "none",
-            background: "transparent",
-          }}
+      <div
+        style={{
+          position: "relative",
+          width: "min(100%, 80cqh)",
+          aspectRatio: "4 / 5",
+          overflow: "hidden",
+        }}
+      >
+        <GameMedia
+          src={game.coverImage}
+          alt={game.imageAlt}
+          sizes={sizes}
+          viewport={game.imageMedia?.cover}
         />
-      )}
+
+        {videoActive && video && (
+          <FramedVideo
+            key={`${video.src}:${video.viewport.x}:${video.viewport.y}:${video.viewport.zoom}`}
+            src={video.src}
+            viewport={video.viewport}
+            autoPlay
+            loop
+            controls={false}
+            preload="metadata"
+            tabIndex={-1}
+            frameStyle={{
+              position: "absolute",
+              inset: 0,
+              zIndex: 1,
+              pointerEvents: "none",
+              background: "transparent",
+            }}
+          />
+        )}
+      </div>
     </div>
   );
 }
