@@ -20,6 +20,15 @@
   object-fit: cover;
 }
 
+/*
+ * Una imagen de Galería con relación editorial persistida deja que el propio
+ * frame determine la altura del <figure>. Los destinos rígidos no llevan este
+ * atributo y conservan sus contenedores 4:5 / 16:9 / 3:2 existentes.
+ */
+:global(figure:has(> [data-game-image-crop])) {
+  aspect-ratio: auto;
+}
+
 .fallback {
   position: absolute;
   inset: 0;
