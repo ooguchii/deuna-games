@@ -81,14 +81,18 @@ export function evaluateGameMediaRequirements(game: Game) {
     : Boolean(cardVideo?.clip);
   const card = destinationRequirement(
     cardMode,
-    Boolean(game.cardImage ?? game.coverImage),
+    Boolean(game.cardImage),
     game.imageMedia?.card,
     cardClipAssigned,
     cardVideo?.viewport,
     REQUIRED_DESTINATION_ASPECTS.card
   );
 
-  const galleryReady = Boolean(game.screenshots?.length);
+  const screenshots = game.screenshots ?? [];
+  const galleryAssigned = screenshots.length > 0;
+  const galleryCropReady = galleryAssigned && screenshots.every(
+    (src) => isImageCropConfirmed(game.imageMedia?.gallery?.[src])
+  );
 
   return {
     cover: {
@@ -107,9 +111,14 @@ export function evaluateGameMediaRequirements(game: Game) {
       aspect: REQUIRED_DESTINATION_ASPECTS.card,
     },
     gallery: {
-      assigned: galleryReady,
+      assigned: galleryAssigned,
+      cropReady: galleryCropReady,
       minimum: 1,
     },
-    ready: cover.cropReady && hero.cropReady && card.cropReady && galleryReady,
+    ready:
+      cover.cropReady &&
+      hero.cropReady &&
+      card.cropReady &&
+      galleryCropReady,
   };
 }
