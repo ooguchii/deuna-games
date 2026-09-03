@@ -13,6 +13,7 @@ const has = (text, ...needles) => needles.every((needle) => text.includes(needle
 const [
   packageJson,
   thumbnail,
+  thumbnailCss,
   frameCache,
   framedLayout,
   framedVideo,
@@ -22,6 +23,7 @@ const [
 ] = await Promise.all([
   source("package.json"),
   source("src/components/admin/AdminMediaThumbnail.tsx"),
+  source("src/components/admin/AdminMediaThumbnail.module.css"),
   source("src/lib/media/admin-video-frame-cache.ts"),
   source("src/lib/media/framed-media-layout.ts"),
   source("src/components/ui/FramedVideo.tsx"),
@@ -39,17 +41,36 @@ assert(
   has(
     thumbnail,
     'mode: "source" | "destination"',
-    "GameMedia",
+    "normalizeGameImageViewport",
+    "destinationImageViewport",
     "IntersectionObserver",
     'rootMargin: "200px"',
     "subscribeAdminVideoFrame",
     "resolveFramedMediaLayout",
     'data-admin-media-mode={mode}',
-    "Vista comprobada",
     "Vista no disponible",
     "retryAdminVideoFrame"
-  ),
-  "Debe existir un único thumbnail lazy que distinga fuente/destino, reutilice GameMedia/layout compartido y exponga estados de video."
+  ) &&
+    !thumbnail.includes("ThumbnailBadge") &&
+    !thumbnail.includes("Vista comprobada") &&
+    !thumbnail.includes("playIndicator" + " size"),
+  "Debe existir un único thumbnail lazy, limpio y fiel que distinga fuente/destino sin overlays sobre la imagen."
+);
+
+assert(
+  has(
+    thumbnailCss,
+    ".destinationImageViewport",
+    "transform: scale(var(--admin-image-zoom, 1))",
+    ".destinationImage",
+    "object-position: var(--admin-image-position, 50% 50%)",
+    '.root[data-admin-media-kind="image"][data-admin-media-mode="source"] .sourceImage',
+    "transform: scale(1.015)"
+  ) &&
+    !thumbnailCss.includes(".badge") &&
+    !thumbnailCss.includes(".playIndicator") &&
+    !thumbnailCss.includes(".verification"),
+  "Las imágenes deben aplicar el viewport guardado en destino y un relleno mínimo sólo en previews de fuente, sin etiquetas superpuestas."
 );
 
 assert(
@@ -100,7 +121,7 @@ assert(
   ) &&
     framedVideo.includes("resolveFramedMediaLayout") &&
     !framedVideo.includes("resolvePreviewViewportCrop"),
-  "FramedVideo y las miniaturas deben compartir una sola matemática de encuadre sin cambiar el runtime público."
+  "FramedVideo y las miniaturas deben compartir una sola matemática de encuadre de video sin cambiar el runtime público."
 );
 
 assert(
@@ -116,11 +137,13 @@ assert(
     "imageMedia?.gallery?.[src]",
     "resolveGameImageCropAspectRatio(galleryViewport)",
     "activeCardVideoViewport",
-    'badge="FUENTE"',
-    "allowRetry"
+    "summaryMediaSet",
+    "summaryThumb"
   ) &&
-    !workspace.includes("No se reproduce hasta abrir un editor."),
-  "Workspace debe mostrar fuente neutra en Biblioteca/selectores y recortes reales en Portada, Hero, Card y Galería."
+    !workspace.includes("No se reproduce hasta abrir un editor.") &&
+    !workspace.includes('badge="FUENTE"') &&
+    !workspace.includes('badge={adaptive'),
+  "Workspace debe mostrar fuentes limpias, recortes reales y miniaturas visuales también en el resumen obligatorio."
 );
 
 assert(
@@ -129,10 +152,9 @@ assert(
     'mode === "hover-video"',
     'kind="image"',
     'kind="video"',
-    'badge={adaptive ? "ADAPTABLE" : mode === "hover-video" ? "IMG" : undefined}',
-    'badge={adaptive ? "ADAPTABLE" : mode === "hover-video" ? "VIDEO" : undefined}'
+    "showImage && showVideo"
   ),
-  "Imagen + hover debe enseñar por separado la imagen y el frame de video con sus encuadres respectivos."
+  "Imagen + hover debe enseñar por separado imagen y frame de video sin taparlos con etiquetas internas."
 );
 
 for (const [name, editor] of [
@@ -147,8 +169,7 @@ for (const [name, editor] of [
       'mode="destination"',
       "assignment.imageViewport",
       "assignment.video?.viewport",
-      'frameAspect={16 / 9}',
-      'badge="ADAPTABLE"'
+      'frameAspect={16 / 9}'
     ),
     `${name} debe diferenciar fuentes de su vista adaptable representativa y aplicar el viewport de cada capa.`
   );
@@ -161,5 +182,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  "Miniaturas multimedia administrativas: OK (fuente neutra · recorte fiel · WebM efímero compartido · lazy/LRU/cola · layout público único)."
+  "Miniaturas multimedia administrativas: OK (fuente limpia · recorte fiel · resumen visual · WebM efímero compartido · lazy/LRU/cola)."
 );
