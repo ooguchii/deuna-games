@@ -13,7 +13,7 @@ import type { GameVideoViewport } from "@/types/game";
 
 import dialogStyles from "./ContextualMediaDialog.module.css";
 
-type Target = "hero" | "card";
+type Target = "cover" | "hero" | "card";
 type Source = "hero" | "independent";
 
 type Props = {
@@ -29,6 +29,12 @@ type Props = {
 
 function ignoreTrim() {}
 function ignoreQuality() {}
+
+function destinationLabel(target: Target) {
+  if (target === "cover") return "Portada";
+  if (target === "hero") return "Hero";
+  return "Card";
+}
 
 export default function GameVideoViewportEditor({
   slug,
@@ -53,7 +59,7 @@ export default function GameVideoViewportEditor({
     if (next.aspect !== requiredAspect) {
       setViewport({ ...next, aspect: requiredAspect });
       setEditorVersion((value) => value + 1);
-      setStatus(`La relación de ${target === "hero" ? "Hero" : "Card"} es obligatoria: ${requiredAspect}.`);
+      setStatus(`La relación de ${destinationLabel(target)} es obligatoria: ${requiredAspect}.`);
       return;
     }
     setViewport(next);
@@ -108,50 +114,6 @@ export default function GameVideoViewportEditor({
     }
   }
 
-  async function switchCardToStaticImage() {
-    if (busy || target !== "card") return;
-    setBusy(true);
-    setStatus(
-      "Quitando sólo el preview animado; la Card volverá a exigir su recorte 3:2 de imagen…"
-    );
-
-    try {
-      const response = await fetch(
-        `/api/admin/content/games/${encodeURIComponent(slug)}/preview-remove`,
-        {
-          method: "POST",
-          credentials: "same-origin",
-          cache: "no-store",
-          headers: {
-            "Content-Type":
-              "application/x-www-form-urlencoded;charset=UTF-8",
-          },
-          body: new URLSearchParams({
-            expectedRevision: String(revision),
-            target: "card",
-          }),
-        }
-      );
-      const resultUrl = new URL(response.url, window.location.href);
-      const state = resultUrl.searchParams.get("estado");
-      if (state !== "preview-quitado") {
-        throw new Error(
-          state === "conflicto"
-            ? "Otra pestaña guardó una revisión más reciente. Recarga Multimedia antes de continuar."
-            : "No se pudo volver la Card a imagen estática."
-        );
-      }
-      window.location.assign(resultUrl.toString());
-    } catch (error) {
-      setStatus(
-        error instanceof Error
-          ? error.message
-          : "No se pudo actualizar la Card."
-      );
-      setBusy(false);
-    }
-  }
-
   return (
     <>
       <p style={{ margin: "0 0 12px", color: "#ff9b51", fontSize: 12, fontWeight: 800 }}>
@@ -191,16 +153,6 @@ export default function GameVideoViewportEditor({
         >
           Cancelar
         </button>
-        {target === "card" && (
-          <button
-            type="button"
-            className={dialogStyles.secondary}
-            disabled={busy}
-            onClick={() => void switchCardToStaticImage()}
-          >
-            Usar imagen estática
-          </button>
-        )}
         <button
           type="button"
           className={dialogStyles.primary}
