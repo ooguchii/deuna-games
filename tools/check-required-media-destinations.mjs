@@ -91,9 +91,14 @@ assert(
     'resolveGameDestinationMediaMode(game, "cover")',
     'resolveGameDestinationMediaMode(game, "hero")',
     'resolveGameDestinationMediaMode(game, "card")',
-    "ready: cover.cropReady && hero.cropReady && card.cropReady && galleryReady"
+    "Boolean(game.cardImage)",
+    "const galleryAssigned = screenshots.length > 0",
+    "const galleryCropReady = galleryAssigned && screenshots.every(",
+    "isImageCropConfirmed(game.imageMedia?.gallery?.[src])",
+    "cropReady: galleryCropReady",
+    "galleryCropReady"
   ),
-  "Los requisitos multimedia deben exigir 4:5/16:9/3:2 y ambas capas cuando el modo es Imagen + hover."
+  "Los requisitos multimedia deben exigir 4:5/16:9/3:2, Card independiente, ambas capas de hover y recortes 16:9 confirmados para cada imagen de Galería."
 );
 
 assert(
@@ -161,14 +166,20 @@ assert(
     "const cardImage = state?.assignments.cardImage ?? null",
     "Recurso independiente",
     "Reutilizar sin acoplar",
-    "RECORTE PENDIENTE",
-    "RECORTE CONFIRMADO",
+    "Falta seleccionar imagen",
+    "Falta seleccionar video",
+    "Falta recortar la imagen",
+    "Falta recortar el video",
+    "Imagen seleccionada",
+    "Video seleccionado",
+    "Recorte ${aspect} confirmado",
+    "requirementActionClass",
     "allRequirementsReady"
   ) &&
     !workspace.includes("Igualar al Hero") &&
     !workspace.includes("card-match-hero") &&
     !videoViewportEditor.includes("Usar imagen estática"),
-  "El workspace debe conservar modos/defaults, Card independiente y no reintroducir acoplamientos especiales."
+  "El workspace debe conservar modos/defaults, Card independiente y estados explícitos rojo/verde para selección y recorte."
 );
 
 assert(
@@ -218,11 +229,12 @@ assert(
     "Resultado final",
     'kind === "image"',
     'kind === "video"',
+    "GameMedia",
     'objectFit: "contain"',
     'onLoadedData={requestPreviewRedraw}',
     'onSeeked={requestPreviewRedraw}'
   ),
-  "Debe existir un único motor espacial para imagen/video, con fuente completa, marco, drag, zoom, presets y resultado final."
+  "Debe existir un único motor espacial para imagen/video, con fuente completa, marco, drag, zoom, presets y resultado final coherente con el renderer público."
 );
 
 assert(
@@ -304,12 +316,15 @@ assert(
     '"card-mode"',
     '"card-image"',
     '"card-video"',
+    '"gallery-image"',
     "mediaModeUpdate",
     'source: "independent"',
-    "cardImage: item.payload.cardImage"
+    "cardImage: item.payload.cardImage",
+    "gallery:",
+    "DEFAULT_GAME_IMAGE_VIEWPORT"
   ) &&
     !mediaLibraryRoute.includes("card-match-hero"),
-  "La API de biblioteca debe mantener recursos y modos independientes por destino."
+  "La API de biblioteca debe mantener recursos y modos independientes y crear recortes pendientes al asignar una imagen de Galería."
 );
 
 const galleryRendererStart = workspace.indexOf("function renderGalleryAssignedItems");
@@ -319,10 +334,26 @@ const galleryRenderer = galleryRendererStart >= 0 && workspaceReturn > galleryRe
   : "";
 assert(
   galleryRenderer.includes('value="gallery-remove"') &&
-    galleryRenderer.includes("Editar") &&
+    galleryRenderer.includes("Falta recortar la imagen") &&
+    galleryRenderer.includes("Recorte 16:9 confirmado") &&
+    galleryRenderer.includes("openGalleryImage") &&
     !galleryRenderer.includes("DeleteImageResourceForm") &&
     !galleryRenderer.includes('value="image-delete"'),
-  "Galería debe permitir Editar/Quitar sin hacer eliminación física desde sus capturas."
+  "Galería debe mostrar el estado individual de recorte y permitir editar/quitar sin eliminación física."
+);
+
+assert(
+  has(
+    workspace,
+    "const gallerySelectionReady = screenshots.length >= 1",
+    "const pendingGalleryCrops = screenshots.filter(",
+    "imageMedia?.gallery?.[src]?.confirmed !== true",
+    "const galleryCropReady = gallerySelectionReady && pendingGalleryCrops.length === 0",
+    "const galleryReady = gallerySelectionReady && galleryCropReady",
+    'target="gallery"',
+    'title="Encuadre 16:9 de la captura"'
+  ),
+  "Galería del juego debe usar el editor compartido y exigir selección + recorte 16:9 de cada captura."
 );
 
 for (const id of ["cover-crop", "hero-crop", "card-crop", "gallery-minimum"]) {
@@ -330,10 +361,11 @@ for (const id of ["cover-crop", "hero-crop", "card-crop", "gallery-minimum"]) {
 }
 assert(
   publicationReadiness.match(/priority: "essential"/g)?.length >= 5 &&
+    publicationReadiness.includes("complete: media.gallery.cropReady") &&
     has(publishRoute, "evaluateGamePublicationReadiness", "readiness.essentialsReady", "preparacion-incompleta") &&
     has(restoreRoute, "evaluateGamePublicationReadiness", "readiness.essentialsReady", "restauracion-incompleta") &&
     publicationWorkspace.includes("!readiness.essentialsReady"),
-  "Publicación/restauración deben bloquear destinos esenciales incompletos."
+  "Publicación/restauración deben bloquear destinos esenciales y Galería con recortes incompletos."
 );
 
 assert(
@@ -452,8 +484,20 @@ assert(
 );
 
 assert(
-  has(workspaceCss, ".requirementReady", ".requirementPending", ".continueGate", ".galleryManageGrid"),
-  "El workspace debe conservar estados de requisitos y gestión de Galería visibles."
+  has(
+    workspaceCss,
+    ".requirementReady",
+    ".requirementPending",
+    ".requirementActionComplete",
+    ".requirementActionMissing",
+    ".galleryItemComplete",
+    ".galleryItemMissing",
+    ".galleryCropReady",
+    ".galleryCropMissing",
+    ".continueGate",
+    ".galleryManageGrid"
+  ),
+  "El workspace debe mostrar estados rojo/verde de selección y recorte, incluida la Galería."
 );
 
 if (failures.length) {
@@ -463,5 +507,5 @@ if (failures.length) {
 }
 
 console.log(
-  "Destinos multimedia independientes: OK (4:5/16:9/3:2 obligatorios → motor único imagen/video → frames públicos exactos → publicación coherente)."
+  "Destinos multimedia independientes: OK (selección + recorte explícitos → 4:5/16:9/3:2 obligatorios → Galería 16:9 confirmada → motor único imagen/video → publicación coherente)."
 );
