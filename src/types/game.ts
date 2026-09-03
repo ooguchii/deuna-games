@@ -120,29 +120,48 @@ export type GameVideoViewport = {
   confirmed?: true;
 };
 
-export type GameHeroVideoPlayback = "always" | "hover";
+export type GameDestinationMediaMode =
+  | "image"
+  | "video"
+  | "hover-video";
 
-export type GameHeroVideo = {
+export type GameMediaModes = {
+  /* Defaults editoriales: Portada=video, Hero/Card=hover-video. */
+  cover?: GameDestinationMediaMode;
+  hero?: GameDestinationMediaMode;
+  card?: GameDestinationMediaMode;
+};
+
+export type GameVideoPlayback = "always" | "hover";
+export type GameHeroVideoPlayback = GameVideoPlayback;
+
+export type GameDestinationVideo = {
   clip: string;
   viewport: GameVideoViewport;
   /* Ausente conserva compatibilidad histórica: video siempre activo. */
-  playback?: GameHeroVideoPlayback;
+  playback?: GameVideoPlayback;
 };
+
+export type GameCoverVideo = GameDestinationVideo;
+export type GameHeroVideo = GameDestinationVideo;
 
 export type GameCardVideo =
   | {
-      /* La Card referencia exactamente los mismos bytes que el Hero. */
+      /* Compatibilidad histórica: puede referenciar los mismos bytes que Hero. */
       source: "hero";
       viewport: GameVideoViewport;
+      playback?: GameVideoPlayback;
     }
   | {
-      /* La Card conserva un WebM propio únicamente cuando se solicita. */
+      /* Modo editorial actual: la Card selecciona explícitamente su recurso. */
       source: "independent";
       clip: string;
       viewport: GameVideoViewport;
+      playback?: GameVideoPlayback;
     };
 
 export type GameVideoMedia = {
+  cover?: GameCoverVideo;
   hero?: GameHeroVideo;
   card?: GameCardVideo;
 };
@@ -177,6 +196,8 @@ export type Game = {
 
   coverImage?: string;
   heroImage?: string;
+  /* La Card tiene recurso base propio; nunca depende de cambios posteriores de Portada. */
+  cardImage?: string;
   screenshots?: string[];
 
   /*
@@ -187,10 +208,16 @@ export type Game = {
   imageMedia?: GameImageMedia;
 
   /*
-   * videoMedia es el contrato nuevo: el Hero guarda un único master temporal
-   * y la Card puede referenciarlo sin copiarlo o mantener un master propio.
-   * Los encuadres son metadata de presentación y nunca obligan a duplicar el
-   * archivo físico. Los campos preview* permanecen como fallback histórico.
+   * mediaModes expresa de forma explícita qué capa usa cada destino. Así se
+   * puede conservar una imagen base y un video simultáneamente para hover sin
+   * inferir el modo por la mera existencia del recurso.
+   */
+  mediaModes?: GameMediaModes;
+
+  /*
+   * videoMedia conserva masters editoriales por destino. Compartir el mismo
+   * archivo físico sigue siendo posible seleccionando el mismo recurso desde
+   * la biblioteca; los encuadres permanecen independientes como metadata.
    */
   videoMedia?: GameVideoMedia;
 
