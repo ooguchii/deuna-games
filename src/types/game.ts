@@ -99,6 +99,28 @@ export type GameImageMedia = {
   gallery?: Record<string, GameImageViewport>;
 };
 
+export type GameRequiredCropAspect = "4:5" | "16:9";
+
+export type GameMediaCropConfirmation = {
+  /* Recurso exacto que fue confirmado en el editor. */
+  resource: string;
+  /* Formato obligatorio del destino en el momento de guardar. */
+  aspect: GameRequiredCropAspect;
+};
+
+export type GameMediaSetup = {
+  /*
+   * Un destino sólo se considera listo si esta confirmación sigue apuntando
+   * al recurso actualmente asignado. Cambiar de recurso invalida el recorte
+   * automáticamente, sin borrar ni duplicar archivos.
+   */
+  crops?: {
+    cover?: GameMediaCropConfirmation;
+    hero?: GameMediaCropConfirmation;
+    card?: GameMediaCropConfirmation;
+  };
+};
+
 export type GameVideoViewportAspect =
   | "source"
   | "16:9"
@@ -180,6 +202,9 @@ export type Game = {
    * con encuadres distintos.
    */
   imageMedia?: GameImageMedia;
+
+  /* Confirmaciones editoriales obligatorias de recorte por destino. */
+  mediaSetup?: GameMediaSetup;
 
   /*
    * videoMedia es el contrato nuevo: el Hero guarda un único master temporal
