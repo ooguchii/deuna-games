@@ -1,0 +1,25 @@
+/*
+ * Ajustes finales de identidad para rutas públicas que todavía conservan
+ * overrides históricos. Esta hoja se carga después de módulos y del contrato
+ * general y sólo cambia colores decorativos/de marca; rating, estados de
+ * rendimiento, warning, éxito y error mantienen sus colores semánticos.
+ */
+
+/* /juegos — el número de títulos es identidad de la cabecera, no rating. */
+[aria-label="Resumen del catálogo"] strong {
+  color: var(--brand) !important;
+}
+
+/* /juegos/[slug] — barra informativa decorativa. La valoración con estrella
+   queda fuera de estas reglas y conserva el dorado semántico. */
+section[aria-labelledby="overview-title"] > div:first-child > span {
+  color: var(--brand-light) !important;
+}
+
+section[aria-labelledby="overview-title"] dl > div > span:first-child {
+  color: var(--brand) !important;
+  border-color:
+    color-mix(in srgb, var(--brand) 24%, transparent) !important;
+  background:
+    color-mix(in srgb, var(--brand) 6%, transparent) !important;
+}

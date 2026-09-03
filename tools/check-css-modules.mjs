@@ -47,6 +47,14 @@ function parseCssClasses(content) {
   return classes;
 }
 
+function resolveCssModule(filePath, specifier) {
+  if (specifier.startsWith("@/")) {
+    return path.resolve(sourceRoot, specifier.slice(2));
+  }
+
+  return path.resolve(path.dirname(filePath), specifier);
+}
+
 function importInfo(source, filePath) {
   const imports = [];
 
@@ -62,8 +70,8 @@ function importInfo(source, filePath) {
 
     imports.push({
       identifier: statement.importClause.name.text,
-      cssFile: path.resolve(
-        path.dirname(filePath),
+      cssFile: resolveCssModule(
+        filePath,
         statement.moduleSpecifier.text
       ),
     });

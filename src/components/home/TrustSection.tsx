@@ -5,39 +5,27 @@ import {
   Zap,
 } from "lucide-react";
 
+import type { HomeCopy } from "@/data/home-config";
+
 import styles from "./TrustSection.module.css";
 
-const items = [
-  {
-    title: "Versiones identificadas",
-    text: "Cuando un juego tiene una versión registrada, la mostramos junto con su información.",
-    icon: RefreshCcw,
-  },
-  {
-    title: "Requisitos claros",
-    text: "Cuando hay requisitos disponibles, puedes consultarlos rápidamente desde el catálogo.",
-    icon: Monitor,
-  },
-  {
-    title: "Contenido organizado",
-    text: "Cada juego, versión y actualización en su lugar.",
-    icon: Shield,
-  },
-  {
-    title: "Rápido y directo",
-    text: "Menos vueltas y más tiempo descubriendo qué jugar.",
-    icon: Zap,
-  },
-];
+const icons = [RefreshCcw, Monitor, Shield, Zap] as const;
 
-export default function TrustSection() {
+export default function TrustSection({
+  copy,
+}: {
+  copy: HomeCopy["trust"];
+}) {
   return (
     <section className={styles.section}>
-      {items.map((item) => {
-        const Icon = item.icon;
+      {copy.items.map((item, index) => {
+        const Icon = icons[index];
 
         return (
-          <div className={styles.item} key={item.title}>
+          <div
+            className={styles.item}
+            key={`${index}-${item.title}`}
+          >
             <div className={styles.icon}>
               <Icon size={25} />
             </div>

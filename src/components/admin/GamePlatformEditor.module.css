@@ -1,0 +1,107 @@
+.root {
+  grid-column: 1 / -1;
+  min-width: 0;
+  padding: 17px;
+  border: 1px solid #354252;
+  border-radius: 11px;
+  background: #0a1119;
+}
+
+.root legend {
+  padding: 0 8px;
+  color: #d7dee6;
+  font-size: 13px;
+  font-weight: 780;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.grid button {
+  min-width: 0;
+  min-height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 12px;
+  color: #b1bdc9;
+  border: 1px solid #394756;
+  border-radius: 9px;
+  outline: none;
+  background: #0b121a;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 750;
+  transition:
+    color 150ms ease,
+    border-color 150ms ease,
+    background 150ms ease,
+    transform 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.grid button:hover {
+  color: #ffffff;
+  border-color: color-mix(in srgb, var(--brand) 48%, #4b5866);
+  background: color-mix(in srgb, var(--brand) 5%, #111b26);
+  transform: translateY(-1px);
+}
+
+.grid button:focus-visible {
+  color: #ffffff;
+  border-color: color-mix(in srgb, var(--brand) 58%, #536273);
+  box-shadow:
+    0 0 0 2px #0a1118,
+    0 0 0 4px color-mix(in srgb, var(--brand) 58%, #ffffff);
+}
+
+.grid button.active {
+  color: color-mix(in srgb, var(--brand) 34%, #ffffff);
+  border-color: color-mix(in srgb, var(--brand) 66%, #3e4c59);
+  background: color-mix(in srgb, var(--brand) 10%, #0b121a);
+}
+
+.indicator {
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+  border: 1px solid #647180;
+  border-radius: 50%;
+  background: transparent;
+}
+
+.active .indicator {
+  border-color: var(--brand);
+  background: var(--brand);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 14%, transparent);
+}
+
+.root p {
+  margin-top: 12px;
+  color: #98a6b5;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+@media (max-width: 820px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .grid button {
+    transition: none;
+  }
+}

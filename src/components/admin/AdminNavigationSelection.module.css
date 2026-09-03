@@ -1,0 +1,37 @@
+.interactive {
+  transition:
+    color 150ms ease,
+    background 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    transform 150ms ease;
+}
+
+.interactive:hover,
+.interactive:focus-visible {
+  color: #ffffff;
+  border-color: transparent;
+  background: rgba(255, 255, 255, 0.045);
+  box-shadow: none;
+  transform: none;
+}
+
+.active,
+.active:hover,
+.active:focus-visible {
+  color: color-mix(in srgb, var(--brand) 62%, #ffffff);
+  border-color: transparent;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--brand) 19%, transparent),
+    color-mix(in srgb, var(--brand) 8%, transparent)
+  );
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--brand) 9%, transparent);
+  transform: none;
+}
+
+.active svg,
+.active:hover svg,
+.active:focus-visible svg {
+  color: color-mix(in srgb, var(--brand) 58%, #ffffff);
+}

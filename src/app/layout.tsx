@@ -1,73 +1,113 @@
+import type { CSSProperties } from "react";
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 
+import PublicPageBackground from "@/components/site/PublicPageBackground";
 import {
-  siteConfig,
+  getPublicHomeConfig,
+} from "@/lib/home/public-home-config";
+import {
   siteUrl,
 } from "@/lib/site";
+import {
+  brandForeground,
+  safeThemeBackground,
+} from "@/lib/site/brand-foreground";
+import {
+  getPublicSiteConfig,
+} from "@/lib/site/public-site-config";
 
 import "./globals.css";
 import "@/theme/deuna-theme.css";
+import "@/theme/public-theme-contract.css";
+import "@/theme/public-route-theme-contract.css";
 
 const inter = Inter({
   subsets: ["latin"],
   display: "swap",
 });
 
-export const metadata: Metadata = {
-  metadataBase: new URL(siteUrl),
+export const dynamic = "force-dynamic";
 
-  title: {
-    default: "DeUna Games | Encuentra juegos para tu PC",
-    template: "%s | DeUna Games",
-  },
+export async function generateMetadata(): Promise<Metadata> {
+  const [config, homeConfig] = await Promise.all([
+    getPublicSiteConfig(),
+    getPublicHomeConfig(),
+  ]);
+  const homeTitle =
+    `${config.name} | ${homeConfig.copy.hero.accessibleTitle}`;
 
-  description: siteConfig.description,
+  return {
+    metadataBase: new URL(siteUrl),
 
-  applicationName: siteConfig.name,
+    title: {
+      default: homeTitle,
+      template: `%s | ${config.name}`,
+    },
 
-  openGraph: {
-    type: "website",
-    siteName: siteConfig.name,
-    title: "DeUna Games | Encuentra juegos para tu PC",
-    description: siteConfig.description,
-  },
+    description: config.description,
 
-  twitter: {
-    card: "summary_large_image",
-    title: "DeUna Games | Encuentra juegos para tu PC",
-    description: siteConfig.description,
-  },
+    applicationName: config.name,
 
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
+    openGraph: {
+      type: "website",
+      siteName: config.name,
+      title: homeTitle,
+      description: config.description,
+    },
+
+    twitter: {
+      card: "summary_large_image",
+      title: homeTitle,
+      description: config.description,
+    },
+
+    robots: {
       index: true,
       follow: true,
-      "max-image-preview": "large",
-      "max-snippet": -1,
-      "max-video-preview": -1,
+      googleBot: {
+        index: true,
+        follow: true,
+        "max-image-preview": "large",
+        "max-snippet": -1,
+        "max-video-preview": -1,
+      },
     },
-  },
 
-  category: "games",
-};
+    category: "games",
+  };
+}
 
-export const viewport: Viewport = {
-  width: "device-width",
-  initialScale: 1,
-  themeColor: siteConfig.themeColor,
-  colorScheme: "dark",
-};
+export async function generateViewport(): Promise<Viewport> {
+  const config = await getPublicSiteConfig();
 
-export default function RootLayout({
+  return {
+    width: "device-width",
+    initialScale: 1,
+    themeColor: safeThemeBackground(config.themeColor),
+    colorScheme: "dark",
+  };
+}
+
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const config = await getPublicSiteConfig();
+  const readableBrandText = brandForeground(config.brandColor);
+  const readableThemeBackground = safeThemeBackground(config.themeColor);
+
   return (
-    <html lang={siteConfig.language}>
+    <html
+      lang={config.language}
+      style={{
+        "--theme-bg": readableThemeBackground,
+        "--theme-brand": config.brandColor,
+        "--theme-on-brand": readableBrandText,
+        "--text-on-brand": readableBrandText,
+      } as CSSProperties}
+    >
       <body className={inter.className}>
         <a
           href="#main-content"
@@ -76,7 +116,13 @@ export default function RootLayout({
           Saltar al contenido principal
         </a>
 
-        {children}
+        <PublicPageBackground
+          brandColor={config.brandColor}
+          customAssets={config.backgroundLibrary ?? []}
+          pageBackgrounds={config.pageBackgrounds ?? {}}
+        >
+          {children}
+        </PublicPageBackground>
       </body>
     </html>
   );

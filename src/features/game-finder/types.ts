@@ -6,6 +6,8 @@ export type MemoryMode = "unknown" | "single" | "dual";
 
 export type RamKnowledge = "unknown" | "confirmed" | "approximate" | "lower-bound";
 
+export type CpuKnowledge = "unknown" | "estimated" | "confirmed";
+
 export type ResolutionPreset = "720p" | "1080p" | "1440p" | "2160p";
 
 export type QualityPreset = "low" | "medium" | "high" | "ultra";
@@ -14,15 +16,19 @@ export type HardwarePart = {
   id: string;
   name: string;
   score: number;
+  scoreMin?: number;
+  scoreMax?: number;
   integrated?: boolean;
 };
 
 export type HardwareProfile = {
   cpu: HardwarePart | null;
+  cpuKnowledge?: CpuKnowledge;
   gpu: HardwarePart | null;
   ramGb: number | null;
   ramKnowledge: RamKnowledge;
   os: string;
+  osConfirmed?: boolean;
   memoryMode: MemoryMode;
   source: HardwareSource;
   confidence: ConfidenceLevel;
@@ -30,6 +36,7 @@ export type HardwareProfile = {
 };
 
 export type BrowserHardwareSnapshot = {
+  secureContext: boolean;
   logicalProcessors: number | null;
   approximateMemoryGb: number | null;
   memoryKind: "unknown" | "approximate" | "lower-bound";
@@ -37,7 +44,9 @@ export type BrowserHardwareSnapshot = {
   gpuVendor: string | null;
   gpuSource: "webgpu" | "webgl" | "none";
   platform: string | null;
+  platformVersion: string | null;
   architecture: string | null;
+  bitness: string | null;
   warnings: string[];
 };
 

@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 
 import {
@@ -25,6 +24,8 @@ import {
 import {
   useRouter,
 } from "next/navigation";
+
+import GameMedia from "@/components/ui/GameMedia";
 
 import {
   filterAndSortUpdates,
@@ -387,7 +388,7 @@ export default function UpdatesCatalogClient({
 
             <p>
               Busca por juego o versión
-              y combiná los filtros.
+              y combina los filtros.
             </p>
           </div>
 
@@ -811,7 +812,7 @@ export default function UpdatesCatalogClient({
                       }
                     >
                       {update.game.coverImage && (
-                        <Image
+                        <GameMedia
                           src={
                             update.game
                               .coverImage
@@ -820,8 +821,15 @@ export default function UpdatesCatalogClient({
                             update.game
                               .imageAlt
                           }
-                          fill
                           sizes="(max-width: 720px) 100vw, 270px"
+                          viewport={
+                            update.game
+                              .imageMedia
+                              ?.card ??
+                            update.game
+                              .imageMedia
+                              ?.cover
+                          }
                         />
                       )}
 
@@ -1022,7 +1030,11 @@ export default function UpdatesCatalogClient({
                     key={
                       update.id
                     }
-                    href={`/juegos/${update.game.slug}/descargar`}
+                    href={
+                      update.downloadable
+                        ? `/juegos/${update.game.slug}/descargar`
+                        : `/juegos/${update.game.slug}`
+                    }
                   >
                     <span
                       className={
@@ -1030,14 +1042,21 @@ export default function UpdatesCatalogClient({
                       }
                     >
                       {update.game.coverImage && (
-                        <Image
+                        <GameMedia
                           src={
                             update.game
                               .coverImage
                           }
                           alt=""
-                          fill
                           sizes="46px"
+                          viewport={
+                            update.game
+                              .imageMedia
+                              ?.card ??
+                            update.game
+                              .imageMedia
+                              ?.cover
+                          }
                         />
                       )}
                     </span>

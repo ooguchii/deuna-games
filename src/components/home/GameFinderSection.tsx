@@ -7,9 +7,17 @@ import {
   Monitor,
 } from "lucide-react";
 
+import type { HomeCopy } from "@/data/home-config";
+
 import styles from "./GameFinderSection.module.css";
 
-export default function GameFinderSection() {
+const featureIcons = [Cpu, Monitor, Gamepad2] as const;
+
+export default function GameFinderSection({
+  copy,
+}: {
+  copy: HomeCopy["finder"];
+}) {
   return (
     <section className={styles.section}>
       <div className={styles.glow} />
@@ -21,34 +29,26 @@ export default function GameFinderSection() {
 
         <div className={styles.text}>
           <span className={styles.eyebrow}>
-            COMPATIBILIDAD DE JUEGOS
+            {copy.eyebrow}
           </span>
 
           <h2>
-            ¿Buscás algo que <span>funcione en tu PC?</span>
+            {copy.title} <span>{copy.highlight}</span>
           </h2>
 
-          <p>
-            Detectamos lo que tu navegador permita identificar y,
-            si falta algún dato, completas CPU, GPU y RAM para obtener
-            FPS orientativos según resolución y calidad.
-          </p>
+          <p>{copy.text}</p>
 
           <div className={styles.features}>
-            <span>
-              <Cpu size={16} />
-              Detección local
-            </span>
+            {copy.features.map((feature, index) => {
+              const Icon = featureIcons[index];
 
-            <span>
-              <Monitor size={16} />
-              FPS orientativos
-            </span>
-
-            <span>
-              <Gamepad2 size={16} />
-              Configuración manual
-            </span>
+              return (
+                <span key={`${index}-${feature}`}>
+                  <Icon size={16} />
+                  {feature}
+                </span>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -56,9 +56,9 @@ export default function GameFinderSection() {
       <Link
         href="/requisitos"
         className={styles.button}
+        data-brand-action="true"
       >
-        Descubrir qué puedo jugar
-
+        {copy.cta}
         <ChevronRight size={21} />
       </Link>
     </section>

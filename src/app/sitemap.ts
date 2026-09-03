@@ -1,9 +1,14 @@
 import type { MetadataRoute } from "next";
 
-import { games } from "@/data/games";
+import {
+  getPublicGames,
+} from "@/lib/games/public-catalog";
 import { absoluteUrl } from "@/lib/site";
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export const dynamic = "force-dynamic";
+
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const games = await getPublicGames();
   const gameEntries: MetadataRoute.Sitemap = games.map(
     (game) => ({
       url: absoluteUrl(`/juegos/${game.slug}`),

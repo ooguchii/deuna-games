@@ -1,6 +1,6 @@
 :root {
   /* ==============================
-     IDENTIDAD DEUNA GAMES
+     IDENTIDAD BASE / FALLBACK
   ============================== */
 
   --background: #05070b;
@@ -20,9 +20,9 @@
   --text-muted: #6f7a89;
 
   --brand: #ff0847;
-  --brand-light: #ff3b68;
-  --brand-dark: #d9003c;
-  --brand-soft: rgba(255, 8, 71, 0.11);
+  --brand-light: color-mix(in srgb, var(--brand) 78%, white);
+  --brand-dark: color-mix(in srgb, var(--brand) 82%, black);
+  --brand-soft: color-mix(in srgb, var(--brand) 11%, transparent);
 
   --success: #20cf79;
   --warning: #ffa51f;
@@ -102,7 +102,7 @@
     0 28px 80px rgba(0, 0, 0, 0.38);
 
   --shadow-brand:
-    0 12px 34px rgba(255, 8, 71, 0.2);
+    0 12px 34px color-mix(in srgb, var(--brand) 20%, transparent);
 }
 
 
@@ -140,7 +140,7 @@ body {
   background:
     radial-gradient(
       1000px 600px at 50% -250px,
-      rgba(255, 8, 71, 0.07),
+      color-mix(in srgb, var(--brand) 7%, transparent),
       transparent 70%
     ),
     radial-gradient(
@@ -202,7 +202,7 @@ a {
 ============================== */
 
 ::selection {
-  color: #ffffff;
+  color: var(--text-on-brand);
 
   background: var(--brand);
 }
@@ -326,7 +326,7 @@ body {
   background:
     radial-gradient(
       1150px 680px at 50% -310px,
-      rgba(255, 8, 71, 0.095),
+      color-mix(in srgb, var(--brand) 9.5%, transparent),
       transparent 69%
     ),
     radial-gradient(
@@ -336,13 +336,13 @@ body {
     ),
     radial-gradient(
       880px 680px at -6% 67%,
-      rgba(255, 8, 71, 0.025),
+      color-mix(in srgb, var(--brand) 2.5%, transparent),
       transparent 74%
     ),
     linear-gradient(
       180deg,
-      #05080d 0%,
-      #030509 100%
+      var(--background) 0%,
+      var(--background-deep) 100%
     );
 }
 
@@ -386,12 +386,12 @@ body {
 
   border:
     1px solid
-    rgba(255, 8, 71, 0.55);
+    color-mix(in srgb, var(--brand) 55%, transparent);
 
   border-radius: var(--radius-small);
 
   background:
-    #0b1119;
+    color-mix(in srgb, var(--background) 12%, #0b1119);
 
   box-shadow:
     0 12px 32px

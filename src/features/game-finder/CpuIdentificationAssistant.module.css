@@ -1,0 +1,234 @@
+.root {
+  position: relative;
+  z-index: 30;
+  grid-column: 1 / -1;
+  margin-top: 10px;
+  padding: 11px;
+  border: 1px solid rgba(255, 174, 31, 0.2);
+  border-radius: 10px;
+  background: rgba(8, 13, 20, 0.78);
+}
+
+.heading {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 8px;
+}
+
+.heading > svg {
+  margin-top: 2px;
+  color: var(--warning);
+}
+
+.heading > div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.heading strong {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 820;
+}
+
+.heading span {
+  color: var(--text-muted);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.closeButton {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  color: var(--text-muted);
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.closeButton:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.inputRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 8px;
+  margin-top: 9px;
+}
+
+.searchArea {
+  min-width: 0;
+}
+
+.searchField {
+  min-width: 0;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 10px;
+  border: 1px solid rgba(166, 184, 207, 0.22);
+  border-radius: 8px;
+  background: rgba(4, 9, 15, 0.75);
+}
+
+.searchField:focus-within {
+  border-color: color-mix(in srgb, var(--brand) 52%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand) 8%, transparent);
+}
+
+.searchField svg {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+}
+
+.searchField input {
+  width: 100%;
+  min-width: 0;
+  height: 38px;
+  color: var(--text);
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+}
+
+.searchField input::placeholder {
+  color: #7f8a99;
+}
+
+.confirmButton {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 13px;
+  color: var(--text);
+  border: 1px solid color-mix(in srgb, var(--brand) 56%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--brand) 16%, transparent);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.confirmButton:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--brand) 24%, transparent);
+}
+
+.confirmButton:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.results {
+  position: fixed;
+  z-index: 2147483000;
+
+  overflow: hidden;
+  border: 1px solid rgba(166, 184, 207, 0.28);
+  border-radius: 9px;
+  background: rgba(4, 9, 15, 0.99);
+  box-shadow:
+    0 22px 54px rgba(0, 0, 0, 0.58),
+    0 0 0 1px rgba(255, 255, 255, 0.02),
+    0 0 28px color-mix(in srgb, var(--brand) 6%, transparent);
+}
+
+.resultMeta {
+  padding: 7px 9px;
+  color: #8e99a8;
+  border-bottom: 1px solid rgba(132, 151, 175, 0.11);
+  background: rgba(10, 15, 23, 0.99);
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.resultList {
+  max-height: 190px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 4px;
+}
+
+.resultList > button {
+  width: 100%;
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 9px;
+  padding: 6px 8px;
+  color: #c6cfda;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 690;
+  text-align: left;
+  cursor: pointer;
+}
+
+.resultList > button:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.resultList > button[data-selected="true"] {
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--brand) 42%, transparent);
+  background: color-mix(in srgb, var(--brand) 11%, transparent);
+}
+
+.resultList > button svg {
+  flex: 0 0 auto;
+  color: #67e7ac;
+}
+
+.noMatch {
+  margin: 0;
+  padding: 10px;
+  color: var(--text-muted);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.error {
+  margin: 7px 0 0;
+  color: #ff9f9f;
+  font-size: 10px;
+}
+
+.closeButton:focus-visible,
+.confirmButton:focus-visible,
+.resultList > button:focus-visible {
+  outline: 2px solid var(--brand-light);
+  outline-offset: 2px;
+}
+
+@media (max-width: 700px) {
+  .inputRow {
+    grid-template-columns: 1fr;
+  }
+
+  .confirmButton {
+    width: 100%;
+  }
+
+  .resultList {
+    max-height: 220px;
+  }
+}

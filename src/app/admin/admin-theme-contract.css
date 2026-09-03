@@ -1,0 +1,420 @@
+.admin-professional {
+  --admin-brand-text: color-mix(in srgb, var(--brand) 48%, #ffffff);
+  --admin-brand-text-strong: color-mix(in srgb, var(--brand) 30%, #ffffff);
+  --admin-brand-border: color-mix(in srgb, var(--brand) 58%, #435364);
+  --admin-brand-surface: color-mix(in srgb, var(--brand) 10%, #0d151e);
+  --admin-brand-surface-soft: color-mix(in srgb, var(--brand) 6%, #0b131c);
+  --admin-focus-border: color-mix(in srgb, var(--brand) 58%, #536273);
+  --admin-focus-ring: color-mix(in srgb, var(--brand) 16%, transparent);
+  --admin-focus-ring-strong: color-mix(in srgb, var(--brand) 58%, #ffffff);
+}
+
+/* Las acciones con fondo de marca usan el color de texto calculado por contraste. */
+.admin-professional [data-brand-action="true"],
+.admin-professional .admin-primary-action,
+.admin-professional .admin-form-action--primary,
+.admin-professional form > div:has(> p):has(> button[type="submit"]) > button[type="submit"],
+.admin-professional form > footer:last-child > button[type="submit"],
+.admin-professional form[action*="/publish"] button[type="submit"] {
+  color: var(--text-on-brand) !important;
+}
+
+/*
+ * Contrato de foco del panel:
+ * - botones/enlaces reciben un solo anillo exterior;
+ * - campos reciben borde + halo, nunca outline adicional;
+ * - los buscadores delegan el foco visual a su contenedor.
+ */
+.admin-professional :is(a, button, input, textarea, select):focus-visible {
+  outline: none !important;
+  outline-offset: 0 !important;
+}
+
+.admin-professional :is(a, button):focus-visible {
+  box-shadow:
+    0 0 0 2px #070b11,
+    0 0 0 4px var(--admin-focus-ring-strong) !important;
+}
+
+.admin-professional :is(input, textarea, select):focus-visible {
+  border-color: var(--admin-focus-border) !important;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--brand) 22%, transparent),
+    0 0 0 4px color-mix(in srgb, var(--brand) 7%, transparent) !important;
+}
+
+.admin-professional input[type="search"] {
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.admin-professional :is(label, div):has(> input[type="search"]) > input[type="search"] {
+  border: 0 !important;
+  outline: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.admin-professional input[type="search"]:focus,
+.admin-professional input[type="search"]:focus-visible {
+  border-color: transparent !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+}
+
+.admin-professional input[type="search"]::-webkit-search-decoration,
+.admin-professional input[type="search"]::-webkit-search-cancel-button,
+.admin-professional input[type="search"]::-webkit-search-results-button,
+.admin-professional input[type="search"]::-webkit-search-results-decoration {
+  display: none;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.admin-professional :is(label, div):has(> input[type="search"]) {
+  transition:
+    border-color 140ms ease,
+    background 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.admin-professional :is(label, div):has(> input[type="search"]):hover {
+  border-color: var(--admin-control-border-strong, #46586a);
+}
+
+.admin-professional :is(label, div):has(> input[type="search"]):focus-within {
+  border-color: var(--admin-focus-border) !important;
+  background: color-mix(in srgb, var(--brand) 2.5%, #0b131c) !important;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--brand) 22%, transparent),
+    0 0 0 4px color-mix(in srgb, var(--brand) 7%, transparent) !important;
+}
+
+.admin-professional :is(label, div):has(> input[type="search"]):focus-within > svg {
+  color: color-mix(in srgb, var(--brand) 68%, #ffffff) !important;
+}
+
+/* Selecciones interactivas siempre siguen la marca publicada. */
+.admin-professional button[aria-pressed="true"] {
+  color: var(--admin-brand-text-strong) !important;
+  border-color: var(--admin-brand-border) !important;
+  background: var(--admin-brand-surface) !important;
+}
+
+.admin-professional button[aria-pressed="true"]:hover {
+  color: #ffffff !important;
+  border-color: color-mix(in srgb, var(--brand) 72%, #536273) !important;
+  background: color-mix(in srgb, var(--brand) 14%, #101a25) !important;
+}
+
+.admin-professional button[aria-pressed="true"] :is(svg, small),
+.admin-professional button[data-active="true"] :is(svg, small) {
+  color: currentColor !important;
+}
+
+.admin-professional button[data-active="true"] {
+  color: var(--admin-brand-text-strong) !important;
+  border-color: var(--admin-brand-border) !important;
+}
+
+.admin-professional button[data-active="true"] svg {
+  color: var(--admin-brand-text) !important;
+}
+
+/* Eyebrows y labels de sección son identidad, no un rojo fijo. */
+.admin-professional :is(section, article) div:has(> h2) > span,
+.admin-professional :is(section, article) div:has(> h3) > span {
+  color: var(--brand) !important;
+}
+
+/* Resúmenes y acciones de atención derivan de la marca, no de un rosa histórico. */
+.admin-professional .admin-table-summary span,
+.admin-professional section:has(.admin-data-table) > div:first-child:not(:has(table)) span {
+  color: var(--admin-brand-text) !important;
+}
+
+.admin-professional .admin-table-action--attention {
+  color: var(--admin-brand-text-strong) !important;
+}
+
+/* Acciones editoriales auxiliares también siguen la marca. */
+.admin-professional > a:first-child {
+  color: var(--admin-brand-text) !important;
+}
+
+.admin-professional > a:first-child:hover,
+.admin-professional > a:first-child:focus-visible {
+  color: var(--admin-brand-text-strong) !important;
+}
+
+.admin-professional [role="search"] > div:last-child > button {
+  color: var(--admin-brand-text) !important;
+}
+
+.admin-professional [role="search"] > div:last-child > button:hover,
+.admin-professional [role="search"] > div:last-child > button:focus-visible {
+  color: var(--admin-brand-text-strong) !important;
+}
+
+/* Los resultados de curaduría usan la marca para score/fijado, no un rosa fijo. */
+.admin-professional ol li:has(> svg[aria-label="Fijado manualmente"], > svg[aria-label="Elegido por algoritmo"]) > div > span,
+.admin-professional details b,
+.admin-professional svg[aria-label="Fijado manualmente"],
+.admin-professional svg[aria-label="Elegido por algoritmo"] {
+  color: var(--admin-brand-text) !important;
+}
+
+/* El destino del skip-link no debe dibujar un marco alrededor de todo el main. */
+main#main-content:focus,
+main#main-content:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Navegación y skip-link raíz reflejan la marca publicada. */
+aside nav a[aria-current="page"] svg {
+  color: color-mix(in srgb, var(--brand) 58%, #ffffff) !important;
+}
+
+.skip-link {
+  border-color: color-mix(in srgb, var(--brand) 55%, #ffffff) !important;
+}
+
+/*
+ * Guardado persistente de todo el workspace administrativo.
+ * expectedRevision identifica formularios que editan un borrador/configuración.
+ * Publicar, ocultar, restaurar y los subflujos de carga quedan fuera. Nuevo juego
+ * es la única excepción porque crea la revisión inicial y todavía no tiene una.
+ */
+.admin-professional:has(
+  form:has(> input[name="expectedRevision"]):not(:is(
+    [action*="/publish"],
+    [action*="/hide"],
+    [action*="/restore"],
+    [action*="/media-upload"],
+    [action*="/preview-upload"],
+    [action*="/preview-import"],
+    [action*="/background-upload"],
+    [action*="/icon-upload"]
+  )) > :is(div, footer):last-child:has(button[type="submit"])
+),
+.admin-professional:has(
+  form[action="/api/admin/content/games"]
+    > :is(div, footer):last-child:has(button[type="submit"])
+) {
+  padding-bottom: 92px;
+}
+
+.admin-professional
+  form:has(> input[name="expectedRevision"]):not(:is(
+    [action*="/publish"],
+    [action*="/hide"],
+    [action*="/restore"],
+    [action*="/media-upload"],
+    [action*="/preview-upload"],
+    [action*="/preview-import"],
+    [action*="/background-upload"],
+    [action*="/icon-upload"]
+  )) > :is(div, footer):last-child:has(button[type="submit"]),
+.admin-professional
+  form[action="/api/admin/content/games"]
+  > :is(div, footer):last-child:has(button[type="submit"]) {
+  position: fixed !important;
+  z-index: 80;
+  left: 248px;
+  right: 0;
+  bottom: 0;
+  min-height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin: 0 !important;
+  padding:
+    10px clamp(24px, 3.2vw, 48px)
+    calc(10px + env(safe-area-inset-bottom)) !important;
+  border-top: 1px solid color-mix(in srgb, var(--brand) 18%, #334150) !important;
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--background) 8%, rgba(13, 20, 29, 0.97)),
+      color-mix(in srgb, var(--background) 5%, rgba(7, 12, 18, 0.985))
+    ) !important;
+  box-shadow:
+    0 -14px 34px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.035);
+  backdrop-filter: blur(18px);
+}
+
+.admin-professional
+  form:has(> input[name="expectedRevision"]):not(:is(
+    [action*="/publish"],
+    [action*="/hide"],
+    [action*="/restore"],
+    [action*="/media-upload"],
+    [action*="/preview-upload"],
+    [action*="/preview-import"],
+    [action*="/background-upload"],
+    [action*="/icon-upload"]
+  )) > :is(div, footer):last-child:has(button[type="submit"]) > p,
+.admin-professional
+  form[action="/api/admin/content/games"]
+  > :is(div, footer):last-child:has(button[type="submit"]) > p {
+  max-width: 640px;
+  margin: 0;
+}
+
+.admin-professional .admin-form-actions__buttons {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.admin-professional
+  form:has(> input[name="expectedRevision"]):not(:is(
+    [action*="/publish"],
+    [action*="/hide"],
+    [action*="/restore"],
+    [action*="/media-upload"],
+    [action*="/preview-upload"],
+    [action*="/preview-import"],
+    [action*="/background-upload"],
+    [action*="/icon-upload"]
+  )) > :is(div, footer):last-child:has(button[type="submit"])
+  > button[type="submit"],
+.admin-professional
+  form[action="/api/admin/content/games"]
+  > :is(div, footer):last-child:has(button[type="submit"])
+  > button[type="submit"],
+.admin-professional .admin-form-actions__buttons > button[type="submit"] {
+  min-height: 44px;
+  flex: 0 0 auto;
+}
+
+@media (max-width: 1100px) {
+  .admin-professional
+    form:has(> input[name="expectedRevision"]):not(:is(
+      [action*="/publish"],
+      [action*="/hide"],
+      [action*="/restore"],
+      [action*="/media-upload"],
+      [action*="/preview-upload"],
+      [action*="/preview-import"],
+      [action*="/background-upload"],
+      [action*="/icon-upload"]
+    )) > :is(div, footer):last-child:has(button[type="submit"]),
+  .admin-professional
+    form[action="/api/admin/content/games"]
+    > :is(div, footer):last-child:has(button[type="submit"]) {
+    left: 220px;
+  }
+}
+
+@media (max-width: 760px) {
+  .admin-professional:has(
+    form:has(> input[name="expectedRevision"]):not(:is(
+      [action*="/publish"],
+      [action*="/hide"],
+      [action*="/restore"],
+      [action*="/media-upload"],
+      [action*="/preview-upload"],
+      [action*="/preview-import"],
+      [action*="/background-upload"],
+      [action*="/icon-upload"]
+    )) > :is(div, footer):last-child:has(button[type="submit"])
+  ),
+  .admin-professional:has(
+    form[action="/api/admin/content/games"]
+      > :is(div, footer):last-child:has(button[type="submit"])
+  ) {
+    padding-bottom: 112px;
+  }
+
+  .admin-professional
+    form:has(> input[name="expectedRevision"]):not(:is(
+      [action*="/publish"],
+      [action*="/hide"],
+      [action*="/restore"],
+      [action*="/media-upload"],
+      [action*="/preview-upload"],
+      [action*="/preview-import"],
+      [action*="/background-upload"],
+      [action*="/icon-upload"]
+    )) > :is(div, footer):last-child:has(button[type="submit"]),
+  .admin-professional
+    form[action="/api/admin/content/games"]
+    > :is(div, footer):last-child:has(button[type="submit"]) {
+    left: 0;
+    min-height: 0;
+    gap: 8px;
+    padding:
+      9px 12px
+      calc(9px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .admin-professional
+    form:has(> input[name="expectedRevision"]):not(:is(
+      [action*="/publish"],
+      [action*="/hide"],
+      [action*="/restore"],
+      [action*="/media-upload"],
+      [action*="/preview-upload"],
+      [action*="/preview-import"],
+      [action*="/background-upload"],
+      [action*="/icon-upload"]
+    )) > :is(div, footer):last-child:has(button[type="submit"])
+    > :is(p, div):not(.admin-form-actions__buttons),
+  .admin-professional
+    form[action="/api/admin/content/games"]
+    > :is(div, footer):last-child:has(button[type="submit"])
+    > :is(p, div):not(.admin-form-actions__buttons) {
+    display: none;
+  }
+
+  .admin-professional .admin-form-actions__buttons {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-left: 0;
+  }
+
+  .admin-professional
+    form:has(> input[name="expectedRevision"]):not(:is(
+      [action*="/publish"],
+      [action*="/hide"],
+      [action*="/restore"],
+      [action*="/media-upload"],
+      [action*="/preview-upload"],
+      [action*="/preview-import"],
+      [action*="/background-upload"],
+      [action*="/icon-upload"]
+    )) > :is(div, footer):last-child:has(button[type="submit"])
+    > button[type="submit"],
+  .admin-professional
+    form[action="/api/admin/content/games"]
+    > :is(div, footer):last-child:has(button[type="submit"])
+    > button[type="submit"],
+  .admin-professional .admin-form-actions__buttons > button[type="submit"] {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 520px) {
+  .admin-professional:has(.admin-form-actions__buttons) {
+    padding-bottom: 132px;
+  }
+
+  .admin-professional .admin-form-actions__buttons {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-professional :is(label, div):has(> input[type="search"]) {
+    transition: none;
+  }
+}

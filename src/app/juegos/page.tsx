@@ -2,29 +2,13 @@ import type {
   Metadata,
 } from "next";
 
-import Link from "next/link";
-
-import {
-  ChevronRight,
-  House,
-} from "lucide-react";
-
 import GameCatalogClient from "@/components/games/GameCatalogClient";
 import Footer from "@/components/layout/Footer";
 import Header from "@/components/layout/Header";
-
-import { games } from "@/data/games";
+import PublicBreadcrumb from "@/components/layout/PublicBreadcrumb";
 import {
-  lowSpecGames,
+  buildHomeGameCollections,
 } from "@/data/home";
-
-import {
-  absoluteUrl,
-  siteConfig,
-} from "@/lib/site";
-import {
-  safeJsonLd,
-} from "@/lib/safe-json-ld";
 import {
   parseCategory,
   parseEquipmentFilter,
@@ -35,8 +19,31 @@ import {
   parseViewMode,
   sanitizeCatalogQuery,
 } from "@/lib/games/catalog";
+import {
+  getPublicGames,
+} from "@/lib/games/public-catalog";
+import {
+  getPublicTaxonomyPresentation,
+} from "@/lib/games/public-taxonomy";
+import {
+  safeJsonLd,
+} from "@/lib/safe-json-ld";
+import {
+  buildBreadcrumbJsonLd,
+} from "@/lib/seo/breadcrumb";
+import {
+  absoluteUrl,
+} from "@/lib/site";
+import {
+  getPublicPagesConfig,
+} from "@/lib/site/public-pages-config";
+import {
+  getPublicSiteConfig,
+} from "@/lib/site/public-site-config";
 
 import styles from "./page.module.css";
+
+export const dynamic = "force-dynamic";
 
 type GamesSearchParams = {
   categoria?: string;
@@ -70,19 +77,20 @@ function hasCatalogFilters(
 export async function generateMetadata({
   searchParams,
 }: GamesPageProps): Promise<Metadata> {
-  const params =
-    await searchParams;
-
+  const [params, config, publicPages] = await Promise.all([
+    searchParams,
+    getPublicSiteConfig(),
+    getPublicPagesConfig(),
+  ]);
   const filtered =
     hasCatalogFilters(
       params
     );
-
+  const page = publicPages.games;
   const title =
-    "Juegos para PC";
-
+    `${page.title} para PC`;
   const description =
-    "Explora el catálogo de DeUna Games y encuentra juegos por categoría, popularidad, puntuación, requisitos y estado.";
+    page.description;
 
   return {
     title,
@@ -104,7 +112,7 @@ export async function generateMetadata({
 
     openGraph: {
       title:
-        `${title} | ${siteConfig.name}`,
+        `${title} | ${config.name}`,
       description,
       url: "/juegos",
       type: "website",
@@ -114,7 +122,7 @@ export async function generateMetadata({
       card:
         "summary_large_image",
       title:
-        `${title} | ${siteConfig.name}`,
+        `${title} | ${config.name}`,
       description,
     },
   };
@@ -123,38 +131,27 @@ export async function generateMetadata({
 export default async function GamesPage({
   searchParams,
 }: GamesPageProps) {
-  const params =
-    await searchParams;
-
-  const description =
-    "Explora nuestro catálogo, filtrá por categoría, puntuación, requisitos o popularidad y encuentra exactamente lo que quieres jugar.";
-
-  const breadcrumbJsonLd = {
-    "@context":
-      "https://schema.org",
-    "@type":
-      "BreadcrumbList",
-    itemListElement: [
-      {
-        "@type":
-          "ListItem",
-        position: 1,
-        name: "Inicio",
-        item:
-          absoluteUrl("/"),
-      },
-      {
-        "@type":
-          "ListItem",
-        position: 2,
-        name: "Juegos",
-        item:
-          absoluteUrl(
-            "/juegos"
-          ),
-      },
-    ],
-  };
+  const [
+    params,
+    games,
+    config,
+    taxonomy,
+    publicPages,
+  ] = await Promise.all([
+    searchParams,
+    getPublicGames(),
+    getPublicSiteConfig(),
+    getPublicTaxonomyPresentation(),
+    getPublicPagesConfig(),
+  ]);
+  const collections =
+    buildHomeGameCollections(games);
+  const page = publicPages.games;
+  const description = page.description;
+  const breadcrumbJsonLd = buildBreadcrumbJsonLd(
+    page.title,
+    "/juegos"
+  );
 
   const collectionJsonLd = {
     "@context":
@@ -162,14 +159,14 @@ export default async function GamesPage({
     "@type":
       "CollectionPage",
     name:
-      "Juegos para PC",
+      `${page.title} para PC`,
     url:
       absoluteUrl(
         "/juegos"
       ),
     description,
     inLanguage:
-      siteConfig.language,
+      config.language,
   };
 
   return (
@@ -212,6 +209,14 @@ export default async function GamesPage({
             className={
               styles.heroImage
             }
+            style={
+              page.heroImage
+                ? {
+                    backgroundImage:
+                      `url(${JSON.stringify(page.heroImage)})`,
+                  }
+                : undefined
+            }
             aria-hidden="true"
           />
 
@@ -229,31 +234,10 @@ export default async function GamesPage({
             aria-hidden="true"
           />
 
-          <nav
-            className={
-              styles.breadcrumb
-            }
-            aria-label="Migas de pan"
-          >
-            <Link href="/">
-              <House
-                size={13}
-                aria-hidden="true"
-              />
-              Inicio
-            </Link>
-
-            <ChevronRight
-              size={13}
-              aria-hidden="true"
-            />
-
-            <span
-              aria-current="page"
-            >
-              Juegos
-            </span>
-          </nav>
+          <PublicBreadcrumb
+            className={styles.breadcrumb}
+            currentLabel={page.title}
+          />
 
           <div
             className={
@@ -265,13 +249,13 @@ export default async function GamesPage({
                 styles.eyebrow
               }
             >
-              CATÁLOGO DE JUEGOS
+              {page.eyebrow}
             </span>
 
             <h1
               id="games-title"
             >
-              Juegos
+              {page.title}
             </h1>
 
             <p>
@@ -298,7 +282,7 @@ export default async function GamesPage({
               </span>
 
               <span>
-                PC
+                {page.platformLabel}
               </span>
             </div>
           </div>
@@ -306,8 +290,9 @@ export default async function GamesPage({
 
         <GameCatalogClient
           games={games}
+          categoryTerms={taxonomy.classifications}
           lowSpecSlugs={
-            lowSpecGames.map(
+            collections.lowSpecGames.map(
               (game) =>
                 game.slug
             )

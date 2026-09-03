@@ -1,0 +1,430 @@
+.panel {
+  margin-top: 18px;
+  overflow: hidden;
+  border: 1px solid #344251;
+  border-radius: 14px;
+  background: rgba(9, 14, 21, 0.96);
+  box-shadow:
+    0 18px 44px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 12;
+  display: grid;
+  grid-template-columns: minmax(300px, 1.25fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+  padding: 14px;
+  border-bottom: 1px solid #344251;
+  background: rgba(10, 16, 24, 0.985);
+}
+
+.searchBox {
+  min-width: 0;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 11px 0 13px;
+  border: 1px solid #3b4a5a;
+  border-radius: 10px;
+  background: #091019;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.018);
+  transition:
+    border-color 140ms ease,
+    background 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.searchBox:hover {
+  border-color: #4b5b6c;
+  background: #0a121b;
+}
+
+.searchBox:focus-within {
+  border-color: color-mix(in srgb, var(--brand) 56%, #536273);
+  background: color-mix(in srgb, var(--brand) 2.5%, #0a121b);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--brand) 24%, transparent),
+    0 0 0 4px color-mix(in srgb, var(--brand) 7%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.025);
+}
+
+.searchBox > svg {
+  flex: 0 0 auto;
+  color: #8c9bab;
+  transition: color 140ms ease;
+}
+
+.searchBox:focus-within > svg {
+  color: color-mix(in srgb, var(--brand) 68%, #ffffff);
+}
+
+.searchBox input {
+  min-width: 0;
+  height: 100%;
+  flex: 1;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #f1f5f9;
+  font: inherit;
+  font-size: 14px;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.searchBox input::-webkit-search-decoration,
+.searchBox input::-webkit-search-cancel-button,
+.searchBox input::-webkit-search-results-button,
+.searchBox input::-webkit-search-results-decoration {
+  display: none;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.searchBox input::placeholder {
+  color: #718092;
+  opacity: 1;
+}
+
+.searchBox kbd {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  color: #a3afbb;
+  border: 1px solid #394757;
+  border-radius: 6px;
+  background: #111923;
+  font-size: 11px;
+  font-family: inherit;
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.035);
+}
+
+.searchBox button {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: #aab5c1;
+  cursor: pointer;
+  transition:
+    color 140ms ease,
+    border-color 140ms ease,
+    background 140ms ease;
+}
+
+.searchBox button:hover {
+  color: #ffffff;
+  border-color: #465463;
+  background: #151e28;
+}
+
+.searchBox button:focus-visible {
+  outline: none;
+  color: #fff;
+  border-color: color-mix(in srgb, var(--brand) 58%, #536273);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 12%, transparent);
+}
+
+.filters {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+}
+
+.filters select {
+  min-width: 132px;
+  height: 46px;
+  padding: 0 34px 0 12px;
+  color: #d4dce5;
+  border: 1px solid #3a4858;
+  border-radius: 9px;
+  outline: none;
+  background: #0b121a;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition:
+    color 140ms ease,
+    border-color 140ms ease,
+    background 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.filters select:hover {
+  color: #f2f5f8;
+  border-color: #536273;
+  background: #0e1721;
+}
+
+.filters select:focus-visible {
+  border-color: color-mix(in srgb, var(--brand) 55%, #536273);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 10%, transparent);
+}
+
+.resetButton {
+  min-height: 46px;
+  padding: 0 13px;
+  color: color-mix(in srgb, var(--brand) 38%, #ffffff);
+  border: 1px solid #3c4856;
+  border-radius: 9px;
+  outline: none;
+  background: #0d151e;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 760;
+  transition:
+    color 140ms ease,
+    border-color 140ms ease,
+    background 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.resetButton:hover {
+  color: #ffffff;
+  border-color: color-mix(in srgb, var(--brand) 35%, #4c5968);
+  background: color-mix(in srgb, var(--brand) 5%, #111923);
+}
+
+.resetButton:focus-visible {
+  outline: none;
+  border-color: color-mix(in srgb, var(--brand) 55%, #536273);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 10%, transparent);
+}
+
+.resultBar {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 14px;
+  color: #8f9ead;
+  border-bottom: 1px solid #2b3744;
+  background: #0b121a;
+  font-size: 12px;
+}
+
+.resultBar strong {
+  color: #f0f4f8;
+  font-size: 13px;
+}
+
+.tableViewport {
+  width: 100%;
+  max-height: calc(100vh - 285px);
+  overflow: auto;
+  scrollbar-color: #3b4857 #0a1017;
+  scrollbar-width: thin;
+}
+
+.table {
+  width: 100%;
+  min-width: 980px;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 13px;
+}
+
+.table th,
+.table td {
+  height: 66px;
+  padding: 14px 13px;
+  border-bottom: 1px solid #2e3a47;
+  vertical-align: middle;
+}
+
+.table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 8;
+  height: 44px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  color: #a5b2bf;
+  border-bottom: 1px solid #3b4958;
+  background: #0d151e;
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0.055em;
+  text-align: left;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.table tbody tr {
+  background: #0a1118;
+  transition:
+    background 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.table tbody tr:nth-child(even) {
+  background: #0c141d;
+}
+
+.table tbody tr:hover,
+.table tbody tr:focus-within {
+  background: #111c27;
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--brand) 72%, #ffffff);
+}
+
+.table tbody tr:last-child th,
+.table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.table tbody th {
+  min-width: 270px;
+  font-weight: 400;
+  text-align: left;
+}
+
+.table tbody th strong,
+.table tbody th span {
+  display: block;
+}
+
+.table tbody th strong {
+  color: #f2f5f8;
+  font-size: 15px;
+  font-weight: 780;
+  line-height: 1.25;
+}
+
+.table tbody th span {
+  margin-top: 5px;
+  color: #91a0af;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.table td {
+  color: #b3bec9;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.statusOk,
+.statusPending {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 30px;
+  padding: 0 2px;
+  font-size: 12px;
+  font-weight: 720;
+  white-space: nowrap;
+}
+
+.statusOk {
+  color: #7ee5b1;
+}
+
+.statusPending {
+  color: #efba73;
+}
+
+.statusOk svg,
+.statusPending svg {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+}
+
+.actionsColumn {
+  text-align: right !important;
+}
+
+.empty {
+  padding: 48px 24px;
+  color: #a4b0bc;
+  font-size: 14px;
+  line-height: 1.6;
+  text-align: center;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 1180px) {
+  .toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .filters {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .tableViewport {
+    max-height: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .toolbar {
+    padding: 12px;
+  }
+
+  .filters {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .filters select,
+  .resetButton {
+    width: 100%;
+    min-width: 0;
+    min-height: 46px;
+    font-size: 14px;
+  }
+
+  .searchBox {
+    height: 48px;
+  }
+
+  .searchBox input {
+    font-size: 16px;
+  }
+
+  .searchBox kbd {
+    display: none;
+  }
+
+  .resultBar {
+    min-height: 44px;
+    font-size: 13px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .searchBox,
+  .searchBox > svg,
+  .searchBox button,
+  .filters select,
+  .resetButton,
+  .table tbody tr {
+    transition: none;
+  }
+}
