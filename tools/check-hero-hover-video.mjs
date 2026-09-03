@@ -90,11 +90,14 @@ assert(
     'target="hero"',
     'const heroMode = state?.assignments.heroMode ?? "hover-video"',
     'destinationActions("hero", heroMode',
-    "Recortar imagen ${aspect}",
-    "Recortar video ${aspect}",
+    "requirementActionClass",
+    "Falta seleccionar imagen",
+    "Falta seleccionar video",
+    "Falta recortar la imagen",
+    "Falta recortar el video",
     "GameVideoViewportEditor"
   ),
-  "El Admin debe ofrecer los tres modos del Hero y recortes independientes para imagen y video."
+  "El Admin debe ofrecer los tres modos del Hero y estados independientes de selección/recorte para imagen y video."
 );
 
 assert(
@@ -125,5 +128,5 @@ if (failures.length) {
 }
 
 console.log(
-  "Hero hover video: OK (modo explícito Imagen | Video | Imagen+hover, recortes por capa y reproducción pública accesible)."
+  "Hero hover video: OK (modo explícito Imagen | Video | Imagen+hover, selección/recortes por capa y reproducción pública accesible)."
 );
