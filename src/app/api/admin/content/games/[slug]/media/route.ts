@@ -104,11 +104,13 @@ export async function POST(
     const assignments = {
       coverImage: input.coverImage,
       heroImage: input.heroImage,
+      cardImage: item.payload.cardImage,
       screenshots: screenshotsText,
     };
     const mediaPaths = [
       assignments.coverImage,
       assignments.heroImage,
+      assignments.cardImage,
       ...(screenshotsText ?? []),
     ].filter(
       (value): value is string => Boolean(value)
