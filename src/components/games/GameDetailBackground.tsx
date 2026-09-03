@@ -17,7 +17,7 @@ const FINE_POINTER_MEDIA = "(hover: hover) and (pointer: fine)";
 const REDUCED_MOTION_MEDIA = "(prefers-reduced-motion: reduce)";
 
 type Props = {
-  game: Game | null;
+  game: Game | null | undefined;
   children: ReactNode;
 };
 
@@ -110,7 +110,6 @@ export default function GameDetailBackground({ game, children }: Props) {
                 src={game.backgroundImage}
                 alt=""
                 sizes="100vw"
-                priority
                 viewport={imageViewport}
               />
             </div>
