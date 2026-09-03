@@ -467,11 +467,12 @@ export default function MediaViewportEditor({
   ) {
     const x =
       side === "left" ? 0 : side === "right" ? 1 : 0.5;
+    const y = side === "center" ? 0.5 : viewportDraft.y;
 
     commitViewport({
       ...viewportDraft,
       x,
-      y: 0.5,
+      y,
     });
   }
 
@@ -804,10 +805,15 @@ export default function MediaViewportEditor({
             <div>
               {kind === "image" && resultPreviewSize ? (
                 <div
-                  className={styles.viewportResultFrame}
                   style={{
+                    position: "relative",
+                    flex: "none",
                     width: resultPreviewSize.width,
                     height: resultPreviewSize.height,
+                    maxWidth: "100%",
+                    overflow: "hidden",
+                    borderRadius: 7,
+                    background: "#000",
                   }}
                   role="img"
                   aria-label="Vista previa exacta del área visible elegida"
