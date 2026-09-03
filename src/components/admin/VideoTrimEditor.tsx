@@ -533,7 +533,7 @@ export default function VideoTrimEditor({
                 <strong>{option.label}</strong>
                 <small>{option.targetWidth}px · hasta {option.targetFps} FPS</small>
               </span>
-              <em>{option.description}</em>
+              <em>{option.detail}</em>
             </label>
           ))}
         </div>
