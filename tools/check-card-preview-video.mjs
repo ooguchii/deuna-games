@@ -177,7 +177,7 @@ assert(
     viewportEditor,
     "MediaViewportEditor",
     'kind="video"',
-    'type Target = "cover" | "hero" | "card"',
+    'type Target = "cover" | "hero" | "card" | "detail"',
     "preview-layout",
     "REQUIRED_DESTINATION_ASPECTS[target]",
     "Confirmar recorte"
@@ -193,7 +193,7 @@ assert(
 assert(
   has(
     videoMedia,
-    'export type GameVideoTarget = "cover" | "hero" | "card"',
+    'export type GameVideoTarget = "cover" | "hero" | "card" | "detail"',
     "resolveGameCardVideo",
     'card?.source === "hero"',
     'card?.source === "independent"',
@@ -201,7 +201,7 @@ assert(
     "withGameVideoLayout",
     "withoutGameVideoTarget"
   ),
-  "El resolver debe mantener compatibilidad histórica con Card→Hero pero las nuevas Cards deben persistir referencia y viewport independientes."
+  "El resolver debe mantener compatibilidad histórica con Card→Hero, admitir el destino detail compartido y conservar nuevas Cards con referencia/viewport independientes."
 );
 
 assert(
@@ -266,14 +266,18 @@ for (const route of [uploadRoute, importRoute]) {
 assert(
   has(
     layoutRoute,
-    'value === "cover" || value === "hero" || value === "card"',
+    'value === "cover"',
+    'value === "hero"',
+    'value === "card"',
+    'value === "detail"',
     "withGameVideoLayout",
     "hasExactAdminFormFields",
-    "REQUIRED_DESTINATION_ASPECTS[target]"
+    "REQUIRED_DESTINATION_ASPECTS[target]",
+    "GAME_DETAIL_VIEWPORT_ASPECT"
   ) &&
     !layoutRoute.includes("storeEditorialPreviewVideo") &&
     !layoutRoute.includes("FFmpeg"),
-  "Guardar el layout de Card debe ser metadata-only y exigir 3:2."
+  "Guardar el layout de Card debe seguir siendo metadata-only y exigir 3:2 aunque el endpoint compartido también admita Contenedor adaptable."
 );
 
 assert(
