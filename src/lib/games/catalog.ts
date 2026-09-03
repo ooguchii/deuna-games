@@ -1,4 +1,7 @@
 import type { Game } from "@/types/game";
+import type {
+  GameTaxonomyTerm,
+} from "@/types/game-taxonomy";
 
 export type SortMode =
   | "popular"
@@ -34,6 +37,12 @@ export type CatalogFilters = {
   minRating: number;
   equipment: EquipmentFilter;
   status: StatusFilter;
+};
+
+export type OrderedClassificationStat = {
+  term: GameTaxonomyTerm;
+  label: string;
+  count: number;
 };
 
 export const MAX_CATALOG_QUERY_LENGTH =
@@ -161,6 +170,41 @@ export function requirementsText(
   ).join(" ");
 }
 
+export function gameClassifications(
+  game: Game
+) {
+  const values = [
+    game.category,
+    ...(game.genres ?? []),
+  ];
+  const seen = new Set<string>();
+
+  return values.filter((value) => {
+    const normalized = normalizeCatalogText(value);
+    if (!normalized || seen.has(normalized)) return false;
+    seen.add(normalized);
+    return true;
+  });
+}
+
+function classificationText(game: Game) {
+  return [
+    ...gameClassifications(game),
+    ...(game.tags ?? []),
+  ].join(" ");
+}
+
+function hasClassification(
+  game: Game,
+  classification: string
+) {
+  const requested = normalizeCatalogText(classification);
+
+  return gameClassifications(game).some(
+    (value) => normalizeCatalogText(value) === requested
+  );
+}
+
 export function matchesCatalogSearch(
   game: Game,
   query: string,
@@ -185,7 +229,7 @@ export function matchesCatalogSearch(
 
   if (scope === "category") {
     return normalizeCatalogText(
-      game.category
+      classificationText(game)
     ).includes(
       normalizedQuery
     );
@@ -205,7 +249,7 @@ export function matchesCatalogSearch(
     [
       game.title,
       game.description,
-      game.category,
+      classificationText(game),
       game.badge ?? "",
       game.version ?? "",
       requirementsText(game),
@@ -236,8 +280,10 @@ export function filterAndSortGames(
         const categoryOk =
           filters.category ===
             "todos" ||
-          game.category ===
-            filters.category;
+          hasClassification(
+            game,
+            filters.category
+          );
 
         const ratingOk =
           (game.rating ?? 0) >=
@@ -350,17 +396,16 @@ export function getCategoryStats(
       string,
       number
     >();
+  const canonical = new Map<string, string>();
 
-  games.forEach(
-    (game) => {
-      counts.set(
-        game.category,
-        (counts.get(
-          game.category
-        ) ?? 0) + 1
-      );
-    }
-  );
+  games.forEach((game) => {
+    gameClassifications(game).forEach((classification) => {
+      const normalized = normalizeCatalogText(classification);
+      const label = canonical.get(normalized) ?? classification;
+      canonical.set(normalized, label);
+      counts.set(label, (counts.get(label) ?? 0) + 1);
+    });
+  });
 
   return Array.from(
     counts.entries()
@@ -377,6 +422,58 @@ export function getCategoryStats(
   );
 }
 
+export function getOrderedClassificationStats(
+  games: readonly Game[],
+  terms: readonly GameTaxonomyTerm[]
+): OrderedClassificationStat[] {
+  const byNormalized = new Map(
+    getCategoryStats(games).map(([label, count]) => [
+      normalizeCatalogText(label),
+      { label, count },
+    ])
+  );
+  const used = new Set<string>();
+  const ordered: OrderedClassificationStat[] = [];
+
+  terms.forEach((term) => {
+    const normalized = normalizeCatalogText(term.label);
+    const stat = byNormalized.get(normalized);
+    if (!stat) return;
+
+    used.add(normalized);
+    ordered.push({
+      term,
+      label: stat.label,
+      count: stat.count,
+    });
+  });
+
+  [...byNormalized.entries()]
+    .filter(([normalized]) => !used.has(normalized))
+    .sort(([, left], [, right]) =>
+      left.label.localeCompare(right.label, "es", {
+        sensitivity: "base",
+      })
+    )
+    .forEach(([normalized, stat]) => {
+      ordered.push({
+        term: {
+          key:
+            normalized
+              .replace(/[^a-z0-9]+/g, "-")
+              .replace(/^-+|-+$/g, "") ||
+            "clasificacion",
+          label: stat.label,
+          active: true,
+        },
+        label: stat.label,
+        count: stat.count,
+      });
+    });
+
+  return ordered;
+}
+
 export function parseCategory(
   value: string | undefined,
   games: readonly Game[]
@@ -386,7 +483,7 @@ export function parseCategory(
   }
 
   return games.some(
-    (game) => game.category === value
+    (game) => hasClassification(game, value)
   )
     ? value
     : "todos";

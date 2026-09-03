@@ -1,3 +1,7 @@
+import type {
+  GamePerformanceCalibration,
+} from "@/types/game";
+
 import type { GamePerformanceProfile } from "./types";
 
 export const performanceModelReference = {
@@ -46,16 +50,108 @@ const profiles: GamePerformanceProfile[] = [
 ];
 
 const profileMap = new Map(profiles.map((profile) => [profile.slug, profile]));
+const browserRegistryId = "deuna-performance-calibrations";
+let browserRegistrySource: string | null = null;
+let browserRegistry = new Map<string, GamePerformanceCalibration>();
+
+function validCalibration(
+  value: unknown
+): value is GamePerformanceCalibration {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+
+  const candidate = value as Record<string, unknown>;
+  const referenceFps = candidate.referenceFps;
+  const ramGb = candidate.ramGb;
+  const fpsCap = candidate.fpsCap;
+
+  return Boolean(
+    typeof referenceFps === "number" &&
+      Number.isFinite(referenceFps) &&
+      referenceFps > 0 &&
+      referenceFps <= 1_000 &&
+      typeof ramGb === "number" &&
+      Number.isFinite(ramGb) &&
+      ramGb > 0 &&
+      ramGb <= 512 &&
+      (
+        fpsCap === undefined ||
+        (
+          typeof fpsCap === "number" &&
+          Number.isFinite(fpsCap) &&
+          fpsCap > 0 &&
+          fpsCap <= 1_000 &&
+          fpsCap >= referenceFps
+        )
+      )
+  );
+}
+
+function browserPublishedCalibration(
+  slug: string
+): GamePerformanceCalibration | undefined {
+  if (typeof document === "undefined") return undefined;
+
+  const source =
+    document.getElementById(browserRegistryId)?.textContent ?? "";
+
+  if (source !== browserRegistrySource) {
+    browserRegistrySource = source;
+    const next = new Map<string, GamePerformanceCalibration>();
+
+    try {
+      const parsed = JSON.parse(source) as unknown;
+
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        for (const [key, value] of Object.entries(parsed)) {
+          if (
+            /^[a-z0-9][a-z0-9._-]{0,159}$/.test(key) &&
+            validCalibration(value)
+          ) {
+            next.set(key, value);
+          }
+        }
+      }
+    } catch {
+      // Un registro ausente o manipulado sólo desactiva el fallback editorial.
+    }
+
+    browserRegistry = next;
+  }
+
+  return browserRegistry.get(slug);
+}
+
+export function resolvePerformanceProfile(
+  slug: string,
+  explicitCalibration?: GamePerformanceCalibration
+): GamePerformanceProfile | null {
+  const calibration =
+    explicitCalibration ?? browserPublishedCalibration(slug);
+
+  if (calibration) {
+    return {
+      slug,
+      referenceFps: calibration.referenceFps,
+      ramGb: calibration.ramGb,
+      fpsCap: calibration.fpsCap,
+    };
+  }
+
+  return profileMap.get(slug) ?? null;
+}
 
 export function getPerformanceProfile(slug: string): GamePerformanceProfile {
-  return (
-    profileMap.get(slug) ?? {
-      slug,
-      referenceFps: 72,
-      ramGb: 8,
-      cpuWeight: 0.3,
-      gpuWeight: 0.7,
-      optimization: 0.95,
-    }
-  );
+  /*
+   * Acceso de compatibilidad para metadatos auxiliares estables de la ficha,
+   * como storageGb. Debe producir exactamente el mismo resultado durante SSR
+   * y la primera hidratación del cliente. Las calibraciones publicadas del DOM
+   * sólo pertenecen al motor de FPS mediante resolvePerformanceProfile().
+   */
+  return profileMap.get(slug) ?? {
+    slug,
+    referenceFps: 0,
+    ramGb: 1,
+  };
 }

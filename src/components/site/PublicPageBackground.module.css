@@ -1,0 +1,61 @@
+.root {
+  position: relative;
+  min-height: 100vh;
+  isolation: isolate;
+  background: var(--theme-bg);
+}
+
+.background {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: var(--theme-bg);
+}
+
+.image,
+.tint,
+.shade {
+  position: absolute;
+  inset: 0;
+}
+
+.image {
+  background-position: center top;
+  background-repeat: no-repeat;
+  background-size: cover;
+  opacity: 0.72;
+  filter: saturate(0.9) contrast(1.04);
+  transform: scale(1.015);
+}
+
+.tint {
+  mix-blend-mode: color;
+}
+
+.shade {
+  background:
+    linear-gradient(
+      180deg,
+      rgba(3, 5, 10, 0.54) 0%,
+      rgba(3, 5, 10, 0.7) 48%,
+      rgba(3, 5, 10, 0.86) 100%
+    );
+}
+
+.content {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+}
+
+.content :global(.main-content) {
+  background: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .image {
+    transform: none;
+  }
+}

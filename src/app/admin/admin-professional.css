@@ -1,0 +1,424 @@
+.admin-professional {
+  --admin-control-bg: color-mix(in srgb, var(--background) 7%, #0b131c);
+  --admin-control-bg-hover: color-mix(in srgb, var(--background) 9%, #101a25);
+  --admin-control-border: #354454;
+  --admin-control-border-strong: #46586a;
+  --admin-row: color-mix(in srgb, var(--background) 7%, #0a1118);
+  --admin-row-alt: color-mix(in srgb, var(--background) 8%, #0c141d);
+  --admin-row-hover: color-mix(in srgb, var(--background) 9%, #111c27);
+  --admin-heading: #f2f5f8;
+  --admin-copy: #b3bec9;
+  --admin-muted: #8291a0;
+}
+
+.admin-professional label > span {
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.admin-professional label > small {
+  color: #8e9cab;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.admin-professional label > input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="search"]),
+.admin-professional label > textarea,
+.admin-professional label > select {
+  border-color: var(--admin-control-border);
+  background: var(--admin-control-bg);
+  font-size: 13px;
+  transition:
+    border-color 140ms ease,
+    background 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.admin-professional label > input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="search"]):hover,
+.admin-professional label > textarea:hover,
+.admin-professional label > select:hover {
+  border-color: var(--admin-control-border-strong);
+  background: var(--admin-control-bg-hover);
+}
+
+.admin-professional label > input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="search"]):focus-visible,
+.admin-professional label > textarea:focus-visible,
+.admin-professional label > select:focus-visible {
+  outline: none;
+  border-color: color-mix(in srgb, var(--brand) 58%, #536273);
+  background: var(--admin-control-bg-hover);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--brand) 22%, transparent),
+    0 0 0 4px color-mix(in srgb, var(--brand) 7%, transparent);
+}
+
+.admin-professional input[type="search"] {
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.admin-professional input[type="search"]::-webkit-search-decoration,
+.admin-professional input[type="search"]::-webkit-search-cancel-button,
+.admin-professional input[type="search"]::-webkit-search-results-button,
+.admin-professional input[type="search"]::-webkit-search-results-decoration {
+  display: none;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.admin-professional label:has(> input[type="search"]) {
+  border-color: var(--admin-control-border);
+  background: var(--admin-control-bg);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.018);
+  transition:
+    border-color 140ms ease,
+    background 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.admin-professional label:has(> input[type="search"]):hover {
+  border-color: var(--admin-control-border-strong);
+  background: var(--admin-control-bg-hover);
+}
+
+.admin-professional label:has(> input[type="search"]):focus-within {
+  border-color: color-mix(in srgb, var(--brand) 58%, #536273);
+  background: color-mix(in srgb, var(--brand) 2.5%, var(--admin-control-bg-hover));
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--brand) 22%, transparent),
+    0 0 0 4px color-mix(in srgb, var(--brand) 7%, transparent);
+}
+
+.admin-professional label:has(> input[type="search"]):focus-within > svg {
+  color: color-mix(in srgb, var(--brand) 68%, #ffffff);
+}
+
+.admin-professional section:has(.admin-data-table) > div:first-child:not(:has(table)) {
+  min-height: 50px;
+  padding-bottom: 13px;
+  border-bottom-color: #303d49;
+}
+
+.admin-professional section:has(.admin-data-table) > div:first-child:not(:has(table)) strong {
+  color: #eef2f6;
+  font-size: 13px;
+  font-weight: 780;
+}
+
+.admin-professional section:has(.admin-data-table) > div:first-child:not(:has(table)) span {
+  color: color-mix(in srgb, var(--brand) 45%, #ffffff);
+  border-color: color-mix(in srgb, var(--brand) 24%, #344251);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--brand) 5%, var(--admin-control-bg));
+  font-size: 11px;
+}
+
+.admin-professional .admin-primary-action {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-shrink: 0;
+  padding: 0 16px;
+  color: var(--text-on-brand);
+  border: 1px solid color-mix(in srgb, var(--brand) 78%, #ffffff);
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--brand), var(--brand-dark));
+  box-shadow:
+    0 12px 28px color-mix(in srgb, var(--brand) 17%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.13);
+  font-size: 13px;
+  font-weight: 850;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  text-decoration: none;
+  transition:
+    transform 150ms ease,
+    filter 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.admin-professional .admin-primary-action:hover {
+  color: var(--text-on-brand);
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+  box-shadow:
+    0 15px 32px color-mix(in srgb, var(--brand) 22%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16);
+}
+
+.admin-professional .admin-primary-action:focus-visible,
+.admin-professional .admin-table-action:focus-visible,
+.admin-professional .admin-form-action:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 3px #070b11,
+    0 0 0 5px color-mix(in srgb, var(--brand) 66%, #ffffff);
+}
+
+.admin-professional .admin-form-actions {
+  gap: 22px;
+  padding-top: 20px;
+  border-top-color: #2d3946;
+}
+
+.admin-professional .admin-form-actions > p {
+  max-width: 620px;
+  color: #8c9aaa;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.admin-professional .admin-form-actions__buttons {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+
+.admin-professional .admin-form-action {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 15px;
+  border-radius: 9px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 800;
+  transition:
+    color 140ms ease,
+    border-color 140ms ease,
+    background 140ms ease,
+    transform 140ms ease,
+    filter 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.admin-professional .admin-form-action--secondary {
+  color: #dce4ec;
+  border: 1px solid #3b4958;
+  background: var(--admin-row-alt);
+  box-shadow: none;
+}
+
+.admin-professional .admin-form-action--secondary:hover {
+  color: #fff;
+  border-color: color-mix(in srgb, var(--brand) 36%, #536273);
+  background: color-mix(in srgb, var(--brand) 5%, var(--admin-control-bg-hover));
+  transform: translateY(-1px);
+}
+
+.admin-professional .admin-form-action--primary {
+  color: var(--text-on-brand);
+  border: 1px solid color-mix(in srgb, var(--brand) 76%, #ffffff);
+  background: linear-gradient(135deg, var(--brand), var(--brand-dark));
+  box-shadow:
+    0 11px 25px color-mix(in srgb, var(--brand) 16%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.admin-professional .admin-form-action--primary:hover {
+  color: var(--text-on-brand);
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+.admin-professional .admin-table-summary {
+  min-height: 50px;
+  padding: 0 14px 13px;
+  border-bottom-color: #303d49;
+}
+
+.admin-professional .admin-table-summary strong {
+  color: #eef2f6;
+  font-size: 13px;
+  font-weight: 780;
+}
+
+.admin-professional .admin-table-summary span {
+  padding: 6px 9px;
+  color: color-mix(in srgb, var(--brand) 45%, #ffffff);
+  border-color: color-mix(in srgb, var(--brand) 24%, #344251);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--brand) 5%, var(--admin-control-bg));
+  font-size: 11px;
+}
+
+.admin-professional .admin-data-table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: separate;
+  border-spacing: 0;
+  color: var(--admin-copy);
+  font-size: 13px;
+}
+
+.admin-professional .admin-data-table th,
+.admin-professional .admin-data-table td {
+  height: 66px;
+  padding: 14px 14px;
+  border-bottom: 1px solid #2b3744;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.admin-professional .admin-data-table thead th {
+  height: 44px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  color: #a3b0bd;
+  border-bottom-color: #394755;
+  background: color-mix(in srgb, var(--background) 8%, #0d151e);
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.admin-professional .admin-data-table tbody tr {
+  background: var(--admin-row);
+  transition:
+    background 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.admin-professional .admin-data-table tbody tr:nth-child(even) {
+  background: var(--admin-row-alt);
+}
+
+.admin-professional .admin-data-table tbody tr:hover,
+.admin-professional .admin-data-table tbody tr:focus-within {
+  background: var(--admin-row-hover);
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--brand) 72%, #ffffff);
+}
+
+.admin-professional .admin-data-table tbody tr:last-child th,
+.admin-professional .admin-data-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.admin-professional .admin-data-table tbody th {
+  min-width: 240px;
+  font-weight: 400;
+}
+
+.admin-professional .admin-data-table tbody th strong,
+.admin-professional .admin-data-table tbody th span {
+  display: block;
+}
+
+.admin-professional .admin-data-table tbody th strong {
+  color: var(--admin-heading);
+  font-size: 14px;
+  font-weight: 780;
+  line-height: 1.3;
+}
+
+.admin-professional .admin-data-table tbody th span {
+  margin-top: 5px;
+  color: #8c9aa9;
+  font-size: 11.5px;
+  line-height: 1.4;
+}
+
+.admin-professional .admin-data-table tbody th a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.admin-professional .admin-data-table td {
+  color: var(--admin-copy);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.admin-professional .admin-table-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.admin-professional .admin-table-action {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 11px;
+  color: #dce4ec;
+  border: 1px solid var(--admin-control-border);
+  border-radius: 8px;
+  background: var(--admin-control-bg);
+  font-size: 12px;
+  font-weight: 780;
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    color 140ms ease,
+    border-color 140ms ease,
+    background 140ms ease,
+    transform 140ms ease;
+}
+
+.admin-professional .admin-table-action:hover {
+  color: #fff;
+  border-color: color-mix(in srgb, var(--brand) 45%, var(--admin-control-border-strong));
+  background: color-mix(in srgb, var(--brand) 7%, var(--admin-control-bg-hover));
+  transform: translateY(-1px);
+}
+
+.admin-professional .admin-table-action--attention {
+  color: color-mix(in srgb, var(--brand) 34%, #ffffff);
+  border-color: color-mix(in srgb, var(--brand) 36%, var(--admin-control-border));
+  background: color-mix(in srgb, var(--brand) 7%, var(--admin-control-bg));
+}
+
+@media (max-width: 760px) {
+  .admin-professional .admin-primary-action {
+    min-height: 46px;
+    padding-inline: 15px;
+  }
+
+  .admin-professional .admin-data-table {
+    min-width: 720px;
+  }
+
+  .admin-professional .admin-form-actions,
+  .admin-professional .admin-form-actions__buttons {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .admin-professional .admin-form-actions__buttons,
+  .admin-professional .admin-form-action {
+    width: 100%;
+  }
+
+  .admin-professional label > input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="search"]),
+  .admin-professional label > textarea,
+  .admin-professional label > select,
+  .admin-professional input[type="search"] {
+    font-size: 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-professional .admin-primary-action,
+  .admin-professional .admin-table-action,
+  .admin-professional .admin-form-action,
+  .admin-professional .admin-data-table tbody tr,
+  .admin-professional label > input,
+  .admin-professional label > textarea,
+  .admin-professional label > select,
+  .admin-professional label:has(> input[type="search"]) {
+    transition: none;
+  }
+}

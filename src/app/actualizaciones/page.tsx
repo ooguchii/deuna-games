@@ -2,34 +2,33 @@ import type {
   Metadata,
 } from "next";
 
-import Link from "next/link";
-
 import {
   CalendarDays,
-  ChevronRight,
   Gamepad2,
-  House,
   Layers3,
   RefreshCcw,
 } from "lucide-react";
 
-import FeaturedUpdatesSlider from "@/components/updates/FeaturedUpdatesSlider";
-import UpdatesCatalogClient from "@/components/updates/UpdatesCatalogClient";
 import Footer from "@/components/layout/Footer";
 import Header from "@/components/layout/Header";
-
-import {
-  featuredUpdates,
-  resolvedGameUpdates,
-} from "@/data/updates";
-
-import {
-  absoluteUrl,
-  siteConfig,
-} from "@/lib/site";
+import PublicBreadcrumb from "@/components/layout/PublicBreadcrumb";
+import FeaturedUpdatesSlider from "@/components/updates/FeaturedUpdatesSlider";
+import UpdatesCatalogClient from "@/components/updates/UpdatesCatalogClient";
 import {
   safeJsonLd,
 } from "@/lib/safe-json-ld";
+import {
+  buildBreadcrumbJsonLd,
+} from "@/lib/seo/breadcrumb";
+import {
+  absoluteUrl,
+} from "@/lib/site";
+import {
+  getPublicPagesConfig,
+} from "@/lib/site/public-pages-config";
+import {
+  getPublicSiteConfig,
+} from "@/lib/site/public-site-config";
 import {
   formatCompactUpdateDate,
   parseDownloadFilter,
@@ -38,6 +37,9 @@ import {
   parseUpdateType,
   sanitizeUpdateQuery,
 } from "@/lib/updates/catalog";
+import {
+  getPublicResolvedUpdates,
+} from "@/lib/updates/public-updates";
 
 import styles from "./page.module.css";
 
@@ -53,6 +55,14 @@ type UpdatesPageProps = {
   searchParams:
     Promise<UpdatesSearchParams>;
 };
+
+export const dynamic = "force-dynamic";
+
+const infoIcons = [
+  RefreshCcw,
+  Gamepad2,
+  Layers3,
+] as const;
 
 function hasFilters(
   params: UpdatesSearchParams
@@ -70,17 +80,16 @@ function hasFilters(
 export async function generateMetadata({
   searchParams,
 }: UpdatesPageProps): Promise<Metadata> {
-  const params =
-    await searchParams;
-
-  const filtered =
-    hasFilters(params);
-
+  const [params, config, publicPages] = await Promise.all([
+    searchParams,
+    getPublicSiteConfig(),
+    getPublicPagesConfig(),
+  ]);
+  const filtered = hasFilters(params);
+  const page = publicPages.updates;
   const title =
-    "Actualizaciones de juegos para PC";
-
-  const description =
-    "Consulta las últimas versiones y actualizaciones de juegos disponibles en DeUna Games.";
+    `${page.title} de juegos para PC`;
+  const description = page.description;
 
   return {
     title,
@@ -103,7 +112,7 @@ export async function generateMetadata({
 
     openGraph: {
       title:
-        `${title} | ${siteConfig.name}`,
+        `${title} | ${config.name}`,
       description,
       url:
         "/actualizaciones",
@@ -114,7 +123,7 @@ export async function generateMetadata({
       card:
         "summary_large_image",
       title:
-        `${title} | ${siteConfig.name}`,
+        `${title} | ${config.name}`,
       description,
     },
   };
@@ -123,8 +132,22 @@ export async function generateMetadata({
 export default async function UpdatesPage({
   searchParams,
 }: UpdatesPageProps) {
-  const params =
-    await searchParams;
+  const [
+    params,
+    resolvedGameUpdates,
+    config,
+    publicPages,
+  ] = await Promise.all([
+    searchParams,
+    getPublicResolvedUpdates(),
+    getPublicSiteConfig(),
+    getPublicPagesConfig(),
+  ]);
+  const page = publicPages.updates;
+  const featuredUpdates =
+    resolvedGameUpdates.filter(
+      (update) => update.featured
+    );
 
   const latestUpdate =
     resolvedGameUpdates[0];
@@ -152,33 +175,10 @@ export default async function UpdatesPage({
         ]
       : resolvedGameUpdates;
 
-  const breadcrumbJsonLd = {
-    "@context":
-      "https://schema.org",
-    "@type":
-      "BreadcrumbList",
-    itemListElement: [
-      {
-        "@type":
-          "ListItem",
-        position: 1,
-        name: "Inicio",
-        item:
-          absoluteUrl("/"),
-      },
-      {
-        "@type":
-          "ListItem",
-        position: 2,
-        name:
-          "Actualizaciones",
-        item:
-          absoluteUrl(
-            "/actualizaciones"
-          ),
-      },
-    ],
-  };
+  const breadcrumbJsonLd = buildBreadcrumbJsonLd(
+    page.title,
+    "/actualizaciones"
+  );
 
   const collectionJsonLd = {
     "@context":
@@ -186,15 +186,15 @@ export default async function UpdatesPage({
     "@type":
       "CollectionPage",
     name:
-      "Actualizaciones de juegos para PC",
+      `${page.title} de juegos para PC`,
     url:
       absoluteUrl(
         "/actualizaciones"
       ),
     description:
-      "Últimas versiones y actualizaciones de juegos disponibles en DeUna Games.",
+      page.description,
     inLanguage:
-      siteConfig.language,
+      config.language,
   };
 
   return (
@@ -227,31 +227,11 @@ export default async function UpdatesPage({
           styles.main
         }
       >
-        <nav
-          className={
-            styles.breadcrumb
-          }
-          aria-label="Migas de pan"
-        >
-          <Link href="/">
-            <House
-              size={14}
-              aria-hidden="true"
-            />
-            Inicio
-          </Link>
-
-          <ChevronRight
-            size={14}
-            aria-hidden="true"
-          />
-
-          <span
-            aria-current="page"
-          >
-            Actualizaciones
-          </span>
-        </nav>
+        <PublicBreadcrumb
+          className={styles.breadcrumb}
+          currentLabel={page.title}
+          iconSize={14}
+        />
 
         <section
           className={
@@ -275,24 +255,17 @@ export default async function UpdatesPage({
                 styles.eyebrow
               }
             >
-              VERSIONES Y MEJORAS
+              {page.eyebrow}
             </span>
 
             <h1>
-              Actualizaciones{" "}
+              {page.title}{" "}
               <span>
-                recientes
+                {page.highlight}
               </span>
             </h1>
 
-            <p>
-              Sigue las nuevas
-              versiones de los juegos
-              disponibles en DeUna
-              Games. Encuentra qué se
-              actualizó y accede siempre
-              a la versión vigente.
-            </p>
+            <p>{page.description}</p>
 
             <div
               className={
@@ -438,72 +411,27 @@ export default async function UpdatesPage({
           className={
             styles.infoGrid
           }
-          aria-label="Cómo funciona Actualizaciones"
+          aria-label={`Cómo funciona ${page.title}`}
         >
-          <article>
-            <span>
-              <RefreshCcw
-                size={20}
-                aria-hidden="true"
-              />
-            </span>
+          {page.infoCards.map((card, index) => {
+            const Icon = infoIcons[index];
 
-            <div>
-              <strong>
-                Versiones ordenadas
-              </strong>
+            return (
+              <article key={`${index}-${card.title}`}>
+                <span>
+                  <Icon
+                    size={20}
+                    aria-hidden="true"
+                  />
+                </span>
 
-              <p>
-                Cada publicación queda
-                asociada a su juego y a
-                una versión concreta.
-              </p>
-            </div>
-          </article>
-
-          <article>
-            <span>
-              <Gamepad2
-                size={20}
-                aria-hidden="true"
-              />
-            </span>
-
-            <div>
-              <strong>
-                Un acceso por juego
-              </strong>
-
-              <p>
-                El mismo botón de
-                descarga puede ofrecer
-                siempre la versión
-                vigente.
-              </p>
-            </div>
-          </article>
-
-          <article>
-            <span>
-              <Layers3
-                size={20}
-                aria-hidden="true"
-              />
-            </span>
-
-            <div>
-              <strong>
-                Mirrors independientes
-              </strong>
-
-              <p>
-                Cambiar un enlace no
-                genera una actualización;
-                publicar una versión
-                nueva sí.
-              </p>
-            </div>
-          </article>
+                <div>
+                  <strong>{card.title}</strong>
+                  <p>{card.text}</p>
+                </div>
+              </article>
+            );
+          })}
         </section>
       </main>
 

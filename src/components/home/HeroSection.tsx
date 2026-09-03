@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import {
   forwardRef,
+  type CSSProperties,
   type KeyboardEvent,
   type PointerEvent,
   type TransitionEvent,
@@ -21,7 +22,17 @@ import {
   useState,
 } from "react";
 
-import { heroGames as games } from "@/data/home";
+import FramedVideo from "@/components/ui/FramedVideo";
+import type { HomeCopy } from "@/data/home-config";
+import { normalizeGameImageViewport } from "@/lib/media/image-viewport";
+import {
+  resolveGameHeroVideo,
+  resolveGameHeroVideoPlayback,
+} from "@/lib/media/game-video-media";
+import {
+  resolveHeroImageTuning,
+  type HeroImageTuning,
+} from "@/lib/site/hero-image";
 import type { Game } from "@/types/game";
 
 import artworkStyles from "./HeroArtwork.module.css";
@@ -29,6 +40,7 @@ import styles from "./HeroSection.module.css";
 
 const AUTOPLAY_TIME = 6500;
 const MOBILE_ART_MEDIA = "(max-width: 520px)";
+const FINE_HOVER_MEDIA = "(hover: hover) and (pointer: fine)";
 
 type TrackSlide = {
   key: string;
@@ -42,13 +54,19 @@ type ResponsiveArtworkProps = {
   alt: string;
   active?: boolean;
   ambient?: boolean;
+  style?: CSSProperties;
 };
+
+function canUseFineHover() {
+  return typeof window !== "undefined" && window.matchMedia(FINE_HOVER_MEDIA).matches;
+}
 
 function ResponsiveArtwork({
   game,
   alt,
   active = false,
   ambient = false,
+  style,
 }: ResponsiveArtworkProps) {
   const desktopSrc = game.heroImage ?? game.coverImage;
   const mobileSrc = game.coverImage ?? game.heroImage;
@@ -63,6 +81,35 @@ function ResponsiveArtwork({
     : `${styles.heroArtwork} ${artworkStyles.artwork} ${
         active ? artworkStyles.activeArtwork : ""
       }`;
+  const framed = ambient
+    ? null
+    : normalizeGameImageViewport(
+        desktopSrc === game.coverImage
+          ? game.imageMedia?.cover
+          : game.imageMedia?.hero
+      );
+  const mobileFramed = ambient
+    ? null
+    : normalizeGameImageViewport(
+        mobileSrc === game.coverImage
+          ? game.imageMedia?.cover
+          : game.imageMedia?.hero
+      );
+  const framedPosition = framed
+    ? `${(framed.x * 100).toFixed(2)}% ${(framed.y * 100).toFixed(2)}%`
+    : null;
+  const mobileFramedPosition = mobileFramed
+    ? `${(mobileFramed.x * 100).toFixed(2)}% ${(mobileFramed.y * 100).toFixed(2)}%`
+    : null;
+  const artworkInlineStyle = framed
+    ? ({
+        ...style,
+        "--hero-image-zoom": framed.zoom,
+        "--hero-image-position": framedPosition,
+        "--hero-mobile-image-zoom": mobileFramed?.zoom ?? framed.zoom,
+        "--hero-mobile-image-position": mobileFramedPosition ?? framedPosition,
+      } as CSSProperties)
+    : style;
 
   return (
     <picture className={ambient ? undefined : styles.heroPicture}>
@@ -70,15 +117,11 @@ function ResponsiveArtwork({
         <source media={MOBILE_ART_MEDIA} srcSet={mobileSrc} />
       )}
 
-      {/*
-       * Las imágenes del catálogo ya están preoptimizadas en WebP.
-       * picture evita descargar hero + cover simultáneamente y deja
-       * que el navegador elija una sola variante por viewport.
-       */}
       <img
         src={fallbackSrc}
         alt={alt}
         className={artworkClassName}
+        style={artworkInlineStyle}
         loading={active ? "eager" : "lazy"}
         fetchPriority={active ? "high" : "auto"}
         decoding="async"
@@ -87,27 +130,103 @@ function ResponsiveArtwork({
   );
 }
 
+function HeroVideoLayer({
+  game,
+  enabled,
+}: {
+  game: Game;
+  enabled: boolean;
+}) {
+  const resolved = resolveGameHeroVideo(game);
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  const [documentVisible, setDocumentVisible] = useState(
+    () => typeof document === "undefined" || !document.hidden
+  );
+
+  useEffect(() => {
+    const syncVisibility = () => setDocumentVisible(!document.hidden);
+    document.addEventListener("visibilitychange", syncVisibility);
+    return () => document.removeEventListener("visibilitychange", syncVisibility);
+  }, []);
+
+  if (
+    !enabled ||
+    !resolved ||
+    failedSrc === resolved.src ||
+    !documentVisible
+  ) {
+    return null;
+  }
+
+  return (
+    <FramedVideo
+      key={resolved.src}
+      src={resolved.src}
+      viewport={resolved.viewport}
+      autoPlay
+      loop
+      controls={false}
+      preload="metadata"
+      tabIndex={-1}
+      frameStyle={{
+        position: "absolute",
+        inset: 0,
+        zIndex: 0,
+        pointerEvents: "none",
+        background: "transparent",
+      }}
+      onError={() => setFailedSrc(resolved.src)}
+    />
+  );
+}
+
 type HeroSlideProps = {
   game: Game;
+  copy: HomeCopy["hero"];
   logicalIndex: number;
   total: number;
+  imageEffect: boolean;
+  artworkStyle: CSSProperties;
+  overlayOpacity: number;
   clone?: boolean;
   active?: boolean;
+  videoEnabled?: boolean;
 };
 
 const HeroSlide = forwardRef<HTMLElement, HeroSlideProps>(
   function HeroSlide(
     {
       game,
+      copy,
       logicalIndex,
       total,
+      imageEffect,
+      artworkStyle,
+      overlayOpacity,
       clone = false,
       active = false,
+      videoEnabled = false,
     },
     ref
   ) {
     const accessible = active && !clone;
     const hasArtwork = Boolean(game.heroImage || game.coverImage);
+    const hoverPlayback = resolveGameHeroVideoPlayback(game) === "hover";
+    const [hoverPreviewActive, setHoverPreviewActive] = useState(false);
+    const videoShouldRender =
+      videoEnabled && (!hoverPlayback || hoverPreviewActive);
+
+    function startHoverPreview() {
+      if (hoverPlayback && accessible && canUseFineHover()) {
+        setHoverPreviewActive(true);
+      }
+    }
+
+    function stopHoverPreview() {
+      if (hoverPlayback) {
+        setHoverPreviewActive(false);
+      }
+    }
 
     return (
       <article
@@ -117,6 +236,15 @@ const HeroSlide = forwardRef<HTMLElement, HeroSlideProps>(
         aria-roledescription={accessible ? "slide" : undefined}
         aria-label={accessible ? `${logicalIndex + 1} de ${total}` : undefined}
         aria-hidden={!accessible}
+        onMouseEnter={startHoverPreview}
+        onMouseLeave={stopHoverPreview}
+        onFocusCapture={startHoverPreview}
+        onBlurCapture={(event) => {
+          const nextTarget = event.relatedTarget;
+          if (!nextTarget || !event.currentTarget.contains(nextTarget as Node)) {
+            stopHoverPreview();
+          }
+        }}
       >
         <div className={styles.media}>
           {hasArtwork ? (
@@ -124,12 +252,24 @@ const HeroSlide = forwardRef<HTMLElement, HeroSlideProps>(
               game={game}
               alt={accessible ? game.imageAlt : ""}
               active={active}
+              style={artworkStyle}
             />
           ) : (
             <div className={styles.mediaFallback} aria-hidden="true" />
           )}
 
-          <div className={styles.mediaOverlay} />
+          <HeroVideoLayer
+            game={game}
+            enabled={videoShouldRender}
+          />
+
+          {imageEffect && (
+            <div
+              className={styles.mediaOverlay}
+              style={{ opacity: overlayOpacity }}
+              aria-hidden="true"
+            />
+          )}
 
           {!active && (
             <div className={styles.previewOverlay} aria-hidden="true" />
@@ -161,7 +301,7 @@ const HeroSlide = forwardRef<HTMLElement, HeroSlideProps>(
               tabIndex={accessible ? 0 : -1}
             >
               <Play size={17} fill="currentColor" />
-              Ver juego
+              {copy.primaryCta}
             </Link>
 
             <Link
@@ -170,7 +310,7 @@ const HeroSlide = forwardRef<HTMLElement, HeroSlideProps>(
               tabIndex={accessible ? 0 : -1}
             >
               <Info size={18} />
-              Más información
+              {copy.secondaryCta}
             </Link>
           </div>
         </div>
@@ -179,25 +319,66 @@ const HeroSlide = forwardRef<HTMLElement, HeroSlideProps>(
   }
 );
 
-function logicalIndexFromPhysical(physicalIndex: number) {
+function logicalIndexFromPhysical(
+  physicalIndex: number,
+  total: number
+) {
   if (physicalIndex === 0) {
-    return games.length - 1;
+    return total - 1;
   }
 
-  if (physicalIndex === games.length + 1) {
+  if (physicalIndex === total + 1) {
     return 0;
   }
 
   return physicalIndex - 1;
 }
 
-export default function HeroSection() {
+export default function HeroSection({
+  games,
+  copy,
+  imageEffect = false,
+  imageTuning,
+}: {
+  games: Game[];
+  copy: HomeCopy["hero"];
+  imageEffect?: boolean;
+  imageTuning?: Partial<HeroImageTuning>;
+}) {
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const trackRef = useRef<HTMLDivElement | null>(null);
   const slideRefs = useRef<(HTMLElement | null)[]>([]);
   const pointerStartX = useRef<number | null>(null);
   const resizeFrameOneRef = useRef<number | null>(null);
   const resizeFrameTwoRef = useRef<number | null>(null);
+
+  const resolvedTuning = useMemo(
+    () => resolveHeroImageTuning(imageTuning),
+    [imageTuning]
+  );
+  const artworkStyle = useMemo<CSSProperties>(
+    () => ({
+      filter: `brightness(${resolvedTuning.brightness}%) saturate(${resolvedTuning.saturation}%) contrast(${resolvedTuning.contrast}%)`,
+    }),
+    [resolvedTuning]
+  );
+  const ambientArtworkStyle = useMemo<CSSProperties>(() => {
+    const ambientBrightness = Math.round(
+      resolvedTuning.brightness * 0.72
+    );
+    const ambientSaturation = Math.min(
+      240,
+      Math.round(resolvedTuning.saturation * 1.2)
+    );
+    const scale = 1.12 + resolvedTuning.ambientBlur / 450;
+
+    return {
+      opacity: resolvedTuning.ambientOpacity / 100,
+      filter: `blur(${resolvedTuning.ambientBlur}px) saturate(${ambientSaturation}%) brightness(${ambientBrightness}%) contrast(${resolvedTuning.contrast}%)`,
+      transform: `scale(${scale.toFixed(3)})`,
+    };
+  }, [resolvedTuning]);
+  const overlayOpacity = resolvedTuning.overlayStrength / 100;
 
   const trackSlides = useMemo<TrackSlide[]>(() => {
     const first = games[0]!;
@@ -223,7 +404,7 @@ export default function HeroSection() {
         clone: true,
       },
     ];
-  }, []);
+  }, [games]);
 
   const [physicalIndex, setPhysicalIndex] = useState(1);
   const [step, setStep] = useState(0);
@@ -234,7 +415,10 @@ export default function HeroSection() {
   const [manualPaused, setManualPaused] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
 
-  const activeIndex = logicalIndexFromPhysical(physicalIndex);
+  const activeIndex = logicalIndexFromPhysical(
+    physicalIndex,
+    games.length
+  );
   const activeGame = games[activeIndex]!;
   const nextGame = games[(activeIndex + 1) % games.length]!;
   const isPaused = paused || manualPaused || reducedMotion;
@@ -313,7 +497,7 @@ export default function HeroSection() {
       observer.disconnect();
       cancelResizeFrames();
     };
-  }, [measureSlides]);
+  }, [games.length, measureSlides]);
 
   useEffect(() => {
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -354,7 +538,7 @@ export default function HeroSection() {
       setAnimating(true);
       setPhysicalIndex(target);
     },
-    [animating, jumping, ready, reducedMotion]
+    [animating, games.length, jumping, ready, reducedMotion]
   );
 
   const nextSlide = useCallback(() => {
@@ -493,15 +677,23 @@ export default function HeroSection() {
       }}
     >
       <h1 className={styles.srOnly}>
-        Descubre juegos para PC en DeUna Games
+        {copy.accessibleTitle}
       </h1>
 
-      <div className={styles.ambientBackdrop} aria-hidden="true">
-        <div key={activeGame.id} className={styles.ambientFrame}>
-          <ResponsiveArtwork game={activeGame} alt="" active ambient />
+      {imageEffect && (
+        <div className={styles.ambientBackdrop} aria-hidden="true">
+          <div key={activeGame.id} className={styles.ambientFrame}>
+            <ResponsiveArtwork
+              game={activeGame}
+              alt=""
+              active
+              ambient
+              style={ambientArtworkStyle}
+            />
+          </div>
+          <div className={styles.ambientShade} />
         </div>
-        <div className={styles.ambientShade} />
-      </div>
+      )}
 
       <div
         ref={viewportRef}
@@ -525,10 +717,19 @@ export default function HeroSection() {
                 slideRefs.current[trackIndex] = element;
               }}
               game={trackSlide.game}
+              copy={copy}
               logicalIndex={trackSlide.logicalIndex}
               total={games.length}
+              imageEffect={imageEffect}
+              artworkStyle={artworkStyle}
+              overlayOpacity={overlayOpacity}
               clone={trackSlide.clone}
               active={trackIndex === physicalIndex}
+              videoEnabled={
+                trackIndex === physicalIndex &&
+                !trackSlide.clone &&
+                !reducedMotion
+              }
             />
           ))}
         </div>

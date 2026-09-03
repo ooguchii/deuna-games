@@ -9,17 +9,20 @@ export type GameHardwareRequirements = {
 export type GameRequirements =
   GameHardwareRequirements & {
     /*
-     * Compatibilidad hacia atrás:
-     * la Home actual todavía usa requirements.ram,
-     * requirements.graphics, etc.
-     *
-     * Las páginas internas podrán migrar gradualmente a:
-     * requirements.minimum
-     * requirements.recommended
+     * Compatibilidad hacia atrás: la Home actual todavía usa requirements.ram,
+     * requirements.graphics, etc. Las páginas internas podrán migrar
+     * gradualmente a requirements.minimum / requirements.recommended.
      */
     minimum?: GameHardwareRequirements;
     recommended?: GameHardwareRequirements;
   };
+
+export type GamePerformanceCalibration = {
+  /* FPS observados o calibrados sobre el equipo de referencia a 1080p/media. */
+  referenceFps: number;
+  ramGb: number;
+  fpsCap?: number;
+};
 
 export type GamePlatform =
   | "PC"
@@ -27,14 +30,121 @@ export type GamePlatform =
   | "Xbox"
   | "Nintendo Switch";
 
-export type GameDownload = {
-  /*
-   * La disponibilidad se deriva de una descarga concreta.
-   * No usar booleanos separados para declarar una descarga
-   * que todavía no tiene destino real.
-   */
+export type GameDownloadSourceStatus =
+  | "available"
+  | "down"
+  | "maintenance";
+
+export type GameDownloadSource = {
+  id: string;
+  name: string;
   href: string;
   label?: string;
+  enabled?: boolean;
+  status?: GameDownloadSourceStatus;
+};
+
+export type GameDownload = {
+  href?: string;
+  label?: string;
+  sources?: GameDownloadSource[];
+  sizeGb?: number;
+  fileCount?: number;
+  platform?: string;
+};
+
+export type GameDirectPreviewPlatform =
+  | "facebook"
+  | "instagram"
+  | "tiktok"
+  | "vimeo"
+  | "x"
+  | "twitch"
+  | "dailymotion"
+  | "streamable"
+  | "kick";
+
+export type GamePreviewMode =
+  | "webm"
+  | "youtube"
+  | GameDirectPreviewPlatform;
+
+export type GameYouTubePreview = {
+  videoId: string;
+  startSeconds: number;
+  endSeconds: number;
+};
+
+export type GameDirectPreview = {
+  platform: GameDirectPreviewPlatform;
+  url: string;
+  startSeconds: number;
+  endSeconds: number;
+};
+
+export type GameImageViewport = {
+  /* Punto de interés normalizado dentro de la imagen. */
+  x: number;
+  y: number;
+  /* 1 = encuadre base; 3 = zoom máximo 300 %. */
+  zoom: number;
+  /* Sólo true significa que el editor confirmó explícitamente este recorte. */
+  confirmed?: true;
+};
+
+export type GameImageMedia = {
+  /* Cada destino conserva su encuadre sin duplicar ni modificar la imagen. */
+  cover?: GameImageViewport;
+  hero?: GameImageViewport;
+  card?: GameImageViewport;
+  /* La galería guarda un encuadre por recurso asignado. */
+  gallery?: Record<string, GameImageViewport>;
+};
+
+export type GameVideoViewportAspect =
+  | "source"
+  | "16:9"
+  | "3:2"
+  | "1:1"
+  | "4:5"
+  | "9:16";
+
+export type GameVideoViewport = {
+  /* Posición normalizada dentro del área desplazable del encuadre. */
+  x: number;
+  y: number;
+  /* 1 = fotograma completo; 3 = zoom máximo 300 %. */
+  zoom: number;
+  aspect: GameVideoViewportAspect;
+  /* Ausente = asignado pero todavía pendiente de confirmar en el editor. */
+  confirmed?: true;
+};
+
+export type GameHeroVideoPlayback = "always" | "hover";
+
+export type GameHeroVideo = {
+  clip: string;
+  viewport: GameVideoViewport;
+  /* Ausente conserva compatibilidad histórica: video siempre activo. */
+  playback?: GameHeroVideoPlayback;
+};
+
+export type GameCardVideo =
+  | {
+      /* La Card referencia exactamente los mismos bytes que el Hero. */
+      source: "hero";
+      viewport: GameVideoViewport;
+    }
+  | {
+      /* La Card conserva un WebM propio únicamente cuando se solicita. */
+      source: "independent";
+      clip: string;
+      viewport: GameVideoViewport;
+    };
+
+export type GameVideoMedia = {
+  hero?: GameHeroVideo;
+  card?: GameCardVideo;
 };
 
 export type Game = {
@@ -47,11 +157,7 @@ export type Game = {
 
   description: string;
 
-  /*
-   * category se conserva para no romper la Home.
-   * genres permite que un juego tenga más de un género
-   * cuando completemos las fichas internas.
-   */
+  /* category se conserva para no romper la Home; genres permite más de uno. */
   category: string;
   genres?: string[];
   tags?: string[];
@@ -73,8 +179,34 @@ export type Game = {
   heroImage?: string;
   screenshots?: string[];
 
+  /*
+   * imageMedia guarda sólo instrucciones de presentación. Portada, Hero,
+   * Card y cada imagen de Galería pueden reutilizar el mismo archivo físico
+   * con encuadres distintos.
+   */
+  imageMedia?: GameImageMedia;
+
+  /*
+   * videoMedia es el contrato nuevo: el Hero guarda un único master temporal
+   * y la Card puede referenciarlo sin copiarlo o mantener un master propio.
+   * Los encuadres son metadata de presentación y nunca obligan a duplicar el
+   * archivo físico. Los campos preview* permanecen como fallback histórico.
+   */
+  videoMedia?: GameVideoMedia;
+
+  /*
+   * Los orígenes pueden coexistir. previewMode decide cuál usa la card.
+   * YouTube conserva su contrato específico ya probado; las demás redes
+   * directas usan directPreview con una plataforma explícita.
+   */
+  previewMode?: GamePreviewMode;
+  previewClip?: string;
+  youtubePreview?: GameYouTubePreview;
+  directPreview?: GameDirectPreview;
+
   imageAlt: string;
 
   requirements?: GameRequirements;
+  performance?: GamePerformanceCalibration;
   download?: GameDownload;
 };

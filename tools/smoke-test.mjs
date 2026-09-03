@@ -201,7 +201,7 @@ async function assertStatus(pathname, expectedStatus) {
 
 await access(serverPath).catch(() => {
   fail(
-    "No existe .next/standalone/server.js. Ejecutá npm run build antes del smoke test."
+    "No existe .next/standalone/server.js. Ejecuta npm run build antes del smoke test."
   );
 });
 
@@ -215,6 +215,7 @@ const server = spawn(
       HOSTNAME: host,
       PORT: String(port),
       NEXT_TELEMETRY_DISABLED: "1",
+      DEUNA_ADMIN_ENABLED: "false",
     },
     stdio: ["ignore", "pipe", "pipe"],
   }
@@ -283,6 +284,31 @@ try {
 
   if (!permissionsPolicy.includes("geolocation=()")) {
     fail("Home: Permissions-Policy debe bloquear geolocalización.");
+  }
+
+  const disabledAdmin = await assertStatus(
+    "/admin",
+    404
+  );
+  const adminRobotsHeader =
+    disabledAdmin.headers
+      .get("x-robots-tag")
+      ?.toLowerCase() ?? "";
+  const adminCacheHeader =
+    disabledAdmin.headers
+      .get("cache-control")
+      ?.toLowerCase() ?? "";
+
+  if (!adminRobotsHeader.includes("noindex")) {
+    fail(
+      "Admin deshabilitado: falta X-Robots-Tag noindex."
+    );
+  }
+
+  if (!adminCacheHeader.includes("no-store")) {
+    fail(
+      "Admin deshabilitado: falta Cache-Control no-store."
+    );
   }
 
   const filtered = await assertStatus(
@@ -372,6 +398,15 @@ try {
     fail("robots.txt: falta la referencia al sitemap.");
   }
 
+  if (
+    !robotsText.includes("Disallow: /admin") ||
+    !robotsText.includes("Disallow: /api/admin/")
+  ) {
+    fail(
+      "robots.txt: debe excluir las rutas administrativas."
+    );
+  }
+
   const sitemap = await assertStatus("/sitemap.xml", 200);
   const sitemapText = await sitemap.text();
 
@@ -384,7 +419,7 @@ try {
   }
 
   console.log(
-    "Smoke: OK (runtime, privacidad pública, canonicals, noindex, descarga fallback, 404, sitemap y headers verificados)."
+    "Smoke: OK (runtime, privacidad pública, admin cerrado, canonicals, noindex, descarga fallback, 404, sitemap y headers verificados)."
   );
 } catch (error) {
   if (serverOutput.trim()) {

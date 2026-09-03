@@ -89,11 +89,13 @@ function inspectAst(file, content, issues) {
       ts.isPropertyAccessExpression(node.expression) &&
       ts.isIdentifier(node.expression.expression) &&
       node.expression.expression.text === "console" &&
-      ["log", "debug", "trace"].includes(node.expression.name.text)
+      ["log", "debug", "trace", "info", "warn"].includes(
+        node.expression.name.text
+      )
     ) {
       report(
         node,
-        `console.${node.expression.name.text} parece un log de depuración`
+        `console.${node.expression.name.text} parece una traza de depuración o diagnóstico`
       );
     }
 
@@ -177,7 +179,7 @@ if (issues.length > 0) {
   }
 
   console.error(
-    "\nRetirá restos de depuración, placeholders o supresiones antes de integrar.\n"
+    "\nRetira restos de depuración, placeholders o supresiones antes de integrar.\n"
   );
   process.exit(1);
 }

@@ -1,170 +1,205 @@
 # DeUna Games — baseline técnico
 
-Este repositorio contiene la aplicación activa de DeUna Games. El objetivo de esta base es mantener el producto fácil de revisar, reproducible y libre de snapshots, reparadores y artefactos históricos dentro del código versionado.
+Aplicación activa de DeUna Games. La base está pensada para ser reproducible, auditable y mantenible: el repositorio no conserva diagnósticos temporales, backups, snapshots de reparación ni artefactos históricos dentro del código activo.
 
 ## Stack
 
-- Next.js 16 (App Router)
+- Next.js 16 con App Router
 - React 19
-- TypeScript
+- TypeScript estricto
 - CSS Modules + tokens globales
+- PostgreSQL para el espacio editorial privado y las cuentas
 - lucide-react
-
-## Requisitos
-
-- Node.js 20.9 o superior
-- Node.js 24 recomendado y usado por CI (`.node-version`)
-- npm
+- Node.js 24 o superior
 
 ## Desarrollo
 
-```powershell
-npm.cmd ci
-npm.cmd run dev
+Instala exactamente las dependencias fijadas y levanta el servidor local:
+
+```bash
+npm ci
+npm run dev
 ```
 
-Para probar desde otro dispositivo en la red local:
+Para exponer la web en la red local sin habilitar el panel privado:
 
-```powershell
-npm.cmd run mobile
+```bash
+npm run lan
 ```
+
+El panel administrativo permanece deshabilitado salvo que `DEUNA_ADMIN_ENABLED` sea exactamente `true`.
 
 ## Verificación
 
 Antes de integrar cambios:
 
-```powershell
-npm.cmd run check
-npm.cmd run audit:deps
-npm.cmd run security:scan
+```bash
+npm run check
+npm run audit:deps
+npm run security:scan
 ```
 
-`npm run check` ejecuta lint, TypeScript, higiene del código fuente, privacidad pública, encoding UTF-8, integridad de datos, assets, rutas, variables CSS, CSS Modules, build de producción y smoke test sobre el runtime standalone construido. CI repite estas verificaciones, suma el security scan y audita dependencias en cada Pull Request hacia `master`.
+CI ejecuta, entre otras comprobaciones:
 
-### Privacidad pública
+- lint y TypeScript estricto, incluidos símbolos y parámetros sin uso;
+- grafo de arquitectura para impedir módulos fuente huérfanos;
+- mantenimiento del repositorio y alcance de herramientas;
+- higiene de código fuente (`TODO`, `FIXME`, `HACK`, `debugger`, trazas y supresiones quedan bloqueados);
+- privacidad pública y de cuentas;
+- seguridad administrativa;
+- validación del importador editorial;
+- encoding UTF-8;
+- integridad de catálogo, Home, ranking, personalización explícita y detección de hardware;
+- integridad bidireccional de assets;
+- rutas internas;
+- variables CSS y CSS Modules, incluidas clases o módulos sin uso;
+- security scan;
+- build de producción;
+- smoke test del runtime standalone;
+- auditoría de dependencias.
 
-```powershell
-npm.cmd run check:privacy
+Los checks específicos también pueden ejecutarse por separado desde los scripts de `package.json`.
+
+## Arquitectura editorial
+
+El panel privado usa PostgreSQL y un flujo explícito de publicación. Guardar y publicar son operaciones distintas:
+
+```text
+editar
+  ↓
+borrador
+  ↓
+revisión inmutable
+  ↓
+publicar
+  ↓
+snapshot público
+  ↓
+web pública
 ```
 
-Bloquea referencias geográficas explícitas, locales regionales, timestamps con offsets de zona, rutas personales, correos personales comunes, campos estructurados de ubicación, trackers externos conocidos y formas lingüísticas regionales configuradas para el contenido público. El sitio usa `es` neutral y UTC para evitar publicar una región técnica de origen.
+La web pública consume `published_payload` visible; no debe leer `draft_payload`.
 
-### Datos del catálogo
+El modelo se aplica a las superficies editoriales que correspondan, entre ellas juegos, actualizaciones, Portada, Catálogos, Identidad pública, Quiénes somos y Presentación de páginas públicas. Restaurar una revisión crea una nueva revisión; no destruye el historial.
 
-```powershell
-npm.cmd run check:data
+Catálogos mantiene una taxonomía maestra de **Clasificaciones** y una lista separada de **Etiquetas**. Los campos físicos heredados de `Game` se conservan sólo por compatibilidad de almacenamiento; la interfaz pública y editorial trabaja con el modelo unificado.
+
+La Portada dispone de curaduría **Manual**, **Automática** e **Híbrida**. El ranking automático es determinista dentro del día UTC, explicable y usa una única definición de perfiles/pesos compartida entre la vista previa administrativa y la Home pública.
+
+## Mi DeUna y recomendaciones
+
+Una cuenta pública puede guardar de forma explícita:
+
+- juegos favoritos;
+- estado `Quiero jugarlo`, `Lo estoy jugando` o `Terminado`;
+- seguimiento de actualizaciones de un juego;
+- una PC elegida por el usuario mediante IDs del catálogo de CPU/GPU, RAM y modo de memoria.
+
+Estas señales se reutilizan entre `/cuenta`, las fichas de juegos, la Home y `/requisitos`. No existe un historial paralelo de navegación para personalización.
+
+El ranking personalizado parte del ranking editorial existente en lugar de reemplazarlo. Favoritos y estados de biblioteca aportan afinidad por clasificación, géneros y etiquetas; seguir actualizaciones por sí solo no se interpreta como gusto. Cuando existe una PC guardada, la compatibilidad usa el mismo motor de FPS que el Finder. Si faltan señales suficientes, la Home conserva el ranking general.
+
+Los avisos de Mi DeUna se derivan de las actualizaciones públicas reales de cada juego. La cuenta sólo conserva desde cuándo se sigue un juego y hasta qué momento se vieron sus avisos; no duplica una tabla de notificaciones por usuario.
+
+## Finder de hardware y FPS
+
+`/requisitos` realiza una detección local orientativa usando únicamente lo que el navegador puede exponer cuando no existe un perfil explícito más fiable.
+
+Un navegador web estándar no puede garantizar el modelo exacto de CPU. Por eso DeUna diferencia entre:
+
+- CPU estimada por señales disponibles, con intervalo de capacidad y menor confianza;
+- CPU confirmada por el usuario desde el catálogo de procesadores.
+
+El selector no inventa modelos: escribir sólo filtra el catálogo y la confirmación siempre es explícita. Un perfil confirmado puede guardarse localmente en el navegador. Si el usuario inició sesión y eligió guardar **Mi PC** en su cuenta, esa selección explícita tiene prioridad y se reutiliza en el Finder y en las estimaciones de las fichas.
+
+La detección automática no se convierte en datos de cuenta: DeUna no persiste en PostgreSQL el renderer detectado por el navegador, user-agent, sistema operativo detectado ni otros metadatos del dispositivo. Mi PC guarda sólo los componentes que el usuario selecciona expresamente.
+
+GPU, RAM, sistema y modo de memoria se incorporan según su nivel de certeza. La incertidumbre del hardware se propaga al rango de FPS en lugar de presentarse como una cifra exacta falsa. Los FPS son orientativos y pueden variar por drivers, temperatura, procesos en segundo plano, versión del juego y configuración real.
+
+Las pruebas de datos cubren el catálogo de CPUs, variantes de nombres/modelos, intervalos de CPU, propagación a FPS, búsqueda manual, personalización de ranking y coherencia de hidratación servidor/cliente.
+
+## Privacidad pública
+
+El sitio evita analítica de visitantes y no almacena IP, ubicación, user-agent ni huellas de dispositivo como parte del producto actual.
+
+`npm run check:privacy` bloquea huellas regionales configuradas, trackers externos conocidos, campos estructurados de ubicación y otros patrones incompatibles con esta política. La barrera de cuentas verifica además que Mi DeUna mantenga únicamente señales explícitas y no incorpore navegación, detección cruda de hardware ni identificadores de seguimiento. El contenido público usa español neutral y UTC.
+
+## Panel administrativo privado
+
+El área `/admin` incorpora:
+
+- una única cuenta propietaria;
+- contraseña derivada con `scrypt` y sal aleatoria;
+- sesiones opacas y revocables en PostgreSQL;
+- cookies `HttpOnly`, `Secure`, `SameSite=Strict` y prioridad alta;
+- bloqueo progresivo y controles de rate limiting;
+- validación estricta de origen y de campos de formulario;
+- revisiones inmutables, publicación explícita, restauración e historial;
+- `noindex`, `noarchive` y `no-store` en rutas administrativas;
+- ausencia deliberada de telemetría de visitantes en la base administrativa.
+
+`DEUNA_ADMIN_ORIGIN` fija el origen exacto aceptado por formularios y redirects del panel. En producción no debe derivarse del encabezado `Host`.
+
+### Entorno local seguro
+
+El flujo local soportado usa WSL2/Ubuntu con PostgreSQL en loopback. El instalador repetible es:
+
+```bash
+npm run local:setup
 ```
 
-Valida la consistencia estructural de `games.ts` y `updates.ts`: campos obligatorios, IDs y slugs únicos, ratings dentro de rango, formato de reseñas, fechas válidas, destinos de descarga permitidos, referencias entre juegos y actualizaciones y coincidencia entre `game.version` y la actualización más reciente de cada juego.
+Para actualizar un entorno ya instalado después de traer cambios editoriales/migraciones:
 
-Este control verifica consistencia interna, no la procedencia editorial de ratings, reseñas, fechas o descripciones. Esos datos deben tener una fuente o metodología definida antes de publicarse como información real.
-
-### Assets
-
-```powershell
-npm.cmd run check:assets
+```bash
+npm run admin:update-local
 ```
 
-El chequeo es bidireccional: falla si el código referencia una imagen inexistente, si `public/images` contiene una imagen sin referencia directa en `src/`, si una firma/estructura binaria no es válida o si una imagen pública conserva metadata no permitida. WebP rechaza EXIF/XMP; PNG rechaza chunks EXIF/textuales/fecha; JPEG rechaza EXIF/XMP, IPTC/Photoshop y comentarios; GIF rechaza comentarios; AVIF se revisa por metadata EXIF/XMP embebida y SVG por metadata de editores/RDF.
+Para rotar la contraseña propietaria:
 
-### Rutas internas
-
-```powershell
-npm.cmd run check:routes
+```bash
+npm run admin:change-password
 ```
 
-Compara enlaces, acciones, redirects y navegaciones internas detectables contra las páginas reales de App Router, incluyendo rutas dinámicas como `/juegos/[slug]`.
+Las credenciales runtime y migrador permanecen separadas. `.env.local` no debe contener credenciales del migrador y ningún archivo `.env.local` se versiona.
 
-### Variables CSS
-
-```powershell
-npm.cmd run check:css-vars
-```
-
-Falla ante tokens CSS usados sin definición o variables autorreferenciadas. También reconoce custom properties que React inyecta de forma intencional en runtime.
-
-### CSS Modules
-
-```powershell
-npm.cmd run check:css-modules
-```
-
-Comprueba la relación entre clases declaradas y clases usadas en componentes para evitar estilos huérfanos o referencias inexistentes en los módulos que pueden analizarse estáticamente.
-
-### Smoke del runtime
-
-Después de `npm run build` se puede ejecutar:
-
-```powershell
-npm.cmd run smoke
-```
-
-Levanta temporalmente `.next/standalone/server.js` en loopback y comprueba el comportamiento HTTP del build real: Home 200 y canonical correcto, `lang="es"` neutral, ausencia de huellas regionales conocidas en HTML, filtros de `/juegos` con canonical estable + `noindex`, ficha de juego 200 con canonical propio, fallback seguro de descarga, 404 real sin canonical heredado, `robots.txt`, `sitemap.xml`, ausencia de `X-Powered-By` y headers de seguridad/privacidad esenciales. El proceso se apaga automáticamente al terminar.
-
-### Seguridad
-
-```powershell
-npm.cmd run security:scan
-```
-
-El auditor es Node y funciona de forma equivalente en Windows y CI. Busca archivos sensibles o históricos trackeados, posibles secretos hardcodeados, rutas personales en código público, archivos riesgosos dentro de `public/` y cadenas sensibles. También ejecuta la auditoría de dependencias de producción salvo que se invoque internamente con `--skip-npm-audit`.
-
-Para retirar EXIF/XMP de los WebP sin recomprimirlos y normalizar sus flags `VP8X`:
-
-```powershell
-npm.cmd run images:strip-metadata
-```
-
-### ESLint
-
-El proyecto mantiene ESLint 9 mientras la cadena estable de plugins incluida por `eslint-config-next` no tenga soporte completo y sin conflictos para ESLint 10. No usar `--force`, overrides de peers ni paquetes canary sólo para eliminar el aviso de fin de soporte: la actualización debe hacerse cuando el grafo estable sea compatible y `npm ci` + lint + CI pasen sin excepciones.
-
-## Variables de entorno
-
-Copiar `.env.example` a `.env.local` cuando haga falta configurar el entorno. Nunca versionar `.env.local` ni secretos.
-
-`NEXT_PUBLIC_SITE_URL` es una URL pública usada para metadata, sitemap y URLs absolutas. Debe contener sólo el origen del sitio, sin credenciales, ruta, query ni fragmento. En producción debe configurarse con el dominio HTTPS real.
+La configuración de PostgreSQL está documentada en `ops/postgresql/README.md` y el despliegue en `ops/deploy/README.md`.
 
 ## Build seguro de deploy
 
-`build:secure` genera el artefacto desde un staging neutral y usa la misma cadena de build + smoke que CI. Antes de ejecutarlo debe existir un `NEXT_PUBLIC_SITE_URL` HTTPS público real; el comando rechaza localhost, loopback, `.invalid`, `.test`, `.example`, `.localhost` y los hosts reservados `example.com`, `example.net` y `example.org` para evitar publicar canonicals de prueba.
+`NEXT_PUBLIC_SITE_URL` debe ser un origen absoluto válido. En producción debe apuntar al dominio HTTPS real, sin credenciales, ruta, query ni fragmento.
 
-En PowerShell, reemplaza el marcador por el origen HTTPS real antes de ejecutar:
+El artefacto endurecido se genera con:
 
-```powershell
-$env:NEXT_PUBLIC_SITE_URL="https://<TU-DOMINIO-HTTPS-REAL>"
-npm.cmd run build:secure
+```bash
+npm run build:secure
 ```
 
-El resultado final queda en:
-
-```text
-deploy/
-```
-
-Subir únicamente el contenido de `deploy/`. El proceso vuelve a auditar datos, código, privacidad, runtime construido y artefacto final, y falla si detecta inconsistencias del catálogo, errores de runtime/SEO/headers, archivos prohibidos, secretos conocidos, rutas locales reales o huellas geográficas configuradas.
+`build:secure` prepara un staging neutral, ejecuta las mismas barreras relevantes de CI y genera `deploy/`. Los scripts y credenciales de migración no forman parte del runtime público.
 
 ## Estructura
 
 ```text
-src/app/          rutas y metadata de Next.js
-src/components/   componentes visuales y funcionales
-src/data/         catálogo y datos de contenido
-src/lib/          lógica reutilizable
-src/theme/        Theme System V2
+src/app/          rutas, metadata y endpoints de Next.js
+src/components/   componentes compartidos
+src/data/         contenido fuente y fallbacks editoriales
+src/features/     features encapsuladas, incluido game-finder
+src/lib/          lógica reutilizable y lectores públicos
+src/theme/        sistema visual
 src/types/        tipos compartidos
-public/           assets públicos
-ops/              ejemplos de infraestructura/deploy
-tools/            herramientas mantenidas de build, seguridad e integridad
+public/           assets públicos validados
+ops/              infraestructura y deploy
+tools/            build, seguridad, migración e integridad mantenidos
 ```
 
 ## Convenciones
 
 - `src/theme/deuna-theme.css` es la fuente activa de la paleta visual.
-- `UniversalGameCard` concentra las variantes de tarjetas de juegos.
-- No guardar paquetes de auditoría, snapshots, ZIPs, backups ni scripts de reparación consumidos dentro del repositorio.
-- Las páginas con filtros/query deben mantener una URL canónica estable y evitar indexar combinaciones arbitrarias.
+- `UniversalGameCard` concentra las variantes generales de tarjetas de juegos.
+- No versionar snapshots, backups, ZIPs, dumps, diagnósticos consumidos ni scripts de reparación temporales.
+- No dejar `TODO`, `FIXME`, `HACK`, `debugger`, supresiones de lint/TypeScript ni trazas de diagnóstico en `src/`.
+- No agregar módulos fuente, CSS Modules o herramientas mantenidas sin un consumidor real.
+- Las páginas con filtros/query deben mantener canonical estable y evitar indexar combinaciones arbitrarias.
 - No agregar enlaces internos a rutas inexistentes ni assets públicos sin referencia real.
 - Una actualización sólo puede aparecer como descargable si el juego tiene un destino de descarga real y validado.
-- Los ratings, reseñas, fechas y demás métricas editoriales deben tener una fuente o metodología definida antes de tratarse como datos públicos reales.
-- Los cambios estructurales deben pasar por una rama/PR y mantener CI verde antes de llegar a `master`.
+- Ratings, reseñas, fechas y demás métricas editoriales deben tener una fuente o metodología definida antes de tratarse como datos públicos reales.
+- Los cambios estructurales deben pasar por rama/PR y mantener CI verde antes de llegar a `master`.

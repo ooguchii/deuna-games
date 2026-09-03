@@ -45,7 +45,7 @@ async function walk(directory) {
   return files;
 }
 
-function routeFromPage(filePath) {
+function routeFromAppFile(filePath) {
   const relativeDirectory = path.relative(
     appRoot,
     path.dirname(filePath)
@@ -293,8 +293,20 @@ const pageFiles = allSourceFiles.filter(
     file.startsWith(appRoot) &&
     path.basename(file) === "page.tsx"
 );
+const routeHandlerFiles = allSourceFiles.filter(
+  (file) =>
+    file.startsWith(appRoot) &&
+    path.basename(file) === "route.ts"
+);
 
-const routes = pageFiles.map(routeFromPage);
+const pageRoutes = pageFiles.map(routeFromAppFile);
+const handlerRoutes = routeHandlerFiles.map(
+  routeFromAppFile
+);
+const routes = [
+  ...pageRoutes,
+  ...handlerRoutes,
+];
 const staticRoutes = new Set(
   routes.filter((route) => !route.includes("["))
 );
@@ -388,12 +400,12 @@ if (missing.length > 0 || invalidQueries.length > 0) {
   }
 
   console.error(
-    "\nCreá/corregí la ruta o usá parámetros admitidos antes de integrar el cambio.\n"
+    "\nCrea o corrige la ruta, o usa parámetros admitidos antes de integrar el cambio.\n"
   );
 
   process.exit(1);
 }
 
 console.log(
-  `Rutas: OK (${routes.length} páginas, ${gameSlugs.size} slugs y queries internas verificadas).`
+  `Rutas: OK (${pageRoutes.length} páginas, ${handlerRoutes.length} endpoints, ${gameSlugs.size} slugs y queries internas verificadas).`
 );

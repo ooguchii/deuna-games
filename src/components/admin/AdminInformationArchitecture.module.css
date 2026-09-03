@@ -1,0 +1,548 @@
+.navDesktop {
+  display: grid;
+  gap: 18px;
+  margin-top: 18px;
+}
+
+.navGroup {
+  display: grid;
+  gap: 5px;
+}
+
+.navGroupTitle {
+  padding: 0 11px 4px;
+  color: #6f7d8d;
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0.13em;
+  line-height: 1.2;
+}
+
+.navLink,
+.navUtility {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px;
+  color: #aeb9c5;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 720;
+  line-height: 1.25;
+  text-decoration: none;
+  transition:
+    color 150ms ease,
+    border-color 150ms ease,
+    background 150ms ease,
+    transform 150ms ease;
+}
+
+.navLink:hover,
+.navUtility:hover {
+  color: #f6f8fa;
+  border-color: #344353;
+  background: color-mix(in srgb, var(--brand) 5%, #0d141d);
+  transform: translateX(2px);
+}
+
+.navUtility {
+  margin-top: 2px;
+  border-color: #2b3947;
+  background: color-mix(in srgb, var(--background) 6%, #0a1018);
+}
+
+.navUtility svg:last-child {
+  margin-left: auto;
+  opacity: 0.72;
+}
+
+.mobileNav {
+  display: none;
+}
+
+.contextShell {
+  position: sticky;
+  top: 10px;
+  z-index: 30;
+  width: 100%;
+  margin: 16px 0 0;
+}
+
+.contextDesktop {
+  display: grid;
+  gap: 7px;
+}
+
+.contextPrimary.contextPrimary {
+  position: static;
+  top: auto;
+  margin: 0;
+}
+
+.contextSecondary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  max-width: 100%;
+  padding: 5px;
+  border: 1px solid #2e3c4a;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--background) 7%, #080e15);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+.contextSecondary a {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 11px;
+  color: #96a4b2;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 760;
+  text-decoration: none;
+}
+
+.contextSecondary a:hover,
+.contextSecondary a:focus-visible {
+  color: #f5f7fa;
+  border-color: #3c4b5b;
+  background: color-mix(in srgb, var(--brand) 7%, #0d151e);
+}
+
+.contextSecondaryActive {
+  color: #ffffff !important;
+  border-color: color-mix(in srgb, var(--brand) 52%, #3b4856) !important;
+  background: color-mix(in srgb, var(--brand) 13%, #101821) !important;
+}
+
+.contextMobile {
+  display: none;
+}
+
+.dashboardHeaderActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+
+.dashboardHeaderActions a {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 13px;
+  color: #e8edf2;
+  border: 1px solid #3a4958;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--background) 7%, #0b121a);
+  font-size: 13px;
+  font-weight: 780;
+  text-decoration: none;
+}
+
+.dashboardHeaderActions a:first-child {
+  color: #ffffff;
+  border-color: color-mix(in srgb, var(--brand) 62%, #40505f);
+  background: color-mix(in srgb, var(--brand) 18%, #111922);
+}
+
+.dashboardHeaderActions a:hover,
+.dashboardHeaderActions a:focus-visible {
+  border-color: color-mix(in srgb, var(--brand) 55%, #465665);
+  background: color-mix(in srgb, var(--brand) 10%, #111922);
+}
+
+.quickActionsPanel {
+  margin-top: 18px;
+}
+
+.quickActionsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.quickAction {
+  min-height: 112px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: start;
+  gap: 11px;
+  padding: 16px;
+  color: #dfe6ed;
+  border: 1px solid #334252;
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--background) 7%, #0b121a);
+  text-decoration: none;
+  transition:
+    border-color 150ms ease,
+    background 150ms ease,
+    transform 150ms ease;
+}
+
+.quickAction:hover,
+.quickAction:focus-visible {
+  border-color: color-mix(in srgb, var(--brand) 48%, #455463);
+  background: color-mix(in srgb, var(--brand) 6%, #0f1720);
+  transform: translateY(-2px);
+}
+
+.quickAction > svg:first-child {
+  color: color-mix(in srgb, var(--brand) 58%, #ffffff);
+}
+
+.quickAction > svg:last-child {
+  margin-top: 2px;
+  color: #778696;
+}
+
+.quickAction strong {
+  display: block;
+  color: #f1f4f7;
+  font-size: 14px;
+}
+
+.quickAction span {
+  display: block;
+  margin-top: 5px;
+  color: #8f9dab;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.publicPagesGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.publicPageCard {
+  min-width: 0;
+  display: grid;
+  gap: 15px;
+  padding: 18px;
+  border: 1px solid #344353;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--background) 7%, #0a1119);
+}
+
+.publicPageCardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.publicPageCardHeader h2 {
+  margin: 0;
+  color: #f2f5f8;
+  font-size: 18px;
+}
+
+.publicPageCardHeader code {
+  display: block;
+  margin-top: 4px;
+  color: #8392a2;
+  font-size: 12px;
+}
+
+.publicPageMeta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  color: #8d9baa;
+  font-size: 12px;
+}
+
+.publicPageMeta span {
+  padding: 4px 7px;
+  border: 1px solid #2e3c4a;
+  border-radius: 999px;
+  background: #0b1219;
+}
+
+.publicPageActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.publicPageActions a {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 11px;
+  color: #dfe6ed;
+  border: 1px solid #3a4958;
+  border-radius: 8px;
+  background: #0b1219;
+  font-size: 12px;
+  font-weight: 760;
+  text-decoration: none;
+}
+
+.publicPageActions a:first-child {
+  border-color: color-mix(in srgb, var(--brand) 50%, #40505e);
+  background: color-mix(in srgb, var(--brand) 10%, #111922);
+}
+
+.rowActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.rowActions > a,
+.rowMenu summary,
+.rowMenuPanel a {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 9px;
+  color: #dbe2e9;
+  border: 1px solid #3a4958;
+  border-radius: 7px;
+  background: #0b1219;
+  font-size: 12px;
+  font-weight: 750;
+  text-decoration: none;
+}
+
+.rowActions > a:first-child {
+  border-color: color-mix(in srgb, var(--brand) 48%, #43515f);
+  background: color-mix(in srgb, var(--brand) 9%, #101821);
+}
+
+.rowMenu {
+  position: relative;
+}
+
+.rowMenu summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.rowMenu summary::-webkit-details-marker {
+  display: none;
+}
+
+.rowMenu[open] summary {
+  color: #ffffff;
+  border-color: color-mix(in srgb, var(--brand) 48%, #43515f);
+}
+
+.rowMenuPanel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 60;
+  min-width: 172px;
+  display: grid;
+  gap: 5px;
+  padding: 6px;
+  border: 1px solid #3b4957;
+  border-radius: 9px;
+  background: #091018;
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.34);
+}
+
+.rowMenuPanel a {
+  justify-content: flex-start;
+  border-color: transparent;
+  background: transparent;
+}
+
+.rowMenuPanel a:hover,
+.rowMenuPanel a:focus-visible {
+  border-color: #344353;
+  background: color-mix(in srgb, var(--brand) 7%, #101821);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 1180px) {
+  .quickActionsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .navDesktop {
+    display: none;
+  }
+
+  .mobileNav {
+    display: block;
+    margin-top: 14px;
+  }
+
+  .mobileNav > summary,
+  .contextMobile > summary {
+    min-height: 46px;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 0 12px;
+    color: #f2f5f8;
+    border: 1px solid #3a4958;
+    border-radius: 9px;
+    background: color-mix(in srgb, var(--background) 6%, #0b121a);
+    font-size: 13px;
+    font-weight: 780;
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .mobileNav > summary::-webkit-details-marker,
+  .contextMobile > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .mobileNav > summary svg:last-child,
+  .contextMobile > summary svg:last-child {
+    margin-left: auto;
+    transition: transform 150ms ease;
+  }
+
+  .mobileNav[open] > summary svg:last-child,
+  .contextMobile[open] > summary svg:last-child {
+    transform: rotate(180deg);
+  }
+
+  .mobileNavPanel,
+  .contextMobilePanel {
+    display: grid;
+    gap: 12px;
+    margin-top: 7px;
+    padding: 8px;
+    border: 1px solid #344252;
+    border-radius: 10px;
+    background: #080e15;
+    box-shadow: 0 16px 34px rgba(0, 0, 0, 0.3);
+  }
+
+  .mobileNavGroup,
+  .contextMobileGroup {
+    display: grid;
+    gap: 4px;
+  }
+
+  .mobileNavGroup > span,
+  .contextMobileGroup > span {
+    padding: 3px 8px;
+    color: #6f7d8c;
+    font-size: 11px;
+    font-weight: 850;
+    letter-spacing: 0.11em;
+  }
+
+  .mobileNavPanel a,
+  .contextMobilePanel a {
+    min-height: 42px;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 0 10px;
+    color: #b4bfca;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 720;
+    text-decoration: none;
+  }
+
+  .mobileNavPanel a[data-active="true"],
+  .contextMobilePanel a[data-active="true"] {
+    color: #ffffff;
+    border-color: color-mix(in srgb, var(--brand) 48%, #3b4957);
+    background: color-mix(in srgb, var(--brand) 12%, #101821);
+  }
+
+  .contextShell {
+    top: 4px;
+    margin: 0 0 16px;
+  }
+
+  .contextDesktop {
+    display: none;
+  }
+
+  .contextMobile {
+    display: block;
+  }
+
+  .contextMobileSub {
+    display: grid;
+    gap: 3px;
+    margin-left: 14px;
+    padding-left: 8px;
+    border-left: 1px solid #2e3d4b;
+  }
+
+  .dashboardHeaderActions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .dashboardHeaderActions a {
+    flex: 1 1 150px;
+    justify-content: center;
+  }
+
+  .quickActionsGrid,
+  .publicPagesGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .quickAction {
+    min-height: 96px;
+  }
+
+  .publicPageCardHeader {
+    display: grid;
+  }
+
+  .rowActions {
+    justify-content: flex-start;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .navLink,
+  .navUtility,
+  .quickAction,
+  .mobileNav > summary svg:last-child,
+  .contextMobile > summary svg:last-child {
+    transition: none;
+  }
+
+  .navLink:hover,
+  .navUtility:hover,
+  .quickAction:hover {
+    transform: none;
+  }
+}

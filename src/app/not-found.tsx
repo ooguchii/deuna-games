@@ -45,7 +45,7 @@ export default function NotFound() {
           </h1>
 
           <p>
-            El enlace puede haber cambiado o la página que buscás ya no existe.
+            El enlace puede haber cambiado o la página que buscas ya no existe.
             Puedes volver al inicio o seguir explorando juegos.
           </p>
 

@@ -1,0 +1,31 @@
+-- Ejecutar como superusuario local de PostgreSQL y establecer las contraseñas
+-- de ambos roles con \password dentro de psql. No escribirlas en este archivo.
+
+CREATE ROLE deuna_migrator
+  LOGIN
+  NOINHERIT
+  NOSUPERUSER
+  NOCREATEDB
+  NOCREATEROLE
+  NOREPLICATION;
+
+CREATE ROLE deuna_runtime
+  LOGIN
+  NOINHERIT
+  NOSUPERUSER
+  NOCREATEDB
+  NOCREATEROLE
+  NOREPLICATION;
+
+CREATE DATABASE deuna_games
+  OWNER deuna_migrator
+  ENCODING 'UTF8'
+  TEMPLATE template0;
+
+REVOKE ALL ON DATABASE deuna_games FROM PUBLIC;
+GRANT CONNECT ON DATABASE deuna_games
+  TO deuna_migrator, deuna_runtime;
+
+-- En psql:
+-- \password deuna_migrator
+-- \password deuna_runtime

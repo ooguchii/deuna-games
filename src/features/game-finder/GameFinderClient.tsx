@@ -8,33 +8,30 @@ import {
   Bolt,
   Check,
   CheckCircle2,
-  ChevronRight,
-  Cpu,
+  ChevronDown,
   Gamepad2,
   Grid2X2,
   Heart,
   Info,
   List,
-  LoaderCircle,
   MemoryStick,
   Monitor,
-  RefreshCw,
   RotateCcw,
-  Settings2,
+  Search,
   ShieldCheck,
   SlidersHorizontal,
-  Sparkles,
-  Target,
   X,
 } from "lucide-react";
 
 import {
   type ChangeEvent,
   type CSSProperties,
+  type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -44,14 +41,23 @@ import {
   detectBrowserHardware,
   profileFromBrowserSnapshot,
 } from "./browser-detection";
+import GameFinderUnifiedHero from "./GameFinderUnifiedHero";
 import {
   cpuCatalog,
   findCpuById,
   findGpuById,
   gpuCatalog,
 } from "./hardware-catalog";
+import {
+  PROFILE_STORAGE_KEY,
+  readStoredHardwareProfile,
+} from "./hardware-storage";
 import { getPerformanceProfile } from "./performance-data";
 import { estimateGamePerformance } from "./performance-model";
+import {
+  invalidateDetectedBrowserProfileCache,
+  primeDetectedBrowserProfileCache,
+} from "./useResolvedHardwareProfile";
 import type {
   BrowserHardwareSnapshot,
   EstimateSettings,
@@ -64,9 +70,10 @@ import type {
 } from "./types";
 
 import styles from "./GameFinderClient.module.css";
+import overlayStyles from "./GameFinderOverlay.module.css";
 
-const PROFILE_STORAGE_KEY = "deuna-games:hardware-profile:v2";
 const FAVORITES_STORAGE_KEY = "deuna-games:finder-favorites:v2";
+const UNCONFIRMED_OS_OPTION = "Otro / no estoy seguro";
 
 const EMPTY_PROFILE: HardwareProfile = {
   cpu: null,
@@ -126,6 +133,7 @@ type DetectionState = "idle" | "detecting" | "ready" | "partial" | "error";
 
 type GameFinderClientProps = {
   games: Game[];
+  focusedSlug?: string;
 };
 
 type ManualDraft = {
@@ -136,55 +144,302 @@ type ManualDraft = {
   memoryMode: MemoryMode;
 };
 
-function nowIso() {
-  return new Date().toISOString();
+type ManualSelectOption = {
+  value: string;
+  label: string;
+};
+
+const RAM_MANUAL_OPTIONS: ManualSelectOption[] = [
+  1, 2, 3, 4, 6, 8, 10, 12, 16, 20, 24, 32, 48, 64, 96, 128, 192, 256,
+].map((ram) => ({ value: String(ram), label: `${ram} GB` }));
+
+const OS_MANUAL_OPTIONS: ManualSelectOption[] = [
+  "Windows 10/11 64-bit",
+  "Windows 10/11",
+  "Windows 11 64-bit",
+  "Windows 10 64-bit",
+  "Linux 64-bit",
+  UNCONFIRMED_OS_OPTION,
+].map((os) => ({ value: os, label: os }));
+
+const CPU_MANUAL_OPTIONS: ManualSelectOption[] = cpuCatalog.map((cpu) => ({
+  value: cpu.id,
+  label: cpu.name,
+}));
+
+const GPU_MANUAL_OPTIONS: ManualSelectOption[] = gpuCatalog.map((gpu) => ({
+  value: gpu.id,
+  label: gpu.name,
+}));
+
+function normalizeManualSearch(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("es")
+    .trim();
 }
 
-function readStoredProfile(): HardwareProfile | null {
-  try {
-    const raw = window.localStorage.getItem(PROFILE_STORAGE_KEY);
-    if (!raw) return null;
+function manualOptionMatches(option: ManualSelectOption, query: string) {
+  const terms = normalizeManualSearch(query).split(/\s+/).filter(Boolean);
+  if (!terms.length) return true;
 
-    const value = JSON.parse(raw) as {
-      cpuId?: unknown;
-      gpuId?: unknown;
-      ramGb?: unknown;
-      os?: unknown;
-      memoryMode?: unknown;
-      updatedAt?: unknown;
-    };
+  const searchable = normalizeManualSearch(`${option.label} ${option.value}`);
+  return terms.every((term) => searchable.includes(term));
+}
 
-    if (!value || typeof value !== "object") return null;
-    if (typeof value.cpuId !== "string" || typeof value.gpuId !== "string") return null;
+function filterManualOptions(
+  options: ManualSelectOption[],
+  query: string,
+  selectedValue: string
+) {
+  const matches = query.trim()
+    ? options.filter((option) => manualOptionMatches(option, query))
+    : options;
 
-    const cpu = findCpuById(value.cpuId);
-    const gpu = findGpuById(value.gpuId);
-    const ramGb = typeof value.ramGb === "number" ? value.ramGb : Number.NaN;
-    const memoryMode: MemoryMode =
-      value.memoryMode === "single" || value.memoryMode === "dual"
-        ? value.memoryMode
-        : "unknown";
+  const selected = selectedValue
+    ? options.find((option) => option.value === selectedValue)
+    : undefined;
 
-    if (!cpu || !gpu || !Number.isFinite(ramGb) || ramGb < 4 || ramGb > 256) {
-      return null;
+  if (selected && !matches.some((option) => option.value === selected.value)) {
+    return [selected, ...matches];
+  }
+
+  return matches;
+}
+
+function SearchableManualSelect({
+  fieldId,
+  label,
+  searchPlaceholder,
+  emptyLabel,
+  options,
+  value,
+  onValueChange,
+}: {
+  fieldId: string;
+  label: string;
+  searchPlaceholder: string;
+  emptyLabel: string;
+  options: ManualSelectOption[];
+  value: string;
+  onValueChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [searchValue, setSearchValue] = useState("");
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+
+  const selectedOption = useMemo(
+    () => options.find((option) => option.value === value) ?? null,
+    [options, value]
+  );
+  const visibleOptions = useMemo(
+    () => filterManualOptions(options, searchValue, value),
+    [options, searchValue, value]
+  );
+  const matchCount = searchValue.trim()
+    ? options.filter((option) => manualOptionMatches(option, searchValue)).length
+    : options.length;
+
+  useEffect(() => {
+    if (!open) return;
+
+    const frame = window.requestAnimationFrame(() => {
+      searchInputRef.current?.focus();
+    });
+
+    function handleOutsidePointer(event: PointerEvent) {
+      if (!(event.target instanceof Node)) return;
+      if (!rootRef.current?.contains(event.target)) {
+        setOpen(false);
+        setSearchValue("");
+      }
     }
 
-    return {
-      cpu,
-      gpu,
-      ramGb,
-      ramKnowledge: "confirmed",
-      os: typeof value.os === "string" && value.os.trim()
-        ? value.os
-        : "Sistema sin confirmar",
-      memoryMode,
-      source: "saved",
-      confidence: "high",
-      updatedAt: typeof value.updatedAt === "string" ? value.updatedAt : nowIso(),
+    window.addEventListener("pointerdown", handleOutsidePointer);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener("pointerdown", handleOutsidePointer);
     };
-  } catch {
-    return null;
+  }, [open]);
+
+  function closePicker(returnFocus = false) {
+    setOpen(false);
+    setSearchValue("");
+    if (returnFocus) {
+      window.requestAnimationFrame(() => triggerRef.current?.focus());
+    }
   }
+
+  function selectOption(nextValue: string) {
+    onValueChange(nextValue);
+    closePicker(true);
+  }
+
+  function focusOption(current: HTMLElement, direction: 1 | -1) {
+    const optionNodes = Array.from(
+      rootRef.current?.querySelectorAll<HTMLButtonElement>("[data-manual-option]") ?? []
+    );
+    const index = optionNodes.indexOf(current as HTMLButtonElement);
+    if (index < 0 || optionNodes.length === 0) return;
+    const nextIndex = (index + direction + optionNodes.length) % optionNodes.length;
+    optionNodes[nextIndex]?.focus();
+  }
+
+  return (
+    <div ref={rootRef} className={styles.configField}>
+      <span id={`${fieldId}-label`} className={styles.configFieldLabel}>{label}</span>
+
+      <button
+        ref={triggerRef}
+        id={fieldId}
+        type="button"
+        className={`${styles.configPickerTrigger} ${open ? styles.configPickerTriggerOpen : ""}`}
+        aria-labelledby={`${fieldId}-label ${fieldId}-value`}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-controls={`${fieldId}-listbox`}
+        onClick={() => setOpen((current) => !current)}
+        onKeyDown={(event) => {
+          if (event.key === "ArrowDown" || event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            setOpen(true);
+          }
+        }}
+      >
+        <span
+          id={`${fieldId}-value`}
+          className={selectedOption ? styles.configPickerValue : styles.configPickerPlaceholder}
+        >
+          {selectedOption?.label ?? emptyLabel}
+        </span>
+        <ChevronDown size={16} aria-hidden="true" />
+      </button>
+
+      {open && (
+        <div className={styles.configPickerMenu}>
+          <div className={styles.configPickerSearch}>
+            <Search size={15} aria-hidden="true" />
+            <input
+              ref={searchInputRef}
+              type="search"
+              role="combobox"
+              value={searchValue}
+              placeholder={searchPlaceholder}
+              autoComplete="off"
+              spellCheck={false}
+              aria-label={`Buscar ${label.toLocaleLowerCase("es")}`}
+              aria-controls={`${fieldId}-listbox`}
+              aria-expanded="true"
+              aria-autocomplete="list"
+              onChange={(event) => setSearchValue(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Escape") {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  closePicker(true);
+                  return;
+                }
+                if (event.key === "ArrowDown") {
+                  event.preventDefault();
+                  rootRef.current
+                    ?.querySelector<HTMLButtonElement>("[data-manual-option]")
+                    ?.focus();
+                  return;
+                }
+                if (event.key === "Enter" && matchCount === 1) {
+                  const onlyMatch = options.find((option) => manualOptionMatches(option, searchValue));
+                  if (onlyMatch) {
+                    event.preventDefault();
+                    selectOption(onlyMatch.value);
+                  }
+                }
+              }}
+            />
+            <span aria-live="polite">{matchCount}</span>
+          </div>
+
+          <div
+            id={`${fieldId}-listbox`}
+            className={styles.configPickerList}
+            role="listbox"
+            aria-labelledby={`${fieldId}-label`}
+          >
+            <button
+              type="button"
+              role="option"
+              aria-selected={value === ""}
+              data-manual-option
+              className={styles.configPickerOption}
+              onClick={() => selectOption("")}
+              onKeyDown={(event) => {
+                if (event.key === "Escape") {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  closePicker(true);
+                } else if (event.key === "ArrowDown") {
+                  event.preventDefault();
+                  focusOption(event.currentTarget, 1);
+                } else if (event.key === "ArrowUp") {
+                  event.preventDefault();
+                  focusOption(event.currentTarget, -1);
+                }
+              }}
+            >
+              <span>{emptyLabel}</span>
+              {value === "" && <Check size={14} aria-hidden="true" />}
+            </button>
+
+            {visibleOptions.length ? (
+              visibleOptions.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  role="option"
+                  aria-selected={option.value === value}
+                  data-manual-option
+                  className={`${styles.configPickerOption} ${option.value === value ? styles.configPickerOptionSelected : ""}`}
+                  onClick={() => selectOption(option.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape") {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      closePicker(true);
+                    } else if (event.key === "ArrowDown") {
+                      event.preventDefault();
+                      focusOption(event.currentTarget, 1);
+                    } else if (event.key === "ArrowUp") {
+                      event.preventDefault();
+                      focusOption(event.currentTarget, -1);
+                    }
+                  }}
+                >
+                  <span>{option.label}</span>
+                  {option.value === value && <Check size={14} aria-hidden="true" />}
+                </button>
+              ))
+            ) : (
+              <div className={styles.configPickerEmpty} role="status">
+                No encontramos coincidencias. Prueba con otro término.
+              </div>
+            )}
+          </div>
+
+          <div className={styles.configPickerFooter}>
+            {searchValue.trim()
+              ? `${matchCount} coincidencia${matchCount === 1 ? "" : "s"}`
+              : `${options.length} opciones disponibles`}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function nowIso() {
+  return new Date().toISOString();
 }
 
 function readStoredFavorites() {
@@ -220,7 +475,7 @@ function profileToManualDraft(profile: HardwareProfile | null): ManualDraft {
       : "",
     os: profile?.os && profile.os !== "Sistema sin confirmar"
       ? profile.os
-      : "Windows 11 64-bit",
+      : UNCONFIRMED_OS_OPTION,
     memoryMode: profile?.memoryMode ?? "unknown",
   };
 }
@@ -240,12 +495,6 @@ function profileRamLabel(profile: HardwareProfile) {
   return `${profile.ramGb} GB`;
 }
 
-function snapshotRamLabel(snapshot: BrowserHardwareSnapshot | null) {
-  if (!snapshot?.approximateMemoryGb) return "Protegida";
-  if (snapshot.memoryKind === "lower-bound") return `${snapshot.approximateMemoryGb} GB o más`;
-  return `≈ ${snapshot.approximateMemoryGb} GB`;
-}
-
 function confidenceLabel(estimate: GameEstimate | null) {
   if (!estimate?.canEstimate) return "Sin cálculo";
   if (estimate.confidence === "high") return "Confianza alta";
@@ -262,10 +511,75 @@ function bottleneckLabel(estimate: GameEstimate | null) {
 }
 
 function sourceLabel(snapshot: BrowserHardwareSnapshot | null) {
-  if (!snapshot) return "Sin lectura";
-  if (snapshot.gpuSource === "webgpu") return "WebGPU";
-  if (snapshot.gpuSource === "webgl") return "WebGL";
-  return "Protegida";
+  if (!snapshot) return "Sin lectura automática";
+  if (snapshot.gpuSource === "webgpu") return "GPU vía WebGPU";
+  if (snapshot.gpuSource === "webgl") return "GPU vía WebGL";
+  return "GPU protegida";
+}
+
+function detectionLabel(
+  state: DetectionState,
+  profile: HardwareProfile | null
+) {
+  if (state === "detecting") return "Detectando hardware disponible";
+  if (state === "error") return "Detección automática no disponible";
+  if (state === "partial") return "Lectura parcial del navegador";
+  if (profile?.source === "manual" || profile?.source === "saved") {
+    return "Componentes confirmados";
+  }
+  if (profile?.source === "example") return "Perfil de demostración activo";
+  if (profile) return "Detección local orientativa";
+  return "Esperando lectura local";
+}
+
+function detectionHint(
+  state: DetectionState,
+  profile: HardwareProfile | null,
+  snapshot: BrowserHardwareSnapshot | null
+) {
+  if (state === "detecting") {
+    return "Leemos únicamente los datos que el navegador permite exponer.";
+  }
+  // Las limitaciones del snapshot sólo importan mientras el perfil activo sea
+  // realmente una detección web. Si el usuario ya confirmó los componentes,
+  // ese perfil es la fuente del cálculo y no debe heredar avisos antiguos.
+  if (profile?.source === "manual" || profile?.source === "saved") {
+    if (snapshot) {
+      return "Volvimos a consultar el navegador. CPU, GPU y RAM confirmadas se conservan porque son más fiables; la lectura automática sólo completa o mejora datos que la web puede identificar con certeza.";
+    }
+    return "Este perfil local se usa para calcular los rangos de FPS del catálogo.";
+  }
+  if (profile?.source === "example") {
+    return "El ejemplo no reemplaza el perfil guardado de tu PC.";
+  }
+  if (snapshot?.secureContext === false) {
+    return "Estás usando una conexión HTTP de red local: la web funciona, pero WebGPU y parte de la detección avanzada pueden quedar limitados. Para una lectura más completa usa HTTPS o localhost.";
+  }
+  if (state === "error") {
+    return "Puedes configurar CPU, GPU y RAM manualmente sin instalar nada.";
+  }
+  if (state === "partial") {
+    return "Parte del hardware está protegida; confirma los componentes para mejorar los FPS estimados.";
+  }
+  return "La detección web es orientativa; puedes confirmar los modelos cuando quieras.";
+}
+
+function detectionSource(
+  profile: HardwareProfile | null,
+  snapshot: BrowserHardwareSnapshot | null
+) {
+  // El origen visible debe describir el perfil que realmente está usando el
+  // cálculo. Un snapshot automático anterior no debe eclipsar un perfil
+  // manual, guardado o de demostración que esté activo ahora.
+  if (profile?.source === "manual") {
+    return snapshot ? "Manual + verificación web" : "Entrada manual";
+  }
+  if (profile?.source === "saved") {
+    return snapshot ? "Guardado + verificación web" : "Perfil local";
+  }
+  if (profile?.source === "example") return "Ejemplo local";
+  if (snapshot) return sourceLabel(snapshot);
+  return "Sin lectura automática";
 }
 
 function stopTilt(event: ReactPointerEvent<HTMLElement>) {
@@ -361,7 +675,6 @@ function GameResultCard({
         <div className={styles.gameCardContent}>
           <div className={styles.gameTitleRow}>
             <h3>{game.title}</h3>
-
             {selected && (
               <span className={styles.selectedMark}>
                 <Check size={13} aria-hidden="true" />
@@ -414,13 +727,18 @@ function GameResultCard({
   );
 }
 
-export default function GameFinderClient({ games }: GameFinderClientProps) {
+export default function GameFinderClient({
+  games,
+  focusedSlug,
+}: GameFinderClientProps) {
   const [hardware, setHardware] = useState<HardwareProfile | null>(null);
   const [snapshot, setSnapshot] = useState<BrowserHardwareSnapshot | null>(null);
   const [detectionState, setDetectionState] = useState<DetectionState>("idle");
-  const [detectionMessage, setDetectionMessage] = useState("Preparando detección local...");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [manualDraft, setManualDraft] = useState<ManualDraft>(() => profileToManualDraft(null));
+
+  const settingsDialogRef = useRef<HTMLDivElement | null>(null);
+  const settingsReturnFocusRef = useRef<HTMLElement | null>(null);
 
   const [estimateSettings, setEstimateSettings] = useState<EstimateSettings>({
     resolution: "1080p",
@@ -431,38 +749,48 @@ export default function GameFinderClient({ games }: GameFinderClientProps) {
   const [tierFilter, setTierFilter] = useState<PerformanceTier | "all">("all");
   const [sortMode, setSortMode] = useState<SortMode>("performance");
   const [view, setView] = useState<ViewMode>("grid");
-  const [selectedSlug, setSelectedSlug] = useState(games[0]?.slug ?? "");
+  const validFocusedSlug =
+    focusedSlug && games.some((game) => game.slug === focusedSlug)
+      ? focusedSlug
+      : undefined;
+  const [selectedGameState, setSelectedGameState] = useState(() => ({
+    focusKey: validFocusedSlug,
+    slug: validFocusedSlug ?? games[0]?.slug ?? "",
+  }));
+  const storedSelectionIsValid = games.some(
+    (game) => game.slug === selectedGameState.slug
+  );
+  const selectedSlug =
+    selectedGameState.focusKey === validFocusedSlug &&
+    storedSelectionIsValid
+      ? selectedGameState.slug
+      : validFocusedSlug ?? games[0]?.slug ?? "";
   const [favorites, setFavorites] = useState<Set<string>>(() => new Set());
   const [favoritesHydrated, setFavoritesHydrated] = useState(false);
 
-  const runDetection = useCallback(async () => {
+  const runDetection = useCallback(async (preferredProfile: HardwareProfile | null = null) => {
     setDetectionState("detecting");
-    setDetectionMessage("Leyendo únicamente la información que el navegador permite exponer...");
+    invalidateDetectedBrowserProfileCache();
 
     try {
       const detected = await detectBrowserHardware();
-      const browserProfile = profileFromBrowserSnapshot(detected);
+      const browserProfile = profileFromBrowserSnapshot(detected, preferredProfile);
 
+      primeDetectedBrowserProfileCache(browserProfile);
       setSnapshot(detected);
       setHardware(browserProfile);
       setManualDraft(profileToManualDraft(browserProfile));
 
       const complete = Boolean(browserProfile.cpu && browserProfile.gpu && browserProfile.ramGb);
       setDetectionState(complete ? "ready" : "partial");
-      setDetectionMessage(
-        complete
-          ? "Obtuvimos una base automática, pero CPU y RAM siguen limitadas por privacidad. Confirma los modelos para mejorar la precisión."
-          : "El navegador protegió parte del hardware. Conservamos lo detectado y puedes completar solo lo que falte."
-      );
     } catch {
       setDetectionState("error");
-      setDetectionMessage("No se pudo completar la detección automática. Puedes cargar tu PC manualmente.");
     }
   }, []);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      const saved = readStoredProfile();
+      const saved = readStoredHardwareProfile();
       setFavorites(readStoredFavorites());
       setFavoritesHydrated(true);
 
@@ -470,7 +798,6 @@ export default function GameFinderClient({ games }: GameFinderClientProps) {
         setHardware(saved);
         setManualDraft(profileToManualDraft(saved));
         setDetectionState("ready");
-        setDetectionMessage("Cargamos tu perfil confirmado de este navegador. Puedes volver a detectar sin perderlo.");
         return;
       }
 
@@ -479,6 +806,28 @@ export default function GameFinderClient({ games }: GameFinderClientProps) {
 
     return () => window.clearTimeout(timer);
   }, [runDetection]);
+
+  useEffect(() => {
+    function handleStorage(event: StorageEvent) {
+      if (
+        event.storageArea !== window.localStorage ||
+        event.key !== PROFILE_STORAGE_KEY
+      ) {
+        return;
+      }
+
+      const saved = readStoredHardwareProfile();
+      if (!saved) return;
+
+      setSnapshot(null);
+      setHardware(saved);
+      setManualDraft(profileToManualDraft(saved));
+      setDetectionState("ready");
+    }
+
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, []);
 
   useEffect(() => {
     if (
@@ -500,6 +849,7 @@ export default function GameFinderClient({ games }: GameFinderClientProps) {
           gpuId: hardware.gpu.id,
           ramGb: hardware.ramGb,
           os: hardware.os,
+          osConfirmed: hardware.osConfirmed === true,
           memoryMode: hardware.memoryMode,
           updatedAt: hardware.updatedAt,
         })
@@ -519,6 +869,23 @@ export default function GameFinderClient({ games }: GameFinderClientProps) {
     }
   }, [favorites, favoritesHydrated]);
 
+  useEffect(() => {
+    if (!settingsOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const frame = window.requestAnimationFrame(() => {
+      settingsDialogRef.current?.focus();
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      document.body.style.overflow = previousOverflow;
+      settingsReturnFocusRef.current?.focus();
+    };
+  }, [settingsOpen]);
+
   const activeHardware = hardware ?? EMPTY_PROFILE;
 
   const estimates = useMemo(() => {
@@ -529,6 +896,28 @@ export default function GameFinderClient({ games }: GameFinderClientProps) {
       ])
     );
   }, [activeHardware, estimateSettings, games]);
+
+  const heroRecommendations = useMemo(() => {
+    const rankedGames = [...games].sort((a, b) => {
+      const aEstimate = estimates.get(a.slug);
+      const bEstimate = estimates.get(b.slug);
+      const aReady = Boolean(aEstimate?.canEstimate);
+      const bReady = Boolean(bEstimate?.canEstimate);
+
+      if (aReady !== bReady) return aReady ? -1 : 1;
+      if (aReady && bReady) {
+        return (bEstimate?.fps ?? 0) - (aEstimate?.fps ?? 0);
+      }
+
+      // Sin un perfil suficiente conservamos el orden editorial original.
+      return 0;
+    });
+
+    return rankedGames.slice(0, 4).map((game) => ({
+      game,
+      estimate: estimates.get(game.slug) ?? null,
+    }));
+  }, [estimates, games]);
 
   const genres = useMemo(() => {
     return [...new Set(games.map((game) => game.category))].sort((a, b) => a.localeCompare(b, "es"));
@@ -554,7 +943,12 @@ export default function GameFinderClient({ games }: GameFinderClientProps) {
       if (genre !== "all" && game.category !== genre) return false;
 
       const estimate = estimates.get(game.slug);
-      if (tierFilter !== "all" && estimate?.tier !== tierFilter) return false;
+      if (
+        tierFilter !== "all" &&
+        (!estimate?.canEstimate || estimate.tier !== tierFilter)
+      ) {
+        return false;
+      }
 
       return true;
     });
@@ -570,8 +964,7 @@ export default function GameFinderClient({ games }: GameFinderClientProps) {
 
   const selectedGame =
     visibleGames.find((game) => game.slug === selectedSlug) ??
-    visibleGames[0] ??
-    games[0];
+    visibleGames[0];
   const selectedEstimate = selectedGame ? estimates.get(selectedGame.slug) ?? null : null;
   const selectedProfile = selectedGame ? getPerformanceProfile(selectedGame.slug) : null;
   const selectedManualGpu = findGpuById(manualDraft.gpuId);
@@ -580,9 +973,16 @@ export default function GameFinderClient({ games }: GameFinderClientProps) {
     manualDraft.cpuId &&
     manualDraft.gpuId &&
     Number.isFinite(manualRamGb) &&
-    manualRamGb >= 4 &&
+    manualRamGb >= 1 &&
     manualRamGb <= 256
   );
+
+  function setSelectedSlug(slug: string) {
+    setSelectedGameState({
+      focusKey: validFocusedSlug,
+      slug,
+    });
+  }
 
   function toggleFavorite(slug: string) {
     setFavorites((current) => {
@@ -593,32 +993,138 @@ export default function GameFinderClient({ games }: GameFinderClientProps) {
     });
   }
 
+  function openSettings() {
+    settingsReturnFocusRef.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+
+    const sourceProfile = hardware?.source === "example"
+      ? readStoredHardwareProfile()
+      : hardware;
+
+    setManualDraft(profileToManualDraft(sourceProfile));
+    setSettingsOpen(true);
+  }
+
+  function closeSettings() {
+    setSettingsOpen(false);
+  }
+
+  function handleDialogKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeSettings();
+      return;
+    }
+
+    if (event.key !== "Tab") return;
+
+    const focusable = settingsDialogRef.current?.querySelectorAll<HTMLElement>(
+      "button:not([disabled]), select:not([disabled]), input:not([disabled]), a[href], [tabindex]:not([tabindex='-1'])"
+    );
+
+    if (!focusable?.length) {
+      event.preventDefault();
+      return;
+    }
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const active = document.activeElement;
+    const activeIsFocusable =
+      active instanceof HTMLElement &&
+      Array.from(focusable).includes(active);
+
+    // El diálogo recibe el foco inicial mediante tabIndex=-1. Desde ese punto,
+    // Tab debe entrar por el primer control y Shift+Tab por el último, sin
+    // permitir que el foco escape hacia la página que queda detrás del modal.
+    if (!activeIsFocusable) {
+      event.preventDefault();
+      (event.shiftKey ? last : first).focus();
+      return;
+    }
+
+    if (event.shiftKey && active === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && active === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
+
   function applyManualProfile() {
     const cpu = findCpuById(manualDraft.cpuId);
     const gpu = findGpuById(manualDraft.gpuId);
     const ramGb = Number(manualDraft.ramGb);
+    const osConfirmed =
+      manualDraft.os.trim().length > 0 &&
+      manualDraft.os !== UNCONFIRMED_OS_OPTION;
 
-    if (!cpu || !gpu || !Number.isFinite(ramGb) || ramGb < 4 || ramGb > 256) return;
+    if (!cpu || !gpu || !Number.isFinite(ramGb) || ramGb < 1 || ramGb > 256) return;
 
     const manualProfile: HardwareProfile = {
       cpu,
       gpu,
       ramGb,
       ramKnowledge: "confirmed",
-      os: manualDraft.os || "Sistema sin confirmar",
+      os: osConfirmed ? manualDraft.os : "Sistema sin confirmar",
+      osConfirmed,
       memoryMode: gpu.integrated ? manualDraft.memoryMode : "unknown",
       source: "manual",
       confidence: "high",
       updatedAt: nowIso(),
     };
 
+    setSnapshot(null);
     setHardware(manualProfile);
     setDetectionState("ready");
-    setDetectionMessage("Perfil confirmado manualmente. Guardamos estos componentes solo en este navegador.");
     setSettingsOpen(false);
   }
 
+  function scrollToResults() {
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    window.requestAnimationFrame(() => {
+      document.getElementById("results-title")?.scrollIntoView({
+        behavior: reduceMotion ? "auto" : "smooth",
+        block: "start",
+      });
+    });
+  }
+
   function useExampleProfile() {
+    resetFilters();
+
+    const firstAnalyzableGame =
+      games.find((game) => Boolean(getPerformanceProfile(game.slug))) ?? games[0];
+
+    if (firstAnalyzableGame) {
+      setSelectedSlug(firstAnalyzableGame.slug);
+    }
+
+    const hasUsableRealProfile = Boolean(
+      hardware?.source !== "example" &&
+      hardware?.cpu &&
+      hardware?.gpu &&
+      hardware?.ramGb
+    );
+
+    if (hasUsableRealProfile) {
+      scrollToResults();
+      return;
+    }
+
+    const saved = readStoredHardwareProfile();
+    if (saved) {
+      setHardware(saved);
+      setManualDraft(profileToManualDraft(saved));
+      setDetectionState("ready");
+      scrollToResults();
+      return;
+    }
+
     const cpu = findCpuById("ryzen-5-5600g");
     const gpu = findGpuById("radeon-vega-7");
     if (!cpu || !gpu) return;
@@ -636,9 +1142,8 @@ export default function GameFinderClient({ games }: GameFinderClientProps) {
     };
 
     setHardware(example);
-    setManualDraft(profileToManualDraft(example));
     setDetectionState("ready");
-    setDetectionMessage("Perfil de demostración activo: Ryzen 5 5600G + Radeon Vega 7 + 16 GB dual-channel.");
+    scrollToResults();
   }
 
   function resetFilters() {
@@ -648,291 +1153,144 @@ export default function GameFinderClient({ games }: GameFinderClientProps) {
   }
 
   const canEstimate = Boolean(activeHardware.cpu && activeHardware.gpu && activeHardware.ramGb);
+  const hasRealAnalysis = Boolean(canEstimate && hardware?.source !== "example");
 
   return (
     <div className={styles.finderRoot}>
-      <section className={styles.hero} aria-labelledby="finder-title">
-        <div className={styles.heroGlow} aria-hidden="true" />
-        <div className={styles.heroGrid} aria-hidden="true" />
-
-        <div className={styles.heroCopy}>
-          <span className={styles.eyebrow}>COMPATIBILIDAD ORIENTATIVA</span>
-
-          <h1 id="finder-title">
-            Descubre los juegos que
-            <strong> tu PC puede correr</strong>
-          </h1>
-
-          <p>
-            Detectamos lo que el navegador permite, completas lo que falte y calculamos un rango de FPS según resolución y calidad.
-          </p>
-
-          <div className={styles.heroActions}>
-            <button type="button" className={styles.primaryAction} onClick={useExampleProfile}>
-              <Target size={18} aria-hidden="true" />
-              Ver análisis de ejemplo
-              <ArrowRight size={17} aria-hidden="true" />
-            </button>
-
-            <button
-              type="button"
-              className={styles.secondaryAction}
-              onClick={() => {
-                setManualDraft(profileToManualDraft(hardware));
-                setSettingsOpen(true);
-              }}
-            >
-              <SlidersHorizontal size={18} aria-hidden="true" />
-              Configurar perfil
-            </button>
-          </div>
-
-          <div className={styles.heroTrust}>
-            <ShieldCheck size={15} aria-hidden="true" />
-            La detección y el cálculo se procesan en tu navegador. No leemos tus archivos ni instalamos nada.
-          </div>
-        </div>
-
-        <div className={styles.heroVisual}>
-          <div className={styles.heroCovers}>
-            {games.slice(0, 4).map((game, index) => (
-              <div
-                key={game.slug}
-                className={styles.heroCover}
-                style={{ "--cover-index": index } as CSSProperties}
-              >
-                {game.coverImage && (
-                  <Image
-                    src={game.coverImage}
-                    alt=""
-                    fill
-                    sizes="180px"
-                    className={styles.heroCoverImage}
-                    priority={index < 2}
-                  />
-                )}
-              </div>
-            ))}
-
-            <span className={styles.heroRecommendationBadge}>
-              <Gamepad2 size={14} aria-hidden="true" />
-              Recomendaciones para tu equipo
-            </span>
-          </div>
-
-          <div className={styles.profileCard}>
-            <div className={styles.profileCardHeader}>
-              <div>
-                <span>PERFIL ACTUAL</span>
-                <strong>{profileLabel(hardware)}</strong>
-              </div>
-
-              {detectionState === "detecting" ? (
-                <LoaderCircle className={styles.spin} size={22} aria-hidden="true" />
-              ) : (
-                <CheckCircle2 size={22} aria-hidden="true" />
-              )}
-            </div>
-
-            <dl className={styles.profileSpecs}>
-              <div>
-                <dt>CPU</dt>
-                <dd>{activeHardware.cpu?.name ?? "No identificado"}</dd>
-              </div>
-              <div>
-                <dt>GPU</dt>
-                <dd>{activeHardware.gpu?.name ?? "No identificada"}</dd>
-              </div>
-              <div>
-                <dt>RAM</dt>
-                <dd>{profileRamLabel(activeHardware)}</dd>
-              </div>
-              <div>
-                <dt>Sistema</dt>
-                <dd>{activeHardware.os}</dd>
-              </div>
-            </dl>
-
-            <button
-              type="button"
-              className={styles.profileChangeButton}
-              onClick={() => {
-                setManualDraft(profileToManualDraft(hardware));
-                setSettingsOpen(true);
-              }}
-            >
-              Cambiar configuración
-            </button>
-          </div>
-        </div>
-      </section>
-
-      <section className={styles.detectionPanel} aria-labelledby="detection-title">
-        <div className={styles.detectionIntro}>
-          <div className={styles.detectionIcon}>
-            <Cpu size={21} aria-hidden="true" />
-          </div>
-
-          <div>
-            <span className={styles.sectionKicker}>DETECCIÓN LOCAL</span>
-            <h2 id="detection-title">Tu hardware, con límites claros</h2>
-            <p>{detectionMessage}</p>
-          </div>
-        </div>
-
-        <div className={styles.detectionFacts}>
-          <div>
-            <span>CPU visible</span>
-            <strong>{snapshot?.logicalProcessors ? `${snapshot.logicalProcessors} hilos · modelo protegido` : hardware?.cpu?.name ?? "Sin confirmar"}</strong>
-          </div>
-          <div>
-            <span>RAM visible</span>
-            <strong>{snapshot ? snapshotRamLabel(snapshot) : profileRamLabel(activeHardware)}</strong>
-          </div>
-          <div>
-            <span>GPU / API</span>
-            <strong>{snapshot?.gpuRenderer ?? hardware?.gpu?.name ?? "Sin confirmar"}</strong>
-            <small>{sourceLabel(snapshot)}</small>
-          </div>
-        </div>
-
-        <div className={styles.detectionActions}>
-          <button type="button" className={styles.detectAgainButton} onClick={() => void runDetection()} disabled={detectionState === "detecting"}>
-            <RefreshCw size={16} aria-hidden="true" />
-            Detectar otra vez
-          </button>
-
-          <button
-            type="button"
-            className={styles.manualButton}
-            onClick={() => {
-              setManualDraft(profileToManualDraft(hardware));
-              setSettingsOpen(true);
-            }}
-          >
-            <Settings2 size={16} aria-hidden="true" />
-            Confirmar manualmente
-          </button>
-        </div>
-      </section>
+      <GameFinderUnifiedHero
+        recommendations={heroRecommendations}
+        hardware={activeHardware}
+        profileTitle={profileLabel(hardware)}
+        ramLabel={profileRamLabel(activeHardware)}
+        detectionState={detectionState}
+        detectionStatus={detectionLabel(detectionState, hardware)}
+        detectionHint={detectionHint(detectionState, hardware, snapshot)}
+        detectionSource={detectionSource(hardware, snapshot)}
+        hasRealAnalysis={hasRealAnalysis}
+        onAnalyze={useExampleProfile}
+        onConfigure={openSettings}
+        onDetect={() => void runDetection(hardware)}
+        onSelectGame={(slug) => {
+          setSelectedSlug(slug);
+          scrollToResults();
+        }}
+        onViewAll={scrollToResults}
+      />
 
       {settingsOpen && (
-        <section className={styles.configPanel} aria-labelledby="config-title">
-          <div className={styles.configHeader}>
-            <div>
-              <span className={styles.sectionKicker}>PERFIL MANUAL</span>
-              <h2 id="config-title">Confirma los componentes de tu PC</h2>
-              <p>Los datos automáticos sirven como ayuda. Para estimaciones más útiles, confirma el modelo exacto de CPU, GPU y la RAM física.</p>
-            </div>
+        <div
+          className={overlayStyles.backdrop}
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              closeSettings();
+            }
+          }}
+        >
+          <div
+            ref={settingsDialogRef}
+            className={overlayStyles.dialog}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="config-title"
+            aria-describedby="config-description"
+            tabIndex={-1}
+            onKeyDown={handleDialogKeyDown}
+          >
+            <section className={styles.configPanel}>
+              <div className={styles.configHeader}>
+                <div>
+                  <span className={styles.sectionKicker}>PERFIL MANUAL</span>
+                  <h2 id="config-title">Confirma los componentes de tu PC</h2>
+                  <p id="config-description">
+                    Los datos automáticos sirven como ayuda. Para estimaciones más útiles, confirma el modelo exacto de CPU, GPU y la RAM física.
+                  </p>
+                </div>
 
-            <button type="button" className={styles.closeConfig} onClick={() => setSettingsOpen(false)} aria-label="Cerrar configuración">
-              <X size={20} />
-            </button>
+                <button
+                  type="button"
+                  className={styles.closeConfig}
+                  onClick={closeSettings}
+                  aria-label="Cerrar configuración"
+                >
+                  <X size={20} aria-hidden="true" />
+                </button>
+              </div>
+
+              <div className={styles.configGrid}>
+                <SearchableManualSelect
+                  fieldId="manual-cpu"
+                  label="Procesador"
+                  searchPlaceholder="Buscar CPU: Ryzen 5 5600G, i5-12400..."
+                  emptyLabel="Selecciona tu CPU"
+                  options={CPU_MANUAL_OPTIONS}
+                  value={manualDraft.cpuId}
+                  onValueChange={(value) => setManualDraft((current) => ({ ...current, cpuId: value }))}
+                />
+
+                <SearchableManualSelect
+                  fieldId="manual-gpu"
+                  label="Tarjeta gráfica"
+                  searchPlaceholder="Buscar GPU: GTX 1660 SUPER, RX 6600..."
+                  emptyLabel="Selecciona tu GPU"
+                  options={GPU_MANUAL_OPTIONS}
+                  value={manualDraft.gpuId}
+                  onValueChange={(value) => setManualDraft((current) => ({ ...current, gpuId: value }))}
+                />
+
+                <SearchableManualSelect
+                  fieldId="manual-ram"
+                  label="Memoria RAM física"
+                  searchPlaceholder="Buscar cantidad: 16 GB, 32 GB..."
+                  emptyLabel="Selecciona tu RAM"
+                  options={RAM_MANUAL_OPTIONS}
+                  value={manualDraft.ramGb}
+                  onValueChange={(value) => setManualDraft((current) => ({ ...current, ramGb: value }))}
+                />
+
+                <SearchableManualSelect
+                  fieldId="manual-os"
+                  label="Sistema operativo"
+                  searchPlaceholder="Buscar Windows, Linux..."
+                  emptyLabel="Selecciona tu sistema"
+                  options={OS_MANUAL_OPTIONS}
+                  value={manualDraft.os}
+                  onValueChange={(value) => setManualDraft((current) => ({ ...current, os: value }))}
+                />
+
+                {selectedManualGpu?.integrated && (
+                  <label>
+                    <span>Canales de memoria</span>
+                    <select value={manualDraft.memoryMode} onChange={(event: ChangeEvent<HTMLSelectElement>) => setManualDraft((current) => ({ ...current, memoryMode: event.target.value as MemoryMode }))}>
+                      <option value="unknown">No lo sé</option>
+                      <option value="single">Single-channel / un módulo</option>
+                      <option value="dual">Dual-channel / dos módulos</option>
+                    </select>
+                  </label>
+                )}
+              </div>
+
+              <div className={styles.configFooter}>
+                <p>
+                  <Info size={15} aria-hidden="true" />
+                  {selectedManualGpu?.integrated
+                    ? "En gráficas integradas, single/dual-channel puede cambiar bastante el rendimiento y por eso entra en el cálculo."
+                    : "La CPU exacta no puede leerse desde una web estándar. Si el navegador no la identifica, elegirla aquí es la opción más fiable."}
+                </p>
+
+                <button
+                  type="button"
+                  className={styles.saveProfileButton}
+                  onClick={applyManualProfile}
+                  disabled={!manualProfileReady}
+                >
+                  Guardar y recalcular
+                  <ArrowRight size={16} aria-hidden="true" />
+                </button>
+              </div>
+            </section>
           </div>
-
-          <div className={styles.configGrid}>
-            <label>
-              <span>Procesador</span>
-              <select value={manualDraft.cpuId} onChange={(event: ChangeEvent<HTMLSelectElement>) => setManualDraft((current) => ({ ...current, cpuId: event.target.value }))}>
-                <option value="">Selecciona tu CPU</option>
-                {cpuCatalog.map((cpu) => (
-                  <option key={cpu.id} value={cpu.id}>{cpu.name}</option>
-                ))}
-              </select>
-            </label>
-
-            <label>
-              <span>Tarjeta gráfica</span>
-              <select value={manualDraft.gpuId} onChange={(event: ChangeEvent<HTMLSelectElement>) => setManualDraft((current) => ({ ...current, gpuId: event.target.value }))}>
-                <option value="">Selecciona tu GPU</option>
-                {gpuCatalog.map((gpu) => (
-                  <option key={gpu.id} value={gpu.id}>{gpu.name}</option>
-                ))}
-              </select>
-            </label>
-
-            <label>
-              <span>Memoria RAM física</span>
-              <select value={manualDraft.ramGb} onChange={(event: ChangeEvent<HTMLSelectElement>) => setManualDraft((current) => ({ ...current, ramGb: event.target.value }))}>
-                <option value="">Selecciona tu RAM</option>
-                {[4, 6, 8, 10, 12, 16, 20, 24, 32, 48, 64, 96, 128, 192, 256].map((ram) => (
-                  <option key={ram} value={ram}>{ram} GB</option>
-                ))}
-              </select>
-            </label>
-
-            <label>
-              <span>Sistema operativo</span>
-              <select value={manualDraft.os} onChange={(event: ChangeEvent<HTMLSelectElement>) => setManualDraft((current) => ({ ...current, os: event.target.value }))}>
-                <option>Windows 11 64-bit</option>
-                <option>Windows 10 64-bit</option>
-                <option>Linux 64-bit</option>
-                <option>Otro / no estoy seguro</option>
-              </select>
-            </label>
-
-            {selectedManualGpu?.integrated && (
-              <label>
-                <span>Canales de memoria</span>
-                <select value={manualDraft.memoryMode} onChange={(event: ChangeEvent<HTMLSelectElement>) => setManualDraft((current) => ({ ...current, memoryMode: event.target.value as MemoryMode }))}>
-                  <option value="unknown">No lo sé</option>
-                  <option value="single">Single-channel / un módulo</option>
-                  <option value="dual">Dual-channel / dos módulos</option>
-                </select>
-              </label>
-            )}
-          </div>
-
-          <div className={styles.configFooter}>
-            <p>
-              <Info size={15} aria-hidden="true" />
-              {selectedManualGpu?.integrated
-                ? "En gráficas integradas, single/dual-channel puede cambiar bastante el rendimiento y por eso entra en el cálculo."
-                : "La CPU exacta no puede leerse desde una web estándar. Si el navegador no la identifica, elegirla aquí es la opción más fiable."}
-            </p>
-
-            <button
-              type="button"
-              className={styles.saveProfileButton}
-              onClick={applyManualProfile}
-              disabled={!manualProfileReady}
-            >
-              Guardar y recalcular
-              <ArrowRight size={16} aria-hidden="true" />
-            </button>
-          </div>
-        </section>
-      )}
-
-      <section className={styles.processStrip} aria-labelledby="process-title">
-        <div className={styles.processHeading}>
-          <span>PROCESO SIMPLE</span>
-          <h2 id="process-title">¿Cómo funciona?</h2>
         </div>
-
-        {[
-          [Cpu, "Eliges tu PC", "Detectamos lo posible y confirmas lo que falte."],
-          [Sparkles, "Comparamos", "Relacionamos CPU, GPU y RAM con la exigencia de cada juego."],
-          [Target, "Ves un rango", "Calculamos FPS orientativos para tu resolución y calidad."],
-          [Gamepad2, "Eliges y exploras", "Abres la ficha del juego antes de decidir."],
-        ].map(([Icon, title, text], index) => {
-          const StepIcon = Icon as typeof Cpu;
-
-          return (
-            <div key={String(title)} className={styles.processStep}>
-              <div className={styles.processIcon}>
-                <StepIcon size={20} aria-hidden="true" />
-                <span>{index + 1}</span>
-              </div>
-              <div>
-                <strong>{String(title)}</strong>
-                <p>{String(text)}</p>
-              </div>
-              {index < 3 && <ChevronRight className={styles.processArrow} size={18} aria-hidden="true" />}
-            </div>
-          );
-        })}
-      </section>
+      )}
 
       <section className={styles.resultsSection} aria-labelledby="results-title">
         <div className={styles.resultsHeader}>

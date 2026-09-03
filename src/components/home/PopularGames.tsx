@@ -3,33 +3,41 @@ import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 
 import CardCarousel from "@/components/ui/CardCarousel";
-import { popularGames } from "@/data/home";
+import UniversalGameCard from "@/components/ui/UniversalGameCard";
+import type { HomeCopy } from "@/data/home-config";
+import type { Game } from "@/types/game";
 
-import GameCard from "./GameCard";
 import styles from "./PopularGames.module.css";
 
-export default function PopularGames() {
+export default function PopularGames({
+  games,
+  copy,
+}: {
+  games: Game[];
+  copy: HomeCopy["popular"];
+}) {
   return (
     <section className={styles.section}>
       <div className={styles.header}>
         <h2>
-          JUEGOS <span>POPULARES</span>
+          {copy.title} <span>{copy.highlight}</span>
         </h2>
 
         <Link href="/juegos">
-          Ver todos
+          {copy.linkLabel}
           <ChevronRight size={18} aria-hidden="true" />
         </Link>
       </div>
 
       <CardCarousel
-        ariaLabel="Juegos populares"
+        ariaLabel={`${copy.title} ${copy.highlight}`}
         itemsDesktop={5}
       >
-        {popularGames.map((game) => (
-          <GameCard
+        {games.map((game) => (
+          <UniversalGameCard
             key={game.slug}
             game={game}
+            variant="standard"
           />
         ))}
       </CardCarousel>
