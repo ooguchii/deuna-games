@@ -82,7 +82,9 @@ export function getEditorialMediaRoot() {
     );
   }
 
-  const root = path.resolve(candidate);
+  const root = path.resolve(
+    /* turbopackIgnore: true */ candidate
+  );
   const filesystemRoot = path.parse(root).root;
   const applicationRoot = path.resolve(process.cwd());
 
@@ -140,10 +142,12 @@ export function resolveEditorialMediaDiskPath(
 
   const root = getEditorialMediaRoot();
   const gameDirectory = path.join(
+    /* turbopackIgnore: true */
     root,
     parsed.slug
   );
   const filePath = path.join(
+    /* turbopackIgnore: true */
     gameDirectory,
     parsed.filename
   );

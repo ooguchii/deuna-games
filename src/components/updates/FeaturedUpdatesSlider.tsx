@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 
 import {
@@ -21,6 +20,7 @@ import {
 import {
   formatUpdateDate,
 } from "@/lib/updates/catalog";
+import GameMedia from "@/components/ui/GameMedia";
 
 import type {
   ResolvedGameUpdate,
@@ -253,6 +253,18 @@ export default function FeaturedUpdatesSlider({
               heroSrc ??
               coverSrc;
 
+            const backdropViewport =
+              heroSrc
+                ? update.game
+                    .imageMedia
+                    ?.hero
+                : update.game
+                    .imageMedia
+                    ?.card ??
+                  update.game
+                    .imageMedia
+                    ?.cover;
+
             return (
               <article
                 key={
@@ -274,34 +286,42 @@ export default function FeaturedUpdatesSlider({
                   aria-hidden="true"
                 >
                   {backdropSrc && (
-                    <Image
+                    <GameMedia
                       src={
                         backdropSrc
                       }
                       alt=""
-                      fill
                       priority={
                         index === 0
                       }
                       sizes="(max-width: 980px) 100vw, 58vw"
-                      className={
+                      variant="hero"
+                      viewport={
+                        backdropViewport
+                      }
+                      imageClassName={
                         styles.backdrop
                       }
                     />
                   )}
 
                   {heroSrc && (
-                    <Image
+                    <GameMedia
                       src={
                         heroSrc
                       }
                       alt=""
-                      fill
                       priority={
                         index === 0
                       }
                       sizes="(max-width: 980px) 100vw, 58vw"
-                      className={
+                      variant="hero"
+                      viewport={
+                        update.game
+                          .imageMedia
+                          ?.hero
+                      }
+                      imageClassName={
                         styles.heroArtwork
                       }
                     />
@@ -314,17 +334,21 @@ export default function FeaturedUpdatesSlider({
                           styles.posterFrame
                         }
                       >
-                        <Image
+                        <GameMedia
                           src={
                             coverSrc
                           }
                           alt=""
-                          fill
                           priority={
                             index === 0
                           }
                           sizes="(max-width: 650px) 60vw, 34vw"
-                          className={
+                          viewport={
+                            update.game
+                              .imageMedia
+                              ?.cover
+                          }
+                          imageClassName={
                             styles.posterArtwork
                           }
                         />

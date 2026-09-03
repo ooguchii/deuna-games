@@ -20,6 +20,7 @@ type GameMediaProps = {
   variant?: GameMediaVariant;
   fallbackClassName?: string;
   viewport?: GameImageViewport;
+  imageClassName?: string;
 };
 
 export default function GameMedia({
@@ -30,6 +31,7 @@ export default function GameMedia({
   variant = "cover",
   fallbackClassName,
   viewport,
+  imageClassName,
 }: GameMediaProps) {
   if (src) {
     const variantClass =
@@ -53,7 +55,7 @@ export default function GameMedia({
             fill
             priority={priority}
             sizes={sizes}
-            className={`${styles.image} ${variantClass}`}
+            className={`${styles.image} ${variantClass} ${imageClassName ?? ""}`}
           />
         </span>
       </span>

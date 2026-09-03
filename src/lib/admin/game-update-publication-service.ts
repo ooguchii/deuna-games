@@ -10,6 +10,9 @@ import type { PoolClient } from "pg";
 import {
   resolveGameDownload,
 } from "@/lib/games/download";
+import {
+  evaluateGamePublicationReadiness,
+} from "@/lib/admin/game-publication-readiness";
 import type {
   Game,
   GameDownloadSource,
@@ -79,6 +82,7 @@ export type PublishGameUpdateResult =
   | { outcome: "not_found" }
   | { outcome: "not_public" }
   | { outcome: "pending_changes" }
+  | { outcome: "not_ready" }
   | { outcome: "same_version" }
   | { outcome: "no_download" }
   | { outcome: "update_exists" }
@@ -395,6 +399,17 @@ export async function publishIntegratedGameUpdate(
       item.published_checksum
     ) {
       return { outcome: "pending_changes" };
+    }
+
+    if (
+      !evaluateGamePublicationReadiness(
+        parseEditorialPayload(
+          "game",
+          normalizedDraft
+        )
+      ).essentialsReady
+    ) {
+      return { outcome: "not_ready" };
     }
 
     const publishedGame = parseEditorialPayload(

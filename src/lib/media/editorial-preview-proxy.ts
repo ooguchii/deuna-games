@@ -66,11 +66,15 @@ export async function createEditorialPreviewProxy(
   ];
 
   await new Promise<void>((resolve, reject) => {
-    const child = spawn(ffmpegExecutable(), args, {
-      shell: false,
-      windowsHide: true,
-      stdio: ["ignore", "ignore", "pipe"],
-    });
+    const child = spawn(
+      /* turbopackIgnore: true */ ffmpegExecutable(),
+      args,
+      {
+        shell: false,
+        windowsHide: true,
+        stdio: ["ignore", "ignore", "pipe"],
+      }
+    );
     let stderr = "";
     let settled = false;
 

@@ -185,6 +185,7 @@ export default async function DownloadPage({
               src={game.coverImage}
               alt={game.imageAlt}
               sizes="(max-width: 680px) 42vw, 210px"
+              viewport={game.imageMedia?.cover}
               priority
             />
           </div>

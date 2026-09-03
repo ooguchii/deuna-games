@@ -105,13 +105,30 @@ function RequestNotice({
   }
 
   if (
+    state === "preparacion-incompleta" ||
+    state === "restauracion-incompleta"
+  ) {
+    return (
+      <div className={`${styles.notice} ${styles.noticeError}`}>
+        <strong>Publicación bloqueada por preparación incompleta.</strong>{" "}
+        Portada, Hero, Card y Galería deben cumplir sus destinos obligatorios y la ficha principal debe estar completa. La web pública no fue modificada.{" "}
+        <Link
+          href={`/admin/juegos/${encodeURIComponent(slug)}?seccion=multimedia`}
+        >
+          Completar Multimedia
+        </Link>
+      </div>
+    );
+  }
+
+  if (
     state === "asset-publicacion" ||
     state === "asset-restauracion"
   ) {
     return (
       <div className={`${styles.notice} ${styles.noticeError}`}>
         <strong>Publicación bloqueada por integridad multimedia.</strong>{" "}
-        Una portada, imagen hero o captura referenciada ya no existe en el almacenamiento. La web no fue modificada.{" "}
+        Una imagen o un video referenciado ya no existe en el almacenamiento. La web no fue modificada.{" "}
         <Link
           href={`/admin/juegos/${encodeURIComponent(slug)}?seccion=multimedia`}
         >
@@ -383,6 +400,15 @@ export default function GamePublicationWorkspace({
               </span>
             </div>
           )}
+
+          {!readiness.essentialsReady && (
+            <div className={styles.advisory}>
+              <AlertTriangle size={17} aria-hidden="true" />
+              <span>
+                Faltan controles esenciales. La publicación permanecerá bloqueada hasta completar la ficha principal y los destinos multimedia obligatorios.
+              </span>
+            </div>
+          )}
         </div>
 
         <div className={styles.publishActions}>
@@ -398,7 +424,10 @@ export default function GamePublicationWorkspace({
             <button
               type="submit"
               className={styles.publishButton}
-              disabled={!state.hasUnpublishedChanges}
+              disabled={
+                !state.hasUnpublishedChanges ||
+                !readiness.essentialsReady
+              }
             >
               <Rocket size={17} aria-hidden="true" />
               {publishLabel}

@@ -83,15 +83,31 @@ function ResponsiveArtwork({
       }`;
   const framed = ambient
     ? null
-    : normalizeGameImageViewport(game.imageMedia?.hero);
+    : normalizeGameImageViewport(
+        desktopSrc === game.coverImage
+          ? game.imageMedia?.cover
+          : game.imageMedia?.hero
+      );
+  const mobileFramed = ambient
+    ? null
+    : normalizeGameImageViewport(
+        mobileSrc === game.coverImage
+          ? game.imageMedia?.cover
+          : game.imageMedia?.hero
+      );
   const framedPosition = framed
     ? `${(framed.x * 100).toFixed(2)}% ${(framed.y * 100).toFixed(2)}%`
+    : null;
+  const mobileFramedPosition = mobileFramed
+    ? `${(mobileFramed.x * 100).toFixed(2)}% ${(mobileFramed.y * 100).toFixed(2)}%`
     : null;
   const artworkInlineStyle = framed
     ? ({
         ...style,
         "--hero-image-zoom": framed.zoom,
         "--hero-image-position": framedPosition,
+        "--hero-mobile-image-zoom": mobileFramed?.zoom ?? framed.zoom,
+        "--hero-mobile-image-position": mobileFramedPosition ?? framedPosition,
       } as CSSProperties)
     : style;
 
