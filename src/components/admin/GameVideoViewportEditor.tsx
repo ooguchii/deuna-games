@@ -2,13 +2,10 @@
 
 import { useState } from "react";
 
-import VideoTrimEditor from "@/components/admin/VideoTrimEditor";
+import MediaViewportEditor from "@/components/admin/MediaViewportEditor";
 import { REQUIRED_DESTINATION_ASPECTS } from "@/lib/media/game-media-requirements";
 import { normalizeGameVideoViewport } from "@/lib/media/game-video-media";
-import {
-  DEFAULT_PREVIEW_QUALITY,
-  type PreviewViewport,
-} from "@/lib/media/preview-video-policy";
+import type { PreviewViewport } from "@/lib/media/preview-video-policy";
 import type { GameVideoViewport } from "@/types/game";
 
 import dialogStyles from "./ContextualMediaDialog.module.css";
@@ -27,9 +24,6 @@ type Props = {
   onClose: () => void;
 };
 
-function ignoreTrim() {}
-function ignoreQuality() {}
-
 function destinationLabel(target: Target) {
   if (target === "cover") return "Portada";
   if (target === "hero") return "Hero";
@@ -46,30 +40,19 @@ export default function GameVideoViewportEditor({
   initialViewport,
   onClose,
 }: Props) {
-  const requiredAspect = REQUIRED_DESTINATION_ASPECTS[target];
+  const requiredAspect = REQUIRED_DESTINATION_ASPECTS[target] as PreviewViewport["aspect"];
   const [viewport, setViewport] = useState<PreviewViewport>(() => ({
     ...normalizeGameVideoViewport(initialViewport),
     aspect: requiredAspect,
   }));
-  const [editorVersion, setEditorVersion] = useState(0);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
-
-  function updateViewport(next: PreviewViewport) {
-    if (next.aspect !== requiredAspect) {
-      setViewport({ ...next, aspect: requiredAspect });
-      setEditorVersion((value) => value + 1);
-      setStatus(`La relación de ${destinationLabel(target)} es obligatoria: ${requiredAspect}.`);
-      return;
-    }
-    setViewport(next);
-  }
 
   async function save() {
     if (busy) return;
     setBusy(true);
     setStatus(
-      `Confirmando el recorte obligatorio ${requiredAspect}; el WebM físico no se modifica…`
+      `Confirmando el recorte obligatorio ${requiredAspect} de ${destinationLabel(target)}; el WebM físico no se modifica…`
     );
 
     try {
@@ -80,8 +63,7 @@ export default function GameVideoViewportEditor({
           credentials: "same-origin",
           cache: "no-store",
           headers: {
-            "Content-Type":
-              "application/x-www-form-urlencoded;charset=UTF-8",
+            "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
           },
           body: new URLSearchParams({
             expectedRevision: String(revision),
@@ -116,29 +98,20 @@ export default function GameVideoViewportEditor({
 
   return (
     <>
-      <p style={{ margin: "0 0 12px", color: "#ff9b51", fontSize: 12, fontWeight: 800 }}>
-        RECORTE OBLIGATORIO · {requiredAspect} · Debes guardarlo para completar este destino.
-      </p>
-      <VideoTrimEditor
-        key={`${target}:${source}:${clip}:${editorVersion}`}
+      <MediaViewportEditor
+        kind="video"
         src={clip}
         sourceLabel={label}
-        quality={DEFAULT_PREVIEW_QUALITY}
         viewport={viewport}
-        layoutOnly
-        onQualityChange={ignoreQuality}
-        onViewportChange={updateViewport}
-        onTrimChange={ignoreTrim}
+        requiredAspect={requiredAspect}
+        disabled={busy}
+        onViewportChange={setViewport}
       />
 
       {status && (
         <p
           role="status"
-          style={{
-            margin: "12px 0 0",
-            color: "#9db0c0",
-            fontSize: 12,
-          }}
+          style={{ margin: "12px 0 0", color: "#9db0c0", fontSize: 12 }}
         >
           {status}
         </p>
