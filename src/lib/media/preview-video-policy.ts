@@ -3,6 +3,8 @@ export const MAX_PREVIEW_DURATION_SECONDS = 30;
 export const MAX_PREVIEW_SOURCE_POSITION_SECONDS = 86_400;
 export const MIN_PREVIEW_VIEWPORT_ZOOM = 1;
 export const MAX_PREVIEW_VIEWPORT_ZOOM = 3;
+export const MIN_PREVIEW_FREE_ASPECT_RATIO = 0.1;
+export const MAX_PREVIEW_FREE_ASPECT_RATIO = 10;
 
 export const PREVIEW_QUALITY_IDS = ["720p", "1080p"] as const;
 export type PreviewQualityId = (typeof PREVIEW_QUALITY_IDS)[number];
@@ -47,6 +49,7 @@ export const PREVIEW_VIEWPORT_ASPECT_IDS = [
   "1:1",
   "4:5",
   "9:16",
+  "free",
 ] as const;
 
 export type PreviewViewportAspectId =
@@ -60,11 +63,12 @@ export type PreviewViewportAspectOption = {
 
 export const PREVIEW_VIEWPORT_ASPECT_OPTIONS: readonly PreviewViewportAspectOption[] = [
   { id: "source", label: "Original", ratio: null },
-  { id: "16:9", label: "16:9 · Hero horizontal", ratio: 16 / 9 },
-  { id: "3:2", label: "3:2 · Card", ratio: 3 / 2 },
+  { id: "16:9", label: "16:9 · Horizontal", ratio: 16 / 9 },
+  { id: "3:2", label: "3:2 · Horizontal", ratio: 3 / 2 },
   { id: "1:1", label: "1:1 · Cuadrado", ratio: 1 },
-  { id: "4:5", label: "4:5 · Portada", ratio: 4 / 5 },
-  { id: "9:16", label: "9:16 · Historia", ratio: 9 / 16 },
+  { id: "4:5", label: "4:5 · Vertical", ratio: 4 / 5 },
+  { id: "9:16", label: "9:16 · Vertical", ratio: 9 / 16 },
+  { id: "free", label: "Libre · arrastra bordes y esquinas", ratio: null },
 ];
 
 export type PreviewViewport = {
@@ -72,14 +76,15 @@ export type PreviewViewport = {
   y: number;
   zoom: number;
   aspect: PreviewViewportAspectId;
+  customAspectRatio?: number;
 };
 
-export const DEFAULT_PREVIEW_VIEWPORT: PreviewViewport = {
+export const DEFAULT_PREVIEW_VIEWPORT = {
   x: 0.5,
   y: 0.5,
   zoom: 1,
   aspect: "source",
-};
+} as const satisfies PreviewViewport;
 
 export type ResolvedPreviewViewportCrop = {
   x: number;
@@ -142,7 +147,8 @@ export function parsePreviewViewport(
   xValue: string | null | undefined,
   yValue: string | null | undefined,
   zoomValue: string | null | undefined,
-  aspectValue: string | null | undefined
+  aspectValue: string | null | undefined,
+  customAspectRatioValue?: string | number | null
 ): PreviewViewport | null {
   if (
     xValue === null || xValue === undefined || xValue.trim() === "" ||
@@ -168,6 +174,24 @@ export function parsePreviewViewport(
     !aspect
   ) {
     return null;
+  }
+
+  if (aspect === "free") {
+    const customAspectRatio = Number(customAspectRatioValue);
+    if (
+      !Number.isFinite(customAspectRatio) ||
+      customAspectRatio < MIN_PREVIEW_FREE_ASPECT_RATIO ||
+      customAspectRatio > MAX_PREVIEW_FREE_ASPECT_RATIO
+    ) {
+      return null;
+    }
+    return {
+      x: roundViewportNumber(x),
+      y: roundViewportNumber(y),
+      zoom: roundViewportNumber(zoom),
+      aspect,
+      customAspectRatio: roundViewportNumber(customAspectRatio),
+    };
   }
 
   return {
@@ -196,7 +220,8 @@ export function resolvePreviewViewportCrop(
     String(viewport.x),
     String(viewport.y),
     String(viewport.zoom),
-    viewport.aspect
+    viewport.aspect,
+    viewport.customAspectRatio
   );
   if (!parsed) return null;
 
@@ -204,7 +229,9 @@ export function resolvePreviewViewportCrop(
     (option) => option.id === parsed.aspect
   );
   const sourceRatio = sourceWidth / sourceHeight;
-  const targetRatio = aspectOption?.ratio ?? sourceRatio;
+  const targetRatio = parsed.aspect === "free"
+    ? parsed.customAspectRatio ?? sourceRatio
+    : aspectOption?.ratio ?? sourceRatio;
 
   let baseWidth = sourceWidth;
   let baseHeight = sourceHeight;

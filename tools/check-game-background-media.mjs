@@ -51,20 +51,21 @@ assert(
     "export type GameBackgroundVideo",
     "background?: GameBackgroundVideo"
   ),
-  "Game debe modelar imagen, modo, video y foco de Fondo sin crear un tipo de archivo paralelo."
+  "Game debe modelar imagen, modo, video y recorte adaptable de Fondo sin crear un tipo de archivo paralelo."
 );
 
 assert(
   has(
     validation,
-    "background: imageViewportSchema.optional()",
+    "background: fixedImageViewportSchema.optional()",
+    "gallery: galleryImageMediaSchema.optional()",
     "background: mediaModeSchema.optional()",
     "background: destinationVideoSchema.optional()",
     "const backgroundImage",
     "inferredOptionalMode",
     "backgroundMode"
   ),
-  "La validación editorial debe preservar el Fondo opcional y mantener compatibilidad con juegos históricos."
+  "La validación editorial debe preservar el Fondo opcional con viewport fijo y reservar relaciones seleccionables para Galería."
 );
 
 assert(
@@ -116,7 +117,9 @@ assert(
     "DEFAULT_GAME_IMAGE_VIEWPORT",
     "aspect: GAME_BACKGROUND_VIEWPORT_ASPECT",
     "confirmed: true",
-    "clearBackgroundUpdate"
+    "clearBackgroundUpdate",
+    "Recorte adaptable de imagen inválido",
+    "Recorte adaptable de video inválido"
   ) &&
     !api.includes("storeEditorialWebp") &&
     !api.includes("storeEditorialPreviewVideo") &&
@@ -136,20 +139,22 @@ assert(
     "delete imageMedia.background",
     "backgroundImage:"
   ),
-  "La Biblioteca compartida debe exponer Fondo y limpiar su asignación/foco al eliminar una imagen, sin dejar referencias fantasma."
+  "La Biblioteca compartida debe exponer Fondo y limpiar su asignación/recorte al eliminar una imagen, sin dejar referencias fantasma."
 );
 
 assert(
   has(
     admin,
     "Fondo del juego",
-    "Opcional · foco adaptable",
+    "Opcional · recorte adaptable",
     "Imagen + hover",
     "Usar fondo global",
     "Falta seleccionar imagen",
     "Falta seleccionar video",
-    "Falta ajustar el foco de la imagen",
-    "Falta ajustar el foco del video",
+    "Recorte adaptable ·",
+    'complete ? "confirmado" : "no confirmado"',
+    "RECORTE ADAPTABLE CONFIRMADO",
+    "RECORTE ADAPTABLE NO CONFIRMADO",
     "Imagen base seleccionada",
     "Video hover seleccionado",
     "GameBackgroundViewportEditor",
@@ -161,9 +166,11 @@ assert(
     "resources: LibraryResource[]",
     "assignment: BackgroundAssignment"
   ) &&
+    !admin.includes("Falta ajustar el foco de la imagen") &&
+    !admin.includes("Foco adaptable de imagen confirmado") &&
     !admin.includes("useEffect(") &&
     !admin.includes('fetch(endpoint, {\n          credentials: "same-origin"'),
-  "Fondo debe verse como un destino más y reutilizar la revisión/recursos ya cargados por el workspace en vez de abrir una segunda lectura de biblioteca."
+  "Fondo debe verse como un destino más, usar terminología de recorte y reutilizar revisión/recursos del workspace sin una segunda lectura de biblioteca."
 );
 
 assert(
@@ -175,6 +182,8 @@ assert(
     "Escritorio",
     "Móvil",
     "GameMedia",
+    "Un recorte, distintas pantallas",
+    "Confirmar recorte adaptable",
     'action: kind === "image" ? "layout-image" : "layout-video"'
   ),
   "Fondo debe reutilizar el mismo motor espacial y añadir sólo previews adaptables de salida."
@@ -202,7 +211,7 @@ assert(
       "transform-origin: var(--game-background-position, 50% 50%)",
       "transform: scale(var(--game-background-zoom, 1))"
     ),
-  "El runtime público debe usar imagen/video por referencia, hover fino, fallback de movimiento reducido y aplicar foco X/Y/zoom adaptable en el video."
+  "El runtime público debe usar imagen/video por referencia, hover fino, fallback de movimiento reducido y aplicar X/Y/zoom adaptables en el fondo."
 );
 
 assert(
@@ -242,5 +251,5 @@ if (failures.length) {
 }
 
 console.log(
-  "Game background media: OK (Fondo integrado en destinos, estado/biblioteca únicos, override opcional, bytes compartidos y foco adaptable)."
+  "Game background media: OK (Fondo integrado en destinos, estado/biblioteca únicos, override opcional, bytes compartidos y recorte adaptable)."
 );

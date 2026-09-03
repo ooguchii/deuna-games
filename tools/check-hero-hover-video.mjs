@@ -107,11 +107,12 @@ assert(
     mediaViewportEditor,
     'width: `min(100%, ${resultPreviewSize.width}px)`',
     'aspectRatio: `${sourceCrop.width} / ${sourceCrop.height}`',
-    "data-preview-aspect={requiredAspect}",
+    "data-preview-aspect={currentAspectSummary}",
+    "const aspectLocked = requiredAspect !== undefined",
     "resolvePreviewViewportCrop"
   ) &&
     !mediaViewportEditor.includes("height: resultPreviewSize.height"),
-  "El resultado final de imagen debe conservar 4:5/16:9/3:2 al adaptarse a paneles estrechos; el ancho responsive no puede deformar la altura del recorte."
+  "El resultado final de imagen debe conservar la relación calculada —incluidos 4:5/16:9/3:2 y Galería elegible— al adaptarse a paneles estrechos; el ancho responsive no puede deformar la altura del recorte."
 );
 
 assert(

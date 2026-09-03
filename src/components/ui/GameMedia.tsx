@@ -3,6 +3,7 @@ import type { CSSProperties } from "react";
 
 import {
   normalizeGameImageViewport,
+  resolveGameImageCropAspectRatio,
 } from "@/lib/media/image-viewport";
 import type { GameImageViewport } from "@/types/game";
 
@@ -34,19 +35,32 @@ export default function GameMedia({
   imageClassName,
 }: GameMediaProps) {
   if (src) {
-    const variantClass =
-      variant === "hero"
-        ? styles.heroImage
-        : styles.coverImage;
+    const variantClass = variant === "hero"
+      ? styles.heroImage
+      : styles.coverImage;
     const framed = normalizeGameImageViewport(viewport);
     const position = `${(framed.x * 100).toFixed(2)}% ${(framed.y * 100).toFixed(2)}%`;
+    const hasEditorialAspect = viewport?.aspect !== undefined;
     const frameStyle = {
       "--game-image-zoom": framed.zoom,
       "--game-image-position": position,
+      ...(hasEditorialAspect
+        ? {
+            position: "relative",
+            inset: "auto",
+            display: "block",
+            width: "100%",
+            aspectRatio: String(resolveGameImageCropAspectRatio(viewport)),
+          }
+        : {}),
     } as CSSProperties;
 
     return (
-      <span className={styles.frame} style={frameStyle}>
+      <span
+        className={styles.frame}
+        style={frameStyle}
+        data-game-image-crop={hasEditorialAspect ? viewport?.aspect : undefined}
+      >
         <span className={styles.viewportLayer}>
           <Image
             key={src}
@@ -64,9 +78,7 @@ export default function GameMedia({
 
   return (
     <div
-      className={`${styles.fallback} ${
-        fallbackClassName ?? ""
-      }`}
+      className={`${styles.fallback} ${fallbackClassName ?? ""}`}
       aria-hidden="true"
     />
   );

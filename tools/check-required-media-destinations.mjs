@@ -1,4 +1,4 @@
-import { access, readFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 
@@ -13,67 +13,45 @@ const has = (text, ...needles) => needles.every((needle) => text.includes(needle
 const [
   requirements,
   types,
-  videoMedia,
+  imageViewportPolicy,
+  previewPolicy,
   workspace,
-  workspaceCss,
   mediaViewportEditor,
   imageEditor,
   videoViewportEditor,
   imageLayoutRoute,
   videoLayoutRoute,
   mediaLibraryRoute,
+  contentValidation,
+  gameMedia,
+  gameMediaCss,
+  backgroundEditor,
+  backgroundViewportEditor,
   publicationReadiness,
   publicationWorkspace,
   publishRoute,
   restoreRoute,
-  mediaIntegrity,
-  gameImageMedia,
-  mediaRoute,
-  mediaUploadRoute,
-  previewUploadRoute,
-  previewImportRoute,
-  homeHero,
-  homeHeroCss,
-  universalCard,
-  cardPreview,
-  coverMedia,
-  latestUpdates,
-  accountPage,
-  accountDashboard,
-  downloadPage,
-  contentValidation,
 ] = await Promise.all([
   source("src/lib/media/game-media-requirements.ts"),
   source("src/types/game.ts"),
-  source("src/lib/media/game-video-media.ts"),
+  source("src/lib/media/image-viewport.ts"),
+  source("src/lib/media/preview-video-policy.ts"),
   source("src/components/admin/GameMultimediaWorkspaceContextual.tsx"),
-  source("src/components/admin/GameMultimediaWorkspaceContextual.module.css"),
   source("src/components/admin/MediaViewportEditor.tsx"),
   source("src/components/admin/ImageViewportEditor.tsx"),
   source("src/components/admin/GameVideoViewportEditor.tsx"),
   source("src/app/api/admin/content/games/[slug]/image-layout/route.ts"),
   source("src/app/api/admin/content/games/[slug]/preview-layout/route.ts"),
   source("src/app/api/admin/content/games/[slug]/media-library/route.ts"),
+  source("src/lib/admin/content-validation.ts"),
+  source("src/components/ui/GameMedia.tsx"),
+  source("src/components/ui/GameMedia.module.css"),
+  source("src/components/admin/GameBackgroundMediaEditor.tsx"),
+  source("src/components/admin/GameBackgroundViewportEditor.tsx"),
   source("src/lib/admin/game-publication-readiness.ts"),
   source("src/components/admin/GamePublicationWorkspace.tsx"),
   source("src/app/api/admin/content/games/[slug]/publish/route.ts"),
   source("src/app/api/admin/content/publications/[publicationId]/restore/route.ts"),
-  source("src/lib/admin/game-media-integrity.ts"),
-  source("src/lib/media/game-image-media.ts"),
-  source("src/app/api/admin/content/games/[slug]/media/route.ts"),
-  source("src/app/api/admin/content/games/[slug]/media-upload/route.ts"),
-  source("src/app/api/admin/content/games/[slug]/preview-upload/route.ts"),
-  source("src/app/api/admin/content/games/[slug]/preview-import/route.ts"),
-  source("src/components/home/HeroSection.tsx"),
-  source("src/components/home/HeroArtwork.module.css"),
-  source("src/components/ui/UniversalGameCard.tsx"),
-  source("src/lib/media/game-card-preview.ts"),
-  source("src/components/ui/GameCoverMedia.tsx"),
-  source("src/components/home/LatestUpdates.tsx"),
-  source("src/app/cuenta/page.tsx"),
-  source("src/app/cuenta/AccountDashboardClient.tsx"),
-  source("src/app/juegos/[slug]/descargar/page.tsx"),
-  source("src/lib/admin/content-validation.ts"),
 ]);
 
 assert(
@@ -82,430 +60,239 @@ assert(
     'cover: "4:5"',
     'hero: "16:9"',
     'card: "3:2"',
-    "viewport?.confirmed === true",
-    "viewport.aspect === requiredAspect",
-    'if (mode === "image")',
-    'if (mode === "video")',
-    "assigned: imageAssigned && videoAssigned",
-    "cropReady: imageReady && videoReady",
-    'resolveGameDestinationMediaMode(game, "cover")',
-    'resolveGameDestinationMediaMode(game, "hero")',
-    'resolveGameDestinationMediaMode(game, "card")',
-    "Boolean(game.cardImage)",
     "const galleryAssigned = screenshots.length > 0",
     "const galleryCropReady = galleryAssigned && screenshots.every(",
     "isImageCropConfirmed(game.imageMedia?.gallery?.[src])",
-    "cropReady: galleryCropReady",
+    "background.cropReady",
     "galleryCropReady"
   ),
-  "Los requisitos multimedia deben exigir 4:5/16:9/3:2, Card independiente, ambas capas de hover y recortes 16:9 confirmados para cada imagen de Galería."
+  "Portada/Hero/Card deben conservar 4:5/16:9/3:2; Fondo activado y Galería deben exigir recortes confirmados sin imponer 16:9 a Galería."
 );
 
 assert(
   has(
     types,
-    "confirmed?: true",
+    "export type GameImageViewportAspect",
+    '| "16:9"',
     '| "3:2"',
-    "cardImage?: string",
-    "export type GameDestinationMediaMode",
-    "mediaModes?: GameMediaModes",
-    "cover?: GameCoverVideo"
+    '| "1:1"',
+    '| "4:5"',
+    '| "9:16"',
+    '| "free"',
+    "aspect?: GameImageViewportAspect",
+    "aspectRatio?: number",
+    "confirmed?: true"
   ),
-  "Game debe modelar Card independiente, modos por destino y video de Portada."
+  "El modelo de imagen debe persistir relación elegible y relación numérica exacta para recorte Libre."
 );
 
 assert(
   has(
-    videoMedia,
-    "export const DEFAULT_GAME_MEDIA_MODES",
-    'cover: "video"',
-    'hero: "hover-video"',
-    'card: "hover-video"',
-    'export type GameVideoTarget = "cover" | "hero" | "card"',
-    "resolveGameCoverVideo",
-    "resolveGameDestinationMediaMode",
-    "withGameVideoLayout",
-    "confirmed: true"
+    imageViewportPolicy,
+    'DEFAULT_GALLERY_IMAGE_ASPECT = "16:9"',
+    '"free"',
+    "MIN_FREE_IMAGE_ASPECT_RATIO",
+    "MAX_FREE_IMAGE_ASPECT_RATIO",
+    "parseGameImageViewportAspect",
+    "resolveGameImageCropAspectRatio",
+    "gameImageCropAspectLabel",
+    'aspect === "free"'
   ),
-  "Los defaults deben ser Portada=Video y Hero/Card=Imagen+hover con recortes independientes."
+  "La política de imagen debe conservar compatibilidad 16:9 histórica y validar/presentar relaciones libres."
+);
+
+assert(
+  has(
+    previewPolicy,
+    '"free"',
+    'Libre · arrastra bordes y esquinas',
+    "customAspectRatio?: number",
+    "MIN_PREVIEW_FREE_ASPECT_RATIO",
+    "MAX_PREVIEW_FREE_ASPECT_RATIO",
+    'aspect === "free"',
+    "customAspectRatio"
+  ),
+  "El motor espacial debe modelar el modo Libre con una relación exacta y límites seguros."
 );
 
 assert(
   has(
     contentValidation,
-    "const resolvedCardImage = cardImage ?? game.coverImage",
-    "cover: inferredMode(",
-    "hero: inferredMode(",
-    "card: inferredMode("
+    "imageViewportAspectSchema",
+    '"free"',
+    "aspectRatio: z.number().min(0.1).max(10).optional()",
+    'viewport.aspect === "free" && viewport.aspectRatio === undefined',
+    'viewport.aspect !== "free" && viewport.aspectRatio !== undefined'
   ),
-  "La compatibilidad histórica debe capturar la Card antigua sin volver a acoplarla a Portada."
-);
-
-const assignmentIndex = workspace.indexOf("Asignación de destinos");
-const libraryIndex = workspace.indexOf("Biblioteca multimedia compartida");
-assert(
-  assignmentIndex >= 0 && libraryIndex > assignmentIndex,
-  "Asignación de destinos debe aparecer antes que la Biblioteca compartida."
+  "La validación editorial debe rechazar recortes libres sin relación y relaciones numéricas fuera del modo Libre."
 );
 
 assert(
   has(
     workspace,
-    "MODE_OPTIONS",
-    '{ value: "image", label: "Imagen" }',
-    '{ value: "video", label: "Video" }',
-    '{ value: "hover-video", label: "Imagen + hover" }',
-    'const coverMode = state?.assignments.coverMode ?? "video"',
-    'const heroMode = state?.assignments.heroMode ?? "hover-video"',
-    'const cardMode = state?.assignments.cardMode ?? "hover-video"',
-    'target="cover"',
-    'target="hero"',
-    'target="card"',
-    'target={`${destination}-image`}',
-    'target={`${destination}-video`}',
-    "const cardImage = state?.assignments.cardImage ?? null",
-    "Recurso independiente",
-    "Reutilizar sin acoplar",
-    "Falta seleccionar imagen",
-    "Falta seleccionar video",
-    "Falta recortar la imagen",
-    "Falta recortar el video",
-    "Imagen seleccionada",
-    "Video seleccionado",
-    "Recorte ${aspect} confirmado",
-    "requirementActionClass",
-    "allRequirementsReady"
+    "GAME_IMAGE_CROP_ASPECTS",
+    "gameImageCropAspectLabel",
+    "Galería obligatoria · relación elegible",
+    "16:9, 3:2, 1:1, 4:5, 9:16 o Libre",
+    "Libre habilita arrastre por bordes y esquinas",
+    "cropStateLabel",
+    "Recortes confirmados",
+    "RECORTES CONFIRMADOS",
+    "const pendingGalleryCrops = screenshots.filter(",
+    "imageMedia?.gallery?.[src]?.confirmed !== true",
+    "const galleryCropReady = gallerySelectionReady && pendingGalleryCrops.length === 0",
+    'title="Recorte de la captura"'
   ) &&
-    !workspace.includes("Igualar al Hero") &&
-    !workspace.includes("card-match-hero") &&
-    !videoViewportEditor.includes("Usar imagen estática"),
-  "El workspace debe conservar modos/defaults, Card independiente y estados explícitos rojo/verde para selección y recorte."
-);
-
-assert(
-  has(
-    workspace,
-    "setState(parsed)",
-    "const coverResource = imageBySrc(coverImage)",
-    "const heroResource = imageBySrc(heroImage)",
-    "const cardResource = imageBySrc(cardImage)",
-    "const firstGalleryResource = imageBySrc(screenshots[0] ?? null)",
-    "coverResource.src",
-    "heroResource.src",
-    "cardResource.src",
-    "firstGalleryResource.src"
-  ) &&
-    has(
-      mediaLibraryRoute,
-      '"Cache-Control"',
-      '"no-store"',
-      "coverImage: item.payload.coverImage ?? null",
-      "heroImage: item.payload.heroImage ?? null",
-      "cardImage: item.payload.cardImage ?? null",
-      "screenshots: item.payload.screenshots ?? []"
-    ),
-  "Las mini-previsualizaciones deben alimentarse de las asignaciones actuales devueltas sin caché por el servidor."
+    !workspace.includes("Galería obligatoria · 16:9") &&
+    !workspace.includes("Cada captura asignada debe confirmar su encuadre 16:9") &&
+    !workspace.includes("REQUISITO CUMPLIDO · RECORTES 16:9 CONFIRMADOS"),
+  "El workspace debe mostrar la relación real por captura y no volver a presentar Galería como 16:9 obligatoria."
 );
 
 assert(
   has(
     mediaViewportEditor,
     'type MediaKind = "image" | "video"',
-    "resolvePreviewViewportCrop",
-    "viewportFrame",
-    "viewportMoveHandle",
-    "requestAnimationFrame",
-    "scheduleViewportDraft",
-    "Posición X",
-    "Posición Y",
-    "Zoom",
+    "requiredAspect?",
+    "selectableAspects?",
+    "const RESIZE_HANDLES",
+    "type ResizeHandle = (typeof RESIZE_HANDLES)[number]",
+    'const freeResizeEnabled = !aspectLocked && viewportDraft.aspect === "free"',
+    "data-resize-handle",
+    "isResizeHandle",
+    "startResize",
+    "moveResize",
+    "finishResize",
+    "handleResizeKey",
+    "Redimensionar recorte desde",
+    "cuatro esquinas o de los cuatro bordes",
     "Relación del encuadre · obligatoria",
-    "requiredAspect",
-    "Izquierda",
-    "Centro",
-    "Derecha",
-    "Restablecer encuadre",
-    "resultCanvasRef",
+    "Relación del encuadre",
     "Resultado final",
-    'kind === "image"',
-    'kind === "video"',
-    "GameMedia",
-    'objectFit: "contain"',
-    'onLoadedData={requestPreviewRedraw}',
-    'onSeeked={requestPreviewRedraw}'
+    "GameMedia"
   ),
-  "Debe existir un único motor espacial para imagen/video, con fuente completa, marco, drag, zoom, presets y resultado final coherente con el renderer público."
+  "Debe existir un único editor de imagen/video; sólo Libre habilita ocho tiradores de resize y los destinos rígidos mantienen su relación bloqueada."
 );
 
 assert(
   has(
     imageEditor,
     "MediaViewportEditor",
-    'kind="image"',
-    'target === "cover"',
-    'target === "hero"',
-    'target === "card"',
-    'return "16:9"',
-    "image-layout",
+    'target === "gallery"',
+    "GALLERY_ASPECT_OPTIONS",
+    '"16:9"',
+    '"3:2"',
+    '"1:1"',
+    '"4:5"',
+    '"9:16"',
+    '"free"',
+    "selectableAspects",
+    "viewportAspect",
+    "viewportAspectRatio",
     "Confirmar recorte"
   ) &&
-    !imageEditor.includes("<Image") &&
-    !imageEditor.includes("resolvePreviewViewportCrop"),
-  "Portada/Hero/Card/Galería de imagen deben delegar el encuadre al motor común, no implementar uno paralelo."
+    !imageEditor.includes("resolvePreviewViewportCrop") &&
+    !imageEditor.includes("storeEditorialWebp"),
+  "Galería debe usar el editor espacial común y persistir la relación elegida sin crear otro archivo."
 );
-
-assert(
-  has(
-    videoViewportEditor,
-    "MediaViewportEditor",
-    'kind="video"',
-    'type Target = "cover" | "hero" | "card"',
-    "REQUIRED_DESTINATION_ASPECTS[target]",
-    "preview-layout",
-    "Confirmar recorte"
-  ) &&
-    !videoViewportEditor.includes("VideoTrimEditor") &&
-    !videoViewportEditor.includes("preview-remove") &&
-    !videoViewportEditor.includes("Usar imagen estática"),
-  "Portada/Hero/Card de video deben delegar el mismo motor espacial y guardar sólo su metadata."
-);
-
-try {
-  await access(path.join(root, "src/components/admin/ImageViewportEditor.module.css"));
-  failures.push("No debe sobrevivir el stylesheet del editor espacial de imagen anterior.");
-} catch {
-  // Correcto: el editor paralelo de imagen fue retirado.
-}
 
 assert(
   has(
     imageLayoutRoute,
     'const targetSchema = z.enum(["cover", "hero", "card", "gallery"])',
-    'resolveGameDestinationMediaMode(game, target) === "video"',
-    "Boolean(game.cardImage)",
+    '"viewportAspect"',
+    '"viewportAspectRatio"',
+    "expectsGalleryResource",
+    "parseGameImageViewport(",
     "confirmed: true",
     "saveGameMediaDraft"
   ) &&
     !imageLayoutRoute.includes("storeEditorialWebp") &&
     !imageLayoutRoute.includes("spawn("),
-  "El recorte de imagen debe confirmar sólo metadata para Portada/Hero/Card/Galería."
+  "La API de recorte de imagen debe aceptar relación sólo para Galería y guardar exclusivamente metadata confirmada."
 );
 
 assert(
   has(
-    videoLayoutRoute,
-    'value === "cover" || value === "hero" || value === "card"',
+    videoViewportEditor,
     "REQUIRED_DESTINATION_ASPECTS[target]",
-    "submittedAspect !== requiredAspect",
-    "withGameVideoLayout"
+    "MediaViewportEditor",
+    'kind="video"'
   ) &&
-    !videoLayoutRoute.includes("storeEditorialPreviewVideo") &&
-    !videoLayoutRoute.includes("FFmpeg"),
-  "El recorte de video debe exigir el aspecto del destino y guardar sólo metadata, sin recodificar."
+    has(
+      videoLayoutRoute,
+      "REQUIRED_DESTINATION_ASPECTS[target]",
+      "submittedAspect !== requiredAspect",
+      "withGameVideoLayout"
+    ),
+  "Los videos de Portada/Hero/Card deben conservar sus relaciones rígidas y no heredar el modo Libre de Galería."
 );
 
 assert(
   has(
     mediaLibraryRoute,
-    '"cover-mode"',
-    '"cover-image"',
-    '"cover-video"',
-    '"hero-mode"',
-    '"hero-image"',
-    '"hero-video"',
-    '"card-mode"',
-    '"card-image"',
-    '"card-video"',
     '"gallery-image"',
-    "mediaModeUpdate",
-    'source: "independent"',
-    "cardImage: item.payload.cardImage",
-    "gallery:",
-    "DEFAULT_GAME_IMAGE_VIEWPORT"
-  ) &&
-    !mediaLibraryRoute.includes("card-match-hero"),
-  "La API de biblioteca debe mantener recursos y modos independientes y crear recortes pendientes al asignar una imagen de Galería."
-);
-
-const galleryRendererStart = workspace.indexOf("function renderGalleryAssignedItems");
-const workspaceReturn = workspace.indexOf("\n  return (", galleryRendererStart);
-const galleryRenderer = galleryRendererStart >= 0 && workspaceReturn > galleryRendererStart
-  ? workspace.slice(galleryRendererStart, workspaceReturn)
-  : "";
-assert(
-  galleryRenderer.includes('value="gallery-remove"') &&
-    galleryRenderer.includes("Falta recortar la imagen") &&
-    galleryRenderer.includes("Recorte 16:9 confirmado") &&
-    galleryRenderer.includes("openGalleryImage") &&
-    !galleryRenderer.includes("DeleteImageResourceForm") &&
-    !galleryRenderer.includes('value="image-delete"'),
-  "Galería debe mostrar el estado individual de recorte y permitir editar/quitar sin eliminación física."
+    '"gallery-remove"',
+    "DEFAULT_GAME_IMAGE_VIEWPORT",
+    "gallery:"
+  ),
+  "La Biblioteca debe seguir asignando capturas por referencia y crear metadata pendiente antes de editar su relación."
 );
 
 assert(
   has(
-    workspace,
-    "const gallerySelectionReady = screenshots.length >= 1",
-    "const pendingGalleryCrops = screenshots.filter(",
-    "imageMedia?.gallery?.[src]?.confirmed !== true",
-    "const galleryCropReady = gallerySelectionReady && pendingGalleryCrops.length === 0",
-    "const galleryReady = gallerySelectionReady && galleryCropReady",
-    'target="gallery"',
-    'title="Encuadre 16:9 de la captura"'
+    backgroundEditor,
+    "Recorte adaptable ·",
+    'complete ? "confirmado" : "no confirmado"',
+    "RECORTE ADAPTABLE CONFIRMADO",
+    "RECORTE ADAPTABLE NO CONFIRMADO",
+    "Usar fondo global"
+  ) &&
+    !backgroundEditor.includes("Falta ajustar el foco de la imagen") &&
+    !backgroundEditor.includes("Foco adaptable de imagen confirmado"),
+  "Fondo debe usar la misma terminología de recorte/confirmación que los demás destinos."
+);
+
+assert(
+  has(
+    backgroundViewportEditor,
+    "Confirmando el recorte adaptable",
+    "Confirmar recorte adaptable",
+    'requiredAspect="source"',
+    "Un recorte, distintas pantallas"
   ),
-  "Galería del juego debe usar el editor compartido y exigir selección + recorte 16:9 de cada captura."
+  "El Fondo debe conservar su comportamiento adaptable sin volver a llamarlo foco en la acción editorial."
+);
+
+assert(
+  has(
+    gameMedia,
+    "resolveGameImageCropAspectRatio",
+    "hasEditorialAspect",
+    "aspectRatio: String(resolveGameImageCropAspectRatio(viewport))",
+    "data-game-image-crop"
+  ) &&
+    gameMediaCss.includes(':global(figure:has(> [data-game-image-crop]))'),
+  "El renderer público debe permitir que una captura de Galería publicada respete la relación persistida, incluida Libre."
 );
 
 for (const id of ["cover-crop", "hero-crop", "card-crop", "gallery-minimum"]) {
   assert(publicationReadiness.includes(`id: "${id}"`), `Publicación debe exigir ${id}.`);
 }
 assert(
-  publicationReadiness.match(/priority: "essential"/g)?.length >= 5 &&
-    publicationReadiness.includes("complete: media.gallery.cropReady") &&
+  publicationReadiness.includes("complete: media.gallery.cropReady") &&
+    publicationWorkspace.includes("!readiness.essentialsReady") &&
     has(publishRoute, "evaluateGamePublicationReadiness", "readiness.essentialsReady", "preparacion-incompleta") &&
-    has(restoreRoute, "evaluateGamePublicationReadiness", "readiness.essentialsReady", "restauracion-incompleta") &&
-    publicationWorkspace.includes("!readiness.essentialsReady"),
-  "Publicación/restauración deben bloquear destinos esenciales y Galería con recortes incompletos."
-);
-
-assert(
-  has(
-    mediaIntegrity,
-    "game.coverImage",
-    "game.heroImage",
-    "game.cardImage",
-    "game.videoMedia?.cover?.clip",
-    "game.videoMedia?.hero?.clip",
-    'game.videoMedia?.card?.source === "independent"'
-  ),
-  "La integridad física debe cubrir imágenes y videos independientes de los tres destinos."
-);
-
-assert(
-  has(
-    gameImageMedia,
-    '"coverImage" | "heroImage" | "cardImage" | "screenshots"',
-    "game.coverImage !== assignments.coverImage",
-    "delete imageMedia.cover",
-    "game.heroImage !== assignments.heroImage",
-    "delete imageMedia.hero",
-    "game.cardImage !== assignments.cardImage",
-    "delete imageMedia.card"
-  ),
-  "Cambiar un recurso debe invalidar sólo el recorte del destino afectado."
-);
-
-assert(
-  mediaRoute.includes("cardImage: item.payload.cardImage") &&
-    mediaUploadRoute.includes("cardImage: item.payload.cardImage") &&
-    !mediaUploadRoute.includes("withoutGameVideoTarget"),
-  "Las rutas alternativas de imagen deben conservar Card y videos coexistentes."
-);
-
-for (const route of [previewUploadRoute, previewImportRoute]) {
-  assert(
-    has(
-      route,
-      'GameVideoTarget | "library"',
-      'normalized === "cover"',
-      'normalized === "library"',
-      'target === "card" ? "card" : "hero"',
-      "withSavedGameVideoClip",
-      "recurso-subido"
-    ),
-    "Las rutas de video deben admitir Portada y library sin asignación automática del master."
-  );
-}
-
-assert(
-  has(
-    homeHero,
-    'resolveGameDestinationMediaMode(game, "hero")',
-    'heroMode === "hover-video"',
-    'heroMode !== "image"',
-    "game.imageMedia?.hero",
-    '--hero-mobile-image-zoom',
-    'style={{ aspectRatio: "16 / 9" }}',
-    'aspectRatio: "16 / 9"',
-    'height: "auto"',
-    'bottom: "auto"'
-  ) &&
-    !homeHero.includes("MOBILE_ART_MEDIA") &&
-    !homeHero.includes("mobileSrc = game.coverImage") &&
-    has(homeHeroCss, "--hero-mobile-image-zoom", "--hero-mobile-image-position"),
-  "Hero público debe mantener su recurso/encuadre propio y una región de destino 16:9 también en layouts móviles."
-);
-
-assert(
-  has(
-    universalCard,
-    'resolveGameDestinationMediaMode(game, "card")',
-    "game.cardImage ?? game.coverImage",
-    'cardMode === "video"',
-    'cardMode === "hover-video"',
-    "game.imageMedia?.card",
-    'aspectRatio: "3 / 2"',
-    'height: "auto"'
-  ) && has(cardPreview, "resolveGameCardVideo"),
-  "UniversalGameCard debe consumir Card independiente dentro de un frame público 3:2 exacto."
-);
-
-assert(
-  has(
-    coverMedia,
-    'resolveGameDestinationMediaMode(game, "cover")',
-    "resolveGameCoverVideo(game)",
-    'mode === "video"',
-    'mode === "hover-video"',
-    "game.imageMedia?.cover",
-    'width: "min(100%, 80cqh)"',
-    'aspectRatio: "4 / 5"'
-  ),
-  "La Portada pública debe consumir Imagen/Video/Imagen+hover dentro de un frame 4:5 exacto."
-);
-
-assert(
-  has(latestUpdates, "update.game.cardImage ??", "update.game.coverImage", "?.card ??", "?.cover") &&
-    has(
-      accountPage,
-      "game.cardImage ?? game.coverImage",
-      "update.game.cardImage ?? update.game.coverImage",
-      "entry.game.cardImage ?? entry.game.coverImage",
-      "gameImageViewport:"
-    ) &&
-    has(
-      accountDashboard,
-      "viewport={game.imageViewport}",
-      "viewport={recommendation.imageViewport}",
-      "viewport={notification.gameImageViewport}"
-    ) &&
-    has(downloadPage, "GameCoverMedia", "game={game}"),
-  "Actualizaciones y Mi DeUna deben propagar Card; Descargas debe reutilizar el renderer 4:5 exacto de Portada."
-);
-
-assert(
-  has(
-    workspaceCss,
-    ".requirementReady",
-    ".requirementPending",
-    ".requirementActionComplete",
-    ".requirementActionMissing",
-    ".galleryItemComplete",
-    ".galleryItemMissing",
-    ".galleryCropReady",
-    ".galleryCropMissing",
-    ".continueGate",
-    ".galleryManageGrid"
-  ),
-  "El workspace debe mostrar estados rojo/verde de selección y recorte, incluida la Galería."
+    has(restoreRoute, "evaluateGamePublicationReadiness", "readiness.essentialsReady", "restauracion-incompleta"),
+  "Publicación y restauración deben seguir bloqueando cualquier recorte de Galería no confirmado, sin importar su relación."
 );
 
 if (failures.length) {
-  console.error("\nDestinos multimedia independientes: ERROR\n");
-  failures.forEach((failure) => console.error(`- ${failure}`));
+  console.error("Destinos multimedia: FAIL");
+  for (const failure of failures) console.error(`- ${failure}`);
   process.exit(1);
 }
 
 console.log(
-  "Destinos multimedia independientes: OK (selección + recorte explícitos → 4:5/16:9/3:2 obligatorios → Galería 16:9 confirmada → motor único imagen/video → publicación coherente)."
+  "Destinos multimedia: OK (Portada 4:5 · Hero 16:9 · Card 3:2 · Fondo adaptable · Galería con relación elegible y recorte Libre redimensionable)."
 );

@@ -34,7 +34,16 @@ const localImageSchema = z
   .max(400)
   .refine(isSafeLocalImagePath);
 
-const imageViewportSchema = z
+const imageViewportAspectSchema = z.enum([
+  "16:9",
+  "3:2",
+  "1:1",
+  "4:5",
+  "9:16",
+  "free",
+]);
+
+const fixedImageViewportSchema = z
   .object({
     x: z.number().min(0).max(1),
     y: z.number().min(0).max(1),
@@ -43,17 +52,40 @@ const imageViewportSchema = z
   })
   .strict();
 
+const galleryImageViewportSchema = fixedImageViewportSchema
+  .extend({
+    aspect: imageViewportAspectSchema.optional(),
+    aspectRatio: z.number().min(0.1).max(10).optional(),
+  })
+  .strict()
+  .superRefine((viewport, context) => {
+    if (viewport.aspect === "free" && viewport.aspectRatio === undefined) {
+      context.addIssue({
+        code: "custom",
+        path: ["aspectRatio"],
+        message: "Un recorte libre debe conservar su relación exacta.",
+      });
+    }
+    if (viewport.aspect !== "free" && viewport.aspectRatio !== undefined) {
+      context.addIssue({
+        code: "custom",
+        path: ["aspectRatio"],
+        message: "La relación numérica sólo corresponde a un recorte libre.",
+      });
+    }
+  });
+
 const galleryImageMediaSchema = z.record(
   z.string().min(1).max(400),
-  imageViewportSchema
+  galleryImageViewportSchema
 );
 
 const imageMediaSchema = z
   .object({
-    cover: imageViewportSchema.optional(),
-    hero: imageViewportSchema.optional(),
-    card: imageViewportSchema.optional(),
-    background: imageViewportSchema.optional(),
+    cover: fixedImageViewportSchema.optional(),
+    hero: fixedImageViewportSchema.optional(),
+    card: fixedImageViewportSchema.optional(),
+    background: fixedImageViewportSchema.optional(),
     gallery: galleryImageMediaSchema.optional(),
   })
   .strict();

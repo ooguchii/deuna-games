@@ -82,12 +82,27 @@ export type GameDirectPreview = {
   endSeconds: number;
 };
 
+export type GameImageViewportAspect =
+  | "16:9"
+  | "3:2"
+  | "1:1"
+  | "4:5"
+  | "9:16"
+  | "free";
+
 export type GameImageViewport = {
   /* Punto de interés normalizado dentro de la imagen. */
   x: number;
   y: number;
   /* 1 = encuadre base; 3 = zoom máximo 300 %. */
   zoom: number;
+  /*
+   * Sólo Galería persiste su relación porque allí es editorialmente elegible.
+   * Ausente conserva compatibilidad histórica y equivale a 16:9 en Galería.
+   */
+  aspect?: GameImageViewportAspect;
+  /* Relación ancho/alto exacta cuando aspect="free". */
+  aspectRatio?: number;
   /* Sólo true significa que el editor confirmó explícitamente este recorte. */
   confirmed?: true;
 };
@@ -99,7 +114,7 @@ export type GameImageMedia = {
   card?: GameImageViewport;
   /* Fondo adaptable: el mismo foco/zoom se interpreta según cada viewport público. */
   background?: GameImageViewport;
-  /* La galería guarda un encuadre por recurso asignado. */
+  /* La galería guarda un encuadre y relación editorial por recurso asignado. */
   gallery?: Record<string, GameImageViewport>;
 };
 

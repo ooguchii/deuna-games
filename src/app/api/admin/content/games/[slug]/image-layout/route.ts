@@ -34,7 +34,12 @@ const baseFields = [
   "viewportY",
   "viewportZoom",
 ] as const;
-const galleryFields = [...baseFields, "resource"] as const;
+const galleryFields = [
+  ...baseFields,
+  "resource",
+  "viewportAspect",
+  "viewportAspectRatio",
+] as const;
 
 function redirectPath(slug: string, state: string) {
   return `/admin/juegos/${encodeURIComponent(slug)}?estado=${encodeURIComponent(state)}&seccion=multimedia`;
@@ -91,11 +96,19 @@ export async function POST(
   const revision = expectedRevisionSchema.safeParse(
     authorized.form.get("expectedRevision")
   );
-  const viewport = parseGameImageViewport(
-    authorized.form.get("viewportX"),
-    authorized.form.get("viewportY"),
-    authorized.form.get("viewportZoom")
-  );
+  const viewport = expectsGalleryResource
+    ? parseGameImageViewport(
+        authorized.form.get("viewportX"),
+        authorized.form.get("viewportY"),
+        authorized.form.get("viewportZoom"),
+        authorized.form.get("viewportAspect"),
+        authorized.form.get("viewportAspectRatio")
+      )
+    : parseGameImageViewport(
+        authorized.form.get("viewportX"),
+        authorized.form.get("viewportY"),
+        authorized.form.get("viewportZoom")
+      );
   const resourceValue = authorized.form.get("resource");
   const resource = typeof resourceValue === "string" ? resourceValue : "";
 
