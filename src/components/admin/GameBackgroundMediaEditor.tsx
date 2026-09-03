@@ -3,13 +3,12 @@
 import Image from "next/image";
 import {
   CheckCircle2,
-  ImageIcon,
   Info,
   MonitorPlay,
   RotateCcw,
   Sparkles,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 
 import ContextualMediaDialog from "@/components/admin/ContextualMediaDialog";
 import GameBackgroundViewportEditor from "@/components/admin/GameBackgroundViewportEditor";
@@ -43,20 +42,19 @@ type ResourceVideo = {
 
 type LibraryResource = ResourceImage | ResourceVideo;
 
-type BackgroundState = {
-  revision: number;
-  resources: LibraryResource[];
-  assignment: {
-    active: boolean;
-    mode: GameDestinationMediaMode | null;
-    image: string | null;
-    imageViewport: GameImageViewport | null;
-    video: GameBackgroundVideo | null;
-  };
+type BackgroundAssignment = {
+  mode: GameDestinationMediaMode | null;
+  image: string | null;
+  imageViewport: GameImageViewport | null;
+  video: GameBackgroundVideo | null;
 };
 
 type Props = {
   slug: string;
+  revision: number;
+  resources: LibraryResource[];
+  assignment: BackgroundAssignment;
+  stale?: boolean;
 };
 
 const MODES: Array<{ value: GameDestinationMediaMode; label: string }> = [
@@ -75,14 +73,6 @@ function formatBytes(bytes: number) {
 function shortName(src: string) {
   const filename = src.split("/").filter(Boolean).at(-1) ?? src;
   return filename.length <= 22 ? filename : `${filename.slice(0, 10)}…${filename.slice(-9)}`;
-}
-
-function isState(value: unknown): value is BackgroundState {
-  if (!value || typeof value !== "object") return false;
-  const root = value as Partial<BackgroundState>;
-  return typeof root.revision === "number" &&
-    Array.isArray(root.resources) &&
-    Boolean(root.assignment && typeof root.assignment === "object");
 }
 
 function requirementActionClass(complete: boolean) {
@@ -211,51 +201,24 @@ function ResourcePicker({
   );
 }
 
-export default function GameBackgroundMediaEditor({ slug }: Props) {
-  const [state, setState] = useState<BackgroundState | null>(null);
-  const [loading, setLoading] = useState(true);
+export default function GameBackgroundMediaEditor({
+  slug,
+  revision,
+  resources,
+  assignment,
+  stale = false,
+}: Props) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState<"image" | "video" | null>(null);
 
   const endpoint = `/api/admin/content/games/${encodeURIComponent(slug)}/background-media`;
-
-  useEffect(() => {
-    let alive = true;
-    async function load() {
-      try {
-        const response = await fetch(endpoint, {
-          credentials: "same-origin",
-          cache: "no-store",
-        });
-        const payload = await response.json();
-        if (!response.ok || !isState(payload)) {
-          throw new Error(payload?.error ?? "No se pudo cargar el Fondo del juego.");
-        }
-        if (alive) {
-          setState(payload);
-          setError(null);
-        }
-      } catch (reason) {
-        if (alive) {
-          setError(reason instanceof Error ? reason.message : "No se pudo cargar el Fondo del juego.");
-        }
-      } finally {
-        if (alive) setLoading(false);
-      }
-    }
-    void load();
-    return () => {
-      alive = false;
-    };
-  }, [endpoint]);
-
-  const mode = state?.assignment.mode ?? null;
-  const imageSelected = Boolean(state?.assignment.image);
-  const imageCropReady = state?.assignment.imageViewport?.confirmed === true;
-  const videoSelected = Boolean(state?.assignment.video?.clip);
-  const videoCropReady = state?.assignment.video?.viewport.confirmed === true &&
-    state?.assignment.video?.viewport.aspect === "source";
+  const mode = assignment.mode;
+  const imageSelected = Boolean(assignment.image);
+  const imageCropReady = assignment.imageViewport?.confirmed === true;
+  const videoSelected = Boolean(assignment.video?.clip);
+  const videoCropReady = assignment.video?.viewport.confirmed === true &&
+    assignment.video?.viewport.aspect === "source";
   const needsImage = mode === "image" || mode === "hover-video";
   const needsVideo = mode === "video" || mode === "hover-video";
   const activeReady = Boolean(
@@ -263,23 +226,25 @@ export default function GameBackgroundMediaEditor({ slug }: Props) {
       (!needsImage || (imageSelected && imageCropReady)) &&
       (!needsVideo || (videoSelected && videoCropReady))
   );
+  const controlsDisabled = busy || stale;
 
-  const currentLabel = useMemo(() => {
-    if (!mode) return "Fondo global";
-    if (mode === "image") return "Imagen";
-    if (mode === "video") return "Video";
-    return "Imagen + hover";
-  }, [mode]);
+  const currentLabel = !mode
+    ? "Fondo global"
+    : mode === "image"
+      ? "Imagen"
+      : mode === "video"
+        ? "Video"
+        : "Imagen + hover";
 
-  const imageResource = state?.resources.find(
-    (resource): resource is ResourceImage => resource.kind === "image" && resource.src === state.assignment.image
+  const imageResource = resources.find(
+    (resource): resource is ResourceImage => resource.kind === "image" && resource.src === assignment.image
   ) ?? null;
-  const videoResource = state?.resources.find(
-    (resource): resource is ResourceVideo => resource.kind === "video" && resource.src === state.assignment.video?.clip
+  const videoResource = resources.find(
+    (resource): resource is ResourceVideo => resource.kind === "video" && resource.src === assignment.video?.clip
   ) ?? null;
 
   async function mutate(action: string, resource: string) {
-    if (!state || busy) return;
+    if (controlsDisabled) return;
     setBusy(true);
     setError(null);
     try {
@@ -291,7 +256,7 @@ export default function GameBackgroundMediaEditor({ slug }: Props) {
           "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
         },
         body: new URLSearchParams({
-          expectedRevision: String(state.revision),
+          expectedRevision: String(revision),
           action,
           resource,
         }),
@@ -307,31 +272,13 @@ export default function GameBackgroundMediaEditor({ slug }: Props) {
     }
   }
 
-  if (loading) {
-    return (
-      <article className={assignmentStyles.assignmentCard} aria-busy="true">
-        <header><div><span>D</span><h3>Fondo del juego</h3></div><small>Opcional · foco adaptable</small></header>
-        <p className={styles.loading}>Cargando destino de Fondo…</p>
-      </article>
-    );
-  }
-
-  if (!state) {
-    return (
-      <article className={assignmentStyles.assignmentCard}>
-        <header><div><span>D</span><h3>Fondo del juego</h3></div><small>Opcional · foco adaptable</small></header>
-        <div className={styles.error} role="alert">{error ?? "No se pudo cargar el Fondo del juego."}</div>
-      </article>
-    );
-  }
-
   const resourceDescription = !mode
     ? "Usa el fondo global de Juegos; no agrega un recurso propio."
     : mode === "hover-video"
-      ? `${state.assignment.image ? shortName(state.assignment.image) : "Imagen pendiente"} + ${videoResource ? shortName(videoResource.src) : "video pendiente"}`
+      ? `${assignment.image ? shortName(assignment.image) : "Imagen pendiente"} + ${videoResource ? shortName(videoResource.src) : "video pendiente"}`
       : mode === "video"
         ? videoResource ? shortName(videoResource.src) : "Selecciona un video"
-        : state.assignment.image ? shortName(state.assignment.image) : "Selecciona una imagen";
+        : assignment.image ? shortName(assignment.image) : "Selecciona una imagen";
 
   return (
     <>
@@ -346,7 +293,7 @@ export default function GameBackgroundMediaEditor({ slug }: Props) {
             <button
               key={option.value}
               type="button"
-              disabled={busy}
+              disabled={controlsDisabled}
               aria-pressed={mode === option.value}
               className={mode === option.value ? assignmentStyles.modeActive : ""}
               onClick={() => void mutate("mode", option.value)}
@@ -378,9 +325,9 @@ export default function GameBackgroundMediaEditor({ slug }: Props) {
             {needsImage && (
               <ResourcePicker
                 kind="image"
-                resources={state.resources}
-                selected={state.assignment.image}
-                busy={busy}
+                resources={resources}
+                selected={assignment.image}
+                busy={controlsDisabled}
                 hoverMode={mode === "hover-video"}
                 onSelect={(src) => void mutate("select-image", src)}
               />
@@ -388,9 +335,9 @@ export default function GameBackgroundMediaEditor({ slug }: Props) {
             {needsVideo && (
               <ResourcePicker
                 kind="video"
-                resources={state.resources}
-                selected={state.assignment.video?.clip ?? null}
-                busy={busy}
+                resources={resources}
+                selected={assignment.video?.clip ?? null}
+                busy={controlsDisabled}
                 hoverMode={mode === "hover-video"}
                 onSelect={(src) => void mutate("select-video", src)}
               />
@@ -400,7 +347,7 @@ export default function GameBackgroundMediaEditor({ slug }: Props) {
                 complete={imageCropReady}
                 hasResource={imageSelected}
                 mediaKind="image"
-                disabled={busy}
+                disabled={controlsDisabled}
                 onClick={() => imageSelected && setEditing("image")}
               />
             )}
@@ -409,14 +356,14 @@ export default function GameBackgroundMediaEditor({ slug }: Props) {
                 complete={videoCropReady}
                 hasResource={videoSelected}
                 mediaKind="video"
-                disabled={busy}
+                disabled={controlsDisabled}
                 onClick={() => videoSelected && setEditing("video")}
               />
             )}
             <button
               type="button"
               className={styles.globalButton}
-              disabled={busy}
+              disabled={controlsDisabled}
               onClick={() => void mutate("global", "global")}
             >
               <RotateCcw size={15} aria-hidden="true" />
@@ -437,7 +384,7 @@ export default function GameBackgroundMediaEditor({ slug }: Props) {
         {error && <div className={styles.error} role="alert">{error}</div>}
       </article>
 
-      {editing === "image" && state.assignment.image && (
+      {editing === "image" && assignment.image && (
         <ContextualMediaDialog
           eyebrow="FONDO ADAPTABLE"
           title="Ajustar foco de la imagen de fondo"
@@ -446,18 +393,18 @@ export default function GameBackgroundMediaEditor({ slug }: Props) {
         >
           <GameBackgroundViewportEditor
             slug={slug}
-            revision={state.revision}
+            revision={revision}
             kind="image"
-            src={state.assignment.image}
-            label={`Fondo · ${shortName(state.assignment.image)}`}
-            initialViewport={state.assignment.imageViewport ?? undefined}
+            src={assignment.image}
+            label={`Fondo · ${shortName(assignment.image)}`}
+            initialViewport={assignment.imageViewport ?? undefined}
             onClose={() => setEditing(null)}
             onSaved={() => window.location.reload()}
           />
         </ContextualMediaDialog>
       )}
 
-      {editing === "video" && state.assignment.video?.clip && (
+      {editing === "video" && assignment.video?.clip && (
         <ContextualMediaDialog
           eyebrow="FONDO ADAPTABLE"
           title="Ajustar foco del video de fondo"
@@ -466,11 +413,11 @@ export default function GameBackgroundMediaEditor({ slug }: Props) {
         >
           <GameBackgroundViewportEditor
             slug={slug}
-            revision={state.revision}
+            revision={revision}
             kind="video"
-            src={state.assignment.video.clip}
-            label={`Fondo · ${shortName(state.assignment.video.clip)}`}
-            initialViewport={state.assignment.video.viewport}
+            src={assignment.video.clip}
+            label={`Fondo · ${shortName(assignment.video.clip)}`}
+            initialViewport={assignment.video.viewport}
             onClose={() => setEditing(null)}
             onSaved={() => window.location.reload()}
           />
