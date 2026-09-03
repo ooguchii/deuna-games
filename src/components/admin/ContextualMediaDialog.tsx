@@ -30,7 +30,7 @@ export default function ContextualMediaDialog({
   title,
   description,
   children,
-  wide = false,
+  wide = true,
   onClose,
 }: Props) {
   const mounted = useSyncExternalStore(
