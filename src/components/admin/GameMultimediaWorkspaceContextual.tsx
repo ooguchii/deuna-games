@@ -22,6 +22,7 @@ import {
   useState,
 } from "react";
 
+import AdminMediaLibraryPreview from "@/components/admin/AdminMediaLibraryPreview";
 import AdminMediaThumbnail from "@/components/admin/AdminMediaThumbnail";
 import ContextualMediaDialog from "@/components/admin/ContextualMediaDialog";
 import GameBackgroundMediaEditor from "@/components/admin/GameBackgroundMediaEditor";
@@ -323,28 +324,32 @@ function ResourceArtwork({ resource, alt }: { resource: ResourceImage; alt: stri
       src={resource.src}
       mode="source"
       label={alt}
-      badge="FUENTE"
-      sizes="(max-width: 760px) 88vw, 280px"
+      sizes="(max-width: 760px) 88vw, 300px"
       className={styles.resourceArtwork}
     />
   );
 }
 
-function DeleteImageResourceForm({
+function DeleteResourceForm({
   action,
   revision,
   resource,
+  usages,
   disabled,
 }: {
   action: string;
   revision: number;
-  resource: ResourceImage;
+  resource: LibraryResource;
+  usages: readonly string[];
   disabled?: boolean;
 }) {
   const name = shortName(resource.src);
-  const confirmation = resource.origin === "editorial"
-    ? `¿Eliminar ${name} definitivamente?\n\nSe quitará de Portada, Hero, Card, Contenedor, Fondo y Galería y dejará de estar disponible en la biblioteca. Si la versión pública todavía la usa, el archivo físico se conservará sólo hasta que publiques el cambio.`
-    : `¿Eliminar ${name} de este juego?\n\nSe quitará de Portada, Hero, Card, Contenedor, Fondo y Galería. El archivo base compartido se conservará por seguridad.`;
+  const usageMessage = usages.length
+    ? `\n\nSe quitará de: ${usages.join(", ")}.`
+    : "\n\nActualmente no está asignado a ningún destino.";
+  const confirmation = resource.kind === "image" && resource.origin === "bundled"
+    ? `¿Quitar ${name} de este juego?${usageMessage}\n\nEl archivo base compartido se conservará por seguridad.`
+    : `¿Eliminar ${name} definitivamente?${usageMessage}\n\nDejará de estar disponible en la biblioteca. Si la versión pública todavía lo utiliza, el archivo físico se conservará hasta que publiques el cambio.`;
 
   return (
     <form
@@ -356,7 +361,7 @@ function DeleteImageResourceForm({
       }}
     >
       <input type="hidden" name="expectedRevision" value={revision} />
-      <input type="hidden" name="target" value="image-delete" />
+      <input type="hidden" name="target" value={resource.kind === "image" ? "image-delete" : "video-delete"} />
       <input type="hidden" name="resource" value={resource.src} />
       <button
         type="submit"
@@ -520,7 +525,7 @@ function ResourcePicker({
                   src={resource.src}
                   mode="source"
                   label={`Fuente ${shortName(resource.src)}`}
-                  sizes="96px"
+                  sizes="112px"
                   className={styles.choiceThumb}
                 />
                 <span className={styles.choiceMeta}>
@@ -617,7 +622,7 @@ function DestinationThumbnailSet({
   videoViewport,
   frameAspect,
   label,
-  adaptive = false,
+  summary = false,
 }: {
   mode: GameDestinationMediaMode;
   imageSrc: string | null;
@@ -626,16 +631,18 @@ function DestinationThumbnailSet({
   videoViewport?: GameVideoViewport;
   frameAspect: number;
   label: string;
-  adaptive?: boolean;
+  summary?: boolean;
 }) {
   const showImage = mode !== "video" && Boolean(imageSrc);
   const showVideo = mode !== "image" && Boolean(videoSrc);
   if (!showImage && !showVideo) return null;
 
+  const setClass = summary ? styles.summaryMediaSet : styles.currentMediaSet;
+  const pairClass = summary ? styles.summaryMediaPair : styles.currentMediaPair;
+  const thumbClass = summary ? styles.summaryThumb : styles.currentThumb;
+
   return (
-    <span
-      className={`${styles.currentMediaSet} ${showImage && showVideo ? styles.currentMediaPair : ""}`}
-    >
+    <span className={`${setClass} ${showImage && showVideo ? pairClass : ""}`}>
       {showImage && imageSrc && (
         <AdminMediaThumbnail
           kind="image"
@@ -644,8 +651,7 @@ function DestinationThumbnailSet({
           mode="destination"
           frameAspect={frameAspect}
           label={`${label} · imagen`}
-          badge={adaptive ? "ADAPTABLE" : mode === "hover-video" ? "IMG" : undefined}
-          className={styles.currentThumb}
+          className={thumbClass}
         />
       )}
       {showVideo && videoSrc && (
@@ -656,8 +662,7 @@ function DestinationThumbnailSet({
           mode="destination"
           frameAspect={frameAspect}
           label={`${label} · video`}
-          badge={adaptive ? "ADAPTABLE" : mode === "hover-video" ? "VIDEO" : undefined}
-          className={styles.currentThumb}
+          className={thumbClass}
         />
       )}
     </span>
@@ -681,6 +686,7 @@ export default function GameMultimediaWorkspaceContextual({
   const [editingGalleryImage, setEditingGalleryImage] = useState<string | null>(null);
   const [galleryManagerOpen, setGalleryManagerOpen] = useState(false);
   const [addResourceKind, setAddResourceKind] = useState<AddResourceKind | null>(null);
+  const [previewResource, setPreviewResource] = useState<LibraryResource | null>(null);
 
   const endpoint = `/api/admin/content/games/${encodeURIComponent(slug)}/media-library`;
 
@@ -735,10 +741,12 @@ export default function GameMultimediaWorkspaceContextual({
   const coverResource = imageBySrc(coverImage);
   const heroResource = imageBySrc(heroImage);
   const cardResource = imageBySrc(cardImage);
+  const detailResource = imageBySrc(detailImage);
   const firstGalleryResource = imageBySrc(screenshots[0] ?? null);
   const activeCoverVideo = videos.find((resource) => resource.src === coverVideo?.clip) ?? null;
   const activeHeroVideo = videos.find((resource) => resource.src === heroVideo?.clip) ?? null;
   const activeCardVideo = videos.find((resource) => resource.src === resolvedCardClip) ?? null;
+  const activeDetailVideo = videos.find((resource) => resource.src === detailVideo?.clip) ?? null;
   const activeCardVideoViewport = state?.assignments.cardVideo?.viewport;
 
   const coverImageCropReady = Boolean(coverImage && imageMedia?.cover?.confirmed);
@@ -1011,6 +1019,87 @@ export default function GameMultimediaWorkspaceContextual({
     );
   }
 
+  function renderLibraryGroup(
+    title: string,
+    kind: "image" | "video",
+    groupResources: LibraryResource[]
+  ) {
+    return (
+      <section className={contextualStyles.libraryGroup} aria-label={`${title} de la biblioteca`}>
+        <div className={contextualStyles.libraryGroupHeading}>
+          <div>
+            <strong>{title}</strong>
+            <span>{kind === "image" ? "Archivos WebP y recursos existentes" : "Masters WebM editoriales"}</span>
+          </div>
+          <small>{groupResources.length} recurso{groupResources.length === 1 ? "" : "s"}</small>
+        </div>
+        {groupResources.length ? (
+          <div className={styles.libraryGrid}>
+            {groupResources.map((resource) => {
+              const labels = usageLabels(resource);
+              return (
+                <article key={resource.src} className={styles.libraryCard}>
+                  <div className={styles.libraryCardHeading}>
+                    <div>
+                      <span>{resource.kind === "video" ? "VIDEO" : resource.origin === "bundled" ? "IMAGEN EXISTENTE" : "IMAGEN"}</span>
+                      <strong>{shortName(resource.src)}</strong>
+                    </div>
+                    <small>{formatBytes(resource.bytes)}</small>
+                  </div>
+                  <div className={contextualStyles.deletableArtwork}>
+                    <button
+                      type="button"
+                      className={contextualStyles.libraryPreviewButton}
+                      onClick={() => setPreviewResource(resource)}
+                      aria-label={`Abrir vista grande de ${shortName(resource.src)}`}
+                      title="Abrir vista grande"
+                    >
+                      {resource.kind === "image" ? (
+                        <ResourceArtwork resource={resource} alt="Recurso de la biblioteca multimedia" />
+                      ) : (
+                        <AdminMediaThumbnail
+                          kind="video"
+                          src={resource.src}
+                          mode="source"
+                          label={`Fuente WebM ${shortName(resource.src)}`}
+                          sizes="(max-width: 760px) 88vw, 300px"
+                          className={styles.resourceArtwork}
+                        />
+                      )}
+                    </button>
+                    <DeleteResourceForm
+                      action={endpoint}
+                      revision={assignmentRevision}
+                      resource={resource}
+                      usages={labels}
+                      disabled={stale}
+                    />
+                  </div>
+                  <div className={styles.usageRow}>
+                    {labels.length
+                      ? labels.map((usageLabel) => <span key={usageLabel}>{usageLabel}</span>)
+                      : <span className={styles.unusedBadge}>Disponible</span>}
+                  </div>
+                  <small className={styles.resourceDetails}>
+                    {resource.kind === "image"
+                      ? resource.origin === "bundled"
+                        ? `${imageFormat(resource.src)} existente · reutilizable por referencia`
+                        : `${resource.width}×${resource.height} · WebP seguro`
+                      : "WebM validado · master reutilizable"}
+                  </small>
+                </article>
+              );
+            })}
+          </div>
+        ) : (
+          <div className={contextualStyles.libraryGroupEmpty}>
+            No hay {kind === "image" ? "imágenes" : "videos"} guardados todavía.
+          </div>
+        )}
+      </section>
+    );
+  }
+
   const galleryPendingLabel = !gallerySelectionReady
     ? "IMAGEN REQUERIDA"
     : pendingGalleryCrops.length === 1
@@ -1037,23 +1126,73 @@ export default function GameMultimediaWorkspaceContextual({
         </div>
         <div className={styles.summaryGrid}>
           <article className={styles.summaryCard}>
-            <span className={styles.summaryIcon}>{coverMode === "image" ? <ImageIcon size={22} aria-hidden="true" /> : <MonitorPlay size={22} aria-hidden="true" />}</span>
+            <DestinationThumbnailSet
+              mode={coverMode}
+              imageSrc={coverResource?.src ?? null}
+              imageViewport={imageMedia?.cover}
+              videoSrc={activeCoverVideo?.src ?? null}
+              videoViewport={coverVideo?.viewport}
+              frameAspect={4 / 5}
+              label="Resumen Portada"
+              summary
+            />
+            {!((coverMode !== "video" && coverResource) || (coverMode !== "image" && activeCoverVideo)) && <span className={styles.summaryIcon}>{coverMode === "image" ? <ImageIcon size={22} aria-hidden="true" /> : <MonitorPlay size={22} aria-hidden="true" />}</span>}
             <div><span>PORTADA · {REQUIRED_DESTINATION_ASPECTS.cover}</span><strong>{modeLabel(coverMode)}</strong><RequirementStatus ready={coverCropReady} pending="RECORTE PENDIENTE" /></div>
           </article>
           <article className={styles.summaryCard}>
-            <span className={styles.summaryIcon}>{heroMode === "image" ? <ImageIcon size={22} aria-hidden="true" /> : <MonitorPlay size={22} aria-hidden="true" />}</span>
+            <DestinationThumbnailSet
+              mode={heroMode}
+              imageSrc={heroResource?.src ?? null}
+              imageViewport={imageMedia?.hero}
+              videoSrc={activeHeroVideo?.src ?? null}
+              videoViewport={heroVideo?.viewport}
+              frameAspect={16 / 9}
+              label="Resumen Hero"
+              summary
+            />
+            {!((heroMode !== "video" && heroResource) || (heroMode !== "image" && activeHeroVideo)) && <span className={styles.summaryIcon}>{heroMode === "image" ? <ImageIcon size={22} aria-hidden="true" /> : <MonitorPlay size={22} aria-hidden="true" />}</span>}
             <div><span>HERO · {REQUIRED_DESTINATION_ASPECTS.hero}</span><strong>{modeLabel(heroMode)}</strong><RequirementStatus ready={heroCropReady} pending="RECORTE PENDIENTE" /></div>
           </article>
           <article className={styles.summaryCard}>
-            <span className={styles.summaryIcon}>{cardMode === "image" ? <ImageIcon size={22} aria-hidden="true" /> : <Clapperboard size={22} aria-hidden="true" />}</span>
+            <DestinationThumbnailSet
+              mode={cardMode}
+              imageSrc={cardResource?.src ?? null}
+              imageViewport={imageMedia?.card}
+              videoSrc={activeCardVideo?.src ?? null}
+              videoViewport={activeCardVideoViewport}
+              frameAspect={3 / 2}
+              label="Resumen Card"
+              summary
+            />
+            {!((cardMode !== "video" && cardResource) || (cardMode !== "image" && activeCardVideo)) && <span className={styles.summaryIcon}>{cardMode === "image" ? <ImageIcon size={22} aria-hidden="true" /> : <Clapperboard size={22} aria-hidden="true" />}</span>}
             <div><span>CARD · {REQUIRED_DESTINATION_ASPECTS.card}</span><strong>{modeLabel(cardMode)}</strong><RequirementStatus ready={cardCropReady} pending="RECORTE PENDIENTE" /></div>
           </article>
           <article className={styles.summaryCard}>
-            <span className={styles.summaryIcon}>{detailMode === "image" ? <ImageIcon size={22} aria-hidden="true" /> : <MonitorPlay size={22} aria-hidden="true" />}</span>
+            <DestinationThumbnailSet
+              mode={detailMode}
+              imageSrc={detailResource?.src ?? null}
+              imageViewport={imageMedia?.detail}
+              videoSrc={activeDetailVideo?.src ?? null}
+              videoViewport={detailVideo?.viewport}
+              frameAspect={16 / 9}
+              label="Resumen Contenedor"
+              summary
+            />
+            {!((detailMode !== "video" && detailResource) || (detailMode !== "image" && activeDetailVideo)) && <span className={styles.summaryIcon}>{detailMode === "image" ? <ImageIcon size={22} aria-hidden="true" /> : <MonitorPlay size={22} aria-hidden="true" />}</span>}
             <div><span>CONTENEDOR · ADAPTABLE</span><strong>{modeLabel(detailMode)}</strong><RequirementStatus ready={detailCropReady} pending="RECORTE PENDIENTE" readyLabel="RECORTE ADAPTABLE CONFIRMADO" /></div>
           </article>
           <article className={styles.summaryCard}>
-            <span className={styles.summaryIcon}><Images size={22} aria-hidden="true" /></span>
+            {firstGalleryResource ? (
+              <AdminMediaThumbnail
+                kind="image"
+                src={firstGalleryResource.src}
+                viewport={imageMedia?.gallery?.[firstGalleryResource.src]}
+                mode="destination"
+                frameAspect={resolveGameImageCropAspectRatio(imageMedia?.gallery?.[firstGalleryResource.src])}
+                label="Resumen Galería"
+                className={styles.summaryThumb}
+              />
+            ) : <span className={styles.summaryIcon}><Images size={22} aria-hidden="true" /></span>}
             <div><span>GALERÍA · MÍNIMO 1</span><strong>{screenshots.length} de 8 capturas</strong><RequirementStatus ready={galleryReady} pending={galleryPendingLabel} readyLabel="IMÁGENES Y RECORTES LISTOS" /></div>
           </article>
         </div>
@@ -1218,7 +1357,7 @@ export default function GameMultimediaWorkspaceContextual({
 
           <section className={styles.numberedSection} aria-labelledby="shared-library-heading">
             <div className={styles.sectionTitleRow}>
-              <div><span>02</span><div><h2 id="shared-library-heading">Biblioteca multimedia compartida</h2><p>La biblioteca queda al final: administra aquí los archivos físicos que luego reutilizas en los destinos.</p></div></div>
+              <div><span>02</span><div><h2 id="shared-library-heading">Biblioteca multimedia compartida</h2><p>Administra los masters reutilizables. Imágenes y videos comparten la misma biblioteca, pero se muestran separados para encontrarlos más rápido.</p></div></div>
               <button type="button" className={styles.secondaryAction} onClick={() => openAddResource("image")}><Upload size={16} aria-hidden="true" />Agregar nuevo recurso</button>
             </div>
             {loading ? (
@@ -1228,31 +1367,9 @@ export default function GameMultimediaWorkspaceContextual({
             ) : resources.length === 0 ? (
               <div className={styles.emptyLibrary}><FolderOpen size={30} aria-hidden="true" /><strong>La biblioteca todavía está vacía</strong><span>Agrega una imagen o crea un video editorial para empezar.</span><button type="button" className={styles.secondaryAction} onClick={() => openAddResource("image")}><Plus size={16} aria-hidden="true" />Agregar primer recurso</button></div>
             ) : (
-              <div className={styles.libraryGrid}>
-                {resources.map((resource) => {
-                  const labels = usageLabels(resource);
-                  return (
-                    <article key={resource.src} className={styles.libraryCard}>
-                      <div className={styles.libraryCardHeading}><div><span>{resource.kind === "video" ? "VIDEO" : resource.origin === "bundled" ? "IMAGEN EXISTENTE" : "IMAGEN"}</span><strong>{shortName(resource.src)}</strong></div><small>{formatBytes(resource.bytes)}</small></div>
-                      {resource.kind === "image" ? (
-                        <div className={contextualStyles.deletableArtwork}><ResourceArtwork resource={resource} alt="Recurso de la biblioteca multimedia" /><DeleteImageResourceForm action={endpoint} revision={assignmentRevision} resource={resource} disabled={stale} /></div>
-                      ) : (
-                        <AdminMediaThumbnail
-                          kind="video"
-                          src={resource.src}
-                          mode="source"
-                          label={`Fuente WebM ${shortName(resource.src)}`}
-                          badge="FUENTE"
-                          allowRetry
-                          sizes="(max-width: 760px) 88vw, 280px"
-                          className={styles.resourceArtwork}
-                        />
-                      )}
-                      <div className={styles.usageRow}>{labels.length ? labels.map((usageLabel) => <span key={usageLabel}>{usageLabel}</span>) : <span className={styles.unusedBadge}>Disponible</span>}</div>
-                      <small className={styles.resourceDetails}>{resource.kind === "image" ? resource.origin === "bundled" ? `${imageFormat(resource.src)} existente · reutilizable por referencia` : `${resource.width}×${resource.height} · WebP seguro` : "WebM validado · master reutilizable"}</small>
-                    </article>
-                  );
-                })}
+              <div className={contextualStyles.libraryGroups}>
+                {renderLibraryGroup("IMÁGENES", "image", images)}
+                {renderLibraryGroup("VIDEOS", "video", videos)}
               </div>
             )}
           </section>
@@ -1273,6 +1390,17 @@ export default function GameMultimediaWorkspaceContextual({
           <section className={styles.tipCard}><Sparkles size={20} aria-hidden="true" /><div><strong>Reutilizar sin acoplar</strong><p>Puedes elegir el mismo archivo físico en dos destinos, pero cada asignación y recorte se conserva de forma independiente.</p></div></section>
         </aside>
       </div>
+
+      {previewResource && (
+        <AdminMediaLibraryPreview
+          kind={previewResource.kind}
+          src={previewResource.src}
+          name={shortName(previewResource.src)}
+          details={previewResource.kind === "image" ? imageMeta(previewResource) : `WebM · ${formatBytes(previewResource.bytes)}`}
+          usage={usageLabels(previewResource)}
+          onClose={() => setPreviewResource(null)}
+        />
+      )}
 
       {editingDestination && (editingVideo || editingImage) && (
         <ContextualMediaDialog eyebrow="RECORTE OBLIGATORIO" title={editingDestination === "cover" ? "Recorte 4:5 de la Portada" : editingDestination === "hero" ? "Recorte 16:9 del Hero" : "Recorte 3:2 de la Card"} description="Debes guardar este recorte para completar el destino. El archivo físico permanece intacto." onClose={() => setEditingDestination(null)}>
