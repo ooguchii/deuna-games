@@ -12,20 +12,24 @@ import {
 } from "@/lib/admin/content-service";
 import {
   listGameImageReferences,
+  listGameVideoReferences,
 } from "@/lib/admin/game-media-integrity";
 import {
   getPublishedGameImageReferences,
 } from "@/lib/admin/publication-service";
+import {
+  getPublishedGameVideoReferences,
+} from "@/lib/admin/published-game-video-references";
 import { hasExactAdminFormFields } from "@/lib/admin/request-security";
 import { verifyAdminSession } from "@/lib/admin/session";
 import {
-  deleteEditorialImageResource,
+  deleteEditorialMediaResource,
   findEditorialMediaResource,
   listAssignedBundledImageResources,
   listEditorialMediaLibrary,
-  markEditorialImageForDeletion,
+  markEditorialMediaForDeletion,
   mergeEditorialMediaResources,
-  reconcileEditorialImageDeletions,
+  reconcileEditorialMediaDeletions,
 } from "@/lib/media/editorial-media-library";
 import {
   evaluateGameMediaRequirements,
@@ -65,6 +69,7 @@ const assignmentTargetSchema = z.enum([
   "gallery-image",
   "gallery-remove",
   "image-delete",
+  "video-delete",
 ]);
 
 const mediaModeSchema = z.enum([
@@ -96,17 +101,29 @@ function requiredVideoViewport(
   };
 }
 
+async function publishedReferencesForGame(slug: string) {
+  const [images, videos] = await Promise.all([
+    getPublishedGameImageReferences(slug),
+    getPublishedGameVideoReferences(slug),
+  ]);
+  return Array.from(new Set([...images, ...videos]));
+}
+
 async function resourcesForGame(
   slug: string,
   game: Game,
-  publishedImageReferences: readonly string[]
+  publishedReferences: readonly string[]
 ) {
   const imageReferences = listGameImageReferences(game);
+  const draftReferences = [
+    ...imageReferences,
+    ...listGameVideoReferences(game),
+  ];
 
-  await reconcileEditorialImageDeletions(
+  await reconcileEditorialMediaDeletions(
     slug,
-    imageReferences,
-    publishedImageReferences
+    draftReferences,
+    publishedReferences
   );
 
   const [editorial, bundled] = await Promise.all([
@@ -138,25 +155,11 @@ function withoutImageResource(
     ...game.imageMedia,
   };
 
-  if (game.coverImage === resource) {
-    delete imageMedia.cover;
-  }
-
-  if (game.heroImage === resource) {
-    delete imageMedia.hero;
-  }
-
-  if (game.cardImage === resource) {
-    delete imageMedia.card;
-  }
-
-  if (game.detailImage === resource) {
-    delete imageMedia.detail;
-  }
-
-  if (game.backgroundImage === resource) {
-    delete imageMedia.background;
-  }
+  if (game.coverImage === resource) delete imageMedia.cover;
+  if (game.heroImage === resource) delete imageMedia.hero;
+  if (game.cardImage === resource) delete imageMedia.card;
+  if (game.detailImage === resource) delete imageMedia.detail;
+  if (game.backgroundImage === resource) delete imageMedia.background;
 
   const gallery = {
     ...imageMedia.gallery,
@@ -197,6 +200,51 @@ function withoutImageResource(
     },
     imageMedia
   );
+}
+
+function withoutVideoResource(
+  game: Game,
+  resource: string
+): MediaDraftUpdate {
+  const videoMedia = {
+    ...game.videoMedia,
+  };
+
+  if (videoMedia.cover?.clip === resource) {
+    delete videoMedia.cover;
+  }
+
+  if (videoMedia.hero?.clip === resource) {
+    delete videoMedia.hero;
+    if (videoMedia.card?.source === "hero") {
+      delete videoMedia.card;
+    }
+  }
+
+  if (
+    videoMedia.card?.source === "independent" &&
+    videoMedia.card.clip === resource
+  ) {
+    delete videoMedia.card;
+  }
+
+  if (videoMedia.detail?.clip === resource) {
+    delete videoMedia.detail;
+  }
+
+  if (videoMedia.background?.clip === resource) {
+    delete videoMedia.background;
+  }
+
+  return {
+    videoMedia: Object.keys(videoMedia).length
+      ? videoMedia
+      : undefined,
+    previewClip:
+      game.previewClip === resource
+        ? undefined
+        : game.previewClip,
+  };
 }
 
 function mediaModeUpdate(
@@ -268,12 +316,11 @@ export async function GET(
     );
   }
 
-  const publishedImageReferences =
-    await getPublishedGameImageReferences(slug);
+  const publishedReferences = await publishedReferencesForGame(slug);
   const resources = await resourcesForGame(
     slug,
     item.payload,
-    publishedImageReferences
+    publishedReferences
   );
 
   return NextResponse.json(
@@ -353,12 +400,11 @@ export async function POST(
   }
 
   const current = item.payload;
-  const publishedImageReferences =
-    await getPublishedGameImageReferences(slug);
+  const publishedReferences = await publishedReferencesForGame(slug);
   const resources = await resourcesForGame(
     slug,
     current,
-    publishedImageReferences
+    publishedReferences
   );
   const imageResourceMatch = findEditorialMediaResource(
     resources,
@@ -605,6 +651,17 @@ export async function POST(
     update = withoutImageResource(current, imageResource.src);
   }
 
+  if (target.data === "video-delete") {
+    if (!videoResource) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        redirectPath(slug, "recurso-invalido")
+      );
+    }
+
+    update = withoutVideoResource(current, videoResource.src);
+  }
+
   if (!update) {
     return adminRedirect(
       authorized.adminOrigin,
@@ -632,8 +689,17 @@ export async function POST(
     );
   }
 
-  if (target.data === "image-delete" && imageResource) {
-    if (imageResource.origin === "bundled") {
+  const deletedResource = target.data === "image-delete"
+    ? imageResource
+    : target.data === "video-delete"
+      ? videoResource
+      : undefined;
+
+  if (deletedResource) {
+    if (
+      deletedResource.kind === "image" &&
+      deletedResource.origin === "bundled"
+    ) {
       return adminRedirect(
         authorized.adminOrigin,
         redirectPath(slug, "recurso-eliminado-base")
@@ -641,9 +707,9 @@ export async function POST(
     }
 
     try {
-      const deletion = await markEditorialImageForDeletion(
+      const deletion = await markEditorialMediaForDeletion(
         slug,
-        imageResource
+        deletedResource
       );
 
       if (deletion === "missing") {
@@ -653,14 +719,14 @@ export async function POST(
         );
       }
 
-      if (publishedImageReferences.includes(imageResource.src)) {
+      if (publishedReferences.includes(deletedResource.src)) {
         return adminRedirect(
           authorized.adminOrigin,
           redirectPath(slug, "recurso-eliminacion-pendiente")
         );
       }
 
-      await deleteEditorialImageResource(slug, imageResource);
+      await deleteEditorialMediaResource(slug, deletedResource);
       return adminRedirect(
         authorized.adminOrigin,
         redirectPath(slug, "recurso-eliminado")

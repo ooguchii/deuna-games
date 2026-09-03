@@ -1,0 +1,175 @@
+.previewLayout {
+  display: grid;
+  gap: 12px;
+}
+
+.imageStage,
+.videoStage {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  min-height: clamp(320px, 66vh, 720px);
+  border: 1px solid #263746;
+  border-radius: 10px;
+  background:
+    linear-gradient(45deg, rgba(255, 255, 255, 0.018) 25%, transparent 25%) 0 0 / 14px 14px,
+    linear-gradient(-45deg, rgba(255, 255, 255, 0.018) 25%, transparent 25%) 0 7px / 14px 14px,
+    #050a0f;
+}
+
+.image {
+  object-fit: contain;
+}
+
+.videoShell {
+  display: grid;
+  gap: 10px;
+}
+
+.videoStage {
+  display: grid;
+  place-items: center;
+}
+
+.videoStage:fullscreen {
+  border: 0;
+  border-radius: 0;
+  background: #000;
+}
+
+.video {
+  width: 100%;
+  max-width: 100%;
+  max-height: min(72vh, 760px);
+  object-fit: contain;
+  background: #000;
+  cursor: pointer;
+}
+
+.videoStage:fullscreen .video {
+  width: 100vw;
+  height: 100vh;
+  max-height: none;
+}
+
+.videoControls {
+  display: grid;
+  grid-template-columns: auto auto auto minmax(140px, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+  padding: 9px;
+  border: 1px solid #263746;
+  border-radius: 9px;
+  background: #091119;
+}
+
+.videoControls button {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 9px;
+  color: #d9e3ea;
+  border: 1px solid #2d3e4c;
+  border-radius: 7px;
+  background: #0d1720;
+  font-size: 11px;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.videoControls button:hover {
+  border-color: rgba(255, 122, 24, 0.62);
+  background: #121d27;
+}
+
+.videoControls .primaryControl {
+  color: #fff4eb;
+  border-color: rgba(255, 122, 24, 0.62);
+  background: rgba(255, 122, 24, 0.11);
+}
+
+.timeline {
+  min-width: 0;
+}
+
+.timeline input {
+  width: 100%;
+  accent-color: #ff7a18;
+  cursor: pointer;
+}
+
+.timeReadout {
+  color: #9aabba;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.metaBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 11px 12px;
+  border: 1px solid #21313e;
+  border-radius: 9px;
+  background: #091119;
+}
+
+.metaBar > div {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.metaBar strong {
+  color: #e6edf2;
+  font-size: 12px;
+}
+
+.metaBar span,
+.metaBar small {
+  color: #8799a9;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.metaBar small {
+  flex: 0 0 auto;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (max-width: 780px) {
+  .imageStage,
+  .videoStage {
+    min-height: 260px;
+  }
+
+  .videoControls {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .timeline {
+    grid-column: 1 / -1;
+  }
+
+  .timeReadout {
+    grid-column: 1 / span 2;
+  }
+
+  .metaBar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

@@ -63,7 +63,7 @@
 .summaryCard {
   display: flex;
   min-width: 0;
-  min-height: 82px;
+  min-height: 88px;
   align-items: center;
   gap: 12px;
   padding: 11px;
@@ -96,7 +96,8 @@
 }
 
 .currentThumb,
-.choiceThumb {
+.choiceThumb,
+.summaryThumb {
   position: relative;
   overflow: hidden;
   flex: 0 0 auto;
@@ -116,9 +117,23 @@
   background: #0b131c;
 }
 
-.summaryIcon {
-  width: 52px;
-  height: 52px;
+.summaryIcon,
+.summaryThumb {
+  width: 64px;
+  height: 56px;
+}
+
+.summaryMediaSet {
+  display: flex;
+  min-width: 64px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+.summaryMediaPair .summaryThumb {
+  width: 54px;
 }
 
 .mainGrid {
@@ -214,7 +229,7 @@
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
-  margin-top: 14px;
+  margin-top: 12px;
 }
 
 .libraryCard {
@@ -376,9 +391,9 @@
 .currentResource {
   display: flex;
   min-width: 0;
-  min-height: 72px;
+  min-height: 82px;
   align-items: center;
-  gap: 10px;
+  gap: 11px;
   padding: 9px;
   border: 1px solid #1d2b37;
   border-radius: 9px;
@@ -387,13 +402,13 @@
 
 .currentThumb,
 .currentIcon {
-  width: 68px;
-  height: 52px;
+  width: 82px;
+  height: 64px;
 }
 
 .currentMediaSet {
   display: flex;
-  min-width: 68px;
+  min-width: 82px;
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
@@ -401,7 +416,8 @@
 }
 
 .currentMediaPair .currentThumb {
-  width: 62px;
+  width: 70px;
+  height: 60px;
 }
 
 .currentResource > div {
@@ -541,7 +557,7 @@
 .resourceChoice {
   display: flex;
   width: 100%;
-  min-height: 62px;
+  min-height: 68px;
   align-items: center;
   gap: 9px;
   padding: 7px;
@@ -564,8 +580,8 @@
 }
 
 .choiceThumb {
-  width: 58px;
-  height: 46px;
+  width: 70px;
+  height: 54px;
 }
 
 .choiceMeta {

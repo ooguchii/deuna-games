@@ -90,22 +90,27 @@ assert(
 );
 
 const galleryStart = workspace.indexOf("function renderGalleryAssignedItems");
-const galleryEnd = workspace.indexOf("\n  return (", galleryStart);
+const galleryEnd = workspace.indexOf("\n  function destinationActions", galleryStart);
 const galleryRenderer = galleryStart >= 0 && galleryEnd > galleryStart
   ? workspace.slice(galleryStart, galleryEnd)
   : "";
-const libraryStart = workspace.indexOf("Biblioteca multimedia compartida");
+const libraryRendererStart = workspace.indexOf("function renderLibraryGroup");
+const libraryRendererEnd = workspace.indexOf("\n  const galleryPendingLabel", libraryRendererStart);
+const libraryRenderer = libraryRendererStart >= 0 && libraryRendererEnd > libraryRendererStart
+  ? workspace.slice(libraryRendererStart, libraryRendererEnd)
+  : "";
 
 assert(
   galleryRenderer.includes('value="gallery-remove"') &&
     galleryRenderer.includes("Editar") &&
     galleryRenderer.includes("Quitar") &&
-    !galleryRenderer.includes("DeleteImageResourceForm") &&
+    !galleryRenderer.includes("DeleteResourceForm") &&
     !galleryRenderer.includes('value="image-delete"') &&
-    workspace.includes("DeleteImageResourceForm") &&
-    libraryStart >= 0 &&
-    workspace.indexOf("<DeleteImageResourceForm", libraryStart) > libraryStart,
-  "Galería debe ofrecer Editar/Quitar sin renderizar eliminación destructiva; la Biblioteca conserva su ×."
+    !galleryRenderer.includes('value="video-delete"') &&
+    workspace.includes("function DeleteResourceForm") &&
+    libraryRenderer.includes("<DeleteResourceForm") &&
+    libraryRenderer.includes("usages={labels}"),
+  "Galería debe ofrecer Editar/Quitar sin eliminación destructiva; la Biblioteca conserva su × segura para imágenes y videos."
 );
 
 try {
@@ -124,5 +129,5 @@ if (failures.length) {
 }
 
 console.log(
-  "Multimedia v2 hardening: OK (1080p50 default · 60 FPS máximo · sin FPS inventados · master único · Galería no destructiva · wrapper temporal eliminado)."
+  "Multimedia v2 hardening: OK (1080p50 default · 60 FPS máximo · sin FPS inventados · master único · Galería no destructiva · Biblioteca con borrado seguro · wrapper temporal eliminado)."
 );
