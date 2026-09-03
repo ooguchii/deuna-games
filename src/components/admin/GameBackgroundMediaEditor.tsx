@@ -3,13 +3,12 @@
 import Image from "next/image";
 import {
   CheckCircle2,
-  ImageIcon,
   Info,
   MonitorPlay,
   RotateCcw,
   Sparkles,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 
 import ContextualMediaDialog from "@/components/admin/ContextualMediaDialog";
 import GameBackgroundViewportEditor from "@/components/admin/GameBackgroundViewportEditor";
@@ -20,6 +19,8 @@ import type {
 } from "@/types/game";
 
 import styles from "./GameBackgroundMediaEditor.module.css";
+import assignmentStyles from "./GameMultimediaEditor.module.css";
+import contextualStyles from "./GameMultimediaWorkspaceContextual.module.css";
 
 type ResourceImage = {
   kind: "image";
@@ -41,20 +42,19 @@ type ResourceVideo = {
 
 type LibraryResource = ResourceImage | ResourceVideo;
 
-type BackgroundState = {
-  revision: number;
-  resources: LibraryResource[];
-  assignment: {
-    active: boolean;
-    mode: GameDestinationMediaMode | null;
-    image: string | null;
-    imageViewport: GameImageViewport | null;
-    video: GameBackgroundVideo | null;
-  };
+type BackgroundAssignment = {
+  mode: GameDestinationMediaMode | null;
+  image: string | null;
+  imageViewport: GameImageViewport | null;
+  video: GameBackgroundVideo | null;
 };
 
 type Props = {
   slug: string;
+  revision: number;
+  resources: LibraryResource[];
+  assignment: BackgroundAssignment;
+  stale?: boolean;
 };
 
 const MODES: Array<{ value: GameDestinationMediaMode; label: string }> = [
@@ -72,41 +72,52 @@ function formatBytes(bytes: number) {
 
 function shortName(src: string) {
   const filename = src.split("/").filter(Boolean).at(-1) ?? src;
-  return filename.length <= 28 ? filename : `${filename.slice(0, 13)}…${filename.slice(-12)}`;
+  return filename.length <= 22 ? filename : `${filename.slice(0, 10)}…${filename.slice(-9)}`;
 }
 
-function isState(value: unknown): value is BackgroundState {
-  if (!value || typeof value !== "object") return false;
-  const root = value as Partial<BackgroundState>;
-  return typeof root.revision === "number" &&
-    Array.isArray(root.resources) &&
-    Boolean(root.assignment && typeof root.assignment === "object");
+function requirementActionClass(complete: boolean) {
+  return complete
+    ? contextualStyles.requirementActionComplete
+    : contextualStyles.requirementActionMissing;
+}
+
+function RequirementActionIcon({ complete }: { complete: boolean }) {
+  return complete
+    ? <CheckCircle2 size={17} aria-hidden="true" />
+    : <Info size={17} aria-hidden="true" />;
 }
 
 function RequirementButton({
   complete,
-  missing,
-  done,
+  hasResource,
+  mediaKind,
   disabled,
   onClick,
 }: {
   complete: boolean;
-  missing: string;
-  done: string;
+  hasResource: boolean;
+  mediaKind: "image" | "video";
   disabled?: boolean;
-  onClick?: () => void;
+  onClick: () => void;
 }) {
-  const Icon = complete ? CheckCircle2 : Info;
+  const missingLabel = mediaKind === "image"
+    ? "Falta ajustar el foco de la imagen"
+    : "Falta ajustar el foco del video";
+  const completeLabel = mediaKind === "image"
+    ? "Foco adaptable de imagen confirmado"
+    : "Foco adaptable de video confirmado";
+
   return (
     <button
       type="button"
-      className={`${styles.requirementButton} ${complete ? styles.complete : styles.missing}`}
-      disabled={disabled}
-      onClick={onClick}
+      className={`${assignmentStyles.editDestinationButton} ${requirementActionClass(complete)}`}
       data-requirement-state={complete ? "complete" : "missing"}
+      disabled={disabled || !hasResource}
+      onClick={onClick}
+      title={complete ? "Editar foco adaptable" : undefined}
     >
-      <Icon size={17} aria-hidden="true" />
-      {complete ? done : missing}
+      <RequirementActionIcon complete={complete} />
+      {complete ? completeLabel : missingLabel}
     </button>
   );
 }
@@ -116,21 +127,34 @@ function ResourcePicker({
   resources,
   selected,
   busy,
+  hoverMode,
   onSelect,
 }: {
   kind: "image" | "video";
   resources: LibraryResource[];
   selected: string | null;
   busy: boolean;
+  hoverMode: boolean;
   onSelect: (src: string) => void;
 }) {
   const available = resources.filter((resource) => resource.kind === kind);
+  const complete = Boolean(selected);
+  const missingLabel = kind === "image"
+    ? hoverMode ? "Falta seleccionar imagen base" : "Falta seleccionar imagen"
+    : hoverMode ? "Falta seleccionar video hover" : "Falta seleccionar video";
+  const completeLabel = kind === "image"
+    ? hoverMode ? "Imagen base seleccionada" : "Imagen seleccionada"
+    : hoverMode ? "Video hover seleccionado" : "Video seleccionado";
 
   return (
     <details className={styles.resourcePicker}>
-      <summary className={styles.resourcePickerSummary}>
-        {kind === "image" ? <ImageIcon size={17} aria-hidden="true" /> : <MonitorPlay size={17} aria-hidden="true" />}
-        {kind === "image" ? "Elegir imagen de fondo" : "Elegir video de fondo"}
+      <summary
+        className={`${assignmentStyles.selectResourceButton} ${requirementActionClass(complete)}`}
+        data-requirement-state={complete ? "complete" : "missing"}
+        title={complete ? `Cambiar ${kind === "image" ? "imagen" : "video"}` : undefined}
+      >
+        <RequirementActionIcon complete={complete} />
+        <span>{complete ? completeLabel : missingLabel}</span>
       </summary>
       <div className={styles.resourcePanel}>
         <div className={styles.resourcePanelHeading}>
@@ -149,14 +173,16 @@ function ResourcePicker({
               >
                 <span className={styles.resourceThumb}>
                   {resource.kind === "image" ? (
-                    <Image src={resource.src} alt="" fill sizes="150px" />
+                    <Image src={resource.src} alt="" fill sizes="96px" />
                   ) : (
-                    <video src={resource.src} muted playsInline preload="metadata" aria-hidden="true" />
+                    <span className={styles.videoThumb}>
+                      <MonitorPlay size={22} aria-hidden="true" />
+                    </span>
                   )}
                 </span>
                 <span className={styles.resourceCopy}>
                   <strong>{shortName(resource.src)}</strong>
-                  <small>{formatBytes(resource.bytes)}</small>
+                  <small>{resource.kind === "video" ? `WebM · ${formatBytes(resource.bytes)}` : formatBytes(resource.bytes)}</small>
                 </span>
                 {selected === resource.src && <CheckCircle2 size={16} aria-label="Seleccionado" />}
               </button>
@@ -164,59 +190,35 @@ function ResourcePicker({
           </div>
         ) : (
           <p className={styles.emptyResource}>
-            No hay recursos de este tipo todavía. Agrégalos desde la Biblioteca multimedia compartida y volverán a aparecer aquí sin duplicarse.
+            No hay {kind === "image" ? "imágenes" : "videos"} disponibles. Agrégalos una sola vez desde la Biblioteca multimedia compartida.
           </p>
         )}
+        <a className={styles.libraryLink} href="#shared-library-heading">
+          Ir a Biblioteca multimedia compartida
+        </a>
       </div>
     </details>
   );
 }
 
-export default function GameBackgroundMediaEditor({ slug }: Props) {
-  const [state, setState] = useState<BackgroundState | null>(null);
-  const [loading, setLoading] = useState(true);
+export default function GameBackgroundMediaEditor({
+  slug,
+  revision,
+  resources,
+  assignment,
+  stale = false,
+}: Props) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState<"image" | "video" | null>(null);
 
   const endpoint = `/api/admin/content/games/${encodeURIComponent(slug)}/background-media`;
-
-  useEffect(() => {
-    let alive = true;
-    async function load() {
-      try {
-        const response = await fetch(endpoint, {
-          credentials: "same-origin",
-          cache: "no-store",
-        });
-        const payload = await response.json();
-        if (!response.ok || !isState(payload)) {
-          throw new Error(payload?.error ?? "No se pudo cargar el Fondo del juego.");
-        }
-        if (alive) {
-          setState(payload);
-          setError(null);
-        }
-      } catch (reason) {
-        if (alive) {
-          setError(reason instanceof Error ? reason.message : "No se pudo cargar el Fondo del juego.");
-        }
-      } finally {
-        if (alive) setLoading(false);
-      }
-    }
-    void load();
-    return () => {
-      alive = false;
-    };
-  }, [endpoint]);
-
-  const mode = state?.assignment.mode ?? null;
-  const imageSelected = Boolean(state?.assignment.image);
-  const imageCropReady = state?.assignment.imageViewport?.confirmed === true;
-  const videoSelected = Boolean(state?.assignment.video?.clip);
-  const videoCropReady = state?.assignment.video?.viewport.confirmed === true &&
-    state?.assignment.video?.viewport.aspect === "source";
+  const mode = assignment.mode;
+  const imageSelected = Boolean(assignment.image);
+  const imageCropReady = assignment.imageViewport?.confirmed === true;
+  const videoSelected = Boolean(assignment.video?.clip);
+  const videoCropReady = assignment.video?.viewport.confirmed === true &&
+    assignment.video?.viewport.aspect === "source";
   const needsImage = mode === "image" || mode === "hover-video";
   const needsVideo = mode === "video" || mode === "hover-video";
   const activeReady = Boolean(
@@ -224,16 +226,25 @@ export default function GameBackgroundMediaEditor({ slug }: Props) {
       (!needsImage || (imageSelected && imageCropReady)) &&
       (!needsVideo || (videoSelected && videoCropReady))
   );
+  const controlsDisabled = busy || stale;
 
-  const currentLabel = useMemo(() => {
-    if (!mode) return "Fondo global de Juegos";
-    if (mode === "image") return "Imagen";
-    if (mode === "video") return "Video";
-    return "Imagen + hover";
-  }, [mode]);
+  const currentLabel = !mode
+    ? "Fondo global"
+    : mode === "image"
+      ? "Imagen"
+      : mode === "video"
+        ? "Video"
+        : "Imagen + hover";
+
+  const imageResource = resources.find(
+    (resource): resource is ResourceImage => resource.kind === "image" && resource.src === assignment.image
+  ) ?? null;
+  const videoResource = resources.find(
+    (resource): resource is ResourceVideo => resource.kind === "video" && resource.src === assignment.video?.clip
+  ) ?? null;
 
   async function mutate(action: string, resource: string) {
-    if (!state || busy) return;
+    if (controlsDisabled) return;
     setBusy(true);
     setError(null);
     try {
@@ -245,7 +256,7 @@ export default function GameBackgroundMediaEditor({ slug }: Props) {
           "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
         },
         body: new URLSearchParams({
-          expectedRevision: String(state.revision),
+          expectedRevision: String(revision),
           action,
           resource,
         }),
@@ -261,154 +272,119 @@ export default function GameBackgroundMediaEditor({ slug }: Props) {
     }
   }
 
-  if (loading) {
-    return <section className={styles.panel}><p className={styles.loading}>Cargando Fondo del juego…</p></section>;
-  }
-
-  if (!state) {
-    return (
-      <section className={styles.panel}>
-        <div className={styles.error} role="alert">{error ?? "No se pudo cargar el Fondo del juego."}</div>
-      </section>
-    );
-  }
+  const resourceDescription = !mode
+    ? "Usa el fondo global de Juegos; no agrega un recurso propio."
+    : mode === "hover-video"
+      ? `${assignment.image ? shortName(assignment.image) : "Imagen pendiente"} + ${videoResource ? shortName(videoResource.src) : "video pendiente"}`
+      : mode === "video"
+        ? videoResource ? shortName(videoResource.src) : "Selecciona un video"
+        : assignment.image ? shortName(assignment.image) : "Selecciona una imagen";
 
   return (
-    <section className={styles.panel} aria-labelledby="game-background-heading">
-      <div className={styles.heading}>
-        <div>
-          <span className={styles.step}>D</span>
+    <>
+      <article className={assignmentStyles.assignmentCard} aria-labelledby="game-background-heading">
+        <header>
+          <div><span>D</span><h3 id="game-background-heading">Fondo del juego</h3></div>
+          <small>Opcional · foco adaptable</small>
+        </header>
+
+        <div className={assignmentStyles.modeSwitch} aria-label="Modo del Fondo del juego">
+          {MODES.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              disabled={controlsDisabled}
+              aria-pressed={mode === option.value}
+              className={mode === option.value ? assignmentStyles.modeActive : ""}
+              onClick={() => void mutate("mode", option.value)}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+
+        <div className={assignmentStyles.currentResource}>
+          {mode !== "video" && imageResource ? (
+            <span className={assignmentStyles.currentThumb}>
+              <Image src={imageResource.src} alt="" fill sizes="72px" />
+            </span>
+          ) : (
+            <span className={assignmentStyles.currentIcon}>
+              {mode === "video" ? <MonitorPlay size={20} aria-hidden="true" /> : <Sparkles size={20} aria-hidden="true" />}
+            </span>
+          )}
           <div>
-            <span className={styles.eyebrow}>FONDO DEL JUEGO · ADAPTABLE</span>
-            <h2 id="game-background-heading">Fondo de la ficha completa</h2>
+            <span>{mode ? "Modo activo" : "Fondo actual"}</span>
+            <strong>{currentLabel}</strong>
+            <small>{resourceDescription}</small>
           </div>
         </div>
-        <p>
-          Reemplaza sólo el fondo global detrás de esta ficha. Reutiliza los mismos archivos físicos de la biblioteca y guarda un foco independiente que se adapta a desktop, ultrawide y móvil.
-        </p>
-      </div>
 
-      <div className={styles.statusBar}>
-        <div className={styles.statusIcon}>
-          <Sparkles size={20} aria-hidden="true" />
-        </div>
-        <div>
-          <span>Modo activo</span>
-          <strong>{currentLabel}</strong>
-          <small>
-            {mode
-              ? activeReady
-                ? "Configuración completa y lista para publicar."
-                : "Completa los pasos marcados en rojo antes de publicar."
-              : "La ficha conserva exactamente el fondo global configurado para Juegos."}
-          </small>
-        </div>
-        <button
-          type="button"
-          className={styles.globalButton}
-          disabled={busy || !mode}
-          onClick={() => void mutate("global", "global")}
-        >
-          <RotateCcw size={15} aria-hidden="true" />
-          Usar fondo global
-        </button>
-      </div>
-
-      <div className={styles.modeSwitch} aria-label="Modo del Fondo del juego">
-        {MODES.map((option) => (
-          <button
-            key={option.value}
-            type="button"
-            disabled={busy}
-            aria-pressed={mode === option.value}
-            className={mode === option.value ? styles.modeActive : ""}
-            onClick={() => void mutate("mode", option.value)}
-          >
-            {option.label}
-          </button>
-        ))}
-      </div>
-
-      {mode ? (
-        <div className={styles.layers}>
-          {needsImage && (
-            <section className={styles.layerCard}>
-              <div className={styles.layerHeading}>
-                <ImageIcon size={18} aria-hidden="true" />
-                <div><strong>Imagen base</strong><span>Fallback permanente y base visual</span></div>
-              </div>
+        {mode && (
+          <div className={assignmentStyles.assignmentActions}>
+            {needsImage && (
               <ResourcePicker
                 kind="image"
-                resources={state.resources}
-                selected={state.assignment.image}
-                busy={busy}
+                resources={resources}
+                selected={assignment.image}
+                busy={controlsDisabled}
+                hoverMode={mode === "hover-video"}
                 onSelect={(src) => void mutate("select-image", src)}
               />
-              <RequirementButton
-                complete={imageSelected}
-                missing="Falta seleccionar imagen"
-                done="Imagen base seleccionada"
-                disabled
-              />
-              <RequirementButton
-                complete={imageCropReady}
-                missing="Falta ajustar el foco de la imagen"
-                done="Foco adaptable de imagen confirmado"
-                disabled={!imageSelected || busy}
-                onClick={() => imageSelected && setEditing("image")}
-              />
-            </section>
-          )}
-
-          {needsVideo && (
-            <section className={styles.layerCard}>
-              <div className={styles.layerHeading}>
-                <MonitorPlay size={18} aria-hidden="true" />
-                <div><strong>{mode === "hover-video" ? "Video hover" : "Video de fondo"}</strong><span>WebM reutilizable por referencia</span></div>
-              </div>
+            )}
+            {needsVideo && (
               <ResourcePicker
                 kind="video"
-                resources={state.resources}
-                selected={state.assignment.video?.clip ?? null}
-                busy={busy}
+                resources={resources}
+                selected={assignment.video?.clip ?? null}
+                busy={controlsDisabled}
+                hoverMode={mode === "hover-video"}
                 onSelect={(src) => void mutate("select-video", src)}
               />
+            )}
+            {needsImage && (
               <RequirementButton
-                complete={videoSelected}
-                missing="Falta seleccionar video"
-                done={mode === "hover-video" ? "Video hover seleccionado" : "Video seleccionado"}
-                disabled
+                complete={imageCropReady}
+                hasResource={imageSelected}
+                mediaKind="image"
+                disabled={controlsDisabled}
+                onClick={() => imageSelected && setEditing("image")}
               />
+            )}
+            {needsVideo && (
               <RequirementButton
                 complete={videoCropReady}
-                missing="Falta ajustar el foco del video"
-                done="Foco adaptable de video confirmado"
-                disabled={!videoSelected || busy}
+                hasResource={videoSelected}
+                mediaKind="video"
+                disabled={controlsDisabled}
                 onClick={() => videoSelected && setEditing("video")}
               />
-            </section>
-          )}
-        </div>
-      ) : (
-        <div className={styles.globalState}>
-          <CheckCircle2 size={20} aria-hidden="true" />
-          <div>
-            <strong>Fondo global activo</strong>
-            <span>No agrega bytes, requests ni reproducción extra a esta ficha.</span>
+            )}
+            <button
+              type="button"
+              className={styles.globalButton}
+              disabled={controlsDisabled}
+              onClick={() => void mutate("global", "global")}
+            >
+              <RotateCcw size={15} aria-hidden="true" />
+              Usar fondo global
+            </button>
           </div>
-        </div>
-      )}
+        )}
 
-      <div className={styles.performanceNote}>
-        <Info size={17} aria-hidden="true" />
-        <p>
-          <strong>Rendimiento:</strong> seleccionar un recurso ya existente no crea copias. En móvil o con reducción de movimiento, el video de fondo no se activa y se conserva la imagen base —o el fondo global si no hay imagen—.
-        </p>
-      </div>
+        <small className={!mode || activeReady ? contextualStyles.requirementReady : contextualStyles.requirementPending}>
+          {!mode || activeReady ? <CheckCircle2 size={13} aria-hidden="true" /> : <Info size={13} aria-hidden="true" />}
+          {!mode
+            ? "FONDO GLOBAL ACTIVO · DESTINO OPCIONAL"
+            : activeReady
+              ? "FOCO ADAPTABLE CONFIRMADO"
+              : "COMPLETA LOS RECURSOS Y FOCOS"}
+        </small>
 
-      {error && <div className={styles.error} role="alert">{error}</div>}
+        {error && <div className={styles.error} role="alert">{error}</div>}
+      </article>
 
-      {editing === "image" && state.assignment.image && (
+      {editing === "image" && assignment.image && (
         <ContextualMediaDialog
           eyebrow="FONDO ADAPTABLE"
           title="Ajustar foco de la imagen de fondo"
@@ -417,18 +393,18 @@ export default function GameBackgroundMediaEditor({ slug }: Props) {
         >
           <GameBackgroundViewportEditor
             slug={slug}
-            revision={state.revision}
+            revision={revision}
             kind="image"
-            src={state.assignment.image}
-            label={`Fondo · ${shortName(state.assignment.image)}`}
-            initialViewport={state.assignment.imageViewport ?? undefined}
+            src={assignment.image}
+            label={`Fondo · ${shortName(assignment.image)}`}
+            initialViewport={assignment.imageViewport ?? undefined}
             onClose={() => setEditing(null)}
             onSaved={() => window.location.reload()}
           />
         </ContextualMediaDialog>
       )}
 
-      {editing === "video" && state.assignment.video?.clip && (
+      {editing === "video" && assignment.video?.clip && (
         <ContextualMediaDialog
           eyebrow="FONDO ADAPTABLE"
           title="Ajustar foco del video de fondo"
@@ -437,16 +413,16 @@ export default function GameBackgroundMediaEditor({ slug }: Props) {
         >
           <GameBackgroundViewportEditor
             slug={slug}
-            revision={state.revision}
+            revision={revision}
             kind="video"
-            src={state.assignment.video.clip}
-            label={`Fondo · ${shortName(state.assignment.video.clip)}`}
-            initialViewport={state.assignment.video.viewport}
+            src={assignment.video.clip}
+            label={`Fondo · ${shortName(assignment.video.clip)}`}
+            initialViewport={assignment.video.viewport}
             onClose={() => setEditing(null)}
             onSaved={() => window.location.reload()}
           />
         </ContextualMediaDialog>
       )}
-    </section>
+    </>
   );
 }

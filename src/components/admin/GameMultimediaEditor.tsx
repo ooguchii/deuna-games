@@ -1,4 +1,3 @@
-import GameBackgroundMediaEditor from "@/components/admin/GameBackgroundMediaEditor";
 import GameMultimediaWorkspaceContextual from "@/components/admin/GameMultimediaWorkspaceContextual";
 import GameVideoLibraryEditor from "@/components/admin/GameVideoLibraryEditor";
 
@@ -18,22 +17,19 @@ export default function GameMultimediaEditor({
   screenshots = [],
 }: GameMultimediaEditorProps) {
   return (
-    <>
-      <GameMultimediaWorkspaceContextual
-        slug={slug}
-        revision={revision}
-        screenshotCount={screenshots.length}
-        initialCoverImage={coverImage}
-        initialHeroImage={heroImage}
-        initialScreenshots={screenshots}
-        videoEditor={
-          <GameVideoLibraryEditor
-            slug={slug}
-            revision={revision}
-          />
-        }
-      />
-      <GameBackgroundMediaEditor slug={slug} />
-    </>
+    <GameMultimediaWorkspaceContextual
+      slug={slug}
+      revision={revision}
+      screenshotCount={screenshots.length}
+      initialCoverImage={coverImage}
+      initialHeroImage={heroImage}
+      initialScreenshots={screenshots}
+      videoEditor={
+        <GameVideoLibraryEditor
+          slug={slug}
+          revision={revision}
+        />
+      }
+    />
   );
 }

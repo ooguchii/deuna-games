@@ -17,12 +17,14 @@ const [
   integrity,
   readiness,
   api,
+  mediaLibraryRoute,
   admin,
   viewport,
   publicBackground,
   publicBackgroundCss,
   publicLayout,
   multimediaEditor,
+  multimediaWorkspace,
 ] = await Promise.all([
   source("src/types/game.ts"),
   source("src/lib/admin/content-validation.ts"),
@@ -30,12 +32,14 @@ const [
   source("src/lib/admin/game-media-integrity.ts"),
   source("src/lib/admin/game-publication-readiness.ts"),
   source("src/app/api/admin/content/games/[slug]/background-media/route.ts"),
+  source("src/app/api/admin/content/games/[slug]/media-library/route.ts"),
   source("src/components/admin/GameBackgroundMediaEditor.tsx"),
   source("src/components/admin/GameBackgroundViewportEditor.tsx"),
   source("src/components/games/GameDetailBackground.tsx"),
   source("src/components/games/GameDetailBackground.module.css"),
   source("src/app/juegos/[slug]/layout.tsx"),
   source("src/components/admin/GameMultimediaEditor.tsx"),
+  source("src/components/admin/GameMultimediaWorkspaceContextual.tsx"),
 ]);
 
 assert(
@@ -122,9 +126,25 @@ assert(
 
 assert(
   has(
+    mediaLibraryRoute,
+    "resolveGameBackgroundMediaMode",
+    "backgroundImage: item.payload.backgroundImage ?? null",
+    "backgroundMode: resolveGameBackgroundMediaMode(item.payload)",
+    "backgroundVideo: item.payload.videoMedia?.background ?? null",
+    'Partial<Pick<Game, "backgroundImage" | "cardImage" | "mediaModes">>',
+    "game.backgroundImage === resource",
+    "delete imageMedia.background",
+    "backgroundImage:"
+  ),
+  "La Biblioteca compartida debe exponer Fondo y limpiar su asignación/foco al eliminar una imagen, sin dejar referencias fantasma."
+);
+
+assert(
+  has(
     admin,
-    "FONDO DEL JUEGO · ADAPTABLE",
-    'Imagen + hover',
+    "Fondo del juego",
+    "Opcional · foco adaptable",
+    "Imagen + hover",
     "Usar fondo global",
     "Falta seleccionar imagen",
     "Falta seleccionar video",
@@ -132,9 +152,18 @@ assert(
     "Falta ajustar el foco del video",
     "Imagen base seleccionada",
     "Video hover seleccionado",
-    "GameBackgroundViewportEditor"
-  ),
-  "El Admin debe exponer tres modos, fallback global y estados rojo/verde por capa."
+    "GameBackgroundViewportEditor",
+    "assignmentStyles.assignmentCard",
+    "assignmentStyles.modeSwitch",
+    "assignmentStyles.currentResource",
+    "assignmentStyles.assignmentActions",
+    "revision: number",
+    "resources: LibraryResource[]",
+    "assignment: BackgroundAssignment"
+  ) &&
+    !admin.includes("useEffect(") &&
+    !admin.includes('fetch(endpoint, {\n          credentials: "same-origin"'),
+  "Fondo debe verse como un destino más y reutilizar la revisión/recursos ya cargados por el workspace en vez de abrir una segunda lectura de biblioteca."
 );
 
 assert(
@@ -187,9 +216,23 @@ assert(
 );
 
 assert(
-  multimediaEditor.includes("GameBackgroundMediaEditor") &&
-    multimediaEditor.includes("<GameBackgroundMediaEditor slug={slug} />"),
-  "Multimedia debe presentar el módulo Fondo junto al workspace de destinos existentes."
+  multimediaEditor.includes("GameMultimediaWorkspaceContextual") &&
+    !multimediaEditor.includes("GameBackgroundMediaEditor") &&
+    has(
+      multimediaWorkspace,
+      'import GameBackgroundMediaEditor from "@/components/admin/GameBackgroundMediaEditor"',
+      "backgroundImage: string | null",
+      "backgroundMode: GameDestinationMediaMode | null",
+      "backgroundVideo: GameBackgroundVideo | null",
+      "const backgroundReady = backgroundMode === null || cropReady(",
+      "mandatoryRequirementsReady && backgroundReady",
+      'labels.push(backgroundMode === "hover-video" ? "Fondo base" : "Fondo")',
+      'labels.push(backgroundMode === "hover-video" ? "Fondo hover" : "Fondo")',
+      "<GameBackgroundMediaEditor",
+      "<span>E</span><h3>Galería del juego</h3>",
+      "Fondo · adaptable"
+    ),
+  "Multimedia debe ordenar Portada → Hero → Card → Fondo → Galería en un único workspace y alinear gate/Biblioteca con el estado real de Fondo."
 );
 
 if (failures.length) {
@@ -199,5 +242,5 @@ if (failures.length) {
 }
 
 console.log(
-  "Game background media: OK (override opcional, bytes compartidos, foco adaptable, modos imagen/video/hover y fallback global/móvil)."
+  "Game background media: OK (Fondo integrado en destinos, estado/biblioteca únicos, override opcional, bytes compartidos y foco adaptable)."
 );
