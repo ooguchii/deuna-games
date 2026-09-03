@@ -37,7 +37,10 @@ function contentLengthFromRequest(request: NextRequest) {
 function previewTarget(value: string | null): PreviewSaveTarget | null {
   if (value === null || value.trim() === "") return "card";
   const normalized = value.trim().toLowerCase();
-  return normalized === "hero" || normalized === "card" || normalized === "library"
+  return normalized === "cover" ||
+    normalized === "hero" ||
+    normalized === "card" ||
+    normalized === "library"
     ? normalized
     : null;
 }
@@ -103,7 +106,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ sl
       staged.filePath,
       trim,
       quality,
-      target === "library" ? "hero" : target,
+      target === "card" ? "card" : "hero",
       fps
     );
 

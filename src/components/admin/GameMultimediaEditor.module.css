@@ -95,7 +95,6 @@
   font-weight: 750;
 }
 
-.summaryThumb,
 .currentThumb,
 .choiceThumb {
   position: relative;
@@ -106,12 +105,6 @@
   background: #0c131c;
 }
 
-.summaryThumb {
-  width: 72px;
-  height: 52px;
-}
-
-.summaryThumb img,
 .currentThumb img,
 .choiceThumb img,
 .resourceArtwork img {

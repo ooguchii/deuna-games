@@ -7,19 +7,26 @@ import {
 import type {
   Game,
   GameCardVideo,
+  GameDestinationMediaMode,
   GameHeroVideoPlayback,
   GameVideoMedia,
   GameVideoViewport,
 } from "@/types/game";
 
-export type GameVideoTarget = "hero" | "card";
+export type GameVideoTarget = "cover" | "hero" | "card";
 export type GameCardVideoSource = "hero" | "independent";
 
 export type ResolvedGameVideo = {
   src: string;
   viewport: GameVideoViewport;
-  source: GameCardVideoSource | "hero" | "legacy";
+  source: GameCardVideoSource | "cover" | "hero" | "legacy";
 };
+
+export const DEFAULT_GAME_MEDIA_MODES = {
+  cover: "video",
+  hero: "hover-video",
+  card: "hover-video",
+} as const satisfies Record<GameVideoTarget, GameDestinationMediaMode>;
 
 function defaultViewport(): GameVideoViewport {
   return { ...DEFAULT_PREVIEW_VIEWPORT };
@@ -46,10 +53,54 @@ export function normalizeGameVideoViewport(
   };
 }
 
+export function resolveGameDestinationImage(
+  game: Game,
+  target: GameVideoTarget
+) {
+  if (target === "cover") return game.coverImage;
+  if (target === "hero") return game.heroImage;
+  return game.cardImage ?? game.coverImage;
+}
+
+export function resolveGameDestinationMediaMode(
+  game: Game,
+  target: GameVideoTarget
+): GameDestinationMediaMode {
+  const explicit = game.mediaModes?.[target];
+  if (explicit) return explicit;
+
+  const video = target === "cover"
+    ? game.videoMedia?.cover
+    : target === "hero"
+      ? game.videoMedia?.hero
+      : game.videoMedia?.card;
+  if (video) {
+    return video.playback === "hover" ? "hover-video" : "video";
+  }
+
+  if (resolveGameDestinationImage(game, target)) return "image";
+  return DEFAULT_GAME_MEDIA_MODES[target];
+}
+
 export function resolveGameHeroVideoPlayback(
   game: Game
 ): GameHeroVideoPlayback {
-  return game.videoMedia?.hero?.playback === "hover" ? "hover" : "always";
+  return resolveGameDestinationMediaMode(game, "hero") === "hover-video"
+    ? "hover"
+    : "always";
+}
+
+export function resolveGameCoverVideo(
+  game: Game
+): ResolvedGameVideo | undefined {
+  const cover = game.videoMedia?.cover;
+  if (!cover?.clip) return undefined;
+
+  return {
+    src: cover.clip,
+    viewport: normalizeGameVideoViewport(cover.viewport),
+    source: "cover",
+  };
 }
 
 export function resolveGameHeroVideo(
@@ -104,9 +155,27 @@ export function withSavedGameVideoClip(
   target: GameVideoTarget,
   clip: string,
   viewport: PreviewViewport
-): Pick<Game, "videoMedia" | "previewClip"> {
+): Pick<Game, "videoMedia" | "previewClip" | "mediaModes"> {
   const normalizedViewport = normalizeGameVideoViewport(viewport);
   const current = game.videoMedia;
+
+  if (target === "cover") {
+    return {
+      videoMedia: {
+        ...current,
+        cover: {
+          clip,
+          viewport: normalizedViewport,
+          playback: "always",
+        },
+      },
+      mediaModes: {
+        ...game.mediaModes,
+        cover: "video",
+      },
+      previewClip: game.previewClip,
+    };
+  }
 
   if (target === "hero") {
     let card = current?.card;
@@ -118,10 +187,7 @@ export function withSavedGameVideoClip(
             clip: game.previewClip,
             viewport: defaultViewport(),
           }
-        : {
-            source: "hero",
-            viewport: defaultViewport(),
-          };
+        : undefined;
     }
 
     return {
@@ -134,6 +200,10 @@ export function withSavedGameVideoClip(
         },
         card,
       },
+      mediaModes: {
+        ...game.mediaModes,
+        hero: "video",
+      },
       previewClip: game.previewClip,
     };
   }
@@ -142,12 +212,17 @@ export function withSavedGameVideoClip(
     source: "independent",
     clip,
     viewport: normalizedViewport,
+    playback: "always",
   };
 
   return {
     videoMedia: {
       ...current,
       card,
+    },
+    mediaModes: {
+      ...game.mediaModes,
+      card: "video",
     },
     previewClip: clip,
   };
@@ -164,6 +239,17 @@ export function withGameVideoLayout(
     confirmed: true,
   };
   const current = game.videoMedia;
+
+  if (target === "cover") {
+    if (!current?.cover) return null;
+    return {
+      ...current,
+      cover: {
+        ...current.cover,
+        viewport: normalizedViewport,
+      },
+    };
+  }
 
   if (target === "hero") {
     if (!current?.hero) return null;
@@ -183,6 +269,7 @@ export function withGameVideoLayout(
       card: {
         source: "hero",
         viewport: normalizedViewport,
+        playback: current.card?.playback,
       },
     };
   }
@@ -199,6 +286,7 @@ export function withGameVideoLayout(
       source: "independent",
       clip: independentClip,
       viewport: normalizedViewport,
+      playback: current?.card?.playback,
     },
   };
 }
@@ -208,6 +296,19 @@ export function withoutGameVideoTarget(
   target: GameVideoTarget
 ): Pick<Game, "videoMedia" | "previewClip"> {
   const current = game.videoMedia;
+
+  if (target === "cover") {
+    const videoMedia = current
+      ? { ...current, cover: undefined }
+      : undefined;
+    return {
+      videoMedia:
+        videoMedia?.hero || videoMedia?.card
+          ? videoMedia
+          : undefined,
+      previewClip: game.previewClip,
+    };
+  }
 
   if (target === "card") {
     return {
@@ -236,6 +337,7 @@ export function withoutGameVideoTarget(
           source: "independent",
           clip: fallback,
           viewport: card.viewport,
+          playback: card.playback,
         }
       : undefined;
   }
@@ -248,7 +350,7 @@ export function withoutGameVideoTarget(
 
   return {
     videoMedia:
-      videoMedia.hero || videoMedia.card
+      videoMedia.cover || videoMedia.hero || videoMedia.card
         ? videoMedia
         : undefined,
     previewClip: game.previewClip,

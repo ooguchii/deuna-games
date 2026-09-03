@@ -15,7 +15,7 @@ import {
   parseGameImageViewport,
 } from "@/lib/media/image-viewport";
 import {
-  resolveGameCardVideo,
+  resolveGameDestinationMediaMode,
 } from "@/lib/media/game-video-media";
 import type {
   Game,
@@ -44,13 +44,13 @@ function hasImageForTarget(
   game: Game,
   target: Exclude<z.infer<typeof targetSchema>, "gallery">
 ) {
-  if (target === "cover") return Boolean(game.coverImage);
-  if (target === "hero") {
-    return Boolean(game.heroImage) &&
-      (!game.videoMedia?.hero || game.videoMedia.hero.playback === "hover");
+  if (resolveGameDestinationMediaMode(game, target) === "video") {
+    return false;
   }
 
-  return Boolean(game.coverImage) && !resolveGameCardVideo(game);
+  if (target === "cover") return Boolean(game.coverImage);
+  if (target === "hero") return Boolean(game.heroImage);
+  return Boolean(game.cardImage);
 }
 
 function confirmedViewport(viewport: GameImageViewport): GameImageViewport {
@@ -148,16 +148,11 @@ export async function POST(
         [target.data]: savedViewport,
       };
 
-  const mediaUpdate = {
-    coverImage: item.payload.coverImage,
-    imageMedia,
-  };
-
   const result = await saveGameMediaDraft(
     slug,
     revision.data,
     authorized.session.userId,
-    mediaUpdate
+    { imageMedia }
   );
 
   if (result.outcome === "not_found") {

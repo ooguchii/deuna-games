@@ -21,9 +21,6 @@ import {
   clearEditorialImageDeletionMarker,
 } from "@/lib/media/editorial-media-library";
 import {
-  withoutGameVideoTarget,
-} from "@/lib/media/game-video-media";
-import {
   reconcileGameImageMedia,
 } from "@/lib/media/game-image-media";
 import {
@@ -182,10 +179,6 @@ export async function POST(
             ])
           ).slice(0, 8)
         : item.payload.screenshots;
-    const heroVideoUpdate =
-      kind.data === "hero"
-        ? withoutGameVideoTarget(item.payload, "hero")
-        : null;
     const assignments = {
       coverImage:
         kind.data === "cover"
@@ -195,6 +188,7 @@ export async function POST(
         kind.data === "hero"
           ? upload.publicPath
           : item.payload.heroImage,
+      cardImage: item.payload.cardImage,
       screenshots,
     };
     const result = await saveGameMediaDraft(
@@ -207,7 +201,6 @@ export async function POST(
           item.payload,
           assignments
         ),
-        ...(heroVideoUpdate ?? {}),
       }
     );
 

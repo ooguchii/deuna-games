@@ -5,7 +5,7 @@ import type {
 
 type GameImageAssignments = Pick<
   Game,
-  "coverImage" | "heroImage" | "screenshots"
+  "coverImage" | "heroImage" | "cardImage" | "screenshots"
 >;
 
 function compactImageMedia(
@@ -29,11 +29,14 @@ export function reconcileGameImageMedia(
 
   if (game.coverImage !== assignments.coverImage) {
     delete imageMedia.cover;
-    delete imageMedia.card;
   }
 
   if (game.heroImage !== assignments.heroImage) {
     delete imageMedia.hero;
+  }
+
+  if (game.cardImage !== assignments.cardImage) {
+    delete imageMedia.card;
   }
 
   const assignedGallery = new Set(

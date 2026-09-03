@@ -24,6 +24,9 @@ import HoverPreviewMedia from "@/components/ui/HoverPreviewMedia";
 import {
   resolveGameCardPreview,
 } from "@/lib/media/game-card-preview";
+import {
+  resolveGameDestinationMediaMode,
+} from "@/lib/media/game-video-media";
 import type { Game } from "@/types/game";
 
 import styles from "./UniversalGameCard.module.css";
@@ -229,10 +232,12 @@ export default function UniversalGameCard({
     styles[
       `variant${variant[0].toUpperCase()}${variant.slice(1)}`
     ];
-  const resolvedPreview =
-    resolveGameCardPreview(game);
-  const imageViewport =
-    game.imageMedia?.card ?? game.imageMedia?.cover;
+  const cardMode = resolveGameDestinationMediaMode(game, "card");
+  const resolvedPreview = resolveGameCardPreview(game);
+  const cardImage = game.cardImage ?? game.coverImage;
+  const imageViewport = game.imageMedia?.card;
+  const videoAlwaysActive = cardMode === "video";
+  const hoverPreviewEnabled = cardMode === "hover-video";
 
   function cancelTiltFrame() {
     if (tiltFrame.current !== null) {
@@ -274,6 +279,7 @@ export default function UniversalGameCard({
       event.currentTarget.getBoundingClientRect();
 
     if (
+      !hoverPreviewEnabled ||
       !resolvedPreview ||
       previewTimer.current ||
       previewActive
@@ -325,7 +331,7 @@ export default function UniversalGameCard({
     cardRect.current = null;
     pointerEffectsEnabled.current = false;
     resetTilt(event.currentTarget);
-    cancelPreview();
+    if (hoverPreviewEnabled) cancelPreview();
   }
 
   useEffect(() => {
@@ -367,12 +373,12 @@ export default function UniversalGameCard({
           className={`${styles.media} ${tiltStyles.tiltMedia}`}
         >
           <HoverPreviewMedia
-            imageSrc={game.coverImage}
+            imageSrc={cardMode === "video" ? undefined : cardImage}
             imageAlt={game.imageAlt}
             imageViewport={imageViewport}
             previewClip={resolvedPreview?.src}
             previewViewport={resolvedPreview?.viewport}
-            active={previewActive}
+            active={videoAlwaysActive || (hoverPreviewEnabled && previewActive)}
             sizes="(max-width: 560px) 82vw, (max-width: 900px) 48vw, (max-width: 1250px) 30vw, 20vw"
             fallbackClassName={
               fallbackClass

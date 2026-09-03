@@ -22,6 +22,7 @@ export function listGameImageReferences(
       [
         game.coverImage,
         game.heroImage,
+        game.cardImage,
         ...(game.screenshots ?? []),
       ].filter(
         (value): value is string => Boolean(value)
@@ -41,6 +42,7 @@ export function listGameVideoReferences(
   return Array.from(
     new Set(
       [
+        game.videoMedia?.cover?.clip,
         game.videoMedia?.hero?.clip,
         independentCardClip,
         game.previewClip,
