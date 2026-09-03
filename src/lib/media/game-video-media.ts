@@ -286,7 +286,7 @@ export function withGameVideoLayout(
       source: "independent",
       clip: independentClip,
       viewport: normalizedViewport,
-      playback: current.card?.playback,
+      playback: current?.card?.playback,
     },
   };
 }
