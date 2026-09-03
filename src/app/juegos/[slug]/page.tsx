@@ -20,6 +20,7 @@ import {
 
 import Footer from "@/components/layout/Footer";
 import Header from "@/components/layout/Header";
+import GameCoverMedia from "@/components/ui/GameCoverMedia";
 import GameMedia from "@/components/ui/GameMedia";
 import UniversalGameCard from "@/components/ui/UniversalGameCard";
 import GamePerformanceEstimate from "@/features/game-finder/GamePerformanceEstimate";
@@ -349,11 +350,9 @@ export default async function GameDetailPage({
 
           <div className={styles.heroInner}>
             <div className={styles.cover}>
-              <GameMedia
-                src={game.coverImage}
-                alt={game.imageAlt}
+              <GameCoverMedia
+                game={game}
                 sizes="(max-width: 700px) 52vw, 260px"
-                viewport={game.imageMedia?.cover}
               />
             </div>
 
