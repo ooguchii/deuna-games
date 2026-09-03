@@ -95,7 +95,7 @@ export async function POST(
     if (!readiness.essentialsReady) {
       return adminRedirect(
         authorized.adminOrigin,
-        `${target}?estado=multimedia-incompleta`
+        `/admin/juegos/${encodeURIComponent(slug)}?estado=multimedia-incompleta&seccion=multimedia`
       );
     }
 
