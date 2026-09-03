@@ -67,6 +67,9 @@ export default function LatestUpdates({
               fallbackClassBySlug[
                 update.game.slug
               ];
+            const cardImage =
+              update.game.cardImage ??
+              update.game.coverImage;
 
             return (
               <article
@@ -89,10 +92,7 @@ export default function LatestUpdates({
                     }
                   >
                     <GameMedia
-                      src={
-                        update.game
-                          .coverImage
-                      }
+                      src={cardImage}
                       alt={
                         update.game
                           .imageAlt
