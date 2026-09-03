@@ -85,6 +85,7 @@ const imageMediaSchema = z
     cover: fixedImageViewportSchema.optional(),
     hero: fixedImageViewportSchema.optional(),
     card: fixedImageViewportSchema.optional(),
+    detail: fixedImageViewportSchema.optional(),
     background: fixedImageViewportSchema.optional(),
     gallery: galleryImageMediaSchema.optional(),
   })
@@ -101,6 +102,7 @@ const mediaModesSchema = z
     cover: mediaModeSchema.optional(),
     hero: mediaModeSchema.optional(),
     card: mediaModeSchema.optional(),
+    detail: mediaModeSchema.optional(),
     background: mediaModeSchema.optional(),
   })
   .strict();
@@ -149,6 +151,7 @@ const videoMediaSchema = z
     cover: destinationVideoSchema.optional(),
     hero: destinationVideoSchema.optional(),
     card: cardVideoSchema.optional(),
+    detail: destinationVideoSchema.optional(),
     background: destinationVideoSchema.optional(),
   })
   .strict()
@@ -171,6 +174,7 @@ function splitGameCompatibilityPayload(payload: unknown) {
     return {
       core: payload,
       cardImage: undefined,
+      detailImage: undefined,
       backgroundImage: undefined,
       imageMedia: undefined,
       mediaModes: undefined,
@@ -184,6 +188,9 @@ function splitGameCompatibilityPayload(payload: unknown) {
   const cardImage = clean.cardImage === undefined
     ? undefined
     : localImageSchema.parse(clean.cardImage);
+  const detailImage = clean.detailImage === undefined
+    ? undefined
+    : localImageSchema.parse(clean.detailImage);
   const backgroundImage = clean.backgroundImage === undefined
     ? undefined
     : localImageSchema.parse(clean.backgroundImage);
@@ -198,6 +205,7 @@ function splitGameCompatibilityPayload(payload: unknown) {
     : videoMediaSchema.parse(clean.videoMedia);
 
   delete clean.cardImage;
+  delete clean.detailImage;
   delete clean.backgroundImage;
   delete clean.imageMedia;
   delete clean.mediaModes;
@@ -213,6 +221,7 @@ function splitGameCompatibilityPayload(payload: unknown) {
   return {
     core: clean,
     cardImage,
+    detailImage,
     backgroundImage,
     imageMedia,
     mediaModes,
@@ -224,7 +233,7 @@ function inferredMode(
   explicit: "image" | "video" | "hover-video" | undefined,
   video: { playback?: "always" | "hover" } | undefined,
   image: string | undefined,
-  fallback: "video" | "hover-video"
+  fallback: "image" | "video" | "hover-video"
 ) {
   if (explicit) return explicit;
   if (video) return video.playback === "hover" ? "hover-video" : "video";
@@ -259,6 +268,7 @@ export function parseEditorialPayload<
   const {
     core,
     cardImage,
+    detailImage,
     backgroundImage,
     imageMedia,
     mediaModes,
@@ -270,6 +280,27 @@ export function parseEditorialPayload<
   // exactamente su aspecto actual, pero captura la portada de ese snapshot
   // como recurso propio. Cambiar la Portada después ya no cambia la Card.
   const resolvedCardImage = cardImage ?? game.coverImage;
+
+  // Compatibilidad del Contenedor: antes la ficha reutilizaba directamente el
+  // Hero (o Portada). Capturamos esa misma referencia y encuadre como metadata
+  // propia, sin copiar bytes, para que desde aquí cambie de forma independiente.
+  const resolvedDetailImage = detailImage ?? game.heroImage ?? game.coverImage;
+  const legacyDetailMigration = detailImage === undefined && Boolean(resolvedDetailImage);
+  const inheritedDetailViewport = game.heroImage && resolvedDetailImage === game.heroImage
+    ? imageMedia?.hero
+    : imageMedia?.cover;
+  const resolvedImageMedia = legacyDetailMigration
+    ? {
+        ...imageMedia,
+        detail: {
+          x: inheritedDetailViewport?.x ?? 0.5,
+          y: inheritedDetailViewport?.y ?? 0.5,
+          zoom: inheritedDetailViewport?.zoom ?? 1,
+          confirmed: true as const,
+        },
+      }
+    : imageMedia;
+
   const backgroundMode = inferredOptionalMode(
     mediaModes?.background,
     videoMedia?.background,
@@ -294,14 +325,21 @@ export function parseEditorialPayload<
       resolvedCardImage,
       "hover-video"
     ),
+    detail: inferredMode(
+      mediaModes?.detail,
+      videoMedia?.detail,
+      resolvedDetailImage,
+      "image"
+    ),
     ...(backgroundMode ? { background: backgroundMode } : {}),
   };
 
   return {
     ...game,
     ...(resolvedCardImage ? { cardImage: resolvedCardImage } : {}),
+    ...(resolvedDetailImage ? { detailImage: resolvedDetailImage } : {}),
     ...(backgroundImage ? { backgroundImage } : {}),
-    ...(imageMedia ? { imageMedia } : {}),
+    ...(resolvedImageMedia ? { imageMedia: resolvedImageMedia } : {}),
     mediaModes: resolvedMediaModes,
     ...(videoMedia ? { videoMedia } : {}),
   } as EditorialPayloadByType[Type];
