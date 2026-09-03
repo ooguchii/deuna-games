@@ -43,14 +43,19 @@ const imageViewportAspectSchema = z.enum([
   "free",
 ]);
 
-const imageViewportSchema = z
+const fixedImageViewportSchema = z
   .object({
     x: z.number().min(0).max(1),
     y: z.number().min(0).max(1),
     zoom: z.number().min(1).max(3),
+    confirmed: z.literal(true).optional(),
+  })
+  .strict();
+
+const galleryImageViewportSchema = fixedImageViewportSchema
+  .extend({
     aspect: imageViewportAspectSchema.optional(),
     aspectRatio: z.number().min(0.1).max(10).optional(),
-    confirmed: z.literal(true).optional(),
   })
   .strict()
   .superRefine((viewport, context) => {
@@ -72,15 +77,15 @@ const imageViewportSchema = z
 
 const galleryImageMediaSchema = z.record(
   z.string().min(1).max(400),
-  imageViewportSchema
+  galleryImageViewportSchema
 );
 
 const imageMediaSchema = z
   .object({
-    cover: imageViewportSchema.optional(),
-    hero: imageViewportSchema.optional(),
-    card: imageViewportSchema.optional(),
-    background: imageViewportSchema.optional(),
+    cover: fixedImageViewportSchema.optional(),
+    hero: fixedImageViewportSchema.optional(),
+    card: fixedImageViewportSchema.optional(),
+    background: fixedImageViewportSchema.optional(),
     gallery: galleryImageMediaSchema.optional(),
   })
   .strict();
