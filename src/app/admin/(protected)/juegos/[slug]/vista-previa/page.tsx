@@ -224,6 +224,11 @@ export default async function AdminGamePreviewPage({
             alt=""
             sizes="100vw"
             variant="hero"
+            viewport={
+              game.heroImage
+                ? game.imageMedia?.hero
+                : game.imageMedia?.cover
+            }
             priority
           />
           <div className={styles.heroShade} />
@@ -235,6 +240,7 @@ export default async function AdminGamePreviewPage({
               src={game.coverImage}
               alt={game.imageAlt}
               sizes="220px"
+              viewport={game.imageMedia?.cover}
             />
           </div>
 
@@ -416,6 +422,12 @@ export default async function AdminGamePreviewPage({
                     alt={`Vista previa ${index + 1} de ${game.title}`}
                     sizes="(max-width: 900px) 50vw, 240px"
                     variant="hero"
+                    viewport={
+                      game.imageMedia?.gallery?.[image]
+                      ?? (image === game.heroImage
+                        ? game.imageMedia?.hero
+                        : undefined)
+                    }
                   />
                 </div>
               ))}

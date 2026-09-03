@@ -219,11 +219,15 @@ function probeSourceFps(inputPath: string) {
       "default=noprint_wrappers=1:nokey=1",
       inputPath,
     ];
-    const child = spawn(ffprobeExecutable(), args, {
-      shell: false,
-      windowsHide: true,
-      stdio: ["ignore", "pipe", "pipe"],
-    });
+    const child = spawn(
+      /* turbopackIgnore: true */ ffprobeExecutable(),
+      args,
+      {
+        shell: false,
+        windowsHide: true,
+        stdio: ["ignore", "pipe", "pipe"],
+      }
+    );
     let stdout = "";
     let stderr = "";
     let settled = false;
@@ -340,11 +344,15 @@ function runFfmpeg(
       "webm",
       outputPath,
     ];
-    const child = spawn(ffmpegExecutable(), args, {
-      shell: false,
-      windowsHide: true,
-      stdio: ["ignore", "ignore", "pipe"],
-    });
+    const child = spawn(
+      /* turbopackIgnore: true */ ffmpegExecutable(),
+      args,
+      {
+        shell: false,
+        windowsHide: true,
+        stdio: ["ignore", "ignore", "pipe"],
+      }
+    );
     let stderr = "";
     let settled = false;
 

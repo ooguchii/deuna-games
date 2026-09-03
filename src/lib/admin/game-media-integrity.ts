@@ -30,6 +30,27 @@ export function listGameImageReferences(
   );
 }
 
+export function listGameVideoReferences(
+  game: Game
+) {
+  const independentCardClip =
+    game.videoMedia?.card?.source === "independent"
+      ? game.videoMedia.card.clip
+      : undefined;
+
+  return Array.from(
+    new Set(
+      [
+        game.videoMedia?.hero?.clip,
+        independentCardClip,
+        game.previewClip,
+      ].filter(
+        (value): value is string => Boolean(value)
+      )
+    )
+  );
+}
+
 async function fileIsRegular(
   absolutePath: string
 ) {
@@ -122,10 +143,8 @@ export async function inspectGameMediaIntegrity(
 ): Promise<GameMediaIntegrityResult> {
   const mediaPaths = [
     ...listGameImageReferences(game),
-    game.previewClip,
-  ].filter(
-    (value): value is string => Boolean(value)
-  );
+    ...listGameVideoReferences(game),
+  ];
 
   return inspectLocalImageReferences(mediaPaths);
 }

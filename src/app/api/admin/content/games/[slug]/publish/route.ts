@@ -12,6 +12,9 @@ import {
   inspectGameMediaIntegrity,
 } from "@/lib/admin/game-media-integrity";
 import {
+  evaluateGamePublicationReadiness,
+} from "@/lib/admin/game-publication-readiness";
+import {
   getGameDraftPublicationCandidate,
   inspectPublishedGameTaxonomyIntegrity,
 } from "@/lib/admin/game-publication-review";
@@ -83,6 +86,16 @@ export async function POST(
       return adminRedirect(
         authorized.adminOrigin,
         `${target}?estado=conflicto`
+      );
+    }
+
+    const readiness =
+      evaluateGamePublicationReadiness(candidate.game);
+
+    if (!readiness.essentialsReady) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        `${target}?estado=preparacion-incompleta`
       );
     }
 

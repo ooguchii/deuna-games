@@ -34,6 +34,7 @@ import {
 
 import SiteBrand from "@/components/layout/SiteBrand";
 import GameMedia from "@/components/ui/GameMedia";
+import type { GameImageViewport } from "@/types/game";
 
 import {
   AccountRewardSummary,
@@ -65,6 +66,7 @@ type GameOption = {
   title: string;
   category: string;
   coverImage?: string;
+  imageViewport?: GameImageViewport;
   rating?: number;
 };
 
@@ -92,6 +94,7 @@ type Notification = {
   gameSlug: string;
   gameTitle: string;
   gameCoverImage?: string;
+  gameImageViewport?: GameImageViewport;
   version: string;
   summary: string;
   publishedAt: string;
@@ -102,6 +105,7 @@ type Recommendation = {
   title: string;
   category: string;
   coverImage?: string;
+  imageViewport?: GameImageViewport;
   rating?: number;
   reasons: string[];
   compatibilityPercent: number | null;
@@ -190,6 +194,7 @@ function DashboardGameRow({
           src={game.coverImage}
           alt=""
           sizes="64px"
+          viewport={game.imageViewport}
           fallbackClassName={styles.mediaFallback}
         />
       </div>
@@ -229,6 +234,7 @@ function RecommendationCard({
           src={recommendation.coverImage}
           alt=""
           sizes="(max-width: 720px) 90vw, 280px"
+          viewport={recommendation.imageViewport}
           fallbackClassName={styles.mediaFallback}
         />
         <span className={styles.recommendationHeart} aria-hidden="true">
@@ -680,6 +686,7 @@ export default function AccountDashboardClient({
                         src={notification.gameCoverImage}
                         alt=""
                         sizes="64px"
+                        viewport={notification.gameImageViewport}
                         fallbackClassName={styles.mediaFallback}
                       />
                     </div>
@@ -790,6 +797,7 @@ export default function AccountDashboardClient({
                     src={game.coverImage}
                     alt=""
                     sizes="72px"
+                    viewport={game.imageViewport}
                     fallbackClassName={styles.mediaFallback}
                   />
                 </div>
@@ -1019,6 +1027,7 @@ export default function AccountDashboardClient({
                       src={notification.gameCoverImage}
                       alt=""
                       sizes="96px"
+                      viewport={notification.gameImageViewport}
                       fallbackClassName={styles.mediaFallback}
                     />
                   </div>

@@ -67,8 +67,10 @@ expect(
 expect(
   entries.route.includes("publishIntegratedGameUpdate") &&
     entries.route.includes("revalidatePublicGameSurfaces") &&
-    entries.route.includes("hasExactAdminFormFields"),
-  "La ruta unificada debe usar publicación atómica, revalidación y protección exacta del formulario."
+    entries.route.includes("hasExactAdminFormFields") &&
+    entries.route.includes("evaluateGamePublicationReadiness") &&
+    entries.route.includes("inspectGameMediaIntegrity"),
+  "La ruta unificada debe usar publicación atómica, revalidación, requisitos multimedia, integridad física y protección exacta del formulario."
 );
 expect(
   entries.gameCoreRoute.includes("getGamePublicationIdentity") &&
@@ -85,12 +87,14 @@ expect(
   entries.service.includes("withAdminTransaction") &&
     entries.service.includes("FOR UPDATE") &&
     entries.service.includes('outcome: "pending_changes"') &&
+    entries.service.includes('outcome: "not_ready"') &&
+    entries.service.includes("evaluateGamePublicationReadiness") &&
     entries.service.includes('outcome: "same_version"') &&
     entries.service.includes("resolveGameDownload") &&
     entries.service.includes("normalizeVersionToken") &&
     entries.service.includes("versionAlreadyRegistered") &&
     entries.service.includes('"game_update"'),
-  "La publicación integrada debe bloquear concurrencia, cambios pendientes, versiones equivalentes o históricas y publicar juego + aviso en una transacción."
+  "La publicación integrada debe bloquear concurrencia, cambios pendientes, multimedia incompleta, versiones equivalentes o históricas y publicar juego + aviso en una transacción."
 );
 expect(
   entries.legacyIndex.includes('redirect("/admin/juegos")') &&

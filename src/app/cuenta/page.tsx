@@ -162,6 +162,8 @@ export default async function AccountPage() {
             title: game.title,
             category: game.category,
             coverImage: game.coverImage,
+            imageViewport:
+              game.imageMedia?.card ?? game.imageMedia?.cover,
             rating: game.rating,
           }))}
           preferences={personalization.preferences.map((preference) => ({
@@ -191,6 +193,9 @@ export default async function AccountPage() {
             gameSlug: update.gameSlug,
             gameTitle: update.game.title,
             gameCoverImage: update.game.coverImage,
+            gameImageViewport:
+              update.game.imageMedia?.card ??
+              update.game.imageMedia?.cover,
             version: update.version,
             summary: update.summary,
             publishedAt: update.publishedAt,
@@ -200,6 +205,9 @@ export default async function AccountPage() {
             title: entry.game.title,
             category: entry.game.category,
             coverImage: entry.game.coverImage,
+            imageViewport:
+              entry.game.imageMedia?.card ??
+              entry.game.imageMedia?.cover,
             rating: entry.game.rating,
             reasons: entry.reasons,
             compatibilityPercent: compatibilityPercent(

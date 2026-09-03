@@ -37,6 +37,16 @@ const notices = {
     message:
       "El juego tiene otros cambios sin publicar. Por seguridad no se mezclaron con la actualización. Publica o restaura esos cambios y vuelve a intentarlo.",
   },
+  "actualizacion-preparacion-incompleta": {
+    kind: "error",
+    message:
+      "La nueva versión no se publicó porque la ficha no cumple todos los controles esenciales. Completa Portada, Hero, Card y Galería desde Multimedia y vuelve a intentarlo.",
+  },
+  "actualizacion-asset": {
+    kind: "error",
+    message:
+      "La nueva versión no se publicó porque falta una imagen o un video referenciado en el almacenamiento editorial. Corrige Multimedia antes de volver a intentarlo.",
+  },
   "actualizacion-misma-version": {
     kind: "warning",
     message:

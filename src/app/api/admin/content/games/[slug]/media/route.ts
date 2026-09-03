@@ -9,6 +9,7 @@ import {
   editorialGameMediaFormSchema,
 } from "@/lib/admin/content-forms";
 import {
+  getEditorialItem,
   saveGameMediaDraft,
 } from "@/lib/admin/content-service";
 import {
@@ -21,6 +22,9 @@ import {
 import {
   hasExactAdminFormFields,
 } from "@/lib/admin/request-security";
+import {
+  reconcileGameImageMedia,
+} from "@/lib/media/game-image-media";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -81,9 +85,30 @@ export async function POST(
       screenshotsText,
       ...input
     } = parsed.data;
+    const item = await getEditorialItem("game", slug);
+
+    if (!item) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        "/admin/juegos?estado=no-encontrado"
+      );
+    }
+
+    if (item.revision !== expectedRevision) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        `${target}?estado=conflicto&seccion=multimedia`
+      );
+    }
+
+    const assignments = {
+      coverImage: input.coverImage,
+      heroImage: input.heroImage,
+      screenshots: screenshotsText,
+    };
     const mediaPaths = [
-      input.coverImage,
-      input.heroImage,
+      assignments.coverImage,
+      assignments.heroImage,
       ...(screenshotsText ?? []),
     ].filter(
       (value): value is string => Boolean(value)
@@ -103,8 +128,11 @@ export async function POST(
       expectedRevision,
       authorized.session.userId,
       {
-        ...input,
-        screenshots: screenshotsText,
+        ...assignments,
+        imageMedia: reconcileGameImageMedia(
+          item.payload,
+          assignments
+        ),
       }
     );
 

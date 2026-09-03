@@ -151,7 +151,15 @@ function runYtDlpAttempt(provider: PreviewProviderId, sourceUrl: string, tempora
       ...formatSelectionArgs(provider, youtubeClients),
       "--max-filesize", "512M", "--output", outputTemplate, sourceUrl,
     ];
-    const child = spawn(ytDlpExecutable(), args, { shell: false, windowsHide: true, stdio: ["ignore", "ignore", "pipe"] });
+    const child = spawn(
+      /* turbopackIgnore: true */ ytDlpExecutable(),
+      args,
+      {
+        shell: false,
+        windowsHide: true,
+        stdio: ["ignore", "ignore", "pipe"],
+      }
+    );
     let stderr = "";
     let settled = false;
     const timeout = setTimeout(() => { if (!settled) child.kill("SIGKILL"); }, YTDLP_TIMEOUT_MS);

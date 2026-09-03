@@ -10,6 +10,15 @@ import {
   editorialGameDownloadFormSchema,
 } from "@/lib/admin/content-forms";
 import {
+  inspectGameMediaIntegrity,
+} from "@/lib/admin/game-media-integrity";
+import {
+  evaluateGamePublicationReadiness,
+} from "@/lib/admin/game-publication-readiness";
+import {
+  getGameDraftPublicationCandidate,
+} from "@/lib/admin/game-publication-review";
+import {
   publishIntegratedGameUpdate,
 } from "@/lib/admin/game-update-publication-service";
 import {
@@ -104,6 +113,50 @@ export async function POST(
   }
 
   try {
+    const candidate =
+      await getGameDraftPublicationCandidate(slug);
+
+    if (!candidate) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        "/admin/juegos?estado=no-encontrado"
+      );
+    }
+
+    if (
+      candidate.revision !==
+      download.data.expectedRevision
+    ) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        targetFor(slug, "conflicto")
+      );
+    }
+
+    if (
+      !evaluateGamePublicationReadiness(
+        candidate.game
+      ).essentialsReady
+    ) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        targetFor(
+          slug,
+          "actualizacion-preparacion-incompleta"
+        )
+      );
+    }
+
+    const mediaIntegrity =
+      await inspectGameMediaIntegrity(candidate.game);
+
+    if (!mediaIntegrity.ok) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        targetFor(slug, "actualizacion-asset")
+      );
+    }
+
     const result = await publishIntegratedGameUpdate(
       slug,
       authorized.session.userId,
@@ -142,6 +195,7 @@ export async function POST(
     const failureState = {
       not_public: "actualizacion-juego-no-publicado",
       pending_changes: "actualizacion-cambios-pendientes",
+      not_ready: "actualizacion-preparacion-incompleta",
       same_version: "actualizacion-misma-version",
       no_download: "actualizacion-sin-descarga",
       update_exists: "actualizacion-duplicada",

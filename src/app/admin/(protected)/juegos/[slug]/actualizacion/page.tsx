@@ -18,6 +18,9 @@ import {
   getGamePublicationIdentity,
 } from "@/lib/admin/publication-overview";
 import {
+  evaluateGamePublicationReadiness,
+} from "@/lib/admin/game-publication-readiness";
+import {
   verifyAdminSession,
 } from "@/lib/admin/session";
 import {
@@ -94,9 +97,12 @@ export default async function AdminGameUpdatePage({
         Date.parse(a.payload.publishedAt)
     )
     .slice(0, 8);
+  const readiness =
+    evaluateGamePublicationReadiness(game);
   const canPublish = Boolean(
     publicationIdentity?.publicVisible &&
-      !publicationIdentity.hasUnpublishedChanges
+      !publicationIdentity.hasUnpublishedChanges &&
+      readiness.essentialsReady
   );
   const updateAction =
     `/api/admin/content/games/${encodeURIComponent(slug)}/publish-update`;
@@ -151,6 +157,20 @@ export default async function AdminGameUpdatePage({
             <ShieldCheck size={18} aria-hidden="true" />
             <span>
               Hay otros cambios pendientes en el borrador de este juego. Por seguridad, DeUna no los publicará accidentalmente junto con una nueva versión. Publica o restaura esos cambios antes de continuar. Los datos mostrados abajo corresponden a la versión realmente visible en la web.
+            </span>
+          </div>
+        )}
+
+      {publicationIdentity?.publicVisible &&
+        !publicationIdentity.hasUnpublishedChanges &&
+        !readiness.essentialsReady && (
+          <div
+            className={`${styles.editorNotice} ${styles.editorNoticeWarning}`}
+            role="status"
+          >
+            <ShieldCheck size={18} aria-hidden="true" />
+            <span>
+              La publicación actual es anterior a los controles multimedia obligatorios. Confirma Portada, Hero, Card y Galería desde Multimedia antes de publicar una nueva versión.
             </span>
           </div>
         )}

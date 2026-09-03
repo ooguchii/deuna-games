@@ -29,6 +29,23 @@
   }
 }
 
+@media (max-width: 520px) {
+  .artwork.artwork,
+  .artwork.activeArtwork {
+    object-position: var(
+      --hero-mobile-image-position,
+      var(--hero-image-position, 50% 50%)
+    );
+    transform: scale(
+      var(--hero-mobile-image-zoom, var(--hero-image-zoom, 1))
+    );
+    transform-origin: var(
+      --hero-mobile-image-position,
+      var(--hero-image-position, 50% 50%)
+    );
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .artwork.artwork,
   .artwork.activeArtwork {

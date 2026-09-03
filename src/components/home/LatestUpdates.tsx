@@ -98,6 +98,14 @@ export default function LatestUpdates({
                           .imageAlt
                       }
                       sizes="(max-width: 650px) 100vw, (max-width: 1150px) 240px, 13vw"
+                      viewport={
+                        update.game
+                          .imageMedia
+                          ?.card ??
+                        update.game
+                          .imageMedia
+                          ?.cover
+                      }
                       fallbackClassName={
                         fallbackClass
                           ? styles[

@@ -24,6 +24,9 @@ import {
   withoutGameVideoTarget,
 } from "@/lib/media/game-video-media";
 import {
+  reconcileGameImageMedia,
+} from "@/lib/media/game-image-media";
+import {
   storeEditorialWebp,
 } from "@/lib/media/editorial-upload";
 
@@ -183,20 +186,27 @@ export async function POST(
       kind.data === "hero"
         ? withoutGameVideoTarget(item.payload, "hero")
         : null;
+    const assignments = {
+      coverImage:
+        kind.data === "cover"
+          ? upload.publicPath
+          : item.payload.coverImage,
+      heroImage:
+        kind.data === "hero"
+          ? upload.publicPath
+          : item.payload.heroImage,
+      screenshots,
+    };
     const result = await saveGameMediaDraft(
       slug,
       revision.data,
       authorized.session.userId,
       {
-        coverImage:
-          kind.data === "cover"
-            ? upload.publicPath
-            : item.payload.coverImage,
-        heroImage:
-          kind.data === "hero"
-            ? upload.publicPath
-            : item.payload.heroImage,
-        screenshots,
+        ...assignments,
+        imageMedia: reconcileGameImageMedia(
+          item.payload,
+          assignments
+        ),
         ...(heroVideoUpdate ?? {}),
       }
     );

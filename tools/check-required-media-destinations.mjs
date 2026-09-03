@@ -9,6 +9,13 @@ const assert = (condition, message) => {
   if (!condition) failures.push(message);
 };
 const has = (text, ...needles) => needles.every((needle) => text.includes(needle));
+const [
+  { evaluateGameMediaRequirements },
+  { reconcileGameImageMedia },
+] = await Promise.all([
+  import("../src/lib/media/game-media-requirements.ts"),
+  import("../src/lib/media/game-image-media.ts"),
+]);
 
 const [
   requirements,
@@ -20,6 +27,22 @@ const [
   videoLayoutRoute,
   videoMedia,
   publicationReadiness,
+  publicationWorkspace,
+  publishRoute,
+  restoreRoute,
+  mediaIntegrity,
+  adminPreview,
+  homeHero,
+  homeHeroCss,
+  latestUpdates,
+  featuredUpdates,
+  updatesCatalog,
+  accountPage,
+  accountDashboard,
+  downloadPage,
+  gameImageMedia,
+  mediaRoute,
+  mediaUploadRoute,
   types,
 ] = await Promise.all([
   source("src/lib/media/game-media-requirements.ts"),
@@ -31,6 +54,22 @@ const [
   source("src/app/api/admin/content/games/[slug]/preview-layout/route.ts"),
   source("src/lib/media/game-video-media.ts"),
   source("src/lib/admin/game-publication-readiness.ts"),
+  source("src/components/admin/GamePublicationWorkspace.tsx"),
+  source("src/app/api/admin/content/games/[slug]/publish/route.ts"),
+  source("src/app/api/admin/content/publications/[publicationId]/restore/route.ts"),
+  source("src/lib/admin/game-media-integrity.ts"),
+  source("src/app/admin/(protected)/juegos/[slug]/vista-previa/page.tsx"),
+  source("src/components/home/HeroSection.tsx"),
+  source("src/components/home/HeroArtwork.module.css"),
+  source("src/components/home/LatestUpdates.tsx"),
+  source("src/components/updates/FeaturedUpdatesSlider.tsx"),
+  source("src/components/updates/UpdatesCatalogClient.tsx"),
+  source("src/app/cuenta/page.tsx"),
+  source("src/app/cuenta/AccountDashboardClient.tsx"),
+  source("src/app/juegos/[slug]/descargar/page.tsx"),
+  source("src/lib/media/game-image-media.ts"),
+  source("src/app/api/admin/content/games/[slug]/media/route.ts"),
+  source("src/app/api/admin/content/games/[slug]/media-upload/route.ts"),
   source("src/types/game.ts"),
 ]);
 
@@ -41,6 +80,9 @@ assert(
     'hero: "16:9"',
     'card: "3:2"',
     "viewport?.confirmed === true",
+    "viewport.aspect === requiredAspect",
+    "REQUIRED_DESTINATION_ASPECTS.hero",
+    "REQUIRED_DESTINATION_ASPECTS.card",
     "game.screenshots?.length",
     "coverCropReady && heroCropReady && cardCropReady && galleryReady"
   ),
@@ -163,6 +205,210 @@ assert(
 );
 
 assert(
+  has(
+    publishRoute,
+    "evaluateGamePublicationReadiness",
+    "readiness.essentialsReady",
+    "preparacion-incompleta"
+  ) &&
+    has(
+      restoreRoute,
+      "evaluateGamePublicationReadiness",
+      "readiness.essentialsReady",
+      "restauracion-incompleta"
+    ) &&
+    publicationWorkspace.includes("!readiness.essentialsReady"),
+  "La publicación y la restauración deben bloquear en servidor y UI cualquier ficha sin esenciales completos."
+);
+
+assert(
+  has(
+    mediaIntegrity,
+    "listGameVideoReferences",
+    "game.videoMedia?.hero?.clip",
+    'game.videoMedia?.card?.source === "independent"',
+    "...listGameVideoReferences(game)"
+  ),
+  "La integridad de publicación debe comprobar Hero, Card independiente y preview histórico, además de las imágenes."
+);
+
+assert(
+  has(
+    adminPreview,
+    "game.imageMedia?.cover",
+    "game.imageMedia?.hero",
+    "game.imageMedia?.gallery?.[image]"
+  ),
+  "La vista previa administrativa debe aplicar los mismos encuadres de imagen que la ficha pública."
+);
+
+assert(
+  has(
+    homeHero,
+    "--hero-mobile-image-zoom",
+    "--hero-mobile-image-position",
+    "desktopSrc === game.coverImage",
+    "mobileSrc === game.coverImage",
+    "game.imageMedia?.cover"
+  ) &&
+    has(
+      homeHeroCss,
+      "--hero-mobile-image-zoom",
+      "--hero-mobile-image-position"
+    ),
+  "El Hero móvil debe usar el encuadre de la Portada cuando cambia al archivo vertical de Portada."
+);
+
+assert(
+  has(
+    latestUpdates,
+    "update.game",
+    ".imageMedia",
+    "?.card ??",
+    "?.cover"
+  ) &&
+    has(
+      updatesCatalog,
+      'import GameMedia from "@/components/ui/GameMedia"',
+      "update.game",
+      ".imageMedia",
+      "?.card ??",
+      "?.cover"
+    ),
+  "Las tarjetas de actualizaciones de Home y catálogo deben consumir el recorte Card con fallback a Portada."
+);
+
+assert(
+  has(
+    featuredUpdates,
+    "backdropViewport",
+    "?.hero",
+    "?.card ??",
+    "viewport={",
+    "imageClassName="
+  ),
+  "El carrusel destacado debe aplicar Hero al archivo Hero y un encuadre publicado compatible al fallback de Portada."
+);
+
+assert(
+  has(
+    accountPage,
+    "imageViewport:",
+    "game.imageMedia?.card ?? game.imageMedia?.cover",
+    "gameImageViewport:",
+    "update.game.imageMedia?.card ??",
+    "entry.game.imageMedia?.card ??"
+  ) &&
+    has(
+      accountDashboard,
+      "viewport={game.imageViewport}",
+      "viewport={recommendation.imageViewport}",
+      "viewport={notification.gameImageViewport}"
+    ),
+  "Mi DeUna debe transportar y aplicar el encuadre Card en biblioteca, recomendaciones y avisos."
+);
+
+assert(
+  downloadPage.includes("viewport={game.imageMedia?.cover}"),
+  "La pantalla de descarga debe aplicar el recorte Portada 4:5 confirmado en el panel."
+);
+
+assert(
+  has(
+    gameImageMedia,
+    "game.coverImage !== assignments.coverImage",
+    "delete imageMedia.cover",
+    "delete imageMedia.card",
+    "game.heroImage !== assignments.heroImage",
+    "delete imageMedia.hero"
+  ) &&
+    mediaRoute.includes("reconcileGameImageMedia") &&
+    mediaUploadRoute.includes("reconcileGameImageMedia"),
+  "Cambiar una imagen por rutas administrativas alternativas debe invalidar los recortes confirmados del recurso anterior."
+);
+
+const confirmedImageViewport = {
+  x: 0.5,
+  y: 0.5,
+  zoom: 1,
+  confirmed: true,
+};
+const mediaReadyGame = {
+  id: "media-check",
+  slug: "media-check",
+  title: "Media check",
+  description: "Verificación de integración multimedia.",
+  category: "Acción",
+  imageAlt: "Media check",
+  coverImage: "/images/cover.webp",
+  heroImage: "/images/hero.webp",
+  screenshots: ["/images/gallery.webp"],
+  imageMedia: {
+    cover: confirmedImageViewport,
+    hero: confirmedImageViewport,
+    card: confirmedImageViewport,
+  },
+};
+const wrongAspectGame = {
+  ...mediaReadyGame,
+  videoMedia: {
+    hero: {
+      clip: `/media/editorial/media-check/${"a".repeat(64)}.webm`,
+      viewport: {
+        x: 0.5,
+        y: 0.5,
+        zoom: 1,
+        aspect: "source",
+        confirmed: true,
+      },
+    },
+  },
+};
+const correctAspectGame = {
+  ...wrongAspectGame,
+  videoMedia: {
+    hero: {
+      ...wrongAspectGame.videoMedia.hero,
+      viewport: {
+        ...wrongAspectGame.videoMedia.hero.viewport,
+        aspect: "16:9",
+      },
+    },
+  },
+};
+
+assert(
+  !evaluateGameMediaRequirements(wrongAspectGame).hero.cropReady &&
+    evaluateGameMediaRequirements(correctAspectGame).hero.cropReady,
+  "Un video confirmado con relación incorrecta no debe superar la preparación del destino."
+);
+
+const reconciledImageMedia = reconcileGameImageMedia(
+  {
+    ...mediaReadyGame,
+    imageMedia: {
+      ...mediaReadyGame.imageMedia,
+      gallery: {
+        "/images/gallery.webp": confirmedImageViewport,
+      },
+    },
+  },
+  {
+    coverImage: "/images/new-cover.webp",
+    heroImage: mediaReadyGame.heroImage,
+    screenshots: [],
+  }
+);
+
+assert(
+  !reconciledImageMedia?.cover &&
+    !reconciledImageMedia?.card &&
+    !reconciledImageMedia?.gallery &&
+    Boolean(reconciledImageMedia?.hero),
+  "La reconciliación real debe retirar encuadres obsoletos sin perder los que todavía pertenecen al mismo recurso."
+);
+
+assert(
   has(workspaceCss, ".requirementPending", ".continueGate", ".continueButton"),
   "Los estados pendientes y el bloqueo de avance deben tener estilos explícitos."
 );
@@ -174,5 +420,5 @@ if (failures.length) {
 }
 
 console.log(
-  "Destinos multimedia obligatorios: OK (Portada 4:5 + Hero 16:9 + Card 3:2 + Galería mínima 1 + avance/publicación bloqueados hasta confirmar)."
+  "Destinos multimedia obligatorios: OK (panel, persistencia, publicación, integridad física y consumo público conectados)."
 );

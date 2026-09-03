@@ -1,4 +1,9 @@
-import type { Game, GameImageViewport, GameVideoViewport } from "@/types/game";
+import type {
+  Game,
+  GameImageViewport,
+  GameVideoViewport,
+  GameVideoViewportAspect,
+} from "@/types/game";
 
 export const REQUIRED_DESTINATION_ASPECTS = {
   cover: "4:5",
@@ -12,8 +17,12 @@ export function isImageCropConfirmed(viewport: GameImageViewport | undefined) {
   return viewport?.confirmed === true;
 }
 
-export function isVideoCropConfirmed(viewport: GameVideoViewport | undefined) {
-  return viewport?.confirmed === true;
+export function isVideoCropConfirmed(
+  viewport: GameVideoViewport | undefined,
+  requiredAspect?: GameVideoViewportAspect
+) {
+  return viewport?.confirmed === true &&
+    (!requiredAspect || viewport.aspect === requiredAspect);
 }
 
 export function evaluateGameMediaRequirements(game: Game) {
@@ -30,13 +39,19 @@ export function evaluateGameMediaRequirements(game: Game) {
     : Boolean(game.heroImage);
   const heroCropReady = heroUsesVideo
     ? Boolean(heroVideo?.clip) &&
-      isVideoCropConfirmed(heroVideo?.viewport) &&
+      isVideoCropConfirmed(
+        heroVideo?.viewport,
+        REQUIRED_DESTINATION_ASPECTS.hero
+      ) &&
       (!heroUsesHoverVideo || isImageCropConfirmed(game.imageMedia?.hero))
     : Boolean(game.heroImage) && isImageCropConfirmed(game.imageMedia?.hero);
 
   const cardAssigned = Boolean(cardVideo || game.coverImage);
   const cardCropReady = cardVideo
-    ? isVideoCropConfirmed(cardVideo.viewport)
+    ? isVideoCropConfirmed(
+        cardVideo.viewport,
+        REQUIRED_DESTINATION_ASPECTS.card
+      )
     : Boolean(game.coverImage) && isImageCropConfirmed(game.imageMedia?.card);
 
   const galleryReady = Boolean(game.screenshots?.length);
