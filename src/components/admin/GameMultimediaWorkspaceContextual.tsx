@@ -968,6 +968,7 @@ export default function GameMultimediaWorkspaceContextual({
                     type="button"
                     className={`${styles.editDestinationButton} ${requirementActionClass(galleryCropReady)}`}
                     data-requirement-state={galleryCropReady ? "complete" : "missing"}
+                    aria-label="Gestionar galería"
                     disabled={stale || !gallerySelectionReady}
                     onClick={() => setGalleryManagerOpen(true)}
                   >
