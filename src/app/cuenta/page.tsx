@@ -161,7 +161,7 @@ export default async function AccountPage() {
             slug: game.slug,
             title: game.title,
             category: game.category,
-            coverImage: game.coverImage,
+            coverImage: game.cardImage ?? game.coverImage,
             imageViewport:
               game.imageMedia?.card ?? game.imageMedia?.cover,
             rating: game.rating,
@@ -192,7 +192,7 @@ export default async function AccountPage() {
             id: update.id,
             gameSlug: update.gameSlug,
             gameTitle: update.game.title,
-            gameCoverImage: update.game.coverImage,
+            gameCoverImage: update.game.cardImage ?? update.game.coverImage,
             gameImageViewport:
               update.game.imageMedia?.card ??
               update.game.imageMedia?.cover,
@@ -204,7 +204,7 @@ export default async function AccountPage() {
             slug: entry.game.slug,
             title: entry.game.title,
             category: entry.game.category,
-            coverImage: entry.game.coverImage,
+            coverImage: entry.game.cardImage ?? entry.game.coverImage,
             imageViewport:
               entry.game.imageMedia?.card ??
               entry.game.imageMedia?.cover,
