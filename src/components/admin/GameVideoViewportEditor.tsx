@@ -216,6 +216,7 @@ export default function GameVideoViewportEditor({
           type="button"
           className={dialogStyles.primary}
           disabled={busy}
+          aria-label={`Guardar encuadre y confirmar recorte ${requiredAspect}`}
           onClick={() => void save()}
         >
           {busy ? "Guardando…" : `Confirmar recorte ${requiredAspect}`}
