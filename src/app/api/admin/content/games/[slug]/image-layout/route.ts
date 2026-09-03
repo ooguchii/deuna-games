@@ -26,7 +26,8 @@ import type {
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const targetSchema = z.enum(["cover", "hero", "card", "detail", "gallery"]);
+const legacyImageTargets = ["cover", "hero", "card", "gallery"] as const;
+const targetSchema = z.enum([...legacyImageTargets, "detail"]);
 const baseFields = [
   "expectedRevision",
   "target",
