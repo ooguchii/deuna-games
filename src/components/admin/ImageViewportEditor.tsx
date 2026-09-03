@@ -8,6 +8,9 @@ import {
 } from "react";
 
 import {
+  REQUIRED_GAME_MEDIA_CROPS,
+} from "@/lib/media/game-media-readiness";
+import {
   DEFAULT_GAME_IMAGE_VIEWPORT,
   MAX_GAME_IMAGE_ZOOM,
   normalizeGameImageViewport,
@@ -45,6 +48,18 @@ function targetLabel(target: Target) {
   return "Card";
 }
 
+function targetAspect(target: Target) {
+  if (target === "gallery") return null;
+  return REQUIRED_GAME_MEDIA_CROPS[target];
+}
+
+function cssAspectRatio(target: Target) {
+  const aspect = targetAspect(target);
+  if (aspect === "16:9") return "16 / 9";
+  if (aspect === "4:5") return "4 / 5";
+  return undefined;
+}
+
 export default function ImageViewportEditor({
   slug,
   revision,
@@ -60,6 +75,7 @@ export default function ImageViewportEditor({
   );
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
+  const requiredAspect = targetAspect(target);
 
   function updateFocus(event: PointerEvent<HTMLDivElement>) {
     if (busy) return;
@@ -83,7 +99,11 @@ export default function ImageViewportEditor({
   async function save() {
     if (busy) return;
     setBusy(true);
-    setStatus(`Guardando el encuadre de ${targetLabel(target)} sin crear otra imagen…`);
+    setStatus(
+      requiredAspect
+        ? `Confirmando recorte ${requiredAspect} de ${targetLabel(target)} sin crear otra imagen…`
+        : "Guardando el encuadre de Galería sin crear otra imagen…"
+    );
 
     try {
       const fields: Record<string, string> = {
@@ -119,7 +139,7 @@ export default function ImageViewportEditor({
         throw new Error(
           state === "conflicto"
             ? "Otra pestaña guardó una revisión más reciente. Recarga Multimedia antes de continuar."
-            : "El servidor rechazó el encuadre de la imagen."
+            : "El servidor rechazó el recorte de la imagen."
         );
       }
       window.location.assign(resultUrl.toString());
@@ -127,7 +147,7 @@ export default function ImageViewportEditor({
       setStatus(
         error instanceof Error
           ? error.message
-          : "No se pudo guardar el encuadre."
+          : "No se pudo guardar el recorte."
       );
       setBusy(false);
     }
@@ -137,6 +157,24 @@ export default function ImageViewportEditor({
 
   return (
     <>
+      {requiredAspect && (
+        <div
+          style={{
+            margin: "0 0 12px",
+            padding: "10px 12px",
+            border: "1px solid #2b3b48",
+            borderRadius: 8,
+            color: "#c7d2db",
+            background: "#0b131c",
+            fontSize: 12,
+          }}
+        >
+          <strong>Recorte obligatorio {requiredAspect}</strong>
+          {" · "}
+          Guardar este editor confirma el formato requerido para {targetLabel(target)}.
+        </div>
+      )}
+
       <div className={styles.workspace}>
         <div className={styles.previewColumn}>
           <div className={styles.previewHeader}>
@@ -144,11 +182,15 @@ export default function ImageViewportEditor({
               <span>VISTA DEL DESTINO</span>
               <strong>{label}</strong>
             </div>
-            <small>{targetLabel(target)} · metadata visual</small>
+            <small>
+              {targetLabel(target)}
+              {requiredAspect ? ` · ${requiredAspect} obligatorio` : " · metadata visual"}
+            </small>
           </div>
 
           <div
             className={styles.preview}
+            style={{ aspectRatio: cssAspectRatio(target) }}
             onPointerDown={(event) => {
               event.currentTarget.setPointerCapture(event.pointerId);
               updateFocus(event);
@@ -239,7 +281,6 @@ export default function ImageViewportEditor({
                     ...current,
                     x: round(clamp(Number(event.target.value) / 100)),
                   }))
-                }
               />
             </label>
             <label>
@@ -256,7 +297,6 @@ export default function ImageViewportEditor({
                     ...current,
                     y: round(clamp(Number(event.target.value) / 100)),
                   }))
-                }
               />
             </label>
           </div>
@@ -304,7 +344,11 @@ export default function ImageViewportEditor({
           disabled={busy}
           onClick={() => void save()}
         >
-          {busy ? "Guardando…" : "Guardar encuadre"}
+          {busy
+            ? "Guardando…"
+            : requiredAspect
+              ? `Confirmar recorte ${requiredAspect}`
+              : "Guardar encuadre"}
         </button>
       </div>
     </>
