@@ -122,14 +122,19 @@ function HeroVideoLayer({
 }) {
   const resolved = resolveGameHeroVideo(game);
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
-  const [documentVisible, setDocumentVisible] = useState(
-    () => typeof document === "undefined" || !document.hidden
-  );
+  const [documentVisible, setDocumentVisible] = useState(true);
 
   useEffect(() => {
-    const syncVisibility = () => setDocumentVisible(!document.hidden);
+    const syncVisibility = () => {
+      setDocumentVisible(!document.hidden);
+    };
+
+    syncVisibility();
     document.addEventListener("visibilitychange", syncVisibility);
-    return () => document.removeEventListener("visibilitychange", syncVisibility);
+
+    return () => {
+      document.removeEventListener("visibilitychange", syncVisibility);
+    };
   }, []);
 
   if (
