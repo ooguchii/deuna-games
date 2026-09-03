@@ -57,14 +57,15 @@ assert(
 assert(
   has(
     validation,
-    "background: imageViewportSchema.optional()",
+    "background: fixedImageViewportSchema.optional()",
+    "gallery: galleryImageMediaSchema.optional()",
     "background: mediaModeSchema.optional()",
     "background: destinationVideoSchema.optional()",
     "const backgroundImage",
     "inferredOptionalMode",
     "backgroundMode"
   ),
-  "La validación editorial debe preservar el Fondo opcional y mantener compatibilidad con juegos históricos."
+  "La validación editorial debe preservar el Fondo opcional con viewport fijo y reservar relaciones seleccionables para Galería."
 );
 
 assert(
