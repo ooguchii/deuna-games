@@ -201,7 +201,7 @@
 
 .layerHeading span {
   color: #8799a9;
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .resourcePicker {
@@ -258,7 +258,7 @@
 
 .resourcePanelHeading span {
   color: #8295a5;
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .resourceGrid {
@@ -319,12 +319,12 @@
 }
 
 .resourceCopy strong {
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .resourceCopy small {
   color: #8193a3;
-  font-size: 9px;
+  font-size: 11px;
 }
 
 .emptyResource {
@@ -396,7 +396,7 @@
 
 .globalState span {
   color: #8fbea0;
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .performanceNote {
