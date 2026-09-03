@@ -10,16 +10,10 @@ import {
 } from "react";
 
 import {
-  resolvePreviewViewportCrop,
-} from "@/lib/media/preview-video-policy";
+  resolveFramedMediaLayout,
+  type FramedMediaLayout,
+} from "@/lib/media/framed-media-layout";
 import type { GameVideoViewport } from "@/types/game";
-
-type VideoLayout = {
-  left: number;
-  top: number;
-  width: number;
-  height: number;
-};
 
 type Props = Omit<
   VideoHTMLAttributes<HTMLVideoElement>,
@@ -41,7 +35,7 @@ export default function FramedVideo({
 }: Props) {
   const frameRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [layout, setLayout] = useState<VideoLayout | null>(null);
+  const [layout, setLayout] = useState<FramedMediaLayout | null>(null);
 
   const updateLayout = useCallback(() => {
     const frame = frameRef.current;
@@ -58,31 +52,14 @@ export default function FramedVideo({
     const bounds = frame.getBoundingClientRect();
     if (bounds.width <= 0 || bounds.height <= 0) return;
 
-    const crop = resolvePreviewViewportCrop(
+    const resolvedLayout = resolveFramedMediaLayout(
       video.videoWidth,
       video.videoHeight,
-      viewport
+      viewport,
+      bounds.width,
+      bounds.height
     );
-    if (!crop) return;
-
-    // El crop es sólo una ventana lógica. Escalamos el fotograma completo para
-    // que esa ventana cubra el destino y desplazamos el video hasta centrarla.
-    // No existe segundo archivo ni recodificación para Card/Hero.
-    const scale = Math.max(
-      bounds.width / crop.width,
-      bounds.height / crop.height
-    );
-    const width = video.videoWidth * scale;
-    const height = video.videoHeight * scale;
-    const cropCenterX = crop.x + crop.width / 2;
-    const cropCenterY = crop.y + crop.height / 2;
-
-    setLayout({
-      width,
-      height,
-      left: bounds.width / 2 - cropCenterX * scale,
-      top: bounds.height / 2 - cropCenterY * scale,
-    });
+    if (resolvedLayout) setLayout(resolvedLayout);
   }, [viewport]);
 
   useLayoutEffect(() => {

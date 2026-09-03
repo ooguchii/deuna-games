@@ -302,10 +302,10 @@ assert(
     "const heroResource = imageBySrc(heroImage)",
     "const cardResource = imageBySrc(cardImage)",
     "const firstGalleryResource = imageBySrc(screenshots[0] ?? null)",
-    "coverResource.src",
-    "heroResource.src",
-    "cardResource.src",
-    "firstGalleryResource.src"
+    "imageSrc={coverResource?.src ?? null}",
+    "imageSrc={heroResource?.src ?? null}",
+    "imageSrc={cardResource?.src ?? null}",
+    "src={firstGalleryResource.src}"
   ) &&
     has(
       libraryRoute,
