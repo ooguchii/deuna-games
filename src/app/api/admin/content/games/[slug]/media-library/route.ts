@@ -17,6 +17,7 @@ import {
   getPublishedGameImageReferences,
 } from "@/lib/admin/publication-service";
 import { hasExactAdminFormFields } from "@/lib/admin/request-security";
+import { verifyAdminSession } from "@/lib/admin/session";
 import {
   deleteEditorialImageResource,
   findEditorialMediaResource,
