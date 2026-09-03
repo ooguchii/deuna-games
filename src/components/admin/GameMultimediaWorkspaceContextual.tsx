@@ -771,6 +771,7 @@ export default function GameMultimediaWorkspaceContextual({
                 <button
                   type="button"
                   className={`${contextualStyles.galleryEditButton} ${requirementActionClass(cropConfirmed)}`}
+                  aria-label={cropConfirmed ? "Editar recorte confirmado" : "Editar recorte pendiente"}
                   disabled={stale}
                   onClick={() => openGalleryImage(src)}
                 >
