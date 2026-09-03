@@ -79,12 +79,12 @@ export type PreviewViewport = {
   customAspectRatio?: number;
 };
 
-export const DEFAULT_PREVIEW_VIEWPORT: PreviewViewport = {
+export const DEFAULT_PREVIEW_VIEWPORT = {
   x: 0.5,
   y: 0.5,
   zoom: 1,
   aspect: "source",
-};
+} as const satisfies PreviewViewport;
 
 export type ResolvedPreviewViewportCrop = {
   x: number;
