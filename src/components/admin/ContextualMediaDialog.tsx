@@ -17,6 +17,7 @@ type Props = {
   title: string;
   description?: string;
   children: ReactNode;
+  wide?: boolean;
   onClose: () => void;
 };
 
@@ -29,6 +30,7 @@ export default function ContextualMediaDialog({
   title,
   description,
   children,
+  wide = false,
   onClose,
 }: Props) {
   const mounted = useSyncExternalStore(
@@ -85,7 +87,7 @@ export default function ContextualMediaDialog({
       onMouseDown={handleBackdropClick}
     >
       <section
-        className={styles.dialog}
+        className={`${styles.dialog} ${wide ? styles.dialogWide : ""}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="contextual-media-dialog-title"
