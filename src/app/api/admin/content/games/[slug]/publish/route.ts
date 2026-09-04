@@ -12,6 +12,9 @@ import {
   inspectGameMediaIntegrity,
 } from "@/lib/admin/game-media-integrity";
 import {
+  getGameMediaWorkspaceSnapshot,
+} from "@/lib/admin/game-media-workspace";
+import {
   evaluateGamePublicationReadiness,
 } from "@/lib/admin/game-publication-readiness";
 import {
@@ -99,6 +102,34 @@ export async function POST(
       );
     }
 
+    // La higiene se valida en servidor sobre los masters físicos, no sólo
+    // sobre el estado visual del panel. Únicamente un master editorial sin
+    // referencia de borrador, publicación actual ni historial restaurable
+    // bloquea la creación de un snapshot público nuevo.
+    const mediaWorkspace =
+      await getGameMediaWorkspaceSnapshot(slug);
+
+    if (!mediaWorkspace) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        "/admin/juegos?estado=no-encontrado"
+      );
+    }
+
+    if (mediaWorkspace.revision !== expected.data) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        `${target}?estado=conflicto`
+      );
+    }
+
+    if (!mediaWorkspace.hygiene.ready) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        `${target}?estado=higiene-multimedia`
+      );
+    }
+
     const taxonomyIntegrity =
       await inspectPublishedGameTaxonomyIntegrity(
         candidate.game
@@ -142,6 +173,18 @@ export async function POST(
     }
 
     if (result.outcome === "published") {
+      // Reconciliamos otra vez después del commit editorial para limpiar
+      // únicamente masters que hayan quedado realmente huérfanos. Los usados
+      // por la publicación recién creada o por cualquier snapshot restaurable
+      // continúan protegidos.
+      try {
+        await getGameMediaWorkspaceSnapshot(slug);
+      } catch (error) {
+        console.error(
+          "La publicación se completó, pero no se pudo reconciliar la limpieza multimedia.",
+          error
+        );
+      }
       revalidatePublicGameSurfaces(slug);
     }
 

@@ -14,10 +14,12 @@ const [
   packageJson,
   library,
   libraryRoute,
+  mediaResourceDeleteRoute,
   publishedVideoReferences,
   imageUploadRoute,
   imageUploadForm,
   workspace,
+  utilityRail,
   multimediaEditor,
   multimediaCss,
   contextualCss,
@@ -33,10 +35,12 @@ const [
   source("package.json"),
   source("src/lib/media/editorial-media-library.ts"),
   source("src/app/api/admin/content/games/[slug]/media-library/route.ts"),
+  source("src/app/api/admin/content/games/[slug]/media-resource-delete/route.ts"),
   source("src/lib/admin/published-game-video-references.ts"),
   source("src/app/api/admin/content/games/[slug]/media-upload/route.ts"),
   source("src/components/admin/GameMediaUploadForm.tsx"),
   source("src/components/admin/GameMultimediaWorkspaceContextual.tsx"),
+  source("src/components/admin/GameMultimediaUtilityRail.tsx"),
   source("src/components/admin/GameMultimediaEditor.tsx"),
   source("src/components/admin/GameMultimediaEditor.module.css"),
   source("src/components/admin/GameMultimediaWorkspaceContextual.module.css"),
@@ -98,23 +102,25 @@ assert(
     "hasExactAdminFormFields",
     "findEditorialMediaResource",
     "resourcesForGame",
-    '"image-delete"',
-    '"video-delete"',
-    "withoutImageResource",
-    "withoutVideoResource",
+    "protectedReferencesForGame",
+    "getHistoricalGameMediaReferences",
     "listGameImageReferences",
     "listGameVideoReferences",
     "getPublishedGameImageReferences",
     "getPublishedGameVideoReferences",
-    "publishedReferences.includes",
-    "markEditorialMediaForDeletion",
-    "deleteEditorialMediaResource",
+    "reconcileEditorialMediaDeletions",
     "saveGameMediaDraft"
   ) &&
+    !libraryRoute.includes('"image-delete"') &&
+    !libraryRoute.includes('"video-delete"') &&
+    !libraryRoute.includes("markEditorialMediaForDeletion") &&
+    !libraryRoute.includes("deleteEditorialMediaResource") &&
+    !libraryRoute.includes("withoutImageResource") &&
+    !libraryRoute.includes("withoutVideoResource") &&
     !libraryRoute.includes("spawn(") &&
     !libraryRoute.includes("writeFile(") &&
     !libraryRoute.includes("unlink("),
-  "Asignación y eliminación deben estar autenticadas, proteger referencias publicadas y mantener IO físico fuera de la ruta."
+  "La ruta legacy de biblioteca debe ser exclusivamente de lectura/asignación, proteger publicación e historial y no conservar ningún camino destructivo."
 );
 
 assert(
@@ -130,15 +136,18 @@ assert(
 
 assert(
   has(
-    libraryRoute,
-    'videoMedia.hero?.clip === resource',
-    'videoMedia.card?.source === "hero"',
-    'videoMedia.card?.source === "independent"',
-    "videoMedia.detail?.clip === resource",
-    "videoMedia.background?.clip === resource",
-    "game.previewClip === resource"
-  ),
-  "Eliminar un WebM debe limpiar Portada/Hero/Card/Contenedor/Fondo/preview sin dejar referencias colgantes."
+    mediaResourceDeleteRoute,
+    "authorizeAdminFormRequest",
+    "hasExactAdminFormFields",
+    "draftReferences.has(resource)",
+    "getHistoricalGameMediaReferences",
+    "historicalReferences",
+    'redirectPath(slug, "recurso-en-historial")',
+    "markEditorialMediaForDeletion",
+    "deleteEditorialMediaResource"
+  ) &&
+    !mediaResourceDeleteRoute.includes("saveGameMediaDraft"),
+  "La eliminación destructiva debe vivir sólo en la ruta dedicada, rechazar referencias del borrador/historial y nunca quitar asignaciones implícitamente."
 );
 
 assert(
@@ -150,7 +159,7 @@ assert(
     "listGameVideoReferences",
     "verifyAdminSession"
   ),
-  "Los WebM todavía publicados deben detectarse antes de permitir el borrado físico."
+  "Los WebM todavía publicados deben seguir siendo detectables por la capa de publicación."
 );
 
 assert(
@@ -194,7 +203,6 @@ for (const label of [
   "Card del juego",
   "Imagen + hover",
   "Gestionar galería",
-  "Eliminar recurso",
 ]) {
   assert(
     workspace.includes(label),
@@ -206,8 +214,6 @@ assert(
   has(
     workspace,
     "AdminMediaLibraryPreview",
-    "DeleteResourceForm",
-    'value={resource.kind === "image" ? "image-delete" : "video-delete"}',
     "libraryGroups",
     'renderLibraryGroup("IMÁGENES", "image", images)',
     'renderLibraryGroup("VIDEOS", "video", videos)',
@@ -215,7 +221,20 @@ assert(
     "usageLabels(previewResource)",
     "summary"
   ),
-  "Biblioteca debe separar tipos, ampliar por click, eliminar ambos tipos y mostrar previews en el resumen."
+  "El workspace de asignación debe conservar previews y agrupación de recursos aunque la biblioteca administrativa principal viva en el rail profesional."
+);
+
+assert(
+  has(
+    utilityRail,
+    "Biblioteca multimedia compartida",
+    "media-resource-delete",
+    'resource.hygiene?.status !== "unused"',
+    "Protegido",
+    "Historial",
+    "Por resolver ·"
+  ),
+  "La biblioteca visible debe administrar higiene y ofrecer borrado sólo para masters realmente huérfanos mediante la ruta dedicada."
 );
 
 assert(
@@ -257,7 +276,7 @@ assert(
       ".currentThumb",
       ".choiceThumb"
     ),
-  "El layout debe separar biblioteca y usar miniaturas más legibles con botón destructivo menos circular."
+  "El layout histórico puede conservar estilos de compatibilidad mientras la superficie visible use la biblioteca profesional."
 );
 
 assert(
@@ -302,5 +321,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  "Biblioteca multimedia compartida: OK (WebP/WebM seguros · separación visual · preview grande · borrado diferido protegido · recortes independientes)."
+  "Biblioteca multimedia compartida: OK (WebP/WebM seguros · ruta legacy assignment-only · borrado dedicado con historial protegido · preview grande · recortes independientes)."
 );

@@ -1,0 +1,102 @@
+.fileField {
+  display: grid;
+  gap: 8px;
+}
+
+.dropZone {
+  display: grid;
+  grid-template-columns: minmax(0, 150px) minmax(0, 1fr);
+  gap: 12px;
+  min-height: 132px;
+  padding: 10px;
+  border: 1px dashed #354555;
+  border-radius: 10px;
+  background: #0a1119;
+  transition:
+    border-color 150ms ease,
+    background 150ms ease;
+}
+
+.dropZone[data-dragging="true"] {
+  border-color: var(--admin-brand-border, var(--brand));
+  background: color-mix(in srgb, var(--brand) 7%, #0a1119);
+}
+
+.preview {
+  position: relative;
+  min-height: 110px;
+  overflow: hidden;
+  border: 1px solid #283846;
+  border-radius: 8px;
+  background:
+    linear-gradient(45deg, #111a23 25%, transparent 25%),
+    linear-gradient(-45deg, #111a23 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #111a23 75%),
+    linear-gradient(-45deg, transparent 75%, #111a23 75%),
+    #0b121a;
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+  background-size: 16px 16px;
+}
+
+.previewImage {
+  position: absolute;
+  inset: 0;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+}
+
+.previewEmpty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 12px;
+  color: #8496a7;
+  font-size: 11px;
+  font-weight: 750;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.dropCopy {
+  display: grid;
+  align-content: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.dropCopy strong {
+  color: #e5ecf2;
+  font-size: 12px;
+}
+
+.dropCopy span,
+.dropCopy small {
+  color: #8fa1b1;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.dropCopy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fileInput {
+  width: 100%;
+  min-width: 0;
+  color: #a8b5c0;
+  font-size: 11px;
+}
+
+@media (max-width: 640px) {
+  .dropZone {
+    grid-template-columns: 1fr;
+  }
+
+  .preview {
+    min-height: 170px;
+  }
+}

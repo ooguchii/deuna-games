@@ -3,6 +3,7 @@ import GameMultimediaUtilityRail from "@/components/admin/GameMultimediaUtilityR
 import GameMultimediaWorkspaceContextual from "@/components/admin/GameMultimediaWorkspaceContextual";
 import GameVideoLibraryEditor from "@/components/admin/GameVideoLibraryEditor";
 
+import refinementStyles from "./GameMultimediaLayoutRefinements.module.css";
 import shellStyles from "./GameMultimediaShell.module.css";
 
 type GameMultimediaEditorProps = {
@@ -23,7 +24,9 @@ export default function GameMultimediaEditor({
   return (
     <div className={shellStyles.workspaceShell}>
       <div className={shellStyles.mainColumn}>
-        <div className={shellStyles.legacyWorkspaceHost}>
+        <div
+          className={`${shellStyles.legacyWorkspaceHost} ${refinementStyles.assignmentHost}`}
+        >
           <GameMultimediaWorkspaceContextual
             slug={slug}
             revision={revision}

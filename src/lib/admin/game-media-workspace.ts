@@ -1,0 +1,121 @@
+import "server-only";
+
+import {
+  getEditorialItem,
+} from "@/lib/admin/content-service";
+import {
+  getHistoricalGameMediaReferences,
+} from "@/lib/admin/game-media-history";
+import {
+  evaluateGameMediaHygiene,
+} from "@/lib/admin/game-media-hygiene";
+import {
+  listGameImageReferences,
+  listGameVideoReferences,
+} from "@/lib/admin/game-media-integrity";
+import {
+  getPublishedGameImageReferences,
+} from "@/lib/admin/publication-service";
+import {
+  getPublishedGameVideoReferences,
+} from "@/lib/admin/published-game-video-references";
+import {
+  listAssignedBundledImageResources,
+  listEditorialMediaLibrary,
+  mergeEditorialMediaResources,
+  reconcileEditorialMediaDeletions,
+} from "@/lib/media/editorial-media-library";
+import {
+  resolveGameGalleryItems,
+} from "@/lib/media/game-gallery-media";
+import {
+  evaluateGameMediaRequirements,
+  resolveGameBackgroundMediaMode,
+} from "@/lib/media/game-media-requirements";
+import {
+  resolveGameDestinationMediaMode,
+} from "@/lib/media/game-video-media";
+
+export async function getGameMediaWorkspaceSnapshot(slug: string) {
+  const item = await getEditorialItem("game", slug);
+  if (!item) return null;
+
+  const game = item.payload;
+  const imageReferences = listGameImageReferences(game);
+  const videoReferences = listGameVideoReferences(game);
+  const draftReferences = [...imageReferences, ...videoReferences];
+  const [
+    publishedImages,
+    publishedVideos,
+    historicalReferences,
+  ] = await Promise.all([
+    getPublishedGameImageReferences(slug),
+    getPublishedGameVideoReferences(slug),
+    getHistoricalGameMediaReferences(slug),
+  ]);
+  const publishedReferences = Array.from(
+    new Set([...publishedImages, ...publishedVideos])
+  );
+  const protectedReferences = Array.from(
+    new Set([
+      ...draftReferences,
+      ...publishedReferences,
+      ...historicalReferences,
+    ])
+  );
+
+  // Una publicación histórica sólo es realmente restaurable mientras sus
+  // masters existan. Cualquier marcador de borrado sobre una referencia viva
+  // o histórica se revierte; sólo se purgan archivos sin ninguna referencia.
+  await reconcileEditorialMediaDeletions(
+    slug,
+    protectedReferences,
+    protectedReferences
+  );
+
+  const [editorial, bundled] = await Promise.all([
+    listEditorialMediaLibrary(slug),
+    listAssignedBundledImageResources(imageReferences),
+  ]);
+  const resources = mergeEditorialMediaResources(editorial, bundled);
+  const hygiene = evaluateGameMediaHygiene(
+    game,
+    resources,
+    publishedReferences,
+    historicalReferences
+  );
+  const hygieneBySource = new Map(
+    hygiene.resources.map((resource) => [resource.src, resource] as const)
+  );
+
+  return {
+    revision: item.revision,
+    resources: resources.map((resource) => ({
+      ...resource,
+      hygiene: hygieneBySource.get(resource.src) ?? null,
+    })),
+    hygiene,
+    requirements: evaluateGameMediaRequirements(game),
+    gallery: resolveGameGalleryItems(game),
+    assignments: {
+      coverImage: game.coverImage ?? null,
+      heroImage: game.heroImage ?? null,
+      cardImage: game.cardImage ?? null,
+      detailImage: game.detailImage ?? null,
+      backgroundImage: game.backgroundImage ?? null,
+      screenshots: game.screenshots ?? [],
+      imageMedia: game.imageMedia ?? null,
+      coverMode: resolveGameDestinationMediaMode(game, "cover"),
+      heroMode: resolveGameDestinationMediaMode(game, "hero"),
+      cardMode: resolveGameDestinationMediaMode(game, "card"),
+      detailMode: resolveGameDestinationMediaMode(game, "detail"),
+      backgroundMode: resolveGameBackgroundMediaMode(game),
+      coverVideo: game.videoMedia?.cover ?? null,
+      heroVideo: game.videoMedia?.hero ?? null,
+      cardVideo: game.videoMedia?.card ?? null,
+      detailVideo: game.videoMedia?.detail ?? null,
+      backgroundVideo: game.videoMedia?.background ?? null,
+      legacyPreviewClip: game.previewClip ?? null,
+    },
+  };
+}

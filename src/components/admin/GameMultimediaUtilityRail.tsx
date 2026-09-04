@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  BookOpen,
   CheckCircle2,
   Clapperboard,
   FolderOpen,
@@ -12,6 +11,7 @@ import {
   Plus,
   Sparkles,
   Trash2,
+  TriangleAlert,
   Upload,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -27,8 +27,10 @@ import {
   type MultimediaLibraryState,
   multimediaShortName,
 } from "@/components/admin/game-multimedia-library-types";
+import type { GameGalleryItem } from "@/types/game";
 
-import styles from "./GameMultimediaShell.module.css";
+import railStyles from "./GameMultimediaUtilityRail.module.css";
+import shellStyles from "./GameMultimediaShell.module.css";
 
 type Props = {
   slug: string;
@@ -37,6 +39,7 @@ type Props = {
 };
 
 type AddKind = "image" | "video";
+type LibraryFilter = "all" | "active" | "unused";
 
 const EMPTY_RESOURCES: MultimediaLibraryResource[] = [];
 
@@ -50,6 +53,55 @@ function resourceDetail(resource: MultimediaLibraryResource) {
   return `Imagen · ${formatMultimediaBytes(resource.bytes)}`;
 }
 
+function statusLabel(resource: MultimediaLibraryResource) {
+  const status = resource.hygiene?.status;
+  if (status === "active") return "En uso";
+  if (status === "reserved") return "Reserva";
+  if (status === "published-only") return "Publicado";
+  if (status === "historical") return "Historial";
+  if (status === "unused") return "Sin uso";
+  return "Disponible";
+}
+
+function statusTone(resource: MultimediaLibraryResource) {
+  if (resource.hygiene?.blocksPublication) return "warning";
+  if (
+    resource.hygiene?.status === "active" ||
+    resource.hygiene?.status === "reserved"
+  ) {
+    return "ready";
+  }
+  return "neutral";
+}
+
+function isProtectedResource(resource: MultimediaLibraryResource) {
+  const status = resource.hygiene?.status;
+  return status === "active" ||
+    status === "reserved" ||
+    status === "published-only" ||
+    status === "historical";
+}
+
+function libraryFilterMatch(
+  resource: MultimediaLibraryResource,
+  filter: LibraryFilter
+) {
+  if (filter === "all") return true;
+  if (filter === "unused") return resource.hygiene?.blocksPublication === true;
+  return isProtectedResource(resource);
+}
+
+function modeLabel(mode: string | null | undefined) {
+  if (mode === "hover-video") return "Imagen + hover";
+  if (mode === "video") return "Video";
+  if (mode === "image") return "Imagen";
+  return "Global";
+}
+
+function firstGalleryItem(state: MultimediaLibraryState | null): GameGalleryItem | null {
+  return state?.gallery?.[0] ?? null;
+}
+
 export default function GameMultimediaUtilityRail({
   slug,
   revision,
@@ -61,6 +113,7 @@ export default function GameMultimediaUtilityRail({
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [addKind, setAddKind] = useState<AddKind | null>(null);
+  const [libraryFilter, setLibraryFilter] = useState<LibraryFilter>("all");
   const [previewResource, setPreviewResource] = useState<MultimediaLibraryResource | null>(null);
 
   useEffect(() => {
@@ -70,19 +123,19 @@ export default function GameMultimediaUtilityRail({
         setLoading(true);
         setError(null);
         const response = await fetch(
-          `/api/admin/content/games/${encodeURIComponent(slug)}/media-library`,
+          `/api/admin/content/games/${encodeURIComponent(slug)}/media-workspace`,
           {
             credentials: "same-origin",
             cache: "no-store",
             signal: controller.signal,
           }
         );
-        if (!response.ok) throw new Error("No se pudo cargar la biblioteca multimedia.");
+        if (!response.ok) throw new Error("No se pudo cargar el workspace multimedia.");
         const payload = await response.json() as MultimediaLibraryState;
         if (!controller.signal.aborted) setState(payload);
       } catch (loadError) {
         if (controller.signal.aborted) return;
-        setError(loadError instanceof Error ? loadError.message : "No se pudo cargar la biblioteca.");
+        setError(loadError instanceof Error ? loadError.message : "No se pudo cargar Multimedia.");
       } finally {
         if (!controller.signal.aborted) setLoading(false);
       }
@@ -92,27 +145,122 @@ export default function GameMultimediaUtilityRail({
   }, [slug]);
 
   const resources = state?.resources ?? EMPTY_RESOURCES;
-  const images = useMemo(
-    () => resources.filter((resource) => resource.kind === "image"),
+  const sortedResources = useMemo(
+    () => [...resources].sort((left, right) => {
+      const leftBlocking = left.hygiene?.blocksPublication ? 1 : 0;
+      const rightBlocking = right.hygiene?.blocksPublication ? 1 : 0;
+      if (leftBlocking !== rightBlocking) return rightBlocking - leftBlocking;
+      return multimediaShortName(left.src).localeCompare(multimediaShortName(right.src), "es");
+    }),
     [resources]
+  );
+  const images = useMemo(
+    () => sortedResources.filter((resource) => resource.kind === "image"),
+    [sortedResources]
   );
   const videos = useMemo(
-    () => resources.filter((resource) => resource.kind === "video"),
-    [resources]
+    () => sortedResources.filter((resource) => resource.kind === "video"),
+    [sortedResources]
   );
-  const previewResources = resources.slice(0, 3);
+  const filteredImages = useMemo(
+    () => images.filter((resource) => libraryFilterMatch(resource, libraryFilter)),
+    [images, libraryFilter]
+  );
+  const filteredVideos = useMemo(
+    () => videos.filter((resource) => libraryFilterMatch(resource, libraryFilter)),
+    [videos, libraryFilter]
+  );
+  const previewResources = sortedResources.slice(0, 3);
   const currentRevision = state?.revision ?? revision;
   const stale = state !== null && state.revision !== revision;
+  const hygiene = state?.hygiene;
+  const requirements = state?.requirements;
+  const protectedCount =
+    (hygiene?.active ?? 0) +
+    (hygiene?.reserved ?? 0) +
+    (hygiene?.publishedOnly ?? 0) +
+    (hygiene?.historical ?? 0);
+  const mandatoryReadyCount = requirements
+    ? [
+        requirements.cover.cropReady,
+        requirements.hero.cropReady,
+        requirements.card.cropReady,
+        requirements.detail.cropReady,
+        requirements.gallery.cropReady,
+      ].filter(Boolean).length
+    : 0;
+
+  function resourceBySrc(src: string | null | undefined) {
+    return src
+      ? resources.find((resource) => resource.src === src) ?? null
+      : null;
+  }
+
+  const assignments = state?.assignments;
+  const cardClip = assignments?.cardVideo?.source === "hero"
+    ? assignments.heroVideo?.clip
+    : assignments?.cardVideo?.clip;
+  const galleryLead = firstGalleryItem(state);
+
+  function statusPreview(
+    items: Array<{ kind: "image" | "video"; src: string | null | undefined }>
+  ) {
+    const visible = items
+      .map((item) => ({ ...item, resource: resourceBySrc(item.src) }))
+      .filter((item) => item.src && item.resource)
+      .slice(0, 2);
+
+    if (!visible.length) return null;
+
+    return (
+      <span className={railStyles.statusPreviewSet} aria-hidden="true">
+        {visible.map((item) => (
+          <AdminMediaThumbnail
+            key={`${item.kind}:${item.src}`}
+            kind={item.kind}
+            src={item.src!}
+            mode="source"
+            label=""
+            sizes="46px"
+            className={railStyles.statusThumb}
+            playIndicator={false}
+          />
+        ))}
+      </span>
+    );
+  }
 
   function deleteForm(resource: MultimediaLibraryResource) {
     if (resource.kind === "image" && resource.origin === "bundled") {
-      return <span className={styles.libraryBundledBadge}>Base</span>;
+      return <span className={shellStyles.libraryBundledBadge}>Base</span>;
+    }
+
+    if (resource.hygiene?.status !== "unused") {
+      return (
+        <span
+          className={shellStyles.libraryBundledBadge}
+          title={
+            resource.hygiene?.status === "historical"
+              ? "Protegido porque lo necesita una publicación histórica restaurable"
+              : resource.hygiene?.status === "published-only"
+                ? "Protegido porque lo utiliza la publicación pública actual"
+                : "Protegido porque forma parte del borrador"
+          }
+        >
+          Protegido
+        </span>
+      );
     }
 
     return (
       <form
         action={`/api/admin/content/games/${encodeURIComponent(slug)}/media-resource-delete`}
         method="post"
+        onSubmit={(event) => {
+          if (!window.confirm("Este master no tiene ninguna referencia editorial ni histórica. Se eliminará de la biblioteca y del almacenamiento. ¿Continuar?")) {
+            event.preventDefault();
+          }
+        }}
       >
         <input type="hidden" name="expectedRevision" value={currentRevision} />
         <input
@@ -123,10 +271,10 @@ export default function GameMultimediaUtilityRail({
         <input type="hidden" name="resource" value={resource.src} />
         <button
           type="submit"
-          className={styles.libraryDeleteButton}
+          className={shellStyles.libraryDeleteButton}
           disabled={stale}
           aria-label={`Eliminar ${multimediaShortName(resource.src)} de la biblioteca`}
-          title="Eliminar de la biblioteca"
+          title="Eliminar master sin uso"
         >
           <Trash2 size={15} aria-hidden="true" />
         </button>
@@ -140,8 +288,8 @@ export default function GameMultimediaUtilityRail({
     group: MultimediaLibraryResource[]
   ) {
     return (
-      <section className={styles.libraryDialogGroup}>
-        <div className={styles.libraryDialogHeading}>
+      <section className={shellStyles.libraryDialogGroup}>
+        <div className={shellStyles.libraryDialogHeading}>
           <div>
             {kind === "image" ? <ImageIcon size={17} aria-hidden="true" /> : <Clapperboard size={17} aria-hidden="true" />}
             <strong>{title}</strong>
@@ -149,13 +297,17 @@ export default function GameMultimediaUtilityRail({
           <span>{group.length} recurso{group.length === 1 ? "" : "s"}</span>
         </div>
         {group.length ? (
-          <div className={styles.libraryDialogGrid}>
+          <div className={shellStyles.libraryDialogGrid}>
             {group.map((resource) => (
-              <article key={`${resource.kind}:${resource.src}`} className={styles.libraryResourceCard}>
-                <div className={styles.libraryArtworkWrap}>
+              <article
+                key={`${resource.kind}:${resource.src}`}
+                className={`${shellStyles.libraryResourceCard} ${railStyles.hygieneResource}`}
+                data-hygiene={statusTone(resource)}
+              >
+                <div className={shellStyles.libraryArtworkWrap}>
                   <button
                     type="button"
-                    className={styles.libraryArtworkButton}
+                    className={shellStyles.libraryArtworkButton}
                     onClick={() => setPreviewResource(resource)}
                     aria-label={`Abrir vista grande de ${multimediaShortName(resource.src)}`}
                   >
@@ -170,54 +322,79 @@ export default function GameMultimediaUtilityRail({
                   </button>
                   {deleteForm(resource)}
                 </div>
-                <div className={styles.libraryResourceMeta}>
+                <div className={shellStyles.libraryResourceMeta}>
                   <strong title={resource.src}>{multimediaShortName(resource.src)}</strong>
                   <small>{resourceDetail(resource)}</small>
+                </div>
+                <div className={railStyles.libraryUsageRow}>
+                  <span data-tone={statusTone(resource)}>{statusLabel(resource)}</span>
+                  {(resource.hygiene?.usage ?? []).map((usage) => (
+                    <span key={usage}>{usage}</span>
+                  ))}
                 </div>
               </article>
             ))}
           </div>
         ) : (
-          <div className={styles.libraryEmptyGroup}>No hay {kind === "image" ? "imágenes" : "videos"} guardados todavía.</div>
+          <div className={shellStyles.libraryEmptyGroup}>
+            {libraryFilter === "all"
+              ? `No hay ${kind === "image" ? "imágenes" : "videos"} guardados todavía.`
+              : "No hay recursos que coincidan con este filtro."}
+          </div>
         )}
       </section>
     );
   }
 
   return (
-    <aside className={styles.utilityRail} aria-label="Herramientas multimedia">
-      <section className={styles.utilityCard}>
-        <div className={styles.utilityHeading}>
+    <aside className={shellStyles.utilityRail} aria-label="Herramientas multimedia">
+      <section className={shellStyles.utilityCard}>
+        <div className={shellStyles.utilityHeading}>
           <div>
-            <span className={styles.utilityIcon}><FolderOpen size={17} aria-hidden="true" /></span>
+            <span className={shellStyles.utilityIcon}><FolderOpen size={17} aria-hidden="true" /></span>
             <div>
               <strong>Biblioteca multimedia</strong>
               <small>Masters reutilizables</small>
             </div>
           </div>
-          <span className={styles.libraryTotal}>{resources.length}</span>
+          <span className={shellStyles.libraryTotal}>{resources.length}</span>
         </div>
 
         {loading ? (
-          <div className={styles.utilityStatus}>Cargando recursos…</div>
+          <div className={shellStyles.utilityStatus}>Cargando recursos…</div>
         ) : error ? (
-          <div className={styles.utilityStatus} role="alert">{error}</div>
+          <div className={shellStyles.utilityStatus} role="alert">{error}</div>
         ) : (
           <>
-            <div className={styles.libraryCounts}>
+            <div className={shellStyles.libraryCounts}>
               <span><ImageIcon size={14} aria-hidden="true" />{images.length} imágenes</span>
               <span><Clapperboard size={14} aria-hidden="true" />{videos.length} videos</span>
             </div>
 
+            <div
+              className={hygiene?.ready ? railStyles.libraryHygieneReady : railStyles.libraryHygieneWarning}
+              role={hygiene?.ready ? "status" : "alert"}
+            >
+              {hygiene?.ready
+                ? <CheckCircle2 size={15} aria-hidden="true" />
+                : <TriangleAlert size={15} aria-hidden="true" />}
+              <span>
+                {hygiene?.ready
+                  ? "Sin masters editoriales huérfanos"
+                  : `${hygiene?.blockingCount ?? 0} master${hygiene?.blockingCount === 1 ? "" : "s"} sin referencia por asignar o eliminar antes de publicar`}
+              </span>
+            </div>
+
             {previewResources.length ? (
-              <div className={styles.libraryMiniGrid}>
+              <div className={shellStyles.libraryMiniGrid}>
                 {previewResources.map((resource) => (
                   <button
                     key={`${resource.kind}:${resource.src}`}
                     type="button"
-                    className={styles.libraryMiniButton}
+                    className={`${shellStyles.libraryMiniButton} ${railStyles.hygieneResource}`}
+                    data-hygiene={statusTone(resource)}
                     onClick={() => setPreviewResource(resource)}
-                    title={multimediaShortName(resource.src)}
+                    title={`${multimediaShortName(resource.src)} · ${statusLabel(resource)}`}
                   >
                     <AdminMediaThumbnail
                       kind={resource.kind}
@@ -231,7 +408,7 @@ export default function GameMultimediaUtilityRail({
                 ))}
               </div>
             ) : (
-              <div className={styles.utilityEmpty}>
+              <div className={shellStyles.utilityEmpty}>
                 <Images size={22} aria-hidden="true" />
                 <span>La biblioteca todavía está vacía.</span>
               </div>
@@ -239,37 +416,89 @@ export default function GameMultimediaUtilityRail({
           </>
         )}
 
-        <div className={styles.utilityActions}>
-          <button type="button" className={styles.brandAction} onClick={() => setLibraryOpen(true)} disabled={loading || Boolean(error)}>
+        <div className={shellStyles.utilityActions}>
+          <button type="button" className={shellStyles.brandAction} onClick={() => setLibraryOpen(true)} disabled={loading || Boolean(error)}>
             <FolderOpen size={16} aria-hidden="true" />
             Abrir biblioteca
           </button>
-          <button type="button" className={styles.secondaryAction} onClick={() => setAddKind("image")} disabled={stale}>
+          <button type="button" className={shellStyles.secondaryAction} onClick={() => setAddKind("image")} disabled={stale}>
             <Plus size={16} aria-hidden="true" />
             Agregar recurso
           </button>
         </div>
       </section>
 
-      <section className={styles.utilityCard}>
-        <div className={styles.utilityHeading}>
+      <section className={shellStyles.utilityCard}>
+        <div className={railStyles.statusCardHeading}>
           <div>
-            <span className={styles.utilityIcon}><BookOpen size={17} aria-hidden="true" /></span>
+            <span className={shellStyles.utilityIcon}><CheckCircle2 size={17} aria-hidden="true" /></span>
             <div>
-              <strong>Ayuda y reglas</strong>
-              <small>Requisitos por destino</small>
+              <strong>Estado multimedia</strong>
+              <small>Obligatorios y Galería</small>
             </div>
           </div>
+          <strong className={requirements?.ready ? railStyles.statusScoreReady : railStyles.statusScorePending}>
+            {requirements ? `${mandatoryReadyCount}/5` : "—"}
+          </strong>
         </div>
-        <p className={styles.utilityCopy}>Las reglas siguen disponibles sin ocupar permanentemente la pantalla de trabajo.</p>
-        <button type="button" className={styles.secondaryAction} onClick={() => setHelpOpen(true)}>
+
+        {requirements ? (
+          <div className={railStyles.statusRows}>
+            <div data-ready={requirements.cover.cropReady}>
+              {statusPreview([
+                { kind: "image", src: assignments?.coverMode !== "video" ? assignments?.coverImage : null },
+                { kind: "video", src: assignments?.coverMode !== "image" ? assignments?.coverVideo?.clip : null },
+              ])}
+              <span><strong>Portada · 4:5</strong><small>{modeLabel(assignments?.coverMode)}</small></span>
+              {requirements.cover.cropReady ? <CheckCircle2 size={15} /> : <TriangleAlert size={15} />}
+            </div>
+            <div data-ready={requirements.hero.cropReady}>
+              {statusPreview([
+                { kind: "image", src: assignments?.heroMode !== "video" ? assignments?.heroImage : null },
+                { kind: "video", src: assignments?.heroMode !== "image" ? assignments?.heroVideo?.clip : null },
+              ])}
+              <span><strong>Hero · 16:9</strong><small>{modeLabel(assignments?.heroMode)}</small></span>
+              {requirements.hero.cropReady ? <CheckCircle2 size={15} /> : <TriangleAlert size={15} />}
+            </div>
+            <div data-ready={requirements.card.cropReady}>
+              {statusPreview([
+                { kind: "image", src: assignments?.cardMode !== "video" ? assignments?.cardImage : null },
+                { kind: "video", src: assignments?.cardMode !== "image" ? cardClip : null },
+              ])}
+              <span><strong>Card · 3:2</strong><small>{modeLabel(assignments?.cardMode)}</small></span>
+              {requirements.card.cropReady ? <CheckCircle2 size={15} /> : <TriangleAlert size={15} />}
+            </div>
+            <div data-ready={requirements.detail.cropReady}>
+              {statusPreview([
+                { kind: "image", src: assignments?.detailMode !== "video" ? assignments?.detailImage : null },
+                { kind: "video", src: assignments?.detailMode !== "image" ? assignments?.detailVideo?.clip : null },
+              ])}
+              <span><strong>Contenedor</strong><small>{modeLabel(assignments?.detailMode)} · adaptable</small></span>
+              {requirements.detail.cropReady ? <CheckCircle2 size={15} /> : <TriangleAlert size={15} />}
+            </div>
+            <div data-ready={requirements.gallery.cropReady}>
+              {galleryLead ? statusPreview([{ kind: galleryLead.kind, src: galleryLead.src }]) : null}
+              <span><strong>Galería · {requirements.gallery.count}/8</strong><small>{requirements.gallery.imageCount} img · {requirements.gallery.videoCount} video</small></span>
+              {requirements.gallery.cropReady ? <CheckCircle2 size={15} /> : <TriangleAlert size={15} />}
+            </div>
+            <div data-ready={!requirements.background.active || requirements.background.cropReady} data-optional="true">
+              <span className={railStyles.statusOptionalIcon}><Sparkles size={15} aria-hidden="true" /></span>
+              <span><strong>Fondo</strong><small>{requirements.background.active ? `${modeLabel(assignments?.backgroundMode)} · adaptable` : "Global · opcional"}</small></span>
+              {!requirements.background.active || requirements.background.cropReady ? <CheckCircle2 size={15} /> : <TriangleAlert size={15} />}
+            </div>
+          </div>
+        ) : (
+          <div className={shellStyles.utilityStatus}>Cargando estado…</div>
+        )}
+
+        <button type="button" className={shellStyles.secondaryAction} onClick={() => setHelpOpen(true)}>
           <Info size={16} aria-hidden="true" />
           Ver requisitos multimedia
         </button>
       </section>
 
       {stale && (
-        <div className={styles.utilityStale} role="alert">
+        <div className={shellStyles.utilityStale} role="alert">
           Esta página quedó detrás de la revisión multimedia actual. Recarga antes de editar.
         </div>
       )}
@@ -278,22 +507,39 @@ export default function GameMultimediaUtilityRail({
         <ContextualMediaDialog
           eyebrow="BIBLIOTECA MULTIMEDIA"
           title="Biblioteca multimedia compartida"
-          description="Imágenes y videos se guardan una sola vez y pueden reutilizarse en distintos destinos con encuadres independientes."
+          description="Administra masters reutilizables. Los recursos que sostienen borrador, publicación o historial se conservan protegidos."
           onClose={() => setLibraryOpen(false)}
         >
-          <div className={styles.libraryDialogTopbar}>
+          <div className={shellStyles.libraryDialogTopbar}>
             <div>
               <strong>{resources.length} recursos</strong>
               <span>{images.length} imágenes · {videos.length} videos</span>
             </div>
-            <button type="button" className={styles.brandAction} onClick={() => setAddKind("image")} disabled={stale}>
+            <button type="button" className={shellStyles.brandAction} onClick={() => setAddKind("image")} disabled={stale}>
               <Upload size={16} aria-hidden="true" />
               Agregar nuevo recurso
             </button>
           </div>
-          <div className={styles.libraryDialogGroups}>
-            {renderLibraryGroup("IMÁGENES", "image", images)}
-            {renderLibraryGroup("VIDEOS", "video", videos)}
+
+          <div className={railStyles.libraryFilters} role="group" aria-label="Filtrar biblioteca">
+            <button type="button" data-active={libraryFilter === "all"} onClick={() => setLibraryFilter("all")}>Todos · {resources.length}</button>
+            <button type="button" data-active={libraryFilter === "active"} onClick={() => setLibraryFilter("active")}>Referenciados · {protectedCount}</button>
+            <button type="button" data-active={libraryFilter === "unused"} onClick={() => setLibraryFilter("unused")}>Por resolver · {hygiene?.blockingCount ?? 0}</button>
+          </div>
+
+          {!hygiene?.ready && (
+            <div className={railStyles.libraryDialogWarning} role="alert">
+              <TriangleAlert size={17} aria-hidden="true" />
+              <div>
+                <strong>La publicación quedará bloqueada mientras existan masters editoriales realmente huérfanos.</strong>
+                <span>Asígnalos a un destino o Galería, o elimínalos. Los masters necesarios para la publicación actual o para un snapshot histórico restaurable se identifican como protegidos y no se tratan como basura.</span>
+              </div>
+            </div>
+          )}
+
+          <div className={shellStyles.libraryDialogGroups}>
+            {renderLibraryGroup("IMÁGENES", "image", filteredImages)}
+            {renderLibraryGroup("VIDEOS", "video", filteredVideos)}
           </div>
         </ContextualMediaDialog>
       )}
@@ -305,14 +551,14 @@ export default function GameMultimediaUtilityRail({
           description="Consulta estas reglas cuando las necesites; el área principal queda reservada para el trabajo editorial."
           onClose={() => setHelpOpen(false)}
         >
-          <div className={styles.helpRules}>
+          <div className={shellStyles.helpRules}>
             <div><MonitorPlay size={18} aria-hidden="true" /><p><strong>Portada · 4:5</strong><span>Imagen, Video o Imagen + hover. Cada capa activa confirma selección y encuadre.</span></p></div>
             <div><MonitorPlay size={18} aria-hidden="true" /><p><strong>Hero · 16:9</strong><span>Imagen, Video o Imagen + hover. Hover exige ambos recursos y sus recortes.</span></p></div>
             <div><Clapperboard size={18} aria-hidden="true" /><p><strong>Card · 3:2</strong><span>Su imagen y video pueden ser independientes y se validan por separado.</span></p></div>
             <div><Sparkles size={18} aria-hidden="true" /><p><strong>Fondo · adaptable</strong><span>Es opcional. Puede usar Imagen, Video o Imagen + hover, o volver al fondo global.</span></p></div>
             <div><MonitorPlay size={18} aria-hidden="true" /><p><strong>Contenedor · adaptable</strong><span>Es obligatorio e independiente del Hero; adapta foco y zoom al tamaño real de la ficha.</span></p></div>
             <div><Images size={18} aria-hidden="true" /><p><strong>Galería · mínimo 1 recurso</strong><span>Admite hasta 8 imágenes y videos combinados. Cada elemento confirma su propio recorte y conserva su orden editorial.</span></p></div>
-            <div><CheckCircle2 size={18} aria-hidden="true" /><p><strong>Reutilizar sin acoplar</strong><span>El mismo archivo físico puede aparecer en varios destinos sin compartir encuadre ni recorte.</span></p></div>
+            <div><CheckCircle2 size={18} aria-hidden="true" /><p><strong>Higiene de masters</strong><span>Sólo un master editorial sin ninguna referencia de borrador, publicación actual ni historial restaurable es un archivo huérfano. Los demás aparecen protegidos y no pueden eliminarse desde Biblioteca.</span></p></div>
           </div>
         </ContextualMediaDialog>
       )}
@@ -321,10 +567,10 @@ export default function GameMultimediaUtilityRail({
         <ContextualMediaDialog
           eyebrow="BIBLIOTECA COMPARTIDA"
           title="Agregar nuevo recurso"
-          description="Crea o importa el master una sola vez. Después podrás asignarlo a cualquier destino o a Galería."
+          description="Crea o importa el master una sola vez. Después asígnalo a un destino o a Galería antes de publicar."
           onClose={() => setAddKind(null)}
         >
-          <div className={styles.addTabs} role="group" aria-label="Tipo de recurso">
+          <div className={shellStyles.addTabs} role="group" aria-label="Tipo de recurso">
             <button type="button" data-active={addKind === "image"} onClick={() => setAddKind("image")}>
               <ImageIcon size={16} aria-hidden="true" /> Imagen
             </button>
@@ -333,8 +579,8 @@ export default function GameMultimediaUtilityRail({
             </button>
           </div>
           {addKind === "image" ? (
-            <div className={styles.addResourceBody}>
-              <p>El WebP queda guardado por hash y no completa ningún destino hasta que lo asignes.</p>
+            <div className={shellStyles.addResourceBody}>
+              <p>El WebP queda guardado por hash. Si no lo asignas y ningún snapshot lo necesita, Biblioteca lo marcará como pendiente y Publicación no permitirá dejarlo como archivo huérfano.</p>
               <GameMediaUploadForm
                 slug={slug}
                 revision={currentRevision}
@@ -343,8 +589,8 @@ export default function GameMultimediaUtilityRail({
               />
             </div>
           ) : (
-            <div className={styles.addResourceBody}>
-              <p>El WebM editorial se crea como master reutilizable. Los recortes de cada destino se guardan después como metadata.</p>
+            <div className={shellStyles.addResourceBody}>
+              <p>El WebM editorial se crea como master reutilizable. Los recortes de cada destino se guardan después como metadata y el master debe quedar asignado antes de publicar si ningún snapshot existente lo protege.</p>
               <GameVideoLibraryEditor slug={slug} revision={currentRevision} />
             </div>
           )}
@@ -357,7 +603,7 @@ export default function GameMultimediaUtilityRail({
           src={previewResource.src}
           name={multimediaShortName(previewResource.src)}
           details={resourceDetail(previewResource)}
-          usage={[]}
+          usage={previewResource.hygiene?.usage ?? []}
           onClose={() => setPreviewResource(null)}
         />
       )}

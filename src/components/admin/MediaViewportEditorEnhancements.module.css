@@ -1,0 +1,132 @@
+.viewportGuideVertical,
+.viewportGuideHorizontal {
+  position: absolute;
+  z-index: 1;
+  background: rgba(255, 255, 255, 0.62);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.16);
+  pointer-events: none;
+}
+
+.viewportGuideVertical {
+  top: 0;
+  bottom: 0;
+  width: 1px;
+}
+
+.viewportGuideHorizontal {
+  right: 0;
+  left: 0;
+  height: 1px;
+}
+
+.viewportGuideOne {
+  left: 33.3333%;
+}
+
+.viewportGuideTwo {
+  left: 66.6667%;
+}
+
+.viewportGuideThree {
+  top: 33.3333%;
+}
+
+.viewportGuideFour {
+  top: 66.6667%;
+}
+
+.viewportPresetGrid button {
+  min-height: 32px;
+  padding: 4px 6px;
+  font-size: 13px;
+}
+
+.viewportGuideToggle {
+  display: inline-flex;
+  width: 100%;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 7px 8px;
+  color: var(--text, #f5f7fb);
+  border: 1px solid #2a3748;
+  border-radius: 8px;
+  background: #101823;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.viewportGuideToggle[data-active="true"] {
+  color: var(--admin-brand-text-strong, #fff);
+  border-color: var(--admin-brand-border, var(--brand));
+  background: var(--admin-brand-surface, color-mix(in srgb, var(--brand) 10%, #101823));
+}
+
+.viewportGuideToggle:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--brand) 48%, #334155);
+  background: color-mix(in srgb, var(--brand) 8%, #121b27);
+}
+
+.viewportGuideToggle:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.videoViewportTransport {
+  display: grid;
+  grid-template-columns: auto minmax(120px, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 10px;
+  border: 1px solid #202b38;
+  border-radius: 10px;
+  background: #0a1119;
+}
+
+.videoViewportTransport button {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 9px;
+  color: var(--text, #f5f7fb);
+  border: 1px solid #2a3748;
+  border-radius: 8px;
+  background: #111924;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.videoViewportTransport button:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--brand) 48%, #334155);
+  background: color-mix(in srgb, var(--brand) 7%, #131c28);
+}
+
+.videoViewportTransport input[type="range"] {
+  width: 100%;
+  min-width: 0;
+  accent-color: var(--brand);
+}
+
+.videoViewportTransport button:disabled,
+.videoViewportTransport input:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+@media (max-width: 680px) {
+  .videoViewportTransport {
+    grid-template-columns: auto auto;
+  }
+
+  .videoViewportTransport input[type="range"] {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+}

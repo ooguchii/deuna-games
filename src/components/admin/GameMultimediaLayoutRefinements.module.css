@@ -1,0 +1,4 @@
+.assignmentHost :global([aria-labelledby="multimedia-summary-heading"]),
+.assignmentHost :global([aria-labelledby="shared-library-heading"]) {
+  display: none !important;
+}

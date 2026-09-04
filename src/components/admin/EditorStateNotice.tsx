@@ -117,25 +117,35 @@ const notices = {
     message:
       "Ese recurso ya no está disponible o no supera la validación del almacén editorial. Recarga Multimedia y selecciona otro archivo.",
   },
+  "recurso-en-uso": {
+    kind: "warning",
+    message:
+      "Ese master está protegido porque el borrador todavía lo referencia. Quita primero la asignación del destino o de Galería; Biblioteca nunca elimina una referencia activa de forma implícita.",
+  },
+  "recurso-en-historial": {
+    kind: "warning",
+    message:
+      "Ese master está protegido por una publicación histórica restaurable. No se eliminó el archivo: conservarlo garantiza que el botón Restaurar siga pudiendo reconstruir ese snapshot.",
+  },
   "recurso-eliminado": {
     kind: "success",
     message:
-      "Imagen eliminada de todos los destinos del juego y de la biblioteca editorial. El archivo físico también fue eliminado porque ya no estaba siendo usado por la versión pública.",
+      "Master huérfano eliminado de la biblioteca editorial y del almacenamiento. No estaba referenciado por el borrador, la publicación actual ni el historial restaurable.",
   },
   "recurso-eliminacion-pendiente": {
     kind: "warning",
     message:
-      "La imagen ya fue retirada del borrador, de Portada, Hero, Card y Galería, y dejó de aparecer en la biblioteca. Como todavía la usa la versión pública, el archivo físico se conservará hasta que publiques estos cambios; después se eliminará automáticamente.",
+      "El master quedó marcado para limpieza, pero todavía existe una referencia pública que obliga a conservar el archivo físico. El sistema volverá a reconciliarlo de forma segura cuando esa referencia deje de existir.",
   },
   "recurso-eliminado-base": {
-    kind: "success",
+    kind: "warning",
     message:
-      "Imagen retirada de todos los destinos de este juego. Era un recurso base compartido del proyecto, por eso el archivo original se conserva para no romper otras fichas que pudieran utilizarlo.",
+      "Ese recurso pertenece a los archivos base compartidos del proyecto y no puede eliminarse desde la biblioteca editorial del juego. El archivo original se conservó.",
   },
   "recurso-eliminacion-incompleta": {
     kind: "warning",
     message:
-      "La imagen fue retirada del borrador, pero la limpieza física no pudo completarse. Recarga Multimedia: el sistema volverá a validar y reintentará la limpieza sin poner en riesgo la versión pública.",
+      "La limpieza física no pudo completarse. Recarga Multimedia: el sistema volverá a validar referencias y reintentará únicamente si el master sigue siendo realmente huérfano.",
   },
   "imagen-encuadre-guardado": {
     kind: "success",
