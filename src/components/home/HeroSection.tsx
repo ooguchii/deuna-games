@@ -57,12 +57,6 @@ function imageViewportForHero(game: Game) {
     : game.imageMedia?.cover;
 }
 
-function imageViewportForNext(game: Game) {
-  return game.coverImage
-    ? game.imageMedia?.cover
-    : game.imageMedia?.hero;
-}
-
 function imagePosition(viewport: GameImageViewport | undefined) {
   const framed = normalizeGameImageViewport(viewport);
   return {
@@ -116,10 +110,10 @@ function ResponsiveArtwork({
 }
 
 function NextArtwork({ game }: { game: Game }) {
-  const src = game.coverImage ?? game.heroImage;
+  const src = game.coverImage;
   if (!src) return <span className={styles.nextFallback} aria-hidden="true" />;
 
-  const framing = imagePosition(imageViewportForNext(game));
+  const framing = imagePosition(game.imageMedia?.cover);
   const inlineStyle = {
     "--next-image-zoom": framing.framed.zoom,
     "--next-image-position": framing.position,
