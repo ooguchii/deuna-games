@@ -1,0 +1,46 @@
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+import process from "node:process";
+
+const root = process.cwd();
+const page = await readFile(
+  path.join(root, "src", "app", "juegos", "[slug]", "page.tsx"),
+  "utf8"
+);
+
+const failures = [];
+const assert = (condition, message) => {
+  if (!condition) failures.push(message);
+};
+
+assert(
+  page.includes("const platforms = game.platforms ?? [];") &&
+    page.includes("const platformLabel = platforms.length") &&
+    page.includes(': "A confirmar";'),
+  "La ficha pública debe tratar una plataforma ausente como dato pendiente, no inferir una plataforma."
+);
+
+assert(
+  page.includes("gamePlatform: platforms.length ? platforms : undefined"),
+  "JSON-LD debe omitir gamePlatform cuando no existe una plataforma publicada."
+);
+
+assert(
+  (page.match(/<dd>\{platformLabel\}<\/dd>/g) ?? []).length >= 2,
+  "Las superficies visibles de Plataforma deben compartir el mismo fallback explícito."
+);
+
+assert(
+  !/game\.platforms\?\.length[\s\S]{0,120}\[\s*["']PC["']\s*\]/.test(page),
+  "La ficha pública no debe volver a asumir PC cuando Compatibilidad no publicó una plataforma."
+);
+
+if (failures.length > 0) {
+  console.error("\nPlataformas públicas: REGRESIÓN\n");
+  failures.forEach((failure) => console.error(`- ${failure}`));
+  process.exitCode = 1;
+} else {
+  console.log(
+    "Plataformas públicas: OK (sin PC supuesto; UI pendiente y JSON-LD omitido cuando falta el dato)."
+  );
+}
