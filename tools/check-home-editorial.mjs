@@ -32,6 +32,7 @@ const [
   heroSection,
   heroStyles,
   heroLayoutGuide,
+  heroContract,
 ] = await Promise.all([
   source("src/data/home.ts"),
   source("src/lib/home/ranking.ts"),
@@ -57,6 +58,7 @@ const [
   source("src/components/home/HeroSection.tsx"),
   source("src/components/home/HeroSection.module.css"),
   source("src/components/admin/HomeHeroLayoutGuide.tsx"),
+  source("src/lib/home/hero-contract.ts"),
 ]);
 
 assert(
@@ -65,9 +67,17 @@ assert(
     homeCollections.includes("resolved.curation.popular.mode") &&
     homeCollections.includes("resolved.curation.lowSpec.mode") &&
     homeCollections.includes("resolved.curation.recommended.mode") &&
+    homeCollections.includes("HOME_HERO_MAX_SLIDES") &&
     !homeCollections.includes("getRequiredGame") &&
     !homeCollections.includes("No se encontró el juego editorial requerido"),
-  "La Home debe resolver cada colección mediante el modo editorial publicado y sin slugs obligatorios."
+  "La Home debe resolver cada colección mediante el modo editorial publicado, usar el contrato compartido del Hero y no depender de slugs obligatorios."
+);
+
+assert(
+  heroContract.includes("HOME_HERO_MAX_SLIDES = 5") &&
+    heroContract.includes("HOME_HERO_VISIBLE_PREVIEWS = 3") &&
+    heroContract.includes("HOME_HERO_AUTOPLAY_MS = 6500"),
+  "El Hero cinematográfico debe centralizar cantidad de slides, previews visibles y autoplay."
 );
 
 assert(
@@ -167,28 +177,40 @@ assert(
 );
 
 assert(
-  heroStyles.includes("aspect-ratio: 3 / 1") &&
-    heroStyles.includes("aspect-ratio: 4 / 5") &&
-    heroStyles.includes(".mainCard") &&
-    heroStyles.includes(".nextCard") &&
-    heroSection.includes("function NextArtwork") &&
+  heroSection.includes("HOME_HERO_VISIBLE_PREVIEWS") &&
+    heroSection.includes("HOME_HERO_AUTOPLAY_MS") &&
+    heroSection.includes("function PreviewCard") &&
+    heroSection.includes("function PreviewArtwork") &&
     heroSection.includes("const src = game.coverImage") &&
-    !heroSection.includes("const src = game.coverImage ?? game.heroImage") &&
-    heroSection.includes('aria-label={`Siguiente juego: ${nextGame.title}`}') &&
-    heroSection.includes("<NextArtwork game={nextGame} />"),
-  "El Hero público debe usar un lienzo principal 3:1 y una tarjeta Siguiente 4:5 basada exclusivamente en Portada, nunca en un fragmento del siguiente Hero."
+    heroSection.includes("previewEntries") &&
+    heroSection.includes("positionCounter") &&
+    heroSection.includes("segments") &&
+    heroSection.includes("heroFacts") &&
+    heroSection.includes("classificationLine") &&
+    heroStyles.includes(".cinematicStage") &&
+    heroStyles.includes(".previewRail") &&
+    heroStyles.includes(".previewCard") &&
+    heroStyles.includes("aspect-ratio: 4 / 5") &&
+    heroStyles.includes("perspective") &&
+    heroStyles.includes("rotateY") &&
+    heroStyles.includes("@media (prefers-reduced-motion: reduce)") &&
+    !heroSection.includes("function NextArtwork") &&
+    !heroStyles.includes(".nextCard"),
+  "El Hero público debe usar escena cinematográfica, pila de Portadas 4:5, navegación por segmentos y transición con profundidad sin conservar la antigua tarjeta Siguiente."
 );
 
 assert(
   heroLayoutGuide.includes("COMPOSICIÓN REAL DE INICIO") &&
-    heroLayoutGuide.includes("Hero 3:1") &&
-    heroLayoutGuide.includes("Siguiente · Portada 4:5") &&
-    heroLayoutGuide.includes("frameAspect={3}") &&
-    heroLayoutGuide.includes("frameAspect={4 / 5}") &&
+    heroLayoutGuide.includes("Carrusel cinematográfico con profundidad") &&
+    heroLayoutGuide.includes("Hero · 3:1") &&
+    heroLayoutGuide.includes("Previews · Portada 4:5") &&
+    heroLayoutGuide.includes("HOME_HERO_MAX_SLIDES") &&
+    heroLayoutGuide.includes("HOME_HERO_VISIBLE_PREVIEWS") &&
+    heroLayoutGuide.includes("CoverDestinationPreview") &&
     heroLayoutGuide.includes("evaluateGameMediaRequirements") &&
     heroLayoutGuide.includes("isImageCropConfirmed") &&
     heroLayoutGuide.includes("LEGACY_DESTINATION_IMAGE_ASPECTS"),
-  "Curaduría debe enseñar la composición pública real y distinguir el recorte Hero 3:1 de la Portada 4:5 usada por Siguiente."
+  "Curaduría debe enseñar la composición cinematográfica real y distinguir el Hero del recurso Portada usado por la pila lateral."
 );
 
 assert(
@@ -220,6 +242,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Home editorial: OK (curaduría profesional, Hero 3:1 + Siguiente 4:5, snapshots públicos, personalización opcional, ranking explicable y estabilidad diaria)."
+    "Home editorial: OK (curaduría profesional, Hero cinematográfico + pila 4:5, snapshots públicos, personalización opcional, ranking explicable y estabilidad diaria)."
   );
 }

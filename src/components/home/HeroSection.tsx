@@ -5,9 +5,12 @@ import Link from "next/link";
 import {
   ChevronLeft,
   ChevronRight,
+  Gamepad2,
+  Globe2,
   Info,
   Pause,
   Play,
+  UsersRound,
 } from "lucide-react";
 import {
   type CSSProperties,
@@ -22,6 +25,11 @@ import {
 
 import FramedVideo from "@/components/ui/FramedVideo";
 import type { HomeCopy } from "@/data/home-config";
+import {
+  formatHomeHeroPosition,
+  HOME_HERO_AUTOPLAY_MS,
+  HOME_HERO_VISIBLE_PREVIEWS,
+} from "@/lib/home/hero-contract";
 import { normalizeGameImageViewport } from "@/lib/media/image-viewport";
 import {
   resolveGameDestinationMediaMode,
@@ -36,36 +44,11 @@ import type { Game, GameImageViewport } from "@/types/game";
 import artworkStyles from "./HeroArtwork.module.css";
 import styles from "./HeroSection.module.css";
 
-const AUTOPLAY_TIME = 6500;
 const FINE_HOVER_MEDIA = "(hover: hover) and (pointer: fine)";
 const SWIPE_THRESHOLD = 55;
 
-const NEXT_ARTWORK_FRAME_STYLE: CSSProperties = {
-  position: "relative",
-  inset: "auto",
-  width: "100%",
-  aspectRatio: "4 / 5",
-  flex: "0 0 auto",
-};
-
-const NEXT_CARD_STYLE: CSSProperties = {
-  alignSelf: "stretch",
-  height: "auto",
-  aspectRatio: "auto",
-  display: "flex",
-  flexDirection: "column",
-};
-
-const NEXT_COPY_STYLE: CSSProperties = {
-  position: "relative",
-  right: "auto",
-  bottom: "auto",
-  left: "auto",
-  flex: "1 1 auto",
-  width: "100%",
-  alignContent: "end",
-  padding: "14px 16px 16px",
-};
+const audienceTagPattern =
+  /(un jugador|single.?player|multijugador|multiplayer|cooperativo|co-op|coop)/i;
 
 type ResponsiveArtworkProps = {
   game: Game;
@@ -73,6 +56,11 @@ type ResponsiveArtworkProps = {
   active?: boolean;
   ambient?: boolean;
   style?: CSSProperties;
+};
+
+type HeroFact = {
+  kind: "players" | "platforms" | "world";
+  label: string;
 };
 
 function canUseFineHover() {
@@ -91,6 +79,60 @@ function imagePosition(viewport: GameImageViewport | undefined) {
     framed,
     position: `${(framed.x * 100).toFixed(2)}% ${(framed.y * 100).toFixed(2)}%`,
   };
+}
+
+function classificationLine(game: Game) {
+  const values = [
+    game.category,
+    ...(game.genres ?? []),
+    ...(game.tags ?? []),
+  ];
+  const unique: string[] = [];
+  const seen = new Set<string>();
+
+  for (const raw of values) {
+    const value = raw.trim();
+    if (!value) continue;
+    const key = value.toLocaleLowerCase("es");
+    if (seen.has(key)) continue;
+    seen.add(key);
+    unique.push(value.toLocaleUpperCase("es"));
+    if (unique.length === 3) break;
+  }
+
+  return unique;
+}
+
+function heroFacts(game: Game): HeroFact[] {
+  const facts: HeroFact[] = [];
+  const tags = (game.tags ?? []).filter((tag) => tag.trim());
+  const audience = tags.find((tag) => audienceTagPattern.test(tag));
+
+  if (audience) {
+    facts.push({ kind: "players", label: audience });
+  }
+
+  if (game.platforms?.length) {
+    facts.push({
+      kind: "platforms",
+      label: game.platforms.join(" · "),
+    });
+  }
+
+  const world = tags.find((tag) => tag !== audience);
+  if (world) {
+    facts.push({ kind: "world", label: world });
+  } else if (game.genres?.[0] && game.genres[0] !== game.category) {
+    facts.push({ kind: "world", label: game.genres[0] });
+  }
+
+  return facts.slice(0, 3);
+}
+
+function FactIcon({ kind }: { kind: HeroFact["kind"] }) {
+  if (kind === "players") return <UsersRound size={19} aria-hidden="true" />;
+  if (kind === "platforms") return <Gamepad2 size={19} aria-hidden="true" />;
+  return <Globe2 size={19} aria-hidden="true" />;
 }
 
 function ResponsiveArtwork({
@@ -121,13 +163,14 @@ function ResponsiveArtwork({
         "--hero-mobile-image-position": framing.position,
       } as CSSProperties)
     : style;
+
   const image = (
     <Image
       src={src}
       alt={alt}
       fill
       priority={active}
-      sizes={ambient ? "100vw" : "(max-width: 980px) calc(100vw - 32px), 1200px"}
+      sizes={ambient ? "100vw" : "(max-width: 980px) calc(100vw - 24px), 1320px"}
       className={artworkClassName}
       style={artworkInlineStyle}
     />
@@ -138,28 +181,22 @@ function ResponsiveArtwork({
     : <span className={styles.heroPicture}>{image}</span>;
 }
 
-function NextArtwork({ game }: { game: Game }) {
+function PreviewArtwork({ game }: { game: Game }) {
   const src = game.coverImage;
+
   if (!src) {
-    return (
-      <span
-        className={styles.nextFallback}
-        style={NEXT_ARTWORK_FRAME_STYLE}
-        aria-hidden="true"
-      />
-    );
+    return <span className={styles.previewFallback} aria-hidden="true" />;
   }
 
   const framing = imagePosition(game.imageMedia?.cover);
   const inlineStyle = {
-    ...NEXT_ARTWORK_FRAME_STYLE,
-    "--next-image-zoom": framing.framed.zoom,
-    "--next-image-position": framing.position,
+    "--preview-image-zoom": framing.framed.zoom,
+    "--preview-image-position": framing.position,
   } as CSSProperties;
 
   return (
-    <span className={styles.nextArtworkFrame} style={inlineStyle} aria-hidden="true">
-      <Image src={src} alt="" fill sizes="220px" />
+    <span className={styles.previewArtwork} style={inlineStyle} aria-hidden="true">
+      <Image src={src} alt="" fill sizes="260px" />
     </span>
   );
 }
@@ -234,7 +271,6 @@ function HeroSlide({
   overlayOpacity,
   reducedMotion,
 }: HeroSlideProps) {
-  const accessible = true;
   const hasArtwork = Boolean(game.heroImage || game.coverImage);
   const heroMode = resolveGameDestinationMediaMode(game, "hero");
   const hoverPlayback = heroMode === "hover-video";
@@ -245,9 +281,11 @@ function HeroSlide({
     videoEnabled &&
     videoModeEnabled &&
     (!hoverPlayback || hoverPreviewActive);
+  const classifications = classificationLine(game);
+  const facts = heroFacts(game);
 
   function startHoverPreview() {
-    if (hoverPlayback && accessible && canUseFineHover()) {
+    if (hoverPlayback && canUseFineHover()) {
       setHoverPreviewActive(true);
     }
   }
@@ -262,7 +300,7 @@ function HeroSlide({
       className={styles.mainCard}
       role="group"
       aria-roledescription="slide"
-      aria-label={`${logicalIndex + 1} de ${total}`}
+      aria-label={`${logicalIndex + 1} de ${total}: ${game.title}`}
       onMouseEnter={startHoverPreview}
       onMouseLeave={stopHoverPreview}
       onFocusCapture={startHoverPreview}
@@ -297,11 +335,18 @@ function HeroSlide({
         <div className={styles.readabilityOverlay} aria-hidden="true" />
       </div>
 
+      {game.badge && (
+        <span className={styles.featuredBadge}>{game.badge}</span>
+      )}
+
       <div className={styles.content}>
-        <div className={styles.badges}>
-          {game.badge && <span className={styles.primaryBadge}>{game.badge}</span>}
-          <span className={styles.secondaryBadge}>{game.category.toUpperCase()}</span>
-        </div>
+        {classifications.length > 0 && (
+          <div className={styles.classificationLine} aria-label="Clasificación del juego">
+            {classifications.map((item) => (
+              <span key={item}>{item}</span>
+            ))}
+          </div>
+        )}
 
         <h2 className={styles.title}>
           <span>{game.shortTitle ?? game.title}</span>
@@ -312,16 +357,55 @@ function HeroSlide({
 
         <div className={styles.actions}>
           <Link href={`/juegos/${game.slug}`} className={styles.primaryButton}>
-            <Play size={16} fill="currentColor" />
+            <Play size={17} fill="currentColor" />
             {copy.primaryCta}
           </Link>
           <Link href={`/juegos/${game.slug}`} className={styles.secondaryButton}>
-            <Info size={17} />
+            <Info size={18} />
             {copy.secondaryCta}
           </Link>
         </div>
+
+        {facts.length > 0 && (
+          <div className={styles.facts} aria-label="Datos rápidos del juego">
+            {facts.map((fact) => (
+              <span className={styles.fact} key={`${fact.kind}-${fact.label}`}>
+                <FactIcon kind={fact.kind} />
+                <span>{fact.label}</span>
+              </span>
+            ))}
+          </div>
+        )}
       </div>
     </article>
+  );
+}
+
+function PreviewCard({
+  game,
+  depth,
+  onSelect,
+}: {
+  game: Game;
+  depth: number;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className={styles.previewCard}
+      data-depth={depth}
+      style={{ "--preview-depth": depth } as CSSProperties}
+      aria-label={`Mostrar ${game.title}`}
+      onClick={onSelect}
+    >
+      <PreviewArtwork game={game} />
+      <span className={styles.previewShade} aria-hidden="true" />
+      <span className={styles.previewCopy}>
+        <strong>{game.shortTitle ?? game.title}</strong>
+        <small>{game.category}</small>
+      </span>
+    </button>
   );
 }
 
@@ -368,11 +452,16 @@ export default function HeroSection({
     ? activeIndex % games.length
     : 0;
   const activeGame = games[normalizedActiveIndex] ?? games[0];
-  const nextIndex = games.length
-    ? (normalizedActiveIndex + 1) % games.length
-    : 0;
-  const nextGame = games[nextIndex] ?? activeGame;
   const isPaused = paused || manualPaused || reducedMotion;
+
+  const previewEntries = useMemo(() => {
+    if (games.length <= 1) return [];
+    const count = Math.min(HOME_HERO_VISIBLE_PREVIEWS, games.length - 1);
+    return Array.from({ length: count }, (_, depth) => {
+      const index = (normalizedActiveIndex + depth + 1) % games.length;
+      return { game: games[index], index, depth };
+    });
+  }, [games, normalizedActiveIndex]);
 
   const moveBy = useCallback((delta: number) => {
     setActiveIndex((current) => {
@@ -394,7 +483,7 @@ export default function HeroSection({
 
   useEffect(() => {
     if (isPaused || games.length <= 1) return;
-    const timer = window.setTimeout(nextSlide, AUTOPLAY_TIME);
+    const timer = window.setTimeout(nextSlide, HOME_HERO_AUTOPLAY_MS);
     return () => window.clearTimeout(timer);
   }, [activeGame?.id, games.length, isPaused, nextSlide]);
 
@@ -446,23 +535,29 @@ export default function HeroSection({
     >
       <h1 className={styles.srOnly}>{copy.accessibleTitle}</h1>
 
-      {imageEffect && (
-        <div className={styles.ambientBackdrop} aria-hidden="true">
-          <div key={activeGame.id} className={styles.ambientFrame}>
-            <ResponsiveArtwork
-              game={activeGame}
-              alt=""
-              active
-              ambient
-              style={ambientArtworkStyle}
-            />
-          </div>
-          <div className={styles.ambientShade} />
+      <div className={styles.ambientBackdrop} aria-hidden="true">
+        <div key={activeGame.id} className={styles.ambientFrame}>
+          <ResponsiveArtwork
+            game={activeGame}
+            alt=""
+            active
+            ambient
+            style={ambientArtworkStyle}
+          />
+        </div>
+        <div className={styles.ambientShade} />
+      </div>
+
+      {games.length > 1 && (
+        <div className={styles.positionCounter} aria-live="polite">
+          <strong>{String(normalizedActiveIndex + 1).padStart(2, "0")}</strong>
+          <span>/ {String(games.length).padStart(2, "0")}</span>
+          <i aria-hidden="true" />
         </div>
       )}
 
       <div
-        className={styles.heroGrid}
+        className={styles.cinematicStage}
         onPointerDown={handlePointerDown}
         onPointerUp={handlePointerUp}
         onPointerCancel={resetPointer}
@@ -479,35 +574,48 @@ export default function HeroSection({
             overlayOpacity={overlayOpacity}
             reducedMotion={reducedMotion}
           />
+        </div>
 
-          {games.length > 1 && (
-            <>
-              <button
-                type="button"
-                className={`${styles.arrow} ${styles.arrowLeft}`}
-                aria-label="Juego anterior"
-                onClick={previousSlide}
-              >
-                <ChevronLeft size={21} />
-              </button>
-              <button
-                type="button"
-                className={`${styles.arrow} ${styles.arrowRight}`}
-                aria-label={`Mostrar ${nextGame.title}`}
-                onClick={nextSlide}
-              >
-                <ChevronRight size={21} />
-              </button>
-            </>
-          )}
+        {previewEntries.length > 0 && (
+          <div className={styles.previewRail} aria-label="Próximos juegos">
+            {previewEntries.map(({ game, index, depth }) => (
+              <PreviewCard
+                key={game.id}
+                game={game}
+                depth={depth}
+                onSelect={() => setActiveIndex(index)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {games.length > 1 && (
+        <>
+          <button
+            type="button"
+            className={`${styles.arrow} ${styles.arrowLeft}`}
+            aria-label="Juego anterior"
+            onClick={previousSlide}
+          >
+            <ChevronLeft size={29} />
+          </button>
+          <button
+            type="button"
+            className={`${styles.arrow} ${styles.arrowRight}`}
+            aria-label="Juego siguiente"
+            onClick={nextSlide}
+          >
+            <ChevronRight size={29} />
+          </button>
 
           <div className={styles.controls}>
-            <div className={styles.dots}>
+            <div className={styles.segments} aria-label="Elegir juego del carrusel">
               {games.map((game, index) => (
                 <button
                   key={game.id}
                   type="button"
-                  className={index === normalizedActiveIndex ? styles.activeDot : ""}
+                  className={index === normalizedActiveIndex ? styles.activeSegment : ""}
                   aria-label={`Mostrar ${game.title}`}
                   aria-current={index === normalizedActiveIndex ? "true" : undefined}
                   onClick={() => setActiveIndex(index)}
@@ -534,29 +642,12 @@ export default function HeroSection({
               />
             </div>
           </div>
-        </div>
+        </>
+      )}
 
-        {games.length > 1 && (
-          <button
-            type="button"
-            className={styles.nextCard}
-            style={NEXT_CARD_STYLE}
-            aria-label={`Siguiente juego: ${nextGame.title}`}
-            onClick={nextSlide}
-          >
-            <NextArtwork game={nextGame} />
-            <span className={styles.nextShade} aria-hidden="true" />
-            <span className={styles.nextCopy} style={NEXT_COPY_STYLE}>
-              <small>SIGUIENTE</small>
-              <strong>{nextGame.shortTitle ?? nextGame.title}</strong>
-              <span>{nextGame.category}</span>
-            </span>
-            <span className={styles.nextArrow} aria-hidden="true" hidden>
-              <ChevronRight size={20} />
-            </span>
-          </button>
-        )}
-      </div>
+      <span className={styles.srOnly} aria-hidden="true">
+        {formatHomeHeroPosition(normalizedActiveIndex, games.length)}
+      </span>
     </section>
   );
 }

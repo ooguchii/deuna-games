@@ -27,6 +27,9 @@ import type {
   ResolvedHomeConfig,
 } from "@/data/home-config";
 import {
+  HOME_HERO_MAX_SLIDES,
+} from "@/lib/home/hero-contract";
+import {
   homeRankingDescription,
   rankHomeGames,
   resolveHomeCollectionGames,
@@ -49,7 +52,7 @@ const collections: Array<{
     shortLabel: "Hero",
     description:
       "Los títulos con mayor impacto visual y editorial de la portada.",
-    limit: 4,
+    limit: HOME_HERO_MAX_SLIDES,
     algorithm: homeRankingDescription("hero"),
   },
   {

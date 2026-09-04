@@ -162,8 +162,8 @@ requireIncludes(
 );
 requireIncludes(
   hero,
-  "bottom: -340px",
-  "HeroSection: el ambiente de escritorio debe continuar por debajo del banner."
+  "bottom: -280px",
+  "HeroSection: el ambiente cinematográfico de escritorio debe continuar por debajo de la escena."
 );
 requireIncludes(
   hero,
