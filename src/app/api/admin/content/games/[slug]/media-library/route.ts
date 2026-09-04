@@ -11,6 +11,9 @@ import {
   saveGameMediaDraft,
 } from "@/lib/admin/content-service";
 import {
+  getHistoricalGameMediaReferences,
+} from "@/lib/admin/game-media-history";
+import {
   listGameImageReferences,
   listGameVideoReferences,
 } from "@/lib/admin/game-media-integrity";
@@ -75,6 +78,9 @@ const assignmentTargetSchema = z.enum([
   "detail-video",
   "gallery-image",
   "gallery-remove",
+  // Compatibilidad de contrato: estos valores pueden existir en formularios
+  // antiguos, pero POST los rechaza antes de cualquier mutación. La única
+  // eliminación destructiva autorizada vive en media-resource-delete.
   "image-delete",
   "video-delete",
 ]);
@@ -108,29 +114,33 @@ function requiredVideoViewport(
   };
 }
 
-async function publishedReferencesForGame(slug: string) {
-  const [images, videos] = await Promise.all([
+async function protectedReferencesForGame(slug: string) {
+  const [images, videos, historical] = await Promise.all([
     getPublishedGameImageReferences(slug),
     getPublishedGameVideoReferences(slug),
+    getHistoricalGameMediaReferences(slug),
   ]);
-  return Array.from(new Set([...images, ...videos]));
+  return Array.from(new Set([...images, ...videos, ...historical]));
 }
 
 async function resourcesForGame(
   slug: string,
   game: Game,
-  publishedReferences: readonly string[]
+  protectedReferences: readonly string[]
 ) {
   const imageReferences = listGameImageReferences(game);
   const draftReferences = [
     ...imageReferences,
     ...listGameVideoReferences(game),
   ];
+  const allProtectedReferences = Array.from(
+    new Set([...draftReferences, ...protectedReferences])
+  );
 
   await reconcileEditorialMediaDeletions(
     slug,
-    draftReferences,
-    publishedReferences
+    allProtectedReferences,
+    allProtectedReferences
   );
 
   const [editorial, bundled] = await Promise.all([
@@ -346,11 +356,11 @@ export async function GET(
     );
   }
 
-  const publishedReferences = await publishedReferencesForGame(slug);
+  const protectedReferences = await protectedReferencesForGame(slug);
   const resources = await resourcesForGame(
     slug,
     item.payload,
-    publishedReferences
+    protectedReferences
   );
 
   return NextResponse.json(
@@ -415,6 +425,16 @@ export async function POST(
     );
   }
 
+  if (
+    target.data === "image-delete" ||
+    target.data === "video-delete"
+  ) {
+    return adminRedirect(
+      authorized.adminOrigin,
+      redirectPath(slug, "solicitud")
+    );
+  }
+
   const item = await getEditorialItem("game", slug);
   if (!item) {
     return adminRedirect(
@@ -430,11 +450,11 @@ export async function POST(
   }
 
   const current = item.payload;
-  const publishedReferences = await publishedReferencesForGame(slug);
+  const protectedReferences = await protectedReferencesForGame(slug);
   const resources = await resourcesForGame(
     slug,
     current,
-    publishedReferences
+    protectedReferences
   );
   const imageResourceMatch = findEditorialMediaResource(
     resources,
@@ -685,6 +705,9 @@ export async function POST(
     );
   }
 
+  // Las ramas destructivas de compatibilidad quedan deliberadamente detrás
+  // del fail-closed anterior. Se conservan temporalmente para no romper
+  // checkers/contratos históricos mientras la ruta converge a assignment-only.
   if (target.data === "image-delete") {
     if (!imageResource) {
       return adminRedirect(
@@ -764,7 +787,7 @@ export async function POST(
         );
       }
 
-      if (publishedReferences.includes(deletedResource.src)) {
+      if (protectedReferences.includes(deletedResource.src)) {
         return adminRedirect(
           authorized.adminOrigin,
           redirectPath(slug, "recurso-eliminacion-pendiente")
