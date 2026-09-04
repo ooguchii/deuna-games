@@ -5,15 +5,15 @@
   position: relative;
   isolation: isolate;
   width: min(100%, 1920px);
-  min-height: 820px;
+  min-height: 780px;
   margin: 4px auto 44px;
-  padding: 94px 36px 58px;
+  padding: 70px 36px 52px;
   overflow: hidden;
   outline: none;
   background:
-    radial-gradient(ellipse at 54% 92%, color-mix(in srgb, var(--brand) 15%, transparent), transparent 39%),
-    radial-gradient(circle at 78% 20%, color-mix(in srgb, var(--brand) 8%, transparent), transparent 31%),
-    linear-gradient(180deg, rgba(2, 6, 13, 0.08), rgba(2, 5, 11, 0.52) 70%, rgba(1, 4, 9, 0.86));
+    radial-gradient(ellipse at 54% 91%, color-mix(in srgb, var(--brand) 16%, transparent), transparent 39%),
+    radial-gradient(circle at 79% 18%, color-mix(in srgb, var(--brand) 7%, transparent), transparent 30%),
+    linear-gradient(180deg, rgba(2, 6, 13, 0.04), rgba(2, 5, 11, 0.5) 70%, rgba(1, 4, 9, 0.88));
   perspective: 1800px;
 }
 
@@ -34,7 +34,7 @@
 .heroSection::after {
   position: absolute;
   z-index: 13;
-  bottom: 25px;
+  bottom: 14px;
   left: 49px;
   min-width: 250px;
   padding-left: 27px;
@@ -69,7 +69,7 @@
 .cinematicStage {
   position: relative;
   z-index: 3;
-  min-height: 650px;
+  min-height: 620px;
   perspective: 1800px;
   transform-style: preserve-3d;
   touch-action: pan-y;
@@ -78,7 +78,7 @@
 .cinematicStage::before {
   position: absolute;
   z-index: 13;
-  top: -84px;
+  top: -58px;
   left: 82px;
   color: #f7f8fb;
   content: "CARRUSEL CINEMÁTICO CON PÁGINA";
@@ -92,7 +92,7 @@
 .cinematicStage::after {
   position: absolute;
   z-index: 13;
-  top: -48px;
+  top: -21px;
   left: 82px;
   color: rgba(224, 228, 237, 0.68);
   content: "Transiciones tipo portada de revista";
@@ -127,7 +127,7 @@
     0 38px 92px rgba(0, 0, 0, 0.54),
     0 0 48px color-mix(in srgb, var(--brand) 10%, transparent),
     inset 0 0 0 1px rgba(255, 255, 255, 0.025);
-  transform: perspective(1700px) rotateY(-6.3deg);
+  transform: perspective(1700px) rotateY(-7.6deg);
   transform-origin: left center;
   transform-style: preserve-3d;
   animation: heroPageEnter 680ms cubic-bezier(0.16, 1, 0.3, 1) both;
@@ -389,30 +389,26 @@
 }
 
 .previewCard {
-  --preview-depth: 0;
   position: absolute;
-  top: calc(17px + var(--preview-depth) * 20px);
-  left: calc(var(--preview-depth) * 128px);
-  z-index: calc(10 - var(--preview-depth));
+  top: 17px;
+  left: 0;
+  z-index: 10;
   display: block;
   width: var(--preview-width);
   aspect-ratio: 9 / 16;
   overflow: hidden;
   padding: 0;
-  border: 1px solid color-mix(in srgb, var(--brand) calc(62% - var(--preview-depth) * 10%), rgba(190, 207, 232, 0.18));
+  border: 1px solid color-mix(in srgb, var(--brand) 62%, rgba(190, 207, 232, 0.18));
   border-radius: 17px;
   background: #080b11;
   color: #fff;
   cursor: pointer;
   pointer-events: auto;
-  opacity: calc(1 - var(--preview-depth) * 0.22);
+  opacity: 1;
   box-shadow:
     0 28px 62px rgba(0, 0, 0, 0.5),
     0 0 34px color-mix(in srgb, var(--brand) 12%, transparent);
-  transform:
-    translate3d(0, 0, calc(var(--preview-depth) * -90px))
-    scale(calc(1 - var(--preview-depth) * 0.055))
-    rotateY(-7deg);
+  transform: translate3d(0, 0, 0) scale(1) rotateY(-7deg);
   transform-origin: left center;
   transition:
     transform 620ms cubic-bezier(0.16, 1, 0.3, 1),
@@ -420,8 +416,28 @@
     filter 420ms ease,
     border-color 180ms ease,
     box-shadow 180ms ease;
-  filter: saturate(calc(1 - var(--preview-depth) * 0.13)) brightness(calc(1 - var(--preview-depth) * 0.13));
+  filter: saturate(1) brightness(1);
   animation: previewPageEnter 650ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.previewCard[data-depth="1"] {
+  top: 37px;
+  left: 128px;
+  z-index: 9;
+  border-color: color-mix(in srgb, var(--brand) 49%, rgba(190, 207, 232, 0.16));
+  opacity: 0.78;
+  filter: saturate(0.87) brightness(0.86);
+  transform: translate3d(0, 0, -90px) scale(0.945) rotateY(-7deg);
+}
+
+.previewCard[data-depth="2"] {
+  top: 57px;
+  left: 256px;
+  z-index: 8;
+  border-color: color-mix(in srgb, var(--brand) 38%, rgba(190, 207, 232, 0.14));
+  opacity: 0.56;
+  filter: saturate(0.72) brightness(0.7) blur(0.35px);
+  transform: translate3d(0, 0, -180px) scale(0.89) rotateY(-7deg);
 }
 
 .previewCard:hover {
@@ -432,10 +448,7 @@
   box-shadow:
     0 34px 76px rgba(0, 0, 0, 0.54),
     0 0 42px color-mix(in srgb, var(--brand) 20%, transparent);
-  transform:
-    translate3d(0, -4px, 20px)
-    scale(1.025)
-    rotateY(-4deg);
+  transform: translate3d(0, -4px, 20px) scale(1.025) rotateY(-4deg);
 }
 
 .previewArtwork,
@@ -538,7 +551,7 @@
 .arrow {
   position: absolute;
   z-index: 16;
-  top: 48.5%;
+  top: 47%;
   display: grid;
   place-items: center;
   width: clamp(64px, 4.2vw, 80px);
@@ -581,7 +594,7 @@
   position: absolute;
   z-index: 15;
   right: clamp(80px, 6.8vw, 130px);
-  bottom: 47px;
+  bottom: 51px;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -650,10 +663,7 @@
   margin-left: 5px;
 }
 
-.progress {
-  display: none;
-}
-
+.progress,
 .progressBar {
   display: none;
 }
@@ -683,8 +693,8 @@
   position: absolute;
   inset: 0;
   overflow: hidden;
-  opacity: 0.2;
-  mask-image: radial-gradient(ellipse 70% 58% at 63% 39%, #000 0%, rgba(0, 0, 0, 0.8) 28%, transparent 72%);
+  opacity: 0.18;
+  mask-image: radial-gradient(ellipse 68% 55% at 64% 38%, #000 0%, rgba(0, 0, 0, 0.72) 28%, transparent 72%);
   animation: ambientEnter 760ms ease both;
 }
 
@@ -700,26 +710,21 @@
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(180deg, rgba(1, 4, 10, 0.72) 0%, rgba(1, 4, 10, 0.24) 27%, rgba(1, 4, 10, 0.48) 61%, var(--background) 94%),
+    linear-gradient(180deg, rgba(1, 4, 10, 0.78) 0%, rgba(1, 4, 10, 0.28) 27%, rgba(1, 4, 10, 0.5) 61%, var(--background) 94%),
     radial-gradient(ellipse at 55% 43%, color-mix(in srgb, var(--brand) 15%, transparent), transparent 53%),
     linear-gradient(90deg, color-mix(in srgb, var(--background) 93%, transparent), transparent 29%, transparent 72%, color-mix(in srgb, var(--background) 92%, transparent));
   backdrop-filter: blur(4px);
 }
 
-@keyframes heroProgress {
-  from { transform: scaleX(0); }
-  to { transform: scaleX(1); }
-}
-
 @keyframes heroPageEnter {
   from {
     opacity: 0.42;
-    transform: perspective(1700px) translate3d(78px, 6px, -100px) rotateY(-14deg) scale(0.975);
+    transform: perspective(1700px) translate3d(78px, 6px, -100px) rotateY(-15deg) scale(0.975);
     filter: saturate(0.78) brightness(0.78);
   }
   to {
     opacity: 1;
-    transform: perspective(1700px) translate3d(0, 0, 0) rotateY(-6.3deg) scale(1);
+    transform: perspective(1700px) translate3d(0, 0, 0) rotateY(-7.6deg) scale(1);
     filter: saturate(1) brightness(1);
   }
 }
@@ -732,8 +737,8 @@
 }
 
 @keyframes ambientEnter {
-  from { opacity: 0.06; transform: scale(1.04); }
-  to { opacity: 0.2; transform: scale(1); }
+  from { opacity: 0.05; transform: scale(1.04); }
+  to { opacity: 0.18; transform: scale(1); }
 }
 
 @media (max-width: 1580px) {
@@ -741,12 +746,20 @@
     --showcase-left: clamp(48px, 3.6vw, 68px);
     --main-width: min(69vw, 1110px);
     --preview-width: clamp(190px, 13vw, 218px);
-    min-height: 750px;
-    padding-top: 88px;
+    min-height: 720px;
+    padding-top: 66px;
   }
 
   .cinematicStage {
-    min-height: 590px;
+    min-height: 565px;
+  }
+
+  .cinematicStage::before {
+    top: -54px;
+  }
+
+  .cinematicStage::after {
+    top: -19px;
   }
 
   .content {
@@ -777,15 +790,19 @@
   }
 
   .previewRail {
-    top: 57px;
+    top: 55px;
   }
 
-  .previewCard {
-    left: calc(var(--preview-depth) * 112px);
+  .previewCard[data-depth="1"] {
+    left: 112px;
+  }
+
+  .previewCard[data-depth="2"] {
+    left: 224px;
   }
 
   .controls {
-    bottom: 41px;
+    bottom: 43px;
   }
 }
 
@@ -793,12 +810,12 @@
   .heroSection {
     --main-width: min(72vw, 900px);
     --preview-width: 186px;
-    min-height: 680px;
+    min-height: 650px;
     padding-inline: 26px;
   }
 
   .cinematicStage {
-    min-height: 530px;
+    min-height: 510px;
   }
 
   .cinematicStage::before,
@@ -837,11 +854,15 @@
   }
 
   .previewRail {
-    top: 51px;
+    top: 48px;
   }
 
-  .previewCard {
-    left: calc(var(--preview-depth) * 94px);
+  .previewCard[data-depth="1"] {
+    left: 94px;
+  }
+
+  .previewCard[data-depth="2"] {
+    left: 188px;
   }
 
   .positionCounter {
@@ -854,7 +875,7 @@
   }
 
   .heroSection::after {
-    bottom: 20px;
+    bottom: 13px;
     left: 37px;
     font-size: 11px;
   }
@@ -1122,19 +1143,24 @@
   }
 
   .mainCard {
-    transform: perspective(1700px) rotateY(-6.3deg);
+    transform: perspective(1700px) rotateY(-7.6deg);
   }
 
   .previewCard {
-    transform:
-      translate3d(0, 0, calc(var(--preview-depth) * -90px))
-      scale(calc(1 - var(--preview-depth) * 0.055))
-      rotateY(-7deg);
+    transform: translate3d(0, 0, 0) scale(1) rotateY(-7deg);
   }
 
-  @media (max-width: 1020px) {
-    .mainCard {
-      transform: none;
-    }
+  .previewCard[data-depth="1"] {
+    transform: translate3d(0, 0, -90px) scale(0.945) rotateY(-7deg);
+  }
+
+  .previewCard[data-depth="2"] {
+    transform: translate3d(0, 0, -180px) scale(0.89) rotateY(-7deg);
+  }
+}
+
+@media (max-width: 1020px) and (prefers-reduced-motion: reduce) {
+  .mainCard {
+    transform: none;
   }
 }
