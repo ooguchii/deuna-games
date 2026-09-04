@@ -123,7 +123,7 @@
 .heroMockCopy small {
   margin-bottom: 6px;
   color: #aab8c9;
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -374,7 +374,7 @@
   align-items: center;
   gap: 4px;
   color: var(--text-muted, #9aa9bb);
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .queueChecks span[data-ready="true"] {
