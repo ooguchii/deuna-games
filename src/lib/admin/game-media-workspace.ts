@@ -4,6 +4,9 @@ import {
   getEditorialItem,
 } from "@/lib/admin/content-service";
 import {
+  getHistoricalGameMediaReferences,
+} from "@/lib/admin/game-media-history";
+import {
   evaluateGameMediaHygiene,
 } from "@/lib/admin/game-media-hygiene";
 import {
@@ -41,18 +44,33 @@ export async function getGameMediaWorkspaceSnapshot(slug: string) {
   const imageReferences = listGameImageReferences(game);
   const videoReferences = listGameVideoReferences(game);
   const draftReferences = [...imageReferences, ...videoReferences];
-  const [publishedImages, publishedVideos] = await Promise.all([
+  const [
+    publishedImages,
+    publishedVideos,
+    historicalReferences,
+  ] = await Promise.all([
     getPublishedGameImageReferences(slug),
     getPublishedGameVideoReferences(slug),
+    getHistoricalGameMediaReferences(slug),
   ]);
   const publishedReferences = Array.from(
     new Set([...publishedImages, ...publishedVideos])
   );
+  const protectedReferences = Array.from(
+    new Set([
+      ...draftReferences,
+      ...publishedReferences,
+      ...historicalReferences,
+    ])
+  );
 
+  // Una publicación histórica sólo es realmente restaurable mientras sus
+  // masters existan. Cualquier marcador de borrado sobre una referencia viva
+  // o histórica se revierte; sólo se purgan archivos sin ninguna referencia.
   await reconcileEditorialMediaDeletions(
     slug,
-    draftReferences,
-    publishedReferences
+    protectedReferences,
+    protectedReferences
   );
 
   const [editorial, bundled] = await Promise.all([
@@ -63,7 +81,8 @@ export async function getGameMediaWorkspaceSnapshot(slug: string) {
   const hygiene = evaluateGameMediaHygiene(
     game,
     resources,
-    publishedReferences
+    publishedReferences,
+    historicalReferences
   );
   const hygieneBySource = new Map(
     hygiene.resources.map((resource) => [resource.src, resource] as const)
