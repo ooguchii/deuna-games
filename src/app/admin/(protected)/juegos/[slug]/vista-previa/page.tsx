@@ -139,10 +139,10 @@ export default async function AdminGamePreviewPage({
     minimum,
     recommended
   );
-  const platforms =
-    game.platforms?.length
-      ? game.platforms
-      : ["PC"];
+  const platforms = game.platforms ?? [];
+  const platformLabel = platforms.length
+    ? platforms.join(", ")
+    : "A confirmar";
   const genres =
     game.genres?.length
       ? game.genres
@@ -285,7 +285,7 @@ export default async function AdminGamePreviewPage({
         <article>
           <Monitor size={18} aria-hidden="true" />
           <span>Plataformas</span>
-          <strong>{platforms.join(", ")}</strong>
+          <strong>{platformLabel}</strong>
         </article>
         <article>
           <Gauge size={18} aria-hidden="true" />
@@ -314,11 +314,12 @@ export default async function AdminGamePreviewPage({
           <h2>FPS estimados antes de publicar</h2>
         </div>
         <p>
-          Este cálculo usa la calibración de esta revisión privada. No modifica ni expone la calibración pública hasta que confirmes una publicación nueva.
+          Este cálculo usa la calibración y procedencia de esta revisión privada. No modifica ni expone esos datos públicamente hasta que confirmes una publicación nueva.
         </p>
         <GamePerformanceEstimate
           slug={game.slug}
           calibration={game.performance ?? null}
+          metadata={game.performanceMetadata ?? null}
         />
       </section>
 
