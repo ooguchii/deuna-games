@@ -98,7 +98,6 @@
 .libraryCounts,
 .utilityActions,
 .galleryStats,
-.galleryFooter,
 .galleryItemTitleRow,
 .galleryItemActions,
 .galleryOrderActions,
@@ -111,7 +110,6 @@
 }
 
 .utilityHeading,
-.galleryFooter,
 .libraryDialogTopbar {
   justify-content: space-between;
   gap: 12px;
@@ -141,7 +139,6 @@
 }
 
 .utilityHeading small,
-.utilityCopy,
 .utilityStatus,
 .utilityEmpty,
 .libraryDialogTopbar span,
@@ -311,11 +308,6 @@
 .continueButton:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-}
-
-.utilityCopy {
-  margin: 12px 0;
-  line-height: 1.5;
 }
 
 .utilityStale,
@@ -591,7 +583,6 @@
 .galleryStats,
 .galleryList,
 .galleryEmpty,
-.galleryFooter,
 .galleryPendingNotice,
 .continueGate {
   margin-top: 13px;
@@ -681,9 +672,7 @@
 }
 
 .galleryCropReady,
-.galleryCropPending,
-.gallerySelectionReady,
-.gallerySelectionPending {
+.galleryCropPending {
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -691,13 +680,11 @@
   font-weight: 850;
 }
 
-.galleryCropReady,
-.gallerySelectionReady {
+.galleryCropReady {
   color: #70dfa0;
 }
 
-.galleryCropPending,
-.gallerySelectionPending {
+.galleryCropPending {
   color: #f5b16f;
 }
 
@@ -754,12 +741,6 @@
   border-radius: 10px;
   background: #080e15;
   text-align: center;
-}
-
-.galleryFooter {
-  align-items: center;
-  padding-top: 12px;
-  border-top: 1px solid #1d2a35;
 }
 
 .galleryPickerGrid {
@@ -928,7 +909,6 @@
   }
 
   .galleryHeading,
-  .galleryFooter,
   .continueGate,
   .libraryDialogTopbar {
     align-items: stretch;
