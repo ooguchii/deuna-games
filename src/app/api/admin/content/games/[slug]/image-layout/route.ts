@@ -99,12 +99,10 @@ export async function POST(
   }
 
   const expectsGalleryResource = target.data === "gallery";
-  const requiredFixedAspect = isFixedImageTarget(target.data)
-    ? REQUIRED_DESTINATION_ASPECTS[target.data]
-    : null;
+  const expectsFixedAspect = isFixedImageTarget(target.data);
   const validFields = expectsGalleryResource
     ? hasExactAdminFormFields(authorized.form, galleryFields)
-    : requiredFixedAspect
+    : expectsFixedAspect
       ? hasExactAdminFormFields(authorized.form, fixedFields)
       : hasExactAdminFormFields(authorized.form, baseFields);
 
@@ -126,7 +124,7 @@ export async function POST(
         authorized.form.get("viewportAspect"),
         authorized.form.get("viewportAspectRatio")
       )
-    : requiredFixedAspect
+    : expectsFixedAspect
       ? parseGameImageViewport(
           authorized.form.get("viewportX"),
           authorized.form.get("viewportY"),
@@ -141,10 +139,16 @@ export async function POST(
   const resourceValue = authorized.form.get("resource");
   const resource = typeof resourceValue === "string" ? resourceValue : "";
 
+  if (!revision.success || !viewport) {
+    return adminRedirect(
+      authorized.adminOrigin,
+      redirectPath(slug, "imagen-encuadre-invalido")
+    );
+  }
+
   if (
-    !revision.success ||
-    !viewport ||
-    (requiredFixedAspect && viewport.aspect !== requiredFixedAspect)
+    isFixedImageTarget(target.data) &&
+    viewport.aspect !== REQUIRED_DESTINATION_ASPECTS[target.data]
   ) {
     return adminRedirect(
       authorized.adminOrigin,
