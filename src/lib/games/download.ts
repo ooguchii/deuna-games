@@ -1,5 +1,6 @@
 import type {
   Game,
+  GameDistributionChannel,
   GameDownloadSource,
   GameDownloadSourceStatus,
 } from "@/types/game";
@@ -21,6 +22,8 @@ export type ResolvedDownload = {
   sizeGb?: number;
   fileCount?: number;
   platform?: string;
+  channel?: GameDistributionChannel;
+  checksumSha256?: string;
 };
 
 const internalBase =
@@ -196,6 +199,9 @@ export function resolveGameDownload(
     return null;
   }
 
+  const checksumSha256 =
+    game.distributionMetadata?.checksumSha256?.trim().toLowerCase();
+
   return {
     href: primary.href,
     label: primary.label,
@@ -216,5 +222,10 @@ export function resolveGameDownload(
     platform:
       config.platform?.trim() ||
       undefined,
+    channel: game.distributionMetadata?.channel,
+    checksumSha256:
+      checksumSha256 && /^[a-f0-9]{64}$/.test(checksumSha256)
+        ? checksumSha256
+        : undefined,
   };
 }
