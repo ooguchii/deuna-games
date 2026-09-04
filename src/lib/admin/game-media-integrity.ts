@@ -31,6 +31,10 @@ export function listGameImageReferences(
         game.cardImage,
         game.detailImage,
         game.backgroundImage,
+        // Compatibilidad defensiva: screenshots sigue siendo un campo válido
+        // para snapshots históricos. Se verifica explícitamente además de la
+        // Galería mixta para que ningún payload legado pueda eludir integridad.
+        ...(game.screenshots ?? []),
         ...galleryImageSources(galleryItems),
       ].filter(
         (value): value is string => Boolean(value)
