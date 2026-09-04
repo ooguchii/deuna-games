@@ -142,12 +142,23 @@ export function evaluateGamePublicationChanges(
     });
   }
 
-  if (changed(draft.performance, published.performance)) {
+  if (
+    changed(
+      {
+        calibration: draft.performance,
+        metadata: draft.performanceMetadata,
+      },
+      {
+        calibration: published.performance,
+        metadata: published.performanceMetadata,
+      }
+    )
+  ) {
     changes.push({
       id: "performance",
       label: "Rendimiento",
       detail:
-        "Cambia la calibración usada para estimar FPS según la PC del visitante.",
+        "Cambia la calibración usada para estimar FPS o la procedencia, fecha y confianza documentadas para ese benchmark.",
       section: "rendimiento",
     });
   }
