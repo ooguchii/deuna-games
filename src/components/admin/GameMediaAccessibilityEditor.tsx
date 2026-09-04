@@ -204,10 +204,14 @@ export default function GameMediaAccessibilityEditor({
   }
 
   const assignments = workspace.assignments;
-  const hasCover = Boolean(assignments.coverImage || assignments.coverVideo);
-  const hasHero = Boolean(assignments.heroImage || assignments.heroVideo);
-  const hasCard = Boolean(assignments.cardImage || assignments.cardVideo);
-  const hasDetail = Boolean(assignments.detailImage || assignments.detailVideo);
+  const hasCover = Boolean(assignments.coverImage);
+  const hasHero = Boolean(assignments.heroImage);
+  const hasCard = Boolean(
+    assignments.cardMode !== "video" && assignments.cardImage
+  );
+  const hasDetail = Boolean(
+    assignments.detailMode !== "video" && assignments.detailImage
+  );
   const gallery = workspace.gallery ?? [];
   const action =
     `/api/admin/content/games/${encodeURIComponent(slug)}/media-accessibility`;
@@ -239,7 +243,7 @@ export default function GameMediaAccessibilityEditor({
         <div className={`${adminStyles.tableSummary} ${adminStyles.fieldWide}`}>
           <strong>Contexto, no archivo físico</strong>
           <span>
-            Fondo y capas puramente decorativas continúan ocultas a lectores de pantalla. Aquí documentas sólo el significado útil que debe conservarse cuando una superficie sea semántica o interactiva.
+            Fondo y capas de video puramente decorativas continúan ocultas a lectores de pantalla. Aquí documentas sólo imágenes con significado y cada elemento interactivo de Galería.
           </span>
         </div>
 
@@ -267,6 +271,9 @@ export default function GameMediaAccessibilityEditor({
               maxLength={240}
               placeholder="Descripción contextual del Hero"
             />
+            <small>
+              El Hero visual de la ficha es decorativo; este texto se reutiliza cuando esa imagen necesita una descripción semántica, por ejemplo en metadata social.
+            </small>
           </label>
         )}
 
@@ -294,6 +301,9 @@ export default function GameMediaAccessibilityEditor({
               maxLength={240}
               placeholder="Descripción contextual del recurso principal de la ficha"
             />
+            <small>
+              Se conserva como metadata contextual aunque el contenedor visual actual de la ficha sea decorativo.
+            </small>
           </label>
         )}
 
