@@ -8,6 +8,7 @@ import type {
   Game,
   GameCompatibilityMetadata,
   GameHardwareRequirements,
+  GameMediaAccessibility,
   GamePlatform,
 } from "@/types/game";
 
@@ -56,6 +57,11 @@ export type GameCompatibilityInput = {
   metadata?: GameCompatibilityMetadata;
 };
 
+export type GameMediaAccessibilityInput = Pick<
+  Game,
+  "mediaAccessibility"
+>;
+
 export type GameValuationInput = Pick<Game, "rating">;
 
 type EditorialItemRow = {
@@ -95,6 +101,49 @@ function compactCompatibilityMetadata(
     ...(metadata.status ? { status: metadata.status } : {}),
     ...(metadata.source ? { source: metadata.source } : {}),
     ...(metadata.verifiedAt ? { verifiedAt: metadata.verifiedAt } : {}),
+  };
+
+  return Object.keys(compact).length ? compact : undefined;
+}
+
+function compactMediaAccessibility(
+  game: Game,
+  accessibility: GameMediaAccessibility | undefined
+) {
+  if (!accessibility) return undefined;
+
+  const galleryItems = game.galleryMedia?.length
+    ? game.galleryMedia
+    : (game.screenshots ?? []).map((src) => ({
+        kind: "image" as const,
+        src,
+      }));
+  const galleryKeys = new Set(
+    galleryItems.map((item) => `${item.kind}:${item.src}`)
+  );
+  const gallery = accessibility.gallery
+    ?.map((item) => ({
+      ...item,
+      label: item.label.trim(),
+    }))
+    .filter(
+      (item) =>
+        item.label.length > 0 &&
+        galleryKeys.has(`${item.kind}:${item.src}`)
+    );
+
+  const cover = accessibility.cover?.trim();
+  const hero = accessibility.hero?.trim();
+  const card = accessibility.card?.trim();
+  const detail = accessibility.detail?.trim();
+  const compact: GameMediaAccessibility = {
+    ...(game.coverImage && cover ? { cover } : {}),
+    ...(game.heroImage && hero ? { hero } : {}),
+    ...((game.cardImage ?? game.coverImage) && card ? { card } : {}),
+    ...((game.detailImage ?? game.heroImage ?? game.coverImage) && detail
+      ? { detail }
+      : {}),
+    ...(gallery?.length ? { gallery } : {}),
   };
 
   return Object.keys(compact).length ? compact : undefined;
@@ -269,6 +318,27 @@ export function saveGameCompatibilitySection(
           : undefined,
       };
     }
+  );
+}
+
+export function saveGameMediaAccessibilitySection(
+  key: string,
+  expectedRevision: number,
+  actorUserId: string,
+  input: GameMediaAccessibilityInput
+) {
+  return updateGameSection(
+    key,
+    expectedRevision,
+    actorUserId,
+    "media-accessibility",
+    (game) => ({
+      ...game,
+      mediaAccessibility: compactMediaAccessibility(
+        game,
+        input.mediaAccessibility
+      ),
+    })
   );
 }
 
