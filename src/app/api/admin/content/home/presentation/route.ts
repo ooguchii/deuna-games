@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 
+import { resolveHomeConfig } from "@/data/home-config";
 import {
   adminRedirect,
   adminUnavailableResponse,
@@ -71,21 +72,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const current = resolveHomeConfig(item.payload);
+    const submittedCopy = parsed.data.presentationJson.copy;
     const result = await saveHomeConfigDraft(
       parsed.data.expectedRevision,
       authorized.session.userId,
       {
-        heroSlugs: item.payload.heroSlugs,
-        popularSlugs: item.payload.popularSlugs,
-        lowSpecSlugs: item.payload.lowSpecSlugs,
-        recommendedSlugs:
-          item.payload.recommendedSlugs,
-        curation: item.payload.curation,
-        heroPresentation:
-          parsed.data.presentationJson.heroPresentation,
-        sections:
-          parsed.data.presentationJson.sections,
-        copy: parsed.data.presentationJson.copy,
+        heroSlugs: current.heroSlugs,
+        popularSlugs: current.popularSlugs,
+        lowSpecSlugs: current.lowSpecSlugs,
+        recommendedSlugs: current.recommendedSlugs,
+        curation: current.curation,
+        heroPresentation: current.heroPresentation,
+        sections: parsed.data.presentationJson.sections,
+        copy: {
+          ...submittedCopy,
+          hero: current.copy.hero,
+        },
       }
     );
 
