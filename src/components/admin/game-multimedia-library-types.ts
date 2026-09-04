@@ -4,11 +4,31 @@ import type {
   GameCoverVideo,
   GameDestinationMediaMode,
   GameDetailVideo,
+  GameGalleryItem,
   GameHeroVideo,
   GameImageMedia,
 } from "@/types/game";
 
-export type MultimediaResourceImage = {
+export type MultimediaResourceHygieneStatus =
+  | "active"
+  | "reserved"
+  | "published-only"
+  | "unused";
+
+export type MultimediaResourceHygiene = {
+  src: string;
+  kind: "image" | "video";
+  origin: "editorial" | "bundled";
+  status: MultimediaResourceHygieneStatus;
+  usage: string[];
+  blocksPublication: boolean;
+};
+
+type MultimediaResourceBase = {
+  hygiene?: MultimediaResourceHygiene | null;
+};
+
+export type MultimediaResourceImage = MultimediaResourceBase & {
   kind: "image";
   origin: "editorial" | "bundled";
   src: string;
@@ -18,7 +38,7 @@ export type MultimediaResourceImage = {
   height: number | null;
 };
 
-export type MultimediaResourceVideo = {
+export type MultimediaResourceVideo = MultimediaResourceBase & {
   kind: "video";
   origin: "editorial";
   src: string;
@@ -30,9 +50,67 @@ export type MultimediaLibraryResource =
   | MultimediaResourceImage
   | MultimediaResourceVideo;
 
+export type MultimediaRequirements = {
+  cover: {
+    assigned: boolean;
+    cropReady: boolean;
+    mode: GameDestinationMediaMode;
+    aspect: "4:5";
+  };
+  hero: {
+    assigned: boolean;
+    cropReady: boolean;
+    mode: GameDestinationMediaMode;
+    aspect: "16:9";
+  };
+  card: {
+    assigned: boolean;
+    cropReady: boolean;
+    mode: GameDestinationMediaMode;
+    aspect: "3:2";
+  };
+  detail: {
+    assigned: boolean;
+    cropReady: boolean;
+    mode: GameDestinationMediaMode;
+    aspect: "adaptive";
+  };
+  background: {
+    assigned: boolean;
+    cropReady: boolean;
+    active: boolean;
+    mode: GameDestinationMediaMode | null;
+    aspect: "adaptive";
+  };
+  gallery: {
+    assigned: boolean;
+    cropReady: boolean;
+    minimum: number;
+    count: number;
+    imageCount: number;
+    videoCount: number;
+  };
+  ready: boolean;
+};
+
+export type MultimediaHygieneSummary = {
+  ready: boolean;
+  total: number;
+  active: number;
+  reserved: number;
+  publishedOnly: number;
+  unused: number;
+  blockingCount: number;
+  blocking: MultimediaResourceHygiene[];
+  resources: MultimediaResourceHygiene[];
+};
+
 export type MultimediaLibraryState = {
   revision: number;
   resources: MultimediaLibraryResource[];
+  gallery?: GameGalleryItem[];
+  requirements?: MultimediaRequirements;
+  hygiene?: MultimediaHygieneSummary;
   assignments: {
     coverImage: string | null;
     heroImage: string | null;
