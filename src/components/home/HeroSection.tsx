@@ -40,6 +40,33 @@ const AUTOPLAY_TIME = 6500;
 const FINE_HOVER_MEDIA = "(hover: hover) and (pointer: fine)";
 const SWIPE_THRESHOLD = 55;
 
+const NEXT_ARTWORK_FRAME_STYLE: CSSProperties = {
+  position: "relative",
+  inset: "auto",
+  width: "100%",
+  aspectRatio: "4 / 5",
+  flex: "0 0 auto",
+};
+
+const NEXT_CARD_STYLE: CSSProperties = {
+  alignSelf: "stretch",
+  height: "auto",
+  aspectRatio: "auto",
+  display: "flex",
+  flexDirection: "column",
+};
+
+const NEXT_COPY_STYLE: CSSProperties = {
+  position: "relative",
+  right: "auto",
+  bottom: "auto",
+  left: "auto",
+  flex: "1 1 auto",
+  width: "100%",
+  alignContent: "end",
+  padding: "14px 16px 16px",
+};
+
 type ResponsiveArtworkProps = {
   game: Game;
   alt: string;
@@ -113,10 +140,19 @@ function ResponsiveArtwork({
 
 function NextArtwork({ game }: { game: Game }) {
   const src = game.coverImage;
-  if (!src) return <span className={styles.nextFallback} aria-hidden="true" />;
+  if (!src) {
+    return (
+      <span
+        className={styles.nextFallback}
+        style={NEXT_ARTWORK_FRAME_STYLE}
+        aria-hidden="true"
+      />
+    );
+  }
 
   const framing = imagePosition(game.imageMedia?.cover);
   const inlineStyle = {
+    ...NEXT_ARTWORK_FRAME_STYLE,
     "--next-image-zoom": framing.framed.zoom,
     "--next-image-position": framing.position,
   } as CSSProperties;
@@ -504,17 +540,18 @@ export default function HeroSection({
           <button
             type="button"
             className={styles.nextCard}
+            style={NEXT_CARD_STYLE}
             aria-label={`Siguiente juego: ${nextGame.title}`}
             onClick={nextSlide}
           >
             <NextArtwork game={nextGame} />
             <span className={styles.nextShade} aria-hidden="true" />
-            <span className={styles.nextCopy}>
+            <span className={styles.nextCopy} style={NEXT_COPY_STYLE}>
               <small>SIGUIENTE</small>
               <strong>{nextGame.shortTitle ?? nextGame.title}</strong>
               <span>{nextGame.category}</span>
             </span>
-            <span className={styles.nextArrow} aria-hidden="true">
+            <span className={styles.nextArrow} aria-hidden="true" hidden>
               <ChevronRight size={20} />
             </span>
           </button>
