@@ -86,6 +86,16 @@ function galleryUpdate(
     Partial<Pick<Game, "galleryMedia">>;
 }
 
+function sameGalleryOrder(
+  left: readonly GameGalleryItem[],
+  right: readonly GameGalleryItem[]
+) {
+  return left.length === right.length && left.every(
+    (item, index) =>
+      item.kind === right[index]?.kind && item.src === right[index]?.src
+  );
+}
+
 async function libraryResources(slug: string, game: Game) {
   const imageReferences = listGameImageReferences(game);
   const [editorial, bundled] = await Promise.all([
@@ -263,12 +273,27 @@ export async function POST(
         redirectPath(slug, "solicitud")
       );
     }
+    if (!currentGallery.some(
+      (candidate) => candidate.kind === kind.data && candidate.src === resource
+    )) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        redirectPath(slug, "recurso-invalido")
+      );
+    }
+
     const nextGallery = moveGalleryItem(
       current,
       kind.data,
       resource,
       direction.data
     );
+    if (sameGalleryOrder(currentGallery, nextGallery)) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        redirectPath(slug, "galeria-actualizada")
+      );
+    }
     update = galleryUpdate(current, nextGallery);
   }
 
