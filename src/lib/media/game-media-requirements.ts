@@ -11,23 +11,37 @@ import type {
   Game,
   GameDestinationMediaMode,
   GameImageViewport,
+  GameImageViewportAspect,
   GameVideoViewport,
   GameVideoViewportAspect,
 } from "@/types/game";
 
 export const REQUIRED_DESTINATION_ASPECTS = {
   cover: "4:5",
-  hero: "16:9",
+  hero: "3:1",
   card: "3:2",
 } as const;
+
+export const LEGACY_DESTINATION_IMAGE_ASPECTS = {
+  cover: "4:5",
+  hero: "16:9",
+  card: "3:2",
+} as const satisfies Record<keyof typeof REQUIRED_DESTINATION_ASPECTS, GameImageViewportAspect>;
 
 export const GAME_DETAIL_VIEWPORT_ASPECT = "source" as const;
 export const GAME_BACKGROUND_VIEWPORT_ASPECT = "source" as const;
 
 export type RequiredMediaDestination = keyof typeof REQUIRED_DESTINATION_ASPECTS;
 
-export function isImageCropConfirmed(viewport: GameImageViewport | undefined) {
-  return viewport?.confirmed === true;
+export function isImageCropConfirmed(
+  viewport: GameImageViewport | undefined,
+  requiredAspect?: GameImageViewportAspect,
+  legacyAspect?: GameImageViewportAspect
+) {
+  if (viewport?.confirmed !== true) return false;
+  if (!requiredAspect) return true;
+  const effectiveAspect = viewport.aspect ?? legacyAspect;
+  return effectiveAspect === requiredAspect;
 }
 
 export function isVideoCropConfirmed(
@@ -44,10 +58,16 @@ function destinationRequirement(
   imageViewport: GameImageViewport | undefined,
   videoAssigned: boolean,
   videoViewport: GameVideoViewport | undefined,
-  aspect: GameVideoViewportAspect
+  videoAspect: GameVideoViewportAspect,
+  imageAspect?: GameImageViewportAspect,
+  legacyImageAspect?: GameImageViewportAspect
 ) {
-  const imageReady = imageAssigned && isImageCropConfirmed(imageViewport);
-  const videoReady = videoAssigned && isVideoCropConfirmed(videoViewport, aspect);
+  const imageReady = imageAssigned && isImageCropConfirmed(
+    imageViewport,
+    imageAspect,
+    legacyImageAspect
+  );
+  const videoReady = videoAssigned && isVideoCropConfirmed(videoViewport, videoAspect);
 
   if (mode === "image") {
     return { assigned: imageAssigned, cropReady: imageReady };
@@ -89,7 +109,9 @@ export function evaluateGameMediaRequirements(game: Game) {
     game.imageMedia?.cover,
     Boolean(game.videoMedia?.cover?.clip),
     game.videoMedia?.cover?.viewport,
-    REQUIRED_DESTINATION_ASPECTS.cover
+    REQUIRED_DESTINATION_ASPECTS.cover,
+    REQUIRED_DESTINATION_ASPECTS.cover,
+    LEGACY_DESTINATION_IMAGE_ASPECTS.cover
   );
 
   const hero = destinationRequirement(
@@ -98,7 +120,9 @@ export function evaluateGameMediaRequirements(game: Game) {
     game.imageMedia?.hero,
     Boolean(game.videoMedia?.hero?.clip),
     game.videoMedia?.hero?.viewport,
-    REQUIRED_DESTINATION_ASPECTS.hero
+    REQUIRED_DESTINATION_ASPECTS.hero,
+    REQUIRED_DESTINATION_ASPECTS.hero,
+    LEGACY_DESTINATION_IMAGE_ASPECTS.hero
   );
 
   const cardVideo = game.videoMedia?.card;
@@ -111,7 +135,9 @@ export function evaluateGameMediaRequirements(game: Game) {
     game.imageMedia?.card,
     cardClipAssigned,
     cardVideo?.viewport,
-    REQUIRED_DESTINATION_ASPECTS.card
+    REQUIRED_DESTINATION_ASPECTS.card,
+    REQUIRED_DESTINATION_ASPECTS.card,
+    LEGACY_DESTINATION_IMAGE_ASPECTS.card
   );
 
   const detailImage = resolveGameDestinationImage(game, "detail");
