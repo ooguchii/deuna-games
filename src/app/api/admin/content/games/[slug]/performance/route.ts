@@ -27,6 +27,10 @@ const fields = [
   "referenceFps",
   "ramGb",
   "fpsCap",
+  "benchmarkSource",
+  "benchmarkSourceLabel",
+  "benchmarkMeasuredAt",
+  "benchmarkConfidence",
 ] as const;
 
 export async function POST(
@@ -78,6 +82,10 @@ export async function POST(
       referenceFps,
       ramGb,
       fpsCap,
+      benchmarkSource,
+      benchmarkSourceLabel,
+      benchmarkMeasuredAt,
+      benchmarkConfidence,
     } = parsed.data;
     const calibration =
       referenceFps !== undefined &&
@@ -88,11 +96,33 @@ export async function POST(
             ...(fpsCap !== undefined ? { fpsCap } : {}),
           }
         : undefined;
+    const metadata = calibration && (
+      benchmarkSource !== undefined ||
+      benchmarkSourceLabel !== undefined ||
+      benchmarkMeasuredAt !== undefined ||
+      benchmarkConfidence !== undefined
+    )
+      ? {
+          ...(benchmarkSource !== undefined
+            ? { source: benchmarkSource }
+            : {}),
+          ...(benchmarkSourceLabel !== undefined
+            ? { sourceLabel: benchmarkSourceLabel }
+            : {}),
+          ...(benchmarkMeasuredAt !== undefined
+            ? { measuredAt: benchmarkMeasuredAt }
+            : {}),
+          ...(benchmarkConfidence !== undefined
+            ? { confidence: benchmarkConfidence }
+            : {}),
+        }
+      : undefined;
     const result = await saveGamePerformanceDraft(
       slug,
       expectedRevision,
       authorized.session.userId,
-      calibration
+      calibration,
+      metadata
     );
 
     if (result.outcome === "not_found") {
