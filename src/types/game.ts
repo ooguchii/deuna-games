@@ -17,6 +17,24 @@ export type GameRequirements =
     recommended?: GameHardwareRequirements;
   };
 
+export type GameCompatibilityVerificationStatus =
+  | "declared"
+  | "reviewed"
+  | "tested";
+
+export type GameCompatibilityVerificationSource =
+  | "developer"
+  | "publisher"
+  | "internal"
+  | "community"
+  | "external";
+
+export type GameCompatibilityMetadata = {
+  status?: GameCompatibilityVerificationStatus;
+  source?: GameCompatibilityVerificationSource;
+  verifiedAt?: string;
+};
+
 export type GamePerformanceCalibration = {
   /* FPS observados o calibrados sobre el equipo de referencia a 1080p/media. */
   referenceFps: number;
@@ -243,6 +261,7 @@ export type Game = {
   genres?: string[];
   tags?: string[];
   platforms?: GamePlatform[];
+  compatibilityMetadata?: GameCompatibilityMetadata;
 
   badge?: string;
 
