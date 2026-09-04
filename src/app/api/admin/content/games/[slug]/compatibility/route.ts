@@ -35,6 +35,9 @@ const fields = [
   "recommendedRam",
   "recommendedGraphics",
   "recommendedStorage",
+  "verificationStatus",
+  "verificationSource",
+  "verifiedAt",
 ] as const;
 
 export async function POST(
@@ -82,6 +85,9 @@ export async function POST(
       recommendedRam,
       recommendedGraphics,
       recommendedStorage,
+      verificationStatus,
+      verificationSource,
+      verifiedAt,
     } = parsed.data;
     const result = await saveGameCompatibilitySection(
       slug,
@@ -102,6 +108,11 @@ export async function POST(
           ram: recommendedRam,
           graphics: recommendedGraphics,
           storage: recommendedStorage,
+        },
+        metadata: {
+          status: verificationStatus,
+          source: verificationSource,
+          verifiedAt,
         },
       }
     );
