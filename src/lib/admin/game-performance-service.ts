@@ -5,6 +5,7 @@ import type { PoolClient } from "pg";
 import type {
   Game,
   GamePerformanceCalibration,
+  GamePerformanceMetadata,
 } from "@/types/game";
 
 import {
@@ -96,7 +97,8 @@ export async function saveGamePerformanceDraft(
   key: string,
   expectedRevision: number,
   actorUserId: string,
-  calibration: GamePerformanceCalibration | undefined
+  calibration: GamePerformanceCalibration | undefined,
+  metadata: GamePerformanceMetadata | undefined
 ): Promise<GamePerformanceMutationResult> {
   const session = await verifyAdminSession();
 
@@ -139,6 +141,7 @@ export async function saveGamePerformanceDraft(
     const next: Game = {
       ...current,
       performance: calibration,
+      performanceMetadata: calibration ? metadata : undefined,
     };
     const revision = await writePerformanceRevision(
       client,
