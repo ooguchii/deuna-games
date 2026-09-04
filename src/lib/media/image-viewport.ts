@@ -11,6 +11,7 @@ export const MAX_FREE_IMAGE_ASPECT_RATIO = 10;
 
 export const GAME_IMAGE_CROP_ASPECTS: readonly GameImageViewportAspect[] = [
   "16:9",
+  "3:1",
   "3:2",
   "1:1",
   "4:5",
@@ -20,6 +21,7 @@ export const GAME_IMAGE_CROP_ASPECTS: readonly GameImageViewportAspect[] = [
 
 const FIXED_IMAGE_ASPECT_RATIOS: Record<Exclude<GameImageViewportAspect, "free">, number> = {
   "16:9": 16 / 9,
+  "3:1": 3,
   "3:2": 3 / 2,
   "1:1": 1,
   "4:5": 4 / 5,

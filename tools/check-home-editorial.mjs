@@ -29,6 +29,9 @@ const [
   curationRoute,
   presentationRoute,
   creationService,
+  heroSection,
+  heroStyles,
+  heroLayoutGuide,
 ] = await Promise.all([
   source("src/data/home.ts"),
   source("src/lib/home/ranking.ts"),
@@ -51,6 +54,9 @@ const [
     )
   ),
   source("src/lib/admin/content-create-service.ts"),
+  source("src/components/home/HeroSection.tsx"),
+  source("src/components/home/HeroSection.module.css"),
+  source("src/components/admin/HomeHeroLayoutGuide.tsx"),
 ]);
 
 assert(
@@ -135,8 +141,13 @@ assert(
   adminHomePage.includes("getPublicGames") &&
     adminHomePage.includes("publicBySlug") &&
     adminHomePage.includes("curationGames") &&
+    adminHomePage.includes("publishedSlugSet") &&
+    adminHomePage.includes("heroPreviewCatalog") &&
+    adminHomePage.includes("publishedSlugSet.has(game.slug)") &&
+    adminHomePage.includes("HomeHeroLayoutGuide") &&
+    adminHomePage.includes("games={previewCollections.heroGames}") &&
     adminHomePage.includes("games={curationGames}"),
-  "La vista previa administrativa debe calcular el ranking con payloads públicos reales y no con cambios de juegos todavía en borrador."
+  "La vista previa administrativa debe calcular Hero y ranking con payloads públicos reales, filtrar juegos no publicados y conservar el catálogo editorial completo para edición."
 );
 
 assert(
@@ -153,6 +164,31 @@ assert(
     !curationEditor.includes("Volumen de reseñas 58%") &&
     !curationEditor.includes("textarea"),
   "Curaduría debe reutilizar la definición real del ranking, respetar el límite visible y evitar fórmulas duplicadas o slugs crudos."
+);
+
+assert(
+  heroStyles.includes("aspect-ratio: 3 / 1") &&
+    heroStyles.includes("aspect-ratio: 4 / 5") &&
+    heroStyles.includes(".mainCard") &&
+    heroStyles.includes(".nextCard") &&
+    heroSection.includes("function NextArtwork") &&
+    heroSection.includes("const src = game.coverImage") &&
+    !heroSection.includes("const src = game.coverImage ?? game.heroImage") &&
+    heroSection.includes('aria-label={`Siguiente juego: ${nextGame.title}`}') &&
+    heroSection.includes("<NextArtwork game={nextGame} />"),
+  "El Hero público debe usar un lienzo principal 3:1 y una tarjeta Siguiente 4:5 basada exclusivamente en Portada, nunca en un fragmento del siguiente Hero."
+);
+
+assert(
+  heroLayoutGuide.includes("COMPOSICIÓN REAL DE INICIO") &&
+    heroLayoutGuide.includes("Hero 3:1") &&
+    heroLayoutGuide.includes("Siguiente · Portada 4:5") &&
+    heroLayoutGuide.includes("frameAspect={3}") &&
+    heroLayoutGuide.includes("frameAspect={4 / 5}") &&
+    heroLayoutGuide.includes("evaluateGameMediaRequirements") &&
+    heroLayoutGuide.includes("isImageCropConfirmed") &&
+    heroLayoutGuide.includes("LEGACY_DESTINATION_IMAGE_ASPECTS"),
+  "Curaduría debe enseñar la composición pública real y distinguir el recorte Hero 3:1 de la Portada 4:5 usada por Siguiente."
 );
 
 assert(
@@ -184,6 +220,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Home editorial: OK (curaduría profesional, perfiles centralizados, preview con snapshots públicos, personalización opcional, ranking explicable, estabilidad diaria y compatibilidad histórica)."
+    "Home editorial: OK (curaduría profesional, Hero 3:1 + Siguiente 4:5, snapshots públicos, personalización opcional, ranking explicable y estabilidad diaria)."
   );
 }

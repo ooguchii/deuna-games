@@ -4,8 +4,12 @@ import AdminPageHeader from "@/components/admin/AdminPageHeader";
 import EditorialHistory from "@/components/admin/EditorialHistory";
 import EditorStateNotice from "@/components/admin/EditorStateNotice";
 import HomeCurationEditor from "@/components/admin/HomeCurationEditor";
+import HomeHeroLayoutGuide from "@/components/admin/HomeHeroLayoutGuide";
 import HomePresentationEditor from "@/components/admin/HomePresentationEditor";
 import PublicationPanel from "@/components/admin/PublicationPanel";
+import {
+  buildHomeGameCollections,
+} from "@/data/home";
 import {
   resolveHomeConfig,
 } from "@/data/home-config";
@@ -106,6 +110,18 @@ export default async function AdminHomeEditorPage({
   const curationGames = games.map((game) =>
     publicBySlug.get(game.key) ?? game.payload
   );
+  const publishedSlugSet = publishedSlugs === null
+    ? null
+    : new Set(publishedSlugs);
+  const heroPreviewCatalog = publishedSlugSet === null
+    ? curationGames
+    : curationGames.filter((game) =>
+        publishedSlugSet.has(game.slug)
+      );
+  const previewCollections = buildHomeGameCollections(
+    heroPreviewCatalog,
+    resolved
+  );
 
   return (
     <>
@@ -125,12 +141,17 @@ export default async function AdminHomeEditorPage({
       <EditorStateNotice state={state} />
 
       {section === "curaduria" && (
-        <HomeCurationEditor
-          config={resolved}
-          games={curationGames}
-          publishedSlugs={publishedSlugs}
-          revision={item.revision}
-        />
+        <>
+          <HomeHeroLayoutGuide
+            games={previewCollections.heroGames}
+          />
+          <HomeCurationEditor
+            config={resolved}
+            games={curationGames}
+            publishedSlugs={publishedSlugs}
+            revision={item.revision}
+          />
+        </>
       )}
 
       {section === "presentacion" && (

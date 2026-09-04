@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import MediaViewportEditor from "@/components/admin/MediaViewportEditor";
+import GameMedia from "@/components/ui/GameMedia";
 import {
   GAME_DETAIL_VIEWPORT_ASPECT,
   REQUIRED_DESTINATION_ASPECTS,
@@ -18,9 +19,11 @@ import type {
 import type { GameImageViewport } from "@/types/game";
 
 import dialogStyles from "./ContextualMediaDialog.module.css";
+import styles from "./ImageViewportEditor.module.css";
 
 type Target = "cover" | "hero" | "card" | "detail" | "gallery";
 type LockedTarget = Exclude<Target, "gallery">;
+type FixedTarget = "cover" | "hero" | "card";
 
 type Props = {
   slug: string;
@@ -35,6 +38,7 @@ type Props = {
 
 const GALLERY_ASPECT_OPTIONS: readonly PreviewViewportAspectId[] = [
   "16:9",
+  "3:1",
   "3:2",
   "1:1",
   "4:5",
@@ -50,9 +54,29 @@ function targetLabel(target: Target) {
   return "Card";
 }
 
+function isFixedTarget(target: Target): target is FixedTarget {
+  return target === "cover" || target === "hero" || target === "card";
+}
+
 function targetAspect(target: LockedTarget): PreviewViewportAspectId {
   if (target === "detail") return GAME_DETAIL_VIEWPORT_ASPECT;
   return REQUIRED_DESTINATION_ASPECTS[target];
+}
+
+function targetRatio(target: FixedTarget) {
+  if (target === "cover") return 4 / 5;
+  if (target === "hero") return 3;
+  return 3 / 2;
+}
+
+function targetPreviewCopy(target: FixedTarget) {
+  if (target === "hero") {
+    return "Este es el encuadre panorámico que ocupa el Hero principal de Inicio. La tarjeta pequeña “Siguiente” usa el recorte independiente 4:5 de Portada.";
+  }
+  if (target === "cover") {
+    return "Este recorte 4:5 se usa en Portada y también como vista compacta del siguiente juego junto al Hero de Inicio.";
+  }
+  return "Este recorte 3:2 corresponde a la Card del juego y permanece independiente de Portada y Hero.";
 }
 
 function cropLabel(viewport: PreviewViewport) {
@@ -99,6 +123,15 @@ export default function ImageViewportEditor({
   const [status, setStatus] = useState<string | null>(null);
   const currentCropLabel = cropLabel(viewport);
   const adaptive = target === "detail";
+  const fixedTarget = isFixedTarget(target) ? target : null;
+  const fixedViewport: GameImageViewport | null = fixedTarget
+    ? {
+        x: viewport.x,
+        y: viewport.y,
+        zoom: viewport.zoom,
+        aspect: REQUIRED_DESTINATION_ASPECTS[fixedTarget],
+      }
+    : null;
 
   async function save() {
     if (busy) return;
@@ -125,6 +158,8 @@ export default function ImageViewportEditor({
         fields.viewportAspectRatio = viewport.aspect === "free"
           ? String(viewport.customAspectRatio ?? 16 / 9)
           : "";
+      } else if (fixedTarget) {
+        fields.viewportAspect = REQUIRED_DESTINATION_ASPECTS[fixedTarget];
       }
 
       const response = await fetch(
@@ -172,6 +207,34 @@ export default function ImageViewportEditor({
         disabled={busy}
         onViewportChange={setViewport}
       />
+
+      {fixedTarget && fixedViewport && (
+        <section className={styles.destinationPreview} aria-label={`Vista real de ${targetLabel(fixedTarget)}`}>
+          <header className={styles.destinationPreviewHeader}>
+            <div>
+              <span>VISTA REAL DEL DESTINO</span>
+              <strong>{targetLabel(fixedTarget)} en su proporción publicada</strong>
+              <small>Revisa aquí caras, texto y punto de interés a una escala útil antes de confirmar.</small>
+            </div>
+            <b className={styles.destinationRatio}>{REQUIRED_DESTINATION_ASPECTS[fixedTarget]}</b>
+          </header>
+          <div
+            className={styles.destinationFrame}
+            style={{ aspectRatio: String(targetRatio(fixedTarget)) }}
+          >
+            <GameMedia
+              src={src}
+              alt=""
+              sizes="(max-width: 900px) 92vw, 980px"
+              variant={fixedTarget === "cover" ? "cover" : "hero"}
+              viewport={fixedViewport}
+            />
+          </div>
+          <p className={styles.destinationHint}>
+            <strong>{targetLabel(fixedTarget)}:</strong> {targetPreviewCopy(fixedTarget)}
+          </p>
+        </section>
+      )}
 
       {adaptive && (
         <p

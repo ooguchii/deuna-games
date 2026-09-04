@@ -151,6 +151,7 @@ export type GameDirectPreview = {
 
 export type GameImageViewportAspect =
   | "16:9"
+  | "3:1"
   | "3:2"
   | "1:1"
   | "4:5"
@@ -164,8 +165,9 @@ export type GameImageViewport = {
   /* 1 = encuadre base; 3 = zoom máximo 300 %. */
   zoom: number;
   /*
-   * Sólo Galería persiste su relación porque allí es editorialmente elegible.
-   * Ausente conserva compatibilidad histórica y equivale a 16:9 en Galería.
+   * Los destinos rígidos pueden persistir la relación que fue confirmada para
+   * detectar recortes obsoletos si el diseño cambia. Galería conserva además
+   * relaciones elegibles y Libre. Ausente mantiene compatibilidad histórica.
    */
   aspect?: GameImageViewportAspect;
   /* Relación ancho/alto exacta cuando aspect="free". */
@@ -190,6 +192,7 @@ export type GameImageMedia = {
 export type GameVideoViewportAspect =
   | "source"
   | "16:9"
+  | "3:1"
   | "3:2"
   | "1:1"
   | "4:5"

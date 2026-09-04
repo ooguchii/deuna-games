@@ -12,6 +12,9 @@ import {
 } from "@/lib/admin/content-service";
 import { hasExactAdminFormFields } from "@/lib/admin/request-security";
 import {
+  REQUIRED_DESTINATION_ASPECTS,
+} from "@/lib/media/game-media-requirements";
+import {
   parseGameImageViewport,
 } from "@/lib/media/image-viewport";
 import {
@@ -26,7 +29,8 @@ import type {
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const legacyImageTargets = ["cover", "hero", "card", "gallery"] as const;
+const fixedImageTargets = ["cover", "hero", "card"] as const;
+const legacyImageTargets = [...fixedImageTargets, "gallery"] as const;
 const targetSchema = z.enum([...legacyImageTargets, "detail"]);
 const baseFields = [
   "expectedRevision",
@@ -34,6 +38,10 @@ const baseFields = [
   "viewportX",
   "viewportY",
   "viewportZoom",
+] as const;
+const fixedFields = [
+  ...baseFields,
+  "viewportAspect",
 ] as const;
 const galleryFields = [
   ...baseFields,
@@ -44,6 +52,12 @@ const galleryFields = [
 
 function redirectPath(slug: string, state: string) {
   return `/admin/juegos/${encodeURIComponent(slug)}?estado=${encodeURIComponent(state)}&seccion=multimedia`;
+}
+
+function isFixedImageTarget(
+  target: z.infer<typeof targetSchema>
+): target is (typeof fixedImageTargets)[number] {
+  return fixedImageTargets.includes(target as (typeof fixedImageTargets)[number]);
 }
 
 function hasImageForTarget(
@@ -85,9 +99,12 @@ export async function POST(
   }
 
   const expectsGalleryResource = target.data === "gallery";
+  const expectsFixedAspect = isFixedImageTarget(target.data);
   const validFields = expectsGalleryResource
     ? hasExactAdminFormFields(authorized.form, galleryFields)
-    : hasExactAdminFormFields(authorized.form, baseFields);
+    : expectsFixedAspect
+      ? hasExactAdminFormFields(authorized.form, fixedFields)
+      : hasExactAdminFormFields(authorized.form, baseFields);
 
   if (!validFields) {
     return adminRedirect(
@@ -107,15 +124,32 @@ export async function POST(
         authorized.form.get("viewportAspect"),
         authorized.form.get("viewportAspectRatio")
       )
-    : parseGameImageViewport(
-        authorized.form.get("viewportX"),
-        authorized.form.get("viewportY"),
-        authorized.form.get("viewportZoom")
-      );
+    : expectsFixedAspect
+      ? parseGameImageViewport(
+          authorized.form.get("viewportX"),
+          authorized.form.get("viewportY"),
+          authorized.form.get("viewportZoom"),
+          authorized.form.get("viewportAspect")
+        )
+      : parseGameImageViewport(
+          authorized.form.get("viewportX"),
+          authorized.form.get("viewportY"),
+          authorized.form.get("viewportZoom")
+        );
   const resourceValue = authorized.form.get("resource");
   const resource = typeof resourceValue === "string" ? resourceValue : "";
 
   if (!revision.success || !viewport) {
+    return adminRedirect(
+      authorized.adminOrigin,
+      redirectPath(slug, "imagen-encuadre-invalido")
+    );
+  }
+
+  if (
+    isFixedImageTarget(target.data) &&
+    viewport.aspect !== REQUIRED_DESTINATION_ASPECTS[target.data]
+  ) {
     return adminRedirect(
       authorized.adminOrigin,
       redirectPath(slug, "imagen-encuadre-invalido")

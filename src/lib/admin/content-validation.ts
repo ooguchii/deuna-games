@@ -47,6 +47,7 @@ const canonicalDateSchema = z
 
 const imageViewportAspectSchema = z.enum([
   "16:9",
+  "3:1",
   "3:2",
   "1:1",
   "4:5",
@@ -54,11 +55,21 @@ const imageViewportAspectSchema = z.enum([
   "free",
 ]);
 
+const fixedImageAspectSchema = z.enum([
+  "16:9",
+  "3:1",
+  "3:2",
+  "1:1",
+  "4:5",
+  "9:16",
+]);
+
 const fixedImageViewportSchema = z
   .object({
     x: z.number().min(0).max(1),
     y: z.number().min(0).max(1),
     zoom: z.number().min(1).max(3),
+    aspect: fixedImageAspectSchema.optional(),
     confirmed: z.literal(true).optional(),
   })
   .strict();
@@ -130,7 +141,7 @@ const videoViewportSchema = z
     x: z.number().min(0).max(1),
     y: z.number().min(0).max(1),
     zoom: z.number().min(1).max(3),
-    aspect: z.enum(["source", "16:9", "3:2", "1:1", "4:5", "9:16"]),
+    aspect: z.enum(["source", "16:9", "3:1", "3:2", "1:1", "4:5", "9:16"]),
     confirmed: z.literal(true).optional(),
   })
   .strict();

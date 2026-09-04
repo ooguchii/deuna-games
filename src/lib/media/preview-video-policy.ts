@@ -45,6 +45,7 @@ export const PREVIEW_HERO_QUALITY_OPTIONS = PREVIEW_QUALITY_OPTIONS;
 export const PREVIEW_VIEWPORT_ASPECT_IDS = [
   "source",
   "16:9",
+  "3:1",
   "3:2",
   "1:1",
   "4:5",
@@ -64,6 +65,7 @@ export type PreviewViewportAspectOption = {
 export const PREVIEW_VIEWPORT_ASPECT_OPTIONS: readonly PreviewViewportAspectOption[] = [
   { id: "source", label: "Original", ratio: null },
   { id: "16:9", label: "16:9 · Horizontal", ratio: 16 / 9 },
+  { id: "3:1", label: "3:1 · Hero panorámico", ratio: 3 },
   { id: "3:2", label: "3:2 · Horizontal", ratio: 3 / 2 },
   { id: "1:1", label: "1:1 · Cuadrado", ratio: 1 },
   { id: "4:5", label: "4:5 · Vertical", ratio: 4 / 5 },

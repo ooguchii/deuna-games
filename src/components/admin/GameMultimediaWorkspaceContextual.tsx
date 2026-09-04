@@ -30,7 +30,12 @@ import GameDetailMediaEditor from "@/components/admin/GameDetailMediaEditor";
 import GameMediaUploadForm from "@/components/admin/GameMediaUploadForm";
 import GameVideoViewportEditor from "@/components/admin/GameVideoViewportEditor";
 import ImageViewportEditor from "@/components/admin/ImageViewportEditor";
-import { REQUIRED_DESTINATION_ASPECTS } from "@/lib/media/game-media-requirements";
+import {
+  isImageCropConfirmed,
+  isVideoCropConfirmed,
+  LEGACY_DESTINATION_IMAGE_ASPECTS,
+  REQUIRED_DESTINATION_ASPECTS,
+} from "@/lib/media/game-media-requirements";
 import {
   GAME_IMAGE_CROP_ASPECTS,
   gameImageCropAspectLabel,
@@ -749,27 +754,70 @@ export default function GameMultimediaWorkspaceContextual({
   const activeDetailVideo = videos.find((resource) => resource.src === detailVideo?.clip) ?? null;
   const activeCardVideoViewport = state?.assignments.cardVideo?.viewport;
 
-  const coverImageCropReady = Boolean(coverImage && imageMedia?.cover?.confirmed);
-  const coverVideoCropReady = Boolean(coverVideo?.viewport.confirmed);
+  const coverImageCropReady = Boolean(
+    coverImage &&
+    isImageCropConfirmed(
+      imageMedia?.cover,
+      REQUIRED_DESTINATION_ASPECTS.cover,
+      LEGACY_DESTINATION_IMAGE_ASPECTS.cover
+    )
+  );
+  const coverVideoCropReady = Boolean(
+    coverVideo &&
+    isVideoCropConfirmed(
+      coverVideo.viewport,
+      REQUIRED_DESTINATION_ASPECTS.cover
+    )
+  );
   const coverCropReady = cropReady(coverMode, coverImageCropReady, coverVideoCropReady);
-  const heroImageCropReady = Boolean(heroImage && imageMedia?.hero?.confirmed);
-  const heroVideoCropReady = Boolean(heroVideo?.viewport.confirmed);
+  const heroImageCropReady = Boolean(
+    heroImage &&
+    isImageCropConfirmed(
+      imageMedia?.hero,
+      REQUIRED_DESTINATION_ASPECTS.hero,
+      LEGACY_DESTINATION_IMAGE_ASPECTS.hero
+    )
+  );
+  const heroVideoCropReady = Boolean(
+    heroVideo &&
+    isVideoCropConfirmed(
+      heroVideo.viewport,
+      REQUIRED_DESTINATION_ASPECTS.hero
+    )
+  );
   const heroCropReady = cropReady(heroMode, heroImageCropReady, heroVideoCropReady);
-  const cardImageCropReady = Boolean(cardImage && imageMedia?.card?.confirmed);
-  const cardVideoCropReady = Boolean(state?.assignments.cardVideo?.viewport.confirmed);
+  const cardImageCropReady = Boolean(
+    cardImage &&
+    isImageCropConfirmed(
+      imageMedia?.card,
+      REQUIRED_DESTINATION_ASPECTS.card,
+      LEGACY_DESTINATION_IMAGE_ASPECTS.card
+    )
+  );
+  const cardVideoCropReady = Boolean(
+    state?.assignments.cardVideo &&
+    isVideoCropConfirmed(
+      state.assignments.cardVideo.viewport,
+      REQUIRED_DESTINATION_ASPECTS.card
+    )
+  );
   const cardCropReady = cropReady(cardMode, cardImageCropReady, cardVideoCropReady);
-  const detailImageCropReady = Boolean(detailImage && imageMedia?.detail?.confirmed);
+  const detailImageCropReady = Boolean(
+    detailImage && isImageCropConfirmed(imageMedia?.detail)
+  );
   const detailVideoCropReady = Boolean(
-    detailVideo?.viewport.confirmed && detailVideo.viewport.aspect === "source"
+    detailVideo && isVideoCropConfirmed(detailVideo.viewport, "source")
   );
   const detailCropReady = cropReady(
     detailMode,
     detailImageCropReady,
     detailVideoCropReady
   );
-  const backgroundImageCropReady = Boolean(backgroundImage && imageMedia?.background?.confirmed);
+  const backgroundImageCropReady = Boolean(
+    backgroundImage && isImageCropConfirmed(imageMedia?.background)
+  );
   const backgroundVideoCropReady = Boolean(
-    backgroundVideo?.viewport.confirmed && backgroundVideo.viewport.aspect === "source"
+    backgroundVideo && isVideoCropConfirmed(backgroundVideo.viewport, "source")
   );
   const backgroundReady = backgroundMode === null || cropReady(
     backgroundMode,
@@ -778,7 +826,7 @@ export default function GameMultimediaWorkspaceContextual({
   );
   const gallerySelectionReady = screenshots.length >= 1;
   const pendingGalleryCrops = screenshots.filter(
-    (src) => imageMedia?.gallery?.[src]?.confirmed !== true
+    (src) => !isImageCropConfirmed(imageMedia?.gallery?.[src])
   );
   const galleryCropReady = gallerySelectionReady && pendingGalleryCrops.length === 0;
   const galleryReady = gallerySelectionReady && galleryCropReady;
@@ -898,7 +946,7 @@ export default function GameMultimediaWorkspaceContextual({
         {screenshots.map((src, index) => {
           const resource = imageBySrc(src);
           const galleryViewport = imageMedia?.gallery?.[src];
-          const cropConfirmed = galleryViewport?.confirmed === true;
+          const cropConfirmed = isImageCropConfirmed(galleryViewport);
           const cropAspectLabel = gameImageCropAspectLabel(galleryViewport);
           const cropStateLabel = `Recorte ${cropAspectLabel} ${cropConfirmed ? "confirmado" : "no confirmado"}`;
           return (
@@ -1111,7 +1159,7 @@ export default function GameMultimediaWorkspaceContextual({
       ? `${pendingGalleryCrops.length} recortes no confirmados`
       : "Recorte no confirmado";
   const gatePendingLabel = !mandatoryRequirementsReady
-    ? "Confirma Portada 4:5, Hero 16:9, Card 3:2, Contenedor adaptable y al menos una imagen de Galería con su recorte confirmado."
+    ? "Confirma Portada 4:5, Hero 3:1, Card 3:2, Contenedor adaptable y al menos una imagen de Galería con su recorte confirmado."
     : "Completa el Fondo adaptable que activaste o vuelve a usar el fondo global.";
 
   return (
@@ -1146,7 +1194,7 @@ export default function GameMultimediaWorkspaceContextual({
               imageViewport={imageMedia?.hero}
               videoSrc={activeHeroVideo?.src ?? null}
               videoViewport={heroVideo?.viewport}
-              frameAspect={16 / 9}
+              frameAspect={3}
               label="Resumen Hero"
               summary
             />
@@ -1227,7 +1275,7 @@ export default function GameMultimediaWorkspaceContextual({
               </article>
 
               <article className={styles.assignmentCard}>
-                <header><div><span>B</span><h3>Hero de inicio</h3></div><small>Recorte obligatorio · 16:9</small></header>
+                <header><div><span>B</span><h3>Hero de inicio</h3></div><small>Recorte obligatorio · 3:1</small></header>
                 <ModeSwitch action={endpoint} revision={assignmentRevision} target="hero" mode={heroMode} disabled={stale} />
                 <div className={styles.currentResource}>
                   <DestinationThumbnailSet
@@ -1236,14 +1284,14 @@ export default function GameMultimediaWorkspaceContextual({
                     imageViewport={imageMedia?.hero}
                     videoSrc={activeHeroVideo?.src ?? null}
                     videoViewport={heroVideo?.viewport}
-                    frameAspect={16 / 9}
+                    frameAspect={3}
                     label="Hero"
                   />
                   {!((heroMode !== "video" && heroResource) || (heroMode !== "image" && activeHeroVideo)) && <span className={styles.currentIcon}>{heroMode === "image" ? <ImageIcon size={20} aria-hidden="true" /> : <MonitorPlay size={20} aria-hidden="true" />}</span>}
                   <div><span>Modo activo</span><strong>{modeLabel(heroMode)}</strong><small>{heroMode === "hover-video" ? `${heroImage ? shortName(heroImage) : "Imagen pendiente"} + ${activeHeroVideo ? shortName(activeHeroVideo.src) : "video pendiente"}` : heroMode === "video" ? activeHeroVideo ? shortName(activeHeroVideo.src) : "Selecciona un video" : heroImage ? shortName(heroImage) : "Selecciona una imagen"}</small></div>
                 </div>
                 {destinationActions("hero", heroMode, Boolean(heroImage), Boolean(heroVideo), heroImageCropReady, heroVideoCropReady)}
-                <RequirementStatus ready={heroCropReady} pending="COMPLETA LOS RECURSOS Y RECORTES · 16:9" />
+                <RequirementStatus ready={heroCropReady} pending="COMPLETA LOS RECURSOS Y RECORTES · 3:1" />
               </article>
 
               <article className={styles.assignmentCard}>
@@ -1308,7 +1356,7 @@ export default function GameMultimediaWorkspaceContextual({
                       className={styles.currentThumb}
                     />
                   ) : <span className={styles.currentIcon}><Images size={20} aria-hidden="true" /></span>}
-                  <div><span>Capturas asignadas</span><strong>{screenshots.length} de 8</strong><small>Cada captura elige 16:9, 3:2, 1:1, 4:5, 9:16 o Libre y debe confirmar su recorte. Quitar una captura no destruye el recurso.</small></div>
+                  <div><span>Capturas asignadas</span><strong>{screenshots.length} de 8</strong><small>Cada captura elige 16:9, 3:1, 3:2, 1:1, 4:5, 9:16 o Libre y debe confirmar su recorte. Quitar una captura no destruye el recurso.</small></div>
                 </div>
                 {renderGalleryAssignedItems(true)}
                 <div className={styles.assignmentActions}>
@@ -1380,8 +1428,8 @@ export default function GameMultimediaWorkspaceContextual({
         <aside className={styles.helpRail}>
           <section>
             <div className={styles.helpHeading}><Info size={18} aria-hidden="true" /><h2>Requisitos</h2></div>
-            <div className={styles.helpRule}><MonitorPlay size={20} aria-hidden="true" /><div><strong>Portada · 4:5</strong><span>Imagen, Video o Imagen + hover; cada capa activa confirma selección y encuadre.</span></div></div>
-            <div className={styles.helpRule}><MonitorPlay size={20} aria-hidden="true" /><div><strong>Hero · 16:9</strong><span>Imagen, Video o Imagen + hover; hover exige ambos recursos y ambos recortes.</span></div></div>
+            <div className={styles.helpRule}><MonitorPlay size={20} aria-hidden="true" /><div><strong>Portada · 4:5</strong><span>Imagen, Video o Imagen + hover; cada capa activa confirma selección y encuadre. Esta Portada también alimenta la tarjeta pequeña Siguiente de Inicio.</span></div></div>
+            <div className={styles.helpRule}><MonitorPlay size={20} aria-hidden="true" /><div><strong>Hero · 3:1</strong><span>Hero panorámico principal de Inicio. Imagen, Video o Imagen + hover; hover exige ambos recursos y ambos recortes 3:1.</span></div></div>
             <div className={styles.helpRule}><Clapperboard size={20} aria-hidden="true" /><div><strong>Card · 3:2</strong><span>Su imagen es independiente de Portada; selección y recorte se validan por separado.</span></div></div>
             <div className={styles.helpRule}><Sparkles size={20} aria-hidden="true" /><div><strong>Fondo · adaptable</strong><span>Es opcional. Puede usar Imagen, Video o Imagen + hover con recorte adaptable propio, o volver al fondo global.</span></div></div>
             <div className={styles.helpRule}><MonitorPlay size={20} aria-hidden="true" /><div><strong>Contenedor · adaptable</strong><span>Es obligatorio e independiente del Hero. La ficha adapta X/Y/zoom a su altura real en escritorio y móvil.</span></div></div>
@@ -1403,7 +1451,7 @@ export default function GameMultimediaWorkspaceContextual({
       )}
 
       {editingDestination && (editingVideo || editingImage) && (
-        <ContextualMediaDialog eyebrow="RECORTE OBLIGATORIO" title={editingDestination === "cover" ? "Recorte 4:5 de la Portada" : editingDestination === "hero" ? "Recorte 16:9 del Hero" : "Recorte 3:2 de la Card"} description="Debes guardar este recorte para completar el destino. El archivo físico permanece intacto." onClose={() => setEditingDestination(null)}>
+        <ContextualMediaDialog eyebrow="RECORTE OBLIGATORIO" title={editingDestination === "cover" ? "Recorte 4:5 de la Portada" : editingDestination === "hero" ? "Recorte 3:1 del Hero" : "Recorte 3:2 de la Card"} description="Debes guardar este recorte para completar el destino. El archivo físico permanece intacto." onClose={() => setEditingDestination(null)}>
           {editingVideo ? (
             <GameVideoViewportEditor slug={slug} revision={assignmentRevision} target={editingVideo.target} source={editingVideo.source} clip={editingVideo.clip} label={editingVideo.label} initialViewport={editingVideo.viewport} onClose={() => setEditingDestination(null)} />
           ) : editingImage ? (
