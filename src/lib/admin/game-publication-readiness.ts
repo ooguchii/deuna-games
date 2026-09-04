@@ -256,6 +256,19 @@ export function evaluateGamePublicationReadiness(
       priority: "recommended",
     },
     {
+      id: "distribution-integrity",
+      label: "Integridad de distribución",
+      detail: "Canal y SHA-256 documentan qué paquete corresponde a esta revisión y permiten verificar que todos los mirrors entreguen los mismos bytes.",
+      section: "descargas",
+      complete: Boolean(
+        game.distributionMetadata?.channel &&
+          /^[a-f0-9]{64}$/.test(
+            game.distributionMetadata?.checksumSha256 ?? ""
+          )
+      ),
+      priority: "recommended",
+    },
+    {
       id: "editorial-rating",
       label: "Valoración editorial",
       detail: "La valoración editorial es independiente de la comunidad y del Índice DeUna.",
