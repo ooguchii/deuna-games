@@ -24,7 +24,11 @@ import {
 } from "react";
 
 import FramedVideo from "@/components/ui/FramedVideo";
-import type { HomeCopy } from "@/data/home-config";
+import GameMedia from "@/components/ui/GameMedia";
+import type {
+  HomeCopy,
+  HomeHeroPresentation,
+} from "@/data/home-config";
 import {
   formatHomeHeroPosition,
   HOME_HERO_AUTOPLAY_MS,
@@ -103,6 +107,23 @@ function classificationLine(game: Game) {
   return unique;
 }
 
+function heroTitleParts(game: Game) {
+  const base = (game.shortTitle ?? game.title).trim();
+  const highlight = game.highlightedTitle?.trim() ?? "";
+  const comparableBase = base.toLocaleLowerCase("es");
+  const comparableHighlight = highlight.toLocaleLowerCase("es");
+  const highlightAlreadyIncluded = Boolean(
+    comparableHighlight &&
+    (comparableBase === comparableHighlight ||
+      comparableBase.endsWith(` ${comparableHighlight}`))
+  );
+
+  return {
+    base,
+    highlight: highlightAlreadyIncluded ? "" : highlight,
+  };
+}
+
 function heroFacts(game: Game): HeroFact[] {
   const facts: HeroFact[] = [];
   const tags = (game.tags ?? []).filter((tag) => tag.trim());
@@ -146,39 +167,35 @@ function ResponsiveArtwork({
 
   if (!src) return null;
 
-  const artworkClassName = ambient
-    ? styles.ambientImage
-    : `${styles.heroArtwork} ${artworkStyles.artwork} ${
-        active ? artworkStyles.activeArtwork : ""
-      }`;
-  const framing = ambient
-    ? null
-    : imagePosition(imageViewportForHero(game));
-  const artworkInlineStyle = framing
-    ? ({
-        ...style,
-        "--hero-image-zoom": framing.framed.zoom,
-        "--hero-image-position": framing.position,
-        "--hero-mobile-image-zoom": framing.framed.zoom,
-        "--hero-mobile-image-position": framing.position,
-      } as CSSProperties)
-    : style;
+  if (ambient) {
+    return (
+      <Image
+        src={src}
+        alt={alt}
+        fill
+        sizes="100vw"
+        className={styles.ambientImage}
+        style={style}
+      />
+    );
+  }
 
-  const image = (
-    <Image
-      src={src}
-      alt={alt}
-      fill
-      priority={active}
-      sizes={ambient ? "100vw" : "(max-width: 980px) calc(100vw - 24px), 1320px"}
-      className={artworkClassName}
-      style={artworkInlineStyle}
-    />
+  return (
+    <span
+      className={`${styles.heroPicture} ${artworkStyles.artworkFrame}`}
+      style={style}
+    >
+      <GameMedia
+        src={src}
+        alt={alt}
+        sizes="(max-width: 980px) calc(100vw - 24px), 1320px"
+        priority={active}
+        variant="hero"
+        viewport={imageViewportForHero(game)}
+        imageClassName={styles.heroArtwork}
+      />
+    </span>
   );
-
-  return ambient
-    ? image
-    : <span className={styles.heroPicture}>{image}</span>;
 }
 
 function PreviewArtwork({ game }: { game: Game }) {
@@ -283,6 +300,7 @@ function HeroSlide({
     (!hoverPlayback || hoverPreviewActive);
   const classifications = classificationLine(game);
   const facts = heroFacts(game);
+  const title = heroTitleParts(game);
 
   function startHoverPreview() {
     if (hoverPlayback && canUseFineHover()) {
@@ -349,8 +367,8 @@ function HeroSlide({
         )}
 
         <h2 className={styles.title}>
-          <span>{game.shortTitle ?? game.title}</span>
-          {game.highlightedTitle && <strong>{game.highlightedTitle}</strong>}
+          <span>{title.base}</span>
+          {title.highlight && <strong>{title.highlight}</strong>}
         </h2>
 
         <p className={styles.description}>{game.description}</p>
@@ -412,11 +430,13 @@ function PreviewCard({
 export default function HeroSection({
   games,
   copy,
+  presentation,
   imageEffect = false,
   imageTuning,
 }: {
   games: Game[];
   copy: HomeCopy["hero"];
+  presentation: HomeHeroPresentation;
   imageEffect?: boolean;
   imageTuning?: Partial<HeroImageTuning>;
 }) {
@@ -453,15 +473,22 @@ export default function HeroSection({
     : 0;
   const activeGame = games[normalizedActiveIndex] ?? games[0];
   const isPaused = paused || manualPaused || reducedMotion;
+  const autoplayDelay = presentation.autoplayMs === 0
+    ? null
+    : presentation.autoplayMs || HOME_HERO_AUTOPLAY_MS;
 
   const previewEntries = useMemo(() => {
     if (games.length <= 1) return [];
-    const count = Math.min(HOME_HERO_VISIBLE_PREVIEWS, games.length - 1);
+    const count = Math.min(
+      presentation.previewCount,
+      HOME_HERO_VISIBLE_PREVIEWS,
+      games.length - 1
+    );
     return Array.from({ length: count }, (_, depth) => {
       const index = (normalizedActiveIndex + depth + 1) % games.length;
       return { game: games[index], index, depth };
     });
-  }, [games, normalizedActiveIndex]);
+  }, [games, normalizedActiveIndex, presentation.previewCount]);
 
   const moveBy = useCallback((delta: number) => {
     setActiveIndex((current) => {
@@ -482,10 +509,10 @@ export default function HeroSection({
   }, []);
 
   useEffect(() => {
-    if (isPaused || games.length <= 1) return;
-    const timer = window.setTimeout(nextSlide, HOME_HERO_AUTOPLAY_MS);
+    if (isPaused || games.length <= 1 || autoplayDelay === null) return;
+    const timer = window.setTimeout(nextSlide, autoplayDelay);
     return () => window.clearTimeout(timer);
-  }, [activeGame?.id, games.length, isPaused, nextSlide]);
+  }, [activeGame?.id, autoplayDelay, games.length, isPaused, nextSlide]);
 
   if (!activeGame) return null;
 
@@ -519,6 +546,8 @@ export default function HeroSection({
   return (
     <section
       className={styles.heroSection}
+      data-composition={presentation.composition}
+      data-motion={presentation.motion}
       aria-label="Juegos destacados"
       aria-roledescription="carrusel"
       tabIndex={0}

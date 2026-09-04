@@ -152,6 +152,7 @@ El ejemplo usa `StateDirectory=deuna-games` y permite escritura únicamente en e
 
 Adaptar `ops/nginx/deuna-games.conf.example`:
 
+- instalar el archivo dentro del contexto `http {}` (por ejemplo mediante `sites-enabled`); no mover las directivas `limit_req_zone` dentro de un bloque `server`;
 - reemplazar dominio y rutas de certificados;
 - reemplazar `10.8.0.0/24` únicamente si WireGuard usa otra subred privada;
 - mantener `deny all` en todas las rutas administrativas;

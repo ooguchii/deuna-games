@@ -308,7 +308,13 @@
   gap: 8px;
 }
 
-.passwordForm input {
+.statusForm {
+  display: flex;
+  gap: 8px;
+}
+
+.passwordForm input,
+.statusForm input {
   width: 190px;
   min-height: 44px;
   box-sizing: border-box;
@@ -326,12 +332,14 @@
     box-shadow 140ms ease;
 }
 
-.passwordForm input:hover {
+.passwordForm input:hover,
+.statusForm input:hover {
   border-color: #465668;
   background: #0b131c;
 }
 
-.passwordForm input:focus-visible {
+.passwordForm input:focus-visible,
+.statusForm input:focus-visible {
   border-color: color-mix(in srgb, var(--brand) 58%, #536273);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 9%, transparent);
 }
@@ -369,7 +377,13 @@
     flex-wrap: wrap;
   }
 
-  .passwordForm input {
+  .statusForm {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .passwordForm input,
+  .statusForm input {
     min-width: 180px;
     flex: 1;
     font-size: 16px;
@@ -391,7 +405,9 @@
   .accountActions > form,
   .accountActions button,
   .passwordForm,
+  .statusForm,
   .passwordForm input,
+  .statusForm input,
   .passwordForm button {
     width: 100%;
   }
@@ -404,6 +420,10 @@
   .dangerButton,
   .accountItem,
   .passwordForm input {
+    transition: none;
+  }
+
+  .statusForm input {
     transition: none;
   }
 }

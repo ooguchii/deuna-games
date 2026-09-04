@@ -1,6 +1,5 @@
 import type { CSSProperties } from "react";
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
 
 import PublicPageBackground from "@/components/site/PublicPageBackground";
 import {
@@ -21,11 +20,6 @@ import "./globals.css";
 import "@/theme/deuna-theme.css";
 import "@/theme/public-theme-contract.css";
 import "@/theme/public-route-theme-contract.css";
-
-const inter = Inter({
-  subsets: ["latin"],
-  display: "swap",
-});
 
 export const dynamic = "force-dynamic";
 
@@ -101,6 +95,7 @@ export default async function RootLayout({
   return (
     <html
       lang={config.language}
+      data-scroll-behavior="smooth"
       style={{
         "--theme-bg": readableThemeBackground,
         "--theme-brand": config.brandColor,
@@ -108,7 +103,7 @@ export default async function RootLayout({
         "--text-on-brand": readableBrandText,
       } as CSSProperties}
     >
-      <body className={inter.className}>
+      <body>
         <a
           href="#main-content"
           className="skip-link"

@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import {
   resetAdministratorPassword,
 } from "@/lib/admin/account-service";
+import { reauthenticateAdmin } from "@/lib/admin/auth-service";
 import {
   adminRedirect,
   adminUnavailableResponse,
@@ -24,7 +25,7 @@ import {
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const fields = ["userId", "password"] as const;
+const fields = ["userId", "password", "currentPassword"] as const;
 
 export async function POST(request: NextRequest) {
   const session = await verifyAdminOwnerSession();
@@ -45,6 +46,7 @@ export async function POST(request: NextRequest) {
   const parsed = adminAccountPasswordSchema.safeParse({
     userId: form.get("userId"),
     password: form.get("password"),
+    currentPassword: form.get("currentPassword"),
   });
 
   if (!parsed.success) {
@@ -52,6 +54,9 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    if (!(await reauthenticateAdmin(session.userId, parsed.data.currentPassword))) {
+      return adminRedirect(adminOrigin, "/admin/cuentas?estado=reauth");
+    }
     const changed = await resetAdministratorPassword(
       session.userId,
       parsed.data.userId,

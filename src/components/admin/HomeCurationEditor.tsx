@@ -176,14 +176,16 @@ export default function HomeCurationEditor({
   games,
   publishedSlugs,
   revision,
+  excludeHero = false,
 }: {
   config: ResolvedHomeConfig;
   games: Game[];
   publishedSlugs: string[] | null;
   revision: number;
+  excludeHero?: boolean;
 }) {
   const [active, setActive] =
-    useState<HomeCurationCollectionId>("hero");
+    useState<HomeCurationCollectionId>(excludeHero ? "popular" : "hero");
   const [modes, setModes] = useState<ModeState>(() =>
     modesFromConfig(config)
   );
@@ -195,6 +197,9 @@ export default function HomeCurationEditor({
   const meta = collections.find(
     (collection) => collection.id === active
   )!;
+  const visibleCollections = excludeHero
+    ? collections.filter((collection) => collection.id !== "hero")
+    : collections;
   const activeSelection = selections[active];
   const activeMode = modes[active];
 
@@ -400,7 +405,7 @@ export default function HomeCurationEditor({
         className={styles.collectionTabs}
         aria-label="Bloques de juegos de la portada"
       >
-        {collections.map((collection) => {
+        {visibleCollections.map((collection) => {
           const selected = collection.id === active;
           const mode = modes[collection.id];
 

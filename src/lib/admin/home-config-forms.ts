@@ -81,3 +81,35 @@ export const editorialHomeConfigFormSchema = z
     curationJson: curationJsonSchema,
   })
   .strict();
+
+const heroPresentationSchema = z.object({
+  composition: z.enum(["studio", "cinema", "focus"]),
+  previewCount: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+  motion: z.enum(["depth", "slide", "fade"]),
+  autoplayMs: z.union([z.literal(0), z.literal(4000), z.literal(6500), z.literal(8000)]),
+}).strict();
+
+const heroCopySchema = z.object({
+  accessibleTitle: z.string().trim().min(1).max(180),
+  primaryCta: z.string().trim().min(1).max(100),
+  secondaryCta: z.string().trim().min(1).max(100),
+}).strict();
+
+const heroJsonSchema = z.string().max(12_000).transform((value, context) => {
+  try {
+    return JSON.parse(value) as unknown;
+  } catch {
+    context.addIssue({ code: "custom", message: "La configuración del Hero no contiene JSON válido." });
+    return z.NEVER;
+  }
+}).pipe(z.object({
+  mode: modeSchema,
+  slugs: slugArraySchema(8),
+  presentation: heroPresentationSchema,
+  copy: heroCopySchema,
+}).strict());
+
+export const homeHeroEditorFormSchema = z.object({
+  expectedRevision: expectedRevisionSchema,
+  heroJson: heroJsonSchema,
+}).strict();

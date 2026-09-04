@@ -31,6 +31,7 @@ const statusMessages: Record<string, { text: string; error?: boolean }> = {
   usuario: { text: "Ese nombre de usuario ya está en uso.", error: true },
   datos: { text: "Revisa los datos enviados y la política de contraseña.", error: true },
   solicitud: { text: "La solicitud no superó las validaciones de seguridad.", error: true },
+  reauth: { text: "La contraseña actual del Owner no es válida. No se realizó ningún cambio.", error: true },
   no_encontrado: { text: "La cuenta administrativa indicada no existe.", error: true },
 };
 
@@ -131,6 +132,12 @@ export default async function AdminAccountsPage({ searchParams }: PageProps) {
               <small>Mínimo 16 caracteres, con letra, número y símbolo.</small>
             </div>
 
+            <div className={styles.field}>
+              <label htmlFor="create-current-password">Confirmar contraseña del Owner</label>
+              <input id="create-current-password" name="currentPassword" type="password" maxLength={128} autoComplete="current-password" required />
+              <small>Reautenticación obligatoria para cambios de acceso.</small>
+            </div>
+
             <button type="submit" className={styles.primaryButton}>
               <UserPlus size={17} aria-hidden="true" />
               Crear administrador
@@ -177,9 +184,10 @@ export default async function AdminAccountsPage({ searchParams }: PageProps) {
                   </div>
                 ) : (
                   <div className={styles.accountActions}>
-                    <form action="/api/admin/accounts/status" method="post">
+                    <form className={styles.statusForm} action="/api/admin/accounts/status" method="post">
                       <input type="hidden" name="userId" value={account.id} />
                       <input type="hidden" name="active" value={account.active ? "false" : "true"} />
+                      <input type="password" name="currentPassword" maxLength={128} autoComplete="current-password" aria-label="Contraseña actual del Owner" placeholder="Contraseña del Owner" required />
                       <button
                         type="submit"
                         className={account.active ? styles.dangerButton : styles.secondaryButton}
@@ -205,6 +213,7 @@ export default async function AdminAccountsPage({ searchParams }: PageProps) {
                         placeholder="Nueva contraseña"
                         required
                       />
+                      <input type="password" name="currentPassword" maxLength={128} autoComplete="current-password" aria-label="Contraseña actual del Owner" placeholder="Contraseña del Owner" required />
                       <button type="submit" className={styles.secondaryButton}>
                         <KeyRound size={16} aria-hidden="true" />
                         Restablecer

@@ -276,6 +276,24 @@ assert(
   "Los formularios deben verificar su tamaño real y rechazar multipart innecesario."
 );
 
+const criticalAdminRoutes = await Promise.all(
+  ["create", "status", "password"].map((action) =>
+    readFile(
+      path.join(root, "src", "app", "api", "admin", "accounts", action, "route.ts"),
+      "utf8"
+    )
+  )
+);
+
+assert(
+  criticalAdminRoutes.every(
+    (source) =>
+      source.includes("currentPassword") &&
+      source.includes("reauthenticateAdmin(session.userId")
+  ),
+  "Crear, activar o restablecer administradores debe exigir reautenticación del Owner."
+);
+
 const migrator = await readFile(
   path.join(
     root,

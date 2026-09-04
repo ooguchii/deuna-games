@@ -56,6 +56,7 @@ export const frontendSiteConfigFormSchema = z
 
 const homePresentationSchema = editorialHomeConfigSchema
   .pick({
+    heroPresentation: true,
     sections: true,
     copy: true,
   })

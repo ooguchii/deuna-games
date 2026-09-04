@@ -4,6 +4,7 @@
 }
 
 .summary,
+.heroStudio,
 .structurePanel,
 .copyPanel,
 .actions {
@@ -49,8 +50,323 @@
 }
 
 .structurePanel,
-.copyPanel {
+.copyPanel,
+.heroStudio {
   padding: 20px;
+}
+
+.heroStudio {
+  display: grid;
+  gap: 18px;
+}
+
+.previewToolbar,
+.previewToolbar > div,
+.previewLinks {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 9px;
+}
+
+.previewToolbar button,
+.previewToolbar a,
+.previewLinks a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid #405169;
+  border-radius: 8px;
+  background: #09121c;
+  color: #c8d3df;
+  font-size: 12px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.previewToolbar button[data-active="true"] {
+  border-color: color-mix(in srgb, var(--brand) 65%, #fff);
+  background: color-mix(in srgb, var(--brand) 14%, #09121c);
+  color: #fff;
+}
+
+.previewToolbar a,
+.previewLinks a {
+  color: #fff;
+  text-decoration: none;
+}
+
+.studioPreview {
+  position: relative;
+  min-height: 270px;
+  overflow: hidden;
+  border: 1px solid #35475b;
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 72% 28%, color-mix(in srgb, var(--brand) 18%, transparent), transparent 34%),
+    linear-gradient(145deg, #0b1420, #050911);
+  perspective: 1000px;
+}
+
+.previewHero {
+  position: absolute;
+  top: 28px;
+  bottom: 28px;
+  left: 5%;
+  display: grid;
+  align-content: end;
+  gap: 5px;
+  width: 66%;
+  padding: 24px;
+  border: 1px solid color-mix(in srgb, var(--brand) 45%, #536377);
+  border-radius: 18px;
+  background:
+    linear-gradient(90deg, rgba(3, 8, 15, 0.94), rgba(3, 8, 15, 0.18)),
+    color-mix(in srgb, var(--brand) 16%, #172334);
+  box-shadow: 0 24px 55px rgba(0, 0, 0, 0.38);
+  transform: rotateY(-5deg);
+  transform-origin: left center;
+}
+
+.previewHero > :first-child {
+  position: absolute;
+  inset: 0;
+}
+
+.previewHero > i {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(3, 8, 15, 0.94), rgba(3, 8, 15, 0.22) 72%);
+  pointer-events: none;
+}
+
+.previewHero > span,
+.previewHero > strong,
+.previewHero > small {
+  position: relative;
+  z-index: 2;
+}
+
+.previewHero > span,
+.previewHero > small {
+  color: #9fafc2;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+}
+
+.previewHero > strong {
+  color: #fff;
+  font-size: clamp(22px, 3vw, 38px);
+}
+
+.previewRail {
+  position: absolute;
+  top: 50px;
+  right: 5%;
+  bottom: 42px;
+  left: 67%;
+}
+
+.previewRail button {
+  position: absolute;
+  top: calc(var(--preview-index) * 14px);
+  left: calc(var(--preview-index) * 44px);
+  display: grid;
+  place-items: center;
+  width: 104px;
+  aspect-ratio: 4 / 5;
+  border: 1px solid color-mix(in srgb, var(--brand) 46%, #536377);
+  border-radius: 14px;
+  background: linear-gradient(155deg, color-mix(in srgb, var(--brand) 25%, #1a2635), #08101a);
+  color: #fff;
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.36);
+  font-weight: 850;
+  transform: translateZ(calc(var(--preview-index) * -55px)) rotateY(-8deg);
+  opacity: calc(1 - var(--preview-index) * 0.2);
+}
+
+.previewRail button > :first-child {
+  position: absolute;
+  inset: 0;
+}
+
+.previewRail button > strong {
+  position: absolute;
+  z-index: 2;
+  right: 8px;
+  bottom: 9px;
+  left: 8px;
+  overflow: hidden;
+  color: #fff;
+  font-size: 11px;
+  line-height: 1.15;
+  text-align: left;
+  text-overflow: ellipsis;
+  text-shadow: 0 2px 8px #000;
+  white-space: nowrap;
+}
+
+.previewRail button::after {
+  position: absolute;
+  z-index: 1;
+  inset: 45% 0 0;
+  background: linear-gradient(transparent, rgba(2, 5, 10, 0.9));
+  content: "";
+}
+
+.studioPreview[data-composition="cinema"] .previewHero {
+  width: 71%;
+  border-radius: 11px;
+  transform: rotateY(-8deg);
+}
+
+.studioPreview[data-composition="focus"] .previewHero {
+  width: 73%;
+  transform: none;
+}
+
+.studioPreview[data-composition="focus"] .previewRail button {
+  transform: scale(0.92);
+}
+
+.studioPreview[data-motion="fade"] .previewRail button {
+  opacity: calc(0.8 - var(--preview-index) * 0.18);
+  transform: none;
+}
+
+.studioPreview[data-device="mobile"] {
+  width: min(100%, 390px);
+  min-height: 520px;
+  margin-inline: auto;
+}
+
+.studioPreview[data-device="mobile"] .previewHero {
+  top: 24px;
+  right: 20px;
+  bottom: 136px;
+  left: 20px;
+  width: auto;
+  transform: none;
+}
+
+.studioPreview[data-device="mobile"] .previewRail {
+  top: auto;
+  right: 20px;
+  bottom: 35px;
+  left: 20px;
+  display: flex;
+  gap: 8px;
+  height: 92px;
+}
+
+.studioPreview[data-device="mobile"] .previewRail button {
+  position: relative;
+  top: auto;
+  left: auto;
+  width: 66px;
+  height: 84px;
+  transform: none;
+}
+
+.emptyPreview {
+  display: grid;
+  min-height: 270px;
+  margin: 0;
+  place-items: center;
+  color: #aab8c8;
+}
+
+.mediaFallback {
+  display: grid;
+  place-items: center;
+  background: #111c29;
+  color: #9dadbe;
+  font-size: 11px;
+}
+
+.previewLinks {
+  color: #aab8c8;
+  font-size: 13px;
+}
+
+.previewLinks strong {
+  color: #f4f7fb;
+}
+
+.previewStatus {
+  position: absolute;
+  right: 12px;
+  bottom: 10px;
+  color: #91a2b5;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.studioGroup {
+  display: grid;
+  gap: 9px;
+}
+
+.studioGroup > span,
+.studioColumns span {
+  color: #c0ccda;
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.choiceGrid,
+.studioColumns {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.choiceGrid button {
+  display: grid;
+  gap: 5px;
+  min-height: 78px;
+  padding: 13px;
+  border: 1px solid #405169;
+  border-radius: 10px;
+  background: #09121c;
+  color: #f3f6fb;
+  text-align: left;
+  cursor: pointer;
+}
+
+.choiceGrid button[data-selected="true"] {
+  border-color: color-mix(in srgb, var(--brand) 70%, #ffffff);
+  background: color-mix(in srgb, var(--brand) 12%, #09121c);
+  box-shadow: inset 3px 0 0 var(--brand);
+}
+
+.choiceGrid small {
+  color: #9fafc1;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.studioColumns {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.studioColumns label {
+  display: grid;
+  gap: 7px;
+}
+
+.studioColumns select {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid #405169;
+  border-radius: 9px;
+  background: #09121c;
+  color: #f5f7fb;
 }
 
 .structureIntro {
@@ -298,7 +614,9 @@
   }
 
   .sectionRow,
-  .copyFields {
+  .copyFields,
+  .choiceGrid,
+  .studioColumns {
     grid-template-columns: 1fr;
   }
 
@@ -313,6 +631,30 @@
 
   .actions button {
     width: 100%;
+  }
+
+  .previewToolbar,
+  .previewLinks {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .previewToolbar > div,
+  .previewToolbar a,
+  .previewLinks a {
+    width: 100%;
+  }
+
+  .studioPreview {
+    min-height: 230px;
+  }
+
+  .previewHero {
+    width: 78%;
+  }
+
+  .previewRail {
+    left: 73%;
   }
 }
 

@@ -9,12 +9,15 @@
 # - el rate limiting puede seguir usando $binary_remote_addr en Nginx
 #   sin entregar ese dato a Next.
 #
-# En nginx.conf, dentro de http {}, se puede definir:
-#
-# limit_req_zone $binary_remote_addr zone=deuna_general:10m rate=20r/s;
-# limit_req_zone $binary_remote_addr zone=deuna_admin_login:1m rate=5r/m;
-# limit_req_zone $binary_remote_addr zone=deuna_admin_api:1m rate=30r/m;
-#
+# Este archivo debe incluirse desde el contexto http {} de Nginx (como ocurre
+# normalmente con sites-enabled). Estas zonas son obligatorias porque las
+# ubicaciones protegidas las referencian más abajo.
+limit_req_zone $binary_remote_addr zone=deuna_general:10m rate=20r/s;
+limit_req_zone $binary_remote_addr zone=deuna_admin_login:1m rate=5r/m;
+limit_req_zone $binary_remote_addr zone=deuna_admin_api:1m rate=30r/m;
+limit_req_zone $binary_remote_addr zone=deuna_account_auth:10m rate=10r/m;
+limit_req_zone $binary_remote_addr zone=deuna_account_api:10m rate=60r/m;
+
 # Las zonas de administración usan la IP únicamente en memoria para permitir
 # acceso desde la VPN y limitar ataques. No se registra ni se reenvía a Next.
 
@@ -47,6 +50,7 @@ server {
     ssl_session_tickets off;
 
     client_max_body_size 1m;
+    limit_req_status 429;
 
     # Activar HSTS SOLAMENTE cuando HTTPS ya esté probado y sea permanente.
     # add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
@@ -163,6 +167,50 @@ server {
         proxy_connect_timeout 10s;
         proxy_send_timeout 30s;
         proxy_read_timeout 30s;
+    }
+
+    # Autenticación pública: el identificador de red sólo vive en la zona de
+    # memoria compartida de Nginx. No se registra ni se entrega a Next. El
+    # burst admite varios usuarios detrás de una misma red sin dejar el KDF de
+    # contraseñas expuesto a solicitudes ilimitadas.
+    location ~ ^/api/account/(login|register|recover)$ {
+        limit_req zone=deuna_account_auth burst=12 nodelay;
+        client_max_body_size 20k;
+
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        proxy_hide_header X-Powered-By;
+        proxy_hide_header X-Nextjs-Cache;
+        proxy_hide_header X-Nextjs-Prerender;
+        proxy_hide_header X-Nextjs-Stale-Time;
+
+        proxy_connect_timeout 10s;
+        proxy_send_timeout 20s;
+        proxy_read_timeout 20s;
+    }
+
+    # Acciones autenticadas de Mi DeUna. Un límite separado evita que una
+    # ráfaga legítima del dashboard consuma el presupuesto del login.
+    location /api/account/ {
+        limit_req zone=deuna_account_api burst=30 nodelay;
+        client_max_body_size 20k;
+
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        proxy_hide_header X-Powered-By;
+        proxy_hide_header X-Nextjs-Cache;
+        proxy_hide_header X-Nextjs-Prerender;
+        proxy_hide_header X-Nextjs-Stale-Time;
+
+        proxy_connect_timeout 10s;
+        proxy_send_timeout 20s;
+        proxy_read_timeout 20s;
     }
 
     location / {

@@ -162,8 +162,8 @@ requireIncludes(
 );
 requireIncludes(
   hero,
-  "bottom: -280px",
-  "HeroSection: el ambiente cinematográfico de escritorio debe continuar por debajo de la escena."
+  "inset: -90px -8vw -150px",
+  "HeroSection: el ambiente cinematográfico debe envolver la escena sin crear una altura vacía artificial."
 );
 requireIncludes(
   hero,

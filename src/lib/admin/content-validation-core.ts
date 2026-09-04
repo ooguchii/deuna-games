@@ -495,6 +495,20 @@ const homeCurationSchema = z
   })
   .strict();
 
+const homeHeroPresentationSchema = z
+  .object({
+    composition: z.enum(["studio", "cinema", "focus"]),
+    previewCount: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+    motion: z.enum(["depth", "slide", "fade"]),
+    autoplayMs: z.union([
+      z.literal(0),
+      z.literal(4000),
+      z.literal(6500),
+      z.literal(8000),
+    ]),
+  })
+  .strict();
+
 const homeCopySchema = z
   .object({
     hero: z
@@ -721,6 +735,7 @@ export const editorialHomeConfigSchema = z
     lowSpecSlugs: uniqueIdentifiers(24),
     recommendedSlugs: uniqueIdentifiers(24),
     curation: homeCurationSchema.optional(),
+    heroPresentation: homeHeroPresentationSchema.optional(),
     sections: homeSectionsSchema.optional(),
     copy: homeCopySchema.optional(),
   })

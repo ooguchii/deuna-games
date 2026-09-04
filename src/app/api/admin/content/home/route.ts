@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     return authorized.response;
   }
 
-  const target = "/admin/portada?seccion=curaduria";
+  const target = "/admin/portada?seccion=contenido";
 
   if (
     !hasExactAdminFormFields(
@@ -91,6 +91,7 @@ export async function POST(request: NextRequest) {
             mode: curationJson.recommended.mode,
           },
         },
+        heroPresentation: item.payload.heroPresentation,
         sections: item.payload.sections,
         copy: item.payload.copy,
       }
