@@ -1,1 +1,1 @@
-import "./check-game-editorial-flow-v2.mjs";
+import "./check-game-editorial-flow-v3.mjs";
