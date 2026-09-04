@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 
 import GameDetailContainerMedia from "@/components/games/GameDetailContainerMedia";
+import GameGalleryVideo from "@/components/games/GameGalleryVideo";
 import Footer from "@/components/layout/Footer";
 import Header from "@/components/layout/Header";
 import GameCoverMedia from "@/components/ui/GameCoverMedia";
@@ -40,9 +41,16 @@ import {
   getPublicGames,
 } from "@/lib/games/public-catalog";
 import {
+  galleryImageViewport,
+  resolvePublicGameGalleryItems,
+} from "@/lib/media/game-gallery-media";
+import {
   resolveGameDestinationImage,
   resolveGameDestinationMediaMode,
 } from "@/lib/media/game-video-media";
+import {
+  resolveGameImageCropAspectRatio,
+} from "@/lib/media/image-viewport";
 import {
   absoluteUrl,
 } from "@/lib/site";
@@ -55,6 +63,7 @@ import {
 } from "@/lib/updates/public-updates";
 import type {
   GameHardwareRequirements,
+  GameVideoViewport,
 } from "@/types/game";
 
 import GameAccountActions from "./GameAccountActions";
@@ -112,6 +121,14 @@ function buildRequirementRows(
     .filter(
       (row) => row.minimum || row.recommended
     );
+}
+
+function galleryVideoAspectRatio(viewport: GameVideoViewport) {
+  if (viewport.aspect === "3:2") return 3 / 2;
+  if (viewport.aspect === "1:1") return 1;
+  if (viewport.aspect === "4:5") return 4 / 5;
+  if (viewport.aspect === "9:16") return 9 / 16;
+  return 16 / 9;
 }
 
 export async function generateMetadata({
@@ -226,18 +243,8 @@ export default async function GameDetailPage({
     )
     .slice(0, 4);
 
-  const gallery = Array.from(
-    new Set(
-      [
-        ...(game.screenshots ?? []),
-        game.heroImage,
-      ].filter(
-        (item): item is string =>
-          typeof item === "string" &&
-          item.length > 0
-      )
-    )
-  ).slice(0, 5);
+  const gallery = resolvePublicGameGalleryItems(game);
+  const galleryHasVideo = gallery.some((item) => item.kind === "video");
 
   const platforms =
     game.platforms?.length
@@ -627,29 +634,46 @@ export default async function GameDetailPage({
             <div className={styles.sectionHeading}>
               <span>GALERÍA</span>
               <h2 id="gallery-title">
-                {gallery.length > 1
-                  ? "Capturas e imágenes"
-                  : "Imagen destacada"}
+                {galleryHasVideo
+                  ? "Capturas y videos"
+                  : gallery.length > 1
+                    ? "Capturas e imágenes"
+                    : "Imagen destacada"}
               </h2>
             </div>
 
             <div className={styles.galleryGrid}>
-              {gallery.map((image, index) => (
-                <figure
-                  key={image}
-                  className={styles.galleryItem}
-                >
-                  <GameMedia
-                    src={image}
-                    alt={`${game.title} — imagen ${index + 1}`}
-                    sizes="(max-width: 700px) 100vw, 33vw"
-                    viewport={
-                      game.imageMedia?.gallery?.[image]
-                      ?? (image === game.heroImage ? game.imageMedia?.hero : undefined)
-                    }
-                  />
-                </figure>
-              ))}
+              {gallery.map((item, index) => {
+                const viewport = item.kind === "image"
+                  ? galleryImageViewport(game, item)
+                  : item.viewport;
+                const aspectRatio = item.kind === "image"
+                  ? resolveGameImageCropAspectRatio(viewport)
+                  : galleryVideoAspectRatio(item.viewport);
+
+                return (
+                  <figure
+                    key={`${item.kind}:${item.src}`}
+                    className={styles.galleryItem}
+                    style={{ aspectRatio }}
+                  >
+                    {item.kind === "image" ? (
+                      <GameMedia
+                        src={item.src}
+                        alt={`${game.title} — imagen ${index + 1}`}
+                        sizes="(max-width: 700px) 100vw, 33vw"
+                        viewport={viewport}
+                      />
+                    ) : (
+                      <GameGalleryVideo
+                        src={item.src}
+                        viewport={item.viewport}
+                        label={`${game.title} — video ${index + 1}`}
+                      />
+                    )}
+                  </figure>
+                );
+              })}
             </div>
           </section>
         )}
