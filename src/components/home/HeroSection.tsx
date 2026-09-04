@@ -276,8 +276,9 @@ function HeroSlide({
   const hoverPlayback = heroMode === "hover-video";
   const videoModeEnabled = heroMode !== "image";
   const [hoverPreviewActive, setHoverPreviewActive] = useState(false);
+  const videoEnabled = !reducedMotion;
   const videoShouldRender =
-    !reducedMotion &&
+    videoEnabled &&
     videoModeEnabled &&
     (!hoverPlayback || hoverPreviewActive);
   const classifications = classificationLine(game);
