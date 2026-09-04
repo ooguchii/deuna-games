@@ -97,7 +97,7 @@ export async function POST(
       ) {
         return adminRedirect(
           authorized.adminOrigin,
-          `${target}?estado=valoracion-sugerencia-insuficiente&seccion=valoracion`
+          `${target}?estado=valoracion&seccion=valoracion`
         );
       }
 
