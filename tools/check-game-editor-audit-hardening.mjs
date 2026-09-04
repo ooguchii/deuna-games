@@ -29,19 +29,21 @@ expect(
   "Compatibilidad debe rechazar requisitos de hardware si PC no está declarada como plataforma."
 );
 expect(
-  files.compatibilityEditor.includes("legacyPcMismatch") &&
+  files.compatibilityEditor.includes("hasPcRequirements") &&
+    files.compatibilityEditor.includes("legacyMismatch") &&
+    files.compatibilityEditor.includes('game.platforms?.includes("PC")') &&
     files.compatibilityEditor.includes("borrador histórico") &&
-    files.compatibilityEditor.includes("declarar PC") &&
-    files.compatibilityEditor.includes("retirar esos requisitos"),
+    files.compatibilityEditor.includes("elimina los requisitos"),
   "Compatibilidad debe advertir y permitir corregir snapshots históricos con requisitos PC contradictorios."
 );
 
 expect(
-  files.healthOverview.includes("/publicacion") &&
-    files.healthOverview.includes("Publicación") &&
+  files.healthOverview.includes('href={`/admin/juegos/${encodeURIComponent(slug)}/publicacion`}') &&
     files.healthOverview.includes("readiness.essentialsReady") &&
-    files.healthOverview.includes("Bloqueos pendientes") &&
-    files.healthOverview.includes("Historial"),
+    files.healthOverview.includes("<strong>Publicación</strong>") &&
+    files.healthOverview.includes("Pendientes esenciales") &&
+    files.healthOverview.includes("?seccion=historial") &&
+    files.healthOverview.includes("<strong>Historial</strong>"),
   "El tablero global debe enlazar Publicación explícitamente y conservar Historial como auditoría separada."
 );
 
