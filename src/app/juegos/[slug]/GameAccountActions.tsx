@@ -5,6 +5,7 @@ import {
   Bell,
   Heart,
   ListPlus,
+  Star,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
@@ -39,10 +40,12 @@ export default function GameAccountActions({
   gameSlug,
   signedIn,
   preference,
+  rating,
 }: {
   gameSlug: string;
   signedIn: boolean;
   preference: GamePreference;
+  rating: number | null;
 }) {
   const router = useRouter();
   const [draft, setDraft] = useState<PreferenceDraft>({
@@ -50,6 +53,7 @@ export default function GameAccountActions({
     libraryState: preference?.libraryState ?? null,
     followUpdates: preference?.followUpdates ?? false,
   });
+  const [userRating, setUserRating] = useState(rating);
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -58,10 +62,10 @@ export default function GameAccountActions({
       <div className={styles.signedOut}>
         <span>
           <ListPlus size={16} aria-hidden="true" />
-          Guarda este juego en Mi DeUna
+          Guarda y valora este juego en Mi DeUna
         </span>
         <Link href="/cuenta?modo=entrar">
-          Entrar para guardar
+          Entrar para participar
         </Link>
       </div>
     );
@@ -105,16 +109,76 @@ export default function GameAccountActions({
     }
   }
 
+  async function saveRating(nextRating: number) {
+    if (pending) return;
+
+    setPending(true);
+    setMessage(null);
+
+    try {
+      const response = await fetch("/api/account/games/rating", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          "Content-Type":
+            "application/x-www-form-urlencoded;charset=UTF-8",
+        },
+        body: new URLSearchParams({
+          gameSlug,
+          rating: String(nextRating),
+        }).toString(),
+      });
+      const result = (await response.json()) as ApiResult;
+
+      if (!response.ok || !result.ok) {
+        setMessage("No se pudo guardar tu valoración.");
+        return;
+      }
+
+      setUserRating(nextRating);
+      setMessage(`Valoración guardada · ${nextRating}/5`);
+      router.refresh();
+    } catch {
+      setMessage("No se pudo conectar con Mi DeUna.");
+    } finally {
+      setPending(false);
+    }
+  }
+
   return (
     <div
       className={styles.panel}
-      aria-label="Guardar este juego en Mi DeUna"
+      aria-label="Guardar y valorar este juego en Mi DeUna"
     >
       <div className={styles.heading}>
         <span>MI DEUNA</span>
         {message && (
           <small role="status">{message}</small>
         )}
+      </div>
+
+      <div className={styles.ratingRow}>
+        <span>Tu valoración</span>
+        <div className={styles.stars} role="group" aria-label="Valorar del 1 al 5">
+          {[1, 2, 3, 4, 5].map((value) => (
+            <button
+              key={value}
+              type="button"
+              disabled={pending}
+              data-active={userRating !== null && value <= userRating}
+              aria-label={`${value} ${value === 1 ? "estrella" : "estrellas"}`}
+              aria-pressed={userRating === value}
+              onClick={() => void saveRating(value)}
+            >
+              <Star
+                size={18}
+                fill={userRating !== null && value <= userRating ? "currentColor" : "none"}
+                aria-hidden="true"
+              />
+            </button>
+          ))}
+        </div>
+        <small>{userRating ? `${userRating}/5` : "Sin valorar"}</small>
       </div>
 
       <div className={styles.controls}>
