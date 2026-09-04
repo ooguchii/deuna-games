@@ -1,7 +1,7 @@
 import type {
-  HomeHeroDirection,
   HomeHeroPosition,
   HomeHeroPositionStyle,
+  HomeHeroPresentation,
   HomeHeroResponsiveStyle,
 } from "@/data/home-config";
 
@@ -32,7 +32,7 @@ export function homeHeroPositionOffset(
 
 export function homeHeroVisiblePositions(
   responsive: HomeHeroResponsiveStyle,
-  direction: HomeHeroDirection
+  direction: HomeHeroPresentation["direction"]
 ): readonly HomeHeroVisualPosition[] {
   if (responsive.visibleCards === 3) {
     return ["left1", "main", "right1"];
@@ -50,7 +50,7 @@ export function homeHeroVisiblePositions(
 export function homeHeroPositionDisplay(
   position: HomeHeroVisualPosition,
   responsive: HomeHeroResponsiveStyle,
-  direction: HomeHeroDirection
+  direction: HomeHeroPresentation["direction"]
 ) {
   return homeHeroVisiblePositions(responsive, direction).includes(position)
     ? "block"
