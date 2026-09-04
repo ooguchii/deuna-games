@@ -1,7 +1,3 @@
-.assignmentHost :global([class*="summarySection"]) {
+.assignmentHost :global([aria-labelledby="multimedia-summary-heading"]) {
   display: none !important;
-}
-
-.assignmentHost :global([class*="mediaWorkspace"]) {
-  margin-top: 0 !important;
 }
