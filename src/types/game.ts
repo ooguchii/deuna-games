@@ -24,6 +24,26 @@ export type GamePerformanceCalibration = {
   fpsCap?: number;
 };
 
+export type GamePerformanceBenchmarkSource =
+  | "internal"
+  | "developer"
+  | "publisher"
+  | "community"
+  | "external";
+
+export type GamePerformanceBenchmarkConfidence =
+  | "low"
+  | "medium"
+  | "high";
+
+export type GamePerformanceMetadata = {
+  /* Procedencia editorial del dato usado como punto de referencia. */
+  source?: GamePerformanceBenchmarkSource;
+  sourceLabel?: string;
+  measuredAt?: string;
+  confidence?: GamePerformanceBenchmarkConfidence;
+};
+
 export type GamePlatform =
   | "PC"
   | "PlayStation"
@@ -288,5 +308,6 @@ export type Game = {
 
   requirements?: GameRequirements;
   performance?: GamePerformanceCalibration;
+  performanceMetadata?: GamePerformanceMetadata;
   download?: GameDownload;
 };
