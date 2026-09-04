@@ -37,10 +37,15 @@ assert(
     history,
     "editorial_publications",
     "publication.payload",
+    "publication.action IN ('published', 'rollback')",
+    "publication.action = 'bootstrap'",
+    "editorial_revisions",
+    "revision.action = 'draft_saved'",
+    "NOT EXISTS",
     "listGameImageReferences",
     "listGameVideoReferences"
   ),
-  "La higiene debe conocer las referencias de todos los snapshots históricos para conservar restauraciones reales."
+  "La higiene debe proteger publicaciones/restauraciones y bootstrap de origen, sin retener la base privada no restaurable creada desde el panel."
 );
 
 assert(
@@ -95,7 +100,7 @@ assert(
     "markEditorialMediaForDeletion",
     "publishedReferences.has(selected.src)"
   ),
-  "Eliminar un master debe rechazar referencias del borrador y del historial, y nunca romper un snapshot restaurable."
+  "Eliminar un master debe rechazar referencias del borrador y del historial restaurable, y nunca romper un snapshot recuperable."
 );
 
 assert(
@@ -143,5 +148,5 @@ if (failures.length) {
 }
 
 console.log(
-  "Higiene multimedia: OK (huérfanos reales únicamente · publicación bloqueada · historial restaurable protegido · Biblioteca y Publicación coherentes)."
+  "Higiene multimedia: OK (huérfanos reales únicamente · publicación bloqueada · historial restaurable protegido · bootstrap privado excluido · Biblioteca y Publicación coherentes)."
 );
