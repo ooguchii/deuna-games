@@ -23,6 +23,27 @@ function changed(current: unknown, published: unknown) {
   return serialized(current) !== serialized(published);
 }
 
+function multimediaState(game: Game) {
+  return {
+    coverImage: game.coverImage,
+    heroImage: game.heroImage,
+    cardImage: game.cardImage,
+    detailImage: game.detailImage,
+    backgroundImage: game.backgroundImage,
+    screenshots: game.screenshots,
+    galleryMedia: game.galleryMedia,
+    imageMedia: game.imageMedia,
+    mediaModes: game.mediaModes,
+    videoMedia: game.videoMedia,
+    // Compatibilidad histórica: estas propiedades siguen formando parte de
+    // snapshots antiguos aunque el runtime editorial actual use WebM local.
+    previewMode: game.previewMode,
+    previewClip: game.previewClip,
+    youtubePreview: game.youtubePreview,
+    directPreview: game.directPreview,
+  };
+}
+
 export function evaluateGamePublicationChanges(
   draft: Game,
   published: Game | null
@@ -127,33 +148,12 @@ export function evaluateGamePublicationChanges(
     });
   }
 
-  if (
-    changed(
-      {
-        coverImage: draft.coverImage,
-        heroImage: draft.heroImage,
-        screenshots: draft.screenshots,
-        previewMode: draft.previewMode,
-        previewClip: draft.previewClip,
-        youtubePreview: draft.youtubePreview,
-        directPreview: draft.directPreview,
-      },
-      {
-        coverImage: published.coverImage,
-        heroImage: published.heroImage,
-        screenshots: published.screenshots,
-        previewMode: published.previewMode,
-        previewClip: published.previewClip,
-        youtubePreview: published.youtubePreview,
-        directPreview: published.directPreview,
-      }
-    )
-  ) {
+  if (changed(multimediaState(draft), multimediaState(published))) {
     changes.push({
       id: "media",
       label: "Multimedia",
       detail:
-        "Cambian la portada, la imagen hero, las capturas o el preview de tarjeta configurado como WebM local o reproductor directo aislado por plataforma.",
+        "Cambian recursos, modos, recortes, orden de Galería o videos multimedia que se mostrarán en las superficies públicas.",
       section: "multimedia",
     });
   }
