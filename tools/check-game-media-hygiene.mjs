@@ -13,6 +13,7 @@ const has = (text, ...needles) =>
   needles.every((needle) => text.includes(needle));
 
 const [
+  history,
   hygiene,
   workspace,
   workspaceRoute,
@@ -21,6 +22,7 @@ const [
   utilityRail,
   publicationWorkspace,
 ] = await Promise.all([
+  source("src/lib/admin/game-media-history.ts"),
   source("src/lib/admin/game-media-hygiene.ts"),
   source("src/lib/admin/game-media-workspace.ts"),
   source("src/app/api/admin/content/games/[slug]/media-workspace/route.ts"),
@@ -32,20 +34,35 @@ const [
 
 assert(
   has(
+    history,
+    "editorial_publications",
+    "publication.payload",
+    "listGameImageReferences",
+    "listGameVideoReferences"
+  ),
+  "La higiene debe conocer las referencias de todos los snapshots históricos para conservar restauraciones reales."
+);
+
+assert(
+  has(
     hygiene,
     '"active"',
     '"reserved"',
     '"published-only"',
+    '"historical"',
     '"unused"',
     'resource.origin === "editorial"',
-    'status === "unused" || status === "published-only"'
-  ),
-  "La higiene debe distinguir uso activo, reserva, publicación anterior y huérfanos, bloqueando sólo masters editoriales sin referencia del borrador."
+    'status === "unused"'
+  ) &&
+    !hygiene.includes('status === "unused" || status === "published-only"'),
+  "La higiene debe distinguir borrador, publicación, historial y huérfanos, bloqueando únicamente masters editoriales sin ninguna referencia."
 );
 
 assert(
   has(
     workspace,
+    "getHistoricalGameMediaReferences",
+    "protectedReferences",
     "reconcileEditorialMediaDeletions",
     "getPublishedGameImageReferences",
     "getPublishedGameVideoReferences",
@@ -53,7 +70,7 @@ assert(
     "evaluateGameMediaRequirements",
     "resolveGameGalleryItems"
   ),
-  "El snapshot multimedia debe reunir borrador, publicación, Galería, requisitos e higiene desde una fuente autoritativa del servidor."
+  "El snapshot multimedia debe reunir borrador, publicación, historial, Galería, requisitos e higiene desde una fuente autoritativa del servidor."
 );
 
 assert(
@@ -72,11 +89,13 @@ assert(
     "listGameImageReferences",
     "listGameVideoReferences",
     "draftReferences.has(resource)",
+    "getHistoricalGameMediaReferences",
+    "historicalReferences",
+    'redirectPath(slug, "recurso-en-historial")',
     "markEditorialMediaForDeletion",
-    "publishedReferences.has(selected.src)",
-    'redirectPath(slug, "recurso-eliminacion-pendiente")'
+    "publishedReferences.has(selected.src)"
   ),
-  "Eliminar un master debe rechazar referencias del borrador y diferir el borrado físico mientras la publicación actual siga usándolo."
+  "Eliminar un master debe rechazar referencias del borrador y del historial, y nunca romper un snapshot restaurable."
 );
 
 assert(
@@ -87,18 +106,22 @@ assert(
     '`${target}?estado=higiene-multimedia`',
     "await getGameMediaWorkspaceSnapshot(slug)"
   ),
-  "Publicación debe revalidar higiene en servidor y reconciliar eliminaciones diferidas después de publicar."
+  "Publicación debe revalidar higiene en servidor y reconciliar la biblioteca después de publicar."
 );
 
 assert(
   has(
     utilityRail,
-    "Sin archivos editoriales sin uso",
+    "Sin masters editoriales huérfanos",
     "Por resolver ·",
+    "Referenciados ·",
+    'resource.hygiene?.status !== "unused"',
+    "Historial",
+    "Protegido",
     "resource.hygiene?.usage",
     'usage={previewResource.hygiene?.usage ?? []}'
   ),
-  "Biblioteca debe mostrar higiene, filtro de recursos por resolver y usos reales del master."
+  "Biblioteca debe mostrar huérfanos, recursos protegidos y usos reales, dejando la papelera sólo para masters sin uso."
 );
 
 assert(
@@ -107,9 +130,10 @@ assert(
     "mediaHygiene.ready",
     "Higiene multimedia",
     "publicationEssentialsReady",
+    "realmente huérfano",
     'state === "higiene-multimedia"'
   ),
-  "La revisión de Publicación debe reflejar y bloquear visualmente la misma higiene que valida el servidor."
+  "La revisión de Publicación debe reflejar y bloquear visualmente la misma higiene huérfano-only que valida el servidor."
 );
 
 if (failures.length) {
@@ -119,5 +143,5 @@ if (failures.length) {
 }
 
 console.log(
-  "Higiene multimedia: OK (clasificación autoritativa · publicación bloqueada · borrado diferido seguro · Biblioteca y Publicación coherentes)."
+  "Higiene multimedia: OK (huérfanos reales únicamente · publicación bloqueada · historial restaurable protegido · Biblioteca y Publicación coherentes)."
 );
