@@ -46,7 +46,7 @@ export type GameInformationInput = Pick<
 
 export type GameClassificationInput = Pick<
   Game,
-  "category" | "genres" | "tags"
+  "category" | "genres" | "tags" | "ageRating"
 >;
 
 export type GameCompatibilityInput = {
