@@ -106,10 +106,12 @@ expect(
   "Historial debe intentar mostrar cambios complejos reales antes de degradar a un mensaje genérico."
 );
 expect(
-  files.historyPanel.includes('timeZone: "America/Argentina/Buenos_Aires"') &&
-    files.historyPanel.includes("ART") &&
-    !files.historyPanel.includes('timeZone: "UTC"'),
-  "Historial administrativo debe mostrar revisiones y publicaciones en horario de Argentina."
+  files.historyPanel.includes('timeZone: "Etc/GMT+3"') &&
+    files.historyPanel.includes("UTC−3") &&
+    !files.historyPanel.includes('timeZone: "UTC"') &&
+    !files.historyPanel.includes("America/Argentina") &&
+    !files.historyPanel.includes("Buenos_Aires"),
+  "Historial administrativo debe mostrar la zona horaria operativa UTC−3 sin introducir identificadores geográficos prohibidos."
 );
 
 if (failures.length > 0) {
@@ -119,5 +121,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  "Auditoría transversal del editor: OK (Compatibilidad coherente, Publicación visible, sugerencias servidor-autoritativas, Historial ampliado y hora Argentina)."
+  "Auditoría transversal del editor: OK (Compatibilidad coherente, Publicación visible, sugerencias servidor-autoritativas, Historial ampliado y zona horaria operativa protegida)."
 );
