@@ -190,13 +190,16 @@ assert(
     heroStyles.includes(".cinematicStage") &&
     heroStyles.includes(".previewRail") &&
     heroStyles.includes(".previewCard") &&
-    heroStyles.includes("aspect-ratio: 4 / 5") &&
+    heroStyles.includes("aspect-ratio: 9 / 16") &&
     heroStyles.includes("perspective") &&
     heroStyles.includes("rotateY") &&
+    heroStyles.includes('content: "06."') &&
+    heroStyles.includes("CARRUSEL CINEMÁTICO CON PÁGINA") &&
+    heroStyles.includes("GRANDES JUEGOS") &&
     heroStyles.includes("@media (prefers-reduced-motion: reduce)") &&
     !heroSection.includes("function NextArtwork") &&
     !heroStyles.includes(".nextCard"),
-  "El Hero público debe usar escena cinematográfica, pila de Portadas 4:5, navegación por segmentos y transición con profundidad sin conservar la antigua tarjeta Siguiente."
+  "El Hero público debe conservar la composición de referencia: gran portada perspectivada, pila editorial vertical 9:16 alimentada por Portada, cabecera, lema, navegación segmentada y transición con profundidad."
 );
 
 assert(
@@ -242,6 +245,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Home editorial: OK (curaduría profesional, Hero cinematográfico + pila 4:5, snapshots públicos, personalización opcional, ranking explicable y estabilidad diaria)."
+    "Home editorial: OK (curaduría profesional, Hero cinematográfico de referencia + pila vertical, snapshots públicos, personalización opcional, ranking explicable y estabilidad diaria)."
   );
 }
