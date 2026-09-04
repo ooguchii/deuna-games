@@ -83,11 +83,14 @@ assert(
     forms.includes("fpsCap: optionalCalibrationNumber(1_000)") &&
     forms.includes(".superRefine((value, context) =>") &&
     forms.includes("const hasAny =") &&
-    forms.includes("if (!hasAny) return") &&
+    forms.includes("const hasMetadata =") &&
+    forms.includes("if (!hasAny)") &&
+    forms.includes("if (hasMetadata)") &&
+    forms.includes("La procedencia sólo puede guardarse junto con una calibración") &&
     forms.includes("if (value.referenceFps === undefined)") &&
     forms.includes("if (value.ramGb === undefined)") &&
     forms.includes("value.referenceFps > value.fpsCap"),
-  "El formulario debe impedir calibraciones parciales o fuera de rango."
+  "El formulario debe impedir calibraciones parciales o fuera de rango y metadata de benchmark huérfana."
 );
 
 assert(
