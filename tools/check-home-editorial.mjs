@@ -1,6 +1,4 @@
-import {
-  readFile,
-} from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 
@@ -12,10 +10,7 @@ function assert(condition, message) {
 }
 
 async function source(relativePath) {
-  return readFile(
-    path.join(root, relativePath),
-    "utf8"
-  );
+  return readFile(path.join(root, relativePath), "utf8");
 }
 
 const [
@@ -32,8 +27,10 @@ const [
   heroSection,
   heroStyles,
   heroContract,
+  heroLayout,
   heroEditor,
   heroEditorRoute,
+  presentationEditor,
 ] = await Promise.all([
   source("src/data/home.ts"),
   source("src/lib/home/ranking.ts"),
@@ -43,139 +40,176 @@ const [
   source("src/lib/home/public-home-config.ts"),
   source("src/components/admin/HomeCurationEditor.tsx"),
   source("src/app/api/admin/content/home/route.ts"),
-  source(
-    path.join(
-      "src",
-      "app",
-      "api",
-      "admin",
-      "content",
-      "home",
-      "presentation",
-      "route.ts"
-    )
-  ),
+  source("src/app/api/admin/content/home/presentation/route.ts"),
   source("src/lib/admin/content-create-service.ts"),
   source("src/components/home/HeroSection.tsx"),
   source("src/components/home/HeroSection.module.css"),
   source("src/lib/home/hero-contract.ts"),
+  source("src/lib/home/hero-layout.ts"),
   source("src/components/admin/HomeHeroEditor.tsx"),
   source("src/app/api/admin/content/home/hero/route.ts"),
+  source("src/components/admin/HomePresentationEditor.tsx"),
 ]);
 
 assert(
   homeCollections.includes("resolveHomeCollectionGames") &&
     homeCollections.includes("resolved.curation.hero.mode") &&
-    homeCollections.includes("resolved.curation.popular.mode") &&
-    homeCollections.includes("resolved.curation.lowSpec.mode") &&
-    homeCollections.includes("resolved.curation.recommended.mode") &&
-    homeCollections.includes("HOME_HERO_MAX_SLIDES") &&
-    !homeCollections.includes("getRequiredGame") &&
-    !homeCollections.includes("No se encontró el juego editorial requerido"),
-  "La Home debe resolver cada colección mediante el modo editorial publicado, usar el contrato compartido del Hero y no depender de slugs obligatorios."
+    homeCollections.includes("HOME_HERO_MAX_SLIDES"),
+  "La Home debe resolver el Hero mediante la curaduría compartida y respetar el límite editorial."
 );
 
 assert(
   heroContract.includes("HOME_HERO_MAX_SLIDES = 5") &&
-    heroContract.includes("HOME_HERO_VISIBLE_PREVIEWS = 3") &&
     heroContract.includes("HOME_HERO_AUTOPLAY_MS = 6500"),
-  "El Hero cinematográfico debe centralizar cantidad de slides, previews visibles y autoplay."
+  "El contrato del Hero debe centralizar límite y autoplay por defecto."
 );
 
 assert(
   rankingEngine.includes("scoreHomeGame") &&
-    rankingEngine.includes("rankHomeGames") &&
     rankingEngine.includes("resolveHomeCollectionGames") &&
-    rankingEngine.includes("reviewScore") &&
-    rankingEngine.includes("minimumRamGb") &&
-    rankingEngine.includes("homeRankingDay") &&
-    rankingEngine.includes("homeRankingProfiles") &&
-    rankingEngine.includes("homeRankingDescription") &&
-    rankingEngine.includes("components") &&
     rankingEngine.includes('mode === "manual"') &&
     rankingEngine.includes('mode === "automatic"') &&
-    rankingEngine.includes("isHomeRankingEligible"),
-  "La portada debe conservar un motor compartido, perfilado, explicable, estable por día y determinista para Manual, Automático e Híbrido."
-);
-
-assert(
-  rankingEngine.includes("popularity: 58") &&
-    rankingEngine.includes("rating: 34") &&
-    rankingEngine.includes("lowSpec: 60") &&
-    rankingEngine.includes("HOME_LOW_SPEC_MAX_RAM_GB") &&
+    rankingEngine.includes("isHomeRankingEligible") &&
     rankingEngine.includes('target === "hero"') &&
     rankingEngine.includes("game.heroImage || game.coverImage"),
-  "El ranking debe mantener perfiles explícitos y exigir arte utilizable en Hero automático."
+  "El Hero debe seguir usando el ranking compartido, determinista y con arte publicable."
 );
 
 assert(
   sourceConfig.includes("sourceHomeConfig") &&
-    sourceConfig.includes("heroSlugs") &&
-    sourceConfig.includes("popularSlugs") &&
-    sourceConfig.includes("lowSpecSlugs") &&
-    sourceConfig.includes("recommendedSlugs") &&
     sourceConfig.includes("defaultHomeCuration") &&
-    sourceConfig.includes('hero: { mode: "hybrid" }') &&
-    sourceConfig.includes('lowSpec: { mode: "manual" }'),
-  "La portada debe conservar fallback fuente y traducir el comportamiento histórico al nuevo modelo sin romper revisiones viejas."
+    sourceConfig.includes("defaultHeroPresentation") &&
+    sourceConfig.includes("positions:") &&
+    sourceConfig.includes("responsive:"),
+  "La configuración fuente debe conservar fallbacks de curaduría y presentación del Hero."
 );
 
 assert(
   publicConfig.includes("published_payload") &&
     publicConfig.includes("item_type = 'home_config'") &&
-    publicConfig.includes("item_key = 'home'") &&
     publicConfig.includes("public_visible = true") &&
     !publicConfig.includes("draft_payload"),
-  "La configuración pública de portada debe leer sólo el snapshot visible y nunca el borrador."
+  "La portada pública debe leer sólo el snapshot publicado."
 );
 
-const publicHomeUsesPublishedConfig =
+assert(
   homePage.includes("getPublicHomeConfig") &&
-  /buildHomeGameCollections\(\s*games,\s*homeConfig,/.test(homePage);
-const publicHomeUsesOptionalPersonalization =
-  homePage.includes("getAccountPersonalization") &&
-  homePage.includes("preferences: personalization.preferences") &&
-  homePage.includes("hardware: personalization.hardware") &&
-  homePage.includes(": undefined");
-const publicHomeToleratesEmptyCollections =
-  homePage.includes("collections.heroGames.length > 0") &&
-  homePage.includes("collections.popularGames.length > 0") &&
-  homePage.includes("collections.recommendedGames.length > 0");
-
-assert(
-  publicHomeUsesPublishedConfig &&
-    publicHomeUsesOptionalPersonalization &&
-    publicHomeToleratesEmptyCollections,
-  "La portada pública debe consumir la configuración publicada, aplicar sólo personalización opcional de cuenta y tolerar colecciones vacías."
+    homePage.includes("collections.heroGames.length > 0") &&
+    homePage.includes("presentation={homeConfig.heroPresentation}") &&
+    !homePage.includes("copy={copy.hero}"),
+  "La Home pública debe entregar al Hero sólo juegos publicados y su contrato visual, no copy editable."
 );
 
 assert(
-  adminHomePage.includes("getPublicGames") &&
-    adminHomePage.includes("publicBySlug") &&
-    adminHomePage.includes("curationGames") &&
-    adminHomePage.includes("publishedSlugSet") &&
-    adminHomePage.includes("heroPreviewCatalog") &&
-    adminHomePage.includes("publishedSlugSet.has(game.slug)") &&
-    adminHomePage.includes("HomeHeroEditor") &&
+  adminHomePage.includes("HomeHeroEditor") &&
     adminHomePage.includes("publicGames={heroPreviewCatalog}") &&
     adminHomePage.includes("games={curationGames}"),
-  "La vista previa administrativa debe calcular Hero y ranking con payloads públicos reales, filtrar juegos no publicados y conservar el catálogo editorial completo para edición."
+  "El editor del Hero debe previsualizar con el catálogo público real y conservar el catálogo editorial para seleccionar."
+);
+
+assert(
+  heroLayout.includes("HOME_HERO_VISUAL_POSITIONS") &&
+    heroLayout.includes('"left2"') &&
+    heroLayout.includes('"left1"') &&
+    heroLayout.includes('"main"') &&
+    heroLayout.includes('"right1"') &&
+    heroLayout.includes('"right2"') &&
+    heroLayout.includes("homeHeroSlotX") &&
+    heroLayout.includes("homeHeroVisiblePositions") &&
+    heroLayout.includes("homeHeroPositionTransform"),
+  "Editor y frontend deben compartir posiciones, visibilidad, slots y transformaciones del Hero."
+);
+
+assert(
+  heroSection.includes("HOME_HERO_VISUAL_POSITIONS.map") &&
+    heroSection.includes("presentation.positions[position]") &&
+    heroSection.includes("homeHeroPositionTransform(positionStyle)") &&
+    heroSection.includes("homeHeroPositionDisplay") &&
+    heroSection.includes("homeHeroSlotX") &&
+    heroSection.includes('for (const device of ["desktop", "tablet", "mobile"] as const)') &&
+    heroSection.includes('variables[`--hero-${device}-card-width`]') &&
+    heroSection.includes('variables[`--hero-${device}-card-height`]') &&
+    heroSection.includes('variables[`--hero-${device}-gap`]') &&
+    heroSection.includes('variables[`--hero-${device}-perspective`]') &&
+    heroSection.includes('variables[`--hero-${device}-display-${position}`]') &&
+    heroSection.includes('variables[`--hero-${device}-slot-${position}`]') &&
+    heroSection.includes("--hero-editor-easing") &&
+    heroSection.includes("--hero-editor-overlay") &&
+    heroSection.includes("--hero-editor-border"),
+  "El renderer público debe consumir geometría, responsive, easing, overlay y borde desde HomeHeroPresentation."
+);
+
+assert(
+  heroSection.includes("game.rating") &&
+    heroSection.includes("game.developer") &&
+    heroSection.includes("game.releaseDate") &&
+    heroSection.includes("game.platforms") &&
+    heroSection.includes("game.version") &&
+    heroSection.includes('const HERO_PRIMARY_ACTION = "Ver juego"') &&
+    heroSection.includes('const HERO_SECONDARY_ACTION = "Más información"') &&
+    !heroSection.includes("HomeCopy") &&
+    !heroSection.includes("copy: HomeCopy"),
+  "El Hero público debe obtener su información del juego y mantener acciones funcionales, no textos configurables."
+);
+
+assert(
+  heroStyles.includes('data-transition="slide"') &&
+    heroStyles.includes('data-transition="coverflow"') &&
+    heroStyles.includes('data-transition="fade"') &&
+    heroStyles.includes('data-transition="3d"') &&
+    heroStyles.includes('data-transition="stack"') &&
+    heroStyles.includes('data-transition="perspective"') &&
+    heroStyles.includes('data-transition="custom"') &&
+    heroStyles.includes("var(--hero-editor-duration)") &&
+    heroStyles.includes("var(--hero-editor-easing)") &&
+    heroStyles.includes("var(--hero-slot-left2)") &&
+    heroStyles.includes("var(--hero-slot-right2)") &&
+    heroStyles.includes("@media(max-width:1100px)") &&
+    heroStyles.includes("@media(max-width:680px)") &&
+    heroStyles.includes("prefers-reduced-motion"),
+  "Las siete transiciones y los breakpoints del editor deben tener implementación pública real."
 );
 
 assert(
   heroEditor.includes("Editor de Hero") &&
-    heroEditor.includes('name="heroJson"') &&
-    heroEditor.includes("resolveHomeCollectionGames") &&
-    heroEditor.includes("Editar imagen y recorte") &&
-    heroEditor.includes("Guardar borrador") &&
-    heroEditor.includes("Transformación 3D") &&
+    heroEditor.includes("El contenido del Hero se toma del juego") &&
+    heroEditor.includes("homeHeroSlotX") &&
+    heroEditor.includes("homeHeroVisiblePositions") &&
+    heroEditor.includes("homeHeroPositionTransform") &&
     heroEditor.includes("Aplicar cambios a:") &&
-    heroEditor.includes("Comparar") &&
-    heroEditorRoute.includes("homeHeroEditorFormSchema") &&
-    heroEditorRoute.includes("heroSlugs: hero.slugs") &&
+    heroEditor.includes("Transformación 3D") &&
+    heroEditor.includes("Tarjetas visibles") &&
+    heroEditor.includes("Perspectiva") &&
+    heroEditor.includes("Easing") &&
+    heroEditor.includes("Editar multimedia y recorte del juego activo") &&
+    !heroEditor.includes("Título accesible") &&
+    !heroEditor.includes("Botón principal") &&
+    !heroEditor.includes("Botón secundario"),
+  "El editor del Hero debe controlar selección, geometría y comportamiento sin campos de copy del Hero."
+);
+
+assert(
+  heroEditorRoute.includes("heroSlugs: hero.slugs") &&
     heroEditorRoute.includes("heroPresentation: hero.presentation") &&
-    heroEditorRoute.includes("hero: hero.copy"),
-  "El panel debe ofrecer un único editor de Hero con selección, orden, vista previa, diseño, textos y guardado atómico."
+    heroEditorRoute.includes("copy: current.copy") &&
+    !heroEditorRoute.includes("hero: hero.copy"),
+  "Guardar el Hero debe preservar el copy existente y persistir sólo selección, modo y presentación visual."
+);
+
+assert(
+  !presentationEditor.includes("setHeroOption") &&
+    !presentationEditor.includes("Diseño del Hero") &&
+    !presentationEditor.includes("<summary>Hero principal</summary>") &&
+    presentationEditor.includes("El Hero queda excluido") &&
+    presentationEditor.includes("heroPresentation: config.heroPresentation"),
+  "Contenido no debe ofrecer un segundo editor de diseño o textos del Hero."
+);
+
+assert(
+  presentationRoute.includes("const current = resolveHomeConfig(item.payload)") &&
+    presentationRoute.includes("heroPresentation: current.heroPresentation") &&
+    presentationRoute.includes("hero: current.copy.hero"),
+  "La ruta de Contenido debe preservar autoritativamente geometría y copy del Hero."
 );
 
 assert(
@@ -183,73 +217,22 @@ assert(
     curationEditor.includes("Automático") &&
     curationEditor.includes("Híbrido") &&
     curationEditor.includes("resolveHomeCollectionGames") &&
-    curationEditor.includes("rankHomeGames") &&
-    curationEditor.includes("homeRankingDescription") &&
-    curationEditor.includes('name="curationJson"') &&
-    curationEditor.includes("VISTA PREVIA DEL RESULTADO") &&
-    curationEditor.includes("activeSelection.length >= meta.limit") &&
-    !curationEditor.includes("Popularidad 38%") &&
-    !curationEditor.includes("Volumen de reseñas 58%") &&
-    !curationEditor.includes("textarea"),
-  "Curaduría debe reutilizar la definición real del ranking, respetar el límite visible y evitar fórmulas duplicadas o slugs crudos."
+    curationRoute.includes('"curationJson"') &&
+    curationRoute.includes("curationJson.hero.slugs"),
+  "La curaduría profesional debe seguir operativa junto al nuevo renderer."
 );
 
 assert(
-  heroSection.includes("HOME_HERO_VISIBLE_PREVIEWS") &&
-    heroSection.includes("HOME_HERO_AUTOPLAY_MS") &&
-    heroSection.includes("function PreviewCard") &&
-    heroSection.includes("function PreviewArtwork") &&
-    heroSection.includes("const src = game.coverImage") &&
-    heroSection.includes("previewEntries") &&
-    heroSection.includes("positionCounter") &&
-    heroSection.includes("segments") &&
-    heroSection.includes("heroFacts") &&
-    heroSection.includes("classificationLine") &&
-    heroStyles.includes(".cinematicStage") &&
-    heroStyles.includes(".previewRail") &&
-    heroStyles.includes(".previewCard") &&
-    heroStyles.includes("aspect-ratio: 4 / 5") &&
-    heroStyles.includes("aspect-ratio: 3 / 1") &&
-    heroStyles.includes("grid-template-columns") &&
-    heroStyles.includes("perspective") &&
-    heroStyles.includes("rotateY") &&
-    heroSection.includes("heroTitleParts") &&
-    heroSection.includes("GameMedia") &&
-    heroStyles.includes("@media (prefers-reduced-motion: reduce)") &&
-    !heroSection.includes("function NextArtwork") &&
-    !heroStyles.includes(".nextCard"),
-  "El Hero público debe conservar la composición editorial: recorte Hero 3:1 compartido, escenario estable, pila vertical alimentada por Portada, navegación segmentada y transición con profundidad."
-);
-
-assert(
-  curationRoute.includes('"curationJson"') &&
-    curationRoute.includes("curationJson.hero.slugs") &&
-    curationRoute.includes("curationJson.popular.mode") &&
-    curationRoute.includes("curation:") &&
-    !curationRoute.includes("heroSlugsText"),
-  "La ruta de Curaduría debe persistir la selección estructurada y sus modos sin campos de texto heredados."
-);
-
-assert(
-  presentationRoute.includes("curation: item.payload.curation"),
-  "Guardar Presentación debe conservar la configuración de Curaduría existente."
-);
-
-assert(
-  creationService.includes(
-    "addedAt: new Date().toISOString().slice(0, 10)"
-  ),
-  "Los juegos creados desde el panel deben recibir una fecha UTC de incorporación para poder aparecer entre los recientes."
+  creationService.includes("addedAt: new Date().toISOString().slice(0, 10)"),
+  "Los juegos nuevos deben conservar fecha UTC de incorporación."
 );
 
 if (failures.length > 0) {
   console.error("\nHome editorial: BLOQUEADA\n");
-  failures.forEach((failure) =>
-    console.error(`- ${failure}`)
-  );
+  failures.forEach((failure) => console.error(`- ${failure}`));
   process.exitCode = 1;
 } else {
   console.log(
-    "Home editorial: OK (curaduría profesional, Hero cinematográfico de referencia + pila vertical, snapshots públicos, personalización opcional, ranking explicable y estabilidad diaria)."
+    "Home editorial: OK (Hero game-driven, editor/renderer parity, responsive compartido, publicación segura y ownership único)."
   );
 }

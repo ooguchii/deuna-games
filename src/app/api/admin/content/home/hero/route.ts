@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
       curation: { ...current.curation, hero: { mode: hero.mode } },
       heroPresentation: hero.presentation,
       sections: current.sections,
-      copy: { ...current.copy, hero: hero.copy },
+      copy: current.copy,
     });
     const state = result.outcome === "conflict" ? "conflicto" : result.outcome === "not_found" ? "no-encontrado" : "guardado";
     return adminRedirect(authorized.adminOrigin, `${target}&estado=${state}`);

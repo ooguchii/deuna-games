@@ -111,7 +111,6 @@ export default async function Home() {
           <HeroSection
             key={section.id}
             games={collections.heroGames}
-            copy={copy.hero}
             presentation={homeConfig.heroPresentation}
           />
         ) : null;
