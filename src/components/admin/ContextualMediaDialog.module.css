@@ -43,7 +43,7 @@
 }
 
 .heading span {
-  color: #ff7a18;
+  color: var(--admin-brand-text, var(--brand));
   font-size: 12px;
   font-weight: 900;
   letter-spacing: 0.06em;
@@ -79,7 +79,7 @@
 
 .closeButton:hover {
   color: #fff;
-  border-color: rgba(255, 122, 24, 0.66);
+  border-color: var(--admin-brand-border, var(--brand));
 }
 
 .body {
@@ -118,11 +118,19 @@
   background: #0d151e;
 }
 
+.secondary:hover:not(:disabled) {
+  border-color: var(--admin-brand-border, var(--brand));
+}
+
 .primary {
-  color: #fff8f2;
-  border: 1px solid #ff7a18;
-  background: linear-gradient(180deg, #ef6b0b, #c34f06);
-  box-shadow: 0 9px 25px rgba(255, 122, 24, 0.14);
+  color: var(--text-on-brand, #fff);
+  border: 1px solid var(--admin-brand-border, var(--brand));
+  background: var(--brand);
+  box-shadow: 0 9px 25px color-mix(in srgb, var(--brand) 14%, transparent);
+}
+
+.primary:hover:not(:disabled) {
+  filter: brightness(1.08);
 }
 
 .secondary:disabled,
