@@ -3,6 +3,7 @@ import {
   CheckCircle2,
   CircleEllipsis,
   History,
+  Rocket,
   TriangleAlert,
 } from "lucide-react";
 
@@ -97,6 +98,26 @@ export default function GameEditorHealthOverview({
             </Link>
           );
         })}
+
+        <Link
+          href={`/admin/juegos/${encodeURIComponent(slug)}/publicacion`}
+          className={styles.section}
+          data-state={readiness.essentialsReady ? "ready" : "danger"}
+        >
+          {readiness.essentialsReady ? (
+            <Rocket size={16} aria-hidden="true" />
+          ) : (
+            <TriangleAlert size={16} aria-hidden="true" />
+          )}
+          <span>
+            <strong>Publicación</strong>
+            <small>
+              {readiness.essentialsReady
+                ? "Revisar snapshot"
+                : "Pendientes esenciales"}
+            </small>
+          </span>
+        </Link>
 
         <Link
           href={`/admin/juegos/${encodeURIComponent(slug)}?seccion=historial`}
