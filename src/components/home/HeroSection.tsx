@@ -94,8 +94,7 @@ function ResponsiveArtwork({
         "--hero-mobile-image-position": framing.position,
       } as CSSProperties)
     : style;
-
-  return (
+  const image = (
     <Image
       src={src}
       alt={alt}
@@ -106,6 +105,10 @@ function ResponsiveArtwork({
       style={artworkInlineStyle}
     />
   );
+
+  return ambient
+    ? image
+    : <span className={styles.heroPicture}>{image}</span>;
 }
 
 function NextArtwork({ game }: { game: Game }) {
