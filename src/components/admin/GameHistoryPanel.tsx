@@ -24,15 +24,15 @@ const publicationActionLabels = {
 } as const;
 
 function formatDate(date: Date) {
-  return `${new Intl.DateTimeFormat("es-AR", {
+  return `${new Intl.DateTimeFormat("es", {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
-    timeZone: "America/Argentina/Buenos_Aires",
-  }).format(date)} ART`;
+    timeZone: "Etc/GMT+3",
+  }).format(date)} UTC−3`;
 }
 
 export default function GameHistoryPanel({
@@ -50,7 +50,7 @@ export default function GameHistoryPanel({
           <h2>Historial completo del juego</h2>
         </div>
         <p>
-          Combina revisiones y publicaciones. Restaurar nunca elimina versiones anteriores: crea una revisión nueva y deja trazabilidad. Las horas se muestran en horario de Argentina.
+          Combina revisiones y publicaciones. Restaurar nunca elimina versiones anteriores: crea una revisión nueva y deja trazabilidad. Las horas se muestran en la zona administrativa UTC−3.
         </p>
       </div>
 
