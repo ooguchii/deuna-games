@@ -97,6 +97,7 @@ export async function getGameMediaWorkspaceSnapshot(slug: string) {
     hygiene,
     requirements: evaluateGameMediaRequirements(game),
     gallery: resolveGameGalleryItems(game),
+    accessibility: game.mediaAccessibility ?? null,
     assignments: {
       coverImage: game.coverImage ?? null,
       heroImage: game.heroImage ?? null,
