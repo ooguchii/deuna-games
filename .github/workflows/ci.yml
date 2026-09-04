@@ -214,7 +214,7 @@ jobs:
             TO deuna_migrator, deuna_runtime;
           SQL
 
-      - name: Apply migrations 001-011
+      - name: Apply database migrations
         run: node ./tools/admin/migrate.ts
 
       - name: Import editorial fixtures
