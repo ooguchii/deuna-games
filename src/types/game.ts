@@ -139,6 +139,22 @@ export type GameVideoViewport = {
   confirmed?: true;
 };
 
+export type GameGalleryImageItem = {
+  kind: "image";
+  src: string;
+};
+
+export type GameGalleryVideoItem = {
+  kind: "video";
+  src: string;
+  /* El video conserva encuadre propio; nunca hereda el de Hero/Card. */
+  viewport: GameVideoViewport;
+};
+
+export type GameGalleryItem =
+  | GameGalleryImageItem
+  | GameGalleryVideoItem;
+
 export type GameDestinationMediaMode =
   | "image"
   | "video"
@@ -228,7 +244,14 @@ export type Game = {
   detailImage?: string;
   /* Override opcional del fondo global de Juegos para esta ficha. */
   backgroundImage?: string;
+  /* Legado compatible: sigue reflejando las imágenes de la Galería. */
   screenshots?: string[];
+  /*
+   * Orden editorial canónico de Galería. Si está ausente, screenshots se migra
+   * en lectura como una lista de imágenes. Permite mezclar imágenes y WebM sin
+   * convertir screenshots en un contenedor de tipos incompatibles.
+   */
+  galleryMedia?: GameGalleryItem[];
 
   /*
    * imageMedia guarda sólo instrucciones de presentación. Portada, Hero,
