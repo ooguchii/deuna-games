@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS deuna_accounts.game_ratings (
   user_id uuid NOT NULL
-    REFERENCES deuna_accounts.account_users(id)
+    REFERENCES deuna_accounts.users(id)
     ON DELETE CASCADE,
   game_slug text NOT NULL,
   rating smallint NOT NULL,
