@@ -30,6 +30,9 @@ const fields = [
   "category",
   "genresText",
   "tagsText",
+  "ageRatingSystem",
+  "ageRatingValue",
+  "ageRatingDescriptorsText",
 ] as const;
 
 export async function POST(
@@ -69,6 +72,9 @@ export async function POST(
       category,
       genresText,
       tagsText,
+      ageRatingSystem,
+      ageRatingValue,
+      ageRatingDescriptorsText,
     } = parsed.data;
     const classification = await resolveGameTaxonomySelection({
       category,
@@ -84,6 +90,17 @@ export async function POST(
       );
     }
 
+    const ageRating =
+      ageRatingSystem && ageRatingValue
+        ? {
+            system: ageRatingSystem,
+            rating: ageRatingValue,
+            ...(ageRatingDescriptorsText?.length
+              ? { descriptors: ageRatingDescriptorsText }
+              : {}),
+          }
+        : undefined;
+
     const result = await saveGameClassificationSection(
       slug,
       expectedRevision,
@@ -92,6 +109,7 @@ export async function POST(
         category: classification.category,
         genres: classification.genres,
         tags: classification.tags,
+        ageRating,
       }
     );
 
