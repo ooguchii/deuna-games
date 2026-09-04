@@ -119,21 +119,19 @@ assert(
   has(
     heroSection,
     'const FINE_HOVER_MEDIA = "(hover: hover) and (pointer: fine)"',
-    'resolveGameDestinationMediaMode(game, "hero")',
+    'resolveGameDestinationMediaMode(activeGame, "hero")',
     'const hoverPlayback = heroMode === "hover-video"',
-    'const videoModeEnabled = heroMode !== "image"',
-    "canUseFineHover()",
-    "hoverPreviewActive",
-    "videoEnabled &&",
-    "videoModeEnabled &&",
+    "!reducedMotion &&",
+    'heroMode !== "image" &&',
     "(!hoverPlayback || hoverPreviewActive)",
+    "if (hoverPlayback && canUseFineHover()) setHoverPreviewActive(true)",
+    "if (hoverPlayback) setHoverPreviewActive(false)",
     "onMouseEnter={startHoverPreview}",
     "onMouseLeave={stopHoverPreview}",
-    "!reducedMotion",
-    "<HeroVideoLayer",
+    "{isMain && <HeroVideoLayer",
     "enabled={videoShouldRender}"
   ),
-  "El Hero público debe reproducir Video continuo o Imagen+hover según el modo, sólo con puntero compatible y respetando reduced-motion."
+  "El Hero público debe reproducir Video continuo o Imagen+hover según el modo: el video queda limitado a la tarjeta principal, hover sólo se activa con puntero compatible y reduced-motion siempre lo deshabilita."
 );
 
 if (failures.length) {
