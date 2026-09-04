@@ -8,6 +8,9 @@ import {
 import { expectedRevisionSchema } from "@/lib/admin/content-forms";
 import { getEditorialItem } from "@/lib/admin/content-service";
 import {
+  getHistoricalGameMediaReferences,
+} from "@/lib/admin/game-media-history";
+import {
   listGameImageReferences,
   listGameVideoReferences,
 } from "@/lib/admin/game-media-integrity";
@@ -82,9 +85,6 @@ export async function POST(
   const videoReferences = listGameVideoReferences(item.payload);
   const draftReferences = new Set([...imageReferences, ...videoReferences]);
 
-  // La biblioteca profesional nunca elimina silenciosamente una asignación.
-  // Primero se quita el recurso del destino/Galería; recién entonces puede
-  // borrarse el master. Esto evita referencias huérfanas en borradores.
   if (draftReferences.has(resource)) {
     return adminRedirect(
       authorized.adminOrigin,
@@ -92,11 +92,18 @@ export async function POST(
     );
   }
 
-  const [editorial, bundled, publishedImages, publishedVideos] = await Promise.all([
+  const [
+    editorial,
+    bundled,
+    publishedImages,
+    publishedVideos,
+    historicalReferences,
+  ] = await Promise.all([
     listEditorialMediaLibrary(slug),
     listAssignedBundledImageResources(imageReferences),
     getPublishedGameImageReferences(slug),
     getPublishedGameVideoReferences(slug),
+    getHistoricalGameMediaReferences(slug),
   ]);
   const resources = mergeEditorialMediaResources(editorial, bundled);
   const expectedKind = target.data === "image-delete" ? "image" : "video";
@@ -113,6 +120,15 @@ export async function POST(
     return adminRedirect(
       authorized.adminOrigin,
       redirectPath(slug, "recurso-eliminado-base")
+    );
+  }
+
+  // Un snapshot histórico sólo puede anunciarse como restaurable si sus
+  // masters siguen existiendo. La biblioteca no permite romper esa garantía.
+  if (new Set(historicalReferences).has(selected.src)) {
+    return adminRedirect(
+      authorized.adminOrigin,
+      redirectPath(slug, "recurso-en-historial")
     );
   }
 
