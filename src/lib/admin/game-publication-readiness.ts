@@ -10,7 +10,8 @@ export type GameReadinessSection =
   | "requisitos"
   | "rendimiento"
   | "multimedia"
-  | "descargas";
+  | "descargas"
+  | "valoracion";
 
 export type GameReadinessItem = {
   id: string;
@@ -88,14 +89,13 @@ export function evaluateGamePublicationReadiness(
     : [];
   const items: GameReadinessItem[] = [
     {
-      id: "core",
-      label: "Ficha principal",
-      detail: "Título, descripción, categoría y texto alternativo están completos.",
+      id: "information-core",
+      label: "Información principal",
+      detail: "Título, descripción y texto alternativo están completos.",
       section: "ficha",
       complete: Boolean(
         hasText(game.title) &&
           hasText(game.description) &&
-          hasText(game.category) &&
           hasText(game.imageAlt)
       ),
       priority: "essential",
@@ -103,8 +103,8 @@ export function evaluateGamePublicationReadiness(
     {
       id: "identity",
       label: "Identidad del juego",
-      detail: "Desarrollador, editor y fecha de lanzamiento ayudan a completar la ficha pública.",
-      section: "datos",
+      detail: "Desarrollador, editor y fecha de lanzamiento completan la identidad pública del título.",
+      section: "ficha",
       complete: Boolean(
         hasText(game.developer) &&
           hasText(game.publisher) &&
@@ -113,14 +113,27 @@ export function evaluateGamePublicationReadiness(
       priority: "recommended",
     },
     {
-      id: "classification",
-      label: "Clasificación",
-      detail: "Géneros y plataformas permiten filtrar y presentar correctamente el juego.",
+      id: "classification-primary",
+      label: "Clasificación principal",
+      detail: "La clasificación principal es obligatoria para presentar y organizar el juego.",
       section: "datos",
-      complete: Boolean(
-        game.genres?.length &&
-          game.platforms?.length
-      ),
+      complete: hasText(game.category),
+      priority: "essential",
+    },
+    {
+      id: "classification-extra",
+      label: "Clasificaciones y etiquetas",
+      detail: "Las clasificaciones adicionales y etiquetas mejoran filtros y descubrimiento.",
+      section: "datos",
+      complete: Boolean(game.genres?.length || game.tags?.length),
+      priority: "recommended",
+    },
+    {
+      id: "platforms",
+      label: "Plataformas confirmadas",
+      detail: "Compatibilidad debe indicar explícitamente al menos una plataforma; ausencia ya no equivale a PC.",
+      section: "requisitos",
+      complete: Boolean(game.platforms?.length),
       priority: "recommended",
     },
     {
@@ -150,7 +163,7 @@ export function evaluateGamePublicationReadiness(
     {
       id: "cover-crop",
       label: "Portada · recorte 4:5",
-      detail: "La Portada debe completar los recursos exigidos por su modo activo. Imagen + hover requiere confirmar imagen y video; Video sólo exige su video.",
+      detail: "La Portada debe completar los recursos exigidos por su modo activo.",
       section: "multimedia",
       complete: media.cover.cropReady,
       priority: "essential",
@@ -158,7 +171,7 @@ export function evaluateGamePublicationReadiness(
     {
       id: "hero-crop",
       label: "Hero · recorte 16:9",
-      detail: "El Hero debe completar los recursos exigidos por su modo activo. Imagen + hover requiere confirmar imagen y video.",
+      detail: "El Hero debe completar los recursos exigidos por su modo activo.",
       section: "multimedia",
       complete: media.hero.cropReady,
       priority: "essential",
@@ -166,7 +179,7 @@ export function evaluateGamePublicationReadiness(
     {
       id: "card-crop",
       label: "Card · recorte 3:2",
-      detail: "La Card tiene asignación independiente de la Portada y debe completar los recursos y recortes que exija su modo activo.",
+      detail: "La Card debe completar los recursos y recortes exigidos por su modo activo.",
       section: "multimedia",
       complete: media.card.cropReady,
       priority: "essential",
@@ -174,7 +187,7 @@ export function evaluateGamePublicationReadiness(
     {
       id: "detail-container-media",
       label: "Contenedor de la ficha · adaptable",
-      detail: "El fondo multimedia del contenedor principal es independiente del Hero. Imagen, Video o Imagen + hover deben completar sus recursos y recortes adaptables.",
+      detail: "El contenedor principal debe completar su recurso y recorte adaptable.",
       section: "multimedia",
       complete: media.detail.cropReady,
       priority: "essential",
@@ -183,7 +196,7 @@ export function evaluateGamePublicationReadiness(
     {
       id: "gallery-minimum",
       label: "Galería · recursos y recortes",
-      detail: "La Galería debe contener al menos un recurso, imagen o video, y cada elemento asignado debe confirmar su encuadre antes de publicar.",
+      detail: "La Galería debe contener al menos un recurso y confirmar cada encuadre.",
       section: "multimedia",
       complete: media.gallery.cropReady,
       priority: "essential",
@@ -194,6 +207,17 @@ export function evaluateGamePublicationReadiness(
       detail: "Configura al menos una fuente visible si este juego debe ofrecer descarga.",
       section: "descargas",
       complete: hasVisibleDownload(game),
+      priority: "recommended",
+    },
+    {
+      id: "editorial-rating",
+      label: "Valoración editorial",
+      detail: "La valoración editorial es independiente de la comunidad y del Índice DeUna.",
+      section: "valoracion",
+      complete: typeof game.rating === "number" &&
+        Number.isFinite(game.rating) &&
+        game.rating >= 0 &&
+        game.rating <= 5,
       priority: "recommended",
     },
   ];
