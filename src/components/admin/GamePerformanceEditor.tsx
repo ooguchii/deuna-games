@@ -9,6 +9,7 @@ import {
 } from "@/features/game-finder/performance-data";
 import type {
   GamePerformanceCalibration,
+  GamePerformanceMetadata,
 } from "@/types/game";
 
 import adminStyles from "../../app/admin/admin.module.css";
@@ -19,6 +20,7 @@ type GamePerformanceEditorProps = {
   revision: number;
   action: string;
   calibration?: GamePerformanceCalibration;
+  metadata?: GamePerformanceMetadata;
 };
 
 export default function GamePerformanceEditor({
@@ -26,6 +28,7 @@ export default function GamePerformanceEditor({
   revision,
   action,
   calibration,
+  metadata,
 }: GamePerformanceEditorProps) {
   const legacyProfile = calibration
     ? null
@@ -43,7 +46,7 @@ export default function GamePerformanceEditor({
           <h2>Calibración de FPS</h2>
         </div>
         <p>
-          Define el punto de referencia que usa el estimador para adaptar los FPS a la PC de cada visitante.
+          Define el punto de referencia que usa el estimador y documenta de dónde sale el benchmark para que el dato sea auditable.
         </p>
       </div>
 
@@ -70,7 +73,7 @@ export default function GamePerformanceEditor({
         {calibration ? (
           <div className={`${adminStyles.editorNotice} ${adminStyles.editorNoticeSuccess} ${adminStyles.fieldWide}`}>
             <Gauge size={16} aria-hidden="true" />
-            Este borrador ya tiene calibración editorial. Al publicar, estos valores viajarán dentro del snapshot del juego.
+            Este borrador ya tiene calibración editorial. Al publicar, valores y procedencia viajarán dentro del mismo snapshot del juego.
           </div>
         ) : usesLegacyFallback ? (
           <div className={`${adminStyles.editorNotice} ${adminStyles.editorNoticeWarning} ${adminStyles.fieldWide}`}>
@@ -145,14 +148,74 @@ export default function GamePerformanceEditor({
         </label>
 
         <div className={`${adminStyles.tableSummary} ${adminStyles.fieldWide}`}>
+          <strong>Procedencia del benchmark</strong>
+          <span>
+            Estos campos no cambian el cálculo: documentan la calidad editorial del dato y permiten explicar públicamente su origen.
+          </span>
+        </div>
+
+        <label>
+          <span>Origen</span>
+          <select
+            name="benchmarkSource"
+            defaultValue={metadata?.source ?? ""}
+          >
+            <option value="">Sin documentar</option>
+            <option value="internal">Prueba interna</option>
+            <option value="developer">Desarrollador</option>
+            <option value="publisher">Publisher</option>
+            <option value="community">Comunidad</option>
+            <option value="external">Fuente externa</option>
+          </select>
+        </label>
+
+        <label>
+          <span>Confianza de la fuente</span>
+          <select
+            name="benchmarkConfidence"
+            defaultValue={metadata?.confidence ?? ""}
+          >
+            <option value="">Sin evaluar</option>
+            <option value="high">Alta</option>
+            <option value="medium">Media</option>
+            <option value="low">Baja / orientativa</option>
+          </select>
+        </label>
+
+        <label>
+          <span>Fuente / referencia</span>
+          <input
+            name="benchmarkSourceLabel"
+            defaultValue={metadata?.sourceLabel ?? ""}
+            maxLength={160}
+            placeholder="Ej. benchmark interno v2 o nombre de la fuente"
+          />
+          <small>
+            Texto descriptivo únicamente; no ejecuta ni consulta URLs externas.
+          </small>
+        </label>
+
+        <label>
+          <span>Fecha de medición</span>
+          <input
+            name="benchmarkMeasuredAt"
+            type="date"
+            defaultValue={metadata?.measuredAt ?? ""}
+          />
+          <small>
+            Fecha del benchmark o de la última comprobación conocida.
+          </small>
+        </label>
+
+        <div className={`${adminStyles.tableSummary} ${adminStyles.fieldWide}`}>
           <strong>Calibración opcional y reversible</strong>
           <span>
-            Si dejas los tres campos vacíos y guardas, se elimina la calibración editorial del borrador. Los juegos históricos conservan su respaldo de código; los juegos nuevos simplemente quedan sin estimación hasta que vuelvas a calibrarlos.
+            Si dejas los tres campos numéricos vacíos y guardas, se elimina la calibración editorial y también su procedencia. Los juegos históricos conservan su respaldo de código; los juegos nuevos quedan sin estimación hasta que vuelvas a calibrarlos.
           </span>
         </div>
 
         <GameEditorFormActions
-          note="Guardar sólo modifica el borrador. Los FPS públicos no cambian hasta crear una nueva publicación."
+          note="Guardar sólo modifica el borrador. Los FPS públicos y la procedencia no cambian hasta crear una nueva publicación."
           action={action}
           continueTo="multimedia"
           saveLabel="Guardar rendimiento"
