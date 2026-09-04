@@ -62,6 +62,7 @@ import {
   getPublicUpdatesForGame,
 } from "@/lib/updates/public-updates";
 import type {
+  GameAgeRatingSystem,
   GameHardwareRequirements,
   GameVideoViewport,
 } from "@/types/game";
@@ -129,6 +130,13 @@ function galleryVideoAspectRatio(viewport: GameVideoViewport) {
   if (viewport.aspect === "4:5") return 4 / 5;
   if (viewport.aspect === "9:16") return 9 / 16;
   return 16 / 9;
+}
+
+function ageRatingSystemLabel(system: GameAgeRatingSystem) {
+  if (system === "CLASSIND") return "ClassInd";
+  if (system === "ACB") return "ACB";
+  if (system === "OTHER") return "Otro sistema";
+  return system;
 }
 
 export async function generateMetadata({
@@ -254,6 +262,9 @@ export default async function GameDetailPage({
     game.genres?.length
       ? game.genres
       : [game.category];
+  const ageRatingLabel = game.ageRating
+    ? `${ageRatingSystemLabel(game.ageRating.system)} · ${game.ageRating.rating}`
+    : null;
 
   const visibleTags = Array.from(
     new Set([
@@ -308,6 +319,7 @@ export default async function GameDetailPage({
       : undefined,
     genre: genres,
     gamePlatform: platforms.length ? platforms : undefined,
+    contentRating: ageRatingLabel ?? undefined,
     operatingSystem:
       minimum?.system ??
       recommended?.system,
@@ -573,6 +585,15 @@ export default async function GameDetailPage({
               )}
               <div><dt>Género</dt><dd>{genres.join(", ")}</dd></div>
               <div><dt>Plataforma</dt><dd>{platformLabel}</dd></div>
+              {ageRatingLabel && (
+                <div><dt>Clasificación etaria</dt><dd>{ageRatingLabel}</dd></div>
+              )}
+              {game.ageRating?.descriptors?.length ? (
+                <div>
+                  <dt>Descriptores</dt>
+                  <dd>{game.ageRating.descriptors.join(", ")}</dd>
+                </div>
+              ) : null}
             </dl>
           </article>
 
