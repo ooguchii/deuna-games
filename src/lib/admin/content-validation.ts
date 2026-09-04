@@ -186,6 +186,27 @@ const compatibilityMetadataSchema = z
   })
   .strict();
 
+const ageRatingSchema = z
+  .object({
+    system: z.enum([
+      "ESRB",
+      "PEGI",
+      "IARC",
+      "CLASSIND",
+      "USK",
+      "ACB",
+      "GRAC",
+      "CERO",
+      "OTHER",
+    ]),
+    rating: z.string().trim().min(1).max(40),
+    descriptors: z
+      .array(z.string().trim().min(1).max(80))
+      .max(8)
+      .optional(),
+  })
+  .strict();
+
 const performanceMetadataSchema = z
   .object({
     source: z
@@ -242,6 +263,7 @@ function splitGameCompatibilityPayload(payload: unknown) {
       imageMedia: undefined,
       mediaModes: undefined,
       videoMedia: undefined,
+      ageRating: undefined,
       compatibilityMetadata: undefined,
       performanceMetadata: undefined,
     };
@@ -271,6 +293,9 @@ function splitGameCompatibilityPayload(payload: unknown) {
   const videoMedia = clean.videoMedia === undefined
     ? undefined
     : videoMediaSchema.parse(clean.videoMedia);
+  const ageRating = clean.ageRating === undefined
+    ? undefined
+    : ageRatingSchema.parse(clean.ageRating);
   const compatibilityMetadata = clean.compatibilityMetadata === undefined
     ? undefined
     : compatibilityMetadataSchema.parse(clean.compatibilityMetadata);
@@ -285,6 +310,7 @@ function splitGameCompatibilityPayload(payload: unknown) {
   delete clean.imageMedia;
   delete clean.mediaModes;
   delete clean.videoMedia;
+  delete clean.ageRating;
   delete clean.compatibilityMetadata;
   delete clean.performanceMetadata;
 
@@ -304,6 +330,7 @@ function splitGameCompatibilityPayload(payload: unknown) {
     imageMedia,
     mediaModes,
     videoMedia,
+    ageRating,
     compatibilityMetadata,
     performanceMetadata,
   };
@@ -354,6 +381,7 @@ export function parseEditorialPayload<
     imageMedia,
     mediaModes,
     videoMedia,
+    ageRating,
     compatibilityMetadata,
     performanceMetadata,
   } = splitGameCompatibilityPayload(payload);
@@ -426,6 +454,7 @@ export function parseEditorialPayload<
     ...(resolvedImageMedia ? { imageMedia: resolvedImageMedia } : {}),
     mediaModes: resolvedMediaModes,
     ...(videoMedia ? { videoMedia } : {}),
+    ...(ageRating ? { ageRating } : {}),
     ...(compatibilityMetadata ? { compatibilityMetadata } : {}),
     ...(performanceMetadata ? { performanceMetadata } : {}),
   } as EditorialPayloadByType[Type];
