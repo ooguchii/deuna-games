@@ -34,6 +34,7 @@ export default function GameCompatibilityEditor({
   const requirements = game.requirements;
   const minimum = requirements?.minimum ?? legacyMinimum(requirements);
   const recommended = requirements?.recommended;
+  const verification = game.compatibilityMetadata;
 
   return (
     <section className={adminStyles.editorPanel}>
@@ -111,8 +112,55 @@ export default function GameCompatibilityEditor({
           <input name="recommendedStorage" defaultValue={recommended?.storage ?? ""} maxLength={240} />
         </label>
 
+        <div className={`${adminStyles.tableSummary} ${adminStyles.fieldWide}`}>
+          <strong>Estado de verificación</strong>
+          <span>
+            Documenta si los datos fueron sólo declarados, revisados editorialmente o probados. No modifica la estimación de FPS.
+          </span>
+        </div>
+
+        <label>
+          <span>Verificación</span>
+          <select
+            name="verificationStatus"
+            defaultValue={verification?.status ?? ""}
+          >
+            <option value="">Sin verificar</option>
+            <option value="declared">Declarado</option>
+            <option value="reviewed">Revisado</option>
+            <option value="tested">Probado</option>
+          </select>
+        </label>
+
+        <label>
+          <span>Origen de los datos</span>
+          <select
+            name="verificationSource"
+            defaultValue={verification?.source ?? ""}
+          >
+            <option value="">Sin documentar</option>
+            <option value="developer">Desarrollador</option>
+            <option value="publisher">Publisher</option>
+            <option value="internal">Verificación interna</option>
+            <option value="community">Comunidad</option>
+            <option value="external">Fuente externa</option>
+          </select>
+        </label>
+
+        <label className={adminStyles.fieldWide}>
+          <span>Última verificación</span>
+          <input
+            name="verifiedAt"
+            type="date"
+            defaultValue={verification?.verifiedAt ?? ""}
+          />
+          <small>
+            Este dato se publica como contexto de compatibilidad; no se guarda ubicación, dispositivo ni información personal de quien hizo la prueba.
+          </small>
+        </label>
+
         <GameEditorFormActions
-          note="Plataformas y requisitos se guardan juntos para que Compatibilidad sea la única fuente editorial de estos datos."
+          note="Plataformas, requisitos y verificación se guardan juntos para que Compatibilidad sea la única fuente editorial de estos datos."
           action={action}
           continueTo="rendimiento"
           saveLabel="Guardar compatibilidad"
