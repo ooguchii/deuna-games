@@ -108,6 +108,18 @@ export type GameDownload = {
   platform?: string;
 };
 
+export type GameDistributionChannel =
+  | "stable"
+  | "beta"
+  | "testing";
+
+export type GameDistributionMetadata = {
+  /* Canal editorial del paquete actual; no se infiere desde la URL o la versión. */
+  channel?: GameDistributionChannel;
+  /* SHA-256 declarado para verificar que todos los mirrors entreguen el mismo paquete. */
+  checksumSha256?: string;
+};
+
 export type GameDirectPreviewPlatform =
   | "facebook"
   | "instagram"
@@ -365,4 +377,5 @@ export type Game = {
   performance?: GamePerformanceCalibration;
   performanceMetadata?: GamePerformanceMetadata;
   download?: GameDownload;
+  distributionMetadata?: GameDistributionMetadata;
 };
