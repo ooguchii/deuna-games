@@ -153,6 +153,18 @@ export function evaluateGamePublicationReadiness(
       priority: "recommended",
     },
     {
+      id: "compatibility-verification",
+      label: "Verificación de compatibilidad",
+      detail: "Estado, origen y fecha permiten distinguir datos declarados, revisados o probados sin mezclarlos con la confianza del estimador.",
+      section: "requisitos",
+      complete: Boolean(
+        game.compatibilityMetadata?.status &&
+          game.compatibilityMetadata?.source &&
+          game.compatibilityMetadata?.verifiedAt
+      ),
+      priority: "recommended",
+    },
+    {
       id: "performance",
       label: "Estimación de FPS",
       detail: "Una calibración editorial o histórica permite adaptar los FPS al hardware de cada visitante.",
