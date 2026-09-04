@@ -59,15 +59,29 @@ function statusLabel(resource: MultimediaLibraryResource) {
   const status = resource.hygiene?.status;
   if (status === "active") return "En uso";
   if (status === "reserved") return "Reserva";
-  if (status === "published-only") return "Sólo publicación actual";
+  if (status === "published-only") return "Publicado";
+  if (status === "historical") return "Historial";
   if (status === "unused") return "Sin uso";
   return "Disponible";
 }
 
 function statusTone(resource: MultimediaLibraryResource) {
   if (resource.hygiene?.blocksPublication) return "warning";
-  if (resource.hygiene?.status === "active") return "ready";
+  if (
+    resource.hygiene?.status === "active" ||
+    resource.hygiene?.status === "reserved"
+  ) {
+    return "ready";
+  }
   return "neutral";
+}
+
+function isProtectedResource(resource: MultimediaLibraryResource) {
+  const status = resource.hygiene?.status;
+  return status === "active" ||
+    status === "reserved" ||
+    status === "published-only" ||
+    status === "historical";
 }
 
 function libraryFilterMatch(
@@ -76,7 +90,7 @@ function libraryFilterMatch(
 ) {
   if (filter === "all") return true;
   if (filter === "unused") return resource.hygiene?.blocksPublication === true;
-  return resource.hygiene?.status === "active" || resource.hygiene?.status === "reserved";
+  return isProtectedResource(resource);
 }
 
 function modeLabel(mode: string | null | undefined) {
@@ -163,6 +177,11 @@ export default function GameMultimediaUtilityRail({
   const stale = state !== null && state.revision !== revision;
   const hygiene = state?.hygiene;
   const requirements = state?.requirements;
+  const protectedCount =
+    (hygiene?.active ?? 0) +
+    (hygiene?.reserved ?? 0) +
+    (hygiene?.publishedOnly ?? 0) +
+    (hygiene?.historical ?? 0);
   const mandatoryReadyCount = requirements
     ? [
         requirements.cover.cropReady,
@@ -218,17 +237,31 @@ export default function GameMultimediaUtilityRail({
       return <span className={styles.libraryBundledBadge}>Base</span>;
     }
 
-    const publishedOnly = resource.hygiene?.status === "published-only";
-    const message = publishedOnly
-      ? "Este master ya no forma parte del borrador, pero todavía lo usa la publicación actual. Se marcará para retirar y el archivo físico se conservará hasta publicar el cambio. ¿Continuar?"
-      : "Este master no está asignado al borrador. Se eliminará de la biblioteca y, si no lo usa una publicación anterior, también del almacenamiento. ¿Continuar?";
+    if (resource.hygiene?.status !== "unused") {
+      return (
+        <span
+          className={styles.libraryBundledBadge}
+          title={
+            resource.hygiene?.status === "historical"
+              ? "Protegido porque lo necesita una publicación histórica restaurable"
+              : resource.hygiene?.status === "published-only"
+                ? "Protegido porque lo utiliza la publicación pública actual"
+                : "Protegido porque forma parte del borrador"
+          }
+        >
+          Protegido
+        </span>
+      );
+    }
 
     return (
       <form
         action={`/api/admin/content/games/${encodeURIComponent(slug)}/media-resource-delete`}
         method="post"
         onSubmit={(event) => {
-          if (!window.confirm(message)) event.preventDefault();
+          if (!window.confirm("Este master no tiene ninguna referencia editorial ni histórica. Se eliminará de la biblioteca y del almacenamiento. ¿Continuar?")) {
+            event.preventDefault();
+          }
         }}
       >
         <input type="hidden" name="expectedRevision" value={currentRevision} />
@@ -243,7 +276,7 @@ export default function GameMultimediaUtilityRail({
           className={styles.libraryDeleteButton}
           disabled={stale}
           aria-label={`Eliminar ${multimediaShortName(resource.src)} de la biblioteca`}
-          title={publishedOnly ? "Retirar al publicar" : "Eliminar de la biblioteca"}
+          title="Eliminar master sin uso"
         >
           <Trash2 size={15} aria-hidden="true" />
         </button>
@@ -349,8 +382,8 @@ export default function GameMultimediaUtilityRail({
                 : <TriangleAlert size={15} aria-hidden="true" />}
               <span>
                 {hygiene?.ready
-                  ? "Sin archivos editoriales sin uso"
-                  : `${hygiene?.blockingCount ?? 0} recurso${hygiene?.blockingCount === 1 ? "" : "s"} por asignar o retirar antes de publicar`}
+                  ? "Sin masters editoriales huérfanos"
+                  : `${hygiene?.blockingCount ?? 0} master${hygiene?.blockingCount === 1 ? "" : "s"} sin referencia por asignar o eliminar antes de publicar`}
               </span>
             </div>
 
@@ -476,7 +509,7 @@ export default function GameMultimediaUtilityRail({
         <ContextualMediaDialog
           eyebrow="BIBLIOTECA MULTIMEDIA"
           title="Biblioteca multimedia compartida"
-          description="Administra masters reutilizables y resuelve cualquier recurso sin uso antes de publicar."
+          description="Administra masters reutilizables. Los recursos que sostienen borrador, publicación o historial se conservan protegidos."
           onClose={() => setLibraryOpen(false)}
         >
           <div className={styles.libraryDialogTopbar}>
@@ -492,7 +525,7 @@ export default function GameMultimediaUtilityRail({
 
           <div className={styles.libraryFilters} role="group" aria-label="Filtrar biblioteca">
             <button type="button" data-active={libraryFilter === "all"} onClick={() => setLibraryFilter("all")}>Todos · {resources.length}</button>
-            <button type="button" data-active={libraryFilter === "active"} onClick={() => setLibraryFilter("active")}>En uso · {(hygiene?.active ?? 0) + (hygiene?.reserved ?? 0)}</button>
+            <button type="button" data-active={libraryFilter === "active"} onClick={() => setLibraryFilter("active")}>Referenciados · {protectedCount}</button>
             <button type="button" data-active={libraryFilter === "unused"} onClick={() => setLibraryFilter("unused")}>Por resolver · {hygiene?.blockingCount ?? 0}</button>
           </div>
 
@@ -500,8 +533,8 @@ export default function GameMultimediaUtilityRail({
             <div className={styles.libraryDialogWarning} role="alert">
               <TriangleAlert size={17} aria-hidden="true" />
               <div>
-                <strong>La publicación quedará bloqueada mientras existan masters editoriales sin referencia en el borrador.</strong>
-                <span>Asígnalos a un destino/Galería o elimínalos. Si todavía los usa la publicación actual, al eliminar se programan para retirarse cuando publiques el cambio.</span>
+                <strong>La publicación quedará bloqueada mientras existan masters editoriales realmente huérfanos.</strong>
+                <span>Asígnalos a un destino o Galería, o elimínalos. Los masters necesarios para la publicación actual o para un snapshot histórico restaurable se identifican como protegidos y no se tratan como basura.</span>
               </div>
             </div>
           )}
@@ -527,7 +560,7 @@ export default function GameMultimediaUtilityRail({
             <div><Sparkles size={18} aria-hidden="true" /><p><strong>Fondo · adaptable</strong><span>Es opcional. Puede usar Imagen, Video o Imagen + hover, o volver al fondo global.</span></p></div>
             <div><MonitorPlay size={18} aria-hidden="true" /><p><strong>Contenedor · adaptable</strong><span>Es obligatorio e independiente del Hero; adapta foco y zoom al tamaño real de la ficha.</span></p></div>
             <div><Images size={18} aria-hidden="true" /><p><strong>Galería · mínimo 1 recurso</strong><span>Admite hasta 8 imágenes y videos combinados. Cada elemento confirma su propio recorte y conserva su orden editorial.</span></p></div>
-            <div><CheckCircle2 size={18} aria-hidden="true" /><p><strong>Higiene de masters</strong><span>Todo master editorial debe estar referenciado por el borrador o retirarse antes de publicar. Los archivos todavía usados por la publicación actual se conservan hasta que dejen de ser necesarios.</span></p></div>
+            <div><CheckCircle2 size={18} aria-hidden="true" /><p><strong>Higiene de masters</strong><span>Sólo un master editorial sin ninguna referencia de borrador, publicación actual ni historial restaurable es un archivo huérfano. Los demás aparecen protegidos y no pueden eliminarse desde Biblioteca.</span></p></div>
           </div>
         </ContextualMediaDialog>
       )}
@@ -549,7 +582,7 @@ export default function GameMultimediaUtilityRail({
           </div>
           {addKind === "image" ? (
             <div className={styles.addResourceBody}>
-              <p>El WebP queda guardado por hash. Si no lo asignas, Biblioteca lo marcará como pendiente y Publicación no permitirá dejarlo como archivo basura.</p>
+              <p>El WebP queda guardado por hash. Si no lo asignas y ningún snapshot lo necesita, Biblioteca lo marcará como pendiente y Publicación no permitirá dejarlo como archivo huérfano.</p>
               <GameMediaUploadForm
                 slug={slug}
                 revision={currentRevision}
@@ -559,7 +592,7 @@ export default function GameMultimediaUtilityRail({
             </div>
           ) : (
             <div className={styles.addResourceBody}>
-              <p>El WebM editorial se crea como master reutilizable. Los recortes de cada destino se guardan después como metadata y el master debe quedar asignado antes de publicar.</p>
+              <p>El WebM editorial se crea como master reutilizable. Los recortes de cada destino se guardan después como metadata y el master debe quedar asignado antes de publicar si ningún snapshot existente lo protege.</p>
               <GameVideoLibraryEditor slug={slug} revision={currentRevision} />
             </div>
           )}
