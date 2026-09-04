@@ -13,6 +13,9 @@ import {
   rankPersonalizedRecommendations,
 } from "@/lib/home/account-personalization";
 import {
+  HOME_HERO_MAX_SLIDES,
+} from "@/lib/home/hero-contract";
+import {
   resolveHomeCollectionGames,
 } from "@/lib/home/ranking";
 import type { Game } from "@/types/game";
@@ -105,7 +108,7 @@ export function buildHomeGameCollections(
       "hero",
       resolved.curation.hero.mode,
       resolved.heroSlugs,
-      4
+      HOME_HERO_MAX_SLIDES
     ),
     popularGames: resolveHomeCollectionGames(
       catalog,
