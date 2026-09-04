@@ -1,4 +1,8 @@
 import {
+  isGameGalleryItemConfirmed,
+  resolveGameGalleryItems,
+} from "./game-gallery-media";
+import {
   resolveGameDestinationImage,
   resolveGameDestinationMediaMode,
 } from "./game-video-media";
@@ -136,10 +140,10 @@ export function evaluateGameMediaRequirements(game: Game) {
       )
     : { assigned: true, cropReady: true };
 
-  const screenshots = game.screenshots ?? [];
-  const galleryAssigned = screenshots.length > 0;
-  const galleryCropReady = galleryAssigned && screenshots.every(
-    (src) => isImageCropConfirmed(game.imageMedia?.gallery?.[src])
+  const galleryItems = resolveGameGalleryItems(game);
+  const galleryAssigned = galleryItems.length > 0;
+  const galleryCropReady = galleryAssigned && galleryItems.every(
+    (item) => isGameGalleryItemConfirmed(game, item)
   );
 
   return {
@@ -173,6 +177,9 @@ export function evaluateGameMediaRequirements(game: Game) {
       assigned: galleryAssigned,
       cropReady: galleryCropReady,
       minimum: 1,
+      count: galleryItems.length,
+      imageCount: galleryItems.filter((item) => item.kind === "image").length,
+      videoCount: galleryItems.filter((item) => item.kind === "video").length,
     },
     ready:
       cover.cropReady &&
