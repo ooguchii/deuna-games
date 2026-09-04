@@ -29,6 +29,7 @@ type MediaHygieneSummary = {
   blockingCount: number;
   unused: number;
   publishedOnly: number;
+  historical: number;
 };
 
 type GamePublicationWorkspaceProps = {
@@ -104,7 +105,7 @@ function RequestNotice({
     return (
       <div className={`${styles.notice} ${styles.noticeError}`}>
         <strong>Publicación bloqueada por higiene multimedia.</strong>{" "}
-        Hay masters editoriales que ya no están referenciados por el borrador. Asígnalos o retíralos desde Biblioteca multimedia antes de publicar.{" "}
+        Hay masters editoriales realmente huérfanos: no los usa el borrador, la publicación actual ni ningún snapshot histórico restaurable. Asígnalos o elimínalos desde Biblioteca multimedia antes de publicar.{" "}
         <Link href={`/admin/juegos/${encodeURIComponent(slug)}?seccion=multimedia`}>
           Resolver Biblioteca multimedia
         </Link>
@@ -383,8 +384,8 @@ export default function GamePublicationWorkspace({
               <strong>Higiene multimedia</strong>
               <small>
                 {mediaHygiene.ready
-                  ? "Todos los masters editoriales están referenciados por el borrador o retirados de forma segura."
-                  : `${mediaHygiene.blockingCount} master${mediaHygiene.blockingCount === 1 ? "" : "s"} sin referencia en el borrador: ${mediaHygiene.unused} sin uso y ${mediaHygiene.publishedOnly} usado${mediaHygiene.publishedOnly === 1 ? "" : "s"} sólo por la publicación actual.`}
+                  ? "No hay masters editoriales huérfanos. Los recursos necesarios para borrador, publicación o historial permanecen protegidos."
+                  : `${mediaHygiene.blockingCount} master${mediaHygiene.blockingCount === 1 ? "" : "s"} sin ninguna referencia editorial ni histórica. Asígnalos o elimínalos desde Biblioteca.`}
               </small>
             </span>
             <span className={styles.checkState}>
@@ -467,7 +468,7 @@ export default function GamePublicationWorkspace({
             <div className={styles.advisory}>
               <AlertTriangle size={17} aria-hidden="true" />
               <span>
-                Hay {mediaHygiene.blockingCount} master{mediaHygiene.blockingCount === 1 ? "" : "s"} editorial{mediaHygiene.blockingCount === 1 ? "" : "es"} sin referencia en el borrador. Asígnalos o retíralos desde Biblioteca multimedia antes de publicar.
+                Hay {mediaHygiene.blockingCount} master{mediaHygiene.blockingCount === 1 ? "" : "s"} editorial{mediaHygiene.blockingCount === 1 ? "" : "es"} realmente huérfano{mediaHygiene.blockingCount === 1 ? "" : "s"}. Asígnalos a un destino o Galería, o elimínalos desde Biblioteca multimedia antes de publicar.
               </span>
             </div>
           )}
