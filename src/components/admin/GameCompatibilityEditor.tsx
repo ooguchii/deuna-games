@@ -1,3 +1,7 @@
+import {
+  TriangleAlert,
+} from "lucide-react";
+
 import type {
   Game,
   GameHardwareRequirements,
@@ -22,6 +26,15 @@ function legacyMinimum(
   return Object.values(minimum).some(Boolean) ? minimum : undefined;
 }
 
+function hasRequirements(
+  requirements: GameHardwareRequirements | undefined
+) {
+  return Boolean(
+    requirements &&
+    Object.values(requirements).some((value) => Boolean(value?.trim()))
+  );
+}
+
 export default function GameCompatibilityEditor({
   game,
   revision,
@@ -35,6 +48,10 @@ export default function GameCompatibilityEditor({
   const minimum = requirements?.minimum ?? legacyMinimum(requirements);
   const recommended = requirements?.recommended;
   const verification = game.compatibilityMetadata;
+  const hasPcRequirements =
+    hasRequirements(minimum) || hasRequirements(recommended);
+  const pcDeclared = game.platforms?.includes("PC") ?? false;
+  const legacyMismatch = hasPcRequirements && !pcDeclared;
 
   return (
     <section className={adminStyles.editorPanel}>
@@ -55,9 +72,18 @@ export default function GameCompatibilityEditor({
           <GamePlatformEditor initialPlatforms={game.platforms ?? []} />
         </div>
 
+        {legacyMismatch && (
+          <div className={`${adminStyles.editorNotice} ${adminStyles.editorNoticeWarning} ${adminStyles.fieldWide}`}>
+            <TriangleAlert size={17} aria-hidden="true" />
+            Este borrador histórico contiene requisitos de PC pero PC no figura entre sus plataformas. Para volver a guardar Compatibilidad, declara PC arriba o elimina los requisitos. Así evitamos publicar datos contradictorios sin alterar snapshots antiguos automáticamente.
+          </div>
+        )}
+
         <div className={`${adminStyles.tableSummary} ${adminStyles.fieldWide}`}>
           <strong>Requisitos mínimos · PC</strong>
-          <span>Equipo base para ejecutar el juego. Déjalo vacío si todavía no hay requisitos confirmados.</span>
+          <span>
+            Equipo base para ejecutar el juego. Cualquier requisito de hardware exige que PC esté seleccionado entre las plataformas.
+          </span>
         </div>
 
         <label>
@@ -88,7 +114,7 @@ export default function GameCompatibilityEditor({
 
         <div className={`${adminStyles.tableSummary} ${adminStyles.fieldWide}`}>
           <strong>Requisitos recomendados · PC</strong>
-          <span>Configuración sugerida para una experiencia mejor.</span>
+          <span>Configuración sugerida para una experiencia mejor. También requiere PC declarado.</span>
         </div>
 
         <label>
