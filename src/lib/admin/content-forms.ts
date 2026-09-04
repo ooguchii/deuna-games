@@ -209,6 +209,19 @@ const downloadSourceFormSchema = z
   })
   .strict();
 
+const optionalDistributionChannelSchema = z
+  .enum(["", "stable", "beta", "testing"])
+  .transform((value) => value || undefined);
+
+const optionalSha256Schema = z
+  .string()
+  .trim()
+  .refine(
+    (value) => value === "" || /^[a-f0-9]{64}$/i.test(value),
+    "El SHA-256 debe contener exactamente 64 caracteres hexadecimales."
+  )
+  .transform((value) => value ? value.toLowerCase() : undefined);
+
 const optionalPositiveNumber = z
   .string()
   .trim()
@@ -386,6 +399,8 @@ export const editorialGameDownloadFormSchema = z.object({
   sizeGb: optionalPositiveNumber,
   fileCount: optionalPositiveInteger,
   platform: optionalText(80),
+  channel: optionalDistributionChannelSchema,
+  checksumSha256: optionalSha256Schema,
   sourcesJson: downloadSourcesJsonSchema,
 });
 
