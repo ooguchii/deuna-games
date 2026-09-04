@@ -153,20 +153,32 @@
 }
 
 .stackCard {
-  --stack-index: 0;
   position: absolute;
-  top: calc(12px + var(--stack-index) * 10px);
-  left: calc(var(--stack-index) * 72px);
-  z-index: calc(6 - var(--stack-index));
+  top: 12px;
+  left: 0;
+  z-index: 6;
   display: grid;
   gap: 7px;
   width: 145px;
-  transform:
-    translateZ(calc(var(--stack-index) * -60px))
-    scale(calc(1 - var(--stack-index) * 0.07))
-    rotateY(-8deg);
+  transform: translateZ(0) scale(1) rotateY(-8deg);
   transform-origin: left center;
-  opacity: calc(1 - var(--stack-index) * 0.18);
+  opacity: 1;
+}
+
+.stackCard:nth-child(2) {
+  top: 22px;
+  left: 72px;
+  z-index: 5;
+  transform: translateZ(-60px) scale(0.93) rotateY(-8deg);
+  opacity: 0.82;
+}
+
+.stackCard:nth-child(3) {
+  top: 32px;
+  left: 144px;
+  z-index: 4;
+  transform: translateZ(-120px) scale(0.86) rotateY(-8deg);
+  opacity: 0.64;
 }
 
 .coverFrame {
@@ -395,8 +407,15 @@
   }
 
   .stackCard {
-    left: calc(var(--stack-index) * 54px);
     width: 132px;
+  }
+
+  .stackCard:nth-child(2) {
+    left: 54px;
+  }
+
+  .stackCard:nth-child(3) {
+    left: 108px;
   }
 }
 
@@ -413,7 +432,9 @@
     margin-left: 0;
   }
 
-  .stackCard {
+  .stackCard,
+  .stackCard:nth-child(2),
+  .stackCard:nth-child(3) {
     position: relative;
     top: auto;
     left: auto;
@@ -448,7 +469,8 @@
     display: none;
   }
 
-  .stackCard {
+  .stackCard,
+  .stackCard:nth-child(2) {
     width: min(46%, 160px);
   }
 
