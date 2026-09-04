@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import {
+  getAccountGameRating,
   saveAccountGameRating,
 } from "@/lib/accounts/game-rating-service";
 import {
@@ -21,14 +22,14 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 const fields = ["gameSlug", "rating"] as const;
-
+const gameSlugSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(160)
+  .regex(/^[a-z0-9][a-z0-9-]*$/);
 const schema = z.object({
-  gameSlug: z
-    .string()
-    .trim()
-    .min(1)
-    .max(160)
-    .regex(/^[a-z0-9][a-z0-9-]*$/),
+  gameSlug: gameSlugSchema,
   rating: z
     .string()
     .regex(/^[1-5]$/)
@@ -43,6 +44,35 @@ function json(
     status,
     headers: { "Cache-Control": "no-store" },
   });
+}
+
+export async function GET(request: NextRequest) {
+  const session = await resolveAccountSession(
+    await readAccountSessionToken()
+  );
+  if (!session) {
+    return json({ ok: false, error: "sesion" }, 401);
+  }
+
+  const parsed = gameSlugSchema.safeParse(
+    request.nextUrl.searchParams.get("gameSlug")
+  );
+  if (!parsed.success) {
+    return json({ ok: false, error: "datos" }, 400);
+  }
+
+  try {
+    const rating = await getAccountGameRating(
+      session.userId,
+      parsed.data
+    );
+    return json({
+      ok: true,
+      rating: rating?.rating ?? null,
+    });
+  } catch {
+    return json({ ok: false, error: "servicio" }, 503);
+  }
 }
 
 export async function POST(request: NextRequest) {
