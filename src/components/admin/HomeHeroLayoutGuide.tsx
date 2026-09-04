@@ -10,6 +10,10 @@ import {
 
 import AdminMediaThumbnail from "@/components/admin/AdminMediaThumbnail";
 import {
+  HOME_HERO_MAX_SLIDES,
+  HOME_HERO_VISIBLE_PREVIEWS,
+} from "@/lib/home/hero-contract";
+import {
   evaluateGameMediaRequirements,
   isImageCropConfirmed,
   LEGACY_DESTINATION_IMAGE_ASPECTS,
@@ -62,11 +66,11 @@ function HeroDestinationPreview({ game }: { game: Game }) {
   );
 }
 
-function NextDestinationPreview({ game }: { game: Game }) {
+function CoverDestinationPreview({ game }: { game: Game }) {
   if (!game.coverImage) {
     return (
-      <span className={styles.emptyFrame} aria-label="Vista Siguiente sin imagen de Portada">
-        <ImageIcon size={24} aria-hidden="true" />
+      <span className={styles.emptyFrame} aria-label="Vista de Portada sin imagen asignada">
+        <ImageIcon size={20} aria-hidden="true" />
       </span>
     );
   }
@@ -79,12 +83,12 @@ function NextDestinationPreview({ game }: { game: Game }) {
       viewport={game.imageMedia?.cover}
       frameAspect={4 / 5}
       sizes="220px"
-      label={`Portada 4:5 de ${game.title} como vista Siguiente`}
+      label={`Portada 4:5 de ${game.title}`}
     />
   );
 }
 
-function nextPreviewReady(game: Game) {
+function coverPreviewReady(game: Game) {
   return Boolean(
     game.coverImage &&
     isImageCropConfirmed(
@@ -108,80 +112,93 @@ export default function HomeHeroLayoutGuide({ games }: { games: Game[] }) {
   if (games.length === 0) return null;
 
   const active = games[0];
-  const next = games[1] ?? games[0];
+  const previews = games.slice(
+    1,
+    Math.min(games.length, HOME_HERO_VISIBLE_PREVIEWS + 1)
+  );
   const activeRequirements = evaluateGameMediaRequirements(active);
-  const nextCoverReady = nextPreviewReady(next);
 
   return (
     <section className={styles.guide} aria-labelledby="home-hero-layout-title">
       <header className={styles.heading}>
         <div>
           <span className={styles.eyebrow}>COMPOSICIÓN REAL DE INICIO</span>
-          <h3 id="home-hero-layout-title">Hero compacto y vista Siguiente</h3>
+          <h3 id="home-hero-layout-title">Carrusel cinematográfico con profundidad</h3>
           <p>
-            El Hero principal usa un recorte panorámico 3:1. La tarjeta pequeña de la derecha ya no es un pedazo del siguiente Hero: usa exclusivamente la imagen de Portada 4:5 del siguiente juego.
+            El juego activo conserva su recurso Hero y los próximos títulos aparecen como una pila de Portadas 4:5. En escritorio la transición desplaza cada tarjeta hacia su nueva posición; en móvil la pila se simplifica para preservar legibilidad y swipe.
           </p>
         </div>
         <div className={styles.contract}>
-          <span>Contrato visual</span>
-          <strong>Hero 3:1</strong>
-          <strong>Siguiente 4:5</strong>
+          <span>Contrato multimedia</span>
+          <strong>Hero · 3:1</strong>
+          <strong>Previews · Portada 4:5</strong>
+          <strong>Hasta {HOME_HERO_MAX_SLIDES} juegos visibles</strong>
         </div>
       </header>
 
-      <div className={styles.composition}>
-        <article className={styles.previewCard} data-kind="hero">
-          <div className={styles.previewFrame} data-kind="hero">
+      <div className={styles.cinematicPreview}>
+        <article className={styles.heroPane}>
+          <div className={styles.heroFrame}>
             <HeroDestinationPreview game={active} />
+            <span className={styles.heroShade} aria-hidden="true" />
+            <span className={styles.heroMockCopy} aria-hidden="true">
+              <small>{active.category}</small>
+              <strong>{active.shortTitle ?? active.title}</strong>
+              {active.highlightedTitle && <b>{active.highlightedTitle}</b>}
+            </span>
           </div>
+
           <div className={styles.previewMeta}>
             <div>
               <strong>{active.title}</strong>
-              <span>Hero principal · 3:1</span>
+              <span>Juego activo · recurso Hero</span>
             </div>
             <Status ready={activeRequirements.hero.cropReady}>
-              {activeRequirements.hero.cropReady ? "Recorte listo" : "Reconfirmar"}
+              {activeRequirements.hero.cropReady ? "Hero listo" : "Reconfirmar Hero"}
             </Status>
           </div>
+
           <div className={styles.actions}>
             <Link href={`/admin/juegos/${encodeURIComponent(active.slug)}?seccion=multimedia`}>
               <LayoutTemplate size={15} aria-hidden="true" />
-              Editar Hero 3:1
+              Editar Hero
             </Link>
           </div>
         </article>
 
-        <article className={styles.previewCard} data-kind="next">
-          <div className={styles.previewFrame} data-kind="next">
-            <NextDestinationPreview game={next} />
-          </div>
-          <div className={styles.previewMeta}>
-            <div>
-              <strong>{next.title}</strong>
-              <span>Siguiente · Portada 4:5</span>
+        <div className={styles.previewStack} aria-label="Próximos juegos del carrusel">
+          {previews.length > 0 ? previews.map((game, index) => (
+            <article
+              key={game.slug}
+              className={styles.stackCard}
+              style={{ "--stack-index": index } as React.CSSProperties}
+            >
+              <div className={styles.coverFrame}>
+                <CoverDestinationPreview game={game} />
+                <span className={styles.coverShade} aria-hidden="true" />
+                <strong>{game.shortTitle ?? game.title}</strong>
+              </div>
+              <Status ready={coverPreviewReady(game)}>
+                {coverPreviewReady(game) ? "Portada lista" : "Falta Portada 4:5"}
+              </Status>
+            </article>
+          )) : (
+            <div className={styles.noPreviews}>
+              Añade más juegos al Hero para ver la pila cinematográfica.
             </div>
-          </div>
-          <Status ready={nextCoverReady}>
-            {nextCoverReady ? "Vista lista" : "Falta Portada 4:5"}
-          </Status>
-          <div className={styles.actions}>
-            <Link href={`/admin/juegos/${encodeURIComponent(next.slug)}?seccion=multimedia`}>
-              Editar Portada
-              <ArrowRight size={14} aria-hidden="true" />
-            </Link>
-          </div>
-        </article>
+          )}
+        </div>
       </div>
 
       <div className={styles.queue}>
         <div className={styles.queueTitle}>
           <strong>Estado de los juegos del carrusel</strong>
-          <span>El orden corresponde a la vista previa de Curaduría.</span>
+          <span>El orden corresponde a la vista previa publicada de Curaduría.</span>
         </div>
         <ol className={styles.queueList}>
-          {games.slice(0, 4).map((game, index) => {
+          {games.slice(0, HOME_HERO_MAX_SLIDES).map((game, index) => {
             const requirements = evaluateGameMediaRequirements(game);
-            const coverReady = nextPreviewReady(game);
+            const coverReady = coverPreviewReady(game);
             return (
               <li key={game.slug}>
                 <strong>{index + 1}. {game.title}</strong>
@@ -194,6 +211,12 @@ export default function HomeHeroLayoutGuide({ games }: { games: Game[] }) {
                     {coverReady ? <CheckCircle2 size={12} aria-hidden="true" /> : <TriangleAlert size={12} aria-hidden="true" />}
                     Portada 4:5
                   </span>
+                </div>
+                <div className={styles.actions}>
+                  <Link href={`/admin/juegos/${encodeURIComponent(game.slug)}?seccion=multimedia`}>
+                    Multimedia
+                    <ArrowRight size={13} aria-hidden="true" />
+                  </Link>
                 </div>
               </li>
             );
