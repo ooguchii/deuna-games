@@ -318,8 +318,7 @@ export const gameCompatibilitySectionSchema = z
     verifiedAt: optionalCanonicalDateSchema,
   })
   .superRefine((value, context) => {
-    const hasCompatibilityData = Boolean(
-      value.platformsJson?.length ||
+    const hasPcRequirements = Boolean(
       value.minimumSystem ||
       value.minimumProcessor ||
       value.minimumRam ||
@@ -331,11 +330,23 @@ export const gameCompatibilitySectionSchema = z
       value.recommendedGraphics ||
       value.recommendedStorage
     );
+    const hasCompatibilityData = Boolean(
+      value.platformsJson?.length || hasPcRequirements
+    );
     const hasVerification = Boolean(
       value.verificationStatus ||
       value.verificationSource ||
       value.verifiedAt
     );
+
+    if (hasPcRequirements && !value.platformsJson?.includes("PC")) {
+      context.addIssue({
+        code: "custom",
+        path: ["platformsJson"],
+        message:
+          "Los requisitos de hardware son específicos de PC. Declara PC como plataforma o elimina esos requisitos antes de guardar Compatibilidad.",
+      });
+    }
 
     if (!hasCompatibilityData && hasVerification) {
       context.addIssue({
@@ -355,4 +366,5 @@ export const gameMediaAccessibilitySectionSchema = z.object({
 export const gameValuationSectionSchema = z.object({
   expectedRevision: expectedRevisionSchema,
   rating: optionalRating,
+  valuationMode: z.enum(["manual", "insight"]),
 });
