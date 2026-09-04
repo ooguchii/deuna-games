@@ -52,8 +52,7 @@
   animation: heroDepthEnter 620ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-.heroSection[data-composition="studio"] .mainCard { border-radius: 28px; }
-.heroSection[data-composition="cinema"] .mainCard { border-radius: 12px; box-shadow: 0 34px 82px rgba(0, 0, 0, 0.56), 0 0 52px color-mix(in srgb, var(--brand) 13%, transparent); }
+.heroSection .mainCard { border-width: var(--hero-editor-border, 1px); border-radius: var(--hero-editor-radius, 18px); box-shadow: 0 34px 82px rgb(0 0 0 / calc(var(--hero-editor-shadow, .55) * .72)), 0 0 52px color-mix(in srgb, var(--brand) calc(var(--hero-editor-glow, .18) * 100%), transparent); transition-duration: var(--hero-editor-duration, 620ms); }
 .heroSection[data-composition="focus"] .cinematicStage { grid-template-columns: minmax(0, 1fr) clamp(190px, 13vw, 224px); }
 
 .media,
