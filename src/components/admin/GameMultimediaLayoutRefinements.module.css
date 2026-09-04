@@ -1,0 +1,7 @@
+.assignmentHost :global([class*="summarySection"]) {
+  display: none !important;
+}
+
+.assignmentHost :global([class*="mediaWorkspace"]) {
+  margin-top: 0 !important;
+}
