@@ -31,9 +31,7 @@ import {
 } from "@/lib/media/preview-video-policy";
 
 import enhancementStyles from "./MediaViewportEditorEnhancements.module.css";
-import baseStyles from "./VideoTrimEditor.module.css";
-
-const styles = { ...baseStyles, ...enhancementStyles };
+import styles from "./VideoTrimEditor.module.css";
 
 const VIEWPORT_KEYBOARD_STEP = 0.02;
 const VIEWPORT_KEYBOARD_LARGE_STEP = 0.1;
@@ -765,10 +763,10 @@ export default function MediaViewportEditor({
               >
                 {showGuides && (
                   <>
-                    <span className={`${styles.viewportGuideVertical} ${styles.viewportGuideOne}`} />
-                    <span className={`${styles.viewportGuideVertical} ${styles.viewportGuideTwo}`} />
-                    <span className={`${styles.viewportGuideHorizontal} ${styles.viewportGuideThree}`} />
-                    <span className={`${styles.viewportGuideHorizontal} ${styles.viewportGuideFour}`} />
+                    <span className={`${enhancementStyles.viewportGuideVertical} ${enhancementStyles.viewportGuideOne}`} />
+                    <span className={`${enhancementStyles.viewportGuideVertical} ${enhancementStyles.viewportGuideTwo}`} />
+                    <span className={`${enhancementStyles.viewportGuideHorizontal} ${enhancementStyles.viewportGuideThree}`} />
+                    <span className={`${enhancementStyles.viewportGuideHorizontal} ${enhancementStyles.viewportGuideFour}`} />
                   </>
                 )}
                 {!freeResizeEnabled && (
@@ -943,7 +941,7 @@ export default function MediaViewportEditor({
             </small>
           )}
 
-          <div className={`${styles.viewportPresets} ${styles.viewportPresetGrid}`} aria-label="Posiciones rápidas de encuadre">
+          <div className={`${styles.viewportPresets} ${enhancementStyles.viewportPresetGrid}`} aria-label="Posiciones rápidas de encuadre">
             {POSITION_PRESETS.map((preset) => (
               <button
                 key={preset.title}
@@ -960,7 +958,7 @@ export default function MediaViewportEditor({
 
           <button
             type="button"
-            className={styles.viewportGuideToggle}
+            className={enhancementStyles.viewportGuideToggle}
             data-active={showGuides}
             aria-pressed={showGuides}
             disabled={disabled}
@@ -1030,7 +1028,7 @@ export default function MediaViewportEditor({
       </div>
 
       {kind === "video" && (
-        <div className={styles.videoViewportTransport} aria-label="Navegación del video para revisar el encuadre">
+        <div className={enhancementStyles.videoViewportTransport} aria-label="Navegación del video para revisar el encuadre">
           <button
             type="button"
             disabled={disabled || duration <= 0}
