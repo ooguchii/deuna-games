@@ -13,6 +13,7 @@ export type MultimediaResourceHygieneStatus =
   | "active"
   | "reserved"
   | "published-only"
+  | "historical"
   | "unused";
 
 export type MultimediaResourceHygiene = {
@@ -99,6 +100,7 @@ export type MultimediaHygieneSummary = {
   active: number;
   reserved: number;
   publishedOnly: number;
+  historical: number;
   unused: number;
   blockingCount: number;
   blocking: MultimediaResourceHygiene[];
