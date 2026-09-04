@@ -60,8 +60,12 @@ assert(
   has(
     requirements,
     'cover: "4:5"',
-    'hero: "16:9"',
+    'hero: "3:1"',
     'card: "3:2"',
+    "LEGACY_DESTINATION_IMAGE_ASPECTS",
+    'hero: "16:9"',
+    "const effectiveAspect = viewport.aspect ?? legacyAspect",
+    "effectiveAspect === requiredAspect",
     'GAME_DETAIL_VIEWPORT_ASPECT = "source"',
     'const detailMode = resolveGameDestinationMediaMode(game, "detail")',
     "detail.cropReady",
@@ -72,7 +76,7 @@ assert(
     "background.cropReady",
     "galleryCropReady"
   ),
-  "Portada/Hero/Card deben conservar 4:5/16:9/3:2; Contenedor debe ser adaptable; Fondo activado y cada imagen/video de Galería deben exigir recortes confirmados."
+  "Portada/Hero/Card deben exigir 4:5/3:1/3:2 y detectar el Hero 16:9 histórico como recorte obsoleto; Contenedor, Fondo y Galería conservan sus reglas."
 );
 
 assert(
@@ -80,6 +84,7 @@ assert(
     types,
     "export type GameImageViewportAspect",
     '| "16:9"',
+    '| "3:1"',
     '| "3:2"',
     '| "1:1"',
     '| "4:5"',
@@ -87,6 +92,7 @@ assert(
     '| "free"',
     "aspect?: GameImageViewportAspect",
     "aspectRatio?: number",
+    "export type GameVideoViewportAspect",
     "detail?: GameImageViewport",
     "detail?: GameDestinationMediaMode",
     "export type GameDetailVideo",
@@ -96,13 +102,15 @@ assert(
     "galleryMedia?: GameGalleryItem[]",
     "confirmed?: true"
   ),
-  "El modelo debe persistir Galería mixta elegible y un Contenedor multimedia independiente sin duplicar archivos físicos."
+  "El modelo debe persistir 3:1, Galería mixta elegible y un Contenedor multimedia independiente sin duplicar archivos físicos."
 );
 
 assert(
   has(
     imageViewportPolicy,
     'DEFAULT_GALLERY_IMAGE_ASPECT = "16:9"',
+    '"3:1"',
+    '"3:1": 3',
     '"free"',
     "MIN_FREE_IMAGE_ASPECT_RATIO",
     "MAX_FREE_IMAGE_ASPECT_RATIO",
@@ -111,12 +119,14 @@ assert(
     "gameImageCropAspectLabel",
     'aspect === "free"'
   ),
-  "La política de imagen debe conservar compatibilidad 16:9 histórica y validar/presentar relaciones libres."
+  "La política de imagen debe modelar 3:1, conservar el fallback 16:9 histórico de Galería y validar/presentar relaciones libres."
 );
 
 assert(
   has(
     previewPolicy,
+    '"3:1"',
+    '3:1 · Hero panorámico',
     '"free"',
     'Libre · arrastra bordes y esquinas',
     "customAspectRatio?: number",
@@ -125,13 +135,16 @@ assert(
     'aspect === "free"',
     "customAspectRatio"
   ),
-  "El motor espacial debe modelar el modo Libre con una relación exacta y límites seguros."
+  "El motor espacial debe modelar Hero 3:1 y el modo Libre con una relación exacta y límites seguros."
 );
 
 assert(
   has(
     contentValidation,
     "imageViewportAspectSchema",
+    "fixedImageAspectSchema",
+    '"3:1"',
+    "aspect: fixedImageAspectSchema.optional()",
     '"free"',
     "detail: fixedImageViewportSchema.optional()",
     "detail: mediaModeSchema.optional()",
@@ -142,7 +155,7 @@ assert(
     'viewport.aspect === "free" && viewport.aspectRatio === undefined',
     'viewport.aspect !== "free" && viewport.aspectRatio !== undefined'
   ),
-  "La validación editorial debe validar la Galería mixta, reservar relaciones libres para imágenes y mantener el Contenedor sobre viewport adaptable fijo."
+  "La validación editorial debe aceptar 3:1 en destinos rígidos, validar Galería mixta y mantener Contenedor adaptable."
 );
 
 assert(
@@ -150,24 +163,34 @@ assert(
     workspace,
     "GAME_IMAGE_CROP_ASPECTS",
     "gameImageCropAspectLabel",
+    "isImageCropConfirmed",
+    "isVideoCropConfirmed",
+    "LEGACY_DESTINATION_IMAGE_ASPECTS",
     'import GameDetailMediaEditor from "@/components/admin/GameDetailMediaEditor"',
+    "Hero · 3:1",
+    "Recorte obligatorio · 3:1",
+    "COMPLETA LOS RECURSOS Y RECORTES · 3:1",
+    "frameAspect={3}",
     "Contenedor · adaptable",
     "Galería obligatoria · relación elegible",
-    "16:9, 3:2, 1:1, 4:5, 9:16 o Libre",
+    "16:9, 3:1, 3:2, 1:1, 4:5, 9:16 o Libre",
     "Libre habilita arrastre por bordes y esquinas",
     "cropStateLabel",
     "Recortes confirmados",
     "RECORTES CONFIRMADOS",
     "const pendingGalleryCrops = screenshots.filter(",
-    "imageMedia?.gallery?.[src]?.confirmed !== true",
+    "!isImageCropConfirmed(imageMedia?.gallery?.[src])",
     "const galleryCropReady = gallerySelectionReady && pendingGalleryCrops.length === 0",
     'title="Recorte de la captura"',
     "<span>F</span><h3>Galería del juego</h3>"
   ) &&
+    !workspace.includes("Hero · 16:9") &&
+    !workspace.includes("Recorte 16:9 del Hero") &&
+    !workspace.includes("Recorte obligatorio · 16:9") &&
     !workspace.includes("Galería obligatoria · 16:9") &&
     !workspace.includes("Cada captura asignada debe confirmar su encuadre 16:9") &&
     !workspace.includes("REQUISITO CUMPLIDO · RECORTES 16:9 CONFIRMADOS"),
-  "El workspace legado debe conservar Contenedor como destino E y la compatibilidad de edición de capturas mientras el administrador mixto toma Galería F."
+  "Multimedia debe presentar y validar Hero 3:1 en todos sus estados, sin conservar mensajes 16:9 obsoletos."
 );
 
 assert(
@@ -217,11 +240,14 @@ assert(
   has(
     imageEditor,
     "MediaViewportEditor",
+    "destinationPreview",
+    "VISTA REAL DEL DESTINO",
     'target === "gallery"',
     'target === "detail"',
     "GAME_DETAIL_VIEWPORT_ASPECT",
     "GALLERY_ASPECT_OPTIONS",
     '"16:9"',
+    '"3:1"',
     '"3:2"',
     '"1:1"',
     '"4:5"',
@@ -234,24 +260,27 @@ assert(
   ) &&
     !imageEditor.includes("resolvePreviewViewportCrop") &&
     !imageEditor.includes("storeEditorialWebp"),
-  "Galería y Contenedor deben usar el editor espacial común; sólo Galería persiste relación seleccionable."
+  "El editor debe mostrar una vista real grande de los destinos rígidos, incluida Hero 3:1, y conservar Galería/Contenedor sobre el editor espacial común."
 );
 
 assert(
   has(
     imageLayoutRoute,
-    'const legacyImageTargets = ["cover", "hero", "card", "gallery"] as const',
+    'const fixedImageTargets = ["cover", "hero", "card"] as const',
+    'const legacyImageTargets = [...fixedImageTargets, "gallery"] as const',
     'const targetSchema = z.enum([...legacyImageTargets, "detail"])',
     '"viewportAspect"',
     '"viewportAspectRatio"',
-    "expectsGalleryResource",
+    "expectsFixedAspect",
+    "REQUIRED_DESTINATION_ASPECTS[target.data]",
+    "viewport.aspect !== REQUIRED_DESTINATION_ASPECTS[target.data]",
     "parseGameImageViewport(",
     "confirmed: true",
     "saveGameMediaDraft"
   ) &&
     !imageLayoutRoute.includes("storeEditorialWebp") &&
     !imageLayoutRoute.includes("spawn("),
-  "La API de imagen debe guardar sólo metadata; relación/aspectRatio continúan reservados para Galería y detail guarda X/Y/zoom confirmado."
+  "La API de imagen debe guardar sólo metadata, exigir la relación exacta de destinos rígidos y reservar aspectRatio libre para Galería."
 );
 
 assert(
@@ -260,17 +289,19 @@ assert(
     "GAME_DETAIL_VIEWPORT_ASPECT",
     "function targetAspect(target: Target)",
     'target === "detail"',
+    "REQUIRED_DESTINATION_ASPECTS[target]",
     "MediaViewportEditor",
     'kind="video"'
   ) &&
     has(
       videoLayoutRoute,
       "GAME_DETAIL_VIEWPORT_ASPECT",
+      "REQUIRED_DESTINATION_ASPECTS[target]",
       'target === "detail"',
       "submittedAspect !== requiredAspect",
       "withGameVideoLayout"
     ),
-  "Portada/Hero/Card deben conservar relaciones rígidas; Contenedor usa source adaptable y ningún video hereda el modo Libre de Galería."
+  "Video debe heredar Hero 3:1 del contrato central; Contenedor usa source adaptable y ningún video hereda el modo Libre de Galería."
 );
 
 assert(
@@ -347,10 +378,10 @@ assert(
 
 if (failures.length) {
   console.error("Destinos multimedia: FAIL");
-  for (const failure of failures) console.error(`- ${failure}`);
+  for (const failure of failures) console.error(`- ${failure}`));
   process.exit(1);
 }
 
 console.log(
-  "Destinos multimedia: OK (Portada 4:5 · Hero 16:9 · Card 3:2 · Fondo adaptable · Contenedor adaptable independiente · Galería mixta elegible/Libre)."
+  "Destinos multimedia: OK (Portada 4:5 · Hero 3:1 · Card 3:2 · Fondo adaptable · Contenedor adaptable independiente · Galería mixta elegible/Libre)."
 );
