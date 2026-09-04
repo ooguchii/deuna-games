@@ -126,10 +126,12 @@ export function evaluateGamePublicationChanges(
       {
         platforms: draft.platforms,
         requirements: draft.requirements,
+        metadata: draft.compatibilityMetadata,
       },
       {
         platforms: published.platforms,
         requirements: published.requirements,
+        metadata: published.compatibilityMetadata,
       }
     )
   ) {
@@ -137,7 +139,7 @@ export function evaluateGamePublicationChanges(
       id: "compatibility",
       label: "Compatibilidad",
       detail:
-        "Cambian plataformas confirmadas o requisitos mínimos/recomendados.",
+        "Cambian plataformas, requisitos o el estado, origen y fecha de verificación de compatibilidad.",
       section: "requisitos",
     });
   }
