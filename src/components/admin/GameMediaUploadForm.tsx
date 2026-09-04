@@ -1,12 +1,16 @@
 "use client";
 
 import {
+  type ChangeEvent,
+  type DragEvent,
   type FormEvent,
+  useEffect,
   useRef,
   useState,
 } from "react";
 
-import styles from "../../app/admin/admin.module.css";
+import adminStyles from "../../app/admin/admin.module.css";
+import localStyles from "./GameMediaUploadForm.module.css";
 
 type GameMediaUploadFormProps = {
   slug: string;
@@ -213,6 +217,28 @@ function uploadRedirectError(state: string | null) {
   return "La imagen no pudo guardarse. La selección y los ajustes se mantienen para reintentar.";
 }
 
+function localImageError(file: File) {
+  if (file.size <= 0 || file.size > MAX_LOCAL_SOURCE_BYTES) {
+    return "La imagen local debe pesar como máximo 24 MB antes de normalizarla.";
+  }
+
+  if (
+    file.type &&
+    !acceptedLocalTypes.has(file.type.toLowerCase())
+  ) {
+    return "Usa una imagen PNG, JPEG, AVIF o WebP.";
+  }
+
+  return null;
+}
+
+function formatLocalFileSize(bytes: number) {
+  if (bytes >= 1024 * 1024) {
+    return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
+  }
+  return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+}
+
 export default function GameMediaUploadForm({
   slug,
   revision,
@@ -220,11 +246,15 @@ export default function GameMediaUploadForm({
   libraryOnly = false,
 }: GameMediaUploadFormProps) {
   const fileInput = useRef<HTMLInputElement>(null);
+  const previewUrlRef = useRef<string | null>(null);
   const [sourceMode, setSourceMode] =
     useState<SourceMode>("file");
   const [processingMode, setProcessingMode] =
     useState<ProcessingMode>("auto");
   const [sourceUrl, setSourceUrl] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [dragging, setDragging] = useState(false);
   const [quality, setQuality] = useState(88);
   const [maximumDimension, setMaximumDimension] =
     useState(2560);
@@ -233,9 +263,54 @@ export default function GameMediaUploadForm({
     null
   );
 
+  useEffect(() => () => {
+    if (previewUrlRef.current) {
+      URL.revokeObjectURL(previewUrlRef.current);
+      previewUrlRef.current = null;
+    }
+  }, []);
+
+  function setLocalFile(file: File | null) {
+    if (previewUrlRef.current) {
+      URL.revokeObjectURL(previewUrlRef.current);
+      previewUrlRef.current = null;
+    }
+
+    setSelectedFile(file);
+    setDragging(false);
+
+    if (!file) {
+      setPreviewUrl(null);
+      return;
+    }
+
+    const error = localImageError(file);
+    if (error) {
+      setPreviewUrl(null);
+      setStatus(error);
+      return;
+    }
+
+    const nextPreviewUrl = URL.createObjectURL(file);
+    previewUrlRef.current = nextPreviewUrl;
+    setPreviewUrl(nextPreviewUrl);
+    setStatus(null);
+  }
+
+  function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
+    setLocalFile(event.currentTarget.files?.[0] ?? null);
+  }
+
+  function handleFileDrop(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    if (busy) return;
+    const file = event.dataTransfer.files?.[0] ?? null;
+    setLocalFile(file);
+  }
+
   async function sourceBlob() {
     if (sourceMode === "file") {
-      const file = fileInput.current?.files?.[0];
+      const file = selectedFile ?? fileInput.current?.files?.[0];
 
       if (!file) {
         throw new Error(
@@ -243,25 +318,8 @@ export default function GameMediaUploadForm({
         );
       }
 
-      if (
-        file.size <= 0 ||
-        file.size > MAX_LOCAL_SOURCE_BYTES
-      ) {
-        throw new Error(
-          "La imagen local debe pesar como máximo 24 MB antes de normalizarla."
-        );
-      }
-
-      if (
-        file.type &&
-        !acceptedLocalTypes.has(
-          file.type.toLowerCase()
-        )
-      ) {
-        throw new Error(
-          "Usa una imagen PNG, JPEG, AVIF o WebP."
-        );
-      }
+      const error = localImageError(file);
+      if (error) throw new Error(error);
 
       return file;
     }
@@ -413,7 +471,7 @@ export default function GameMediaUploadForm({
 
   return (
     <form
-      className={styles.editorForm}
+      className={adminStyles.editorForm}
       method="post"
       encType="multipart/form-data"
       action={`/api/admin/content/games/${encodeURIComponent(slug)}/media-upload`}
@@ -429,7 +487,7 @@ export default function GameMediaUploadForm({
         <>
           <input type="hidden" name="kind" value="library" />
           <div
-            className={`${styles.tableSummary} ${styles.fieldWide}`}
+            className={`${adminStyles.tableSummary} ${adminStyles.fieldWide}`}
           >
             <strong>Destino · Biblioteca compartida</strong>
             <span>
@@ -458,10 +516,10 @@ export default function GameMediaUploadForm({
         <select
           value={sourceMode}
           onChange={(event) => {
-            setSourceMode(
-              event.target.value as SourceMode
-            );
+            const nextMode = event.target.value as SourceMode;
+            setSourceMode(nextMode);
             setStatus(null);
+            if (nextMode !== "file") setDragging(false);
           }}
         >
           <option value="file">Archivo de mi equipo</option>
@@ -470,17 +528,60 @@ export default function GameMediaUploadForm({
       </label>
 
       {sourceMode === "file" ? (
-        <label className={styles.fieldWide}>
+        <div className={`${adminStyles.fieldWide} ${localStyles.fileField}`}>
           <span>Archivo de imagen</span>
-          <input
-            ref={fileInput}
-            type="file"
-            accept="image/avif,image/jpeg,image/png,image/webp,.avif,.jpg,.jpeg,.png,.webp"
-            required
-          />
-        </label>
+          <div
+            className={localStyles.dropZone}
+            data-dragging={dragging}
+            onDragEnter={(event) => {
+              event.preventDefault();
+              if (!busy) setDragging(true);
+            }}
+            onDragOver={(event) => {
+              event.preventDefault();
+              if (!busy) setDragging(true);
+            }}
+            onDragLeave={(event) => {
+              if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
+              setDragging(false);
+            }}
+            onDrop={handleFileDrop}
+          >
+            <div className={localStyles.preview} aria-label="Vista previa de la imagen seleccionada">
+              {previewUrl ? (
+                <div
+                  className={localStyles.previewImage}
+                  style={{ backgroundImage: `url(${JSON.stringify(previewUrl).slice(1, -1)})` }}
+                  role="img"
+                  aria-label={selectedFile ? `Vista previa de ${selectedFile.name}` : "Vista previa de imagen"}
+                />
+              ) : (
+                <div className={localStyles.previewEmpty}>
+                  Arrastra una imagen o selecciónala desde tu equipo.
+                </div>
+              )}
+            </div>
+            <div className={localStyles.dropCopy}>
+              <strong>{dragging ? "Suelta la imagen aquí" : "Arrastra y suelta o elige un archivo"}</strong>
+              <span>PNG, JPEG, AVIF o WebP · máximo 24 MB antes de normalizar.</span>
+              <input
+                ref={fileInput}
+                className={localStyles.fileInput}
+                type="file"
+                accept="image/avif,image/jpeg,image/png,image/webp,.avif,.jpg,.jpeg,.png,.webp"
+                disabled={busy}
+                onChange={handleFileChange}
+              />
+              {selectedFile && (
+                <small title={selectedFile.name}>
+                  {selectedFile.name} · {formatLocalFileSize(selectedFile.size)}
+                </small>
+              )}
+            </div>
+          </div>
+        </div>
       ) : (
-        <label className={styles.fieldWide}>
+        <label className={adminStyles.fieldWide}>
           <span>URL directa de imagen</span>
           <input
             type="url"
@@ -497,7 +598,7 @@ export default function GameMediaUploadForm({
       )}
 
       <div
-        className={`${styles.tableSummary} ${styles.fieldWide}`}
+        className={`${adminStyles.tableSummary} ${adminStyles.fieldWide}`}
       >
         <strong>Preparación de la imagen</strong>
         <span>
@@ -557,7 +658,7 @@ export default function GameMediaUploadForm({
           </label>
         </>
       ) : (
-        <div className={styles.fieldWide}>
+        <div className={adminStyles.fieldWide}>
           <p>
             Automático conserva la resolución mientras sea segura, convierte PNG/JPEG/AVIF/WebP, elimina metadatos y reduce calidad o dimensiones sólo si hace falta para quedar por debajo de 6 MB.
           </p>
@@ -566,7 +667,7 @@ export default function GameMediaUploadForm({
 
       {status && (
         <div
-          className={`${styles.tableSummary} ${styles.fieldWide}`}
+          className={`${adminStyles.tableSummary} ${adminStyles.fieldWide}`}
           role="status"
           aria-live="polite"
         >
@@ -575,7 +676,7 @@ export default function GameMediaUploadForm({
         </div>
       )}
 
-      <div className={styles.formActions}>
+      <div className={adminStyles.formActions}>
         <p>
           {libraryOnly
             ? "Subir aquí no cambia Portada, Hero ni Galería: sólo agrega el WebP seguro a la biblioteca para reutilizarlo después."
