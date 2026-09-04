@@ -26,11 +26,9 @@ import {
 import { hasExactAdminFormFields } from "@/lib/admin/request-security";
 import { verifyAdminSession } from "@/lib/admin/session";
 import {
-  deleteEditorialMediaResource,
   findEditorialMediaResource,
   listAssignedBundledImageResources,
   listEditorialMediaLibrary,
-  markEditorialMediaForDeletion,
   mergeEditorialMediaResources,
   reconcileEditorialMediaDeletions,
 } from "@/lib/media/editorial-media-library";
@@ -78,11 +76,6 @@ const assignmentTargetSchema = z.enum([
   "detail-video",
   "gallery-image",
   "gallery-remove",
-  // Compatibilidad de contrato: estos valores pueden existir en formularios
-  // antiguos, pero POST los rechaza antes de cualquier mutación. La única
-  // eliminación destructiva autorizada vive en media-resource-delete.
-  "image-delete",
-  "video-delete",
 ]);
 
 const mediaModeSchema = z.enum([
@@ -170,120 +163,6 @@ function mediaUpdate(
   return {
     ...update,
     ...(imageMedia ? { imageMedia } : {}),
-  };
-}
-
-function withoutImageResource(
-  game: Game,
-  resource: string
-): MediaDraftUpdate {
-  const imageMedia: GameImageMedia = {
-    ...game.imageMedia,
-  };
-
-  if (game.coverImage === resource) delete imageMedia.cover;
-  if (game.heroImage === resource) delete imageMedia.hero;
-  if (game.cardImage === resource) delete imageMedia.card;
-  if (game.detailImage === resource) delete imageMedia.detail;
-  if (game.backgroundImage === resource) delete imageMedia.background;
-
-  const gallery = {
-    ...imageMedia.gallery,
-  };
-  delete gallery[resource];
-
-  if (Object.keys(gallery).length) {
-    imageMedia.gallery = gallery;
-  } else {
-    delete imageMedia.gallery;
-  }
-
-  const nextGalleryMedia = game.galleryMedia === undefined
-    ? undefined
-    : withoutGalleryItem(game, "image", resource);
-
-  return mediaUpdate(
-    {
-      coverImage:
-        game.coverImage === resource
-          ? undefined
-          : game.coverImage,
-      heroImage:
-        game.heroImage === resource
-          ? undefined
-          : game.heroImage,
-      cardImage:
-        game.cardImage === resource
-          ? undefined
-          : game.cardImage,
-      detailImage:
-        game.detailImage === resource
-          ? undefined
-          : game.detailImage,
-      backgroundImage:
-        game.backgroundImage === resource
-          ? undefined
-          : game.backgroundImage,
-      screenshots: (game.screenshots ?? []).filter(
-        (src) => src !== resource
-      ),
-      ...(nextGalleryMedia !== undefined
-        ? { galleryMedia: nextGalleryMedia }
-        : {}),
-    },
-    imageMedia
-  );
-}
-
-function withoutVideoResource(
-  game: Game,
-  resource: string
-): MediaDraftUpdate {
-  const videoMedia = {
-    ...game.videoMedia,
-  };
-
-  if (videoMedia.cover?.clip === resource) {
-    delete videoMedia.cover;
-  }
-
-  if (videoMedia.hero?.clip === resource) {
-    delete videoMedia.hero;
-    if (videoMedia.card?.source === "hero") {
-      delete videoMedia.card;
-    }
-  }
-
-  if (
-    videoMedia.card?.source === "independent" &&
-    videoMedia.card.clip === resource
-  ) {
-    delete videoMedia.card;
-  }
-
-  if (videoMedia.detail?.clip === resource) {
-    delete videoMedia.detail;
-  }
-
-  if (videoMedia.background?.clip === resource) {
-    delete videoMedia.background;
-  }
-
-  const nextGalleryMedia = game.galleryMedia === undefined
-    ? undefined
-    : withoutGalleryItem(game, "video", resource);
-
-  return {
-    videoMedia: Object.keys(videoMedia).length
-      ? videoMedia
-      : undefined,
-    previewClip:
-      game.previewClip === resource
-        ? undefined
-        : game.previewClip,
-    ...(nextGalleryMedia !== undefined
-      ? { galleryMedia: nextGalleryMedia }
-      : {}),
   };
 }
 
@@ -419,16 +298,6 @@ export async function POST(
   const resource = typeof resourceValue === "string" ? resourceValue : "";
 
   if (!revision.success || !target.success) {
-    return adminRedirect(
-      authorized.adminOrigin,
-      redirectPath(slug, "solicitud")
-    );
-  }
-
-  if (
-    target.data === "image-delete" ||
-    target.data === "video-delete"
-  ) {
     return adminRedirect(
       authorized.adminOrigin,
       redirectPath(slug, "solicitud")
@@ -705,31 +574,6 @@ export async function POST(
     );
   }
 
-  // Las ramas destructivas de compatibilidad quedan deliberadamente detrás
-  // del fail-closed anterior. Se conservan temporalmente para no romper
-  // checkers/contratos históricos mientras la ruta converge a assignment-only.
-  if (target.data === "image-delete") {
-    if (!imageResource) {
-      return adminRedirect(
-        authorized.adminOrigin,
-        redirectPath(slug, "recurso-invalido")
-      );
-    }
-
-    update = withoutImageResource(current, imageResource.src);
-  }
-
-  if (target.data === "video-delete") {
-    if (!videoResource) {
-      return adminRedirect(
-        authorized.adminOrigin,
-        redirectPath(slug, "recurso-invalido")
-      );
-    }
-
-    update = withoutVideoResource(current, videoResource.src);
-  }
-
   if (!update) {
     return adminRedirect(
       authorized.adminOrigin,
@@ -755,56 +599,6 @@ export async function POST(
       authorized.adminOrigin,
       redirectPath(slug, "conflicto")
     );
-  }
-
-  const deletedResource = target.data === "image-delete"
-    ? imageResource
-    : target.data === "video-delete"
-      ? videoResource
-      : undefined;
-
-  if (deletedResource) {
-    if (
-      deletedResource.kind === "image" &&
-      deletedResource.origin === "bundled"
-    ) {
-      return adminRedirect(
-        authorized.adminOrigin,
-        redirectPath(slug, "recurso-eliminado-base")
-      );
-    }
-
-    try {
-      const deletion = await markEditorialMediaForDeletion(
-        slug,
-        deletedResource
-      );
-
-      if (deletion === "missing") {
-        return adminRedirect(
-          authorized.adminOrigin,
-          redirectPath(slug, "recurso-eliminado")
-        );
-      }
-
-      if (protectedReferences.includes(deletedResource.src)) {
-        return adminRedirect(
-          authorized.adminOrigin,
-          redirectPath(slug, "recurso-eliminacion-pendiente")
-        );
-      }
-
-      await deleteEditorialMediaResource(slug, deletedResource);
-      return adminRedirect(
-        authorized.adminOrigin,
-        redirectPath(slug, "recurso-eliminado")
-      );
-    } catch {
-      return adminRedirect(
-        authorized.adminOrigin,
-        redirectPath(slug, "recurso-eliminacion-incompleta")
-      );
-    }
   }
 
   return adminRedirect(
