@@ -133,6 +133,40 @@ const releaseDateSchema = z
     return normalized;
   });
 
+const optionalCanonicalDateSchema = z
+  .string()
+  .trim()
+  .transform((value, context) => {
+    if (!value) return undefined;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      context.addIssue({
+        code: "custom",
+        message: "Usa una fecha válida con formato AAAA-MM-DD.",
+      });
+      return z.NEVER;
+    }
+    const parsed = new Date(`${value}T00:00:00Z`);
+    if (
+      Number.isNaN(parsed.valueOf()) ||
+      parsed.toISOString().slice(0, 10) !== value
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "Usa una fecha de verificación válida.",
+      });
+      return z.NEVER;
+    }
+    return value;
+  });
+
+const optionalCompatibilityStatusSchema = z
+  .enum(["", "declared", "reviewed", "tested"])
+  .transform((value) => value || undefined);
+
+const optionalCompatibilitySourceSchema = z
+  .enum(["", "developer", "publisher", "internal", "community", "external"])
+  .transform((value) => value || undefined);
+
 const optionalRating = z
   .string()
   .trim()
@@ -166,20 +200,53 @@ export const gameClassificationSectionSchema = z.object({
   tagsText: delimitedTextList(30, 80, 2_600),
 });
 
-export const gameCompatibilitySectionSchema = z.object({
-  expectedRevision: expectedRevisionSchema,
-  platformsJson: platformsJsonSchema,
-  minimumSystem: optionalText(240),
-  minimumProcessor: optionalText(240),
-  minimumRam: optionalText(240),
-  minimumGraphics: optionalText(240),
-  minimumStorage: optionalText(240),
-  recommendedSystem: optionalText(240),
-  recommendedProcessor: optionalText(240),
-  recommendedRam: optionalText(240),
-  recommendedGraphics: optionalText(240),
-  recommendedStorage: optionalText(240),
-});
+export const gameCompatibilitySectionSchema = z
+  .object({
+    expectedRevision: expectedRevisionSchema,
+    platformsJson: platformsJsonSchema,
+    minimumSystem: optionalText(240),
+    minimumProcessor: optionalText(240),
+    minimumRam: optionalText(240),
+    minimumGraphics: optionalText(240),
+    minimumStorage: optionalText(240),
+    recommendedSystem: optionalText(240),
+    recommendedProcessor: optionalText(240),
+    recommendedRam: optionalText(240),
+    recommendedGraphics: optionalText(240),
+    recommendedStorage: optionalText(240),
+    verificationStatus: optionalCompatibilityStatusSchema,
+    verificationSource: optionalCompatibilitySourceSchema,
+    verifiedAt: optionalCanonicalDateSchema,
+  })
+  .superRefine((value, context) => {
+    const hasCompatibilityData = Boolean(
+      value.platformsJson?.length ||
+      value.minimumSystem ||
+      value.minimumProcessor ||
+      value.minimumRam ||
+      value.minimumGraphics ||
+      value.minimumStorage ||
+      value.recommendedSystem ||
+      value.recommendedProcessor ||
+      value.recommendedRam ||
+      value.recommendedGraphics ||
+      value.recommendedStorage
+    );
+    const hasVerification = Boolean(
+      value.verificationStatus ||
+      value.verificationSource ||
+      value.verifiedAt
+    );
+
+    if (!hasCompatibilityData && hasVerification) {
+      context.addIssue({
+        code: "custom",
+        path: ["verificationStatus"],
+        message:
+          "La verificación sólo puede documentarse cuando existe al menos una plataforma o requisito de compatibilidad.",
+      });
+    }
+  });
 
 export const gameValuationSectionSchema = z.object({
   expectedRevision: expectedRevisionSchema,
