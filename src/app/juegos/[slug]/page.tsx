@@ -644,33 +644,39 @@ export default async function GameDetailPage({
 
             <div className={styles.galleryGrid}>
               {gallery.map((item, index) => {
-                const viewport = item.kind === "image"
-                  ? galleryImageViewport(game, item)
-                  : item.viewport;
-                const aspectRatio = item.kind === "image"
-                  ? resolveGameImageCropAspectRatio(viewport)
-                  : galleryVideoAspectRatio(item.viewport);
-
-                return (
-                  <figure
-                    key={`${item.kind}:${item.src}`}
-                    className={styles.galleryItem}
-                    style={{ aspectRatio }}
-                  >
-                    {item.kind === "image" ? (
+                if (item.kind === "image") {
+                  const viewport = galleryImageViewport(game, item);
+                  return (
+                    <figure
+                      key={`image:${item.src}`}
+                      className={styles.galleryItem}
+                      style={{
+                        aspectRatio: resolveGameImageCropAspectRatio(viewport),
+                      }}
+                    >
                       <GameMedia
                         src={item.src}
                         alt={`${game.title} — imagen ${index + 1}`}
                         sizes="(max-width: 700px) 100vw, 33vw"
                         viewport={viewport}
                       />
-                    ) : (
-                      <GameGalleryVideo
-                        src={item.src}
-                        viewport={item.viewport}
-                        label={`${game.title} — video ${index + 1}`}
-                      />
-                    )}
+                    </figure>
+                  );
+                }
+
+                return (
+                  <figure
+                    key={`video:${item.src}`}
+                    className={styles.galleryItem}
+                    style={{
+                      aspectRatio: galleryVideoAspectRatio(item.viewport),
+                    }}
+                  >
+                    <GameGalleryVideo
+                      src={item.src}
+                      viewport={item.viewport}
+                      label={`${game.title} — video ${index + 1}`}
+                    />
                   </figure>
                 );
               })}
