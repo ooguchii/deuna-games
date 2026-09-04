@@ -161,6 +161,18 @@ export function evaluateGamePublicationReadiness(
       priority: "recommended",
     },
     {
+      id: "performance-provenance",
+      label: "Procedencia del benchmark",
+      detail: "Origen, fecha y confianza documentados permiten explicar y auditar el dato base usado por la estimación.",
+      section: "rendimiento",
+      complete: Boolean(
+        game.performanceMetadata?.source &&
+          game.performanceMetadata?.measuredAt &&
+          game.performanceMetadata?.confidence
+      ),
+      priority: "recommended",
+    },
+    {
       id: "cover-crop",
       label: "Portada · recorte 4:5",
       detail: "La Portada debe completar los recursos exigidos por su modo activo.",
