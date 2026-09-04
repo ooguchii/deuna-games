@@ -61,10 +61,7 @@ export default function GameGalleryVideo({
   }, [sourceAspect, viewport]);
 
   useLayoutEffect(() => {
-    if (sourceAspect) {
-      setLayout(null);
-      return;
-    }
+    if (sourceAspect) return;
 
     const frame = frameRef.current;
     const video = videoRef.current;
