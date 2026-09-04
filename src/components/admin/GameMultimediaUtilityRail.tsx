@@ -38,6 +38,8 @@ type Props = {
 
 type AddKind = "image" | "video";
 
+const EMPTY_RESOURCES: MultimediaLibraryResource[] = [];
+
 function resourceDetail(resource: MultimediaLibraryResource) {
   if (resource.kind === "video") {
     return `Video WebM · ${formatMultimediaBytes(resource.bytes)}`;
@@ -89,7 +91,7 @@ export default function GameMultimediaUtilityRail({
     return () => controller.abort();
   }, [slug]);
 
-  const resources = state?.resources ?? [];
+  const resources = state?.resources ?? EMPTY_RESOURCES;
   const images = useMemo(
     () => resources.filter((resource) => resource.kind === "image"),
     [resources]
