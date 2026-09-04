@@ -32,13 +32,19 @@ export function homeHeroPositionOffset(
 
 export function homeHeroVisiblePositions(
   responsive: HomeHeroResponsiveStyle,
-  direction: HomeHeroPresentation["direction"]
+  direction: HomeHeroPresentation["direction"],
+  totalGames = Number.POSITIVE_INFINITY
 ): readonly HomeHeroVisualPosition[] {
-  if (responsive.visibleCards === 3) {
-    return ["left1", "main", "right1"];
-  }
+  const visibleCount = Math.min(responsive.visibleCards, Math.max(1, totalGames));
 
-  if (responsive.visibleCards === 4) {
+  if (visibleCount <= 1) return ["main"];
+  if (visibleCount === 2) {
+    return direction === "reverse"
+      ? ["left1", "main"]
+      : ["main", "right1"];
+  }
+  if (visibleCount === 3) return ["left1", "main", "right1"];
+  if (visibleCount === 4) {
     return direction === "reverse"
       ? ["left2", "left1", "main", "right1"]
       : ["left1", "main", "right1", "right2"];
@@ -50,9 +56,14 @@ export function homeHeroVisiblePositions(
 export function homeHeroPositionDisplay(
   position: HomeHeroVisualPosition,
   responsive: HomeHeroResponsiveStyle,
-  direction: HomeHeroPresentation["direction"]
+  direction: HomeHeroPresentation["direction"],
+  totalGames = Number.POSITIVE_INFINITY
 ) {
-  return homeHeroVisiblePositions(responsive, direction).includes(position)
+  return homeHeroVisiblePositions(
+    responsive,
+    direction,
+    totalGames
+  ).includes(position)
     ? "block"
     : "none";
 }
