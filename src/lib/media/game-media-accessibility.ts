@@ -1,3 +1,6 @@
+import {
+  resolveGameDestinationMediaMode,
+} from "@/lib/media/game-video-media";
 import type {
   Game,
   GameGalleryItem,
@@ -35,7 +38,10 @@ export function hasCompleteContextualMediaAccessibility(game: Game) {
       }));
   const labels = game.mediaAccessibility;
   const coverReady = !game.coverImage || Boolean(labels?.cover?.trim());
-  const cardImage = game.cardImage ?? game.coverImage;
+  const cardMode = resolveGameDestinationMediaMode(game, "card");
+  const cardImage = cardMode === "video"
+    ? undefined
+    : game.cardImage ?? game.coverImage;
   const cardReady = !cardImage || Boolean(labels?.card?.trim());
   const galleryReady = gallery.every(
     (item) => Boolean(getGameGalleryAccessibilityLabel(game, item)?.trim())
