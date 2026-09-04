@@ -36,6 +36,67 @@ export type AdminAuthenticationResult =
       authenticated: false;
     };
 
+export async function reauthenticateAdmin(
+  userId: string,
+  password: string
+) {
+  return withAdminTransaction(async (client) => {
+    const result = await client.query<AdminUserRow>(
+      `SELECT
+         id,
+         role,
+         password_hash,
+         failed_login_count,
+         locked_until
+       FROM deuna_admin.admin_users
+       WHERE id = $1
+         AND active = true
+         AND role = 'owner'
+       LIMIT 1
+       FOR UPDATE`,
+      [userId]
+    );
+    const user = result.rows[0];
+
+    if (!user) {
+      await consumeDummyPasswordWork(password);
+      return false;
+    }
+
+    const passwordMatches = await verifyAdminPassword(
+      password,
+      user.password_hash
+    );
+    const currentlyLocked = Boolean(
+      user.locked_until && user.locked_until.getTime() > Date.now()
+    );
+
+    if (!passwordMatches || currentlyLocked) {
+      if (!currentlyLocked) {
+        await recordFailedLogin(client, user);
+      }
+      return false;
+    }
+
+    await client.query(
+      `UPDATE deuna_admin.admin_users
+       SET failed_login_count = 0,
+           locked_until = NULL,
+           updated_at = now()
+       WHERE id = $1`,
+      [user.id]
+    );
+    await client.query(
+      `INSERT INTO deuna_admin.admin_events
+         (user_id, event_type)
+       VALUES ($1, 'critical_action_reauthenticated')`,
+      [user.id]
+    );
+
+    return true;
+  });
+}
+
 function lockDurationSeconds(
   failureCount: number
 ) {

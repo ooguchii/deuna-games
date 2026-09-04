@@ -61,9 +61,11 @@ const privateAdminHeaders = [
 ] as const;
 
 const nextConfig: NextConfig = {
+  agentRules: false,
   poweredByHeader: false,
   compress: true,
   reactStrictMode: true,
+  experimental: { useTypeScriptCli: false },
   ...(allowedDevOrigins ? { allowedDevOrigins } : {}),
   output: "standalone",
   productionBrowserSourceMaps: false,

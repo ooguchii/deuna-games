@@ -31,8 +31,9 @@ const [
   creationService,
   heroSection,
   heroStyles,
-  heroLayoutGuide,
   heroContract,
+  heroEditor,
+  heroEditorRoute,
 ] = await Promise.all([
   source("src/data/home.ts"),
   source("src/lib/home/ranking.ts"),
@@ -57,8 +58,9 @@ const [
   source("src/lib/admin/content-create-service.ts"),
   source("src/components/home/HeroSection.tsx"),
   source("src/components/home/HeroSection.module.css"),
-  source("src/components/admin/HomeHeroLayoutGuide.tsx"),
   source("src/lib/home/hero-contract.ts"),
+  source("src/components/admin/HomeHeroEditor.tsx"),
+  source("src/app/api/admin/content/home/hero/route.ts"),
 ]);
 
 assert(
@@ -154,10 +156,23 @@ assert(
     adminHomePage.includes("publishedSlugSet") &&
     adminHomePage.includes("heroPreviewCatalog") &&
     adminHomePage.includes("publishedSlugSet.has(game.slug)") &&
-    adminHomePage.includes("HomeHeroLayoutGuide") &&
-    adminHomePage.includes("games={previewCollections.heroGames}") &&
+    adminHomePage.includes("HomeHeroEditor") &&
+    adminHomePage.includes("publicGames={heroPreviewCatalog}") &&
     adminHomePage.includes("games={curationGames}"),
   "La vista previa administrativa debe calcular Hero y ranking con payloads públicos reales, filtrar juegos no publicados y conservar el catálogo editorial completo para edición."
+);
+
+assert(
+  heroEditor.includes("EDITOR ÚNICO DEL HERO") &&
+    heroEditor.includes('name="heroJson"') &&
+    heroEditor.includes("resolveHomeCollectionGames") &&
+    heroEditor.includes("Editar imagen y recorte") &&
+    heroEditor.includes("Guardar Hero") &&
+    heroEditorRoute.includes("homeHeroEditorFormSchema") &&
+    heroEditorRoute.includes("heroSlugs: hero.slugs") &&
+    heroEditorRoute.includes("heroPresentation: hero.presentation") &&
+    heroEditorRoute.includes("hero: hero.copy"),
+  "El panel debe ofrecer un único editor de Hero con selección, orden, vista previa, diseño, textos y guardado atómico."
 );
 
 assert(
@@ -190,30 +205,17 @@ assert(
     heroStyles.includes(".cinematicStage") &&
     heroStyles.includes(".previewRail") &&
     heroStyles.includes(".previewCard") &&
-    heroStyles.includes("aspect-ratio: 9 / 16") &&
+    heroStyles.includes("aspect-ratio: 4 / 5") &&
+    heroStyles.includes("aspect-ratio: 3 / 1") &&
+    heroStyles.includes("grid-template-columns") &&
     heroStyles.includes("perspective") &&
     heroStyles.includes("rotateY") &&
-    heroStyles.includes('content: "06."') &&
-    heroStyles.includes("CARRUSEL CINEMÁTICO CON PÁGINA") &&
-    heroStyles.includes("GRANDES JUEGOS") &&
+    heroSection.includes("heroTitleParts") &&
+    heroSection.includes("GameMedia") &&
     heroStyles.includes("@media (prefers-reduced-motion: reduce)") &&
     !heroSection.includes("function NextArtwork") &&
     !heroStyles.includes(".nextCard"),
-  "El Hero público debe conservar la composición de referencia: gran portada perspectivada, pila editorial vertical 9:16 alimentada por Portada, cabecera, lema, navegación segmentada y transición con profundidad."
-);
-
-assert(
-  heroLayoutGuide.includes("COMPOSICIÓN REAL DE INICIO") &&
-    heroLayoutGuide.includes("Carrusel cinematográfico con profundidad") &&
-    heroLayoutGuide.includes("Hero · 3:1") &&
-    heroLayoutGuide.includes("Previews · Portada 4:5") &&
-    heroLayoutGuide.includes("HOME_HERO_MAX_SLIDES") &&
-    heroLayoutGuide.includes("HOME_HERO_VISIBLE_PREVIEWS") &&
-    heroLayoutGuide.includes("CoverDestinationPreview") &&
-    heroLayoutGuide.includes("evaluateGameMediaRequirements") &&
-    heroLayoutGuide.includes("isImageCropConfirmed") &&
-    heroLayoutGuide.includes("LEGACY_DESTINATION_IMAGE_ASPECTS"),
-  "Curaduría debe enseñar la composición cinematográfica real y distinguir el Hero del recurso Portada usado por la pila lateral."
+  "El Hero público debe conservar la composición editorial: recorte Hero 3:1 compartido, escenario estable, pila vertical alimentada por Portada, navegación segmentada y transición con profundidad."
 );
 
 assert(

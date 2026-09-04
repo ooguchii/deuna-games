@@ -21,6 +21,10 @@ npm ci
 npm run dev
 ```
 
+Abre `http://localhost:3000` en el navegador. `npm ci` se ejecuta al clonar o
+cuando cambia `package-lock.json`; para el trabajo diario normalmente basta con
+`npm run dev`. Detén el servidor con `Ctrl+C`.
+
 Para exponer la web en la red local sin habilitar el panel privado:
 
 ```bash
@@ -28,6 +32,29 @@ npm run lan
 ```
 
 El panel administrativo permanece deshabilitado salvo que `DEUNA_ADMIN_ENABLED` sea exactamente `true`.
+
+### Probar desde un móvil con HTTPS
+
+El móvil y la computadora deben estar en la misma red local. La primera vez,
+con OpenSSL disponible en Ubuntu/WSL, prepara la autoridad certificadora y el
+certificado para la IP privada actual:
+
+```bash
+npm run mobile:secure:setup
+```
+
+Copia al móvil únicamente el archivo público
+`.deuna-local-certs/deuna-games-lan-ca.cer` e instálalo como certificado de
+confianza. Nunca copies ni compartas archivos `.key`. Después inicia el sitio:
+
+```bash
+npm run mobile:secure
+```
+
+El comando muestra la URL exacta, por ejemplo `https://192.168.1.8:3000`,
+habilita el panel administrativo sólo para esa ejecución y mantiene PostgreSQL
+y el worker multimedia limitados a la propia computadora. Si cambia la IP del
+equipo, vuelve a ejecutar `mobile:secure:setup`. Detén todo con `Ctrl+C`.
 
 ## Verificación
 
@@ -133,6 +160,7 @@ El área `/admin` incorpora:
 - sesiones opacas y revocables en PostgreSQL;
 - cookies `HttpOnly`, `Secure`, `SameSite=Strict` y prioridad alta;
 - bloqueo progresivo y controles de rate limiting;
+- reautenticación del Owner para crear, activar, desactivar o restablecer accesos;
 - validación estricta de origen y de campos de formulario;
 - revisiones inmutables, publicación explícita, restauración e historial;
 - `noindex`, `noarchive` y `no-store` en rutas administrativas;

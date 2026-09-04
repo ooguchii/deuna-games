@@ -24,6 +24,7 @@ const privacyPage = read("src/app/privacidad/page.tsx");
 const envExample = read(".env.example");
 const backupTool = read("tools/admin/backup-local.ts");
 const upgradeRunbook = read("ops/postgresql/UPGRADE-011-REWARDS.md");
+const nginx = read("ops/nginx/deuna-games.conf.example");
 
 requirePattern(
   policy,
@@ -146,6 +147,22 @@ requirePattern(
   upgradeRunbook,
   /npm run admin:backup-local/,
   "El runbook 010→011 debe exigir backup antes de migrar."
+);
+
+requirePattern(
+  nginx,
+  /zone=deuna_account_auth:10m rate=10r\/m/,
+  "Nginx debe reservar un rate limit estricto y efímero para login, registro y recuperación."
+);
+requirePattern(
+  nginx,
+  /location ~ \^\/api\/account\/\(login\|register\|recover\)\$/,
+  "Las rutas públicas con KDF de contraseña deben usar el rate limit específico de autenticación."
+);
+requirePattern(
+  nginx,
+  /location \/api\/account\//,
+  "Las acciones autenticadas de cuenta deben tener un presupuesto separado del login."
 );
 requirePattern(
   upgradeRunbook,

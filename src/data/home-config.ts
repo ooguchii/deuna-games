@@ -105,6 +105,19 @@ export type HomeCopy = {
   };
 };
 
+export const homeHeroCompositionIds = [
+  "studio",
+  "cinema",
+  "focus",
+] as const;
+
+export type HomeHeroPresentation = {
+  composition: (typeof homeHeroCompositionIds)[number];
+  previewCount: 1 | 2 | 3;
+  motion: "depth" | "slide" | "fade";
+  autoplayMs: 0 | 4000 | 6500 | 8000;
+};
+
 export type HomeConfig = {
   /*
    * Estas listas conservan compatibilidad con todas las revisiones ya
@@ -117,15 +130,17 @@ export type HomeConfig = {
   lowSpecSlugs: string[];
   recommendedSlugs: string[];
   curation?: HomeCurationConfig;
+  heroPresentation?: HomeHeroPresentation;
   sections?: HomeSectionConfig[];
   copy?: HomeCopy;
 };
 
 export type ResolvedHomeConfig = Omit<
   HomeConfig,
-  "curation" | "sections" | "copy"
+  "curation" | "heroPresentation" | "sections" | "copy"
 > & {
   curation: HomeCurationConfig;
+  heroPresentation: HomeHeroPresentation;
   sections: HomeSectionConfig[];
   copy: HomeCopy;
 };
@@ -140,6 +155,13 @@ const defaultHomeCuration: HomeCurationConfig = {
   popular: { mode: "hybrid" },
   lowSpec: { mode: "manual" },
   recommended: { mode: "hybrid" },
+};
+
+const defaultHeroPresentation: HomeHeroPresentation = {
+  composition: "studio",
+  previewCount: 2,
+  motion: "depth",
+  autoplayMs: 6500,
 };
 
 export const sourceHomeConfig: ResolvedHomeConfig = {
@@ -178,6 +200,7 @@ export const sourceHomeConfig: ResolvedHomeConfig = {
     "elden-ring",
   ],
   curation: structuredClone(defaultHomeCuration),
+  heroPresentation: structuredClone(defaultHeroPresentation),
   sections: homeSectionIds.map((id) => ({
     id,
     visible: true,
@@ -339,6 +362,10 @@ export function resolveHomeConfig(
     lowSpecSlugs: [...config.lowSpecSlugs],
     recommendedSlugs: [...config.recommendedSlugs],
     curation: resolveCuration(config.curation),
+    heroPresentation: {
+      ...defaultHeroPresentation,
+      ...config.heroPresentation,
+    },
     sections: resolveSections(config.sections),
     copy: config.copy
       ? {

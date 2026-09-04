@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import {
   createAdministrator,
 } from "@/lib/admin/account-service";
+import { reauthenticateAdmin } from "@/lib/admin/auth-service";
 import {
   adminRedirect,
   adminUnavailableResponse,
@@ -24,7 +25,7 @@ import {
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const fields = ["username", "password", "displayName"] as const;
+const fields = ["username", "password", "displayName", "currentPassword"] as const;
 
 export async function POST(request: NextRequest) {
   const session = await verifyAdminOwnerSession();
@@ -46,6 +47,7 @@ export async function POST(request: NextRequest) {
     username: form.get("username"),
     password: form.get("password"),
     displayName: form.get("displayName"),
+    currentPassword: form.get("currentPassword"),
   });
 
   if (!parsed.success) {
@@ -53,6 +55,9 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    if (!(await reauthenticateAdmin(session.userId, parsed.data.currentPassword))) {
+      return adminRedirect(adminOrigin, "/admin/cuentas?estado=reauth");
+    }
     const result = await createAdministrator(session.userId, parsed.data);
 
     return adminRedirect(

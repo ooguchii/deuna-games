@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
   }
 
   const target =
-    "/admin/portada?seccion=presentacion";
+    "/admin/portada?seccion=contenido";
 
   if (
     !hasExactAdminFormFields(
@@ -81,6 +81,8 @@ export async function POST(request: NextRequest) {
         recommendedSlugs:
           item.payload.recommendedSlugs,
         curation: item.payload.curation,
+        heroPresentation:
+          parsed.data.presentationJson.heroPresentation,
         sections:
           parsed.data.presentationJson.sections,
         copy: parsed.data.presentationJson.copy,

@@ -37,8 +37,8 @@ const catalogSections = [
 ] as const;
 
 const homeSections = [
-  { id: "curaduria", label: "Curaduría", icon: PanelTop },
-  { id: "presentacion", label: "Presentación", icon: SquarePen },
+  { id: "hero", label: "Editor del Hero", icon: PanelTop },
+  { id: "contenido", label: "Resto de Inicio", icon: SquarePen },
   { id: "publicacion", label: "Publicación", icon: Rocket },
   { id: "historial", label: "Historial", icon: FileClock },
 ] as const;
@@ -359,7 +359,7 @@ export default function AdminContextBar() {
         label="Secciones del editor de Inicio"
         items={simpleItems(
           pathname,
-          searchParams.get("seccion") ?? "curaduria",
+          searchParams.get("seccion") ?? "hero",
           homeSections
         )}
       />

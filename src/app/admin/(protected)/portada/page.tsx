@@ -4,7 +4,7 @@ import AdminPageHeader from "@/components/admin/AdminPageHeader";
 import EditorialHistory from "@/components/admin/EditorialHistory";
 import EditorStateNotice from "@/components/admin/EditorStateNotice";
 import HomeCurationEditor from "@/components/admin/HomeCurationEditor";
-import HomeHeroLayoutGuide from "@/components/admin/HomeHeroLayoutGuide";
+import HomeHeroEditor from "@/components/admin/HomeHeroEditor";
 import HomePresentationEditor from "@/components/admin/HomePresentationEditor";
 import PublicationPanel from "@/components/admin/PublicationPanel";
 import {
@@ -35,8 +35,8 @@ import styles from "../../admin.module.css";
 export const dynamic = "force-dynamic";
 
 const sections = [
-  "curaduria",
-  "presentacion",
+  "hero",
+  "contenido",
   "publicacion",
   "historial",
 ] as const;
@@ -59,7 +59,7 @@ function resolveSection(
 
   return sections.includes(candidate as HomeAdminSection)
     ? (candidate as HomeAdminSection)
-    : "curaduria";
+    : "hero";
 }
 
 export default async function AdminHomeEditorPage({
@@ -140,26 +140,12 @@ export default async function AdminHomeEditorPage({
 
       <EditorStateNotice state={state} />
 
-      {section === "curaduria" && (
-        <>
-          <HomeHeroLayoutGuide
-            games={previewCollections.heroGames}
-          />
-          <HomeCurationEditor
-            config={resolved}
-            games={curationGames}
-            publishedSlugs={publishedSlugs}
-            revision={item.revision}
-          />
-        </>
-      )}
+      {section === "hero" && <HomeHeroEditor config={resolved} games={curationGames} publicGames={heroPreviewCatalog} revision={item.revision} />}
 
-      {section === "presentacion" && (
-        <HomePresentationEditor
-          config={resolved}
-          revision={item.revision}
-        />
-      )}
+      {section === "contenido" && <>
+        <HomeCurationEditor config={resolved} games={curationGames} publishedSlugs={publishedSlugs} revision={item.revision} excludeHero />
+        <HomePresentationEditor config={resolved} heroGames={previewCollections.heroGames} revision={item.revision} showHeroStudio={false} />
+      </>}
 
       {section === "publicacion" && (
         <section className={styles.editorPanel}>

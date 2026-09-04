@@ -6,6 +6,10 @@
 /deploy/
 *.tsbuildinfo
 
+# Archivos auxiliares que Next puede generar al iniciar el servidor
+/AGENTS.md
+/CLAUDE.md
+
 # Variables de entorno y secretos
 .env
 .env.*

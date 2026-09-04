@@ -78,7 +78,7 @@ const criticalPatterns = [
   },
   {
     name: "ruta personal Linux",
-    pattern: /\/home\/[^/\r\n]+\//,
+    pattern: /(?:^|[\s"'=(])\/home\/[^/\r\n]+\//m,
   },
   {
     name: "clave privada",
@@ -257,6 +257,7 @@ async function scanTrackedTextFiles(trackedFiles) {
 
   for (const file of candidates) {
     try {
+      if (!(await exists(file))) continue;
       const info = await stat(file);
 
       if (info.size > 5 * 1024 * 1024) continue;

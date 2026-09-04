@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=24.0.0" },
+  "engines": {
+    "node": ">=24.0.0"
+  },
   "scripts": {
     "dev": "node ./tools/run-next.mjs dev --hostname 127.0.0.1 --port 3000",
     "lan": "node ./tools/run-lan.mjs",
@@ -41,7 +43,7 @@
     "check:account-launch-readiness": "node ./tools/check-account-launch-readiness.mjs",
     "check:account-personalization": "node --import ./tools/register-ts-paths.mjs ./tools/check-account-personalization.mjs",
     "check:account-rewards": "node ./tools/check-account-rewards.mjs",
-    "check:account-postgres": "node ./tools/check-account-postgres-integration.ts",
+    "check:account-postgres": "node --env-file-if-exists=.env.local ./tools/check-account-postgres-integration.ts",
     "check:privacy": "node ./tools/check-public-privacy.mjs && npm run check:account-privacy && npm run check:account-launch-readiness",
     "check:site-identity": "node ./tools/check-public-site-identity.mjs",
     "check:admin-security": "node ./tools/check-admin-security.ts && node ./tools/check-admin-media-security.mjs && node ./tools/check-shared-media-library.mjs && node ./tools/check-multimedia-v2-hardening.mjs && node ./tools/check-game-media-hygiene.mjs && node ./tools/check-required-media-destinations.mjs && node ./tools/check-game-background-media.mjs && node ./tools/check-game-detail-container-media.mjs && node ./tools/check-admin-media-thumbnails.mjs && node ./tools/check-hero-hover-video.mjs && node --import ./tools/register-ts-paths.mjs ./tools/check-card-preview-video.mjs && node ./tools/check-admin-publication-security.mjs && node ./tools/check-game-editorial-flow.mjs && node ./tools/check-new-game-creation.mjs && node ./tools/check-performance-editorial.mjs && node ./tools/check-game-taxonomy-editorial.mjs && node ./tools/check-custom-taxonomy-icons.mjs && node ./tools/check-integrated-game-updates.mjs && node ./tools/check-admin-preflight.mjs",
@@ -59,23 +61,25 @@
     "images:strip-metadata": "node ./tools/strip-webp-metadata.mjs",
     "build:secure": "node ./tools/build-secure-deploy.mjs"
   },
-  "allowScripts": { "unrs-resolver@1.12.2": true },
+  "allowScripts": {
+    "unrs-resolver@1.12.2": true
+  },
   "dependencies": {
-    "lucide-react": "^1.34.0",
-    "next": "16.3.3",
+    "lucide-react": "1.41.0",
+    "next": "16.3.4",
     "pg": "^8.23.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "server-only": "^0.0.1",
-    "zod": "^4.5.2"
+    "zod": "4.5.4"
   },
   "devDependencies": {
     "@types/node": "^20",
     "@types/pg": "^8.23.1",
     "@types/react": "^19",
-    "@types/react-dom": "^19",
+    "@types/react-dom": "19.2.7",
     "eslint": "^9",
-    "eslint-config-next": "16.3.3",
+    "eslint-config-next": "16.3.4",
     "typescript": "^5"
   }
 }

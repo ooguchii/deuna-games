@@ -129,6 +129,20 @@ async function main() {
     .digest("hex");
 
   try {
+    const administrator = await pool.query<{ id: string }>(
+      `SELECT id
+         FROM deuna_admin.admin_users
+        WHERE active = true
+          AND role IN ('owner', 'admin')
+        ORDER BY (role = 'owner') DESC, created_at
+        LIMIT 1`
+    );
+    const administratorId = administrator.rows[0]?.id;
+
+    if (!administratorId) {
+      throw new Error("No existe una cuenta administrativa activa para probar la autoría del Índice DeUna.");
+    }
+
     await pool.query(
       `INSERT INTO deuna_accounts.users
          (id, username, username_key, password_hash)
@@ -209,10 +223,10 @@ async function main() {
          'medium',
          30,
          '{"interest":70,"engagement":60,"satisfaction":63}'::jsonb,
-         '00000000-0000-4000-8000-000000000001',
+         $2,
          now()
        )`,
-      [insightSlug]
+      [insightSlug, administratorId]
     );
 
     await pool.query(
@@ -489,11 +503,17 @@ async function main() {
 
 main().catch((error: unknown) => {
   const code = postgresCode(error);
+  const constraint = typeof error === "object" && error !== null && "constraint" in error
+    ? String(error.constraint ?? "")
+    : "";
 
   console.error(
     code
-      ? `PostgreSQL de cuentas: ERROR (${code}).`
+      ? `PostgreSQL de cuentas: ERROR (${code}${constraint ? ` · ${constraint}` : ""}).`
       : "PostgreSQL de cuentas: ERROR de conexión o ejecución."
   );
+  if (!code && error instanceof Error) {
+    console.error(error.message.slice(0, 240));
+  }
   process.exitCode = 1;
 });
