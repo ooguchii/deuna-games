@@ -30,6 +30,25 @@ export function homeHeroPositionOffset(
   return positionOffsets[position];
 }
 
+export function homeHeroSlotX(
+  position: HomeHeroVisualPosition,
+  responsive: HomeHeroResponsiveStyle
+) {
+  if (position === "left2") {
+    return -(responsive.cardWidth * .72 + responsive.gap * 2);
+  }
+  if (position === "left1") {
+    return -(responsive.cardWidth * .42 + responsive.gap);
+  }
+  if (position === "right1") {
+    return responsive.cardWidth * .42 + responsive.gap;
+  }
+  if (position === "right2") {
+    return responsive.cardWidth * .72 + responsive.gap * 2;
+  }
+  return 0;
+}
+
 export function homeHeroVisiblePositions(
   responsive: HomeHeroResponsiveStyle,
   direction: HomeHeroPresentation["direction"],
