@@ -1,5 +1,9 @@
+import GameGalleryMediaManager from "@/components/admin/GameGalleryMediaManager";
+import GameMultimediaUtilityRail from "@/components/admin/GameMultimediaUtilityRail";
 import GameMultimediaWorkspaceContextual from "@/components/admin/GameMultimediaWorkspaceContextual";
 import GameVideoLibraryEditor from "@/components/admin/GameVideoLibraryEditor";
+
+import shellStyles from "./GameMultimediaShell.module.css";
 
 type GameMultimediaEditorProps = {
   slug: string;
@@ -17,19 +21,36 @@ export default function GameMultimediaEditor({
   screenshots = [],
 }: GameMultimediaEditorProps) {
   return (
-    <GameMultimediaWorkspaceContextual
-      slug={slug}
-      revision={revision}
-      screenshotCount={screenshots.length}
-      initialCoverImage={coverImage}
-      initialHeroImage={heroImage}
-      initialScreenshots={screenshots}
-      videoEditor={
-        <GameVideoLibraryEditor
+    <div className={shellStyles.workspaceShell}>
+      <div className={shellStyles.mainColumn}>
+        <div className={shellStyles.legacyWorkspaceHost}>
+          <GameMultimediaWorkspaceContextual
+            slug={slug}
+            revision={revision}
+            screenshotCount={screenshots.length}
+            initialCoverImage={coverImage}
+            initialHeroImage={heroImage}
+            initialScreenshots={screenshots}
+            videoEditor={
+              <GameVideoLibraryEditor
+                slug={slug}
+                revision={revision}
+              />
+            }
+          />
+        </div>
+
+        <GameGalleryMediaManager
           slug={slug}
           revision={revision}
         />
-      }
-    />
+      </div>
+
+      <GameMultimediaUtilityRail
+        slug={slug}
+        revision={revision}
+        screenshotCount={screenshots.length}
+      />
+    </div>
   );
 }

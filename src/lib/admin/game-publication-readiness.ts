@@ -182,8 +182,8 @@ export function evaluateGamePublicationReadiness(
     ...backgroundItem,
     {
       id: "gallery-minimum",
-      label: "Galería · imágenes y recortes",
-      detail: "La Galería debe contener al menos una imagen y cada captura asignada debe confirmar la relación de encuadre elegida, incluida Libre cuando corresponda.",
+      label: "Galería · recursos y recortes",
+      detail: "La Galería debe contener al menos un recurso, imagen o video, y cada elemento asignado debe confirmar su encuadre antes de publicar.",
       section: "multimedia",
       complete: media.gallery.cropReady,
       priority: "essential",

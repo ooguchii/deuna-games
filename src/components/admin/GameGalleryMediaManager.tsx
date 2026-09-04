@@ -1,0 +1,476 @@
+"use client";
+
+import Link from "next/link";
+import {
+  ArrowDown,
+  ArrowUp,
+  CheckCircle2,
+  Clapperboard,
+  ImageIcon,
+  Images,
+  Pencil,
+  Plus,
+  Trash2,
+  TriangleAlert,
+} from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+
+import AdminMediaThumbnail from "@/components/admin/AdminMediaThumbnail";
+import ContextualMediaDialog from "@/components/admin/ContextualMediaDialog";
+import GameGalleryVideoViewportEditor from "@/components/admin/GameGalleryVideoViewportEditor";
+import ImageViewportEditor from "@/components/admin/ImageViewportEditor";
+import {
+  type MultimediaLibraryResource,
+  type MultimediaLibraryState,
+  multimediaShortName,
+} from "@/components/admin/game-multimedia-library-types";
+import {
+  MAX_GAME_GALLERY_ITEMS,
+} from "@/lib/media/game-gallery-media";
+import {
+  gameImageCropAspectLabel,
+  resolveGameImageCropAspectRatio,
+} from "@/lib/media/image-viewport";
+import type {
+  GameGalleryItem,
+  GameImageMedia,
+  GameVideoViewport,
+} from "@/types/game";
+
+import styles from "./GameMultimediaShell.module.css";
+
+type GalleryRequirements = {
+  cover: { cropReady: boolean };
+  hero: { cropReady: boolean };
+  card: { cropReady: boolean };
+  detail: { cropReady: boolean };
+  background: { active: boolean; cropReady: boolean };
+  gallery: {
+    assigned: boolean;
+    cropReady: boolean;
+    minimum: number;
+    count: number;
+    imageCount: number;
+    videoCount: number;
+  };
+  ready: boolean;
+};
+
+type GalleryState = {
+  revision: number;
+  gallery: GameGalleryItem[];
+  imageMedia: GameImageMedia | null;
+  requirements: GalleryRequirements;
+};
+
+type Props = {
+  slug: string;
+  revision: number;
+};
+
+type PickerKind = "image" | "video";
+
+const EMPTY_GALLERY: GameGalleryItem[] = [];
+
+function videoAspectRatio(viewport: GameVideoViewport) {
+  if (viewport.aspect === "16:9") return 16 / 9;
+  if (viewport.aspect === "3:2") return 3 / 2;
+  if (viewport.aspect === "1:1") return 1;
+  if (viewport.aspect === "4:5") return 4 / 5;
+  if (viewport.aspect === "9:16") return 9 / 16;
+  return undefined;
+}
+
+function videoCropLabel(viewport: GameVideoViewport) {
+  return viewport.aspect === "source" ? "Original" : viewport.aspect;
+}
+
+function missingRequirementMessage(requirements: GalleryRequirements) {
+  const missing: string[] = [];
+  if (!requirements.cover.cropReady) missing.push("Portada 4:5");
+  if (!requirements.hero.cropReady) missing.push("Hero 16:9");
+  if (!requirements.card.cropReady) missing.push("Card 3:2");
+  if (!requirements.detail.cropReady) missing.push("Contenedor adaptable");
+  if (requirements.background.active && !requirements.background.cropReady) {
+    missing.push("Fondo adaptable");
+  }
+  if (!requirements.gallery.cropReady) missing.push("Galería");
+
+  if (missing.length === 0) return "Revisa los destinos multimedia pendientes.";
+  if (missing.length === 1) return `Falta completar ${missing[0]}.`;
+  return `Falta completar: ${missing.join(", ")}.`;
+}
+
+function ResourceIcon({ kind }: { kind: PickerKind }) {
+  return kind === "image"
+    ? <ImageIcon size={16} aria-hidden="true" />
+    : <Clapperboard size={16} aria-hidden="true" />;
+}
+
+export default function GameGalleryMediaManager({ slug, revision }: Props) {
+  const [galleryState, setGalleryState] = useState<GalleryState | null>(null);
+  const [libraryState, setLibraryState] = useState<MultimediaLibraryState | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerKind, setPickerKind] = useState<PickerKind>("image");
+  const [editingImage, setEditingImage] = useState<string | null>(null);
+  const [editingVideo, setEditingVideo] = useState<Extract<GameGalleryItem, { kind: "video" }> | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function load() {
+      try {
+        setLoading(true);
+        setError(null);
+        const [galleryResponse, libraryResponse] = await Promise.all([
+          fetch(`/api/admin/content/games/${encodeURIComponent(slug)}/gallery-media`, {
+            credentials: "same-origin",
+            cache: "no-store",
+            signal: controller.signal,
+          }),
+          fetch(`/api/admin/content/games/${encodeURIComponent(slug)}/media-library`, {
+            credentials: "same-origin",
+            cache: "no-store",
+            signal: controller.signal,
+          }),
+        ]);
+
+        if (!galleryResponse.ok || !libraryResponse.ok) {
+          throw new Error("No se pudo cargar el estado multimedia de Galería.");
+        }
+
+        const [galleryPayload, libraryPayload] = await Promise.all([
+          galleryResponse.json() as Promise<GalleryState>,
+          libraryResponse.json() as Promise<MultimediaLibraryState>,
+        ]);
+        if (controller.signal.aborted) return;
+        setGalleryState(galleryPayload);
+        setLibraryState(libraryPayload);
+      } catch (loadError) {
+        if (controller.signal.aborted) return;
+        setError(
+          loadError instanceof Error
+            ? loadError.message
+            : "No se pudo cargar Galería."
+        );
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    }
+
+    void load();
+    return () => controller.abort();
+  }, [slug]);
+
+  const gallery = galleryState?.gallery ?? EMPTY_GALLERY;
+  const currentRevision = galleryState?.revision ?? libraryState?.revision ?? revision;
+  const stale = galleryState !== null && galleryState.revision !== revision;
+  const assignedKeys = useMemo(
+    () => new Set(gallery.map((item) => `${item.kind}:${item.src}`)),
+    [gallery]
+  );
+  const pickerResources = (libraryState?.resources ?? []).filter(
+    (resource): resource is MultimediaLibraryResource =>
+      resource.kind === pickerKind &&
+      !assignedKeys.has(`${resource.kind}:${resource.src}`)
+  );
+  const pendingCount = gallery.filter((item) =>
+    item.kind === "image"
+      ? galleryState?.imageMedia?.gallery?.[item.src]?.confirmed !== true
+      : item.viewport.confirmed !== true
+  ).length;
+  const requirements = galleryState?.requirements;
+
+  function assignmentForm(
+    operation: "gallery-add" | "gallery-remove" | "gallery-move",
+    kind: PickerKind,
+    resource: string,
+    direction?: "up" | "down"
+  ) {
+    return (
+      <form
+        action={`/api/admin/content/games/${encodeURIComponent(slug)}/gallery-media`}
+        method="post"
+      >
+        <input type="hidden" name="expectedRevision" value={currentRevision} />
+        <input type="hidden" name="target" value={operation} />
+        <input type="hidden" name="kind" value={kind} />
+        <input type="hidden" name="resource" value={resource} />
+        {direction && <input type="hidden" name="direction" value={direction} />}
+        {operation === "gallery-add" ? (
+          <button type="submit" className={styles.galleryPickerChoice} disabled={stale}>
+            <span className={styles.galleryPickerThumb}>
+              <AdminMediaThumbnail
+                kind={kind}
+                src={resource}
+                mode="source"
+                label={`Recurso ${multimediaShortName(resource)}`}
+                sizes="88px"
+                playIndicator={kind === "video"}
+              />
+            </span>
+            <span>
+              <strong>{multimediaShortName(resource)}</strong>
+              <small>{kind === "image" ? "Imagen" : "Video WebM"}</small>
+            </span>
+            <Plus size={16} aria-hidden="true" />
+          </button>
+        ) : operation === "gallery-remove" ? (
+          <button type="submit" className={styles.galleryDangerButton} disabled={stale}>
+            <Trash2 size={15} aria-hidden="true" />
+            Quitar
+          </button>
+        ) : (
+          <button
+            type="submit"
+            className={styles.galleryIconButton}
+            disabled={stale}
+            aria-label={direction === "up" ? "Mover antes" : "Mover después"}
+            title={direction === "up" ? "Mover antes" : "Mover después"}
+          >
+            {direction === "up"
+              ? <ArrowUp size={15} aria-hidden="true" />
+              : <ArrowDown size={15} aria-hidden="true" />}
+          </button>
+        )}
+      </form>
+    );
+  }
+
+  return (
+    <section className={styles.galleryPanel} aria-labelledby="professional-gallery-heading">
+      <div className={styles.galleryHeading}>
+        <div>
+          <span className={styles.eyebrow}>GALERÍA MULTIMEDIA</span>
+          <h2 id="professional-gallery-heading">Galería del juego</h2>
+          <p>Imágenes y videos comparten un orden editorial. Cada elemento conserva su recorte sin duplicar ni modificar el master.</p>
+        </div>
+        <div className={styles.galleryCount} aria-label={`${gallery.length} de ${MAX_GAME_GALLERY_ITEMS} elementos`}>
+          <strong>{gallery.length}</strong>
+          <span>/ {MAX_GAME_GALLERY_ITEMS}</span>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className={styles.galleryMessage} role="status">Cargando Galería multimedia…</div>
+      ) : error ? (
+        <div className={styles.galleryMessage} role="alert">{error}</div>
+      ) : (
+        <>
+          {stale && (
+            <div className={styles.galleryWarning} role="alert">
+              <TriangleAlert size={17} aria-hidden="true" />
+              <span>La revisión cambió desde que se abrió la página. Recarga antes de modificar Galería.</span>
+            </div>
+          )}
+
+          <div className={styles.galleryStats}>
+            <span><ImageIcon size={15} aria-hidden="true" />{requirements?.gallery.imageCount ?? 0} imágenes</span>
+            <span><Clapperboard size={15} aria-hidden="true" />{requirements?.gallery.videoCount ?? 0} videos</span>
+            <span className={pendingCount ? styles.galleryPendingStat : styles.galleryReadyStat}>
+              {pendingCount ? <TriangleAlert size={15} aria-hidden="true" /> : <CheckCircle2 size={15} aria-hidden="true" />}
+              {pendingCount ? `${pendingCount} recorte${pendingCount === 1 ? "" : "s"} pendiente${pendingCount === 1 ? "" : "s"}` : "Recortes listos"}
+            </span>
+          </div>
+
+          {gallery.length === 0 ? (
+            <div className={styles.galleryEmpty}>
+              <Images size={27} aria-hidden="true" />
+              <strong>Agrega al menos un recurso</strong>
+              <span>Puede ser una imagen o un video WebM de la biblioteca compartida.</span>
+            </div>
+          ) : (
+            <div className={styles.galleryList}>
+              {gallery.map((item, index) => {
+                const imageViewport = item.kind === "image"
+                  ? galleryState?.imageMedia?.gallery?.[item.src]
+                  : undefined;
+                const confirmed = item.kind === "image"
+                  ? imageViewport?.confirmed === true
+                  : item.viewport.confirmed === true;
+                const cropLabel = item.kind === "image"
+                  ? gameImageCropAspectLabel(imageViewport)
+                  : videoCropLabel(item.viewport);
+
+                return (
+                  <article
+                    key={`${item.kind}:${item.src}`}
+                    className={`${styles.galleryItem} ${confirmed ? styles.galleryItemReady : styles.galleryItemPending}`}
+                  >
+                    <span className={styles.galleryItemOrder}>{index + 1}</span>
+                    <div className={styles.galleryItemPreview}>
+                      {item.kind === "image" ? (
+                        <AdminMediaThumbnail
+                          kind="image"
+                          src={item.src}
+                          viewport={imageViewport}
+                          mode="destination"
+                          frameAspect={resolveGameImageCropAspectRatio(imageViewport)}
+                          label={`Galería · ${multimediaShortName(item.src)}`}
+                          sizes="120px"
+                        />
+                      ) : (
+                        <AdminMediaThumbnail
+                          kind="video"
+                          src={item.src}
+                          viewport={item.viewport}
+                          mode="destination"
+                          frameAspect={videoAspectRatio(item.viewport)}
+                          label={`Video de Galería · ${multimediaShortName(item.src)}`}
+                          sizes="120px"
+                          playIndicator
+                        />
+                      )}
+                    </div>
+                    <div className={styles.galleryItemMeta}>
+                      <div className={styles.galleryItemTitleRow}>
+                        <ResourceIcon kind={item.kind} />
+                        <strong title={item.src}>{multimediaShortName(item.src)}</strong>
+                      </div>
+                      <small>{item.kind === "image" ? "Imagen" : "Video WebM"} · {cropLabel}</small>
+                      <span className={confirmed ? styles.galleryCropReady : styles.galleryCropPending}>
+                        {confirmed ? <CheckCircle2 size={14} aria-hidden="true" /> : <TriangleAlert size={14} aria-hidden="true" />}
+                        {confirmed ? `Recorte ${cropLabel} confirmado` : "Recorte pendiente de confirmar"}
+                      </span>
+                    </div>
+                    <div className={styles.galleryItemActions}>
+                      <div className={styles.galleryOrderActions}>
+                        {assignmentForm("gallery-move", item.kind, item.src, "up")}
+                        {assignmentForm("gallery-move", item.kind, item.src, "down")}
+                      </div>
+                      <button
+                        type="button"
+                        className={styles.galleryEditButton}
+                        disabled={stale}
+                        onClick={() => {
+                          if (item.kind === "image") setEditingImage(item.src);
+                          else setEditingVideo(item);
+                        }}
+                      >
+                        <Pencil size={15} aria-hidden="true" />
+                        {confirmed ? "Editar recorte" : "Confirmar recorte"}
+                      </button>
+                      {assignmentForm("gallery-remove", item.kind, item.src)}
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+
+          <div className={styles.galleryFooter}>
+            <div className={requirements?.gallery.assigned ? styles.gallerySelectionReady : styles.gallerySelectionPending}>
+              {requirements?.gallery.assigned
+                ? <CheckCircle2 size={16} aria-hidden="true" />
+                : <TriangleAlert size={16} aria-hidden="true" />}
+              <span>{requirements?.gallery.assigned ? "Recurso de galería seleccionado" : "Falta seleccionar un recurso"}</span>
+            </div>
+            <button
+              type="button"
+              className={styles.brandAction}
+              disabled={stale || gallery.length >= MAX_GAME_GALLERY_ITEMS}
+              onClick={() => setPickerOpen(true)}
+            >
+              <Plus size={16} aria-hidden="true" />
+              Agregar a galería
+            </button>
+          </div>
+
+          {pendingCount > 0 && gallery.length > 0 && (
+            <div className={styles.galleryPendingNotice}>
+              <TriangleAlert size={17} aria-hidden="true" />
+              <span>Hay {pendingCount} recorte{pendingCount === 1 ? "" : "s"} pendiente{pendingCount === 1 ? "" : "s"}. Usa “Confirmar recorte” en el recurso correspondiente.</span>
+            </div>
+          )}
+
+          {requirements && (
+            <div className={styles.continueGate}>
+              <div>
+                <strong>{requirements.ready ? "Multimedia completa" : "No puedes avanzar todavía"}</strong>
+                <span>{requirements.ready ? "Todos los destinos obligatorios y la Galería están listos." : missingRequirementMessage(requirements)}</span>
+              </div>
+              {requirements.ready ? (
+                <Link href={`/admin/juegos/${encodeURIComponent(slug)}?seccion=descargas`} className={styles.continueButton}>
+                  Continuar a Descargas
+                </Link>
+              ) : (
+                <button type="button" className={styles.continueButton} disabled>Continuar a Descargas</button>
+              )}
+            </div>
+          )}
+        </>
+      )}
+
+      {pickerOpen && (
+        <ContextualMediaDialog
+          eyebrow="GALERÍA MULTIMEDIA"
+          title="Agregar a galería"
+          description={`Elige una imagen o video existente. Galería admite hasta ${MAX_GAME_GALLERY_ITEMS} elementos totales y conserva el orden editorial.`}
+          onClose={() => setPickerOpen(false)}
+        >
+          <div className={styles.pickerTabs} role="group" aria-label="Tipo de recurso">
+            <button type="button" data-active={pickerKind === "image"} onClick={() => setPickerKind("image")}>
+              <ImageIcon size={16} aria-hidden="true" /> Imágenes
+            </button>
+            <button type="button" data-active={pickerKind === "video"} onClick={() => setPickerKind("video")}>
+              <Clapperboard size={16} aria-hidden="true" /> Videos
+            </button>
+          </div>
+          {pickerResources.length ? (
+            <div className={styles.galleryPickerGrid}>
+              {pickerResources.map((resource) => (
+                <div key={`${resource.kind}:${resource.src}`}>
+                  {assignmentForm("gallery-add", resource.kind, resource.src)}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className={styles.galleryMessage}>
+              No hay {pickerKind === "image" ? "imágenes" : "videos"} disponibles sin asignar. Agrega un recurso nuevo desde Biblioteca multimedia.
+            </div>
+          )}
+        </ContextualMediaDialog>
+      )}
+
+      {editingImage && (
+        <ContextualMediaDialog
+          eyebrow="EDITAR GALERÍA"
+          title="Recorte de la imagen"
+          description="Elige 16:9, 3:2, 1:1, 4:5, 9:16 o Libre. El archivo original permanece intacto y reutilizable."
+          onClose={() => setEditingImage(null)}
+        >
+          <ImageViewportEditor
+            slug={slug}
+            revision={currentRevision}
+            target="gallery"
+            src={editingImage}
+            resource={editingImage}
+            label={`Galería · ${multimediaShortName(editingImage)}`}
+            initialViewport={galleryState?.imageMedia?.gallery?.[editingImage]}
+            onClose={() => setEditingImage(null)}
+          />
+        </ContextualMediaDialog>
+      )}
+
+      {editingVideo && (
+        <ContextualMediaDialog
+          eyebrow="EDITAR GALERÍA"
+          title="Recorte del video"
+          description="Elige Original o una relación fija. El WebM master no se recodifica: sólo guardamos el encuadre de presentación."
+          onClose={() => setEditingVideo(null)}
+        >
+          <GameGalleryVideoViewportEditor
+            slug={slug}
+            revision={currentRevision}
+            clip={editingVideo.src}
+            label={`Galería · ${multimediaShortName(editingVideo.src)}`}
+            initialViewport={editingVideo.viewport}
+            onClose={() => setEditingVideo(null)}
+          />
+        </ContextualMediaDialog>
+      )}
+    </section>
+  );
+}

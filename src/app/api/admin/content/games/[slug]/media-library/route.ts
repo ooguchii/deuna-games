@@ -32,6 +32,13 @@ import {
   reconcileEditorialMediaDeletions,
 } from "@/lib/media/editorial-media-library";
 import {
+  MAX_GAME_GALLERY_ITEMS,
+  galleryImageSources,
+  resolveGameGalleryItems,
+  withGalleryItem,
+  withoutGalleryItem,
+} from "@/lib/media/game-gallery-media";
+import {
   evaluateGameMediaRequirements,
   GAME_DETAIL_VIEWPORT_ASPECT,
   REQUIRED_DESTINATION_ASPECTS,
@@ -135,7 +142,16 @@ async function resourcesForGame(
 }
 
 type MediaDraftUpdate = Parameters<typeof saveGameMediaDraft>[3] &
-  Partial<Pick<Game, "backgroundImage" | "cardImage" | "detailImage" | "mediaModes">>;
+  Partial<
+    Pick<
+      Game,
+      | "backgroundImage"
+      | "cardImage"
+      | "detailImage"
+      | "galleryMedia"
+      | "mediaModes"
+    >
+  >;
 
 function mediaUpdate(
   update: MediaDraftUpdate,
@@ -172,6 +188,10 @@ function withoutImageResource(
     delete imageMedia.gallery;
   }
 
+  const nextGalleryMedia = game.galleryMedia === undefined
+    ? undefined
+    : withoutGalleryItem(game, "image", resource);
+
   return mediaUpdate(
     {
       coverImage:
@@ -197,6 +217,9 @@ function withoutImageResource(
       screenshots: (game.screenshots ?? []).filter(
         (src) => src !== resource
       ),
+      ...(nextGalleryMedia !== undefined
+        ? { galleryMedia: nextGalleryMedia }
+        : {}),
     },
     imageMedia
   );
@@ -236,6 +259,10 @@ function withoutVideoResource(
     delete videoMedia.background;
   }
 
+  const nextGalleryMedia = game.galleryMedia === undefined
+    ? undefined
+    : withoutGalleryItem(game, "video", resource);
+
   return {
     videoMedia: Object.keys(videoMedia).length
       ? videoMedia
@@ -244,6 +271,9 @@ function withoutVideoResource(
       game.previewClip === resource
         ? undefined
         : game.previewClip,
+    ...(nextGalleryMedia !== undefined
+      ? { galleryMedia: nextGalleryMedia }
+      : {}),
   };
 }
 
@@ -596,17 +626,27 @@ export async function POST(
         redirectPath(slug, "recurso-invalido")
       );
     }
-    const screenshots = Array.from(
-      new Set([...(current.screenshots ?? []), imageResource.src])
+
+    const currentGallery = resolveGameGalleryItems(current);
+    const alreadyAssigned = currentGallery.some(
+      (item) => item.kind === "image" && item.src === imageResource.src
     );
-    if (screenshots.length > 8) {
+    if (!alreadyAssigned && currentGallery.length >= MAX_GAME_GALLERY_ITEMS) {
       return adminRedirect(
         authorized.adminOrigin,
         redirectPath(slug, "galeria-llena")
       );
     }
+
+    const galleryMedia = withGalleryItem(current, {
+      kind: "image",
+      src: imageResource.src,
+    });
     update = mediaUpdate(
-      { screenshots },
+      {
+        galleryMedia,
+        screenshots: galleryImageSources(galleryMedia),
+      },
       {
         ...current.imageMedia,
         gallery: {
@@ -619,20 +659,25 @@ export async function POST(
   }
 
   if (target.data === "gallery-remove") {
-    const currentScreenshots = current.screenshots ?? [];
-    if (!currentScreenshots.includes(resource)) {
+    const currentGallery = resolveGameGalleryItems(current);
+    if (!currentGallery.some(
+      (item) => item.kind === "image" && item.src === resource
+    )) {
       return adminRedirect(
         authorized.adminOrigin,
         redirectPath(slug, "recurso-invalido")
       );
     }
 
-    const screenshots = currentScreenshots.filter((src) => src !== resource);
+    const galleryMedia = withoutGalleryItem(current, "image", resource);
     const gallery = { ...current.imageMedia?.gallery };
     delete gallery[resource];
 
     update = mediaUpdate(
-      { screenshots },
+      {
+        galleryMedia,
+        screenshots: galleryImageSources(galleryMedia),
+      },
       {
         ...current.imageMedia,
         ...(Object.keys(gallery).length ? { gallery } : { gallery: undefined }),

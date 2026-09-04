@@ -165,6 +165,36 @@ const videoMediaSchema = z
     }
   });
 
+const galleryMediaSchema = z
+  .array(
+    z.discriminatedUnion("kind", [
+      z.object({
+        kind: z.literal("image"),
+        src: localImageSchema,
+      }).strict(),
+      z.object({
+        kind: z.literal("video"),
+        src: localPreviewClipSchema,
+        viewport: videoViewportSchema,
+      }).strict(),
+    ])
+  )
+  .max(8)
+  .superRefine((items, context) => {
+    const seen = new Set<string>();
+    items.forEach((item, index) => {
+      const key = `${item.kind}:${item.src}`;
+      if (seen.has(key)) {
+        context.addIssue({
+          code: "custom",
+          path: [index, "src"],
+          message: "Un mismo recurso no puede repetirse dentro de la Galería.",
+        });
+      }
+      seen.add(key);
+    });
+  });
+
 function splitGameCompatibilityPayload(payload: unknown) {
   if (
     typeof payload !== "object" ||
@@ -176,6 +206,7 @@ function splitGameCompatibilityPayload(payload: unknown) {
       cardImage: undefined,
       detailImage: undefined,
       backgroundImage: undefined,
+      galleryMedia: undefined,
       imageMedia: undefined,
       mediaModes: undefined,
       videoMedia: undefined,
@@ -194,6 +225,9 @@ function splitGameCompatibilityPayload(payload: unknown) {
   const backgroundImage = clean.backgroundImage === undefined
     ? undefined
     : localImageSchema.parse(clean.backgroundImage);
+  const galleryMedia = clean.galleryMedia === undefined
+    ? undefined
+    : galleryMediaSchema.parse(clean.galleryMedia);
   const imageMedia = clean.imageMedia === undefined
     ? undefined
     : imageMediaSchema.parse(clean.imageMedia);
@@ -207,6 +241,7 @@ function splitGameCompatibilityPayload(payload: unknown) {
   delete clean.cardImage;
   delete clean.detailImage;
   delete clean.backgroundImage;
+  delete clean.galleryMedia;
   delete clean.imageMedia;
   delete clean.mediaModes;
   delete clean.videoMedia;
@@ -223,6 +258,7 @@ function splitGameCompatibilityPayload(payload: unknown) {
     cardImage,
     detailImage,
     backgroundImage,
+    galleryMedia,
     imageMedia,
     mediaModes,
     videoMedia,
@@ -270,6 +306,7 @@ export function parseEditorialPayload<
     cardImage,
     detailImage,
     backgroundImage,
+    galleryMedia,
     imageMedia,
     mediaModes,
     videoMedia,
@@ -339,6 +376,7 @@ export function parseEditorialPayload<
     ...(resolvedCardImage ? { cardImage: resolvedCardImage } : {}),
     ...(resolvedDetailImage ? { detailImage: resolvedDetailImage } : {}),
     ...(backgroundImage ? { backgroundImage } : {}),
+    ...(galleryMedia !== undefined ? { galleryMedia } : {}),
     ...(resolvedImageMedia ? { imageMedia: resolvedImageMedia } : {}),
     mediaModes: resolvedMediaModes,
     ...(videoMedia ? { videoMedia } : {}),
