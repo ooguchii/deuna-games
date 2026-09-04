@@ -246,10 +246,10 @@ export default async function GameDetailPage({
   const gallery = resolvePublicGameGalleryItems(game);
   const galleryHasVideo = gallery.some((item) => item.kind === "video");
 
-  const platforms =
-    game.platforms?.length
-      ? game.platforms
-      : ["PC"];
+  const platforms = game.platforms ?? [];
+  const platformLabel = platforms.length
+    ? platforms.join(", ")
+    : "A confirmar";
   const genres =
     game.genres?.length
       ? game.genres
@@ -307,7 +307,7 @@ export default async function GameDetailPage({
       ? absoluteUrl(game.coverImage)
       : undefined,
     genre: genres,
-    gamePlatform: platforms,
+    gamePlatform: platforms.length ? platforms : undefined,
     operatingSystem:
       minimum?.system ??
       recommended?.system,
@@ -498,7 +498,7 @@ export default async function GameDetailPage({
               </span>
               <div>
                 <dt>Plataforma</dt>
-                <dd>{platforms.join(", ")}</dd>
+                <dd>{platformLabel}</dd>
               </div>
             </div>
             <div>
@@ -572,7 +572,7 @@ export default async function GameDetailPage({
                 <div><dt>Lanzamiento</dt><dd>{game.releaseDate}</dd></div>
               )}
               <div><dt>Género</dt><dd>{genres.join(", ")}</dd></div>
-              <div><dt>Plataforma</dt><dd>{platforms.join(", ")}</dd></div>
+              <div><dt>Plataforma</dt><dd>{platformLabel}</dd></div>
             </dl>
           </article>
 
