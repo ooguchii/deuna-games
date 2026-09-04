@@ -14,6 +14,12 @@ function requireIncludes(content, marker, message) {
   }
 }
 
+function requirePattern(content, pattern, message) {
+  if (!pattern.test(content)) {
+    failures.push(message);
+  }
+}
+
 function requireExcludes(content, marker, message) {
   if (content.includes(marker)) {
     failures.push(message);
@@ -160,9 +166,9 @@ requireIncludes(
   ".ambientBackdrop",
   "HeroSection: falta la capa ambiental exterior del Hero."
 );
-requireIncludes(
+requirePattern(
   hero,
-  "inset: -90px -8vw -150px",
+  /inset:\s*-90px\s+-8vw\s+-150px/,
   "HeroSection: el ambiente cinematográfico debe envolver la escena sin crear una altura vacía artificial."
 );
 requireIncludes(
