@@ -70,6 +70,8 @@ type Props = {
 
 type PickerKind = "image" | "video";
 
+const EMPTY_GALLERY: GameGalleryItem[] = [];
+
 function videoAspectRatio(viewport: GameVideoViewport) {
   if (viewport.aspect === "16:9") return 16 / 9;
   if (viewport.aspect === "3:2") return 3 / 2;
@@ -162,7 +164,7 @@ export default function GameGalleryMediaManager({ slug, revision }: Props) {
     return () => controller.abort();
   }, [slug]);
 
-  const gallery = galleryState?.gallery ?? [];
+  const gallery = galleryState?.gallery ?? EMPTY_GALLERY;
   const currentRevision = galleryState?.revision ?? libraryState?.revision ?? revision;
   const stale = galleryState !== null && galleryState.revision !== revision;
   const assignedKeys = useMemo(
