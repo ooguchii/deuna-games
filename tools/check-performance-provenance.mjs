@@ -107,8 +107,10 @@ assert(
     hook.includes("parsePublishedMetadata") &&
     hook.includes("allowedSources") &&
     hook.includes("allowedConfidence") &&
-    hook.includes("metadata: publishedMetadata"),
-  "La web pública debe recibir calibración y procedencia únicamente desde el snapshot publicado y revalidarlas en cliente."
+    hook.includes("metadata: state.metadata") &&
+    hook.includes("metadata: nextCached.metadata") &&
+    estimate.includes("metadata: publishedMetadata"),
+  "La web pública debe recibir calibración y procedencia únicamente desde el snapshot publicado, revalidarlas en cliente y entregarlas al consumidor."
 );
 
 assert(
