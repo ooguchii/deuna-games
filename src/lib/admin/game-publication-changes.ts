@@ -104,11 +104,13 @@ export function evaluateGamePublicationChanges(
         category: draft.category,
         genres: draft.genres,
         tags: draft.tags,
+        ageRating: draft.ageRating,
       },
       {
         category: published.category,
         genres: published.genres,
         tags: published.tags,
+        ageRating: published.ageRating,
       }
     )
   ) {
@@ -116,7 +118,7 @@ export function evaluateGamePublicationChanges(
       id: "classification",
       label: "Clasificación",
       detail:
-        "Cambian la clasificación principal, las adicionales o las etiquetas del juego.",
+        "Cambian la clasificación principal, las adicionales, las etiquetas o la clasificación etaria publicada del juego.",
       section: "datos",
     });
   }
