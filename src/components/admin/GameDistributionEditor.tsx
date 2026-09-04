@@ -12,6 +12,12 @@ import GameEditorFormActions from "./GameEditorFormActions";
 
 import adminStyles from "../../app/admin/admin.module.css";
 
+const channelLabels = {
+  stable: "Estable",
+  beta: "Beta",
+  testing: "Pruebas",
+} as const;
+
 export default function GameDistributionEditor({
   game,
   revision,
@@ -37,16 +43,19 @@ export default function GameDistributionEditor({
       declaredPlatforms.length > 0 &&
       !declaredPlatforms.includes(packagePlatform as never)
   );
+  const distributionMetadata = game.distributionMetadata;
+  const channel = distributionMetadata?.channel ?? "";
+  const checksumSha256 = distributionMetadata?.checksumSha256 ?? "";
 
   return (
     <section className={adminStyles.editorPanel}>
       <div className={adminStyles.sectionHeading}>
         <div>
           <span>DISTRIBUCIÓN</span>
-          <h2>Descargas, mirrors y consistencia</h2>
+          <h2>Descargas, mirrors e integridad</h2>
         </div>
         <p>
-          Mantiene la versión actual y sus fuentes. Las nuevas versiones se publican mediante una operación atómica separada.
+          Mantiene la versión actual, sus fuentes y la identidad verificable del paquete. Las nuevas versiones se publican mediante una operación atómica separada.
         </p>
       </div>
 
@@ -62,6 +71,18 @@ export default function GameDistributionEditor({
         <div className={adminStyles.tableSummary}>
           <strong>Plataforma del paquete</strong>
           <span>{packagePlatform || "Sin definir"}</span>
+        </div>
+        <div className={adminStyles.tableSummary}>
+          <strong>Canal</strong>
+          <span>{channel ? channelLabels[channel] : "Sin definir"}</span>
+        </div>
+        <div className={`${adminStyles.tableSummary} ${adminStyles.fieldWide}`}>
+          <strong>Integridad SHA-256</strong>
+          <span>
+            {checksumSha256
+              ? `${checksumSha256.slice(0, 12)}…${checksumSha256.slice(-12)}`
+              : "Sin checksum declarado"}
+          </span>
         </div>
 
         {platformMismatch ? (
@@ -85,7 +106,7 @@ export default function GameDistributionEditor({
         <div className={`${adminStyles.tableSummary} ${adminStyles.fieldWide}`}>
           <strong>Verificación de mirrors</strong>
           <span>
-            El panel valida formato HTTPS y estados editoriales. No realiza solicitudes servidoras automáticas a URLs arbitrarias para evitar SSRF, redirecciones inseguras y falsos positivos de proveedores que bloquean HEAD.
+            El checksum pertenece al paquete, no a una URL concreta: todos los mirrors de esta revisión deben entregar los mismos bytes. El panel valida HTTPS, formato del SHA-256 y estados editoriales, pero no realiza solicitudes servidoras automáticas a URLs arbitrarias para evitar SSRF y falsos positivos.
           </span>
         </div>
 
@@ -154,10 +175,39 @@ export default function GameDistributionEditor({
           </small>
         </label>
 
+        <label>
+          <span>Canal de distribución</span>
+          <select name="channel" defaultValue={channel}>
+            <option value="">Sin definir</option>
+            <option value="stable">Estable</option>
+            <option value="beta">Beta</option>
+            <option value="testing">Pruebas</option>
+          </select>
+          <small>
+            Declara el estado editorial del paquete; no se infiere desde el nombre de versión ni desde el mirror.
+          </small>
+        </label>
+
+        <label className={adminStyles.fieldWide}>
+          <span>SHA-256 del paquete</span>
+          <input
+            name="checksumSha256"
+            defaultValue={checksumSha256}
+            minLength={64}
+            maxLength={64}
+            autoComplete="off"
+            spellCheck={false}
+            placeholder="64 caracteres hexadecimales"
+          />
+          <small>
+            Calcula el SHA-256 sobre el paquete final antes de subirlo. El mismo valor debe corresponder a todas las fuentes configuradas para esta revisión.
+          </small>
+        </label>
+
         <GameDownloadEditor initialSources={sources} />
 
         <GameEditorFormActions
-          note="Las URLs HTTP inseguras se rechazan y cada fuente conserva estado, visibilidad y orden editorial."
+          note="Las URLs HTTP inseguras se rechazan; canal y SHA-256 quedan versionados junto con el paquete, y cada fuente conserva estado, visibilidad y orden editorial."
           action={action}
           continueTo="valoracion"
           saveLabel="Guardar distribución"
