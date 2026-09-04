@@ -2,27 +2,32 @@ import Link from "next/link";
 import { ArrowLeft, Eye } from "lucide-react";
 import { notFound } from "next/navigation";
 
-import EditorialHistory from "@/components/admin/EditorialHistory";
-import EditorStateNotice from "@/components/admin/EditorStateNotice";
 import AdminPageHeader from "@/components/admin/AdminPageHeader";
-import GameDownloadEditor from "@/components/admin/GameDownloadEditor";
-import GameEditorFormActions from "@/components/admin/GameEditorFormActions";
+import EditorStateNotice from "@/components/admin/EditorStateNotice";
+import GameClassificationEditor from "@/components/admin/GameClassificationEditor";
+import GameCompatibilityEditor from "@/components/admin/GameCompatibilityEditor";
+import GameDistributionEditor from "@/components/admin/GameDistributionEditor";
+import GameEditorHealthOverview from "@/components/admin/GameEditorHealthOverview";
+import GameHistoryPanel from "@/components/admin/GameHistoryPanel";
+import GameInformationEditor from "@/components/admin/GameInformationEditor";
 import GameMultimediaEditor from "@/components/admin/GameMultimediaEditor";
 import GamePerformanceEditor from "@/components/admin/GamePerformanceEditor";
-import GamePlatformEditor from "@/components/admin/GamePlatformEditor";
-import GameTaxonomyMultiSelect from "@/components/admin/GameTaxonomyMultiSelect";
+import GameValuationEditor from "@/components/admin/GameValuationEditor";
 import {
   getEditorialItem,
 } from "@/lib/admin/content-service";
+import {
+  getGameHistory,
+} from "@/lib/admin/game-history";
+import {
+  evaluateGamePublicationReadiness,
+} from "@/lib/admin/game-publication-readiness";
 import {
   getGamePublicationIdentity,
 } from "@/lib/admin/publication-overview";
 import {
   verifyAdminSession,
 } from "@/lib/admin/session";
-import type {
-  GameHardwareRequirements,
-} from "@/types/game";
 import type {
   GameTaxonomyTerm,
 } from "@/types/game-taxonomy";
@@ -38,6 +43,7 @@ const gameSections = [
   "rendimiento",
   "multimedia",
   "descargas",
+  "valoracion",
   "historial",
 ] as const;
 
@@ -51,30 +57,10 @@ type PageProps = {
   }>;
 };
 
-function legacyMinimum(
-  requirements: GameHardwareRequirements | undefined
-) {
-  if (!requirements) return undefined;
-
-  const minimum: GameHardwareRequirements = {
-    system: requirements.system,
-    processor: requirements.processor,
-    ram: requirements.ram,
-    graphics: requirements.graphics,
-    storage: requirements.storage,
-  };
-
-  return Object.values(minimum).some(Boolean)
-    ? minimum
-    : undefined;
-}
-
 function resolveGameSection(
   value: string | string[] | undefined
 ): GameSection {
-  const candidate = Array.isArray(value)
-    ? value[0]
-    : value;
+  const candidate = Array.isArray(value) ? value[0] : value;
 
   return gameSections.includes(candidate as GameSection)
     ? (candidate as GameSection)
@@ -82,32 +68,21 @@ function resolveGameSection(
 }
 
 function publicationLabel(
-  identity: Awaited<
-    ReturnType<typeof getGamePublicationIdentity>
-  >,
+  identity: Awaited<ReturnType<typeof getGamePublicationIdentity>>,
   fallbackSynced: boolean
 ) {
   if (!identity) {
-    return fallbackSynced
-      ? "Sin cambios"
-      : "Borrador modificado";
+    return fallbackSynced ? "Sin cambios" : "Borrador modificado";
   }
-
-  if (
-    identity.panelCreated &&
-    !identity.everPublished
-  ) {
+  if (identity.panelCreated && !identity.everPublished) {
     return "Sin publicar";
   }
-
   if (!identity.publicVisible) {
     return `Oculto · Pub. #${identity.publicationNumber}`;
   }
-
   if (identity.hasUnpublishedChanges) {
     return `Cambios pendientes · Pub. #${identity.publicationNumber}`;
   }
-
   return `Publicado · #${identity.publicationNumber}`;
 }
 
@@ -159,8 +134,7 @@ export default async function AdminGameEditorPage({
     ? parameters.estado[0]
     : parameters.estado;
   const section = resolveGameSection(parameters.seccion);
-  const panelCreated =
-    publicationIdentity?.panelCreated ?? false;
+  const panelCreated = publicationIdentity?.panelCreated ?? false;
   const game = item.payload;
   const taxonomy = taxonomyItem?.payload;
   const currentClassifications = [
@@ -178,21 +152,20 @@ export default async function AdminGameEditorPage({
           normalizeClassification(term.label)
         )
     ) ?? fallbackTerms(currentClassifications);
-  const tagTerms = taxonomy?.tags ??
-    fallbackTerms(game.tags ?? []);
-  const download = game.download;
-  const requirements = game.requirements;
-  const minimum =
-    requirements?.minimum ??
-    legacyMinimum(requirements);
-  const recommended = requirements?.recommended;
+  const tagTerms = taxonomy?.tags ?? fallbackTerms(game.tags ?? []);
   const coreAction =
     `/api/admin/content/games/${encodeURIComponent(slug)}`;
-  const advancedAction = `${coreAction}/advanced`;
-  const requirementsAction = `${coreAction}/requirements`;
+  const informationAction = `${coreAction}/information`;
+  const classificationAction = `${coreAction}/classification`;
+  const compatibilityAction = `${coreAction}/compatibility`;
   const performanceAction = `${coreAction}/performance`;
   const downloadAction = `${coreAction}/download`;
+  const valuationAction = `${coreAction}/valuation`;
   const hasPublicVersion = publicationIdentity?.everPublished ?? false;
+  const readiness = evaluateGamePublicationReadiness(game);
+  const history = section === "historial"
+    ? await getGameHistory(slug)
+    : [];
 
   return (
     <>
@@ -204,33 +177,35 @@ export default async function AdminGameEditorPage({
       <AdminPageHeader
         eyebrow={<>JUEGO · REVISIÓN {item.revision}</>}
         title={game.title}
-        description="Gestiona información, clasificación, compatibilidad, multimedia y distribución desde un único espacio. Guardar conserva el borrador; Publicar sigue siendo una acción separada."
-        action={<div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
-            flexWrap: "wrap",
-            justifyContent: "flex-end",
-          }}
-        >
-          <Link
-            href={`/admin/juegos/${encodeURIComponent(slug)}/vista-previa`}
-            className={styles.tableAction}
+        description="Gestiona identidad, clasificación, compatibilidad, rendimiento, multimedia, distribución, valoración y auditoría desde un flujo editorial único. Guardar conserva el borrador; Publicar sigue siendo una acción separada."
+        action={
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              flexWrap: "wrap",
+              justifyContent: "flex-end",
+            }}
           >
-            <Eye size={14} aria-hidden="true" />
-            Vista previa
-          </Link>
-          <Link
-            href={`/admin/juegos/${encodeURIComponent(slug)}/publicacion`}
-            className={styles.draftState}
-          >
-            {publicationLabel(
-              publicationIdentity,
-              item.status === "synced"
-            )}
-          </Link>
-        </div>}
+            <Link
+              href={`/admin/juegos/${encodeURIComponent(slug)}/vista-previa`}
+              className={styles.tableAction}
+            >
+              <Eye size={14} aria-hidden="true" />
+              Vista previa
+            </Link>
+            <Link
+              href={`/admin/juegos/${encodeURIComponent(slug)}/publicacion`}
+              className={styles.draftState}
+            >
+              {publicationLabel(
+                publicationIdentity,
+                item.status === "synced"
+              )}
+            </Link>
+          </div>
+        }
       />
 
       <EditorStateNotice state={state} />
@@ -241,383 +216,37 @@ export default async function AdminGameEditorPage({
         </div>
       )}
 
+      <GameEditorHealthOverview
+        slug={slug}
+        activeSection={section}
+        readiness={readiness}
+      />
+
       {section === "ficha" && (
-        <section className={styles.editorPanel}>
-          <div className={styles.sectionHeading}>
-            <div>
-              <span>INFORMACIÓN</span>
-              <h2>Información del juego</h2>
-            </div>
-            <p>
-              Título, descripción, presentación y datos editoriales principales del juego.
-            </p>
-          </div>
-
-          <form
-            className={styles.editorForm}
-            method="post"
-            action={coreAction}
-          >
-            <input
-              type="hidden"
-              name="expectedRevision"
-              value={item.revision}
-            />
-
-            <label className={styles.fieldWide}>
-              <span>Título</span>
-              <input
-                name="title"
-                defaultValue={game.title}
-                maxLength={140}
-                required
-              />
-            </label>
-
-            <label className={styles.fieldWide}>
-              <span>Descripción</span>
-              <textarea
-                name="description"
-                defaultValue={game.description}
-                maxLength={2500}
-                rows={6}
-                required
-              />
-            </label>
-
-            <label>
-              <span>Clasificación principal</span>
-              <select
-                name="category"
-                defaultValue={game.category}
-                required
-              >
-                {classificationTerms.map((term) => (
-                  <option key={term.key} value={term.label}>
-                    {term.label}{term.active ? "" : " · Inactiva"}
-                  </option>
-                ))}
-              </select>
-              <small>
-                Las opciones provienen de la lista maestra de Clasificaciones y etiquetas. La principal define cuál se muestra primero en la ficha interna del juego.
-              </small>
-            </label>
-
-            {hasPublicVersion ? (
-              <>
-                <input
-                  type="hidden"
-                  name="version"
-                  value={game.version ?? ""}
-                />
-                <div className={`${styles.tableSummary} ${styles.fieldWide}`}>
-                  <strong>Versión pública</strong>
-                  <span>
-                    {game.version?.trim() || "Sin versión registrada"} · Se modifica desde Distribución → Nueva versión.
-                  </span>
-                </div>
-              </>
-            ) : (
-              <label>
-                <span>Versión inicial</span>
-                <input
-                  name="version"
-                  defaultValue={game.version ?? ""}
-                  maxLength={240}
-                />
-                <small>
-                  Después de la primera publicación, las versiones nuevas se gestionan desde Distribución.
-                </small>
-              </label>
-            )}
-
-            <label>
-              <span>Insignia</span>
-              <input
-                name="badge"
-                defaultValue={game.badge ?? ""}
-                maxLength={240}
-              />
-            </label>
-
-            <label>
-              <span>Valoración (0–5)</span>
-              <input
-                name="rating"
-                type="number"
-                min="0"
-                max="5"
-                step="0.01"
-                defaultValue={game.rating ?? ""}
-              />
-            </label>
-
-            <label>
-              <span>Reseñas</span>
-              <input
-                name="reviews"
-                defaultValue={game.reviews ?? ""}
-                maxLength={30}
-                placeholder="12.4K"
-              />
-            </label>
-
-            <label>
-              <span>Texto alternativo</span>
-              <input
-                name="imageAlt"
-                defaultValue={game.imageAlt}
-                maxLength={240}
-                required
-              />
-            </label>
-
-            <GameEditorFormActions
-              note="Guardar no publica. La revisión anterior seguirá disponible en Historial."
-              action={coreAction}
-              continueTo="datos"
-              saveLabel="Guardar información"
-              continueLabel="Guardar y continuar a Clasificación"
-            />
-          </form>
-        </section>
+        <GameInformationEditor
+          game={game}
+          revision={item.revision}
+          action={informationAction}
+          hasPublicVersion={hasPublicVersion}
+        />
       )}
 
       {section === "datos" && (
-        <section className={styles.editorPanel}>
-          <div className={styles.sectionHeading}>
-            <div>
-              <span>CLASIFICACIÓN Y METADATOS</span>
-              <h2>Clasificación del juego</h2>
-            </div>
-            <p>
-              Organiza clasificaciones adicionales, etiquetas y plataformas, junto con los metadatos que completan la identidad del título.
-            </p>
-          </div>
-
-          <form
-            className={styles.editorForm}
-            method="post"
-            action={advancedAction}
-          >
-            <input
-              type="hidden"
-              name="expectedRevision"
-              value={item.revision}
-            />
-
-            <label>
-              <span>Título corto</span>
-              <input
-                name="shortTitle"
-                defaultValue={game.shortTitle ?? ""}
-                maxLength={140}
-              />
-            </label>
-
-            <label>
-              <span>Parte destacada del título</span>
-              <input
-                name="highlightedTitle"
-                defaultValue={game.highlightedTitle ?? ""}
-                maxLength={140}
-              />
-            </label>
-
-            <label>
-              <span>Desarrollador</span>
-              <input
-                name="developer"
-                defaultValue={game.developer ?? ""}
-                maxLength={160}
-              />
-            </label>
-
-            <label>
-              <span>Editor / publisher</span>
-              <input
-                name="publisher"
-                defaultValue={game.publisher ?? ""}
-                maxLength={160}
-              />
-            </label>
-
-            <label className={styles.fieldWide}>
-              <span>Fecha de lanzamiento</span>
-              <input
-                name="releaseDate"
-                defaultValue={game.releaseDate ?? ""}
-                maxLength={40}
-                placeholder="25/02/2022"
-              />
-            </label>
-
-            <GameTaxonomyMultiSelect
-              name="genresText"
-              label="Clasificaciones adicionales"
-              terms={classificationTerms}
-              initialValues={game.genres ?? []}
-              maximum={20}
-            />
-
-            <GameTaxonomyMultiSelect
-              name="tagsText"
-              label="Etiquetas"
-              terms={tagTerms}
-              initialValues={game.tags ?? []}
-              maximum={30}
-            />
-
-            <GamePlatformEditor
-              initialPlatforms={game.platforms ?? []}
-            />
-
-            <GameEditorFormActions
-              note="La clasificación principal y las adicionales salen de una única lista maestra; un mismo juego nunca se contará dos veces dentro de la misma clasificación."
-              action={advancedAction}
-              continueTo="requisitos"
-              saveLabel="Guardar clasificación y metadatos"
-              continueLabel="Guardar y continuar a Compatibilidad"
-            />
-          </form>
-        </section>
+        <GameClassificationEditor
+          game={game}
+          revision={item.revision}
+          action={classificationAction}
+          classificationTerms={classificationTerms}
+          tagTerms={tagTerms}
+        />
       )}
 
       {section === "requisitos" && (
-        <section className={styles.editorPanel}>
-          <div className={styles.sectionHeading}>
-            <div>
-              <span>COMPATIBILIDAD · REQUISITOS</span>
-              <h2>Requisitos del sistema</h2>
-            </div>
-            <p>
-              Configura mínimos y recomendados. Rendimiento permanece como la segunda parte de Compatibilidad.
-            </p>
-          </div>
-
-          <form
-            className={styles.editorForm}
-            method="post"
-            action={requirementsAction}
-          >
-            <input
-              type="hidden"
-              name="expectedRevision"
-              value={item.revision}
-            />
-
-            <div className={`${styles.tableSummary} ${styles.fieldWide}`}>
-              <strong>Requisitos mínimos</strong>
-              <span>Equipo base para ejecutar el juego</span>
-            </div>
-
-            <label>
-              <span>Sistema operativo</span>
-              <input
-                name="minimumSystem"
-                defaultValue={minimum?.system ?? ""}
-                maxLength={240}
-                placeholder="Windows 10 de 64 bits"
-              />
-            </label>
-
-            <label>
-              <span>Procesador</span>
-              <input
-                name="minimumProcessor"
-                defaultValue={minimum?.processor ?? ""}
-                maxLength={240}
-              />
-            </label>
-
-            <label>
-              <span>Memoria RAM</span>
-              <input
-                name="minimumRam"
-                defaultValue={minimum?.ram ?? ""}
-                maxLength={240}
-                placeholder="12 GB"
-              />
-            </label>
-
-            <label>
-              <span>Gráficos</span>
-              <input
-                name="minimumGraphics"
-                defaultValue={minimum?.graphics ?? ""}
-                maxLength={240}
-              />
-            </label>
-
-            <label className={styles.fieldWide}>
-              <span>Almacenamiento</span>
-              <input
-                name="minimumStorage"
-                defaultValue={minimum?.storage ?? ""}
-                maxLength={240}
-                placeholder="60 GB"
-              />
-            </label>
-
-            <div className={`${styles.tableSummary} ${styles.fieldWide}`}>
-              <strong>Requisitos recomendados</strong>
-              <span>Configuración sugerida para una mejor experiencia</span>
-            </div>
-
-            <label>
-              <span>Sistema operativo</span>
-              <input
-                name="recommendedSystem"
-                defaultValue={recommended?.system ?? ""}
-                maxLength={240}
-              />
-            </label>
-
-            <label>
-              <span>Procesador</span>
-              <input
-                name="recommendedProcessor"
-                defaultValue={recommended?.processor ?? ""}
-                maxLength={240}
-              />
-            </label>
-
-            <label>
-              <span>Memoria RAM</span>
-              <input
-                name="recommendedRam"
-                defaultValue={recommended?.ram ?? ""}
-                maxLength={240}
-              />
-            </label>
-
-            <label>
-              <span>Gráficos</span>
-              <input
-                name="recommendedGraphics"
-                defaultValue={recommended?.graphics ?? ""}
-                maxLength={240}
-              />
-            </label>
-
-            <label className={styles.fieldWide}>
-              <span>Almacenamiento</span>
-              <input
-                name="recommendedStorage"
-                defaultValue={recommended?.storage ?? ""}
-                maxLength={240}
-              />
-            </label>
-
-            <GameEditorFormActions
-              note="Si todos los campos quedan vacíos, el juego quedará sin requisitos editoriales configurados."
-              action={requirementsAction}
-              continueTo="rendimiento"
-              saveLabel="Guardar requisitos"
-              continueLabel="Guardar y continuar a Rendimiento"
-            />
-          </form>
-        </section>
+        <GameCompatibilityEditor
+          game={game}
+          revision={item.revision}
+          action={compatibilityAction}
+        />
       )}
 
       {section === "rendimiento" && (
@@ -640,88 +269,26 @@ export default async function AdminGameEditorPage({
       )}
 
       {section === "descargas" && (
-        <section className={styles.editorPanel}>
-          <div className={styles.sectionHeading}>
-            <div>
-              <span>DISTRIBUCIÓN</span>
-              <h2>Descargas y mirrors</h2>
-            </div>
-            <p>
-              Mantén tamaño, plataforma y fuentes de la versión actual. Para publicar una versión diferente utiliza Distribución → Nueva versión.
-            </p>
-          </div>
+        <GameDistributionEditor
+          game={game}
+          revision={item.revision}
+          action={downloadAction}
+        />
+      )}
 
-          {download?.href && (
-            <div className={`${styles.editorNotice} ${styles.editorNoticeWarning}`}>
-              Este borrador conserva un enlace principal heredado. Las nuevas fuentes se añadirán sin eliminarlo hasta completar la migración del formato antiguo.
-            </div>
-          )}
-
-          <form
-            className={styles.editorForm}
-            method="post"
-            action={downloadAction}
-          >
-            <input
-              type="hidden"
-              name="expectedRevision"
-              value={item.revision}
-            />
-
-            <label>
-              <span>Tamaño total (GB)</span>
-              <input
-                name="sizeGb"
-                type="number"
-                min="0.01"
-                max="100000"
-                step="0.01"
-                defaultValue={download?.sizeGb ?? ""}
-                placeholder="60"
-              />
-            </label>
-
-            <label>
-              <span>Cantidad de archivos</span>
-              <input
-                name="fileCount"
-                type="number"
-                min="1"
-                max="10000"
-                step="1"
-                defaultValue={download?.fileCount ?? ""}
-                placeholder="1"
-              />
-            </label>
-
-            <label className={styles.fieldWide}>
-              <span>Plataforma mostrada</span>
-              <input
-                name="platform"
-                defaultValue={download?.platform ?? ""}
-                maxLength={80}
-                placeholder="Windows"
-              />
-            </label>
-
-            <GameDownloadEditor
-              initialSources={download?.sources ?? []}
-            />
-
-            <GameEditorFormActions
-              note="Esta pantalla mantiene las fuentes de la versión actual. No crea una versión nueva y las direcciones HTTP inseguras se rechazan."
-              action={downloadAction}
-              continueTo="publicacion"
-              saveLabel="Guardar distribución"
-              continueLabel="Guardar y revisar Publicación"
-            />
-          </form>
-        </section>
+      {section === "valoracion" && (
+        <GameValuationEditor
+          slug={slug}
+          revision={item.revision}
+          editorialRating={game.rating}
+          legacyReviews={game.reviews}
+          action={valuationAction}
+        />
       )}
 
       {section === "historial" && (
-        <EditorialHistory
-          revisions={item.revisions}
+        <GameHistoryPanel
+          events={history}
           currentRevision={item.revision}
         />
       )}
