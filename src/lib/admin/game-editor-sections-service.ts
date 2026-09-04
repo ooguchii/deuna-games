@@ -6,6 +6,7 @@ import type {
 
 import type {
   Game,
+  GameCompatibilityMetadata,
   GameHardwareRequirements,
   GamePlatform,
 } from "@/types/game";
@@ -52,6 +53,7 @@ export type GameCompatibilityInput = {
   platforms?: GamePlatform[];
   minimum?: GameHardwareRequirements;
   recommended?: GameHardwareRequirements;
+  metadata?: GameCompatibilityMetadata;
 };
 
 export type GameValuationInput = Pick<Game, "rating">;
@@ -80,6 +82,20 @@ function compactRequirements(
     const value = input[key]?.trim();
     if (value) compact[key] = value;
   }
+
+  return Object.keys(compact).length ? compact : undefined;
+}
+
+function compactCompatibilityMetadata(
+  metadata: GameCompatibilityMetadata | undefined
+) {
+  if (!metadata) return undefined;
+
+  const compact: GameCompatibilityMetadata = {
+    ...(metadata.status ? { status: metadata.status } : {}),
+    ...(metadata.source ? { source: metadata.source } : {}),
+    ...(metadata.verifiedAt ? { verifiedAt: metadata.verifiedAt } : {}),
+  };
 
   return Object.keys(compact).length ? compact : undefined;
 }
@@ -231,6 +247,10 @@ export function saveGameCompatibilitySection(
     (game) => {
       const minimum = compactRequirements(input.minimum);
       const recommended = compactRequirements(input.recommended);
+      const metadata = compactCompatibilityMetadata(input.metadata);
+      const hasCompatibilityData = Boolean(
+        input.platforms?.length || minimum || recommended
+      );
 
       return {
         ...game,
@@ -243,6 +263,9 @@ export function saveGameCompatibilitySection(
               ...(minimum ? { minimum } : {}),
               ...(recommended ? { recommended } : {}),
             }
+          : undefined,
+        compatibilityMetadata: hasCompatibilityData
+          ? metadata
           : undefined,
       };
     }
