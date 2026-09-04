@@ -34,6 +34,7 @@ function multimediaState(game: Game) {
     screenshots: game.screenshots,
     galleryMedia: game.galleryMedia,
     imageMedia: game.imageMedia,
+    mediaAccessibility: game.mediaAccessibility,
     mediaModes: game.mediaModes,
     videoMedia: game.videoMedia,
     previewMode: game.previewMode,
@@ -172,7 +173,7 @@ export function evaluateGamePublicationChanges(
       id: "media",
       label: "Multimedia",
       detail:
-        "Cambian recursos, modos, recortes, orden de Galería o videos multimedia que se mostrarán en las superficies públicas.",
+        "Cambian recursos, modos, recortes, orden de Galería, videos o textos accesibles contextuales que se mostrarán en las superficies públicas.",
       section: "multimedia",
     });
   }
