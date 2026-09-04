@@ -9,14 +9,11 @@ import {
   Play,
 } from "lucide-react";
 import {
-  forwardRef,
   type CSSProperties,
   type KeyboardEvent,
   type PointerEvent,
-  type TransitionEvent,
   useCallback,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -33,20 +30,14 @@ import {
   resolveHeroImageTuning,
   type HeroImageTuning,
 } from "@/lib/site/hero-image";
-import type { Game } from "@/types/game";
+import type { Game, GameImageViewport } from "@/types/game";
 
 import artworkStyles from "./HeroArtwork.module.css";
 import styles from "./HeroSection.module.css";
 
 const AUTOPLAY_TIME = 6500;
 const FINE_HOVER_MEDIA = "(hover: hover) and (pointer: fine)";
-
-type TrackSlide = {
-  key: string;
-  game: Game;
-  logicalIndex: number;
-  clone: boolean;
-};
+const SWIPE_THRESHOLD = 55;
 
 type ResponsiveArtworkProps = {
   game: Game;
@@ -60,6 +51,26 @@ function canUseFineHover() {
   return typeof window !== "undefined" && window.matchMedia(FINE_HOVER_MEDIA).matches;
 }
 
+function imageViewportForHero(game: Game) {
+  return game.heroImage
+    ? game.imageMedia?.hero
+    : game.imageMedia?.cover;
+}
+
+function imageViewportForNext(game: Game) {
+  return game.coverImage
+    ? game.imageMedia?.cover
+    : game.imageMedia?.hero;
+}
+
+function imagePosition(viewport: GameImageViewport | undefined) {
+  const framed = normalizeGameImageViewport(viewport);
+  return {
+    framed,
+    position: `${(framed.x * 100).toFixed(2)}% ${(framed.y * 100).toFixed(2)}%`,
+  };
+}
+
 function ResponsiveArtwork({
   game,
   alt,
@@ -69,32 +80,23 @@ function ResponsiveArtwork({
 }: ResponsiveArtworkProps) {
   const src = game.heroImage ?? game.coverImage;
 
-  if (!src) {
-    return null;
-  }
+  if (!src) return null;
 
   const artworkClassName = ambient
     ? styles.ambientImage
     : `${styles.heroArtwork} ${artworkStyles.artwork} ${
         active ? artworkStyles.activeArtwork : ""
       }`;
-  const framed = ambient
+  const framing = ambient
     ? null
-    : normalizeGameImageViewport(
-        game.heroImage
-          ? game.imageMedia?.hero
-          : undefined
-      );
-  const framedPosition = framed
-    ? `${(framed.x * 100).toFixed(2)}% ${(framed.y * 100).toFixed(2)}%`
-    : null;
-  const artworkInlineStyle = framed
+    : imagePosition(imageViewportForHero(game));
+  const artworkInlineStyle = framing
     ? ({
         ...style,
-        "--hero-image-zoom": framed.zoom,
-        "--hero-image-position": framedPosition,
-        "--hero-mobile-image-zoom": framed.zoom,
-        "--hero-mobile-image-position": framedPosition,
+        "--hero-image-zoom": framing.framed.zoom,
+        "--hero-image-position": framing.position,
+        "--hero-mobile-image-zoom": framing.framed.zoom,
+        "--hero-mobile-image-position": framing.position,
       } as CSSProperties)
     : style;
 
@@ -113,6 +115,23 @@ function ResponsiveArtwork({
   );
 }
 
+function NextArtwork({ game }: { game: Game }) {
+  const src = game.coverImage ?? game.heroImage;
+  if (!src) return <span className={styles.nextFallback} aria-hidden="true" />;
+
+  const framing = imagePosition(imageViewportForNext(game));
+  const inlineStyle = {
+    "--next-image-zoom": framing.framed.zoom,
+    "--next-image-position": framing.position,
+  } as CSSProperties;
+
+  return (
+    <span className={styles.nextArtworkFrame} style={inlineStyle} aria-hidden="true">
+      <img src={src} alt="" loading="lazy" decoding="async" />
+    </span>
+  );
+}
+
 function HeroVideoLayer({
   game,
   enabled,
@@ -125,16 +144,10 @@ function HeroVideoLayer({
   const [documentVisible, setDocumentVisible] = useState(true);
 
   useEffect(() => {
-    const syncVisibility = () => {
-      setDocumentVisible(!document.hidden);
-    };
-
+    const syncVisibility = () => setDocumentVisible(!document.hidden);
     syncVisibility();
     document.addEventListener("visibilitychange", syncVisibility);
-
-    return () => {
-      document.removeEventListener("visibilitychange", syncVisibility);
-    };
+    return () => document.removeEventListener("visibilitychange", syncVisibility);
   }, []);
 
   if (
@@ -176,162 +189,108 @@ type HeroSlideProps = {
   imageEffect: boolean;
   artworkStyle: CSSProperties;
   overlayOpacity: number;
-  clone?: boolean;
-  active?: boolean;
-  videoEnabled?: boolean;
+  reducedMotion: boolean;
 };
 
-const HeroSlide = forwardRef<HTMLElement, HeroSlideProps>(
-  function HeroSlide(
-    {
-      game,
-      copy,
-      logicalIndex,
-      total,
-      imageEffect,
-      artworkStyle,
-      overlayOpacity,
-      clone = false,
-      active = false,
-      videoEnabled = false,
-    },
-    ref
-  ) {
-    const accessible = active && !clone;
-    const hasArtwork = Boolean(game.heroImage || game.coverImage);
-    const heroMode = resolveGameDestinationMediaMode(game, "hero");
-    const hoverPlayback = heroMode === "hover-video";
-    const videoModeEnabled = heroMode !== "image";
-    const [hoverPreviewActive, setHoverPreviewActive] = useState(false);
-    const videoShouldRender =
-      videoEnabled &&
-      videoModeEnabled &&
-      (!hoverPlayback || hoverPreviewActive);
+function HeroSlide({
+  game,
+  copy,
+  logicalIndex,
+  total,
+  imageEffect,
+  artworkStyle,
+  overlayOpacity,
+  reducedMotion,
+}: HeroSlideProps) {
+  const accessible = true;
+  const hasArtwork = Boolean(game.heroImage || game.coverImage);
+  const heroMode = resolveGameDestinationMediaMode(game, "hero");
+  const hoverPlayback = heroMode === "hover-video";
+  const videoModeEnabled = heroMode !== "image";
+  const [hoverPreviewActive, setHoverPreviewActive] = useState(false);
+  const videoEnabled = !reducedMotion;
+  const videoShouldRender =
+    videoEnabled &&
+    videoModeEnabled &&
+    (!hoverPlayback || hoverPreviewActive);
 
-    function startHoverPreview() {
-      if (hoverPlayback && accessible && canUseFineHover()) {
-        setHoverPreviewActive(true);
-      }
+  function startHoverPreview() {
+    if (hoverPlayback && accessible && canUseFineHover()) {
+      setHoverPreviewActive(true);
     }
+  }
 
-    function stopHoverPreview() {
-      if (hoverPlayback) {
-        setHoverPreviewActive(false);
-      }
-    }
+  function stopHoverPreview() {
+    if (hoverPlayback) setHoverPreviewActive(false);
+  }
 
-    return (
-      <article
-        ref={ref}
-        className={`${styles.slide} ${active ? styles.activeSlide : ""}`}
-        style={{ aspectRatio: "16 / 9" }}
-        role={accessible ? "group" : undefined}
-        aria-roledescription={accessible ? "slide" : undefined}
-        aria-label={accessible ? `${logicalIndex + 1} de ${total}` : undefined}
-        aria-hidden={!accessible}
-        onMouseEnter={startHoverPreview}
-        onMouseLeave={stopHoverPreview}
-        onFocusCapture={startHoverPreview}
-        onBlurCapture={(event) => {
-          const nextTarget = event.relatedTarget;
-          if (!nextTarget || !event.currentTarget.contains(nextTarget as Node)) {
-            stopHoverPreview();
-          }
-        }}
-      >
-        <div
-          className={styles.media}
-          style={{
-            aspectRatio: "16 / 9",
-            height: "auto",
-            bottom: "auto",
-          }}
-        >
-          {hasArtwork ? (
-            <ResponsiveArtwork
-              game={game}
-              alt={accessible ? game.imageAlt : ""}
-              active={active}
-              style={artworkStyle}
-            />
-          ) : (
-            <div className={styles.mediaFallback} aria-hidden="true" />
-          )}
-
-          <HeroVideoLayer
+  return (
+    <article
+      key={game.id}
+      className={styles.mainCard}
+      role="group"
+      aria-roledescription="slide"
+      aria-label={`${logicalIndex + 1} de ${total}`}
+      onMouseEnter={startHoverPreview}
+      onMouseLeave={stopHoverPreview}
+      onFocusCapture={startHoverPreview}
+      onBlurCapture={(event) => {
+        const nextTarget = event.relatedTarget;
+        if (!nextTarget || !event.currentTarget.contains(nextTarget as Node)) {
+          stopHoverPreview();
+        }
+      }}
+    >
+      <div className={styles.media}>
+        {hasArtwork ? (
+          <ResponsiveArtwork
             game={game}
-            enabled={videoShouldRender}
+            alt={game.mediaAccessibility?.hero ?? game.imageAlt}
+            active
+            style={artworkStyle}
           />
+        ) : (
+          <div className={styles.mediaFallback} aria-hidden="true" />
+        )}
 
-          {imageEffect && (
-            <div
-              className={styles.mediaOverlay}
-              style={{ opacity: overlayOpacity }}
-              aria-hidden="true"
-            />
-          )}
+        <HeroVideoLayer game={game} enabled={videoShouldRender} />
 
-          {!active && (
-            <div className={styles.previewOverlay} aria-hidden="true" />
-          )}
+        {imageEffect && (
+          <div
+            className={styles.mediaOverlay}
+            style={{ opacity: overlayOpacity }}
+            aria-hidden="true"
+          />
+        )}
+        <div className={styles.readabilityOverlay} aria-hidden="true" />
+      </div>
+
+      <div className={styles.content}>
+        <div className={styles.badges}>
+          {game.badge && <span className={styles.primaryBadge}>{game.badge}</span>}
+          <span className={styles.secondaryBadge}>{game.category.toUpperCase()}</span>
         </div>
 
-        <div className={styles.content}>
-          <div className={styles.badges}>
-            {game.badge && (
-              <span className={styles.primaryBadge}>{game.badge}</span>
-            )}
+        <h2 className={styles.title}>
+          <span>{game.shortTitle ?? game.title}</span>
+          {game.highlightedTitle && <strong>{game.highlightedTitle}</strong>}
+        </h2>
 
-            <span className={styles.secondaryBadge}>
-              {game.category.toUpperCase()}
-            </span>
-          </div>
+        <p className={styles.description}>{game.description}</p>
 
-          <h2 className={styles.title}>
-            <span>{game.shortTitle ?? game.title}</span>
-            {game.highlightedTitle && <strong>{game.highlightedTitle}</strong>}
-          </h2>
-
-          <p className={styles.description}>{game.description}</p>
-
-          <div className={styles.actions}>
-            <Link
-              href={`/juegos/${game.slug}`}
-              className={styles.primaryButton}
-              tabIndex={accessible ? 0 : -1}
-            >
-              <Play size={17} fill="currentColor" />
-              {copy.primaryCta}
-            </Link>
-
-            <Link
-              href={`/juegos/${game.slug}`}
-              className={styles.secondaryButton}
-              tabIndex={accessible ? 0 : -1}
-            >
-              <Info size={18} />
-              {copy.secondaryCta}
-            </Link>
-          </div>
+        <div className={styles.actions}>
+          <Link href={`/juegos/${game.slug}`} className={styles.primaryButton}>
+            <Play size={16} fill="currentColor" />
+            {copy.primaryCta}
+          </Link>
+          <Link href={`/juegos/${game.slug}`} className={styles.secondaryButton}>
+            <Info size={17} />
+            {copy.secondaryCta}
+          </Link>
         </div>
-      </article>
-    );
-  }
-);
-
-function logicalIndexFromPhysical(
-  physicalIndex: number,
-  total: number
-) {
-  if (physicalIndex === 0) {
-    return total - 1;
-  }
-
-  if (physicalIndex === total + 1) {
-    return 0;
-  }
-
-  return physicalIndex - 1;
+      </div>
+    </article>
+  );
 }
 
 export default function HeroSection({
@@ -345,12 +304,11 @@ export default function HeroSection({
   imageEffect?: boolean;
   imageTuning?: Partial<HeroImageTuning>;
 }) {
-  const viewportRef = useRef<HTMLDivElement | null>(null);
-  const trackRef = useRef<HTMLDivElement | null>(null);
-  const slideRefs = useRef<(HTMLElement | null)[]>([]);
   const pointerStartX = useRef<number | null>(null);
-  const resizeFrameOneRef = useRef<number | null>(null);
-  const resizeFrameTwoRef = useRef<number | null>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const [manualPaused, setManualPaused] = useState(false);
+  const [reducedMotion, setReducedMotion] = useState(false);
 
   const resolvedTuning = useMemo(
     () => resolveHeroImageTuning(imageTuning),
@@ -363,15 +321,9 @@ export default function HeroSection({
     [resolvedTuning]
   );
   const ambientArtworkStyle = useMemo<CSSProperties>(() => {
-    const ambientBrightness = Math.round(
-      resolvedTuning.brightness * 0.72
-    );
-    const ambientSaturation = Math.min(
-      240,
-      Math.round(resolvedTuning.saturation * 1.2)
-    );
+    const ambientBrightness = Math.round(resolvedTuning.brightness * 0.72);
+    const ambientSaturation = Math.min(240, Math.round(resolvedTuning.saturation * 1.2));
     const scale = 1.12 + resolvedTuning.ambientBlur / 450;
-
     return {
       opacity: resolvedTuning.ambientOpacity / 100,
       filter: `blur(${resolvedTuning.ambientBlur}px) saturate(${ambientSaturation}%) brightness(${ambientBrightness}%) contrast(${resolvedTuning.contrast}%)`,
@@ -380,250 +332,52 @@ export default function HeroSection({
   }, [resolvedTuning]);
   const overlayOpacity = resolvedTuning.overlayStrength / 100;
 
-  const trackSlides = useMemo<TrackSlide[]>(() => {
-    const first = games[0]!;
-    const last = games[games.length - 1]!;
-
-    return [
-      {
-        key: "clone-last",
-        game: last,
-        logicalIndex: games.length - 1,
-        clone: true,
-      },
-      ...games.map((game, index) => ({
-        key: game.id,
-        game,
-        logicalIndex: index,
-        clone: false,
-      })),
-      {
-        key: "clone-first",
-        game: first,
-        logicalIndex: 0,
-        clone: true,
-      },
-    ];
-  }, [games]);
-
-  const [physicalIndex, setPhysicalIndex] = useState(1);
-  const [step, setStep] = useState(0);
-  const [ready, setReady] = useState(false);
-  const [animating, setAnimating] = useState(false);
-  const [jumping, setJumping] = useState(false);
-  const [paused, setPaused] = useState(false);
-  const [manualPaused, setManualPaused] = useState(false);
-  const [reducedMotion, setReducedMotion] = useState(false);
-
-  const activeIndex = logicalIndexFromPhysical(
-    physicalIndex,
-    games.length
-  );
-  const activeGame = games[activeIndex]!;
-  const nextGame = games[(activeIndex + 1) % games.length]!;
+  const activeGame = games[activeIndex] ?? games[0];
+  const nextIndex = games.length ? (activeIndex + 1) % games.length : 0;
+  const nextGame = games[nextIndex] ?? activeGame;
   const isPaused = paused || manualPaused || reducedMotion;
 
-  const measureSlides = useCallback(() => {
-    const viewport = viewportRef.current;
-    const firstRealSlide = slideRefs.current[1];
+  const moveBy = useCallback((delta: number) => {
+    setActiveIndex((current) => {
+      if (!games.length) return 0;
+      return (current + delta + games.length) % games.length;
+    });
+  }, [games.length]);
+  const nextSlide = useCallback(() => moveBy(1), [moveBy]);
+  const previousSlide = useCallback(() => moveBy(-1), [moveBy]);
 
-    if (!viewport || !firstRealSlide) {
-      return;
-    }
-
-    const computedStyle = window.getComputedStyle(viewport);
-    const gap =
-      Number.parseFloat(computedStyle.getPropertyValue("--slide-gap")) || 0;
-    const slideWidth = firstRealSlide.getBoundingClientRect().width;
-
-    setStep(slideWidth + gap);
-    setReady(true);
-  }, []);
-
-  useLayoutEffect(() => {
-    const viewport = viewportRef.current;
-
-    if (!viewport) {
-      return;
-    }
-
-    function cancelResizeFrames() {
-      if (resizeFrameOneRef.current !== null) {
-        cancelAnimationFrame(resizeFrameOneRef.current);
-      }
-
-      if (resizeFrameTwoRef.current !== null) {
-        cancelAnimationFrame(resizeFrameTwoRef.current);
-      }
-
-      resizeFrameOneRef.current = null;
-      resizeFrameTwoRef.current = null;
-    }
-
-    function snapAfterResize() {
-      cancelResizeFrames();
-      setJumping(true);
-      setAnimating(false);
-
-      setPhysicalIndex((current) => {
-        if (current === 0) {
-          return games.length;
-        }
-
-        if (current === games.length + 1) {
-          return 1;
-        }
-
-        return current;
-      });
-
-      measureSlides();
-
-      resizeFrameOneRef.current = requestAnimationFrame(() => {
-        resizeFrameTwoRef.current = requestAnimationFrame(() => {
-          setJumping(false);
-          resizeFrameOneRef.current = null;
-          resizeFrameTwoRef.current = null;
-        });
-      });
-    }
-
-    snapAfterResize();
-
-    const observer = new ResizeObserver(snapAfterResize);
-    observer.observe(viewport);
-
-    return () => {
-      observer.disconnect();
-      cancelResizeFrames();
-    };
-  }, [games.length, measureSlides]);
+  useEffect(() => {
+    setActiveIndex((current) => games.length ? Math.min(current, games.length - 1) : 0);
+  }, [games.length]);
 
   useEffect(() => {
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
-
-    const updatePreference = () => {
-      setReducedMotion(media.matches);
-    };
-
+    const updatePreference = () => setReducedMotion(media.matches);
     updatePreference();
     media.addEventListener("change", updatePreference);
-
-    return () => {
-      media.removeEventListener("change", updatePreference);
-    };
+    return () => media.removeEventListener("change", updatePreference);
   }, []);
 
-  const moveToPhysical = useCallback(
-    (target: number) => {
-      if (!ready || animating || jumping) {
-        return;
-      }
-
-      if (reducedMotion) {
-        let normalizedTarget = target;
-
-        if (target === 0) {
-          normalizedTarget = games.length;
-        }
-
-        if (target === games.length + 1) {
-          normalizedTarget = 1;
-        }
-
-        setPhysicalIndex(normalizedTarget);
-        return;
-      }
-
-      setAnimating(true);
-      setPhysicalIndex(target);
-    },
-    [animating, games.length, jumping, ready, reducedMotion]
-  );
-
-  const nextSlide = useCallback(() => {
-    moveToPhysical(physicalIndex + 1);
-  }, [moveToPhysical, physicalIndex]);
-
-  const previousSlide = useCallback(() => {
-    moveToPhysical(physicalIndex - 1);
-  }, [moveToPhysical, physicalIndex]);
-
-  const goToSlide = useCallback(
-    (logicalIndex: number) => {
-      if (logicalIndex === activeIndex || animating || jumping) {
-        return;
-      }
-
-      moveToPhysical(logicalIndex + 1);
-    },
-    [activeIndex, animating, jumping, moveToPhysical]
-  );
-
-  function finishCloneJump(target: number) {
-    setJumping(true);
-    setPhysicalIndex(target);
-
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        setJumping(false);
-        setAnimating(false);
-      });
-    });
-  }
-
-  function handleTransitionEnd(event: TransitionEvent<HTMLDivElement>) {
-    if (
-      event.target !== trackRef.current ||
-      event.propertyName !== "transform"
-    ) {
-      return;
-    }
-
-    if (physicalIndex === 0) {
-      finishCloneJump(games.length);
-      return;
-    }
-
-    if (physicalIndex === games.length + 1) {
-      finishCloneJump(1);
-      return;
-    }
-
-    setAnimating(false);
-  }
-
   useEffect(() => {
-    if (isPaused || !ready || animating || jumping) {
-      return;
-    }
-
+    if (isPaused || games.length <= 1) return;
     const timer = window.setTimeout(nextSlide, AUTOPLAY_TIME);
+    return () => window.clearTimeout(timer);
+  }, [activeIndex, games.length, isPaused, nextSlide]);
 
-    return () => {
-      window.clearTimeout(timer);
-    };
-  }, [activeIndex, animating, isPaused, jumping, nextSlide, ready]);
+  if (!activeGame) return null;
 
   function handleKeyDown(event: KeyboardEvent<HTMLElement>) {
     if (event.key === "ArrowRight") {
       event.preventDefault();
       nextSlide();
-      return;
-    }
-
-    if (event.key === "ArrowLeft") {
+    } else if (event.key === "ArrowLeft") {
       event.preventDefault();
       previousSlide();
     }
   }
 
   function handlePointerDown(event: PointerEvent<HTMLDivElement>) {
-    if (event.pointerType === "mouse") {
-      return;
-    }
-
-    pointerStartX.current = event.clientX;
+    if (event.pointerType !== "mouse") pointerStartX.current = event.clientX;
   }
 
   function resetPointer() {
@@ -631,29 +385,13 @@ export default function HeroSection({
   }
 
   function handlePointerUp(event: PointerEvent<HTMLDivElement>) {
-    if (pointerStartX.current === null) {
-      return;
-    }
-
+    if (pointerStartX.current === null) return;
     const difference = pointerStartX.current - event.clientX;
     resetPointer();
-
-    if (Math.abs(difference) < 55) {
-      return;
-    }
-
-    if (difference > 0) {
-      nextSlide();
-      return;
-    }
-
-    previousSlide();
+    if (Math.abs(difference) < SWIPE_THRESHOLD) return;
+    if (difference > 0) nextSlide();
+    else previousSlide();
   }
-
-  const transform =
-    step > 0
-      ? `translateX(-${physicalIndex * step}px)`
-      : "translateX(0)";
 
   return (
     <section
@@ -667,18 +405,12 @@ export default function HeroSection({
       onFocusCapture={() => setPaused(true)}
       onBlurCapture={(event) => {
         const nextTarget = event.relatedTarget;
-
-        if (
-          !nextTarget ||
-          !event.currentTarget.contains(nextTarget as Node)
-        ) {
+        if (!nextTarget || !event.currentTarget.contains(nextTarget as Node)) {
           setPaused(false);
         }
       }}
     >
-      <h1 className={styles.srOnly}>
-        {copy.accessibleTitle}
-      </h1>
+      <h1 className={styles.srOnly}>{copy.accessibleTitle}</h1>
 
       {imageEffect && (
         <div className={styles.ambientBackdrop} aria-hidden="true">
@@ -696,112 +428,99 @@ export default function HeroSection({
       )}
 
       <div
-        ref={viewportRef}
-        className={styles.viewport}
+        className={styles.heroGrid}
         onPointerDown={handlePointerDown}
         onPointerUp={handlePointerUp}
         onPointerCancel={resetPointer}
       >
-        <div
-          ref={trackRef}
-          className={`${styles.track} ${
-            jumping ? styles.noTransition : ""
-          } ${ready ? styles.trackReady : ""}`}
-          style={{ transform }}
-          onTransitionEnd={handleTransitionEnd}
-        >
-          {trackSlides.map((trackSlide, trackIndex) => (
-            <HeroSlide
-              key={trackSlide.key}
-              ref={(element) => {
-                slideRefs.current[trackIndex] = element;
-              }}
-              game={trackSlide.game}
-              copy={copy}
-              logicalIndex={trackSlide.logicalIndex}
-              total={games.length}
-              imageEffect={imageEffect}
-              artworkStyle={artworkStyle}
-              overlayOpacity={overlayOpacity}
-              clone={trackSlide.clone}
-              active={trackIndex === physicalIndex}
-              videoEnabled={
-                trackIndex === physicalIndex &&
-                !trackSlide.clone &&
-                !reducedMotion
-              }
-            />
-          ))}
-        </div>
-      </div>
-
-      <button
-        type="button"
-        className={`${styles.arrow} ${styles.arrowLeft}`}
-        aria-label="Juego anterior"
-        onClick={previousSlide}
-      >
-        <ChevronLeft size={23} />
-      </button>
-
-      <button
-        type="button"
-        className={styles.previewAdvance}
-        aria-label={`Mostrar ${nextGame.title}`}
-        onClick={nextSlide}
-      />
-
-      <button
-        type="button"
-        className={`${styles.arrow} ${styles.arrowRight}`}
-        aria-label={`Mostrar ${nextGame.title}`}
-        onClick={nextSlide}
-      >
-        <ChevronRight size={23} />
-      </button>
-
-      <div className={styles.controls}>
-        <div className={styles.dots}>
-          {games.map((game, index) => (
-            <button
-              key={game.id}
-              type="button"
-              className={index === activeIndex ? styles.activeDot : ""}
-              aria-label={`Mostrar ${game.title}`}
-              aria-current={index === activeIndex ? "true" : undefined}
-              onClick={() => goToSlide(index)}
-            />
-          ))}
-        </div>
-
-        <button
-          type="button"
-          className={styles.pauseButton}
-          aria-label={
-            manualPaused
-              ? "Reanudar carrusel automático"
-              : "Pausar carrusel automático"
-          }
-          aria-pressed={manualPaused}
-          onClick={() => setManualPaused((current) => !current)}
-        >
-          {manualPaused ? (
-            <Play size={13} fill="currentColor" />
-          ) : (
-            <Pause size={13} fill="currentColor" />
-          )}
-          <span>{manualPaused ? "Reanudar" : "Pausar"}</span>
-        </button>
-
-        <div className={styles.progress} aria-hidden="true">
-          <span
-            key={activeIndex}
-            className={styles.progressBar}
-            style={{
-              animationPlayState: isPaused ? "paused" : "running",
-            }}
+        <div className={styles.mainStage}>
+          <HeroSlide
+            key={activeGame.id}
+            game={activeGame}
+            copy={copy}
+            logicalIndex={activeIndex}
+            total={games.length}
+            imageEffect={imageEffect}
+            artworkStyle={artworkStyle}
+            overlayOpacity={overlayOpacity}
+            reducedMotion={reducedMotion}
           />
+
+          {games.length > 1 && (
+            <>
+              <button
+                type="button"
+                className={`${styles.arrow} ${styles.arrowLeft}`}
+                aria-label="Juego anterior"
+                onClick={previousSlide}
+              >
+                <ChevronLeft size={21} />
+              </button>
+              <button
+                type="button"
+                className={`${styles.arrow} ${styles.arrowRight}`}
+                aria-label={`Mostrar ${nextGame.title}`}
+                onClick={nextSlide}
+              >
+                <ChevronRight size={21} />
+              </button>
+            </>
+          )}
+
+          <div className={styles.controls}>
+            <div className={styles.dots}>
+              {games.map((game, index) => (
+                <button
+                  key={game.id}
+                  type="button"
+                  className={index === activeIndex ? styles.activeDot : ""}
+                  aria-label={`Mostrar ${game.title}`}
+                  aria-current={index === activeIndex ? "true" : undefined}
+                  onClick={() => setActiveIndex(index)}
+                />
+              ))}
+            </div>
+
+            <button
+              type="button"
+              className={styles.pauseButton}
+              aria-label={manualPaused ? "Reanudar carrusel automático" : "Pausar carrusel automático"}
+              aria-pressed={manualPaused}
+              onClick={() => setManualPaused((current) => !current)}
+            >
+              {manualPaused ? <Play size={12} fill="currentColor" /> : <Pause size={12} fill="currentColor" />}
+              <span>{manualPaused ? "Reanudar" : "Pausar"}</span>
+            </button>
+
+            <div className={styles.progress} aria-hidden="true">
+              <span
+                key={activeIndex}
+                className={styles.progressBar}
+                style={{ animationPlayState: isPaused ? "paused" : "running" }}
+              />
+            </div>
+          </div>
         </div>
+
+        {games.length > 1 && (
+          <button
+            type="button"
+            className={styles.nextCard}
+            aria-label={`Siguiente juego: ${nextGame.title}`}
+            onClick={nextSlide}
+          >
+            <NextArtwork game={nextGame} />
+            <span className={styles.nextShade} aria-hidden="true" />
+            <span className={styles.nextCopy}>
+              <small>SIGUIENTE</small>
+              <strong>{nextGame.shortTitle ?? nextGame.title}</strong>
+              <span>{nextGame.category}</span>
+            </span>
+            <span className={styles.nextArrow} aria-hidden="true">
+              <ChevronRight size={20} />
+            </span>
+          </button>
+        )}
       </div>
     </section>
   );
