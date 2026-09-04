@@ -82,11 +82,32 @@ export const editorialHomeConfigFormSchema = z
   })
   .strict();
 
+const positionStyleSchema = z.object({
+  scale: z.number().min(.4).max(1.6),
+  rotateX: z.number().min(-60).max(60), rotateY: z.number().min(-60).max(60), rotateZ: z.number().min(-30).max(30),
+  translateX: z.number().min(-300).max(300), translateY: z.number().min(-200).max(200), translateZ: z.number().min(-500).max(500),
+  opacity: z.number().min(0).max(100), blur: z.number().min(0).max(20), brightness: z.number().min(20).max(180), contrast: z.number().min(50).max(180), saturation: z.number().min(0).max(200),
+}).strict();
+
+const responsiveStyleSchema = z.object({
+  visibleCards: z.union([z.literal(3), z.literal(4), z.literal(5)]),
+  cardWidth: z.number().int().min(260).max(1200), cardHeight: z.number().int().min(260).max(700),
+  gap: z.number().int().min(0).max(100), perspective: z.number().int().min(400).max(2400),
+}).strict();
+
 const heroPresentationSchema = z.object({
   composition: z.enum(["studio", "cinema", "focus"]),
   previewCount: z.union([z.literal(1), z.literal(2), z.literal(3)]),
   motion: z.enum(["depth", "slide", "fade"]),
   autoplayMs: z.union([z.literal(0), z.literal(4000), z.literal(6500), z.literal(8000)]),
+  preset: z.enum(["classic", "coverflow", "cinema", "stack", "arc", "perspective", "minimal", "spotlight", "cards", "custom"]),
+  transition: z.enum(["slide", "coverflow", "fade", "3d", "stack", "perspective", "custom"]),
+  durationMs: z.number().int().min(150).max(2000),
+  easing: z.enum(["ease", "ease-in", "ease-out", "ease-in-out", "linear"]),
+  radius: z.number().int().min(0).max(48), shadow: z.number().int().min(0).max(100), borderWidth: z.number().int().min(0).max(6), glow: z.number().int().min(0).max(100), overlay: z.number().int().min(0).max(90),
+  autoplay: z.boolean(), loop: z.boolean(), pauseOnHover: z.boolean(), drag: z.boolean(), touch: z.boolean(), keyboard: z.boolean(), wheel: z.boolean(), direction: z.enum(["forward", "reverse"]),
+  positions: z.object({ all: positionStyleSchema, main: positionStyleSchema, left1: positionStyleSchema, left2: positionStyleSchema, right1: positionStyleSchema, right2: positionStyleSchema }).strict(),
+  responsive: z.object({ desktop: responsiveStyleSchema, tablet: responsiveStyleSchema, mobile: responsiveStyleSchema }).strict(),
 }).strict();
 
 const heroCopySchema = z.object({

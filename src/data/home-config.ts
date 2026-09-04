@@ -111,11 +111,69 @@ export const homeHeroCompositionIds = [
   "focus",
 ] as const;
 
+export const homeHeroPresetIds = [
+  "classic", "coverflow", "cinema", "stack", "arc",
+  "perspective", "minimal", "spotlight", "cards", "custom",
+] as const;
+
+export type HomeHeroDevice = "desktop" | "tablet" | "mobile";
+export type HomeHeroPosition = "all" | "main" | "left1" | "left2" | "right1" | "right2";
+
+export type HomeHeroPositionStyle = {
+  scale: number;
+  rotateX: number;
+  rotateY: number;
+  rotateZ: number;
+  translateX: number;
+  translateY: number;
+  translateZ: number;
+  opacity: number;
+  blur: number;
+  brightness: number;
+  contrast: number;
+  saturation: number;
+};
+
+export type HomeHeroResponsiveStyle = {
+  visibleCards: 3 | 4 | 5;
+  cardWidth: number;
+  cardHeight: number;
+  gap: number;
+  perspective: number;
+};
+
 export type HomeHeroPresentation = {
   composition: (typeof homeHeroCompositionIds)[number];
   previewCount: 1 | 2 | 3;
   motion: "depth" | "slide" | "fade";
   autoplayMs: 0 | 4000 | 6500 | 8000;
+  preset: (typeof homeHeroPresetIds)[number];
+  transition: "slide" | "coverflow" | "fade" | "3d" | "stack" | "perspective" | "custom";
+  durationMs: number;
+  easing: "ease" | "ease-in" | "ease-out" | "ease-in-out" | "linear";
+  radius: number;
+  shadow: number;
+  borderWidth: number;
+  glow: number;
+  overlay: number;
+  autoplay: boolean;
+  loop: boolean;
+  pauseOnHover: boolean;
+  drag: boolean;
+  touch: boolean;
+  keyboard: boolean;
+  wheel: boolean;
+  direction: "forward" | "reverse";
+  positions: Record<HomeHeroPosition, HomeHeroPositionStyle>;
+  responsive: Record<HomeHeroDevice, HomeHeroResponsiveStyle>;
+};
+
+export type HomeHeroPresentationInput = Omit<
+  Partial<HomeHeroPresentation>,
+  "positions" | "responsive"
+> & {
+  positions?: Partial<Record<HomeHeroPosition, HomeHeroPositionStyle>>;
+  responsive?: Partial<Record<HomeHeroDevice, HomeHeroResponsiveStyle>>;
 };
 
 export type HomeConfig = {
@@ -130,7 +188,7 @@ export type HomeConfig = {
   lowSpecSlugs: string[];
   recommendedSlugs: string[];
   curation?: HomeCurationConfig;
-  heroPresentation?: HomeHeroPresentation;
+  heroPresentation?: HomeHeroPresentationInput;
   sections?: HomeSectionConfig[];
   copy?: HomeCopy;
 };
@@ -162,6 +220,36 @@ const defaultHeroPresentation: HomeHeroPresentation = {
   previewCount: 2,
   motion: "depth",
   autoplayMs: 6500,
+  preset: "cinema",
+  transition: "3d",
+  durationMs: 620,
+  easing: "ease-out",
+  radius: 18,
+  shadow: 55,
+  borderWidth: 1,
+  glow: 18,
+  overlay: 48,
+  autoplay: true,
+  loop: true,
+  pauseOnHover: true,
+  drag: true,
+  touch: true,
+  keyboard: true,
+  wheel: false,
+  direction: "forward",
+  positions: {
+    all: { scale: 1, rotateX: 0, rotateY: 0, rotateZ: 0, translateX: 0, translateY: 0, translateZ: 0, opacity: 100, blur: 0, brightness: 100, contrast: 100, saturation: 100 },
+    main: { scale: 1, rotateX: 0, rotateY: 0, rotateZ: 0, translateX: 0, translateY: 0, translateZ: 80, opacity: 100, blur: 0, brightness: 100, contrast: 100, saturation: 105 },
+    left1: { scale: .82, rotateX: 0, rotateY: 16, rotateZ: 0, translateX: -74, translateY: 8, translateZ: -100, opacity: 72, blur: 0, brightness: 72, contrast: 105, saturation: 78 },
+    left2: { scale: .68, rotateX: 0, rotateY: 22, rotateZ: 0, translateX: -126, translateY: 15, translateZ: -180, opacity: 42, blur: 1, brightness: 58, contrast: 105, saturation: 62 },
+    right1: { scale: .82, rotateX: 0, rotateY: -16, rotateZ: 0, translateX: 74, translateY: 8, translateZ: -100, opacity: 72, blur: 0, brightness: 72, contrast: 105, saturation: 78 },
+    right2: { scale: .68, rotateX: 0, rotateY: -22, rotateZ: 0, translateX: 126, translateY: 15, translateZ: -180, opacity: 42, blur: 1, brightness: 58, contrast: 105, saturation: 62 },
+  },
+  responsive: {
+    desktop: { visibleCards: 5, cardWidth: 860, cardHeight: 430, gap: 26, perspective: 1200 },
+    tablet: { visibleCards: 3, cardWidth: 680, cardHeight: 390, gap: 18, perspective: 1000 },
+    mobile: { visibleCards: 3, cardWidth: 330, cardHeight: 500, gap: 12, perspective: 800 },
+  },
 };
 
 export const sourceHomeConfig: ResolvedHomeConfig = {
@@ -365,6 +453,14 @@ export function resolveHomeConfig(
     heroPresentation: {
       ...defaultHeroPresentation,
       ...config.heroPresentation,
+      positions: {
+        ...defaultHeroPresentation.positions,
+        ...config.heroPresentation?.positions,
+      },
+      responsive: {
+        ...defaultHeroPresentation.responsive,
+        ...config.heroPresentation?.responsive,
+      },
     },
     sections: resolveSections(config.sections),
     copy: config.copy

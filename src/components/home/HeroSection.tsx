@@ -402,18 +402,20 @@ function HeroSlide({
 function PreviewCard({
   game,
   depth,
+  style,
   onSelect,
 }: {
   game: Game;
   depth: number;
   onSelect: () => void;
+  style?: CSSProperties;
 }) {
   return (
     <button
       type="button"
       className={styles.previewCard}
       data-depth={depth}
-      style={{ "--preview-depth": depth } as CSSProperties}
+      style={{ "--preview-depth": depth, ...style } as CSSProperties}
       aria-label={`Mostrar ${game.title}`}
       onClick={onSelect}
     >
@@ -473,14 +475,14 @@ export default function HeroSection({
     : 0;
   const activeGame = games[normalizedActiveIndex] ?? games[0];
   const isPaused = paused || manualPaused || reducedMotion;
-  const autoplayDelay = presentation.autoplayMs === 0
+  const autoplayDelay = !presentation.autoplay || presentation.autoplayMs === 0
     ? null
     : presentation.autoplayMs || HOME_HERO_AUTOPLAY_MS;
 
   const previewEntries = useMemo(() => {
     if (games.length <= 1) return [];
     const count = Math.min(
-      presentation.previewCount,
+      Math.min(3, Math.max(presentation.previewCount, presentation.responsive.desktop.visibleCards - 2)),
       HOME_HERO_VISIBLE_PREVIEWS,
       games.length - 1
     );
@@ -488,17 +490,20 @@ export default function HeroSection({
       const index = (normalizedActiveIndex + depth + 1) % games.length;
       return { game: games[index], index, depth };
     });
-  }, [games, normalizedActiveIndex, presentation.previewCount]);
+  }, [games, normalizedActiveIndex, presentation.previewCount, presentation.responsive.desktop.visibleCards]);
 
   const moveBy = useCallback((delta: number) => {
     setActiveIndex((current) => {
       if (!games.length) return 0;
       const normalized = current % games.length;
-      return (normalized + delta + games.length) % games.length;
+      const next = normalized + delta;
+      if (!presentation.loop) return Math.max(0, Math.min(games.length - 1, next));
+      return (next + games.length) % games.length;
     });
-  }, [games.length]);
-  const nextSlide = useCallback(() => moveBy(1), [moveBy]);
-  const previousSlide = useCallback(() => moveBy(-1), [moveBy]);
+  }, [games.length, presentation.loop]);
+  const direction = presentation.direction === "reverse" ? -1 : 1;
+  const nextSlide = useCallback(() => moveBy(direction), [direction, moveBy]);
+  const previousSlide = useCallback(() => moveBy(-direction), [direction, moveBy]);
 
   useEffect(() => {
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -517,6 +522,7 @@ export default function HeroSection({
   if (!activeGame) return null;
 
   function handleKeyDown(event: KeyboardEvent<HTMLElement>) {
+    if (!presentation.keyboard) return;
     if (event.key === "ArrowRight") {
       event.preventDefault();
       nextSlide();
@@ -527,7 +533,7 @@ export default function HeroSection({
   }
 
   function handlePointerDown(event: PointerEvent<HTMLDivElement>) {
-    if (event.pointerType !== "mouse") pointerStartX.current = event.clientX;
+    if ((event.pointerType === "mouse" && presentation.drag) || (event.pointerType !== "mouse" && presentation.touch)) pointerStartX.current = event.clientX;
   }
 
   function resetPointer() {
@@ -547,13 +553,25 @@ export default function HeroSection({
     <section
       className={styles.heroSection}
       data-composition={presentation.composition}
-      data-motion={presentation.motion}
+      data-motion={presentation.transition === "fade" ? "fade" : presentation.transition === "slide" ? "slide" : "depth"}
       aria-label="Juegos destacados"
       aria-roledescription="carrusel"
       tabIndex={0}
       onKeyDown={handleKeyDown}
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
+      style={{
+        "--hero-editor-radius": `${presentation.radius}px`,
+        "--hero-editor-duration": `${presentation.durationMs}ms`,
+        "--hero-editor-shadow": presentation.shadow / 100,
+        "--hero-editor-glow": presentation.glow / 100,
+        "--hero-editor-border": `${presentation.borderWidth}px`,
+      } as CSSProperties}
+      onMouseEnter={() => presentation.pauseOnHover && setPaused(true)}
+      onMouseLeave={() => presentation.pauseOnHover && setPaused(false)}
+      onWheel={(event) => {
+        if (!presentation.wheel || Math.abs(event.deltaY) < 12) return;
+        event.preventDefault();
+        moveBy(event.deltaY > 0 ? direction : -direction);
+      }}
       onFocusCapture={() => setPaused(true)}
       onBlurCapture={(event) => {
         const nextTarget = event.relatedTarget;
@@ -607,14 +625,22 @@ export default function HeroSection({
 
         {previewEntries.length > 0 && (
           <div className={styles.previewRail} aria-label="Próximos juegos">
-            {previewEntries.map(({ game, index, depth }) => (
+            {previewEntries.map(({ game, index, depth }) => {
+              const position = presentation.positions[depth === 0 ? "right1" : "right2"];
+              return (
               <PreviewCard
                 key={game.id}
                 game={game}
                 depth={depth}
                 onSelect={() => setActiveIndex(index)}
+                style={{
+                  opacity: position.opacity / 100,
+                  filter: `blur(${position.blur}px) brightness(${position.brightness}%) contrast(${position.contrast}%) saturate(${position.saturation}%)`,
+                  transform: `translate3d(${position.translateX}px, ${position.translateY}px, ${position.translateZ}px) rotateX(${position.rotateX}deg) rotateY(${position.rotateY}deg) rotateZ(${position.rotateZ}deg) scale(${position.scale})`,
+                }}
               />
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

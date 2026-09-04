@@ -163,11 +163,14 @@ assert(
 );
 
 assert(
-  heroEditor.includes("EDITOR ÚNICO DEL HERO") &&
+  heroEditor.includes("Editor de Hero") &&
     heroEditor.includes('name="heroJson"') &&
     heroEditor.includes("resolveHomeCollectionGames") &&
     heroEditor.includes("Editar imagen y recorte") &&
-    heroEditor.includes("Guardar Hero") &&
+    heroEditor.includes("Guardar borrador") &&
+    heroEditor.includes("Transformación 3D") &&
+    heroEditor.includes("Aplicar cambios a:") &&
+    heroEditor.includes("Comparar") &&
     heroEditorRoute.includes("homeHeroEditorFormSchema") &&
     heroEditorRoute.includes("heroSlugs: hero.slugs") &&
     heroEditorRoute.includes("heroPresentation: hero.presentation") &&
