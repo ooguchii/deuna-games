@@ -148,6 +148,7 @@ export const sourceHomeConfig: ResolvedHomeConfig = {
     "god-of-war-ragnarok",
     "forza-horizon-5",
     "resident-evil-4",
+    "cyberpunk-2077",
   ],
   popularSlugs: [
     "god-of-war-ragnarok",
