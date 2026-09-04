@@ -17,11 +17,66 @@ export type GameRequirements =
     recommended?: GameHardwareRequirements;
   };
 
+export type GameCompatibilityVerificationStatus =
+  | "declared"
+  | "reviewed"
+  | "tested";
+
+export type GameCompatibilityVerificationSource =
+  | "developer"
+  | "publisher"
+  | "internal"
+  | "community"
+  | "external";
+
+export type GameCompatibilityMetadata = {
+  status?: GameCompatibilityVerificationStatus;
+  source?: GameCompatibilityVerificationSource;
+  verifiedAt?: string;
+};
+
+export type GameAgeRatingSystem =
+  | "ESRB"
+  | "PEGI"
+  | "IARC"
+  | "CLASSIND"
+  | "USK"
+  | "ACB"
+  | "GRAC"
+  | "CERO"
+  | "OTHER";
+
+export type GameAgeRating = {
+  system: GameAgeRatingSystem;
+  rating: string;
+  descriptors?: string[];
+};
+
 export type GamePerformanceCalibration = {
   /* FPS observados o calibrados sobre el equipo de referencia a 1080p/media. */
   referenceFps: number;
   ramGb: number;
   fpsCap?: number;
+};
+
+export type GamePerformanceBenchmarkSource =
+  | "internal"
+  | "developer"
+  | "publisher"
+  | "community"
+  | "external";
+
+export type GamePerformanceBenchmarkConfidence =
+  | "low"
+  | "medium"
+  | "high";
+
+export type GamePerformanceMetadata = {
+  /* Procedencia editorial del dato usado como punto de referencia. */
+  source?: GamePerformanceBenchmarkSource;
+  sourceLabel?: string;
+  measuredAt?: string;
+  confidence?: GamePerformanceBenchmarkConfidence;
 };
 
 export type GamePlatform =
@@ -51,6 +106,18 @@ export type GameDownload = {
   sizeGb?: number;
   fileCount?: number;
   platform?: string;
+};
+
+export type GameDistributionChannel =
+  | "stable"
+  | "beta"
+  | "testing";
+
+export type GameDistributionMetadata = {
+  /* Canal editorial del paquete actual; no se infiere desde la URL o la versión. */
+  channel?: GameDistributionChannel;
+  /* SHA-256 declarado para verificar que todos los mirrors entreguen el mismo paquete. */
+  checksumSha256?: string;
 };
 
 export type GameDirectPreviewPlatform =
@@ -155,6 +222,21 @@ export type GameGalleryItem =
   | GameGalleryImageItem
   | GameGalleryVideoItem;
 
+export type GameGalleryAccessibilityItem = {
+  kind: "image" | "video";
+  src: string;
+  label: string;
+};
+
+export type GameMediaAccessibility = {
+  /* Textos por contexto: un mismo recurso puede comunicar cosas distintas según destino. */
+  cover?: string;
+  hero?: string;
+  card?: string;
+  detail?: string;
+  gallery?: GameGalleryAccessibilityItem[];
+};
+
 export type GameDestinationMediaMode =
   | "image"
   | "video"
@@ -222,7 +304,9 @@ export type Game = {
   category: string;
   genres?: string[];
   tags?: string[];
+  ageRating?: GameAgeRating;
   platforms?: GamePlatform[];
+  compatibilityMetadata?: GameCompatibilityMetadata;
 
   badge?: string;
 
@@ -260,6 +344,9 @@ export type Game = {
    */
   imageMedia?: GameImageMedia;
 
+  /* Textos accesibles por destino/recurso sin duplicar los masters multimedia. */
+  mediaAccessibility?: GameMediaAccessibility;
+
   /*
    * mediaModes expresa de forma explícita qué capa usa cada destino. Así se
    * puede conservar una imagen base y un video simultáneamente para hover sin
@@ -288,5 +375,7 @@ export type Game = {
 
   requirements?: GameRequirements;
   performance?: GamePerformanceCalibration;
+  performanceMetadata?: GamePerformanceMetadata;
   download?: GameDownload;
+  distributionMetadata?: GameDistributionMetadata;
 };

@@ -61,16 +61,21 @@ expect(
   entries.workspace.includes("Publicar nueva versión") &&
     entries.workspace.includes("GameDownloadEditor") &&
     entries.workspace.includes("expectedRevision") &&
-    entries.workspace.includes("getPublicGameBySlug"),
-  "El espacio de nueva versión debe integrar versión, descargas, control de revisión y mostrar la referencia realmente pública."
+    entries.workspace.includes("getPublicGameBySlug") &&
+    entries.workspace.includes('name="channel"') &&
+    entries.workspace.includes('name="checksumSha256"') &&
+    entries.workspace.includes("El checksum anterior nunca se hereda"),
+  "El espacio de nueva versión debe integrar versión, descargas, integridad del paquete, control de revisión y mostrar la referencia realmente pública."
 );
 expect(
   entries.route.includes("publishIntegratedGameUpdate") &&
     entries.route.includes("revalidatePublicGameSurfaces") &&
     entries.route.includes("hasExactAdminFormFields") &&
     entries.route.includes("evaluateGamePublicationReadiness") &&
-    entries.route.includes("inspectGameMediaIntegrity"),
-  "La ruta unificada debe usar publicación atómica, revalidación, requisitos multimedia, integridad física y protección exacta del formulario."
+    entries.route.includes("inspectGameMediaIntegrity") &&
+    entries.route.includes('"channel"') &&
+    entries.route.includes('"checksumSha256"'),
+  "La ruta unificada debe usar publicación atómica, revalidación, requisitos multimedia, integridad física/del paquete y protección exacta del formulario."
 );
 expect(
   entries.gameCoreRoute.includes("getGamePublicationIdentity") &&
@@ -93,8 +98,10 @@ expect(
     entries.service.includes("resolveGameDownload") &&
     entries.service.includes("normalizeVersionToken") &&
     entries.service.includes("versionAlreadyRegistered") &&
+    entries.service.includes("buildDistributionMetadata") &&
+    entries.service.includes("distributionMetadata: nextDownload") &&
     entries.service.includes('"game_update"'),
-  "La publicación integrada debe bloquear concurrencia, cambios pendientes, multimedia incompleta, versiones equivalentes o históricas y publicar juego + aviso en una transacción."
+  "La publicación integrada debe bloquear concurrencia, cambios pendientes, multimedia incompleta, versiones equivalentes/históricas y publicar juego + paquete íntegro + aviso en una transacción."
 );
 expect(
   entries.legacyIndex.includes('redirect("/admin/juegos")') &&
@@ -122,5 +129,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  "Actualizaciones integradas: OK (URL estable, nueva versión + descargas + aviso atómicos, mantenimiento de mirrors separado, duplicados bloqueados, historial público preservado y navegación administrativa simplificada)."
+  "Actualizaciones integradas: OK (URL estable, nueva versión + descargas + canal/SHA + aviso atómicos, mantenimiento de mirrors separado, duplicados bloqueados, historial público preservado y navegación administrativa simplificada)."
 );

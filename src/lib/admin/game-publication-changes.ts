@@ -6,7 +6,8 @@ export type GamePublicationChangeSection =
   | "requisitos"
   | "rendimiento"
   | "multimedia"
-  | "descargas";
+  | "descargas"
+  | "valoracion";
 
 export type GamePublicationChange = {
   id: string;
@@ -33,10 +34,9 @@ function multimediaState(game: Game) {
     screenshots: game.screenshots,
     galleryMedia: game.galleryMedia,
     imageMedia: game.imageMedia,
+    mediaAccessibility: game.mediaAccessibility,
     mediaModes: game.mediaModes,
     videoMedia: game.videoMedia,
-    // Compatibilidad histórica: estas propiedades siguen formando parte de
-    // snapshots antiguos aunque el runtime editorial actual use WebM local.
     previewMode: game.previewMode,
     previewClip: game.previewClip,
     youtubePreview: game.youtubePreview,
@@ -67,30 +67,34 @@ export function evaluateGamePublicationChanges(
       {
         title: draft.title,
         description: draft.description,
-        category: draft.category,
+        shortTitle: draft.shortTitle,
+        highlightedTitle: draft.highlightedTitle,
+        developer: draft.developer,
+        publisher: draft.publisher,
+        releaseDate: draft.releaseDate,
         version: draft.version,
         badge: draft.badge,
-        rating: draft.rating,
-        reviews: draft.reviews,
         imageAlt: draft.imageAlt,
       },
       {
         title: published.title,
         description: published.description,
-        category: published.category,
+        shortTitle: published.shortTitle,
+        highlightedTitle: published.highlightedTitle,
+        developer: published.developer,
+        publisher: published.publisher,
+        releaseDate: published.releaseDate,
         version: published.version,
         badge: published.badge,
-        rating: published.rating,
-        reviews: published.reviews,
         imageAlt: published.imageAlt,
       }
     )
   ) {
     changes.push({
-      id: "core",
-      label: "Ficha principal",
+      id: "information",
+      label: "Información e identidad",
       detail:
-        "Cambian datos de presentación como título, descripción, categoría, versión, valoración o texto alternativo.",
+        "Cambian título, descripción, autoría, fecha, versión, insignia o texto alternativo general.",
       section: "ficha",
     });
   }
@@ -98,52 +102,68 @@ export function evaluateGamePublicationChanges(
   if (
     changed(
       {
-        shortTitle: draft.shortTitle,
-        highlightedTitle: draft.highlightedTitle,
-        developer: draft.developer,
-        publisher: draft.publisher,
-        releaseDate: draft.releaseDate,
+        category: draft.category,
         genres: draft.genres,
         tags: draft.tags,
-        platforms: draft.platforms,
+        ageRating: draft.ageRating,
       },
       {
-        shortTitle: published.shortTitle,
-        highlightedTitle: published.highlightedTitle,
-        developer: published.developer,
-        publisher: published.publisher,
-        releaseDate: published.releaseDate,
+        category: published.category,
         genres: published.genres,
         tags: published.tags,
-        platforms: published.platforms,
+        ageRating: published.ageRating,
       }
     )
   ) {
     changes.push({
-      id: "identity",
-      label: "Datos e identidad",
+      id: "classification",
+      label: "Clasificación",
       detail:
-        "Cambian desarrollador, editor, fecha, géneros, etiquetas, plataformas o variantes del título.",
+        "Cambian la clasificación principal, las adicionales, las etiquetas o la clasificación etaria publicada del juego.",
       section: "datos",
     });
   }
 
-  if (changed(draft.requirements, published.requirements)) {
+  if (
+    changed(
+      {
+        platforms: draft.platforms,
+        requirements: draft.requirements,
+        metadata: draft.compatibilityMetadata,
+      },
+      {
+        platforms: published.platforms,
+        requirements: published.requirements,
+        metadata: published.compatibilityMetadata,
+      }
+    )
+  ) {
     changes.push({
-      id: "requirements",
-      label: "Requisitos",
+      id: "compatibility",
+      label: "Compatibilidad",
       detail:
-        "Cambian los requisitos mínimos o recomendados que usa la ficha técnica.",
+        "Cambian plataformas, requisitos o el estado, origen y fecha de verificación de compatibilidad.",
       section: "requisitos",
     });
   }
 
-  if (changed(draft.performance, published.performance)) {
+  if (
+    changed(
+      {
+        calibration: draft.performance,
+        metadata: draft.performanceMetadata,
+      },
+      {
+        calibration: published.performance,
+        metadata: published.performanceMetadata,
+      }
+    )
+  ) {
     changes.push({
       id: "performance",
       label: "Rendimiento",
       detail:
-        "Cambia la calibración usada para estimar FPS según la PC del visitante: FPS de referencia, RAM o límite del juego.",
+        "Cambia la calibración usada para estimar FPS o la procedencia, fecha y confianza documentadas para ese benchmark.",
       section: "rendimiento",
     });
   }
@@ -153,18 +173,50 @@ export function evaluateGamePublicationChanges(
       id: "media",
       label: "Multimedia",
       detail:
-        "Cambian recursos, modos, recortes, orden de Galería o videos multimedia que se mostrarán en las superficies públicas.",
+        "Cambian recursos, modos, recortes, orden de Galería, videos o textos accesibles contextuales que se mostrarán en las superficies públicas.",
       section: "multimedia",
     });
   }
 
-  if (changed(draft.download, published.download)) {
+  if (
+    changed(
+      {
+        download: draft.download,
+        metadata: draft.distributionMetadata,
+      },
+      {
+        download: published.download,
+        metadata: published.distributionMetadata,
+      }
+    )
+  ) {
     changes.push({
       id: "downloads",
-      label: "Descargas",
+      label: "Distribución",
       detail:
-        "Cambian las fuentes, disponibilidad, tamaño, plataforma u otros datos de descarga.",
+        "Cambian fuentes, disponibilidad, tamaño, plataforma, canal o SHA-256 del paquete publicado.",
       section: "descargas",
+    });
+  }
+
+  if (
+    changed(
+      {
+        rating: draft.rating,
+        reviews: draft.reviews,
+      },
+      {
+        rating: published.rating,
+        reviews: published.reviews,
+      }
+    )
+  ) {
+    changes.push({
+      id: "valuation",
+      label: "Valoración",
+      detail:
+        "Cambia la valoración editorial o un contador histórico conservado por compatibilidad.",
+      section: "valoracion",
     });
   }
 

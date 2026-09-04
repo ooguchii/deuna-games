@@ -30,6 +30,57 @@
   font-size: 10px;
 }
 
+.ratingRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  margin-bottom: 9px;
+  padding: 7px 10px;
+  border: 1px solid var(--surface-3);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--surface-2) 88%, transparent);
+}
+
+.ratingRow > span {
+  color: var(--text-soft);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.ratingRow > small {
+  margin-left: auto;
+  color: var(--text-soft);
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.stars {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.stars button {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-soft);
+  cursor: pointer;
+}
+
+.stars button[data-active="true"] {
+  color: var(--brand);
+}
+
+.stars button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
 .controls {
   display: flex;
   flex-wrap: wrap;
@@ -114,8 +165,14 @@
 
 @media (hover: hover) and (pointer: fine) {
   .toggle:hover:not(:disabled),
-  .stateControl:hover {
+  .stateControl:hover,
+  .stars button:hover:not(:disabled) {
     border-color: color-mix(in srgb, var(--brand) 34%, var(--surface-3));
+  }
+
+  .stars button:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--brand) 9%, transparent);
+    color: var(--brand);
   }
 }
 
@@ -124,6 +181,23 @@
   .signedOut {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .ratingRow {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .ratingRow > small {
+    margin-left: 0;
+  }
+
+  .stars {
+    width: 100%;
+  }
+
+  .stars button {
+    flex: 1;
   }
 
   .toggle,

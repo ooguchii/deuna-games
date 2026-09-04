@@ -8,6 +8,7 @@ import {
   ImageIcon,
   Monitor,
   Rocket,
+  ShieldCheck,
   Star,
 } from "lucide-react";
 import { notFound } from "next/navigation";
@@ -53,6 +54,12 @@ const downloadStatusLabels: Record<
   down: "Caído",
   maintenance: "Mantenimiento",
 };
+
+const distributionChannelLabels = {
+  stable: "Estable",
+  beta: "Beta",
+  testing: "Pruebas",
+} as const;
 
 function legacyMinimum(
   requirements: GameHardwareRequirements | undefined
@@ -139,10 +146,13 @@ export default async function AdminGamePreviewPage({
     minimum,
     recommended
   );
-  const platforms =
-    game.platforms?.length
-      ? game.platforms
-      : ["PC"];
+  const platforms = game.platforms ?? [];
+  const platformLabel = platforms.length
+    ? platforms.join(", ")
+    : "A confirmar";
+  const distributionChannelLabel = download?.channel
+    ? distributionChannelLabels[download.channel]
+    : "A confirmar";
   const genres =
     game.genres?.length
       ? game.genres
@@ -238,7 +248,7 @@ export default async function AdminGamePreviewPage({
           <div className={styles.cover}>
             <GameMedia
               src={game.coverImage}
-              alt={game.imageAlt}
+              alt={game.mediaAccessibility?.cover ?? game.imageAlt}
               sizes="220px"
               viewport={game.imageMedia?.cover}
             />
@@ -285,7 +295,7 @@ export default async function AdminGamePreviewPage({
         <article>
           <Monitor size={18} aria-hidden="true" />
           <span>Plataformas</span>
-          <strong>{platforms.join(", ")}</strong>
+          <strong>{platformLabel}</strong>
         </article>
         <article>
           <Gauge size={18} aria-hidden="true" />
@@ -306,6 +316,11 @@ export default async function AdminGamePreviewPage({
           <span>Fuentes visibles</span>
           <strong>{sources.length}</strong>
         </article>
+        <article>
+          <ShieldCheck size={18} aria-hidden="true" />
+          <span>Canal</span>
+          <strong>{distributionChannelLabel}</strong>
+        </article>
       </section>
 
       <section className={styles.panel}>
@@ -314,11 +329,12 @@ export default async function AdminGamePreviewPage({
           <h2>FPS estimados antes de publicar</h2>
         </div>
         <p>
-          Este cálculo usa la calibración de esta revisión privada. No modifica ni expone la calibración pública hasta que confirmes una publicación nueva.
+          Este cálculo usa la calibración y procedencia de esta revisión privada. No modifica ni expone esos datos públicamente hasta que confirmes una publicación nueva.
         </p>
         <GamePerformanceEstimate
           slug={game.slug}
           calibration={game.performance ?? null}
+          metadata={game.performanceMetadata ?? null}
         />
       </section>
 
@@ -346,6 +362,20 @@ export default async function AdminGamePreviewPage({
               <dt>Géneros</dt>
               <dd>{genres.join(", ")}</dd>
             </div>
+            <div>
+              <dt>Clasificación etaria</dt>
+              <dd>
+                {game.ageRating
+                  ? `${game.ageRating.system} · ${game.ageRating.rating}`
+                  : "Sin definir"}
+              </dd>
+            </div>
+            {game.ageRating?.descriptors?.length ? (
+              <div>
+                <dt>Descriptores</dt>
+                <dd>{game.ageRating.descriptors.join(", ")}</dd>
+              </div>
+            ) : null}
           </dl>
         </article>
 
@@ -415,22 +445,28 @@ export default async function AdminGamePreviewPage({
 
           {gallery.length > 0 ? (
             <div className={styles.gallery}>
-              {gallery.map((image, index) => (
-                <div key={image} className={styles.galleryItem}>
-                  <GameMedia
-                    src={image}
-                    alt={`Vista previa ${index + 1} de ${game.title}`}
-                    sizes="(max-width: 900px) 50vw, 240px"
-                    variant="hero"
-                    viewport={
-                      game.imageMedia?.gallery?.[image]
-                      ?? (image === game.heroImage
-                        ? game.imageMedia?.hero
-                        : undefined)
-                    }
-                  />
-                </div>
-              ))}
+              {gallery.map((image, index) => {
+                const contextualLabel = game.mediaAccessibility?.gallery?.find(
+                  (entry) => entry.kind === "image" && entry.src === image
+                )?.label;
+
+                return (
+                  <div key={image} className={styles.galleryItem}>
+                    <GameMedia
+                      src={image}
+                      alt={contextualLabel ?? `Vista previa ${index + 1} de ${game.title}`}
+                      sizes="(max-width: 900px) 50vw, 240px"
+                      variant="hero"
+                      viewport={
+                        game.imageMedia?.gallery?.[image]
+                        ?? (image === game.heroImage
+                          ? game.imageMedia?.hero
+                          : undefined)
+                      }
+                    />
+                  </div>
+                );
+              })}
             </div>
           ) : (
             <div className={styles.emptyState}>
@@ -443,8 +479,21 @@ export default async function AdminGamePreviewPage({
         <article className={styles.panel}>
           <div className={styles.sectionHeading}>
             <span>DESCARGAS</span>
-            <h2>Fuentes visibles</h2>
+            <h2>Paquete y fuentes visibles</h2>
           </div>
+
+          <dl className={styles.details}>
+            <div>
+              <dt>Canal</dt>
+              <dd>{distributionChannelLabel}</dd>
+            </div>
+            <div>
+              <dt>SHA-256</dt>
+              <dd style={{ overflowWrap: "anywhere" }}>
+                {download?.checksumSha256 ?? "Sin definir"}
+              </dd>
+            </div>
+          </dl>
 
           {sources.length > 0 ? (
             <div className={styles.sources}>

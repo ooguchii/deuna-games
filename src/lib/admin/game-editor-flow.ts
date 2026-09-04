@@ -4,7 +4,8 @@ export type GameEditorSection =
   | "requisitos"
   | "rendimiento"
   | "multimedia"
-  | "descargas";
+  | "descargas"
+  | "valoracion";
 
 export type GameEditorContinuation =
   | Exclude<GameEditorSection, "ficha">
@@ -19,7 +20,8 @@ const nextSection: Record<
   requisitos: "rendimiento",
   rendimiento: "multimedia",
   multimedia: "descargas",
-  descargas: "publicacion",
+  descargas: "valoracion",
+  valoracion: "publicacion",
 };
 
 export function requestedGameEditorContinuation(

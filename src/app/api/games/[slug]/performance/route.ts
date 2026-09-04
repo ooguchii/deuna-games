@@ -17,7 +17,7 @@ export async function GET(
 
   if (!slugPattern.test(slug)) {
     return Response.json(
-      { calibration: null },
+      { calibration: null, metadata: null },
       {
         status: 400,
         headers: {
@@ -31,7 +31,7 @@ export async function GET(
 
   if (!game) {
     return Response.json(
-      { calibration: null },
+      { calibration: null, metadata: null },
       {
         status: 404,
         headers: {
@@ -44,6 +44,7 @@ export async function GET(
   return Response.json(
     {
       calibration: game.performance ?? null,
+      metadata: game.performanceMetadata ?? null,
     },
     {
       headers: {

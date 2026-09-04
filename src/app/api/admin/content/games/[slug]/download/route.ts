@@ -27,6 +27,8 @@ const fields = [
   "sizeGb",
   "fileCount",
   "platform",
+  "channel",
+  "checksumSha256",
   "sourcesJson",
 ] as const;
 
@@ -77,6 +79,8 @@ export async function POST(
     const {
       expectedRevision,
       sourcesJson,
+      channel,
+      checksumSha256,
       ...metadata
     } = parsed.data;
     const result = await saveGameDownloadDraft(
@@ -85,6 +89,10 @@ export async function POST(
       authorized.session.userId,
       {
         ...metadata,
+        distributionMetadata: {
+          ...(channel ? { channel } : {}),
+          ...(checksumSha256 ? { checksumSha256 } : {}),
+        },
         sources:
           sourcesJson.length > 0
             ? sourcesJson

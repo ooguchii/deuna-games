@@ -45,7 +45,7 @@ export default function GamePlatformEditor({
 
   return (
     <fieldset className={styles.root}>
-      <legend>Plataformas</legend>
+      <legend>Plataformas confirmadas</legend>
       <input
         type="hidden"
         name="platformsJson"
@@ -72,7 +72,7 @@ export default function GamePlatformEditor({
       </div>
 
       <p>
-        Si no seleccionás ninguna, la ficha pública seguirá usando PC como valor de compatibilidad por defecto.
+        Si no seleccionás ninguna, DeUna conservará el dato como “sin plataforma confirmada”. No se asumirá PC automáticamente desde el panel.
       </p>
     </fieldset>
   );

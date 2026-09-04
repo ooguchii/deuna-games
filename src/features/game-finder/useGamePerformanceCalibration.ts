@@ -7,22 +7,21 @@ import {
 
 import type {
   GamePerformanceCalibration,
+  GamePerformanceMetadata,
 } from "@/types/game";
 
-type CalibrationState = {
-  slug: string;
-  loaded: boolean;
-  value: GamePerformanceCalibration | null;
+type PublishedPerformance = {
+  calibration: GamePerformanceCalibration | null;
+  metadata: GamePerformanceMetadata | null;
 };
 
-const resolved = new Map<
-  string,
-  GamePerformanceCalibration | null
->();
-const pending = new Map<
-  string,
-  Promise<GamePerformanceCalibration | null>
->();
+type CalibrationState = PublishedPerformance & {
+  slug: string;
+  loaded: boolean;
+};
+
+const resolved = new Map<string, PublishedPerformance>();
+const pending = new Map<string, Promise<PublishedPerformance>>();
 
 function parsePublishedCalibration(
   value: unknown
@@ -69,11 +68,86 @@ function parsePublishedCalibration(
   };
 }
 
+function parsePublishedMetadata(
+  value: unknown
+): GamePerformanceMetadata | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+
+  const candidate = value as Record<string, unknown>;
+  const source = candidate.source;
+  const sourceLabel = candidate.sourceLabel;
+  const measuredAt = candidate.measuredAt;
+  const confidence = candidate.confidence;
+  const allowedSources = new Set([
+    "internal",
+    "developer",
+    "publisher",
+    "community",
+    "external",
+  ]);
+  const allowedConfidence = new Set(["low", "medium", "high"]);
+
+  if (
+    source !== undefined &&
+    (typeof source !== "string" || !allowedSources.has(source))
+  ) {
+    return null;
+  }
+  if (
+    sourceLabel !== undefined &&
+    (
+      typeof sourceLabel !== "string" ||
+      sourceLabel.trim().length === 0 ||
+      sourceLabel.length > 160
+    )
+  ) {
+    return null;
+  }
+  if (
+    measuredAt !== undefined &&
+    (
+      typeof measuredAt !== "string" ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(measuredAt)
+    )
+  ) {
+    return null;
+  }
+  if (
+    confidence !== undefined &&
+    (
+      typeof confidence !== "string" ||
+      !allowedConfidence.has(confidence)
+    )
+  ) {
+    return null;
+  }
+
+  return {
+    ...(typeof source === "string"
+      ? { source: source as GamePerformanceMetadata["source"] }
+      : {}),
+    ...(typeof sourceLabel === "string" ? { sourceLabel } : {}),
+    ...(typeof measuredAt === "string" ? { measuredAt } : {}),
+    ...(typeof confidence === "string"
+      ? { confidence: confidence as GamePerformanceMetadata["confidence"] }
+      : {}),
+  };
+}
+
+function emptyPublishedPerformance(): PublishedPerformance {
+  return {
+    calibration: null,
+    metadata: null,
+  };
+}
+
 function loadCalibration(
   slug: string
-): Promise<GamePerformanceCalibration | null> {
+): Promise<PublishedPerformance> {
   if (resolved.has(slug)) {
-    return Promise.resolve(resolved.get(slug) ?? null);
+    return Promise.resolve(resolved.get(slug) ?? emptyPublishedPerformance());
   }
 
   const existing = pending.get(slug);
@@ -84,19 +158,26 @@ function loadCalibration(
     { cache: "no-store" }
   )
     .then(async (response) => {
-      if (!response.ok) return null;
+      if (!response.ok) return emptyPublishedPerformance();
 
       const payload = await response.json() as {
         calibration?: unknown;
+        metadata?: unknown;
       };
 
-      return parsePublishedCalibration(payload.calibration);
+      const calibration = parsePublishedCalibration(payload.calibration);
+      return {
+        calibration,
+        metadata: calibration
+          ? parsePublishedMetadata(payload.metadata)
+          : null,
+      };
     })
-    .catch(() => null)
-    .then((calibration) => {
-      resolved.set(slug, calibration);
+    .catch(() => emptyPublishedPerformance())
+    .then((performance) => {
+      resolved.set(slug, performance);
       pending.delete(slug);
-      return calibration;
+      return performance;
     });
 
   pending.set(slug, request);
@@ -106,22 +187,24 @@ function loadCalibration(
 export function useGamePerformanceCalibration(
   slug: string
 ) {
-  const hasCached = resolved.has(slug);
+  const cached = resolved.get(slug);
   const [state, setState] = useState<CalibrationState>(() => ({
     slug,
-    loaded: hasCached,
-    value: hasCached ? resolved.get(slug) ?? null : null,
+    loaded: cached !== undefined,
+    calibration: cached?.calibration ?? null,
+    metadata: cached?.metadata ?? null,
   }));
 
   useEffect(() => {
     let active = true;
 
-    loadCalibration(slug).then((value) => {
+    loadCalibration(slug).then((performance) => {
       if (active) {
         setState({
           slug,
           loaded: true,
-          value,
+          calibration: performance.calibration,
+          metadata: performance.metadata,
         });
       }
     });
@@ -133,20 +216,24 @@ export function useGamePerformanceCalibration(
 
   if (state.slug === slug) {
     return {
-      calibration: state.value,
+      calibration: state.calibration,
+      metadata: state.metadata,
       loading: !state.loaded,
     };
   }
 
-  if (resolved.has(slug)) {
+  const nextCached = resolved.get(slug);
+  if (nextCached) {
     return {
-      calibration: resolved.get(slug) ?? null,
+      calibration: nextCached.calibration,
+      metadata: nextCached.metadata,
       loading: false,
     };
   }
 
   return {
     calibration: null,
+    metadata: null,
     loading: true,
   };
 }

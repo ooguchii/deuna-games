@@ -7,6 +7,7 @@ import type {
   GameGalleryItem,
   GameHeroVideo,
   GameImageMedia,
+  GameMediaAccessibility,
 } from "@/types/game";
 
 export type MultimediaResourceHygieneStatus =
@@ -111,6 +112,7 @@ export type MultimediaLibraryState = {
   revision: number;
   resources: MultimediaLibraryResource[];
   gallery?: GameGalleryItem[];
+  accessibility?: GameMediaAccessibility | null;
   requirements?: MultimediaRequirements;
   hygiene?: MultimediaHygieneSummary;
   assignments: {

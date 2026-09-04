@@ -34,6 +34,17 @@ const localImageSchema = z
   .max(400)
   .refine(isSafeLocalImagePath);
 
+const canonicalDateSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/)
+  .refine((value) => {
+    const parsed = new Date(`${value}T00:00:00Z`);
+    return (
+      Number.isFinite(parsed.getTime()) &&
+      parsed.toISOString().slice(0, 10) === value
+    );
+  });
+
 const imageViewportAspectSchema = z.enum([
   "16:9",
   "3:2",
@@ -165,6 +176,104 @@ const videoMediaSchema = z
     }
   });
 
+const mediaAccessibilityLabelSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(240);
+
+const galleryAccessibilityItemSchema = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal("image"),
+    src: localImageSchema,
+    label: mediaAccessibilityLabelSchema,
+  }).strict(),
+  z.object({
+    kind: z.literal("video"),
+    src: localPreviewClipSchema,
+    label: mediaAccessibilityLabelSchema,
+  }).strict(),
+]);
+
+const mediaAccessibilitySchema = z
+  .object({
+    cover: mediaAccessibilityLabelSchema.optional(),
+    hero: mediaAccessibilityLabelSchema.optional(),
+    card: mediaAccessibilityLabelSchema.optional(),
+    detail: mediaAccessibilityLabelSchema.optional(),
+    gallery: z
+      .array(galleryAccessibilityItemSchema)
+      .max(8)
+      .superRefine((items, context) => {
+        const seen = new Set<string>();
+        items.forEach((item, index) => {
+          const key = `${item.kind}:${item.src}`;
+          if (seen.has(key)) {
+            context.addIssue({
+              code: "custom",
+              path: [index, "src"],
+              message: "Un recurso de Galería no puede repetir su texto accesible.",
+            });
+          }
+          seen.add(key);
+        });
+      })
+      .optional(),
+  })
+  .strict();
+
+const compatibilityMetadataSchema = z
+  .object({
+    status: z.enum(["declared", "reviewed", "tested"]).optional(),
+    source: z
+      .enum(["developer", "publisher", "internal", "community", "external"])
+      .optional(),
+    verifiedAt: canonicalDateSchema.optional(),
+  })
+  .strict();
+
+const ageRatingSchema = z
+  .object({
+    system: z.enum([
+      "ESRB",
+      "PEGI",
+      "IARC",
+      "CLASSIND",
+      "USK",
+      "ACB",
+      "GRAC",
+      "CERO",
+      "OTHER",
+    ]),
+    rating: z.string().trim().min(1).max(40),
+    descriptors: z
+      .array(z.string().trim().min(1).max(80))
+      .max(8)
+      .optional(),
+  })
+  .strict();
+
+const performanceMetadataSchema = z
+  .object({
+    source: z
+      .enum(["internal", "developer", "publisher", "community", "external"])
+      .optional(),
+    sourceLabel: z.string().trim().min(1).max(160).optional(),
+    measuredAt: canonicalDateSchema.optional(),
+    confidence: z.enum(["low", "medium", "high"]).optional(),
+  })
+  .strict();
+
+const distributionMetadataSchema = z
+  .object({
+    channel: z.enum(["stable", "beta", "testing"]).optional(),
+    checksumSha256: z
+      .string()
+      .regex(/^[a-f0-9]{64}$/)
+      .optional(),
+  })
+  .strict();
+
 const galleryMediaSchema = z
   .array(
     z.discriminatedUnion("kind", [
@@ -195,6 +304,37 @@ const galleryMediaSchema = z
     });
   });
 
+type ParsedMediaAccessibility = z.infer<typeof mediaAccessibilitySchema>;
+type ParsedGalleryMedia = z.infer<typeof galleryMediaSchema>;
+
+function resolveMediaAccessibility(
+  accessibility: ParsedMediaAccessibility | undefined,
+  galleryMedia: ParsedGalleryMedia | undefined,
+  screenshots: string[] | undefined
+) {
+  if (!accessibility) return undefined;
+
+  const allowedGallery = new Set(
+    galleryMedia
+      ? galleryMedia.map((item) => `${item.kind}:${item.src}`)
+      : (screenshots ?? []).map((src) => `image:${src}`)
+  );
+  const gallery = accessibility.gallery?.filter(
+    (item) => allowedGallery.has(`${item.kind}:${item.src}`)
+  );
+  const resolved = {
+    ...(accessibility.cover ? { cover: accessibility.cover } : {}),
+    ...(accessibility.hero ? { hero: accessibility.hero } : {}),
+    ...(accessibility.card ? { card: accessibility.card } : {}),
+    ...(accessibility.detail ? { detail: accessibility.detail } : {}),
+    ...(gallery?.length ? { gallery } : {}),
+  };
+
+  return Object.keys(resolved).length > 0
+    ? resolved
+    : undefined;
+}
+
 function splitGameCompatibilityPayload(payload: unknown) {
   if (
     typeof payload !== "object" ||
@@ -208,8 +348,13 @@ function splitGameCompatibilityPayload(payload: unknown) {
       backgroundImage: undefined,
       galleryMedia: undefined,
       imageMedia: undefined,
+      mediaAccessibility: undefined,
       mediaModes: undefined,
       videoMedia: undefined,
+      ageRating: undefined,
+      compatibilityMetadata: undefined,
+      performanceMetadata: undefined,
+      distributionMetadata: undefined,
     };
   }
 
@@ -231,20 +376,40 @@ function splitGameCompatibilityPayload(payload: unknown) {
   const imageMedia = clean.imageMedia === undefined
     ? undefined
     : imageMediaSchema.parse(clean.imageMedia);
+  const mediaAccessibility = clean.mediaAccessibility === undefined
+    ? undefined
+    : mediaAccessibilitySchema.parse(clean.mediaAccessibility);
   const mediaModes = clean.mediaModes === undefined
     ? undefined
     : mediaModesSchema.parse(clean.mediaModes);
   const videoMedia = clean.videoMedia === undefined
     ? undefined
     : videoMediaSchema.parse(clean.videoMedia);
+  const ageRating = clean.ageRating === undefined
+    ? undefined
+    : ageRatingSchema.parse(clean.ageRating);
+  const compatibilityMetadata = clean.compatibilityMetadata === undefined
+    ? undefined
+    : compatibilityMetadataSchema.parse(clean.compatibilityMetadata);
+  const performanceMetadata = clean.performanceMetadata === undefined
+    ? undefined
+    : performanceMetadataSchema.parse(clean.performanceMetadata);
+  const distributionMetadata = clean.distributionMetadata === undefined
+    ? undefined
+    : distributionMetadataSchema.parse(clean.distributionMetadata);
 
   delete clean.cardImage;
   delete clean.detailImage;
   delete clean.backgroundImage;
   delete clean.galleryMedia;
   delete clean.imageMedia;
+  delete clean.mediaAccessibility;
   delete clean.mediaModes;
   delete clean.videoMedia;
+  delete clean.ageRating;
+  delete clean.compatibilityMetadata;
+  delete clean.performanceMetadata;
+  delete clean.distributionMetadata;
 
   // Compatibilidad de lectura únicamente. Estas claves pertenecen a las
   // generaciones antiguas de previews externos y ya no forman parte del
@@ -260,8 +425,13 @@ function splitGameCompatibilityPayload(payload: unknown) {
     backgroundImage,
     galleryMedia,
     imageMedia,
+    mediaAccessibility,
     mediaModes,
     videoMedia,
+    ageRating,
+    compatibilityMetadata,
+    performanceMetadata,
+    distributionMetadata,
   };
 }
 
@@ -308,8 +478,13 @@ export function parseEditorialPayload<
     backgroundImage,
     galleryMedia,
     imageMedia,
+    mediaAccessibility,
     mediaModes,
     videoMedia,
+    ageRating,
+    compatibilityMetadata,
+    performanceMetadata,
+    distributionMetadata,
   } = splitGameCompatibilityPayload(payload);
   const game = parseCoreEditorialPayload("game", core);
 
@@ -337,6 +512,11 @@ export function parseEditorialPayload<
         },
       }
     : imageMedia;
+  const resolvedMediaAccessibility = resolveMediaAccessibility(
+    mediaAccessibility,
+    galleryMedia,
+    game.screenshots
+  );
 
   const backgroundMode = inferredOptionalMode(
     mediaModes?.background,
@@ -378,7 +558,12 @@ export function parseEditorialPayload<
     ...(backgroundImage ? { backgroundImage } : {}),
     ...(galleryMedia !== undefined ? { galleryMedia } : {}),
     ...(resolvedImageMedia ? { imageMedia: resolvedImageMedia } : {}),
+    ...(resolvedMediaAccessibility ? { mediaAccessibility: resolvedMediaAccessibility } : {}),
     mediaModes: resolvedMediaModes,
     ...(videoMedia ? { videoMedia } : {}),
+    ...(ageRating ? { ageRating } : {}),
+    ...(compatibilityMetadata ? { compatibilityMetadata } : {}),
+    ...(performanceMetadata ? { performanceMetadata } : {}),
+    ...(distributionMetadata ? { distributionMetadata } : {}),
   } as EditorialPayloadByType[Type];
 }

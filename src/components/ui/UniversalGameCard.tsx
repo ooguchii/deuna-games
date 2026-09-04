@@ -379,7 +379,7 @@ export default function UniversalGameCard({
         >
           <HoverPreviewMedia
             imageSrc={cardMode === "video" ? undefined : cardImage}
-            imageAlt={game.imageAlt}
+            imageAlt={game.mediaAccessibility?.card ?? game.imageAlt}
             imageViewport={imageViewport}
             previewClip={resolvedPreview?.src}
             previewViewport={resolvedPreview?.viewport}

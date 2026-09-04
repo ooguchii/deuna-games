@@ -267,6 +267,41 @@ async function grantRuntimePrivileges(
       TO ${role};
 
     GRANT SELECT (
+        game_slug,
+        score,
+        confidence,
+        evidence_count,
+        breakdown,
+        calculated_by,
+        calculated_at
+      )
+      ON deuna_admin.game_insight_scores
+      TO ${role};
+
+    GRANT INSERT (
+        game_slug,
+        score,
+        confidence,
+        evidence_count,
+        breakdown,
+        calculated_by,
+        calculated_at
+      )
+      ON deuna_admin.game_insight_scores
+      TO ${role};
+
+    GRANT UPDATE (
+        score,
+        confidence,
+        evidence_count,
+        breakdown,
+        calculated_by,
+        calculated_at
+      )
+      ON deuna_admin.game_insight_scores
+      TO ${role};
+
+    GRANT SELECT (
         id,
         username,
         username_key,
@@ -403,6 +438,31 @@ async function grantRuntimePrivileges(
 
     GRANT DELETE
       ON deuna_accounts.game_preferences
+      TO ${role};
+
+    GRANT SELECT (
+        user_id,
+        game_slug,
+        rating,
+        updated_at
+      )
+      ON deuna_accounts.game_ratings
+      TO ${role};
+
+    GRANT INSERT (
+        user_id,
+        game_slug,
+        rating,
+        updated_at
+      )
+      ON deuna_accounts.game_ratings
+      TO ${role};
+
+    GRANT UPDATE (
+        rating,
+        updated_at
+      )
+      ON deuna_accounts.game_ratings
       TO ${role};
 
     GRANT SELECT (

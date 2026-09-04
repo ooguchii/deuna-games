@@ -19,11 +19,17 @@ import type {
   PerformanceTier,
 } from "@/features/game-finder/types";
 import {
+  useGameCompatibilityMetadata,
+} from "@/features/game-finder/useGameCompatibilityMetadata";
+import {
   useGamePerformanceCalibration,
 } from "@/features/game-finder/useGamePerformanceCalibration";
 import {
   useResolvedHardwareProfile,
 } from "@/features/game-finder/useResolvedHardwareProfile";
+import type {
+  GameCompatibilityMetadata,
+} from "@/types/game";
 
 import styles from "./page.module.css";
 
@@ -53,6 +59,26 @@ const bottleneckLabels = {
   ram: "RAM",
   balanced: "Equilibrado",
 } as const;
+
+const verificationStatusLabels: Record<
+  NonNullable<GameCompatibilityMetadata["status"]>,
+  string
+> = {
+  declared: "Declarado",
+  reviewed: "Revisado",
+  tested: "Probado",
+};
+
+const verificationSourceLabels: Record<
+  NonNullable<GameCompatibilityMetadata["source"]>,
+  string
+> = {
+  developer: "Desarrollador",
+  publisher: "Publisher",
+  internal: "Verificación interna",
+  community: "Comunidad",
+  external: "Fuente externa",
+};
 
 function ramLabel(profile: HardwareProfile) {
   if (!profile.ramGb) return "Sin detectar";
@@ -88,6 +114,9 @@ export default function GameCompatibilityCard({
     calibration,
     loading: calibrationLoading,
   } = useGamePerformanceCalibration(slug);
+  const {
+    metadata: compatibilityMetadata,
+  } = useGameCompatibilityMetadata(slug);
 
   const estimate = useMemo(
     () =>
@@ -152,6 +181,18 @@ export default function GameCompatibilityCard({
         <p className={styles.compatibilityEmpty}>
           {description}
         </p>
+
+        {compatibilityMetadata?.status && (
+          <p className={styles.compatibilityNote}>
+            Datos de compatibilidad: {verificationStatusLabels[compatibilityMetadata.status]}
+            {compatibilityMetadata.source
+              ? ` · ${verificationSourceLabels[compatibilityMetadata.source]}`
+              : ""}
+            {compatibilityMetadata.verifiedAt
+              ? ` · ${compatibilityMetadata.verifiedAt}`
+              : ""}.
+          </p>
+        )}
 
         <ol className={styles.compatibilitySteps}>
           <li>Detectamos los datos disponibles</li>
@@ -242,18 +283,35 @@ export default function GameCompatibilityCard({
 
       <dl className={styles.compatibilityMeta}>
         <div>
-          <dt>Confianza</dt>
+          <dt>Confianza del cálculo</dt>
           <dd>{confidenceLabels[estimate.confidence]}</dd>
         </div>
         <div>
           <dt>Posible límite</dt>
           <dd>{bottleneckLabels[estimate.bottleneck]}</dd>
         </div>
+        {compatibilityMetadata?.status && (
+          <div>
+            <dt>Estado de verificación</dt>
+            <dd>{verificationStatusLabels[compatibilityMetadata.status]}</dd>
+          </div>
+        )}
+        {compatibilityMetadata?.source && (
+          <div>
+            <dt>Origen</dt>
+            <dd>{verificationSourceLabels[compatibilityMetadata.source]}</dd>
+          </div>
+        )}
+        {compatibilityMetadata?.verifiedAt && (
+          <div>
+            <dt>Última verificación</dt>
+            <dd>{compatibilityMetadata.verifiedAt}</dd>
+          </div>
+        )}
       </dl>
 
       <p className={styles.compatibilityNote}>
-        Estimación orientativa; no sustituye un benchmark ejecutado en tu
-        equipo.
+        La confianza del cálculo describe la estimación para tu hardware; el estado de verificación describe cómo fueron comprobados los datos editoriales del juego.
       </p>
 
       <Link

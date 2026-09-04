@@ -75,7 +75,7 @@ export default function GameCoverMedia({ game, sizes }: Props) {
       >
         <GameMedia
           src={game.coverImage}
-          alt={game.imageAlt}
+          alt={game.mediaAccessibility?.cover ?? game.imageAlt}
           sizes={sizes}
           viewport={game.imageMedia?.cover}
         />

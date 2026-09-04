@@ -1,4 +1,5 @@
 import GameGalleryMediaManager from "@/components/admin/GameGalleryMediaManager";
+import GameMediaAccessibilityEditor from "@/components/admin/GameMediaAccessibilityEditor";
 import GameMultimediaUtilityRail from "@/components/admin/GameMultimediaUtilityRail";
 import GameMultimediaWorkspaceContextual from "@/components/admin/GameMultimediaWorkspaceContextual";
 import GameVideoLibraryEditor from "@/components/admin/GameVideoLibraryEditor";
@@ -44,6 +45,11 @@ export default function GameMultimediaEditor({
         </div>
 
         <GameGalleryMediaManager
+          slug={slug}
+          revision={revision}
+        />
+
+        <GameMediaAccessibilityEditor
           slug={slug}
           revision={revision}
         />

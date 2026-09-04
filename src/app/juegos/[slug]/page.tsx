@@ -41,6 +41,9 @@ import {
   getPublicGames,
 } from "@/lib/games/public-catalog";
 import {
+  getGameGalleryAccessibleFallback,
+} from "@/lib/media/game-media-accessibility";
+import {
   galleryImageViewport,
   resolvePublicGameGalleryItems,
 } from "@/lib/media/game-gallery-media";
@@ -62,6 +65,7 @@ import {
   getPublicUpdatesForGame,
 } from "@/lib/updates/public-updates";
 import type {
+  GameAgeRatingSystem,
   GameHardwareRequirements,
   GameVideoViewport,
 } from "@/types/game";
@@ -131,6 +135,13 @@ function galleryVideoAspectRatio(viewport: GameVideoViewport) {
   return 16 / 9;
 }
 
+function ageRatingSystemLabel(system: GameAgeRatingSystem) {
+  if (system === "CLASSIND") return "ClassInd";
+  if (system === "ACB") return "ACB";
+  if (system === "OTHER") return "Otro sistema";
+  return system;
+}
+
 export async function generateMetadata({
   params,
 }: GameDetailPageProps): Promise<Metadata> {
@@ -153,6 +164,9 @@ export async function generateMetadata({
   const title = game.title;
   const description = game.description;
   const image = game.heroImage ?? game.coverImage;
+  const imageAlt = game.heroImage
+    ? game.mediaAccessibility?.hero ?? game.imageAlt
+    : game.mediaAccessibility?.cover ?? game.imageAlt;
 
   return {
     title,
@@ -169,7 +183,7 @@ export async function generateMetadata({
         ? [
             {
               url: image,
-              alt: game.imageAlt,
+              alt: imageAlt,
             },
           ]
         : undefined,
@@ -246,14 +260,17 @@ export default async function GameDetailPage({
   const gallery = resolvePublicGameGalleryItems(game);
   const galleryHasVideo = gallery.some((item) => item.kind === "video");
 
-  const platforms =
-    game.platforms?.length
-      ? game.platforms
-      : ["PC"];
+  const platforms = game.platforms ?? [];
+  const platformLabel = platforms.length
+    ? platforms.join(", ")
+    : "A confirmar";
   const genres =
     game.genres?.length
       ? game.genres
       : [game.category];
+  const ageRatingLabel = game.ageRating
+    ? `${ageRatingSystemLabel(game.ageRating.system)} · ${game.ageRating.rating}`
+    : null;
 
   const visibleTags = Array.from(
     new Set([
@@ -307,7 +324,8 @@ export default async function GameDetailPage({
       ? absoluteUrl(game.coverImage)
       : undefined,
     genre: genres,
-    gamePlatform: platforms,
+    gamePlatform: platforms.length ? platforms : undefined,
+    contentRating: ageRatingLabel ?? undefined,
     operatingSystem:
       minimum?.system ??
       recommended?.system,
@@ -498,7 +516,7 @@ export default async function GameDetailPage({
               </span>
               <div>
                 <dt>Plataforma</dt>
-                <dd>{platforms.join(", ")}</dd>
+                <dd>{platformLabel}</dd>
               </div>
             </div>
             <div>
@@ -572,7 +590,16 @@ export default async function GameDetailPage({
                 <div><dt>Lanzamiento</dt><dd>{game.releaseDate}</dd></div>
               )}
               <div><dt>Género</dt><dd>{genres.join(", ")}</dd></div>
-              <div><dt>Plataforma</dt><dd>{platforms.join(", ")}</dd></div>
+              <div><dt>Plataforma</dt><dd>{platformLabel}</dd></div>
+              {ageRatingLabel && (
+                <div><dt>Clasificación etaria</dt><dd>{ageRatingLabel}</dd></div>
+              )}
+              {game.ageRating?.descriptors?.length ? (
+                <div>
+                  <dt>Descriptores</dt>
+                  <dd>{game.ageRating.descriptors.join(", ")}</dd>
+                </div>
+              ) : null}
             </dl>
           </article>
 
@@ -644,6 +671,12 @@ export default async function GameDetailPage({
 
             <div className={styles.galleryGrid}>
               {gallery.map((item, index) => {
+                const accessibleLabel = getGameGalleryAccessibleFallback(
+                  game,
+                  item,
+                  index
+                );
+
                 if (item.kind === "image") {
                   const viewport = galleryImageViewport(game, item);
                   return (
@@ -656,7 +689,7 @@ export default async function GameDetailPage({
                     >
                       <GameMedia
                         src={item.src}
-                        alt={`${game.title} — imagen ${index + 1}`}
+                        alt={accessibleLabel}
                         sizes="(max-width: 700px) 100vw, 33vw"
                         viewport={viewport}
                       />
@@ -675,7 +708,7 @@ export default async function GameDetailPage({
                     <GameGalleryVideo
                       src={item.src}
                       viewport={item.viewport}
-                      label={`${game.title} — video ${index + 1}`}
+                      label={accessibleLabel}
                     />
                   </figure>
                 );

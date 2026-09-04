@@ -16,6 +16,7 @@ import { useMemo } from "react";
 
 import type {
   GamePerformanceCalibration,
+  GamePerformanceMetadata,
 } from "@/types/game";
 
 import {
@@ -66,6 +67,7 @@ const tierMeta: Record<
 type GamePerformanceEstimateProps = {
   slug: string;
   calibration?: GamePerformanceCalibration | null;
+  metadata?: GamePerformanceMetadata | null;
 };
 
 function sourceLabel(profile: HardwareProfile | null) {
@@ -83,6 +85,40 @@ function confidenceLabel(estimate: GameEstimate | null) {
   return "Confianza orientativa";
 }
 
+function benchmarkSourceLabel(metadata: GamePerformanceMetadata | null) {
+  if (!metadata) return null;
+  if (metadata.sourceLabel) return metadata.sourceLabel;
+  if (metadata.source === "internal") return "Prueba interna";
+  if (metadata.source === "developer") return "Desarrollador";
+  if (metadata.source === "publisher") return "Publisher";
+  if (metadata.source === "community") return "Comunidad";
+  if (metadata.source === "external") return "Fuente externa";
+  return null;
+}
+
+function benchmarkConfidenceLabel(metadata: GamePerformanceMetadata | null) {
+  if (!metadata?.confidence) return null;
+  if (metadata.confidence === "high") return "confianza de fuente alta";
+  if (metadata.confidence === "medium") return "confianza de fuente media";
+  return "confianza de fuente orientativa";
+}
+
+function benchmarkContext(metadata: GamePerformanceMetadata | null) {
+  const source = benchmarkSourceLabel(metadata);
+  const confidence = benchmarkConfidenceLabel(metadata);
+  const date = metadata?.measuredAt;
+
+  if (!source && !confidence && !date) return null;
+
+  return [
+    source ? `Base: ${source}` : null,
+    date ? `medida ${date}` : null,
+    confidence,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
 function ramLabel(profile: HardwareProfile | null) {
   if (!profile?.ramGb) return "RAM sin detectar";
   if (profile.ramKnowledge === "lower-bound") {
@@ -97,6 +133,7 @@ function ramLabel(profile: HardwareProfile | null) {
 export default function GamePerformanceEstimate({
   slug,
   calibration: previewCalibration,
+  metadata: previewMetadata,
 }: GamePerformanceEstimateProps) {
   const {
     profile: hardware,
@@ -104,6 +141,7 @@ export default function GamePerformanceEstimate({
   } = useResolvedHardwareProfile();
   const {
     calibration: publishedCalibration,
+    metadata: publishedMetadata,
     loading: publishedCalibrationLoading,
   } = useGamePerformanceCalibration(slug);
   const hasPreviewOverride =
@@ -111,6 +149,9 @@ export default function GamePerformanceEstimate({
   const calibration = hasPreviewOverride
     ? previewCalibration
     : publishedCalibration;
+  const metadata = hasPreviewOverride
+    ? previewMetadata ?? null
+    : publishedMetadata;
   const calibrationLoading =
     !hasPreviewOverride && publishedCalibrationLoading;
 
@@ -139,6 +180,7 @@ export default function GamePerformanceEstimate({
 
   const configurationHref =
     `/requisitos?juego=${encodeURIComponent(slug)}`;
+  const benchmark = benchmarkContext(metadata);
 
   if (status === "loading" || calibrationLoading) {
     return (
@@ -285,6 +327,7 @@ export default function GamePerformanceEstimate({
           Estimación orientativa para 1080p en calidad media, sin ray tracing,
           frame generation ni escalado. El resultado real puede variar según
           drivers, temperatura y configuración del juego.
+          {benchmark ? ` ${benchmark}.` : ""}
         </p>
 
         <Link href={configurationHref}>

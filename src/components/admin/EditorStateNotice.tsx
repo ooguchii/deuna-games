@@ -92,6 +92,11 @@ const notices = {
     message:
       "La clasificación no coincide con los Catálogos actuales. Selecciona categorías, géneros y etiquetas activas; los valores antiguos ya asignados se conservan hasta que decidas reemplazarlos.",
   },
+  "valoracion-sugerencia": {
+    kind: "warning",
+    message:
+      "La sugerencia automática no se aplicó porque el Índice DeUna todavía no tiene migración activa, evidencias suficientes o confianza media/alta. La valoración editorial existente no fue modificada.",
+  },
   restaurado: {
     kind: "success",
     message:

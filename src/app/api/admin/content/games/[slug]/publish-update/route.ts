@@ -40,6 +40,8 @@ const fields = [
   "sizeGb",
   "fileCount",
   "platform",
+  "channel",
+  "checksumSha256",
   "sourcesJson",
 ] as const;
 
@@ -102,6 +104,8 @@ export async function POST(
     sizeGb: raw.sizeGb,
     fileCount: raw.fileCount,
     platform: raw.platform,
+    channel: raw.channel,
+    checksumSha256: raw.checksumSha256,
     sourcesJson: raw.sourcesJson,
   });
 
@@ -166,6 +170,14 @@ export async function POST(
         type: metadata.data.type,
         summary: metadata.data.summary,
         featured: metadata.data.featured,
+        distributionMetadata: {
+          ...(download.data.channel
+            ? { channel: download.data.channel }
+            : {}),
+          ...(download.data.checksumSha256
+            ? { checksumSha256: download.data.checksumSha256 }
+            : {}),
+        },
         download: {
           sizeGb: download.data.sizeGb,
           fileCount: download.data.fileCount,

@@ -116,6 +116,7 @@ async function main() {
   const recoveryId = randomUUID();
   const recoveryCascadeId = randomUUID();
   const rewardEventId = randomUUID();
+  const insightSlug = `ci-${randomUUID().replaceAll("-", "").slice(0, 24)}`;
   const username = `ci_${randomUUID().replaceAll("-", "").slice(0, 16)}`;
   const sessionHash = createHash("sha256")
     .update(randomUUID(), "utf8")
@@ -164,6 +165,81 @@ async function main() {
     await insertRewards(pool, userId, rewardEventId);
 
     await pool.query(
+      `INSERT INTO deuna_accounts.game_ratings
+         (user_id, game_slug, rating, updated_at)
+       VALUES ($1, 'elden-ring', 4, now())`,
+      [userId]
+    );
+
+    await pool.query(
+      `UPDATE deuna_accounts.game_ratings
+          SET rating = 5,
+              updated_at = now()
+        WHERE user_id = $1
+          AND game_slug = 'elden-ring'`,
+      [userId]
+    );
+
+    const rating = await pool.query<{ rating: number }>(
+      `SELECT rating
+         FROM deuna_accounts.game_ratings
+        WHERE user_id = $1
+          AND game_slug = 'elden-ring'`,
+      [userId]
+    );
+    assert(
+      rating.rows[0]?.rating === 5,
+      "El rol runtime no pudo crear, actualizar y leer una valoración de juego."
+    );
+
+    await pool.query(
+      `INSERT INTO deuna_admin.game_insight_scores
+         (
+           game_slug,
+           score,
+           confidence,
+           evidence_count,
+           breakdown,
+           calculated_by,
+           calculated_at
+         )
+       VALUES (
+         $1,
+         64.5,
+         'medium',
+         30,
+         '{"interest":70,"engagement":60,"satisfaction":63}'::jsonb,
+         '00000000-0000-4000-8000-000000000001',
+         now()
+       )`,
+      [insightSlug]
+    );
+
+    await pool.query(
+      `UPDATE deuna_admin.game_insight_scores
+          SET score = 68.5,
+              evidence_count = 31,
+              calculated_at = now()
+        WHERE game_slug = $1`,
+      [insightSlug]
+    );
+
+    const insight = await pool.query<{
+      score: string;
+      evidence_count: string;
+    }>(
+      `SELECT score::text, evidence_count::text
+         FROM deuna_admin.game_insight_scores
+        WHERE game_slug = $1`,
+      [insightSlug]
+    );
+    assert(
+      Number(insight.rows[0]?.score) === 68.5 &&
+        Number(insight.rows[0]?.evidence_count) === 31,
+      "El rol runtime no pudo crear, actualizar y leer un snapshot del Índice DeUna."
+    );
+
+    await pool.query(
       `UPDATE deuna_accounts.game_preferences
        SET updates_seen_through = now(),
            updated_at = now()
@@ -180,6 +256,42 @@ async function main() {
        WHERE user_id = $1
          AND game_slug = 'elden-ring'`,
       [userId]
+    );
+
+    await expectPrivilegeDenied(
+      pool,
+      "Cambio de identidad de una valoración",
+      `UPDATE deuna_accounts.game_ratings
+       SET game_slug = 'portal-2'
+       WHERE user_id = $1
+         AND game_slug = 'elden-ring'`,
+      [userId]
+    );
+
+    await expectPrivilegeDenied(
+      pool,
+      "Borrado directo de una valoración",
+      `DELETE FROM deuna_accounts.game_ratings
+       WHERE user_id = $1
+         AND game_slug = 'elden-ring'`,
+      [userId]
+    );
+
+    await expectPrivilegeDenied(
+      pool,
+      "Cambio de identidad de un Índice DeUna",
+      `UPDATE deuna_admin.game_insight_scores
+       SET game_slug = 'ci-forbidden-insight'
+       WHERE game_slug = $1`,
+      [insightSlug]
+    );
+
+    await expectPrivilegeDenied(
+      pool,
+      "Borrado directo de un Índice DeUna",
+      `DELETE FROM deuna_admin.game_insight_scores
+       WHERE game_slug = $1`,
+      [insightSlug]
     );
 
     await expectPrivilegeDenied(
@@ -286,6 +398,7 @@ async function main() {
       sessions: number;
       recovery_codes: number;
       game_preferences: number;
+      game_ratings: number;
       hardware_profiles: number;
       reward_profiles: number;
       reward_events: number;
@@ -303,6 +416,9 @@ async function main() {
          (SELECT count(*)::integer
             FROM deuna_accounts.game_preferences
            WHERE user_id = $1) AS game_preferences,
+         (SELECT count(*)::integer
+            FROM deuna_accounts.game_ratings
+           WHERE user_id = $1) AS game_ratings,
          (SELECT count(*)::integer
             FROM deuna_accounts.hardware_profiles
            WHERE user_id = $1) AS hardware_profiles,
@@ -331,6 +447,10 @@ async function main() {
     assert(
       counts?.game_preferences === 0,
       "Mis juegos no fue eliminado por cascada."
+    );
+    assert(
+      counts?.game_ratings === 0,
+      "Las valoraciones no fueron eliminadas por cascada junto con la cuenta."
     );
     assert(
       counts?.hardware_profiles === 0,
@@ -363,7 +483,7 @@ async function main() {
   }
 
   console.log(
-    "PostgreSQL de cuentas: OK (permisos runtime reales, personalización y Rewards explícitos, ledger inmutable, denegaciones sensibles, rotación y borrado por cascada verificados)."
+    "PostgreSQL de cuentas: OK (permisos runtime reales, valoraciones e Índice DeUna, personalización y Rewards explícitos, denegaciones sensibles, rotación y borrado por cascada verificados)."
   );
 }
 

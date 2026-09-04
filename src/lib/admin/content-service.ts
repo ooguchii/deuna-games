@@ -27,6 +27,7 @@ import {
 
 import type {
   Game,
+  GameDistributionMetadata,
   GameHardwareRequirements,
 } from "@/types/game";
 import type { GameUpdate } from "@/types/update";
@@ -136,7 +137,9 @@ export type GameDownloadDraftInput = Pick<
   | "fileCount"
   | "platform"
   | "sources"
->;
+> & {
+  distributionMetadata?: GameDistributionMetadata;
+};
 
 export type GameRequirementsDraftInput = {
   minimum?: GameHardwareRequirements;
@@ -199,6 +202,24 @@ function compactHardwareRequirements(
     const value = input[key]?.trim();
     if (value) compact[key] = value;
   }
+
+  return Object.keys(compact).length > 0
+    ? compact
+    : undefined;
+}
+
+function compactDistributionMetadata(
+  input: GameDistributionMetadata | undefined
+) {
+  if (!input) return undefined;
+
+  const checksumSha256 = input.checksumSha256
+    ?.trim()
+    .toLowerCase();
+  const compact: GameDistributionMetadata = {
+    ...(input.channel ? { channel: input.channel } : {}),
+    ...(checksumSha256 ? { checksumSha256 } : {}),
+  };
 
   return Object.keys(compact).length > 0
     ? compact
@@ -533,13 +554,17 @@ export function saveGameDownloadDraft(
           ? { platform: input.platform }
           : {}),
       };
+      const hasDownload = Object.keys(nextDownload).length > 0;
+      const distributionMetadata = hasDownload
+        ? compactDistributionMetadata(input.distributionMetadata)
+        : undefined;
 
       return {
         ...current,
-        download:
-          Object.keys(nextDownload).length > 0
-            ? nextDownload
-            : undefined,
+        download: hasDownload
+          ? nextDownload
+          : undefined,
+        distributionMetadata,
       };
     }
   );
