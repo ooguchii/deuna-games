@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
+  useEffect,
   useState,
 } from "react";
 
@@ -34,13 +35,14 @@ type PreferenceDraft = {
 
 type ApiResult = {
   ok?: boolean;
+  rating?: number | null;
 };
 
 export default function GameAccountActions({
   gameSlug,
   signedIn,
   preference,
-  rating = null,
+  rating,
 }: {
   gameSlug: string;
   signedIn: boolean;
@@ -53,9 +55,40 @@ export default function GameAccountActions({
     libraryState: preference?.libraryState ?? null,
     followUpdates: preference?.followUpdates ?? false,
   });
-  const [userRating, setUserRating] = useState(rating);
+  const [userRating, setUserRating] = useState<number | null>(
+    rating ?? null
+  );
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!signedIn || rating !== undefined) return;
+
+    const controller = new AbortController();
+    void fetch(
+      `/api/account/games/rating?gameSlug=${encodeURIComponent(gameSlug)}`,
+      {
+        method: "GET",
+        credentials: "same-origin",
+        cache: "no-store",
+        signal: controller.signal,
+      }
+    )
+      .then(async (response) => {
+        if (!response.ok) return null;
+        return (await response.json()) as ApiResult;
+      })
+      .then((result) => {
+        if (!controller.signal.aborted && result?.ok) {
+          setUserRating(
+            typeof result.rating === "number" ? result.rating : null
+          );
+        }
+      })
+      .catch(() => {});
+
+    return () => controller.abort();
+  }, [gameSlug, rating, signedIn]);
 
   if (!signedIn) {
     return (
