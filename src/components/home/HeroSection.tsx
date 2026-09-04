@@ -37,6 +37,7 @@ import {
   homeHeroPositionDisplay,
   homeHeroPositionOffset,
   homeHeroPositionTransform,
+  homeHeroSlotX,
   type HomeHeroVisualPosition,
 } from "@/lib/home/hero-layout";
 import {
@@ -311,7 +312,10 @@ function MainCardContent({ game }: { game: Game }) {
   );
 }
 
-function deviceVariables(presentation: HomeHeroPresentation) {
+function deviceVariables(
+  presentation: HomeHeroPresentation,
+  totalGames: number
+) {
   const variables: Record<string, string | number> = {
     "--hero-editor-radius": `${presentation.radius}px`,
     "--hero-editor-duration": `${presentation.durationMs}ms`,
@@ -334,8 +338,10 @@ function deviceVariables(presentation: HomeHeroPresentation) {
       variables[`--hero-${device}-display-${position}`] = homeHeroPositionDisplay(
         position,
         responsive,
-        presentation.direction
+        presentation.direction,
+        totalGames
       );
+      variables[`--hero-${device}-slot-${position}`] = `${homeHeroSlotX(position, responsive)}px`;
     }
   }
 
@@ -391,7 +397,10 @@ export default function HeroSection({
     ? null
     : presentation.autoplayMs || HOME_HERO_AUTOPLAY_MS;
   const direction = presentation.direction === "reverse" ? -1 : 1;
-  const rootStyle = useMemo(() => deviceVariables(presentation), [presentation]);
+  const rootStyle = useMemo(
+    () => deviceVariables(presentation, games.length),
+    [games.length, presentation]
+  );
 
   const moveBy = useCallback((delta: number) => {
     setActiveIndex((current) => {
