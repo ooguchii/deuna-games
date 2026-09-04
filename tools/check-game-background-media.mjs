@@ -134,12 +134,17 @@ assert(
     "backgroundImage: item.payload.backgroundImage ?? null",
     "backgroundMode: resolveGameBackgroundMediaMode(item.payload)",
     "backgroundVideo: item.payload.videoMedia?.background ?? null",
-    'Partial<Pick<Game, "backgroundImage" | "cardImage" | "detailImage" | "mediaModes">>',
+    "type MediaDraftUpdate = Parameters<typeof saveGameMediaDraft>[3]",
+    '| "backgroundImage"',
+    '| "cardImage"',
+    '| "detailImage"',
+    '| "galleryMedia"',
+    '| "mediaModes"',
     "game.backgroundImage === resource",
     "delete imageMedia.background",
     "backgroundImage:"
   ),
-  "La Biblioteca compartida debe exponer Fondo y limpiar su asignación/recorte al eliminar una imagen, sin dejar referencias fantasma."
+  "La Biblioteca compartida debe exponer Fondo y limpiar su asignación/recorte al eliminar una imagen, sin dejar referencias fantasma aunque el draft también modele Galería mixta."
 );
 
 assert(
