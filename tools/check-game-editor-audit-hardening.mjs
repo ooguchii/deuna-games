@@ -10,6 +10,7 @@ const files = Object.fromEntries(
       valuationEditor: "src/components/admin/GameValuationEditor.tsx",
       sectionService: "src/lib/admin/game-editor-sections-service.ts",
       insights: "src/lib/admin/game-insights.ts",
+      notices: "src/components/admin/EditorStateNotice.tsx",
       history: "src/lib/admin/game-history.ts",
       historyPanel: "src/components/admin/GameHistoryPanel.tsx",
     }).map(async ([key, path]) => [key, await readFile(path, "utf8")])
@@ -53,8 +54,15 @@ expect(
     files.valuationRoute.includes('valuationMode === "insight"') &&
     files.valuationRoute.includes('confidence === "low"') &&
     files.valuationRoute.includes("nextRating = insightRating(insights.index.score)") &&
-    files.valuationRoute.includes("insightEvidenceCount"),
-  "La sugerencia de Valoración debe recalcularse en servidor, bloquear confianza baja y conservar evidencias en auditoría."
+    files.valuationRoute.includes("insightEvidenceCount") &&
+    files.valuationRoute.includes("estado=valoracion-sugerencia"),
+  "La sugerencia de Valoración debe recalcularse en servidor, bloquear confianza baja, explicar el rechazo y conservar evidencias en auditoría."
+);
+expect(
+  files.notices.includes('"valoracion-sugerencia"') &&
+    files.notices.includes("confianza media/alta") &&
+    files.notices.includes("no fue modificada"),
+  "Un intento de sugerencia sin confianza suficiente debe volver al editor con una explicación clara y sin afirmar que cambió la valoración."
 );
 expect(
   files.valuationEditor.includes('name="valuationMode" value="manual"') &&
