@@ -140,11 +140,14 @@ assert(
     '| "detailImage"',
     '| "galleryMedia"',
     '| "mediaModes"',
-    "game.backgroundImage === resource",
-    "delete imageMedia.background",
-    "backgroundImage:"
-  ),
-  "La Biblioteca compartida debe exponer Fondo y limpiar su asignación/recorte al eliminar una imagen, sin dejar referencias fantasma aunque el draft también modele Galería mixta."
+    "protectedReferencesForGame",
+    "getHistoricalGameMediaReferences"
+  ) &&
+    !mediaLibraryRoute.includes('"image-delete"') &&
+    !mediaLibraryRoute.includes('"video-delete"') &&
+    !mediaLibraryRoute.includes("withoutImageResource") &&
+    !mediaLibraryRoute.includes("withoutVideoResource"),
+  "La Biblioteca compartida debe exponer Fondo para selección sin convertir el borrado de un master en una desasignación implícita; las referencias de Fondo se limpian sólo desde su flujo editorial explícito."
 );
 
 assert(
@@ -258,5 +261,5 @@ if (failures.length) {
 }
 
 console.log(
-  "Game background media: OK (Fondo integrado en destinos, estado/biblioteca únicos, override opcional, bytes compartidos y recorte adaptable)."
+  "Game background media: OK (Fondo integrado en destinos, biblioteca no destructiva, override opcional, bytes compartidos y recorte adaptable)."
 );
