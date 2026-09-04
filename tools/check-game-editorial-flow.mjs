@@ -3,3 +3,4 @@ import "./check-public-game-platforms.mjs";
 import "./check-performance-provenance.mjs";
 import "./check-compatibility-verification.mjs";
 import "./check-age-rating.mjs";
+import "./check-media-accessibility.mjs";
