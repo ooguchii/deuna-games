@@ -54,6 +54,11 @@ export default async function GameValuationEditor({
     0,
     Math.min(5, insights.index.score / 20)
   ).toFixed(2);
+  const suggestionReady = Boolean(
+    insights.migrationReady &&
+      insights.index.confidence !== "low" &&
+      insights.index.evidenceCount > 0
+  );
 
   return (
     <section className={adminStyles.editorPanel}>
@@ -63,13 +68,13 @@ export default async function GameValuationEditor({
           <h2>Editorial, comunidad e Índice DeUna</h2>
         </div>
         <p>
-          Tres señales separadas: la valoración editorial se decide manualmente, la comunidad proviene de votos reales y el Índice DeUna resume comportamiento autenticado sin convertir popularidad en estrellas.
+          Tres señales separadas: la valoración editorial se decide manualmente, la comunidad proviene de votos reales y el Índice DeUna resume comportamiento autenticado sin convertir popularidad en estrellas de forma silenciosa.
         </p>
       </div>
 
       {!insights.migrationReady && (
         <div className={`${adminStyles.editorNotice} ${adminStyles.editorNoticeWarning}`}>
-          La migración 012 todavía no está aplicada en esta base. Las señales existentes de Mi DeUna pueden analizarse, pero los votos reales y snapshots del Índice se activarán al ejecutar la migración.
+          La migración 012 todavía no está aplicada en esta base. Las señales existentes de Mi DeUna pueden analizarse, pero los votos reales, snapshots del Índice y la sugerencia automática se activarán al ejecutar la migración.
         </div>
       )}
 
@@ -113,6 +118,12 @@ export default async function GameValuationEditor({
           </span>
         </div>
 
+        {insights.index.confidence === "low" && (
+          <div className={`${adminStyles.editorNotice} ${adminStyles.editorNoticeWarning} ${adminStyles.fieldWide}`}>
+            La sugerencia orientativa actual sería {suggestedRating}/5, pero no puede aplicarse automáticamente mientras la confianza sea baja. El modelo pasa a confianza media al reunir al menos 25 evidencias agregadas; la valoración manual sigue disponible.
+          </div>
+        )}
+
         {legacyReviews && (
           <div className={`${adminStyles.editorNotice} ${adminStyles.editorNoticeWarning} ${adminStyles.fieldWide}`}>
             El dato histórico “{legacyReviews} valoraciones” se conserva en el payload para compatibilidad, pero ya no se edita ni se considera un conteo real de usuarios.
@@ -131,6 +142,7 @@ export default async function GameValuationEditor({
 
       <form className={adminStyles.editorForm} method="post" action={action}>
         <input type="hidden" name="expectedRevision" value={revision} />
+        <input type="hidden" name="valuationMode" value="manual" />
         <label className={adminStyles.fieldWide}>
           <span>Valoración editorial (0–5)</span>
           <input
@@ -142,12 +154,12 @@ export default async function GameValuationEditor({
             defaultValue={editorialRating ?? ""}
           />
           <small>
-            Es una decisión editorial. Ni los votos de usuarios ni el Índice DeUna la sobrescriben automáticamente.
+            Es una decisión editorial manual. Ni los votos de usuarios ni el Índice DeUna la sobrescriben automáticamente.
           </small>
         </label>
 
         <GameEditorFormActions
-          note="Guardar conserva la decisión editorial como una revisión independiente."
+          note="Guardar conserva la decisión editorial como una revisión independiente y registra que el origen fue manual."
           action={action}
           continueTo="publicacion"
           saveLabel="Guardar valoración editorial"
@@ -157,7 +169,7 @@ export default async function GameValuationEditor({
 
       <div className={adminStyles.formActions}>
         <p>
-          El Índice se recalcula desde señales agregadas de cuentas. DeUna mantiene activa su política de no registrar IP, ubicación, huellas ni navegación anónima.
+          El Índice se recalcula desde señales agregadas de cuentas. DeUna mantiene activa su política de no registrar IP, ubicación, huellas ni navegación anónima. Al usar la sugerencia, el servidor vuelve a calcularla y registra score, confianza y evidencias que justificaron el cambio.
         </p>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <form
@@ -173,11 +185,16 @@ export default async function GameValuationEditor({
 
           <form method="post" action={action}>
             <input type="hidden" name="expectedRevision" value={revision} />
-            <input type="hidden" name="rating" value={suggestedRating} />
+            <input type="hidden" name="rating" value="" />
+            <input type="hidden" name="valuationMode" value="insight" />
             <button
               type="submit"
-              disabled={insights.index.evidenceCount === 0}
-              title="Copia el Índice DeUna a la escala editorial 0–5; la acción es explícita y reversible desde Historial"
+              disabled={!suggestionReady}
+              title={
+                suggestionReady
+                  ? "El servidor recalculará el Índice y aplicará su equivalencia 0–5 dejando trazabilidad en auditoría"
+                  : "La sugerencia requiere migración activa y confianza media o alta"
+              }
             >
               <BarChart3 size={15} aria-hidden="true" />
               Usar sugerencia {suggestedRating}/5
