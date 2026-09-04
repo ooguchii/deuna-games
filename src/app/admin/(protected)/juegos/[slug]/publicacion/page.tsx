@@ -8,6 +8,9 @@ import {
   getEditorialItem,
 } from "@/lib/admin/content-service";
 import {
+  getGameMediaWorkspaceSnapshot,
+} from "@/lib/admin/game-media-workspace";
+import {
   getPublishedGameSnapshot,
 } from "@/lib/admin/game-publication-review";
 import {
@@ -44,13 +47,17 @@ export default async function AdminGamePublicationPage({
 
   if (!item) notFound();
 
-  const [publicationState, publicationIdentity] =
-    await Promise.all([
-      getGamePublicationState(slug),
-      getGamePublicationIdentity(slug),
-    ]);
+  const [
+    publicationState,
+    publicationIdentity,
+    mediaWorkspace,
+  ] = await Promise.all([
+    getGamePublicationState(slug),
+    getGamePublicationIdentity(slug),
+    getGameMediaWorkspaceSnapshot(slug),
+  ]);
 
-  if (!publicationState) notFound();
+  if (!publicationState || !mediaWorkspace) notFound();
 
   const requestState = Array.isArray(parameters.estado)
     ? parameters.estado[0]
@@ -97,6 +104,7 @@ export default async function AdminGamePublicationPage({
         requestState={requestState}
         neverPublished={neverPublished}
         panelCreated={panelCreated}
+        mediaHygiene={mediaWorkspace.hygiene}
       />
     </>
   );
