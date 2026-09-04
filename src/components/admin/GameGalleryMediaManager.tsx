@@ -41,8 +41,6 @@ import type {
 import galleryStyles from "./GameGalleryMediaManager.module.css";
 import shellStyles from "./GameMultimediaShell.module.css";
 
-const styles = { ...shellStyles, ...galleryStyles };
-
 type Props = {
   slug: string;
   revision: number;
@@ -176,8 +174,8 @@ export default function GameGalleryMediaManager({ slug, revision }: Props) {
         <input type="hidden" name="resource" value={resource} />
         {direction && <input type="hidden" name="direction" value={direction} />}
         {operation === "gallery-add" ? (
-          <button type="submit" className={styles.galleryPickerChoice} disabled={stale}>
-            <span className={styles.galleryPickerThumb}>
+          <button type="submit" className={shellStyles.galleryPickerChoice} disabled={stale}>
+            <span className={shellStyles.galleryPickerThumb}>
               <AdminMediaThumbnail
                 kind={kind}
                 src={resource}
@@ -194,14 +192,14 @@ export default function GameGalleryMediaManager({ slug, revision }: Props) {
             <Plus size={16} aria-hidden="true" />
           </button>
         ) : operation === "gallery-remove" ? (
-          <button type="submit" className={styles.galleryDangerButton} disabled={stale}>
+          <button type="submit" className={shellStyles.galleryDangerButton} disabled={stale}>
             <Trash2 size={15} aria-hidden="true" />
             Quitar
           </button>
         ) : (
           <button
             type="submit"
-            className={styles.galleryIconButton}
+            className={shellStyles.galleryIconButton}
             disabled={stale}
             aria-label={direction === "up" ? "Mover antes" : "Mover después"}
             title={direction === "up" ? "Mover antes" : "Mover después"}
@@ -221,21 +219,21 @@ export default function GameGalleryMediaManager({ slug, revision }: Props) {
   }
 
   return (
-    <section className={styles.galleryPanel} aria-labelledby="professional-gallery-heading">
-      <div className={styles.galleryHeading}>
+    <section className={shellStyles.galleryPanel} aria-labelledby="professional-gallery-heading">
+      <div className={shellStyles.galleryHeading}>
         <div>
-          <span className={styles.eyebrow}>GALERÍA MULTIMEDIA</span>
+          <span className={shellStyles.eyebrow}>GALERÍA MULTIMEDIA</span>
           <h2 id="professional-gallery-heading">Galería del juego</h2>
           <p>Imágenes y videos comparten un orden editorial. Cada elemento conserva su recorte sin duplicar ni modificar el master.</p>
         </div>
-        <div className={styles.galleryHeadingActions}>
-          <div className={styles.galleryCount} aria-label={`${gallery.length} de ${MAX_GAME_GALLERY_ITEMS} elementos`}>
+        <div className={galleryStyles.galleryHeadingActions}>
+          <div className={shellStyles.galleryCount} aria-label={`${gallery.length} de ${MAX_GAME_GALLERY_ITEMS} elementos`}>
             <strong>{gallery.length}</strong>
             <span>/ {MAX_GAME_GALLERY_ITEMS}</span>
           </div>
           <button
             type="button"
-            className={styles.brandAction}
+            className={shellStyles.brandAction}
             disabled={stale || gallery.length >= MAX_GAME_GALLERY_ITEMS}
             onClick={() => setPickerOpen(true)}
           >
@@ -246,39 +244,39 @@ export default function GameGalleryMediaManager({ slug, revision }: Props) {
       </div>
 
       {loading ? (
-        <div className={styles.galleryMessage} role="status">Cargando Galería multimedia…</div>
+        <div className={shellStyles.galleryMessage} role="status">Cargando Galería multimedia…</div>
       ) : error ? (
-        <div className={styles.galleryMessage} role="alert">{error}</div>
+        <div className={shellStyles.galleryMessage} role="alert">{error}</div>
       ) : (
         <>
           {stale && (
-            <div className={styles.galleryWarning} role="alert">
+            <div className={shellStyles.galleryWarning} role="alert">
               <TriangleAlert size={17} aria-hidden="true" />
               <span>La revisión cambió desde que se abrió la página. Recarga antes de modificar Galería.</span>
             </div>
           )}
 
-          <div className={styles.galleryStats}>
+          <div className={shellStyles.galleryStats}>
             <span><ImageIcon size={15} aria-hidden="true" />{requirements?.gallery.imageCount ?? 0} imágenes</span>
             <span><Clapperboard size={15} aria-hidden="true" />{requirements?.gallery.videoCount ?? 0} videos</span>
-            <span className={pendingCount ? styles.galleryPendingStat : styles.galleryReadyStat}>
+            <span className={pendingCount ? shellStyles.galleryPendingStat : shellStyles.galleryReadyStat}>
               {pendingCount ? <TriangleAlert size={15} aria-hidden="true" /> : <CheckCircle2 size={15} aria-hidden="true" />}
               {pendingCount ? `${pendingCount} recorte${pendingCount === 1 ? "" : "s"} pendiente${pendingCount === 1 ? "" : "s"}` : "Recortes listos"}
             </span>
           </div>
 
           {gallery.length === 0 ? (
-            <div className={styles.galleryEmpty}>
+            <div className={shellStyles.galleryEmpty}>
               <Images size={27} aria-hidden="true" />
               <strong>Agrega al menos un recurso</strong>
               <span>Puede ser una imagen o un video WebM de la biblioteca compartida.</span>
-              <button type="button" className={styles.brandAction} onClick={() => setPickerOpen(true)} disabled={stale}>
+              <button type="button" className={shellStyles.brandAction} onClick={() => setPickerOpen(true)} disabled={stale}>
                 <Plus size={16} aria-hidden="true" />
                 Elegir recurso
               </button>
             </div>
           ) : (
-            <div className={styles.galleryList}>
+            <div className={shellStyles.galleryList}>
               {gallery.map((item, index) => {
                 const imageViewport = item.kind === "image"
                   ? imageMedia?.gallery?.[item.src]
@@ -293,10 +291,10 @@ export default function GameGalleryMediaManager({ slug, revision }: Props) {
                 return (
                   <article
                     key={`${item.kind}:${item.src}`}
-                    className={`${styles.galleryItem} ${confirmed ? styles.galleryItemReady : styles.galleryItemPending}`}
+                    className={`${shellStyles.galleryItem} ${confirmed ? shellStyles.galleryItemReady : shellStyles.galleryItemPending}`}
                   >
-                    <span className={styles.galleryItemOrder}>{index + 1}</span>
-                    <div className={styles.galleryItemPreview}>
+                    <span className={shellStyles.galleryItemOrder}>{index + 1}</span>
+                    <div className={shellStyles.galleryItemPreview}>
                       {item.kind === "image" ? (
                         <AdminMediaThumbnail
                           kind="image"
@@ -320,27 +318,27 @@ export default function GameGalleryMediaManager({ slug, revision }: Props) {
                         />
                       )}
                     </div>
-                    <div className={styles.galleryItemMeta}>
-                      <div className={styles.galleryItemTitleRow}>
+                    <div className={shellStyles.galleryItemMeta}>
+                      <div className={shellStyles.galleryItemTitleRow}>
                         <ResourceIcon kind={item.kind} />
                         <strong title={item.src}>{multimediaShortName(item.src)}</strong>
                       </div>
                       <small>{item.kind === "image" ? "Imagen" : "Video WebM"} · {cropLabel}</small>
-                      <span className={confirmed ? styles.galleryCropReady : styles.galleryCropPending}>
+                      <span className={confirmed ? shellStyles.galleryCropReady : shellStyles.galleryCropPending}>
                         {confirmed ? <CheckCircle2 size={14} aria-hidden="true" /> : <TriangleAlert size={14} aria-hidden="true" />}
                         {confirmed ? `Recorte ${cropLabel} confirmado` : "Recorte pendiente de confirmar"}
                       </span>
                     </div>
-                    <div className={styles.galleryItemActions}>
+                    <div className={shellStyles.galleryItemActions}>
                       {gallery.length > 1 && (
-                        <div className={styles.galleryOrderActions}>
+                        <div className={shellStyles.galleryOrderActions}>
                           {index > 0 && assignmentForm("gallery-move", item.kind, item.src, "up")}
                           {index < gallery.length - 1 && assignmentForm("gallery-move", item.kind, item.src, "down")}
                         </div>
                       )}
                       <button
                         type="button"
-                        className={styles.galleryEditButton}
+                        className={shellStyles.galleryEditButton}
                         disabled={stale}
                         onClick={() => {
                           if (item.kind === "image") setEditingImage(item.src);
@@ -359,24 +357,24 @@ export default function GameGalleryMediaManager({ slug, revision }: Props) {
           )}
 
           {pendingCount > 0 && gallery.length > 0 && (
-            <div className={styles.galleryPendingNotice}>
+            <div className={shellStyles.galleryPendingNotice}>
               <TriangleAlert size={17} aria-hidden="true" />
               <span>Hay {pendingCount} recorte{pendingCount === 1 ? "" : "s"} pendiente{pendingCount === 1 ? "" : "s"}. Usa “Confirmar recorte” en el recurso correspondiente.</span>
             </div>
           )}
 
           {requirements && (
-            <div className={styles.continueGate}>
+            <div className={shellStyles.continueGate}>
               <div>
                 <strong>{requirements.ready ? "Multimedia completa" : "No puedes avanzar todavía"}</strong>
                 <span>{requirements.ready ? "Todos los destinos obligatorios y la Galería están listos." : missingRequirementMessage(requirements)}</span>
               </div>
               {requirements.ready ? (
-                <Link href={`/admin/juegos/${encodeURIComponent(slug)}?seccion=descargas`} className={styles.continueButton}>
+                <Link href={`/admin/juegos/${encodeURIComponent(slug)}?seccion=descargas`} className={shellStyles.continueButton}>
                   Continuar a Descargas
                 </Link>
               ) : (
-                <button type="button" className={styles.continueButton} disabled>Continuar a Descargas</button>
+                <button type="button" className={shellStyles.continueButton} disabled>Continuar a Descargas</button>
               )}
             </div>
           )}
@@ -390,7 +388,7 @@ export default function GameGalleryMediaManager({ slug, revision }: Props) {
           description={`Elige una imagen o video existente. Galería admite hasta ${MAX_GAME_GALLERY_ITEMS} elementos totales y conserva el orden editorial.`}
           onClose={() => setPickerOpen(false)}
         >
-          <div className={styles.pickerTabs} role="group" aria-label="Tipo de recurso">
+          <div className={shellStyles.pickerTabs} role="group" aria-label="Tipo de recurso">
             <button type="button" data-active={pickerKind === "image"} onClick={() => setPickerKind("image")}>
               <ImageIcon size={16} aria-hidden="true" /> Imágenes
             </button>
@@ -399,7 +397,7 @@ export default function GameGalleryMediaManager({ slug, revision }: Props) {
             </button>
           </div>
           {pickerResources.length ? (
-            <div className={styles.galleryPickerGrid}>
+            <div className={shellStyles.galleryPickerGrid}>
               {pickerResources.map((resource) => (
                 <div key={`${resource.kind}:${resource.src}`}>
                   {assignmentForm("gallery-add", resource.kind, resource.src)}
@@ -407,16 +405,16 @@ export default function GameGalleryMediaManager({ slug, revision }: Props) {
               ))}
             </div>
           ) : (
-            <div className={styles.galleryMessage}>
+            <div className={shellStyles.galleryMessage}>
               No hay {pickerKind === "image" ? "imágenes" : "videos"} disponibles sin asignar.
             </div>
           )}
-          <div className={styles.galleryPickerCreateActions}>
-            <button type="button" className={styles.secondaryAction} onClick={() => openNewResource("image")} disabled={stale}>
+          <div className={galleryStyles.galleryPickerCreateActions}>
+            <button type="button" className={shellStyles.secondaryAction} onClick={() => openNewResource("image")} disabled={stale}>
               <ImageIcon size={16} aria-hidden="true" />
               Agregar imagen nueva
             </button>
-            <button type="button" className={styles.secondaryAction} onClick={() => openNewResource("video")} disabled={stale}>
+            <button type="button" className={shellStyles.secondaryAction} onClick={() => openNewResource("video")} disabled={stale}>
               <Clapperboard size={16} aria-hidden="true" />
               Agregar video nuevo
             </button>
