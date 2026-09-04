@@ -31,7 +31,20 @@ export async function getHistoricalGameMediaReferences(
        INNER JOIN deuna_admin.editorial_items AS item
          ON item.id = publication.item_id
       WHERE item.item_type = 'game'
-        AND item.item_key = $1`,
+        AND item.item_key = $1
+        AND (
+          publication.action IN ('published', 'rollback')
+          OR (
+            publication.action = 'bootstrap'
+            AND NOT EXISTS (
+              SELECT 1
+                FROM deuna_admin.editorial_revisions AS revision
+               WHERE revision.item_id = item.id
+                 AND revision.revision = 1
+                 AND revision.action = 'draft_saved'
+            )
+          )
+        )`,
     [slug]
   );
 
