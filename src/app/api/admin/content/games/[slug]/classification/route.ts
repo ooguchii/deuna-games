@@ -77,7 +77,7 @@ export async function POST(
       currentGameKey: slug,
     });
 
-    if (!classification.valid) {
+    if (!classification.valid || !classification.category) {
       return adminRedirect(
         authorized.adminOrigin,
         `${target}?estado=clasificacion&seccion=datos`
