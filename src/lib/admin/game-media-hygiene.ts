@@ -23,6 +23,7 @@ export type GameMediaResourceHygieneStatus =
   | "active"
   | "reserved"
   | "published-only"
+  | "historical"
   | "unused";
 
 export type GameMediaResourceHygiene = {
@@ -40,6 +41,7 @@ export type GameMediaHygieneResult = {
   active: number;
   reserved: number;
   publishedOnly: number;
+  historical: number;
   unused: number;
   blockingCount: number;
   blocking: GameMediaResourceHygiene[];
@@ -135,9 +137,6 @@ function activeUsageLabels(
       );
     }
 
-    // `previewClip` todavía es una referencia válida en snapshots históricos.
-    // Si no coincide con otra superficie, se conserva como compatibilidad
-    // explícita en lugar de tratarla como basura silenciosamente.
     if (game.previewClip === src) {
       pushUnique(labels, "Vista previa legacy");
     }
@@ -155,18 +154,21 @@ function activeUsageLabels(
 export function evaluateGameMediaHygiene(
   game: Game,
   resources: readonly EditorialMediaLibraryResource[],
-  publishedReferences: readonly string[]
+  publishedReferences: readonly string[],
+  historicalReferences: readonly string[] = []
 ): GameMediaHygieneResult {
   const draftReferences = new Set([
     ...listGameImageReferences(game),
     ...listGameVideoReferences(game),
   ]);
   const published = new Set(publishedReferences);
+  const historical = new Set(historicalReferences);
 
   const classified = resources.map((resource): GameMediaResourceHygiene => {
     const usage = activeUsageLabels(game, resource.kind, resource.src);
     const draftReferenced = draftReferences.has(resource.src);
     const publishedReferenced = published.has(resource.src);
+    const historicalReferenced = historical.has(resource.src);
 
     let status: GameMediaResourceHygieneStatus;
     if (usage.length > 0) {
@@ -175,17 +177,18 @@ export function evaluateGameMediaHygiene(
       status = "reserved";
     } else if (publishedReferenced) {
       status = "published-only";
+    } else if (historicalReferenced) {
+      status = "historical";
     } else {
       status = "unused";
     }
 
-    // Los recursos incluidos con el código (`bundled`) no son masters
-    // editoriales administrados por esta biblioteca y nunca bloquean una
-    // publicación por higiene. Los masters editoriales sí deben estar
-    // referenciados por el borrador o retirados antes de publicar.
+    // Sólo un master editorial sin referencia alguna es basura. Un recurso
+    // del snapshot público o del historial sigue teniendo una función real:
+    // sostener la web actual o permitir una restauración verificable.
     const blocksPublication =
       resource.origin === "editorial" &&
-      (status === "unused" || status === "published-only");
+      status === "unused";
 
     return {
       src: resource.src,
@@ -197,8 +200,10 @@ export function evaluateGameMediaHygiene(
         : status === "reserved"
           ? ["Reserva del borrador"]
           : status === "published-only"
-            ? ["Sólo publicación actual"]
-            : [],
+            ? ["Publicación actual"]
+            : status === "historical"
+              ? ["Historial restaurable"]
+              : [],
       blocksPublication,
     };
   });
@@ -211,6 +216,7 @@ export function evaluateGameMediaHygiene(
     active: classified.filter((resource) => resource.status === "active").length,
     reserved: classified.filter((resource) => resource.status === "reserved").length,
     publishedOnly: classified.filter((resource) => resource.status === "published-only").length,
+    historical: classified.filter((resource) => resource.status === "historical").length,
     unused: classified.filter((resource) => resource.status === "unused").length,
     blockingCount: blocking.length,
     blocking,
