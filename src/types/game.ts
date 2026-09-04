@@ -35,6 +35,23 @@ export type GameCompatibilityMetadata = {
   verifiedAt?: string;
 };
 
+export type GameAgeRatingSystem =
+  | "ESRB"
+  | "PEGI"
+  | "IARC"
+  | "CLASSIND"
+  | "USK"
+  | "ACB"
+  | "GRAC"
+  | "CERO"
+  | "OTHER";
+
+export type GameAgeRating = {
+  system: GameAgeRatingSystem;
+  rating: string;
+  descriptors?: string[];
+};
+
 export type GamePerformanceCalibration = {
   /* FPS observados o calibrados sobre el equipo de referencia a 1080p/media. */
   referenceFps: number;
@@ -260,6 +277,7 @@ export type Game = {
   category: string;
   genres?: string[];
   tags?: string[];
+  ageRating?: GameAgeRating;
   platforms?: GamePlatform[];
   compatibilityMetadata?: GameCompatibilityMetadata;
 
