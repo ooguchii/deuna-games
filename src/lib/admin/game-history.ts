@@ -67,13 +67,16 @@ const trackedFields = [
   ["releaseDate", "Información", "Fecha de lanzamiento"],
   ["version", "Información", "Versión"],
   ["badge", "Información", "Insignia"],
-  ["imageAlt", "Información", "Texto alternativo"],
+  ["imageAlt", "Información", "Alternativa general"],
   ["category", "Clasificación", "Clasificación principal"],
   ["genres", "Clasificación", "Clasificaciones adicionales"],
   ["tags", "Clasificación", "Etiquetas"],
+  ["ageRating", "Clasificación", "Clasificación etaria"],
   ["platforms", "Compatibilidad", "Plataformas"],
-  ["requirements", "Compatibilidad", "Requisitos"],
+  ["requirements", "Compatibilidad", "Requisitos PC"],
+  ["compatibilityMetadata", "Compatibilidad", "Verificación"],
   ["performance", "Rendimiento", "Calibración"],
+  ["performanceMetadata", "Rendimiento", "Procedencia del benchmark"],
   ["coverImage", "Multimedia", "Portada"],
   ["heroImage", "Multimedia", "Hero"],
   ["cardImage", "Multimedia", "Card"],
@@ -84,7 +87,9 @@ const trackedFields = [
   ["imageMedia", "Multimedia", "Recortes de imagen"],
   ["videoMedia", "Multimedia", "Videos por destino"],
   ["mediaModes", "Multimedia", "Modos multimedia"],
+  ["mediaAccessibility", "Multimedia", "Accesibilidad contextual"],
   ["download", "Distribución", "Descargas"],
+  ["distributionMetadata", "Distribución", "Canal e integridad"],
   ["rating", "Valoración", "Valoración editorial"],
   ["reviews", "Valoración", "Contador legado"],
 ] as const;
@@ -93,19 +98,34 @@ function equal(left: unknown, right: unknown) {
   return JSON.stringify(left ?? null) === JSON.stringify(right ?? null);
 }
 
+function truncated(value: string, maximum = 140) {
+  return value.length > maximum
+    ? `${value.slice(0, maximum - 1)}…`
+    : value;
+}
+
 function present(value: unknown) {
   if (value === undefined || value === null || value === "") return "Sin definir";
   if (typeof value === "number" || typeof value === "boolean") return String(value);
-  if (typeof value === "string") {
-    return value.length > 90 ? `${value.slice(0, 87)}…` : value;
-  }
+  if (typeof value === "string") return truncated(value);
+
   if (Array.isArray(value)) {
-    const text = value
-      .map((item) => typeof item === "string" ? item : "recurso")
-      .join(", ");
-    return text.length > 90 ? `${text.slice(0, 87)}…` : text || "Vacío";
+    if (value.length === 0) return "Vacío";
+    if (value.every((item) => typeof item === "string")) {
+      return truncated(value.join(", "));
+    }
+    return truncated(JSON.stringify(value));
   }
-  return "Configuración modificada";
+
+  if (typeof value === "object") {
+    try {
+      return truncated(JSON.stringify(value));
+    } catch {
+      return "Configuración modificada";
+    }
+  }
+
+  return truncated(String(value));
 }
 
 function changesBetween(
