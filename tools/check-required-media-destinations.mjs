@@ -65,13 +65,14 @@ assert(
     'GAME_DETAIL_VIEWPORT_ASPECT = "source"',
     'const detailMode = resolveGameDestinationMediaMode(game, "detail")',
     "detail.cropReady",
-    "const galleryAssigned = screenshots.length > 0",
-    "const galleryCropReady = galleryAssigned && screenshots.every(",
-    "isImageCropConfirmed(game.imageMedia?.gallery?.[src])",
+    "const galleryItems = resolveGameGalleryItems(game);",
+    "const galleryAssigned = galleryItems.length > 0;",
+    "const galleryCropReady = galleryAssigned && galleryItems.every(",
+    "(item) => isGameGalleryItemConfirmed(game, item)",
     "background.cropReady",
     "galleryCropReady"
   ),
-  "Portada/Hero/Card deben conservar 4:5/16:9/3:2; Contenedor debe ser adaptable; Fondo activado y Galería deben exigir recortes confirmados."
+  "Portada/Hero/Card deben conservar 4:5/16:9/3:2; Contenedor debe ser adaptable; Fondo activado y cada imagen/video de Galería deben exigir recortes confirmados."
 );
 
 assert(
@@ -91,9 +92,11 @@ assert(
     "export type GameDetailVideo",
     "detail?: GameDetailVideo",
     "detailImage?: string",
+    "export type GameGalleryItem",
+    "galleryMedia?: GameGalleryItem[]",
     "confirmed?: true"
   ),
-  "El modelo debe persistir Galería elegible y un Contenedor multimedia independiente sin duplicar archivos físicos."
+  "El modelo debe persistir Galería mixta elegible y un Contenedor multimedia independiente sin duplicar archivos físicos."
 );
 
 assert(
@@ -133,11 +136,13 @@ assert(
     "detail: fixedImageViewportSchema.optional()",
     "detail: mediaModeSchema.optional()",
     "detail: destinationVideoSchema.optional()",
+    "galleryMediaSchema",
+    "kind: z.literal(\"video\")",
     "aspectRatio: z.number().min(0.1).max(10).optional()",
     'viewport.aspect === "free" && viewport.aspectRatio === undefined',
     'viewport.aspect !== "free" && viewport.aspectRatio !== undefined'
   ),
-  "La validación editorial debe reservar relaciones elegibles para Galería y mantener el Contenedor sobre viewport adaptable fijo."
+  "La validación editorial debe validar la Galería mixta, reservar relaciones libres para imágenes y mantener el Contenedor sobre viewport adaptable fijo."
 );
 
 assert(
@@ -162,7 +167,7 @@ assert(
     !workspace.includes("Galería obligatoria · 16:9") &&
     !workspace.includes("Cada captura asignada debe confirmar su encuadre 16:9") &&
     !workspace.includes("REQUISITO CUMPLIDO · RECORTES 16:9 CONFIRMADOS"),
-  "El workspace debe insertar Contenedor como destino E, mover Galería a F y conservar la relación real por captura."
+  "El workspace legado debe conservar Contenedor como destino E y la compatibilidad de edición de capturas mientras el administrador mixto toma Galería F."
 );
 
 assert(
@@ -282,7 +287,7 @@ assert(
     "DEFAULT_GAME_IMAGE_VIEWPORT",
     "gallery:"
   ),
-  "La Biblioteca debe asignar Contenedor y Galería por referencia y crear metadata pendiente antes de editar sus recortes."
+  "La Biblioteca debe asignar Contenedor y mantener compatibilidad de Galería por referencia y metadata pendiente antes de editar recortes."
 );
 
 assert(
@@ -347,5 +352,5 @@ if (failures.length) {
 }
 
 console.log(
-  "Destinos multimedia: OK (Portada 4:5 · Hero 16:9 · Card 3:2 · Fondo adaptable · Contenedor adaptable independiente · Galería elegible/Libre)."
+  "Destinos multimedia: OK (Portada 4:5 · Hero 16:9 · Card 3:2 · Fondo adaptable · Contenedor adaptable independiente · Galería mixta elegible/Libre)."
 );
