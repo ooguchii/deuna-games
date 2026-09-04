@@ -132,16 +132,20 @@ assert(
     "detailImage: item.payload.detailImage ?? null",
     'detailMode: resolveGameDestinationMediaMode(item.payload, "detail")',
     "detailVideo: item.payload.videoMedia?.detail ?? null",
-    "delete imageMedia.detail",
-    "game.detailImage === resource",
     'target.data === "detail-image"',
     'target.data === "detail-video"',
-    'requiredVideoViewport("detail")'
+    'requiredVideoViewport("detail")',
+    "protectedReferencesForGame",
+    "getHistoricalGameMediaReferences"
   ) &&
+    !libraryRoute.includes('"image-delete"') &&
+    !libraryRoute.includes('"video-delete"') &&
+    !libraryRoute.includes("withoutImageResource") &&
+    !libraryRoute.includes("withoutVideoResource") &&
     !libraryRoute.includes("storeEditorialWebp") &&
     !libraryRoute.includes("storeEditorialPreviewVideo") &&
     !libraryRoute.includes("spawn("),
-  "Biblioteca debe asignar/limpiar Contenedor por referencia sin trabajo físico."
+  "Biblioteca debe asignar Contenedor por referencia sin trabajo físico ni desasignación destructiva implícita; retirar Contenedor pertenece a su flujo editorial explícito."
 );
 
 assert(
@@ -265,5 +269,5 @@ if (failures.length) {
 }
 
 console.log(
-  "Game detail container media: OK (destino independiente, migración sin copias, recorte adaptable, tres modos y runtime con presupuesto de movimiento)."
+  "Game detail container media: OK (destino independiente, migración sin copias, biblioteca no destructiva, recorte adaptable, tres modos y runtime con presupuesto de movimiento)."
 );
