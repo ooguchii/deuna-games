@@ -255,6 +255,7 @@ export default async function AdminGameEditorPage({
           revision={item.revision}
           action={performanceAction}
           calibration={game.performance}
+          metadata={game.performanceMetadata}
         />
       )}
 
