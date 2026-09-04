@@ -40,12 +40,12 @@ export default function GameAccountActions({
   gameSlug,
   signedIn,
   preference,
-  rating,
+  rating = null,
 }: {
   gameSlug: string;
   signedIn: boolean;
   preference: GamePreference;
-  rating: number | null;
+  rating?: number | null;
 }) {
   const router = useRouter();
   const [draft, setDraft] = useState<PreferenceDraft>({
@@ -73,7 +73,6 @@ export default function GameAccountActions({
 
   async function save(next: PreferenceDraft) {
     if (pending) return;
-
     setPending(true);
     setMessage(null);
 
@@ -82,8 +81,7 @@ export default function GameAccountActions({
         method: "POST",
         credentials: "same-origin",
         headers: {
-          "Content-Type":
-            "application/x-www-form-urlencoded;charset=UTF-8",
+          "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
         },
         body: new URLSearchParams({
           gameSlug,
@@ -111,7 +109,6 @@ export default function GameAccountActions({
 
   async function saveRating(nextRating: number) {
     if (pending) return;
-
     setPending(true);
     setMessage(null);
 
@@ -120,8 +117,7 @@ export default function GameAccountActions({
         method: "POST",
         credentials: "same-origin",
         headers: {
-          "Content-Type":
-            "application/x-www-form-urlencoded;charset=UTF-8",
+          "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
         },
         body: new URLSearchParams({
           gameSlug,
@@ -152,9 +148,7 @@ export default function GameAccountActions({
     >
       <div className={styles.heading}>
         <span>MI DEUNA</span>
-        {message && (
-          <small role="status">{message}</small>
-        )}
+        {message && <small role="status">{message}</small>}
       </div>
 
       <div className={styles.ratingRow}>
@@ -188,12 +182,7 @@ export default function GameAccountActions({
           data-active={draft.favorite}
           aria-pressed={draft.favorite}
           disabled={pending}
-          onClick={() =>
-            save({
-              ...draft,
-              favorite: !draft.favorite,
-            })
-          }
+          onClick={() => save({ ...draft, favorite: !draft.favorite })}
         >
           <Heart
             size={17}
@@ -216,11 +205,7 @@ export default function GameAccountActions({
                 value === "completed"
                   ? value
                   : null;
-
-              void save({
-                ...draft,
-                libraryState,
-              });
+              void save({ ...draft, libraryState });
             }}
           >
             <option value="none">Sin lista</option>
@@ -236,12 +221,10 @@ export default function GameAccountActions({
           data-active={draft.followUpdates}
           aria-pressed={draft.followUpdates}
           disabled={pending}
-          onClick={() =>
-            save({
-              ...draft,
-              followUpdates: !draft.followUpdates,
-            })
-          }
+          onClick={() => save({
+            ...draft,
+            followUpdates: !draft.followUpdates,
+          })}
         >
           <Bell
             size={17}
