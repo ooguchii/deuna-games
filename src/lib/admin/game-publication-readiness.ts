@@ -1,6 +1,9 @@
 import {
   resolvePerformanceProfile,
 } from "@/features/game-finder/performance-data";
+import {
+  hasCompleteContextualMediaAccessibility,
+} from "@/lib/media/game-media-accessibility";
 import { evaluateGameMediaRequirements } from "@/lib/media/game-media-requirements";
 import type { Game } from "@/types/game";
 
@@ -235,6 +238,14 @@ export function evaluateGamePublicationReadiness(
       section: "multimedia",
       complete: media.gallery.cropReady,
       priority: "essential",
+    },
+    {
+      id: "media-accessibility",
+      label: "Accesibilidad multimedia contextual",
+      detail: "Portada, Card cuando muestra imagen y cada elemento interactivo de Galería tienen texto específico. Hero, Fondo y capas decorativas no bloquean este control.",
+      section: "multimedia",
+      complete: hasCompleteContextualMediaAccessibility(game),
+      priority: "recommended",
     },
     {
       id: "downloads",
