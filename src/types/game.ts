@@ -210,6 +210,21 @@ export type GameGalleryItem =
   | GameGalleryImageItem
   | GameGalleryVideoItem;
 
+export type GameGalleryAccessibilityItem = {
+  kind: "image" | "video";
+  src: string;
+  label: string;
+};
+
+export type GameMediaAccessibility = {
+  /* Textos por contexto: un mismo recurso puede comunicar cosas distintas según destino. */
+  cover?: string;
+  hero?: string;
+  card?: string;
+  detail?: string;
+  gallery?: GameGalleryAccessibilityItem[];
+};
+
 export type GameDestinationMediaMode =
   | "image"
   | "video"
@@ -316,6 +331,9 @@ export type Game = {
    * mismo archivo físico con encuadres/focos distintos.
    */
   imageMedia?: GameImageMedia;
+
+  /* Textos accesibles por destino/recurso sin duplicar los masters multimedia. */
+  mediaAccessibility?: GameMediaAccessibility;
 
   /*
    * mediaModes expresa de forma explícita qué capa usa cada destino. Así se
