@@ -24,6 +24,18 @@ function scoreLabel(value: number | null) {
   return value === null ? "Sin datos" : `${value.toFixed(1)} / 100`;
 }
 
+function formatSnapshotDate(date: Date) {
+  return `${new Intl.DateTimeFormat("es", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "UTC",
+  }).format(date)} UTC`;
+}
+
 export default async function GameValuationEditor({
   slug,
   revision,
@@ -111,14 +123,7 @@ export default async function GameValuationEditor({
           <div className={`${adminStyles.tableSummary} ${adminStyles.fieldWide}`}>
             <strong>Último snapshot confirmado</strong>
             <span>
-              {insights.stored.score.toFixed(1)} / 100 · Confianza {confidenceLabel(insights.stored.confidence)} · {new Intl.DateTimeFormat("es-AR", {
-                day: "2-digit",
-                month: "2-digit",
-                year: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-                timeZone: "America/Argentina/Buenos_Aires",
-              }).format(insights.stored.calculatedAt)}
+              {insights.stored.score.toFixed(1)} / 100 · Confianza {confidenceLabel(insights.stored.confidence)} · {formatSnapshotDate(insights.stored.calculatedAt)}
             </span>
           </div>
         )}
