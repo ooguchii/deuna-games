@@ -16,13 +16,25 @@ import {
   gameValuationSectionSchema,
 } from "@/lib/admin/game-editor-section-validation";
 import {
+  getGameInsights,
+} from "@/lib/admin/game-insights";
+import {
   hasExactAdminFormFields,
 } from "@/lib/admin/request-security";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const fields = ["expectedRevision", "rating"] as const;
+const fields = [
+  "expectedRevision",
+  "rating",
+  "valuationMode",
+] as const;
+
+function insightRating(score: number) {
+  const normalized = Math.max(0, Math.min(5, score / 20));
+  return Math.round(normalized * 100) / 100;
+}
 
 export async function POST(
   request: NextRequest,
@@ -56,12 +68,58 @@ export async function POST(
   }
 
   try {
-    const { expectedRevision, rating } = parsed.data;
+    const {
+      expectedRevision,
+      rating,
+      valuationMode,
+    } = parsed.data;
+
+    let nextRating = rating;
+    let auditDetails:
+      | {
+          valuationSource: "manual";
+        }
+      | {
+          valuationSource: "insight";
+          insightScore: number;
+          insightConfidence: "medium" | "high";
+          insightEvidenceCount: number;
+        };
+
+    if (valuationMode === "insight") {
+      const insights = await getGameInsights(slug);
+      const confidence = insights.index.confidence;
+
+      if (
+        !insights.migrationReady ||
+        confidence === "low" ||
+        insights.index.evidenceCount <= 0
+      ) {
+        return adminRedirect(
+          authorized.adminOrigin,
+          `${target}?estado=valoracion-sugerencia-insuficiente&seccion=valoracion`
+        );
+      }
+
+      nextRating = insightRating(insights.index.score);
+      auditDetails = {
+        valuationSource: "insight",
+        insightScore: insights.index.score,
+        insightConfidence: confidence,
+        insightEvidenceCount: insights.index.evidenceCount,
+      };
+    } else {
+      auditDetails = {
+        valuationSource: "manual",
+      };
+    }
+
     const result = await saveGameValuationSection(
       slug,
       expectedRevision,
       authorized.session.userId,
-      { rating }
+      { rating: nextRating },
+      auditDetails
     );
 
     if (result.outcome === "not_found") {
