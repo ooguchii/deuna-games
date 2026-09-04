@@ -34,6 +34,17 @@ const localImageSchema = z
   .max(400)
   .refine(isSafeLocalImagePath);
 
+const canonicalDateSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/)
+  .refine((value) => {
+    const parsed = new Date(`${value}T00:00:00Z`);
+    return (
+      Number.isFinite(parsed.getTime()) &&
+      parsed.toISOString().slice(0, 10) === value
+    );
+  });
+
 const imageViewportAspectSchema = z.enum([
   "16:9",
   "3:2",
@@ -165,23 +176,23 @@ const videoMediaSchema = z
     }
   });
 
+const compatibilityMetadataSchema = z
+  .object({
+    status: z.enum(["declared", "reviewed", "tested"]).optional(),
+    source: z
+      .enum(["developer", "publisher", "internal", "community", "external"])
+      .optional(),
+    verifiedAt: canonicalDateSchema.optional(),
+  })
+  .strict();
+
 const performanceMetadataSchema = z
   .object({
     source: z
       .enum(["internal", "developer", "publisher", "community", "external"])
       .optional(),
     sourceLabel: z.string().trim().min(1).max(160).optional(),
-    measuredAt: z
-      .string()
-      .regex(/^\d{4}-\d{2}-\d{2}$/)
-      .refine((value) => {
-        const parsed = new Date(`${value}T00:00:00Z`);
-        return (
-          Number.isFinite(parsed.getTime()) &&
-          parsed.toISOString().slice(0, 10) === value
-        );
-      })
-      .optional(),
+    measuredAt: canonicalDateSchema.optional(),
     confidence: z.enum(["low", "medium", "high"]).optional(),
   })
   .strict();
@@ -231,6 +242,7 @@ function splitGameCompatibilityPayload(payload: unknown) {
       imageMedia: undefined,
       mediaModes: undefined,
       videoMedia: undefined,
+      compatibilityMetadata: undefined,
       performanceMetadata: undefined,
     };
   }
@@ -259,6 +271,9 @@ function splitGameCompatibilityPayload(payload: unknown) {
   const videoMedia = clean.videoMedia === undefined
     ? undefined
     : videoMediaSchema.parse(clean.videoMedia);
+  const compatibilityMetadata = clean.compatibilityMetadata === undefined
+    ? undefined
+    : compatibilityMetadataSchema.parse(clean.compatibilityMetadata);
   const performanceMetadata = clean.performanceMetadata === undefined
     ? undefined
     : performanceMetadataSchema.parse(clean.performanceMetadata);
@@ -270,6 +285,7 @@ function splitGameCompatibilityPayload(payload: unknown) {
   delete clean.imageMedia;
   delete clean.mediaModes;
   delete clean.videoMedia;
+  delete clean.compatibilityMetadata;
   delete clean.performanceMetadata;
 
   // Compatibilidad de lectura únicamente. Estas claves pertenecen a las
@@ -288,6 +304,7 @@ function splitGameCompatibilityPayload(payload: unknown) {
     imageMedia,
     mediaModes,
     videoMedia,
+    compatibilityMetadata,
     performanceMetadata,
   };
 }
@@ -337,6 +354,7 @@ export function parseEditorialPayload<
     imageMedia,
     mediaModes,
     videoMedia,
+    compatibilityMetadata,
     performanceMetadata,
   } = splitGameCompatibilityPayload(payload);
   const game = parseCoreEditorialPayload("game", core);
@@ -408,6 +426,7 @@ export function parseEditorialPayload<
     ...(resolvedImageMedia ? { imageMedia: resolvedImageMedia } : {}),
     mediaModes: resolvedMediaModes,
     ...(videoMedia ? { videoMedia } : {}),
+    ...(compatibilityMetadata ? { compatibilityMetadata } : {}),
     ...(performanceMetadata ? { performanceMetadata } : {}),
   } as EditorialPayloadByType[Type];
 }
