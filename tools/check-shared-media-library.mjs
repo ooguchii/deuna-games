@@ -121,10 +121,11 @@ assert(
   has(
     libraryRoute,
     'target.data === "gallery-remove"',
-    "currentScreenshots.filter",
-    "delete gallery[resource]"
+    'withoutGalleryItem(current, "image", resource)',
+    "delete gallery[resource]",
+    "galleryImageSources(galleryMedia)"
   ),
-  "Quitar una captura de Galería debe retirar sólo su asignación y recorte."
+  "Quitar una captura de Galería debe retirar sólo su asignación y recorte, preservando el master y resincronizando la compatibilidad de imágenes."
 );
 
 assert(
