@@ -182,6 +182,61 @@ const optionalCompatibilitySourceSchema = z
   .enum(["", "developer", "publisher", "internal", "community", "external"])
   .transform((value) => value || undefined);
 
+const mediaAccessibilityLabelSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(240);
+
+const mediaAccessibilityPayloadSchema = z
+  .object({
+    cover: mediaAccessibilityLabelSchema.optional(),
+    hero: mediaAccessibilityLabelSchema.optional(),
+    card: mediaAccessibilityLabelSchema.optional(),
+    detail: mediaAccessibilityLabelSchema.optional(),
+    gallery: z
+      .array(
+        z.object({
+          kind: z.enum(["image", "video"]),
+          src: z.string().min(1).max(400),
+          label: mediaAccessibilityLabelSchema,
+        }).strict()
+      )
+      .max(8)
+      .superRefine((items, context) => {
+        const seen = new Set<string>();
+        items.forEach((item, index) => {
+          const key = `${item.kind}:${item.src}`;
+          if (seen.has(key)) {
+            context.addIssue({
+              code: "custom",
+              path: [index, "src"],
+              message: "Un recurso de Galería no puede repetirse.",
+            });
+          }
+          seen.add(key);
+        });
+      })
+      .optional(),
+  })
+  .strict();
+
+const mediaAccessibilityJsonSchema = z
+  .string()
+  .max(6_000)
+  .transform((value, context) => {
+    try {
+      return JSON.parse(value) as unknown;
+    } catch {
+      context.addIssue({
+        code: "custom",
+        message: "La metadata accesible no contiene JSON válido.",
+      });
+      return z.NEVER;
+    }
+  })
+  .pipe(mediaAccessibilityPayloadSchema);
+
 const optionalRating = z
   .string()
   .trim()
@@ -291,6 +346,11 @@ export const gameCompatibilitySectionSchema = z
       });
     }
   });
+
+export const gameMediaAccessibilitySectionSchema = z.object({
+  expectedRevision: expectedRevisionSchema,
+  accessibilityJson: mediaAccessibilityJsonSchema,
+});
 
 export const gameValuationSectionSchema = z.object({
   expectedRevision: expectedRevisionSchema,
