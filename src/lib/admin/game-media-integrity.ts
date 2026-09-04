@@ -8,6 +8,11 @@ import type { Game } from "@/types/game";
 import {
   resolveEditorialMediaDiskPath,
 } from "@/lib/media/editorial-media";
+import {
+  galleryImageSources,
+  galleryVideoSources,
+  resolveGameGalleryItems,
+} from "@/lib/media/game-gallery-media";
 
 export type GameMediaIntegrityResult = {
   ok: boolean;
@@ -17,6 +22,7 @@ export type GameMediaIntegrityResult = {
 export function listGameImageReferences(
   game: Game
 ) {
+  const galleryItems = resolveGameGalleryItems(game);
   return Array.from(
     new Set(
       [
@@ -25,7 +31,7 @@ export function listGameImageReferences(
         game.cardImage,
         game.detailImage,
         game.backgroundImage,
-        ...(game.screenshots ?? []),
+        ...galleryImageSources(galleryItems),
       ].filter(
         (value): value is string => Boolean(value)
       )
@@ -40,6 +46,7 @@ export function listGameVideoReferences(
     game.videoMedia?.card?.source === "independent"
       ? game.videoMedia.card.clip
       : undefined;
+  const galleryItems = resolveGameGalleryItems(game);
 
   return Array.from(
     new Set(
@@ -49,6 +56,7 @@ export function listGameVideoReferences(
         independentCardClip,
         game.videoMedia?.detail?.clip,
         game.videoMedia?.background?.clip,
+        ...galleryVideoSources(galleryItems),
         game.previewClip,
       ].filter(
         (value): value is string => Boolean(value)
