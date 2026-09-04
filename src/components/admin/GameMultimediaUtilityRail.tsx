@@ -29,7 +29,10 @@ import {
 } from "@/components/admin/game-multimedia-library-types";
 import type { GameGalleryItem } from "@/types/game";
 
-import styles from "./GameMultimediaShell.module.css";
+import railStyles from "./GameMultimediaUtilityRail.module.css";
+import shellStyles from "./GameMultimediaShell.module.css";
+
+const styles = { ...shellStyles, ...railStyles };
 
 type Props = {
   slug: string;
@@ -267,7 +270,7 @@ export default function GameMultimediaUtilityRail({
             {group.map((resource) => (
               <article
                 key={`${resource.kind}:${resource.src}`}
-                className={styles.libraryResourceCard}
+                className={`${styles.libraryResourceCard} ${styles.hygieneResource}`}
                 data-hygiene={statusTone(resource)}
               >
                 <div className={styles.libraryArtworkWrap}>
@@ -357,7 +360,7 @@ export default function GameMultimediaUtilityRail({
                   <button
                     key={`${resource.kind}:${resource.src}`}
                     type="button"
-                    className={styles.libraryMiniButton}
+                    className={`${styles.libraryMiniButton} ${styles.hygieneResource}`}
                     data-hygiene={statusTone(resource)}
                     onClick={() => setPreviewResource(resource)}
                     title={`${multimediaShortName(resource.src)} · ${statusLabel(resource)}`}
