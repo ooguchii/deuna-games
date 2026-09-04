@@ -15,6 +15,7 @@ import {
 } from "@/lib/admin/game-publication-readiness";
 import type {
   Game,
+  GameDistributionMetadata,
   GameDownloadSource,
 } from "@/types/game";
 import type {
@@ -70,6 +71,7 @@ export type PublishGameUpdateInput = {
     platform?: string;
     sources?: GameDownloadSource[];
   };
+  distributionMetadata?: GameDistributionMetadata;
 };
 
 export type PublishGameUpdateResult =
@@ -172,6 +174,23 @@ function buildDownload(
 
   return Object.keys(download).length > 0
     ? download
+    : undefined;
+}
+
+function buildDistributionMetadata(
+  input: GameDistributionMetadata | undefined
+) {
+  if (!input) return undefined;
+  const checksumSha256 = input.checksumSha256
+    ?.trim()
+    .toLowerCase();
+  const metadata: GameDistributionMetadata = {
+    ...(input.channel ? { channel: input.channel } : {}),
+    ...(checksumSha256 ? { checksumSha256 } : {}),
+  };
+
+  return Object.keys(metadata).length > 0
+    ? metadata
     : undefined;
 }
 
@@ -429,12 +448,16 @@ export async function publishIntegratedGameUpdate(
       return { outcome: "same_version" };
     }
 
+    const nextDownload = buildDownload(input.download);
     const nextGame = parseEditorialPayload(
       "game",
       {
         ...publishedGame,
         version,
-        download: buildDownload(input.download),
+        download: nextDownload,
+        distributionMetadata: nextDownload
+          ? buildDistributionMetadata(input.distributionMetadata)
+          : undefined,
       }
     );
     const resolvedDownload = resolveGameDownload(nextGame);
@@ -530,6 +553,8 @@ export async function publishIntegratedGameUpdate(
         revision: nextRevision,
         integratedGameUpdate: true,
         version,
+        distributionChannel: nextGame.distributionMetadata?.channel ?? null,
+        checksumConfigured: Boolean(nextGame.distributionMetadata?.checksumSha256),
       }
     );
 
@@ -589,6 +614,8 @@ export async function publishIntegratedGameUpdate(
         firstVisibility: false,
         integratedGameUpdate: true,
         version,
+        distributionChannel: nextGame.distributionMetadata?.channel ?? null,
+        checksumConfigured: Boolean(nextGame.distributionMetadata?.checksumSha256),
       }
     );
 
