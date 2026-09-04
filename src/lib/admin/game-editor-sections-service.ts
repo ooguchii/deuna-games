@@ -64,6 +64,13 @@ export type GameMediaAccessibilityInput = Pick<
 
 export type GameValuationInput = Pick<Game, "rating">;
 
+export type GameValuationAuditDetails = {
+  valuationSource: "manual" | "insight";
+  insightScore?: number;
+  insightConfidence?: "low" | "medium" | "high";
+  insightEvidenceCount?: number;
+};
+
 type EditorialItemRow = {
   id: string;
   item_key: string;
@@ -154,7 +161,8 @@ async function writeRevision(
   item: EditorialItemRow,
   game: Game,
   actorUserId: string,
-  section: string
+  section: string,
+  auditDetails: Record<string, unknown> = {}
 ) {
   const nextRevision = item.revision + 1;
   const normalized = normalizeEditorialPayload(game);
@@ -191,6 +199,7 @@ async function writeRevision(
       JSON.stringify({
         revision: nextRevision,
         section,
+        ...auditDetails,
       }),
     ]
   );
@@ -203,7 +212,8 @@ async function updateGameSection(
   expectedRevision: number,
   actorUserId: string,
   section: string,
-  update: (game: Game) => Game
+  update: (game: Game) => Game,
+  auditDetails: Record<string, unknown> = {}
 ): Promise<GameSectionMutationResult> {
   const session = await verifyAdminSession();
   if (session.userId !== actorUserId) {
@@ -245,7 +255,8 @@ async function updateGameSection(
       item,
       update(current),
       actorUserId,
-      section
+      section,
+      auditDetails
     );
 
     return { outcome: "saved", revision };
@@ -346,7 +357,8 @@ export function saveGameValuationSection(
   key: string,
   expectedRevision: number,
   actorUserId: string,
-  input: GameValuationInput
+  input: GameValuationInput,
+  auditDetails: GameValuationAuditDetails
 ) {
   return updateGameSection(
     key,
@@ -356,6 +368,7 @@ export function saveGameValuationSection(
     (game) => ({
       ...game,
       rating: input.rating,
-    })
+    }),
+    auditDetails
   );
 }
