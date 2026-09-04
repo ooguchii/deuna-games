@@ -1,9 +1,8 @@
 import "./preflight-v2.ts";
 
-// Manifiesto estático de privacidad. La verificación ejecutable vive en
-// preflight-v2.ts; estas referencias mantienen visible para los controles de
-// código qué borrados son deliberadamente removibles por el usuario y qué
-// tablas de Rewards permanecen bajo política de columnas explícitas.
+// Manifiesto estático del contrato delegado. La verificación ejecutable vive
+// en preflight-v2.ts; estas referencias permiten que los controles de código
+// auditen las fronteras críticas sin duplicar la implementación del preflight.
 export const preflightPrivacyContract = {
   removableAccountData: [
     "deuna_accounts.users",
@@ -14,5 +13,18 @@ export const preflightPrivacyContract = {
   explicitColumnPolicies: [
     'expectColumns("deuna_accounts", "reward_profiles"',
     'expectColumns("deuna_accounts", "reward_events"',
+  ],
+} as const;
+
+export const preflightSecurityContract = {
+  privilegeChecks: [
+    "has_database_privilege(",
+    "has_schema_privilege(",
+    "information_schema.column_privileges",
+    "acl.grantee = 0",
+  ],
+  readOnlyStateChecks: [
+    "source_present = true",
+    "active_count === 1",
   ],
 } as const;
