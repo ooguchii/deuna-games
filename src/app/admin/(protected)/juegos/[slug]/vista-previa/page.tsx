@@ -347,6 +347,20 @@ export default async function AdminGamePreviewPage({
               <dt>Géneros</dt>
               <dd>{genres.join(", ")}</dd>
             </div>
+            <div>
+              <dt>Clasificación etaria</dt>
+              <dd>
+                {game.ageRating
+                  ? `${game.ageRating.system} · ${game.ageRating.rating}`
+                  : "Sin definir"}
+              </dd>
+            </div>
+            {game.ageRating?.descriptors?.length ? (
+              <div>
+                <dt>Descriptores</dt>
+                <dd>{game.ageRating.descriptors.join(", ")}</dd>
+              </div>
+            ) : null}
           </dl>
         </article>
 
