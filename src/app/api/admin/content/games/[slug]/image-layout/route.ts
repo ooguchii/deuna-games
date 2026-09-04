@@ -99,10 +99,12 @@ export async function POST(
   }
 
   const expectsGalleryResource = target.data === "gallery";
-  const expectsFixedAspect = isFixedImageTarget(target.data);
+  const requiredFixedAspect = isFixedImageTarget(target.data)
+    ? REQUIRED_DESTINATION_ASPECTS[target.data]
+    : null;
   const validFields = expectsGalleryResource
     ? hasExactAdminFormFields(authorized.form, galleryFields)
-    : expectsFixedAspect
+    : requiredFixedAspect
       ? hasExactAdminFormFields(authorized.form, fixedFields)
       : hasExactAdminFormFields(authorized.form, baseFields);
 
@@ -124,7 +126,7 @@ export async function POST(
         authorized.form.get("viewportAspect"),
         authorized.form.get("viewportAspectRatio")
       )
-    : expectsFixedAspect
+    : requiredFixedAspect
       ? parseGameImageViewport(
           authorized.form.get("viewportX"),
           authorized.form.get("viewportY"),
@@ -142,8 +144,7 @@ export async function POST(
   if (
     !revision.success ||
     !viewport ||
-    (expectsFixedAspect &&
-      viewport.aspect !== REQUIRED_DESTINATION_ASPECTS[target.data])
+    (requiredFixedAspect && viewport.aspect !== requiredFixedAspect)
   ) {
     return adminRedirect(
       authorized.adminOrigin,
