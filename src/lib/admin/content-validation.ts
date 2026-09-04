@@ -176,6 +176,52 @@ const videoMediaSchema = z
     }
   });
 
+const mediaAccessibilityLabelSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(240);
+
+const galleryAccessibilityItemSchema = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal("image"),
+    src: localImageSchema,
+    label: mediaAccessibilityLabelSchema,
+  }).strict(),
+  z.object({
+    kind: z.literal("video"),
+    src: localPreviewClipSchema,
+    label: mediaAccessibilityLabelSchema,
+  }).strict(),
+]);
+
+const mediaAccessibilitySchema = z
+  .object({
+    cover: mediaAccessibilityLabelSchema.optional(),
+    hero: mediaAccessibilityLabelSchema.optional(),
+    card: mediaAccessibilityLabelSchema.optional(),
+    detail: mediaAccessibilityLabelSchema.optional(),
+    gallery: z
+      .array(galleryAccessibilityItemSchema)
+      .max(8)
+      .superRefine((items, context) => {
+        const seen = new Set<string>();
+        items.forEach((item, index) => {
+          const key = `${item.kind}:${item.src}`;
+          if (seen.has(key)) {
+            context.addIssue({
+              code: "custom",
+              path: [index, "src"],
+              message: "Un recurso de Galería no puede repetir su texto accesible.",
+            });
+          }
+          seen.add(key);
+        });
+      })
+      .optional(),
+  })
+  .strict();
+
 const compatibilityMetadataSchema = z
   .object({
     status: z.enum(["declared", "reviewed", "tested"]).optional(),
@@ -248,6 +294,37 @@ const galleryMediaSchema = z
     });
   });
 
+type ParsedMediaAccessibility = z.infer<typeof mediaAccessibilitySchema>;
+type ParsedGalleryMedia = z.infer<typeof galleryMediaSchema>;
+
+function resolveMediaAccessibility(
+  accessibility: ParsedMediaAccessibility | undefined,
+  galleryMedia: ParsedGalleryMedia | undefined,
+  screenshots: string[] | undefined
+) {
+  if (!accessibility) return undefined;
+
+  const allowedGallery = new Set(
+    galleryMedia
+      ? galleryMedia.map((item) => `${item.kind}:${item.src}`)
+      : (screenshots ?? []).map((src) => `image:${src}`)
+  );
+  const gallery = accessibility.gallery?.filter(
+    (item) => allowedGallery.has(`${item.kind}:${item.src}`)
+  );
+  const resolved = {
+    ...(accessibility.cover ? { cover: accessibility.cover } : {}),
+    ...(accessibility.hero ? { hero: accessibility.hero } : {}),
+    ...(accessibility.card ? { card: accessibility.card } : {}),
+    ...(accessibility.detail ? { detail: accessibility.detail } : {}),
+    ...(gallery?.length ? { gallery } : {}),
+  };
+
+  return Object.keys(resolved).length > 0
+    ? resolved
+    : undefined;
+}
+
 function splitGameCompatibilityPayload(payload: unknown) {
   if (
     typeof payload !== "object" ||
@@ -261,6 +338,7 @@ function splitGameCompatibilityPayload(payload: unknown) {
       backgroundImage: undefined,
       galleryMedia: undefined,
       imageMedia: undefined,
+      mediaAccessibility: undefined,
       mediaModes: undefined,
       videoMedia: undefined,
       ageRating: undefined,
@@ -287,6 +365,9 @@ function splitGameCompatibilityPayload(payload: unknown) {
   const imageMedia = clean.imageMedia === undefined
     ? undefined
     : imageMediaSchema.parse(clean.imageMedia);
+  const mediaAccessibility = clean.mediaAccessibility === undefined
+    ? undefined
+    : mediaAccessibilitySchema.parse(clean.mediaAccessibility);
   const mediaModes = clean.mediaModes === undefined
     ? undefined
     : mediaModesSchema.parse(clean.mediaModes);
@@ -308,6 +389,7 @@ function splitGameCompatibilityPayload(payload: unknown) {
   delete clean.backgroundImage;
   delete clean.galleryMedia;
   delete clean.imageMedia;
+  delete clean.mediaAccessibility;
   delete clean.mediaModes;
   delete clean.videoMedia;
   delete clean.ageRating;
@@ -328,6 +410,7 @@ function splitGameCompatibilityPayload(payload: unknown) {
     backgroundImage,
     galleryMedia,
     imageMedia,
+    mediaAccessibility,
     mediaModes,
     videoMedia,
     ageRating,
@@ -379,6 +462,7 @@ export function parseEditorialPayload<
     backgroundImage,
     galleryMedia,
     imageMedia,
+    mediaAccessibility,
     mediaModes,
     videoMedia,
     ageRating,
@@ -411,6 +495,11 @@ export function parseEditorialPayload<
         },
       }
     : imageMedia;
+  const resolvedMediaAccessibility = resolveMediaAccessibility(
+    mediaAccessibility,
+    galleryMedia,
+    game.screenshots
+  );
 
   const backgroundMode = inferredOptionalMode(
     mediaModes?.background,
@@ -452,6 +541,7 @@ export function parseEditorialPayload<
     ...(backgroundImage ? { backgroundImage } : {}),
     ...(galleryMedia !== undefined ? { galleryMedia } : {}),
     ...(resolvedImageMedia ? { imageMedia: resolvedImageMedia } : {}),
+    ...(resolvedMediaAccessibility ? { mediaAccessibility: resolvedMediaAccessibility } : {}),
     mediaModes: resolvedMediaModes,
     ...(videoMedia ? { videoMedia } : {}),
     ...(ageRating ? { ageRating } : {}),
