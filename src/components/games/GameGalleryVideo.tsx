@@ -30,8 +30,11 @@ export default function GameGalleryVideo({
   const videoRef = useRef<HTMLVideoElement>(null);
   const [layout, setLayout] = useState<FramedMediaLayout | null>(null);
   const [failed, setFailed] = useState(false);
+  const sourceAspect = viewport.aspect === "source";
 
   const updateLayout = useCallback(() => {
+    if (sourceAspect) return;
+
     const frame = frameRef.current;
     const video = videoRef.current;
     if (
@@ -55,9 +58,14 @@ export default function GameGalleryVideo({
         bounds.height
       )
     );
-  }, [viewport]);
+  }, [sourceAspect, viewport]);
 
   useLayoutEffect(() => {
+    if (sourceAspect) {
+      setLayout(null);
+      return;
+    }
+
     const frame = frameRef.current;
     const video = videoRef.current;
     if (!frame || !video) return;
@@ -68,14 +76,17 @@ export default function GameGalleryVideo({
     observer?.observe(frame);
     updateLayout();
     return () => observer?.disconnect();
-  }, [src, updateLayout]);
+  }, [sourceAspect, src, updateLayout]);
 
   return (
-    <div ref={frameRef} className={styles.frame}>
+    <div
+      ref={frameRef}
+      className={sourceAspect ? styles.sourceFrame : styles.frame}
+    >
       {!failed ? (
         <video
           ref={videoRef}
-          className={styles.video}
+          className={sourceAspect ? styles.sourceVideo : styles.video}
           src={src}
           controls
           preload="metadata"
@@ -86,16 +97,18 @@ export default function GameGalleryVideo({
           aria-label={label}
           onLoadedMetadata={updateLayout}
           onError={() => setFailed(true)}
-          style={{
-            width: layout?.width ?? "100%",
-            height: layout?.height ?? "100%",
-            left: layout?.left ?? 0,
-            top: layout?.top ?? 0,
-            objectFit: layout ? "fill" : "contain",
-          }}
+          style={sourceAspect
+            ? undefined
+            : {
+                width: layout?.width ?? "100%",
+                height: layout?.height ?? "100%",
+                left: layout?.left ?? 0,
+                top: layout?.top ?? 0,
+                objectFit: layout ? "fill" : "contain",
+              }}
         />
       ) : (
-        <div className={styles.fallback} role="status">
+        <div className={sourceAspect ? styles.sourceFallback : styles.fallback} role="status">
           No se pudo cargar este video de la galería.
         </div>
       )}
