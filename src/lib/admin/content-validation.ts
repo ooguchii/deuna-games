@@ -264,6 +264,16 @@ const performanceMetadataSchema = z
   })
   .strict();
 
+const distributionMetadataSchema = z
+  .object({
+    channel: z.enum(["stable", "beta", "testing"]).optional(),
+    checksumSha256: z
+      .string()
+      .regex(/^[a-f0-9]{64}$/)
+      .optional(),
+  })
+  .strict();
+
 const galleryMediaSchema = z
   .array(
     z.discriminatedUnion("kind", [
@@ -344,6 +354,7 @@ function splitGameCompatibilityPayload(payload: unknown) {
       ageRating: undefined,
       compatibilityMetadata: undefined,
       performanceMetadata: undefined,
+      distributionMetadata: undefined,
     };
   }
 
@@ -383,6 +394,9 @@ function splitGameCompatibilityPayload(payload: unknown) {
   const performanceMetadata = clean.performanceMetadata === undefined
     ? undefined
     : performanceMetadataSchema.parse(clean.performanceMetadata);
+  const distributionMetadata = clean.distributionMetadata === undefined
+    ? undefined
+    : distributionMetadataSchema.parse(clean.distributionMetadata);
 
   delete clean.cardImage;
   delete clean.detailImage;
@@ -395,6 +409,7 @@ function splitGameCompatibilityPayload(payload: unknown) {
   delete clean.ageRating;
   delete clean.compatibilityMetadata;
   delete clean.performanceMetadata;
+  delete clean.distributionMetadata;
 
   // Compatibilidad de lectura únicamente. Estas claves pertenecen a las
   // generaciones antiguas de previews externos y ya no forman parte del
@@ -416,6 +431,7 @@ function splitGameCompatibilityPayload(payload: unknown) {
     ageRating,
     compatibilityMetadata,
     performanceMetadata,
+    distributionMetadata,
   };
 }
 
@@ -468,6 +484,7 @@ export function parseEditorialPayload<
     ageRating,
     compatibilityMetadata,
     performanceMetadata,
+    distributionMetadata,
   } = splitGameCompatibilityPayload(payload);
   const game = parseCoreEditorialPayload("game", core);
 
@@ -547,5 +564,6 @@ export function parseEditorialPayload<
     ...(ageRating ? { ageRating } : {}),
     ...(compatibilityMetadata ? { compatibilityMetadata } : {}),
     ...(performanceMetadata ? { performanceMetadata } : {}),
+    ...(distributionMetadata ? { distributionMetadata } : {}),
   } as EditorialPayloadByType[Type];
 }
