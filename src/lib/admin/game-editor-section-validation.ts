@@ -159,6 +159,21 @@ const optionalCanonicalDateSchema = z
     return value;
   });
 
+const optionalAgeRatingSystemSchema = z
+  .enum([
+    "",
+    "ESRB",
+    "PEGI",
+    "IARC",
+    "CLASSIND",
+    "USK",
+    "ACB",
+    "GRAC",
+    "CERO",
+    "OTHER",
+  ])
+  .transform((value) => value || undefined);
+
 const optionalCompatibilityStatusSchema = z
   .enum(["", "declared", "reviewed", "tested"])
   .transform((value) => value || undefined);
@@ -193,12 +208,41 @@ export const gameInformationSectionSchema = z.object({
   imageAlt: z.string().trim().min(1).max(240),
 });
 
-export const gameClassificationSectionSchema = z.object({
-  expectedRevision: expectedRevisionSchema,
-  category: z.string().trim().min(1).max(80),
-  genresText: delimitedTextList(20, 80, 1_800),
-  tagsText: delimitedTextList(30, 80, 2_600),
-});
+export const gameClassificationSectionSchema = z
+  .object({
+    expectedRevision: expectedRevisionSchema,
+    category: z.string().trim().min(1).max(80),
+    genresText: delimitedTextList(20, 80, 1_800),
+    tagsText: delimitedTextList(30, 80, 2_600),
+    ageRatingSystem: optionalAgeRatingSystemSchema,
+    ageRatingValue: optionalText(40),
+    ageRatingDescriptorsText: delimitedTextList(8, 80, 800),
+  })
+  .superRefine((value, context) => {
+    const hasAgeRating = Boolean(
+      value.ageRatingSystem ||
+      value.ageRatingValue ||
+      value.ageRatingDescriptorsText?.length
+    );
+
+    if (!hasAgeRating) return;
+
+    if (!value.ageRatingSystem) {
+      context.addIssue({
+        code: "custom",
+        path: ["ageRatingSystem"],
+        message: "Selecciona el sistema de clasificación etaria.",
+      });
+    }
+
+    if (!value.ageRatingValue) {
+      context.addIssue({
+        code: "custom",
+        path: ["ageRatingValue"],
+        message: "Indica el rating exactamente como fue publicado por ese sistema.",
+      });
+    }
+  });
 
 export const gameCompatibilitySectionSchema = z
   .object({
