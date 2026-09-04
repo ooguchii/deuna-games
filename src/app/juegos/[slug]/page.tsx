@@ -41,6 +41,9 @@ import {
   getPublicGames,
 } from "@/lib/games/public-catalog";
 import {
+  getGameGalleryAccessibleFallback,
+} from "@/lib/media/game-media-accessibility";
+import {
   galleryImageViewport,
   resolvePublicGameGalleryItems,
 } from "@/lib/media/game-gallery-media";
@@ -161,6 +164,9 @@ export async function generateMetadata({
   const title = game.title;
   const description = game.description;
   const image = game.heroImage ?? game.coverImage;
+  const imageAlt = game.heroImage
+    ? game.mediaAccessibility?.hero ?? game.imageAlt
+    : game.mediaAccessibility?.cover ?? game.imageAlt;
 
   return {
     title,
@@ -177,7 +183,7 @@ export async function generateMetadata({
         ? [
             {
               url: image,
-              alt: game.imageAlt,
+              alt: imageAlt,
             },
           ]
         : undefined,
@@ -665,6 +671,12 @@ export default async function GameDetailPage({
 
             <div className={styles.galleryGrid}>
               {gallery.map((item, index) => {
+                const accessibleLabel = getGameGalleryAccessibleFallback(
+                  game,
+                  item,
+                  index
+                );
+
                 if (item.kind === "image") {
                   const viewport = galleryImageViewport(game, item);
                   return (
@@ -677,7 +689,7 @@ export default async function GameDetailPage({
                     >
                       <GameMedia
                         src={item.src}
-                        alt={`${game.title} — imagen ${index + 1}`}
+                        alt={accessibleLabel}
                         sizes="(max-width: 700px) 100vw, 33vw"
                         viewport={viewport}
                       />
@@ -696,7 +708,7 @@ export default async function GameDetailPage({
                     <GameGalleryVideo
                       src={item.src}
                       viewport={item.viewport}
-                      label={`${game.title} — video ${index + 1}`}
+                      label={accessibleLabel}
                     />
                   </figure>
                 );
