@@ -24,14 +24,15 @@ const publicationActionLabels = {
 } as const;
 
 function formatDate(date: Date) {
-  return new Intl.DateTimeFormat("es-AR", {
+  return `${new Intl.DateTimeFormat("es", {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
-    timeZone: "America/Argentina/Buenos_Aires",
-  }).format(date);
+    hour12: false,
+    timeZone: "UTC",
+  }).format(date)} UTC`;
 }
 
 export default function GameHistoryPanel({
