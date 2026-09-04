@@ -41,6 +41,12 @@ type PageProps = {
   }>;
 };
 
+const channelLabels = {
+  stable: "Estable",
+  beta: "Beta",
+  testing: "Pruebas",
+} as const;
+
 function legacySource(
   href: string,
   label: string | undefined
@@ -84,6 +90,7 @@ export default async function AdminGameUpdatePage({
   const game = item.payload;
   const publicBaseline = publicGame ?? game;
   const download = publicBaseline.download;
+  const currentDistribution = publicBaseline.distributionMetadata;
   const initialSources = download?.sources?.length
     ? download.sources
     : download?.href
@@ -120,7 +127,7 @@ export default async function AdminGameUpdatePage({
       <AdminPageHeader
         eyebrow={<>DISTRIBUCIÓN · NUEVA VERSIÓN · REVISIÓN {item.revision}</>}
         title={game.title}
-        description="Publica una nueva versión sin cambiar la URL del juego. La operación reemplaza las descargas actuales y crea el aviso público de actualización en un solo paso."
+        description="Publica una nueva versión sin cambiar la URL del juego. La operación reemplaza descargas e integridad del paquete y crea el aviso público en un solo paso."
         action={
           <Link
             href={`/juegos/${encodeURIComponent(slug)}`}
@@ -182,7 +189,7 @@ export default async function AdminGameUpdatePage({
             <h2>Versión pública y descargas</h2>
           </div>
           <p>
-            La dirección pública permanece siempre en /juegos/{slug}. Sólo cambian la versión, las fuentes de descarga y el historial de novedades.
+            La dirección pública permanece siempre en /juegos/{slug}. Cada versión conserva su paquete, canal y checksum dentro del snapshot publicado.
           </p>
         </div>
 
@@ -197,6 +204,22 @@ export default async function AdminGameUpdatePage({
           <span>{initialSources.length}</span>
         </div>
         <div className={styles.tableSummary}>
+          <strong>Canal actual</strong>
+          <span>
+            {currentDistribution?.channel
+              ? channelLabels[currentDistribution.channel]
+              : "Sin definir"}
+          </span>
+        </div>
+        <div className={styles.tableSummary}>
+          <strong>SHA-256 actual</strong>
+          <span>
+            {currentDistribution?.checksumSha256
+              ? `${currentDistribution.checksumSha256.slice(0, 12)}…${currentDistribution.checksumSha256.slice(-12)}`
+              : "Sin checksum"}
+          </span>
+        </div>
+        <div className={styles.tableSummary}>
           <strong>URL estable</strong>
           <span>/juegos/{slug}</span>
         </div>
@@ -209,7 +232,7 @@ export default async function AdminGameUpdatePage({
             <h2>Publicar nueva versión</h2>
           </div>
           <p>
-            La confirmación publica inmediatamente el juego actualizado y su aviso. No existe un segundo paso que pueda dejar ambos estados desincronizados.
+            La confirmación publica inmediatamente el juego actualizado y su aviso. El checksum anterior nunca se hereda: cada paquete nuevo debe declararlo otra vez o dejarlo explícitamente sin definir.
           </p>
         </div>
 
@@ -270,9 +293,9 @@ export default async function AdminGameUpdatePage({
               <span>Plataforma / paquete</span>
               <input
                 name="platform"
-                defaultValue={download?.platform ?? "PC"}
+                defaultValue={download?.platform ?? game.platforms?.[0] ?? ""}
                 maxLength={80}
-                placeholder="PC"
+                placeholder="A confirmar"
               />
             </label>
 
@@ -300,6 +323,34 @@ export default async function AdminGameUpdatePage({
               />
             </label>
 
+            <label>
+              <span>Canal de la nueva versión</span>
+              <select name="channel" defaultValue="">
+                <option value="">Sin definir</option>
+                <option value="stable">Estable</option>
+                <option value="beta">Beta</option>
+                <option value="testing">Pruebas</option>
+              </select>
+              <small>
+                Se decide para esta versión; no se copia automáticamente del paquete anterior.
+              </small>
+            </label>
+
+            <label className={styles.fieldWide}>
+              <span>SHA-256 del nuevo paquete</span>
+              <input
+                name="checksumSha256"
+                minLength={64}
+                maxLength={64}
+                autoComplete="off"
+                spellCheck={false}
+                placeholder="64 caracteres hexadecimales"
+              />
+              <small>
+                Calcula el SHA-256 del paquete final. Todas las fuentes de esta versión deben entregar esos mismos bytes.
+              </small>
+            </label>
+
             <label className={styles.fieldWide}>
               <span>Resumen público</span>
               <textarea
@@ -322,7 +373,7 @@ export default async function AdminGameUpdatePage({
 
             <div className={styles.formActions}>
               <p>
-                Se requiere al menos una fuente disponible. Al confirmar, DeUna actualiza versión + descargas + publicación del juego + aviso público dentro de la misma transacción editorial.
+                Se requiere al menos una fuente disponible. Al confirmar, DeUna actualiza versión + descargas + integridad del paquete + publicación del juego + aviso público dentro de la misma transacción editorial.
               </p>
               <button type="submit">
                 <RefreshCcw size={15} aria-hidden="true" />
