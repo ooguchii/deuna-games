@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import {
   ChevronLeft,
@@ -95,17 +96,15 @@ function ResponsiveArtwork({
     : style;
 
   return (
-    <picture className={ambient ? undefined : styles.heroPicture}>
-      <img
-        src={src}
-        alt={alt}
-        className={artworkClassName}
-        style={artworkInlineStyle}
-        loading={active ? "eager" : "lazy"}
-        fetchPriority={active ? "high" : "auto"}
-        decoding="async"
-      />
-    </picture>
+    <Image
+      src={src}
+      alt={alt}
+      fill
+      priority={active}
+      sizes={ambient ? "100vw" : "(max-width: 980px) calc(100vw - 32px), 1200px"}
+      className={artworkClassName}
+      style={artworkInlineStyle}
+    />
   );
 }
 
@@ -121,7 +120,7 @@ function NextArtwork({ game }: { game: Game }) {
 
   return (
     <span className={styles.nextArtworkFrame} style={inlineStyle} aria-hidden="true">
-      <img src={src} alt="" loading="lazy" decoding="async" />
+      <Image src={src} alt="" fill sizes="220px" />
     </span>
   );
 }
@@ -326,23 +325,25 @@ export default function HeroSection({
   }, [resolvedTuning]);
   const overlayOpacity = resolvedTuning.overlayStrength / 100;
 
-  const activeGame = games[activeIndex] ?? games[0];
-  const nextIndex = games.length ? (activeIndex + 1) % games.length : 0;
+  const normalizedActiveIndex = games.length
+    ? activeIndex % games.length
+    : 0;
+  const activeGame = games[normalizedActiveIndex] ?? games[0];
+  const nextIndex = games.length
+    ? (normalizedActiveIndex + 1) % games.length
+    : 0;
   const nextGame = games[nextIndex] ?? activeGame;
   const isPaused = paused || manualPaused || reducedMotion;
 
   const moveBy = useCallback((delta: number) => {
     setActiveIndex((current) => {
       if (!games.length) return 0;
-      return (current + delta + games.length) % games.length;
+      const normalized = current % games.length;
+      return (normalized + delta + games.length) % games.length;
     });
   }, [games.length]);
   const nextSlide = useCallback(() => moveBy(1), [moveBy]);
   const previousSlide = useCallback(() => moveBy(-1), [moveBy]);
-
-  useEffect(() => {
-    setActiveIndex((current) => games.length ? Math.min(current, games.length - 1) : 0);
-  }, [games.length]);
 
   useEffect(() => {
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -356,7 +357,7 @@ export default function HeroSection({
     if (isPaused || games.length <= 1) return;
     const timer = window.setTimeout(nextSlide, AUTOPLAY_TIME);
     return () => window.clearTimeout(timer);
-  }, [activeIndex, games.length, isPaused, nextSlide]);
+  }, [activeGame?.id, games.length, isPaused, nextSlide]);
 
   if (!activeGame) return null;
 
@@ -432,7 +433,7 @@ export default function HeroSection({
             key={activeGame.id}
             game={activeGame}
             copy={copy}
-            logicalIndex={activeIndex}
+            logicalIndex={normalizedActiveIndex}
             total={games.length}
             imageEffect={imageEffect}
             artworkStyle={artworkStyle}
@@ -467,9 +468,9 @@ export default function HeroSection({
                 <button
                   key={game.id}
                   type="button"
-                  className={index === activeIndex ? styles.activeDot : ""}
+                  className={index === normalizedActiveIndex ? styles.activeDot : ""}
                   aria-label={`Mostrar ${game.title}`}
-                  aria-current={index === activeIndex ? "true" : undefined}
+                  aria-current={index === normalizedActiveIndex ? "true" : undefined}
                   onClick={() => setActiveIndex(index)}
                 />
               ))}
@@ -488,7 +489,7 @@ export default function HeroSection({
 
             <div className={styles.progress} aria-hidden="true">
               <span
-                key={activeIndex}
+                key={normalizedActiveIndex}
                 className={styles.progressBar}
                 style={{ animationPlayState: isPaused ? "paused" : "running" }}
               />
