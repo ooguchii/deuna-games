@@ -93,8 +93,8 @@ assert(
 assert(
   has(
     utilityRail,
-    '"Sin archivos editoriales sin uso"',
-    '"Por resolver',
+    "Sin archivos editoriales sin uso",
+    "Por resolver ·",
     "resource.hygiene?.usage",
     'usage={previewResource.hygiene?.usage ?? []}'
   ),
