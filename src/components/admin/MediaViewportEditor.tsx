@@ -6,6 +6,7 @@ import {
   Pause,
   Play,
   RotateCcw,
+  RotateCw,
 } from "lucide-react";
 import {
   type KeyboardEvent,
@@ -29,7 +30,10 @@ import {
   type ResolvedPreviewViewportCrop,
 } from "@/lib/media/preview-video-policy";
 
-import styles from "./VideoTrimEditor.module.css";
+import enhancementStyles from "./MediaViewportEditorEnhancements.module.css";
+import baseStyles from "./VideoTrimEditor.module.css";
+
+const styles = { ...baseStyles, ...enhancementStyles };
 
 const VIEWPORT_KEYBOARD_STEP = 0.02;
 const VIEWPORT_KEYBOARD_LARGE_STEP = 0.1;
@@ -39,6 +43,17 @@ const DEFAULT_FREE_ASPECT_RATIO = 16 / 9;
 const FREE_RESIZE_KEYBOARD_STEP = 0.02;
 const FREE_RESIZE_KEYBOARD_LARGE_STEP = 0.08;
 const RESIZE_HANDLES = ["nw", "n", "ne", "e", "se", "s", "sw", "w"] as const;
+const POSITION_PRESETS = [
+  { label: "↖", title: "Arriba izquierda", x: 0, y: 0 },
+  { label: "↑", title: "Arriba centro", x: 0.5, y: 0 },
+  { label: "↗", title: "Arriba derecha", x: 1, y: 0 },
+  { label: "←", title: "Centro izquierda", x: 0, y: 0.5 },
+  { label: "●", title: "Centro", x: 0.5, y: 0.5 },
+  { label: "→", title: "Centro derecha", x: 1, y: 0.5 },
+  { label: "↙", title: "Abajo izquierda", x: 0, y: 1 },
+  { label: "↓", title: "Abajo centro", x: 0.5, y: 1 },
+  { label: "↘", title: "Abajo derecha", x: 1, y: 1 },
+] as const;
 
 type MediaKind = "image" | "video";
 type ResizeHandle = (typeof RESIZE_HANDLES)[number];
@@ -301,6 +316,7 @@ export default function MediaViewportEditor({
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [playing, setPlaying] = useState(false);
+  const [showGuides, setShowGuides] = useState(false);
   const [mediaError, setMediaError] = useState<string | null>(null);
   const [frameRevision, setFrameRevision] = useState(0);
 
@@ -603,10 +619,12 @@ export default function MediaViewportEditor({
     if (next) commitViewport(next);
   }
 
-  function quickViewport(side: "left" | "center" | "right") {
-    const x = side === "left" ? 0 : side === "right" ? 1 : 0.5;
-    const y = side === "center" ? 0.5 : viewportDraft.y;
-    commitViewport({ ...viewportDraft, x, y });
+  function quickViewport(x: number, y: number) {
+    commitViewport({
+      ...viewportDraft,
+      x: roundViewport(clamp(x, 0, 1)),
+      y: roundViewport(clamp(y, 0, 1)),
+    });
   }
 
   function changeAspect(aspect: PreviewViewportAspectId) {
@@ -653,6 +671,19 @@ export default function MediaViewportEditor({
 
   function requestPreviewRedraw() {
     setFrameRevision((value) => value + 1);
+  }
+
+  function seekVideo(value: number) {
+    const video = videoRef.current;
+    if (!video || duration <= 0) return;
+    const next = clamp(value, 0, duration);
+    video.currentTime = next;
+    setCurrentTime(next);
+    requestPreviewRedraw();
+  }
+
+  function seekVideoBy(delta: number) {
+    seekVideo(currentTime + delta);
   }
 
   const currentAspectSummary = aspectSummary(viewportDraft);
@@ -732,6 +763,14 @@ export default function MediaViewportEditor({
                 }}
                 aria-hidden="true"
               >
+                {showGuides && (
+                  <>
+                    <span className={`${styles.viewportGuideVertical} ${styles.viewportGuideOne}`} />
+                    <span className={`${styles.viewportGuideVertical} ${styles.viewportGuideTwo}`} />
+                    <span className={`${styles.viewportGuideHorizontal} ${styles.viewportGuideThree}`} />
+                    <span className={`${styles.viewportGuideHorizontal} ${styles.viewportGuideFour}`} />
+                  </>
+                )}
                 {!freeResizeEnabled && (
                   <>
                     <span className={`${styles.viewportCorner} ${styles.viewportCornerTopLeft}`} />
@@ -904,11 +943,31 @@ export default function MediaViewportEditor({
             </small>
           )}
 
-          <div className={styles.viewportPresets} aria-label="Posiciones rápidas de encuadre">
-            <button type="button" disabled={disabled} onClick={() => quickViewport("left")}>Izquierda</button>
-            <button type="button" disabled={disabled} onClick={() => quickViewport("center")}>Centro</button>
-            <button type="button" disabled={disabled} onClick={() => quickViewport("right")}>Derecha</button>
+          <div className={`${styles.viewportPresets} ${styles.viewportPresetGrid}`} aria-label="Posiciones rápidas de encuadre">
+            {POSITION_PRESETS.map((preset) => (
+              <button
+                key={preset.title}
+                type="button"
+                disabled={disabled}
+                aria-label={preset.title}
+                title={preset.title}
+                onClick={() => quickViewport(preset.x, preset.y)}
+              >
+                {preset.label}
+              </button>
+            ))}
           </div>
+
+          <button
+            type="button"
+            className={styles.viewportGuideToggle}
+            data-active={showGuides}
+            aria-pressed={showGuides}
+            disabled={disabled}
+            onClick={() => setShowGuides((value) => !value)}
+          >
+            Guía de tercios {showGuides ? "activa" : "oculta"}
+          </button>
 
           <button type="button" className={styles.viewportReset} disabled={disabled} onClick={resetViewport}>
             <RotateCcw size={15} aria-hidden="true" />
@@ -969,6 +1028,37 @@ export default function MediaViewportEditor({
             : "Cargando recurso…"}
         </strong>
       </div>
+
+      {kind === "video" && (
+        <div className={styles.videoViewportTransport} aria-label="Navegación del video para revisar el encuadre">
+          <button
+            type="button"
+            disabled={disabled || duration <= 0}
+            onClick={() => seekVideoBy(-5)}
+          >
+            <RotateCcw size={14} aria-hidden="true" />
+            5 s
+          </button>
+          <input
+            type="range"
+            min="0"
+            max={Math.max(duration, 0)}
+            step="0.05"
+            value={Math.min(currentTime, duration || 0)}
+            disabled={disabled || duration <= 0}
+            aria-label="Posición del video"
+            onChange={(event) => seekVideo(Number(event.currentTarget.value))}
+          />
+          <button
+            type="button"
+            disabled={disabled || duration <= 0}
+            onClick={() => seekVideoBy(5)}
+          >
+            <RotateCw size={14} aria-hidden="true" />
+            5 s
+          </button>
+        </div>
+      )}
 
       {mediaError ? (
         <div className={styles.error} role="alert">{mediaError}</div>
