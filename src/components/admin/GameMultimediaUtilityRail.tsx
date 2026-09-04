@@ -109,7 +109,7 @@ export default function GameMultimediaUtilityRail({
 
     return (
       <form
-        action={`/api/admin/content/games/${encodeURIComponent(slug)}/media-library`}
+        action={`/api/admin/content/games/${encodeURIComponent(slug)}/media-resource-delete`}
         method="post"
       >
         <input type="hidden" name="expectedRevision" value={currentRevision} />
