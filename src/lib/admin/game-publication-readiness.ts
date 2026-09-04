@@ -129,6 +129,17 @@ export function evaluateGamePublicationReadiness(
       priority: "recommended",
     },
     {
+      id: "age-rating",
+      label: "Clasificación etaria",
+      detail: "Sistema y rating publicados permiten informar la clasificación de contenido sin inferir equivalencias entre organismos.",
+      section: "datos",
+      complete: Boolean(
+        game.ageRating?.system &&
+          game.ageRating?.rating
+      ),
+      priority: "recommended",
+    },
+    {
       id: "platforms",
       label: "Plataformas confirmadas",
       detail: "Compatibilidad debe indicar explícitamente al menos una plataforma; ausencia ya no equivale a PC.",
