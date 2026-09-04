@@ -24,6 +24,13 @@ import type { Game } from "@/types/game";
 
 import styles from "./GamePublicationWorkspace.module.css";
 
+type MediaHygieneSummary = {
+  ready: boolean;
+  blockingCount: number;
+  unused: number;
+  publishedOnly: number;
+};
+
 type GamePublicationWorkspaceProps = {
   game: Game;
   publishedGame: Game | null;
@@ -32,6 +39,7 @@ type GamePublicationWorkspaceProps = {
   requestState?: string;
   neverPublished: boolean;
   panelCreated: boolean;
+  mediaHygiene: MediaHygieneSummary;
 };
 
 const publicationActionLabels = {
@@ -92,6 +100,18 @@ function RequestNotice({
     );
   }
 
+  if (state === "higiene-multimedia") {
+    return (
+      <div className={`${styles.notice} ${styles.noticeError}`}>
+        <strong>Publicación bloqueada por higiene multimedia.</strong>{" "}
+        Hay masters editoriales que ya no están referenciados por el borrador. Asígnalos o retíralos desde Biblioteca multimedia antes de publicar.{" "}
+        <Link href={`/admin/juegos/${encodeURIComponent(slug)}?seccion=multimedia`}>
+          Resolver Biblioteca multimedia
+        </Link>
+      </div>
+    );
+  }
+
   if (state === "catalogos-sin-publicar") {
     return (
       <div className={`${styles.notice} ${styles.noticeWarning}`}>
@@ -111,7 +131,7 @@ function RequestNotice({
     return (
       <div className={`${styles.notice} ${styles.noticeError}`}>
         <strong>Publicación bloqueada por preparación incompleta.</strong>{" "}
-        Portada, Hero, Card y Galería deben cumplir sus destinos obligatorios y la ficha principal debe estar completa. La web pública no fue modificada.{" "}
+        Portada, Hero, Card, Contenedor y Galería deben cumplir sus destinos obligatorios y la ficha principal debe estar completa. La web pública no fue modificada.{" "}
         <Link
           href={`/admin/juegos/${encodeURIComponent(slug)}?seccion=multimedia`}
         >
@@ -207,6 +227,7 @@ export default function GamePublicationWorkspace({
   requestState,
   neverPublished,
   panelCreated,
+  mediaHygiene,
 }: GamePublicationWorkspaceProps) {
   const readiness = evaluateGamePublicationReadiness(game);
   const publicationChanges = evaluateGamePublicationChanges(
@@ -222,6 +243,14 @@ export default function GamePublicationWorkspace({
     : state.publicVisible
       ? "Publicar cambios"
       : "Volver a publicar";
+  const publicationEssentialsReady =
+    readiness.essentialsReady && mediaHygiene.ready;
+  const completedControls =
+    readiness.completed + (mediaHygiene.ready ? 1 : 0);
+  const totalControls = readiness.total + 1;
+  const preparationPercentage = Math.round(
+    (completedControls / totalControls) * 100
+  );
 
   return (
     <div className={styles.workspace}>
@@ -278,9 +307,9 @@ export default function GamePublicationWorkspace({
         </article>
         <article>
           <span>Preparación editorial</span>
-          <strong>{readiness.percentage}%</strong>
+          <strong>{preparationPercentage}%</strong>
           <small>
-            {readiness.completed} de {readiness.total} controles completos.
+            {completedControls} de {totalControls} controles completos.
           </small>
         </article>
         <article>
@@ -308,7 +337,7 @@ export default function GamePublicationWorkspace({
         </div>
 
         <div className={styles.progressTrack} aria-hidden="true">
-          <span style={{ width: `${readiness.percentage}%` }} />
+          <span style={{ width: `${preparationPercentage}%` }} />
         </div>
 
         <div className={styles.checklist}>
@@ -338,6 +367,30 @@ export default function GamePublicationWorkspace({
               </span>
             </Link>
           ))}
+
+          <Link
+            href={`/admin/juegos/${encodeURIComponent(slug)}?seccion=multimedia`}
+            className={mediaHygiene.ready ? styles.checkComplete : styles.checkMissing}
+          >
+            <span className={styles.checkIcon}>
+              {mediaHygiene.ready ? (
+                <Check size={16} aria-hidden="true" />
+              ) : (
+                <Circle size={16} aria-hidden="true" />
+              )}
+            </span>
+            <span className={styles.checkCopy}>
+              <strong>Higiene multimedia</strong>
+              <small>
+                {mediaHygiene.ready
+                  ? "Todos los masters editoriales están referenciados por el borrador o retirados de forma segura."
+                  : `${mediaHygiene.blockingCount} master${mediaHygiene.blockingCount === 1 ? "" : "s"} sin referencia en el borrador: ${mediaHygiene.unused} sin uso y ${mediaHygiene.publishedOnly} usado${mediaHygiene.publishedOnly === 1 ? "" : "s"} sólo por la publicación actual.`}
+              </small>
+            </span>
+            <span className={styles.checkState}>
+              {mediaHygiene.ready ? "Completo" : "Necesario"}
+            </span>
+          </Link>
         </div>
       </section>
 
@@ -409,6 +462,15 @@ export default function GamePublicationWorkspace({
               </span>
             </div>
           )}
+
+          {!mediaHygiene.ready && (
+            <div className={styles.advisory}>
+              <AlertTriangle size={17} aria-hidden="true" />
+              <span>
+                Hay {mediaHygiene.blockingCount} master{mediaHygiene.blockingCount === 1 ? "" : "s"} editorial{mediaHygiene.blockingCount === 1 ? "" : "es"} sin referencia en el borrador. Asígnalos o retíralos desde Biblioteca multimedia antes de publicar.
+              </span>
+            </div>
+          )}
         </div>
 
         <div className={styles.publishActions}>
@@ -426,7 +488,7 @@ export default function GamePublicationWorkspace({
               className={styles.publishButton}
               disabled={
                 !state.hasUnpublishedChanges ||
-                !readiness.essentialsReady
+                !publicationEssentialsReady
               }
             >
               <Rocket size={17} aria-hidden="true" />
