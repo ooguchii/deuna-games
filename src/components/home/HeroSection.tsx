@@ -126,7 +126,7 @@ function formatReleaseDate(value: string | undefined) {
     const [, day, month, year] = localDate;
     const parsed = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
     if (!Number.isNaN(parsed.valueOf())) {
-      return new Intl.DateTimeFormat("es-AR", {
+      return new Intl.DateTimeFormat("es", {
         day: "numeric",
         month: "short",
         year: "numeric",
@@ -137,7 +137,7 @@ function formatReleaseDate(value: string | undefined) {
 
   const parsed = new Date(trimmed);
   if (!Number.isNaN(parsed.valueOf())) {
-    return new Intl.DateTimeFormat("es-AR", {
+    return new Intl.DateTimeFormat("es", {
       day: "numeric",
       month: "short",
       year: "numeric",
