@@ -1,11 +1,12 @@
 .guide {
   display: grid;
-  gap: 16px;
+  gap: 18px;
   margin-bottom: 18px;
   padding: 18px;
   border: 1px solid color-mix(in srgb, var(--brand) 22%, #283546);
   border-radius: 16px;
   background:
+    radial-gradient(circle at 72% 28%, color-mix(in srgb, var(--brand) 10%, transparent), transparent 36%),
     linear-gradient(135deg, color-mix(in srgb, var(--brand) 5%, #0c121b), #080d14 62%);
 }
 
@@ -36,7 +37,7 @@
 }
 
 .heading p {
-  max-width: 760px;
+  max-width: 800px;
   margin: 0;
   color: var(--text-muted, #9aa9bb);
   font-size: 12px;
@@ -47,8 +48,8 @@
   flex: none;
   display: grid;
   gap: 4px;
-  min-width: 158px;
-  padding: 9px 11px;
+  min-width: 185px;
+  padding: 10px 12px;
   border: 1px solid color-mix(in srgb, var(--brand) 24%, #344154);
   border-radius: 10px;
   background: #0a1018;
@@ -65,38 +66,158 @@
   font-size: 12px;
 }
 
-.composition {
+.cinematicPreview {
+  position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(150px, 190px);
-  gap: 14px;
+  grid-template-columns: minmax(0, 1fr) minmax(250px, 30%);
+  gap: 0;
   align-items: center;
+  min-height: 300px;
+  padding: 12px 6px 12px 0;
+  perspective: 1100px;
 }
 
-.previewCard {
+.heroPane {
+  position: relative;
+  z-index: 4;
   display: grid;
   gap: 9px;
   min-width: 0;
 }
 
-.previewFrame {
+.heroFrame {
   position: relative;
   overflow: hidden;
-  border: 1px solid #263445;
-  border-radius: 12px;
+  aspect-ratio: 2.15 / 1;
+  border: 1px solid color-mix(in srgb, var(--brand) 34%, #304057);
+  border-radius: 14px;
   background: #020407;
+  box-shadow: 0 22px 54px rgba(0, 0, 0, 0.36);
 }
 
-.previewFrame[data-kind="hero"] {
-  aspect-ratio: 3 / 1;
-}
-
-.previewFrame[data-kind="next"] {
-  aspect-ratio: 4 / 5;
-}
-
-.previewFrame > span {
+.heroFrame > span:first-child {
   width: 100%;
   height: 100%;
+}
+
+.heroShade {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(2, 5, 10, 0.92), rgba(2, 5, 10, 0.55) 42%, rgba(2, 5, 10, 0.08) 72%),
+    linear-gradient(0deg, rgba(2, 5, 10, 0.54), transparent 42%);
+  pointer-events: none;
+}
+
+.heroMockCopy {
+  position: absolute;
+  z-index: 3;
+  top: 50%;
+  left: 5%;
+  display: grid;
+  width: 45%;
+  transform: translateY(-50%);
+}
+
+.heroMockCopy small {
+  margin-bottom: 6px;
+  color: #aab8c9;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.heroMockCopy strong,
+.heroMockCopy b {
+  overflow: hidden;
+  color: #fff;
+  font-size: clamp(18px, 2.5vw, 34px);
+  line-height: 0.92;
+  letter-spacing: -0.045em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.heroMockCopy b {
+  color: var(--brand);
+}
+
+.previewStack {
+  position: relative;
+  z-index: 5;
+  min-height: 285px;
+  margin-left: -44px;
+  perspective: 900px;
+}
+
+.stackCard {
+  --stack-index: 0;
+  position: absolute;
+  top: calc(12px + var(--stack-index) * 10px);
+  left: calc(var(--stack-index) * 72px);
+  z-index: calc(6 - var(--stack-index));
+  display: grid;
+  gap: 7px;
+  width: 145px;
+  transform:
+    translateZ(calc(var(--stack-index) * -60px))
+    scale(calc(1 - var(--stack-index) * 0.07))
+    rotateY(-8deg);
+  transform-origin: left center;
+  opacity: calc(1 - var(--stack-index) * 0.18);
+}
+
+.coverFrame {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 4 / 5;
+  border: 1px solid color-mix(in srgb, var(--brand) 38%, #304057);
+  border-radius: 12px;
+  background: #020407;
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.34);
+}
+
+.coverFrame > span:first-child {
+  width: 100%;
+  height: 100%;
+}
+
+.coverShade {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  background: linear-gradient(0deg, rgba(2, 5, 10, 0.94), rgba(2, 5, 10, 0.08) 68%);
+  pointer-events: none;
+}
+
+.coverFrame > strong {
+  position: absolute;
+  z-index: 3;
+  right: 10px;
+  bottom: 11px;
+  left: 10px;
+  display: -webkit-box;
+  overflow: hidden;
+  color: #fff;
+  font-size: 13px;
+  line-height: 1.05;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.noPreviews {
+  display: grid;
+  place-items: center;
+  min-height: 220px;
+  padding: 18px;
+  border: 1px dashed #314158;
+  border-radius: 12px;
+  color: var(--text-muted, #9aa9bb);
+  background: #080e16;
+  font-size: 12px;
+  text-align: center;
 }
 
 .emptyFrame {
@@ -174,8 +295,8 @@
   align-items: center;
   justify-content: center;
   gap: 7px;
-  min-height: 36px;
-  padding: 7px 10px;
+  min-height: 34px;
+  padding: 6px 9px;
   border: 1px solid color-mix(in srgb, var(--brand) 30%, #344154);
   border-radius: 8px;
   color: var(--text, #f5f7fb);
@@ -192,8 +313,8 @@
 
 .queue {
   display: grid;
-  gap: 7px;
-  padding-top: 13px;
+  gap: 8px;
+  padding-top: 14px;
   border-top: 1px solid #202c3b;
 }
 
@@ -216,7 +337,7 @@
 
 .queueList {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 7px;
   margin: 0;
   padding: 0;
@@ -225,7 +346,8 @@
 
 .queueList li {
   display: grid;
-  gap: 5px;
+  align-content: start;
+  gap: 6px;
   min-width: 0;
   padding: 8px 9px;
   border: 1px solid #253142;
@@ -252,7 +374,7 @@
   align-items: center;
   gap: 4px;
   color: var(--text-muted, #9aa9bb);
-  font-size: 11px;
+  font-size: 10px;
 }
 
 .queueChecks span[data-ready="true"] {
@@ -263,9 +385,41 @@
   color: #f2c470;
 }
 
-@media (max-width: 900px) {
-  .composition {
-    grid-template-columns: minmax(0, 1fr) 150px;
+@media (max-width: 1100px) {
+  .queueList {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .previewStack {
+    margin-left: -28px;
+  }
+
+  .stackCard {
+    left: calc(var(--stack-index) * 54px);
+    width: 132px;
+  }
+}
+
+@media (max-width: 800px) {
+  .cinematicPreview {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .previewStack {
+    display: flex;
+    gap: 9px;
+    min-height: 0;
+    margin-left: 0;
+  }
+
+  .stackCard {
+    position: relative;
+    top: auto;
+    left: auto;
+    width: min(31%, 150px);
+    transform: none;
+    opacity: 1;
   }
 
   .queueList {
@@ -274,8 +428,7 @@
 }
 
 @media (max-width: 640px) {
-  .heading,
-  .composition {
+  .heading {
     display: grid;
   }
 
@@ -283,12 +436,20 @@
     min-width: 0;
   }
 
-  .composition {
-    grid-template-columns: 1fr;
+  .heroFrame {
+    aspect-ratio: 16 / 9;
   }
 
-  .previewCard[data-kind="next"] {
-    width: min(46%, 180px);
+  .heroMockCopy {
+    width: 58%;
+  }
+
+  .stackCard:nth-child(n + 3) {
+    display: none;
+  }
+
+  .stackCard {
+    width: min(46%, 160px);
   }
 
   .queueList {
