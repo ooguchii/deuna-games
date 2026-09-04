@@ -103,9 +103,9 @@ export async function POST(
     }
 
     // La higiene se valida en servidor sobre los masters físicos, no sólo
-    // sobre el estado visual del panel. Un master editorial que ya no está
-    // referenciado por el borrador debe asignarse o retirarse antes de crear
-    // un snapshot público nuevo.
+    // sobre el estado visual del panel. Únicamente un master editorial sin
+    // referencia de borrador, publicación actual ni historial restaurable
+    // bloquea la creación de un snapshot público nuevo.
     const mediaWorkspace =
       await getGameMediaWorkspaceSnapshot(slug);
 
@@ -173,14 +173,15 @@ export async function POST(
     }
 
     if (result.outcome === "published") {
-      // Una eliminación diferida puede quedar esperando justamente a esta
-      // publicación. Reconciliamos de nuevo con el snapshot recién creado
-      // para borrar inmediatamente los masters que ya no tienen referencias.
+      // Reconciliamos otra vez después del commit editorial para limpiar
+      // únicamente masters que hayan quedado realmente huérfanos. Los usados
+      // por la publicación recién creada o por cualquier snapshot restaurable
+      // continúan protegidos.
       try {
         await getGameMediaWorkspaceSnapshot(slug);
       } catch (error) {
         console.error(
-          "La publicación se completó, pero no se pudo reconciliar la limpieza multimedia diferida.",
+          "La publicación se completó, pero no se pudo reconciliar la limpieza multimedia.",
           error
         );
       }
