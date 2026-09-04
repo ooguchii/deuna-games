@@ -126,9 +126,13 @@ assert(
     heroSection.includes("homeHeroPositionTransform(positionStyle)") &&
     heroSection.includes("homeHeroPositionDisplay") &&
     heroSection.includes("homeHeroSlotX") &&
-    heroSection.includes("--hero-desktop-card-width") &&
-    heroSection.includes("--hero-tablet-card-width") &&
-    heroSection.includes("--hero-mobile-card-width") &&
+    heroSection.includes('for (const device of ["desktop", "tablet", "mobile"] as const)') &&
+    heroSection.includes('variables[`--hero-${device}-card-width`]') &&
+    heroSection.includes('variables[`--hero-${device}-card-height`]') &&
+    heroSection.includes('variables[`--hero-${device}-gap`]') &&
+    heroSection.includes('variables[`--hero-${device}-perspective`]') &&
+    heroSection.includes('variables[`--hero-${device}-display-${position}`]') &&
+    heroSection.includes('variables[`--hero-${device}-slot-${position}`]') &&
     heroSection.includes("--hero-editor-easing") &&
     heroSection.includes("--hero-editor-overlay") &&
     heroSection.includes("--hero-editor-border"),
