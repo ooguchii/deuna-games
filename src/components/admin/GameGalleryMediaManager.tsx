@@ -38,7 +38,10 @@ import type {
   GameVideoViewport,
 } from "@/types/game";
 
-import styles from "./GameMultimediaShell.module.css";
+import galleryStyles from "./GameGalleryMediaManager.module.css";
+import shellStyles from "./GameMultimediaShell.module.css";
+
+const styles = { ...shellStyles, ...galleryStyles };
 
 type Props = {
   slug: string;
