@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import {
   ArrowRight,
   CheckCircle2,
@@ -171,7 +171,7 @@ export default function HomeHeroLayoutGuide({ games }: { games: Game[] }) {
             <article
               key={game.slug}
               className={styles.stackCard}
-              style={{ "--stack-index": index } as React.CSSProperties}
+              style={{ "--stack-index": index } as CSSProperties}
             >
               <div className={styles.coverFrame}>
                 <CoverDestinationPreview game={game} />
