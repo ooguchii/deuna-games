@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import {
   ArrowRight,
   CheckCircle2,
@@ -94,7 +95,7 @@ function nextPreviewReady(game: Game) {
   );
 }
 
-function Status({ ready, children }: { ready: boolean; children: React.ReactNode }) {
+function Status({ ready, children }: { ready: boolean; children: ReactNode }) {
   return (
     <span className={styles.status} data-ready={ready}>
       {ready ? <CheckCircle2 size={14} aria-hidden="true" /> : <TriangleAlert size={14} aria-hidden="true" />}
