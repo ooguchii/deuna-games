@@ -178,12 +178,23 @@ export function evaluateGamePublicationChanges(
     });
   }
 
-  if (changed(draft.download, published.download)) {
+  if (
+    changed(
+      {
+        download: draft.download,
+        metadata: draft.distributionMetadata,
+      },
+      {
+        download: published.download,
+        metadata: published.distributionMetadata,
+      }
+    )
+  ) {
     changes.push({
       id: "downloads",
       label: "Distribución",
       detail:
-        "Cambian las fuentes, disponibilidad, tamaño, plataforma u otros datos de descarga.",
+        "Cambian fuentes, disponibilidad, tamaño, plataforma, canal o SHA-256 del paquete publicado.",
       section: "descargas",
     });
   }
