@@ -51,6 +51,12 @@ const sourceStatusLabels: Record<
   maintenance: "Mantenimiento",
 };
 
+const distributionChannelLabels = {
+  stable: "Estable",
+  beta: "Beta",
+  testing: "Pruebas",
+} as const;
+
 export const dynamic = "force-dynamic";
 export const dynamicParams = true;
 
@@ -139,7 +145,10 @@ export default async function DownloadPage({
   const platform =
     download.platform ??
     game.platforms?.[0] ??
-    "PC";
+    "A confirmar";
+  const channel = download.channel
+    ? distributionChannelLabels[download.channel]
+    : "A confirmar";
   const storage =
     download.sizeGb
       ? `${download.sizeGb} GB`
@@ -230,6 +239,14 @@ export default async function DownloadPage({
                 <strong>{platform}</strong>
               </div>
             </article>
+
+            <article>
+              <ShieldCheck size={24} aria-hidden="true" />
+              <div>
+                <span>Canal</span>
+                <strong>{channel}</strong>
+              </div>
+            </article>
           </div>
         </section>
 
@@ -317,6 +334,18 @@ export default async function DownloadPage({
               );
             })}
           </div>
+
+          {download.checksumSha256 && (
+            <div className={styles.securityNote}>
+              <ShieldCheck size={18} aria-hidden="true" />
+              <span>
+                SHA-256 del paquete publicado: {" "}
+                <code style={{ overflowWrap: "anywhere" }}>
+                  {download.checksumSha256}
+                </code>. Puedes usarlo para comprobar que el archivo descargado coincide con la revisión publicada, independientemente del mirror elegido.
+              </span>
+            </div>
+          )}
 
           <div className={styles.securityNote}>
             <ShieldCheck size={18} aria-hidden="true" />
