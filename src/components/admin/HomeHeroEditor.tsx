@@ -41,6 +41,7 @@ import {
   HOME_HERO_VISUAL_POSITIONS,
   homeHeroPositionOffset,
   homeHeroPositionTransform,
+  homeHeroSlotX,
   homeHeroVisiblePositions,
   type HomeHeroVisualPosition,
 } from "@/lib/home/hero-layout";
@@ -455,9 +456,14 @@ export default function HomeHeroEditor({
     "--hero-duration": `${shown.durationMs}ms`,
     "--hero-easing": shown.easing,
     "--hero-shadow": shown.shadow / 100,
-    "--hero-glow": shown.glow / 100,
+    "--hero-glow": `${shown.glow}%`,
     "--hero-overlay": shown.overlay / 100,
     "--hero-border": `${shown.borderWidth}px`,
+    "--hero-slot-left2": `${homeHeroSlotX("left2", responsive)}px`,
+    "--hero-slot-left1": `${homeHeroSlotX("left1", responsive)}px`,
+    "--hero-slot-main": `${homeHeroSlotX("main", responsive)}px`,
+    "--hero-slot-right1": `${homeHeroSlotX("right1", responsive)}px`,
+    "--hero-slot-right2": `${homeHeroSlotX("right2", responsive)}px`,
   } as CSSProperties;
 
   const commit = (fn: (state: State) => State) =>
@@ -573,45 +579,22 @@ export default function HomeHeroEditor({
         </div>
 
         <div className={styles.history}>
-          <button type="button" onClick={undo} disabled={!past.length} title="Deshacer">
-            <Undo2 size={16} />
-          </button>
-          <button type="button" onClick={redo} disabled={!future.length} title="Rehacer">
-            <Redo2 size={16} />
-          </button>
-          <button
-            type="button"
-            onClick={() => commit(() => clone(baseline))}
-            disabled={!dirty}
-          >
-            <RotateCcw size={16} /> Resetear
-          </button>
+          <button type="button" onClick={undo} disabled={!past.length} title="Deshacer"><Undo2 size={16} /></button>
+          <button type="button" onClick={redo} disabled={!future.length} title="Rehacer"><Redo2 size={16} /></button>
+          <button type="button" onClick={() => commit(() => clone(baseline))} disabled={!dirty}><RotateCcw size={16} /> Resetear</button>
         </div>
 
         <div className={styles.actions}>
-          <button type="button" data-active={preview} onClick={() => setPreview(!preview)}>
-            <Eye size={16} /> Vista previa
-          </button>
-          <button
-            type="button"
-            data-active={compare}
-            onClick={() => setCompare(!compare)}
-            disabled={!dirty}
-          >
-            <GitCompare size={16} /> Comparar
-          </button>
+          <button type="button" data-active={preview} onClick={() => setPreview(!preview)}><Eye size={16} /> Vista previa</button>
+          <button type="button" data-active={compare} onClick={() => setCompare(!compare)} disabled={!dirty}><GitCompare size={16} /> Comparar</button>
           <form method="post" action="/api/admin/content/home/hero">
             <input type="hidden" name="expectedRevision" value={revision} />
             <input type="hidden" name="heroJson" value={payload} />
-            <button className={styles.save} disabled={!dirty}>
-              <Save size={16} /> Guardar borrador
-            </button>
+            <button className={styles.save} disabled={!dirty}><Save size={16} /> Guardar borrador</button>
           </form>
           <form method="post" action="/api/admin/content/home/publish">
             <input type="hidden" name="expectedRevision" value={revision} />
-            <button className={styles.publish} disabled={dirty}>
-              <Send size={16} /> Publicar
-            </button>
+            <button className={styles.publish} disabled={dirty}><Send size={16} /> Publicar</button>
           </form>
         </div>
       </header>
@@ -621,35 +604,16 @@ export default function HomeHeroEditor({
           <div className={styles.canvasBar}>
             <div>
               {devices.map(({ id, label, icon: Icon }) => (
-                <button
-                  type="button"
-                  key={id}
-                  data-active={device === id}
-                  onClick={() => setDevice(id)}
-                >
-                  <Icon size={15} /> {label}
-                </button>
+                <button type="button" key={id} data-active={device === id} onClick={() => setDevice(id)}><Icon size={15} /> {label}</button>
               ))}
             </div>
-            <span>
-              {responsive.cardWidth} × {responsive.cardHeight} · {responsive.visibleCards} tarjetas · perspectiva {responsive.perspective}px
-            </span>
+            <span>{responsive.cardWidth} × {responsive.cardHeight} · {responsive.visibleCards} tarjetas · perspectiva {responsive.perspective}px</span>
           </div>
 
-          <section
-            className={styles.canvas}
-            data-device={device}
-            data-transition={shown.transition}
-            style={previewStyle}
-          >
+          <section className={styles.canvas} data-device={device} data-transition={shown.transition} style={previewStyle}>
             <div className={styles.stage} data-playing={playing}>
               {activeGame && visiblePositions.map((positionId) => {
-                const index = gameIndexForPosition(
-                  active,
-                  positionId,
-                  result.length,
-                  shown.loop
-                );
+                const index = gameIndexForPosition(active, positionId, result.length, shown.loop);
                 if (index === null) return null;
                 const game = result[index] ?? activeGame;
                 const positionStyle = shown.positions[positionId];
@@ -671,10 +635,7 @@ export default function HomeHeroEditor({
                     }}
                   >
                     <span className={styles.cardSurface}>
-                      <Artwork
-                        game={game}
-                        aspect={responsive.cardWidth / responsive.cardHeight}
-                      />
+                      <Artwork game={game} aspect={responsive.cardWidth / responsive.cardHeight} />
                       <i aria-hidden="true" />
                       {isMain ? (
                         <span className={styles.previewCopy}>
@@ -688,14 +649,9 @@ export default function HomeHeroEditor({
                           <b>Ver juego</b>
                         </span>
                       ) : (
-                        <span className={styles.sideLabel}>
-                          <strong>{game.shortTitle ?? game.title}</strong>
-                          <small>{game.category}</small>
-                        </span>
+                        <span className={styles.sideLabel}><strong>{game.shortTitle ?? game.title}</strong><small>{game.category}</small></span>
                       )}
-                      <em className={styles.positionLabel}>
-                        {positionList.find((entry) => entry.id === positionId)?.label}
-                      </em>
+                      <em className={styles.positionLabel}>{positionList.find((entry) => entry.id === positionId)?.label}</em>
                     </span>
                   </button>
                 );
@@ -704,20 +660,11 @@ export default function HomeHeroEditor({
 
             {result.length > 1 && (
               <>
-                <button type="button" className={`${styles.nav} ${styles.left}`} onClick={() => move(-1)}>
-                  <ChevronLeft />
-                </button>
-                <button type="button" className={`${styles.nav} ${styles.right}`} onClick={() => move(1)}>
-                  <ChevronRight />
-                </button>
+                <button type="button" className={`${styles.nav} ${styles.left}`} onClick={() => move(-1)}><ChevronLeft /></button>
+                <button type="button" className={`${styles.nav} ${styles.right}`} onClick={() => move(1)}><ChevronRight /></button>
                 <div className={styles.dots}>
                   {result.map((game, index) => (
-                    <button
-                      type="button"
-                      key={game.slug}
-                      data-active={index === active % result.length}
-                      onClick={() => setActive(index)}
-                    />
+                    <button type="button" key={game.slug} data-active={index === active % result.length} onClick={() => setActive(index)} />
                   ))}
                 </div>
               </>
@@ -730,69 +677,27 @@ export default function HomeHeroEditor({
             <div>
               <span>Aplicar cambios a:</span>
               {positionList.map((positionItem) => (
-                <button
-                  type="button"
-                  key={positionItem.id}
-                  data-active={target === positionItem.id}
-                  onClick={() => setTarget(positionItem.id)}
-                >
-                  {positionItem.label}
-                </button>
+                <button type="button" key={positionItem.id} data-active={target === positionItem.id} onClick={() => setTarget(positionItem.id)}>{positionItem.label}</button>
               ))}
             </div>
             <div>
               <span>{state.slugs.length} tarjetas activas</span>
-              <button
-                type="button"
-                disabled={!state.slugs.length}
-                onClick={() =>
-                  commit((current) => {
-                    current.slugs.pop();
-                    return current;
-                  })
-                }
-              >
-                <Minus size={14} /> Tarjeta
-              </button>
-              <button
-                type="button"
-                disabled={!candidates.length || state.slugs.length >= HOME_HERO_MAX_SLIDES}
-                onClick={() =>
-                  commit((current) => {
-                    current.slugs.push(candidates[0]!.slug);
-                    return current;
-                  })
-                }
-              >
-                <Plus size={14} /> Tarjeta
-              </button>
+              <button type="button" disabled={!state.slugs.length} onClick={() => commit((current) => { current.slugs.pop(); return current; })}><Minus size={14} /> Tarjeta</button>
+              <button type="button" disabled={!candidates.length || state.slugs.length >= HOME_HERO_MAX_SLIDES} onClick={() => commit((current) => { current.slugs.push(candidates[0]!.slug); return current; })}><Plus size={14} /> Tarjeta</button>
             </div>
           </section>
 
           <section className={styles.infoNotice}>
             <strong>El contenido del Hero se toma del juego.</strong>
-            <span>
-              Título, categoría y géneros, descripción, valoración, desarrollador, lanzamiento, plataformas y versión se muestran sólo cuando existen. Este editor controla selección, orden, geometría y comportamiento; no inventa ni sobreescribe información del juego.
-            </span>
+            <span>Título, categoría y géneros, descripción, valoración, desarrollador, lanzamiento, plataformas y versión se muestran sólo cuando existen. Este editor controla selección, orden, geometría y comportamiento; no inventa ni sobreescribe información del juego.</span>
           </section>
 
           <section className={styles.block}>
             <Heading over="PRESETS DE ESTILO" title="Punto de partida visual" note="Determinísticos y totalmente personalizables" />
             <div className={styles.presets}>
               {presets.map((name, index) => (
-                <button
-                  type="button"
-                  key={name}
-                  data-active={state.presentation.preset === name.toLowerCase()}
-                  onClick={() =>
-                    commit((current) => {
-                      current.presentation = applyPreset(name, current.presentation);
-                      return current;
-                    })
-                  }
-                >
-                  <span data-kind={index}><i /><i /><i /></span>
-                  <b>{name}</b>
+                <button type="button" key={name} data-active={state.presentation.preset === name.toLowerCase()} onClick={() => commit((current) => { current.presentation = applyPreset(name, current.presentation); return current; })}>
+                  <span data-kind={index}><i /><i /><i /></span><b>{name}</b>
                 </button>
               ))}
             </div>
@@ -803,34 +708,14 @@ export default function HomeHeroEditor({
             <div className={styles.transitions}>
               {transitions.map((name) => {
                 const value = name.toLowerCase() as HomeHeroPresentation["transition"];
-                return (
-                  <button
-                    type="button"
-                    key={name}
-                    data-active={state.presentation.transition === value}
-                    onClick={() => setTransition(value)}
-                  >
-                    <span><i /><i /></span>
-                    {name}
-                  </button>
-                );
+                return <button type="button" key={name} data-active={state.presentation.transition === value} onClick={() => setTransition(value)}><span><i /><i /></span>{name}</button>;
               })}
             </div>
             <div className={styles.timeline}>
-              <button type="button" onClick={() => setPlaying(!playing)}>
-                {playing ? <Pause size={15} /> : <Play size={15} />}
-              </button>
+              <button type="button" onClick={() => setPlaying(!playing)}>{playing ? <Pause size={15} /> : <Play size={15} />}</button>
               <span>{state.presentation.durationMs} ms · {state.presentation.easing}</span>
               <div><i style={{ animationDuration: `${state.presentation.durationMs}ms`, animationPlayState: playing ? "running" : "paused" }} /></div>
-              <button
-                type="button"
-                onClick={() => {
-                  setPlaying(false);
-                  requestAnimationFrame(() => setPlaying(true));
-                }}
-              >
-                Probar transición
-              </button>
+              <button type="button" onClick={() => { setPlaying(false); requestAnimationFrame(() => setPlaying(true)); }}>Probar transición</button>
             </div>
           </section>
 
@@ -844,49 +729,11 @@ export default function HomeHeroEditor({
                   return (
                     <article key={slug}>
                       <b>{index + 1}</b>
-                      <div>
-                        <strong>{game.title}</strong>
-                        <small>{game.category}</small>
-                      </div>
+                      <div><strong>{game.title}</strong><small>{game.category}</small></div>
                       <span className={styles.rowActions}>
-                        <button
-                          type="button"
-                          title="Subir"
-                          disabled={index === 0}
-                          onClick={() =>
-                            commit((current) => {
-                              [current.slugs[index - 1], current.slugs[index]] = [current.slugs[index], current.slugs[index - 1]];
-                              return current;
-                            })
-                          }
-                        >
-                          <ArrowUp size={14} />
-                        </button>
-                        <button
-                          type="button"
-                          title="Bajar"
-                          disabled={index === state.slugs.length - 1}
-                          onClick={() =>
-                            commit((current) => {
-                              [current.slugs[index + 1], current.slugs[index]] = [current.slugs[index], current.slugs[index + 1]];
-                              return current;
-                            })
-                          }
-                        >
-                          <ArrowDown size={14} />
-                        </button>
-                        <button
-                          type="button"
-                          title="Quitar"
-                          onClick={() =>
-                            commit((current) => {
-                              current.slugs.splice(index, 1);
-                              return current;
-                            })
-                          }
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                        <button type="button" title="Subir" disabled={index === 0} onClick={() => commit((current) => { [current.slugs[index - 1], current.slugs[index]] = [current.slugs[index], current.slugs[index - 1]]; return current; })}><ArrowUp size={14} /></button>
+                        <button type="button" title="Bajar" disabled={index === state.slugs.length - 1} onClick={() => commit((current) => { [current.slugs[index + 1], current.slugs[index]] = [current.slugs[index], current.slugs[index + 1]]; return current; })}><ArrowDown size={14} /></button>
+                        <button type="button" title="Quitar" onClick={() => commit((current) => { current.slugs.splice(index, 1); return current; })}><Trash2 size={14} /></button>
                       </span>
                     </article>
                   );
@@ -894,28 +741,10 @@ export default function HomeHeroEditor({
               </div>
 
               <aside>
-                <label>
-                  <Search size={15} />
-                  <input
-                    value={query}
-                    onChange={(event) => setQuery(event.target.value)}
-                    placeholder="Buscar juego…"
-                  />
-                </label>
+                <label><Search size={15} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar juego…" /></label>
                 {candidates.map((game) => (
-                  <button
-                    type="button"
-                    key={game.slug}
-                    disabled={state.slugs.length >= HOME_HERO_MAX_SLIDES}
-                    onClick={() =>
-                      commit((current) => {
-                        current.slugs.push(game.slug);
-                        return current;
-                      })
-                    }
-                  >
-                    <span>{game.title}<small>{game.category}</small></span>
-                    <Plus size={15} />
+                  <button type="button" key={game.slug} disabled={state.slugs.length >= HOME_HERO_MAX_SLIDES} onClick={() => commit((current) => { current.slugs.push(game.slug); return current; })}>
+                    <span>{game.title}<small>{game.category}</small></span><Plus size={15} />
                   </button>
                 ))}
               </aside>
@@ -925,29 +754,20 @@ export default function HomeHeroEditor({
 
         <aside className={styles.inspector}>
           <header>
-            <div>
-              <span>PROPIEDADES</span>
-              <strong>{positionList.find((positionItem) => positionItem.id === target)?.label}</strong>
-            </div>
+            <div><span>PROPIEDADES</span><strong>{positionList.find((positionItem) => positionItem.id === target)?.label}</strong></div>
             <button
               type="button"
-              onClick={() =>
-                commit((current) => {
-                  if (target === "all") {
-                    current.presentation.positions.all = clone(baseline.presentation.positions.all);
-                    for (const id of HOME_HERO_VISUAL_POSITIONS) {
-                      current.presentation.positions[id] = clone(baseline.presentation.positions[id]);
-                    }
-                  } else {
-                    current.presentation.positions[target] = clone(baseline.presentation.positions[target]);
-                  }
-                  return current;
-                })
-              }
+              onClick={() => commit((current) => {
+                if (target === "all") {
+                  current.presentation.positions.all = clone(baseline.presentation.positions.all);
+                  for (const id of HOME_HERO_VISUAL_POSITIONS) current.presentation.positions[id] = clone(baseline.presentation.positions[id]);
+                } else {
+                  current.presentation.positions[target] = clone(baseline.presentation.positions[target]);
+                }
+                return current;
+              })}
               title="Restaurar posición"
-            >
-              <RotateCcw size={14} />
-            </button>
+            ><RotateCcw size={14} /></button>
           </header>
 
           <div>
@@ -960,27 +780,13 @@ export default function HomeHeroEditor({
             </>)}
 
             {accordion("transform", "Transformación 3D", "02", <>
-              {([
-                ["Scale", "scale", .4, 1.6, .01, ""],
-                ["Rotate X", "rotateX", -60, 60, 1, "°"],
-                ["Rotate Y", "rotateY", -60, 60, 1, "°"],
-                ["Rotate Z", "rotateZ", -30, 30, 1, "°"],
-                ["Translate X", "translateX", -300, 300, 1, "px"],
-                ["Translate Y", "translateY", -200, 200, 1, "px"],
-                ["Depth / Z", "translateZ", -500, 500, 1, "px"],
-              ] as const).map(([label, key, min, max, step, unit]) => (
+              {([ ["Scale", "scale", .4, 1.6, .01, ""], ["Rotate X", "rotateX", -60, 60, 1, "°"], ["Rotate Y", "rotateY", -60, 60, 1, "°"], ["Rotate Z", "rotateZ", -30, 30, 1, "°"], ["Translate X", "translateX", -300, 300, 1, "px"], ["Translate Y", "translateY", -200, 200, 1, "px"], ["Depth / Z", "translateZ", -500, 500, 1, "px"] ] as const).map(([label, key, min, max, step, unit]) => (
                 <Range key={key} label={label} value={selected[key]} min={min} max={max} step={step} unit={unit} change={(value) => setPosition(key, value)} />
               ))}
             </>)}
 
             {accordion("appearance", "Apariencia", "03", <>
-              {([
-                ["Opacidad", "opacity", 0, 100, "%"],
-                ["Blur", "blur", 0, 20, "px"],
-                ["Brillo", "brightness", 20, 180, "%"],
-                ["Contraste", "contrast", 50, 180, "%"],
-                ["Saturación", "saturation", 0, 200, "%"],
-              ] as const).map(([label, key, min, max, unit]) => (
+              {([ ["Opacidad", "opacity", 0, 100, "%"], ["Blur", "blur", 0, 20, "px"], ["Brillo", "brightness", 20, 180, "%"], ["Contraste", "contrast", 50, 180, "%"], ["Saturación", "saturation", 0, 200, "%"] ] as const).map(([label, key, min, max, unit]) => (
                 <Range key={key} label={label} value={selected[key]} min={min} max={max} unit={unit} change={(value) => setPosition(key, value)} />
               ))}
               <Range label="Radio" value={shown.radius} min={0} max={48} unit="px" change={(value) => setPresentation("radius", value)} />
@@ -991,15 +797,7 @@ export default function HomeHeroEditor({
             </>)}
 
             {accordion("behavior", "Comportamiento", "04", <>
-              {([
-                ["Autoplay", "autoplay"],
-                ["Loop infinito", "loop"],
-                ["Pausa al hacer hover", "pauseOnHover"],
-                ["Drag con mouse", "drag"],
-                ["Navegación táctil", "touch"],
-                ["Teclado", "keyboard"],
-                ["Rueda del mouse", "wheel"],
-              ] as const).map(([label, key]) => (
+              {([ ["Autoplay", "autoplay"], ["Loop infinito", "loop"], ["Pausa al hacer hover", "pauseOnHover"], ["Drag con mouse", "drag"], ["Navegación táctil", "touch"], ["Teclado", "keyboard"], ["Rueda del mouse", "wheel"] ] as const).map(([label, key]) => (
                 <Switch key={key} label={label} value={shown[key]} change={(value) => setPresentation(key, value)} />
               ))}
             </>)}
@@ -1007,64 +805,20 @@ export default function HomeHeroEditor({
             {accordion("responsive", "Responsive", "05", <>
               <p className={styles.help}>Cada dispositivo conserva ancho, alto, separación, perspectiva y cantidad de tarjetas propios.</p>
               {devices.map((entry) => (
-                <button
-                  type="button"
-                  className={styles.breakpoint}
-                  data-active={device === entry.id}
-                  key={entry.id}
-                  onClick={() => setDevice(entry.id)}
-                >
-                  {entry.label}
-                  <small>
-                    {shown.responsive[entry.id].cardWidth}×{shown.responsive[entry.id].cardHeight} · {shown.responsive[entry.id].visibleCards}
-                  </small>
+                <button type="button" className={styles.breakpoint} data-active={device === entry.id} key={entry.id} onClick={() => setDevice(entry.id)}>
+                  {entry.label}<small>{shown.responsive[entry.id].cardWidth}×{shown.responsive[entry.id].cardHeight} · {shown.responsive[entry.id].visibleCards}</small>
                 </button>
               ))}
             </>)}
 
             {accordion("advanced", "Avanzado", "06", <>
               <Range label="Duración" value={shown.durationMs} min={150} max={2000} step={10} unit="ms" change={(value) => setPresentation("durationMs", value)} />
-              <label className={styles.select}>
-                <span>Easing</span>
-                <select value={shown.easing} onChange={(event) => setPresentation("easing", event.target.value as HomeHeroPresentation["easing"])}>
-                  {["ease", "ease-in", "ease-out", "ease-in-out", "linear"].map((value) => <option key={value}>{value}</option>)}
-                </select>
-              </label>
-              <label className={styles.select}>
-                <span>Composición</span>
-                <select value={shown.composition} onChange={(event) => setPresentation("composition", event.target.value as HomeHeroPresentation["composition"])}>
-                  <option value="studio">Studio</option>
-                  <option value="cinema">Cinema</option>
-                  <option value="focus">Focus</option>
-                </select>
-              </label>
-              <label className={styles.select}>
-                <span>Curaduría</span>
-                <select value={state.mode} onChange={(event) => commit((current) => { current.mode = event.target.value as HomeCurationMode; return current; })}>
-                  <option value="manual">Manual</option>
-                  <option value="hybrid">Asistida</option>
-                  <option value="automatic">Automática</option>
-                </select>
-              </label>
-              <label className={styles.select}>
-                <span>Intervalo automático</span>
-                <select value={state.presentation.autoplayMs} onChange={(event) => setPresentation("autoplayMs", Number(event.target.value) as HomeHeroPresentation["autoplayMs"])}>
-                  <option value="0">Manual</option>
-                  <option value="4000">4 segundos</option>
-                  <option value="6500">6,5 segundos</option>
-                  <option value="8000">8 segundos</option>
-                </select>
-              </label>
-              <label className={styles.select}>
-                <span>Dirección</span>
-                <select value={state.presentation.direction} onChange={(event) => setPresentation("direction", event.target.value as HomeHeroPresentation["direction"])}>
-                  <option value="forward">Hacia adelante</option>
-                  <option value="reverse">Hacia atrás</option>
-                </select>
-              </label>
-              <Link className={styles.mediaLink} href={activeGame ? `/admin/juegos/${encodeURIComponent(activeGame.slug)}?seccion=multimedia` : "/admin/juegos"}>
-                Editar multimedia y recorte del juego activo
-              </Link>
+              <label className={styles.select}><span>Easing</span><select value={shown.easing} onChange={(event) => setPresentation("easing", event.target.value as HomeHeroPresentation["easing"])}>{["ease", "ease-in", "ease-out", "ease-in-out", "linear"].map((value) => <option key={value}>{value}</option>)}</select></label>
+              <label className={styles.select}><span>Composición</span><select value={shown.composition} onChange={(event) => setPresentation("composition", event.target.value as HomeHeroPresentation["composition"])}><option value="studio">Studio</option><option value="cinema">Cinema</option><option value="focus">Focus</option></select></label>
+              <label className={styles.select}><span>Curaduría</span><select value={state.mode} onChange={(event) => commit((current) => { current.mode = event.target.value as HomeCurationMode; return current; })}><option value="manual">Manual</option><option value="hybrid">Asistida</option><option value="automatic">Automática</option></select></label>
+              <label className={styles.select}><span>Intervalo automático</span><select value={state.presentation.autoplayMs} onChange={(event) => setPresentation("autoplayMs", Number(event.target.value) as HomeHeroPresentation["autoplayMs"])}><option value="0">Manual</option><option value="4000">4 segundos</option><option value="6500">6,5 segundos</option><option value="8000">8 segundos</option></select></label>
+              <label className={styles.select}><span>Dirección</span><select value={state.presentation.direction} onChange={(event) => setPresentation("direction", event.target.value as HomeHeroPresentation["direction"])}><option value="forward">Hacia adelante</option><option value="reverse">Hacia atrás</option></select></label>
+              <Link className={styles.mediaLink} href={activeGame ? `/admin/juegos/${encodeURIComponent(activeGame.slug)}?seccion=multimedia` : "/admin/juegos"}>Editar multimedia y recorte del juego activo</Link>
             </>)}
           </div>
         </aside>
@@ -1073,19 +827,6 @@ export default function HomeHeroEditor({
   );
 }
 
-function Heading({
-  over,
-  title,
-  note,
-}: {
-  over: string;
-  title: string;
-  note?: string;
-}) {
-  return (
-    <header className={styles.heading}>
-      <div><span>{over}</span><strong>{title}</strong></div>
-      {note && <small>{note}</small>}
-    </header>
-  );
+function Heading({ over, title, note }: { over: string; title: string; note?: string }) {
+  return <header className={styles.heading}><div><span>{over}</span><strong>{title}</strong></div>{note && <small>{note}</small>}</header>;
 }
