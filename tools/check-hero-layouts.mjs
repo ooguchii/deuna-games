@@ -34,9 +34,11 @@ for (const { id } of carouselLayouts) {
 assert.deepEqual(baseline, original, 'Applying layouts must not mutate saved configuration');
 const left = applyHeroLayout('left', baseline);
 assert.equal(left.direction, 'forward');
-assert.ok(homeHeroAnchor(left.responsive.desktop).includes('/ 2 + 24px'));
+assert.equal(homeHeroAnchor(left.responsive.desktop), 'calc(var(--hero-card-width) / 2)', 'Left layouts must align the main card to the Home content edge without a second inset');
 assert.deepEqual(homeHeroVisiblePositions({ ...left.responsive.desktop, hiddenPositions: ['right1'] }, 'forward', 2), ['main'], 'Hidden positions must not produce duplicate games in short carousels');
-assert.equal(applyHeroLayout('right', baseline).direction, 'reverse');
+const right = applyHeroLayout('right', baseline);
+assert.equal(right.direction, 'reverse');
+assert.equal(homeHeroAnchor(right.responsive.desktop), 'calc(100% - var(--hero-card-width) / 2)', 'Right layouts must align the main card to the opposite Home content edge');
 assert.deepEqual(applyPreset('Classic', applyPreset('Spotlight', baseline)), applyPreset('Classic', baseline), 'Presets must reset the visual properties they own');
 const old = structuredClone(baseline);
 for (const settings of Object.values(old.responsive)) { delete settings.alignment; delete settings.hiddenPositions; }
@@ -70,8 +72,8 @@ for (const alignment of ['left', 'center', 'right']) {
     ]) {
       const fit = fitHomeHeroBounds(bounds, width, height, alignment);
       assert.ok(fit.scale > 0 && fit.scale <= 1);
-      assert.ok(bounds.left * fit.scale + fit.x >= 24 - 1e-6);
-      assert.ok(bounds.right * fit.scale + fit.x <= width - 24 + 1e-6);
+      assert.ok(bounds.left * fit.scale + fit.x >= -1e-6);
+      assert.ok(bounds.right * fit.scale + fit.x <= width + 1e-6);
       assert.ok(bounds.top * fit.scale + fit.y >= 48 - 1e-6);
       assert.ok(bounds.bottom * fit.scale + fit.y <= height - 48 + 1e-6);
     }
@@ -79,6 +81,6 @@ for (const alignment of ['left', 'center', 'right']) {
 }
 assert.equal(homeHeroSlotCSS('main'), '0px');
 assert.ok(homeHeroSlotCSS('right2').includes('var(--hero-card-width)'));
-console.log('Hero fitting: OK (small screens, perspective overflow and all alignments).');
+console.log('Hero fitting: OK (Home-grid horizontal alignment, vertical control clearance, perspective overflow and all alignments).');
 
 assert.deepEqual(fitHomeHeroBounds({ left: 100, top: 60, right: 600, bottom: 400 }, 1440, 700), { scale: 1, x: 0, y: 0 }, 'Fitting must not cancel manual translations when the cards already fit');
