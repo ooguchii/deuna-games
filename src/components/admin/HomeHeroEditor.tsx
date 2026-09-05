@@ -405,9 +405,13 @@ export default function HomeHeroEditor({
   const [linkSpacingDevices, setLinkSpacingDevices] = useState(false);
   const [aspectControls, setAspectControls] = useState<Record<HomeHeroDevice, AspectControl>>(() => {
     const build = (entry: HomeHeroDevice): AspectControl => {
+      const effective = resolveHeroDeviceDesign(
+        config.heroPresentation,
+        entry
+      ).responsive[entry];
       const ratio = simplifiedRatio(
-        config.heroPresentation.responsive[entry].cardWidth,
-        config.heroPresentation.responsive[entry].cardHeight
+        effective.cardWidth,
+        effective.cardHeight
       );
       return {
         preset: "free",
@@ -679,6 +683,19 @@ export default function HomeHeroEditor({
       return current;
     });
 
+  const updateAspectControls = (nextControl: AspectControl) => {
+    const targets = editScope === "all"
+      ? devices.map((entry) => entry.id)
+      : [device];
+    setAspectControls((current) => {
+      const next = { ...current };
+      for (const targetDevice of targets) {
+        next[targetDevice] = { ...nextControl };
+      }
+      return next;
+    });
+  };
+
   const setFrameDimension = (key: "cardWidth" | "cardHeight", value: number) => {
     const ratio = aspectControl.locked ? aspectRatio(aspectControl) : null;
     if (!ratio) {
@@ -698,24 +715,54 @@ export default function HomeHeroEditor({
     });
   };
 
-  const setAspectPreset = (preset: AspectPreset) => {
-    if (preset === "free") {
-      setAspectControls((current) => ({
-        ...current,
-        [device]: { ...current[device], preset, locked: false },
-      }));
+  const setAspectLocked = (value: boolean) => {
+    if (!value) {
+      updateAspectControls({
+        ...aspectControl,
+        preset: "free",
+        locked: false,
+      });
       return;
     }
 
-    const currentControl = aspectControls[device];
-    const nextControl: AspectControl = { ...currentControl, preset, locked: true };
+    const simplified = simplifiedRatio(
+      responsive.cardWidth,
+      responsive.cardHeight
+    );
+    updateAspectControls({
+      ...aspectControl,
+      preset:
+        aspectControl.preset === "free"
+          ? "custom"
+          : aspectControl.preset,
+      locked: true,
+      ...(aspectControl.preset === "free"
+        ? {
+            customWidth: simplified.width,
+            customHeight: simplified.height,
+          }
+        : {}),
+    });
+  };
+
+  const setAspectPreset = (preset: AspectPreset) => {
+    if (preset === "free") {
+      updateAspectControls({
+        ...aspectControl,
+        preset,
+        locked: false,
+      });
+      return;
+    }
+
+    const nextControl: AspectControl = { ...aspectControl, preset, locked: true };
     if (preset === "custom") {
       const simplified = simplifiedRatio(responsive.cardWidth, responsive.cardHeight);
       nextControl.customWidth = simplified.width;
       nextControl.customHeight = simplified.height;
     }
     const ratio = aspectRatio(nextControl);
-    setAspectControls((current) => ({ ...current, [device]: nextControl }));
+    updateAspectControls(nextControl);
     if (!ratio) return;
 
     const next = fitRatioFromWidth(responsive.cardWidth, ratio);
@@ -734,7 +781,7 @@ export default function HomeHeroEditor({
       locked: true,
       [key]: clamp(Math.round(value), 1, 100),
     };
-    setAspectControls((current) => ({ ...current, [device]: nextControl }));
+    updateAspectControls(nextControl);
     const ratio = aspectRatio(nextControl);
     if (!ratio) return;
     const next = fitRatioFromWidth(responsive.cardWidth, ratio);
@@ -755,15 +802,12 @@ export default function HomeHeroEditor({
       return current;
     });
     const simplified = simplifiedRatio(original.cardWidth, original.cardHeight);
-    setAspectControls((current) => ({
-      ...current,
-      [device]: {
-        preset: "free",
-        locked: false,
-        customWidth: simplified.width,
-        customHeight: simplified.height,
-      },
-    }));
+    updateAspectControls({
+      preset: "free",
+      locked: false,
+      customWidth: simplified.width,
+      customHeight: simplified.height,
+    });
   };
 
   const payload = JSON.stringify({
@@ -895,7 +939,7 @@ export default function HomeHeroEditor({
                 </span>}
                 <div className={styles.imageActions}><a href={`/admin/juegos/${encodeURIComponent(game.slug)}?seccion=multimedia#hero-media`} target="_blank" rel="noopener noreferrer">Cambiar imagen ↗</a><a href={`/admin/juegos/${encodeURIComponent(game.slug)}?seccion=multimedia#${game.heroImage ? "hero-crop" : game.coverImage ? "cover-crop" : "hero-media"}`} target="_blank" rel="noopener noreferrer">Ajustar encuadre ↗</a></div></div>
               </article>)}
-              {!result.length && <p className={styles.empty}>No hay juegos públicos para esta selección.</p>}
+              {!result.length && <p className={styles.empty}>No hay juegos públicos para mostrar con esta selección.</p>}
             </div>
             <p className={styles.help}>Imagen y encuadre se editan en otra pestaña: este trabajo permanece abierto. Guarda y publica los cambios del juego para verlos en Inicio.</p>
             <button type="button" onClick={() => router.refresh()}>Actualizar catálogo e imágenes</button>
@@ -1019,10 +1063,7 @@ export default function HomeHeroEditor({
               <Switch
                 label="Mantener proporción al cambiar tamaño"
                 value={aspectControl.locked}
-                change={(value) => setAspectControls((current) => ({
-                  ...current,
-                  [device]: { ...current[device], locked: value, preset: value && current[device].preset === "free" ? "custom" : current[device].preset },
-                }))}
+                change={setAspectLocked}
               />
               <Range label="Ancho" value={responsive.cardWidth} min={HERO_FRAME_MIN_WIDTH} max={HERO_FRAME_MAX_WIDTH} unit="px" change={(value) => setFrameDimension("cardWidth", value)} />
               <Range label="Alto" value={responsive.cardHeight} min={HERO_FRAME_MIN_HEIGHT} max={HERO_FRAME_MAX_HEIGHT} unit="px" change={(value) => setFrameDimension("cardHeight", value)} />
