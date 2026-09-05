@@ -142,6 +142,8 @@ export type HomeHeroResponsiveStyle = {
   cardHeight: number;
   gap: number;
   perspective: number;
+  spaceBefore: number;
+  spaceAfter: number;
 };
 
 export type HomeHeroPresentation = {
@@ -175,7 +177,7 @@ export type HomeHeroPresentationInput = Omit<
   "positions" | "responsive"
 > & {
   positions?: Partial<Record<HomeHeroPosition, HomeHeroPositionStyle>>;
-  responsive?: Partial<Record<HomeHeroDevice, HomeHeroResponsiveStyle>>;
+  responsive?: Partial<Record<HomeHeroDevice, Partial<HomeHeroResponsiveStyle>>>;
 };
 
 export type HomeConfig = {
@@ -248,9 +250,9 @@ const defaultHeroPresentation: HomeHeroPresentation = {
     right2: { scale: .68, rotateX: 0, rotateY: -22, rotateZ: 0, translateX: 126, translateY: 15, translateZ: -180, opacity: 42, blur: 1, brightness: 58, contrast: 105, saturation: 62 },
   },
   responsive: {
-    desktop: { visibleCards: 5, cardWidth: 860, cardHeight: 430, gap: 26, perspective: 1200 },
-    tablet: { visibleCards: 3, cardWidth: 680, cardHeight: 390, gap: 18, perspective: 1000 },
-    mobile: { visibleCards: 3, cardWidth: 330, cardHeight: 500, gap: 12, perspective: 800 },
+    desktop: { visibleCards: 5, cardWidth: 860, cardHeight: 430, gap: 26, perspective: 1200, spaceBefore: 28, spaceAfter: 86 },
+    tablet: { visibleCards: 3, cardWidth: 680, cardHeight: 390, gap: 18, perspective: 1000, spaceBefore: 20, spaceAfter: 86 },
+    mobile: { visibleCards: 3, cardWidth: 330, cardHeight: 500, gap: 12, perspective: 800, spaceBefore: 14, spaceAfter: 60 },
   },
 };
 
@@ -454,8 +456,18 @@ function resolveHeroPresentation(
       ...presentation?.positions,
     },
     responsive: {
-      ...defaultHeroPresentation.responsive,
-      ...presentation?.responsive,
+      desktop: {
+        ...defaultHeroPresentation.responsive.desktop,
+        ...presentation?.responsive?.desktop,
+      },
+      tablet: {
+        ...defaultHeroPresentation.responsive.tablet,
+        ...presentation?.responsive?.tablet,
+      },
+      mobile: {
+        ...defaultHeroPresentation.responsive.mobile,
+        ...presentation?.responsive?.mobile,
+      },
     },
   };
 
