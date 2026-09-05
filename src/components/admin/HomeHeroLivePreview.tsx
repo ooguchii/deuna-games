@@ -126,8 +126,10 @@ export default function HomeHeroLivePreview({
 }) {
   const container = useRef<HTMLDivElement>(null);
   const frameRef = useRef<HTMLIFrameElement>(null);
+  const previewEndRef = useRef<HTMLDivElement>(null);
   const [target, setTarget] = useState<HTMLElement | null>(null);
   const [styledTarget, setStyledTarget] = useState<HTMLElement | null>(null);
+  const [contentEnd, setContentEnd] = useState<number | null>(null);
   const attachFrame = useCallback((frame: HTMLIFrameElement | null) => {
     frameRef.current = frame;
     if (!frame) return;
@@ -185,6 +187,36 @@ export default function HomeHeroLivePreview({
     return () => { disposed = true; observer.disconnect(); doc.removeEventListener("click", openGame, true); };
   }, [target]);
 
+  useEffect(() => {
+    if (!showSpacingGuide || !target || styledTarget !== target) {
+      setContentEnd(null);
+      return;
+    }
+    const doc = frameRef.current?.contentDocument;
+    const marker = previewEndRef.current;
+    const view = doc?.defaultView;
+    if (!doc || !marker || !view) return;
+
+    let frame = 0;
+    const measure = () => {
+      view.cancelAnimationFrame(frame);
+      frame = view.requestAnimationFrame(() => {
+        const next = Math.max(1, Math.ceil(marker.getBoundingClientRect().top));
+        setContentEnd((current) => current === next ? current : next);
+      });
+    };
+
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(marker.parentElement ?? marker);
+    view.addEventListener("resize", measure);
+    return () => {
+      view.cancelAnimationFrame(frame);
+      observer.disconnect();
+      view.removeEventListener("resize", measure);
+    };
+  }, [games.length, height, presentation, showSpacingGuide, styledTarget, target, width]);
+
   const setManualViewportDimension = (key: keyof ViewportSize, value: number) => {
     setManualSizes((current) => ({
       ...current,
@@ -194,6 +226,9 @@ export default function HomeHeroLivePreview({
   };
 
   const responsive = presentation.responsive[device];
+  const visiblePreviewHeight = showSpacingGuide && contentEnd !== null
+    ? Math.min(height, contentEnd)
+    : height;
   const hero = <main className="main-content">
     {games.length ? <>
       <HeroSection
@@ -208,18 +243,18 @@ export default function HomeHeroLivePreview({
       {showSpacingGuide && <div
         aria-hidden="true"
         style={{
-          minHeight: 54,
           borderTop: "1px dashed color-mix(in srgb, var(--brand) 68%, rgba(255,255,255,.35))",
           color: "color-mix(in srgb, var(--brand) 78%, #fff)",
           fontSize: 12,
           fontWeight: 800,
           letterSpacing: ".04em",
-          paddingTop: 10,
+          padding: "10px 0 8px",
         }}
       >
         COMIENZO DE LA SIGUIENTE SECCIÓN · separación inferior {responsive.spaceAfter}px
       </div>}
     </> : <p role="status">No hay juegos públicos para mostrar con esta selección.</p>}
+    <div ref={previewEndRef} aria-hidden="true" style={{ height: 0, pointerEvents: "none" }} />
   </main>;
 
   return <div ref={container} className={styles.livePreview}>
@@ -244,7 +279,7 @@ export default function HomeHeroLivePreview({
         {followsBrowserViewport && <span>Vista sincronizada con la ventana actual</span>}
       </div>
     </div>
-    <div style={{ height: height * scale, position: "relative", overflow: "hidden" }}>
+    <div style={{ height: visiblePreviewHeight * scale, position: "relative", overflow: "hidden" }}>
       <iframe
         ref={attachFrame}
         title={`Hero real en ${device === "mobile" ? "móvil" : device === "tablet" ? "tableta" : "escritorio"}`}
