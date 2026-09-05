@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { resolveHomeConfig, sourceHomeConfig } from '../src/data/home-config.ts';
 import { applyHeroLayout, applyPreset, carouselLayouts } from '../src/lib/home/hero-presets.ts';
 import { homeHeroVisiblePositions, homeHeroAnchor, homeHeroSlotCSS, fitHomeHeroBounds } from '../src/lib/home/hero-layout.ts';
+import { HOME_HERO_MAX_SLIDES } from '../src/lib/home/hero-contract.ts';
 import { homeHeroEditorFormSchema } from '../src/lib/admin/home-config-forms.ts';
 import { resolveHomeCollectionGames } from '../src/lib/home/ranking.ts';
 import { editorialHomeConfigSchema } from '../src/lib/admin/content-validation-core.ts';
@@ -46,7 +47,12 @@ assert.equal(parse({ ...left, responsive: { ...left.responsive, desktop: { ...le
 const pinned = games.slice(0, 5).map(game => game.slug);
 assert.equal(resolveHomeCollectionGames(games, 'hero', 'hybrid', pinned, 5).length, 5, 'A full mixed selection must not grow beyond the limit');
 assert.deepEqual(resolveHomeCollectionGames(games, 'hero', 'manual', pinned, 5).map(game => game.slug), pinned);
-console.log('Hero layouts: OK (persistence, legacy drafts, layouts, hidden slots, presets and mixed selection).');
+const tooManySlugs = games.slice(0, HOME_HERO_MAX_SLIDES + 1).map(game => game.slug);
+assert.equal(homeHeroEditorFormSchema.safeParse({
+  expectedRevision: '1',
+  heroJson: JSON.stringify({ mode: 'manual', slugs: tooManySlugs, copy: sourceHomeConfig.copy.hero, presentation: baseline }),
+}).success, false, 'The unified Hero editor must reject more games than the public Hero can display');
+console.log('Hero layouts: OK (persistence, legacy drafts, layouts, hidden slots, presets, five-slide contract and mixed selection).');
 
 // Large/translated compositions must keep every enabled card within the frame.
 for (const alignment of ['left', 'center', 'right']) {
