@@ -96,9 +96,10 @@ export function homeHeroVisiblePositions(
   return limited.filter((id) => id === "main" || !responsive.hiddenPositions?.includes(id));
 }
 
+/** Align lateral layouts to the same page grid used by Header and Home sections. */
 export function homeHeroAnchor(responsive: HomeHeroResponsiveStyle) {
-  if (responsive.alignment === "left") return "calc(var(--hero-card-width) / 2 + 24px)";
-  if (responsive.alignment === "right") return "calc(100% - var(--hero-card-width) / 2 - 24px)";
+  if (responsive.alignment === "left") return "calc(var(--hero-card-width) / 2)";
+  if (responsive.alignment === "right") return "calc(100% - var(--hero-card-width) / 2)";
   return "50%";
 }
 
@@ -127,21 +128,24 @@ export type HeroBounds = { left: number; top: number; right: number; bottom: num
 
 /** Fit the complete visible composition, including perspective, inside its stage. */
 export function fitHomeHeroBounds(bounds: HeroBounds, width: number, height: number, alignment: HomeHeroResponsiveStyle["alignment"] = "center") {
-  const padding = 24;
-  const availableWidth = Math.max(1, width - padding * 2);
-  const availableHeight = Math.max(1, height - 96);
+  // Horizontal spacing is owned by `.main-content`. Reserving another inset
+  // here made the Hero narrower than Header and the rest of Home. Vertical
+  // breathing room remains local because controls live above/below the cards.
+  const verticalPadding = 48;
+  const availableWidth = Math.max(1, width);
+  const availableHeight = Math.max(1, height - verticalPadding * 2);
   const contentWidth = Math.max(1, bounds.right - bounds.left);
   const contentHeight = Math.max(1, bounds.bottom - bounds.top);
   const centeredWidth = Math.max(contentWidth, 2 * Math.max(width / 2 - bounds.left, bounds.right - width / 2));
   const fittedWidth = alignment === "center" ? centeredWidth : contentWidth;
   const scale = Math.min(1, availableWidth / fittedWidth, availableHeight / contentHeight);
-  const originX = alignment === "left" ? padding : alignment === "right" ? width - padding : width / 2;
+  const originX = alignment === "left" ? 0 : alignment === "right" ? width : width / 2;
   const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
   // Preserve user translations whenever they already fit; only compensate for
   // scaling or overflow. Re-centering the bounds would cancel editor controls.
   return {
     scale,
-    x: clamp((1 - scale) * originX, padding - bounds.left * scale, width - padding - bounds.right * scale),
-    y: clamp((1 - scale) * height / 2, 48 - bounds.top * scale, height - 48 - bounds.bottom * scale),
+    x: clamp((1 - scale) * originX, -bounds.left * scale, width - bounds.right * scale),
+    y: clamp((1 - scale) * height / 2, verticalPadding - bounds.top * scale, height - verticalPadding - bounds.bottom * scale),
   };
 }
