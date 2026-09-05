@@ -103,7 +103,17 @@ async function synchronizePreviewStyles(doc: Document) {
 }
 
 /** The same renderer, page container and CSS viewport as the public home. */
-export default function HomeHeroLivePreview({ games, presentation, device, playing, onSelectPosition, background, showSpacingGuide = false }: {
+export default function HomeHeroLivePreview({
+  games,
+  presentation,
+  device,
+  playing,
+  onSelectPosition,
+  background,
+  showSpacingGuide = false,
+  navigationEditing = false,
+  onNavigationPositionChange,
+}: {
   games: Game[];
   presentation: HomeHeroPresentation;
   device: HomeHeroDevice;
@@ -111,6 +121,8 @@ export default function HomeHeroLivePreview({ games, presentation, device, playi
   onSelectPosition: (position: HomeHeroVisualPosition) => void;
   background?: Omit<PublicPageBackgroundProps, "children" | "previewPathname">;
   showSpacingGuide?: boolean;
+  navigationEditing?: boolean;
+  onNavigationPositionChange?: (x: number, y: number) => void;
 }) {
   const container = useRef<HTMLDivElement>(null);
   const frameRef = useRef<HTMLIFrameElement>(null);
@@ -189,6 +201,9 @@ export default function HomeHeroLivePreview({ games, presentation, device, playi
         presentation={presentation}
         autoplaySuspended={!playing}
         onSelectPosition={playing ? undefined : onSelectPosition}
+        navigationEditor={navigationEditing && onNavigationPositionChange
+          ? { device, onPositionChange: onNavigationPositionChange }
+          : undefined}
       />
       {showSpacingGuide && <div
         aria-hidden="true"
