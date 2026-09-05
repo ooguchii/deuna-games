@@ -100,7 +100,8 @@ export default function HomeHeroLivePreview({
   onNavigationPositionChange?: (x: number, y: number) => void;
 }) {
   const container = useRef<HTMLDivElement>(null);
-  const previewEndRef = useRef<HTMLDivElement>(null);
+  const [previewEnd, setPreviewEnd] =
+    useState<HTMLDivElement | null>(null);
   const [contentEnd, setContentEnd] = useState<number | null>(null);
   const [availableWidth, setAvailableWidth] = useState(
     HOME_HERO_VIEWPORT_DEFAULTS.desktop.width
@@ -149,7 +150,7 @@ export default function HomeHeroLivePreview({
       return;
     }
 
-    const marker = previewEndRef.current;
+    const marker = previewEnd;
     const view = marker?.ownerDocument.defaultView;
     if (!marker || !view) return;
 
@@ -181,6 +182,7 @@ export default function HomeHeroLivePreview({
     games.length,
     height,
     presentation,
+    previewEnd,
     showSpacingGuide,
     width,
   ]);
@@ -251,7 +253,7 @@ export default function HomeHeroLivePreview({
         </p>
       )}
       <div
-        ref={previewEndRef}
+        ref={setPreviewEnd}
         aria-hidden="true"
         style={{ height: 0, pointerEvents: "none" }}
       />
