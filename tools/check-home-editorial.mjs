@@ -31,6 +31,7 @@ const [
   heroEditor,
   heroEditorRoute,
   presentationEditor,
+  livePreview,
 ] = await Promise.all([
   source("src/data/home.ts"),
   source("src/lib/home/ranking.ts"),
@@ -49,6 +50,7 @@ const [
   source("src/components/admin/HomeHeroEditor.tsx"),
   source("src/app/api/admin/content/home/hero/route.ts"),
   source("src/components/admin/HomePresentationEditor.tsx"),
+  source("src/components/admin/HomeHeroLivePreview.tsx"),
 ]);
 
 assert(
@@ -125,7 +127,7 @@ assert(
     heroSection.includes("presentation.positions[position]") &&
     heroSection.includes("homeHeroPositionTransform(positionStyle)") &&
     heroSection.includes("homeHeroPositionDisplay") &&
-    heroSection.includes("homeHeroSlotX") &&
+    heroSection.includes("homeHeroSlotCSS") &&
     heroSection.includes('for (const device of ["desktop", "tablet", "mobile"] as const)') &&
     heroSection.includes('variables[`--hero-${device}-card-width`]') &&
     heroSection.includes('variables[`--hero-${device}-card-height`]') &&
@@ -173,19 +175,32 @@ assert(
 assert(
   heroEditor.includes("Editor de Hero") &&
     heroEditor.includes("El contenido del Hero se toma del juego") &&
-    heroEditor.includes("homeHeroSlotX") &&
     heroEditor.includes("homeHeroVisiblePositions") &&
-    heroEditor.includes("homeHeroPositionTransform") &&
     heroEditor.includes("Aplicar cambios a:") &&
     heroEditor.includes("Transformación 3D") &&
     heroEditor.includes("Tarjetas visibles") &&
     heroEditor.includes("Perspectiva") &&
     heroEditor.includes("Easing") &&
-    heroEditor.includes("Editar multimedia y recorte del juego activo") &&
+    heroEditor.includes("Cambiar imagen") &&
+    heroEditor.includes("Ajustar encuadre") &&
+    heroEditor.includes("selectionModes") &&
+    heroEditor.includes("HomeHeroLivePreview") &&
     !heroEditor.includes("Título accesible") &&
     !heroEditor.includes("Botón principal") &&
     !heroEditor.includes("Botón secundario"),
   "El editor del Hero debe controlar selección, geometría y comportamiento sin campos de copy del Hero."
+);
+
+assert(
+  livePreview.includes("<HeroSection") &&
+    livePreview.includes('className="main-content"') &&
+    livePreview.includes("<PublicPageBackground") &&
+    livePreview.includes('previewPathname="/"') &&
+    livePreview.includes("document.documentElement.style.cssText") &&
+    !heroEditor.includes("previewCopy") &&
+    !heroEditor.includes("homeHeroPositionTransform") &&
+    adminHomePage.includes("const heroPreviewCatalog = publicGames"),
+  "La vista del editor debe usar el renderer, contenedor, identidad y catálogo públicos, sin una réplica simplificada."
 );
 
 assert(

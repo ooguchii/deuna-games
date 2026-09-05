@@ -686,7 +686,10 @@ export default function GameMultimediaWorkspaceContextual({
   const [state, setState] = useState<LibraryState | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [editingDestination, setEditingDestination] = useState<Destination | null>(null);
+  const [editingDestination, setEditingDestination] = useState<Destination | null>(() => {
+    if (typeof window === "undefined") return null;
+    return window.location.hash === "#hero-crop" ? "hero" : window.location.hash === "#cover-crop" ? "cover" : null;
+  });
   const [editingLayer, setEditingLayer] = useState<EditLayer>("image");
   const [editingGalleryImage, setEditingGalleryImage] = useState<string | null>(null);
   const [galleryManagerOpen, setGalleryManagerOpen] = useState(false);
@@ -1255,7 +1258,7 @@ export default function GameMultimediaWorkspaceContextual({
 
             <div className={styles.assignmentGrid}>
               <article className={styles.assignmentCard}>
-                <header><div><span>A</span><h3>Portada del juego</h3></div><small>Recorte obligatorio · 4:5</small></header>
+                <header id="cover-crop"><div><span>A</span><h3>Portada del juego</h3></div><small>Recorte obligatorio · 4:5</small></header>
                 <ModeSwitch action={endpoint} revision={assignmentRevision} target="cover" mode={coverMode} disabled={stale} />
                 <div className={styles.currentResource}>
                   <DestinationThumbnailSet
@@ -1275,7 +1278,7 @@ export default function GameMultimediaWorkspaceContextual({
               </article>
 
               <article className={styles.assignmentCard}>
-                <header><div><span>B</span><h3>Hero de inicio</h3></div><small>Recorte obligatorio · 3:1</small></header>
+                <header id="hero-media"><div><span id="hero-crop">B</span><h3>Hero de inicio</h3></div><small>Recorte obligatorio · 3:1</small></header>
                 <ModeSwitch action={endpoint} revision={assignmentRevision} target="hero" mode={heroMode} disabled={stale} />
                 <div className={styles.currentResource}>
                   <DestinationThumbnailSet
@@ -1450,7 +1453,7 @@ export default function GameMultimediaWorkspaceContextual({
         />
       )}
 
-      {editingDestination && (editingVideo || editingImage) && (
+      {!loading && !error && !stale && editingDestination && (editingVideo || editingImage) && (
         <ContextualMediaDialog eyebrow="RECORTE OBLIGATORIO" title={editingDestination === "cover" ? "Recorte 4:5 de la Portada" : editingDestination === "hero" ? "Recorte 3:1 del Hero" : "Recorte 3:2 de la Card"} description="Debes guardar este recorte para completar el destino. El archivo físico permanece intacto." onClose={() => setEditingDestination(null)}>
           {editingVideo ? (
             <GameVideoViewportEditor slug={slug} revision={assignmentRevision} target={editingVideo.target} source={editingVideo.source} clip={editingVideo.clip} label={editingVideo.label} initialViewport={editingVideo.viewport} onClose={() => setEditingDestination(null)} />

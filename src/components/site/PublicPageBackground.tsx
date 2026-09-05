@@ -13,11 +13,12 @@ import {
 
 import styles from "./PublicPageBackground.module.css";
 
-type PublicPageBackgroundProps = {
+export type PublicPageBackgroundProps = {
   children: ReactNode;
   brandColor: string;
   customAssets?: SiteBackgroundAsset[];
   pageBackgrounds?: SiteBackgroundMap;
+  previewPathname?: string;
 };
 
 export default function PublicPageBackground({
@@ -25,9 +26,10 @@ export default function PublicPageBackground({
   brandColor,
   customAssets = [],
   pageBackgrounds = {},
+  previewPathname,
 }: PublicPageBackgroundProps) {
   const pathname = usePathname();
-  const page = resolveBackgroundPage(pathname);
+  const page = resolveBackgroundPage(previewPathname ?? pathname);
 
   if (!page) return <>{children}</>;
 

@@ -1,3 +1,4 @@
+import { getPublicSiteConfig } from "@/lib/site/public-site-config";
 import { notFound } from "next/navigation";
 
 import AdminPageHeader from "@/components/admin/AdminPageHeader";
@@ -72,12 +73,14 @@ export default async function AdminHomeEditorPage({
     publicGames,
     gamePublicationStates,
     parameters,
+    siteConfig,
   ] = await Promise.all([
     getEditorialItem("home_config", "home"),
     listEditorialItems("game"),
     getPublicGames(),
     listPublicationStates("game"),
     searchParams,
+    getPublicSiteConfig(),
   ]);
 
   if (!item) notFound();
@@ -110,14 +113,7 @@ export default async function AdminHomeEditorPage({
   const curationGames = games.map((game) =>
     publicBySlug.get(game.key) ?? game.payload
   );
-  const publishedSlugSet = publishedSlugs === null
-    ? null
-    : new Set(publishedSlugs);
-  const heroPreviewCatalog = publishedSlugSet === null
-    ? curationGames
-    : curationGames.filter((game) =>
-        publishedSlugSet.has(game.slug)
-      );
+  const heroPreviewCatalog = publicGames;
   const previewCollections = buildHomeGameCollections(
     heroPreviewCatalog,
     resolved
@@ -140,7 +136,7 @@ export default async function AdminHomeEditorPage({
 
       <EditorStateNotice state={state} />
 
-      {section === "hero" && <HomeHeroEditor config={resolved} games={curationGames} publicGames={heroPreviewCatalog} revision={item.revision} />}
+      {section === "hero" && <HomeHeroEditor config={resolved} games={curationGames} publicGames={heroPreviewCatalog} revision={item.revision} background={{ brandColor: siteConfig.brandColor, customAssets: siteConfig.backgroundLibrary, pageBackgrounds: siteConfig.pageBackgrounds }} />}
 
       {section === "contenido" && <>
         <HomeCurationEditor config={resolved} games={curationGames} publishedSlugs={publishedSlugs} revision={item.revision} excludeHero />

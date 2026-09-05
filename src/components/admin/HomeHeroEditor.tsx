@@ -1,32 +1,29 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowDown,
   ArrowUp,
   ChevronDown,
-  ChevronLeft,
-  ChevronRight,
   Eye,
   GitCompare,
   Laptop,
-  Minus,
   Monitor,
-  Pause,
-  Play,
   Plus,
   Redo2,
   RotateCcw,
   Save,
   Search,
-  Send,
   Smartphone,
   Trash2,
   Undo2,
 } from "lucide-react";
-import { type CSSProperties, useMemo, useState } from "react";
+import { useEffect, useMemo, useReducer, useRef, useState, useSyncExternalStore } from "react";
 import type React from "react";
 
+import type { PublicPageBackgroundProps } from "@/components/site/PublicPageBackground";
+import HomeHeroLivePreview from "@/components/admin/HomeHeroLivePreview";
 import AdminMediaThumbnail from "@/components/admin/AdminMediaThumbnail";
 import type {
   HomeCurationMode,
@@ -36,16 +33,14 @@ import type {
   HomeHeroPresentation,
   ResolvedHomeConfig,
 } from "@/data/home-config";
+import { homeHeroEditorFormSchema } from "@/lib/admin/home-config-forms";
+import { applyPreset, applyHeroLayout, carouselLayouts, transitionMotion, type PresetName } from "@/lib/home/hero-presets";
 import { HOME_HERO_MAX_SLIDES } from "@/lib/home/hero-contract";
 import {
   HOME_HERO_VISUAL_POSITIONS,
-  homeHeroPositionOffset,
-  homeHeroPositionTransform,
-  homeHeroSlotX,
   homeHeroVisiblePositions,
-  type HomeHeroVisualPosition,
 } from "@/lib/home/hero-layout";
-import { resolveHomeCollectionGames } from "@/lib/home/ranking";
+import { homeRankingDescription, rankHomeGames, resolveHomeCollectionGames } from "@/lib/home/ranking";
 import type { Game } from "@/types/game";
 
 import styles from "./HomeHeroEditor.module.css";
@@ -55,18 +50,6 @@ type State = {
   presentation: HomeHeroPresentation;
   mode: HomeCurationMode;
 };
-
-type PresetName =
-  | "Classic"
-  | "Coverflow"
-  | "Cinema"
-  | "Stack"
-  | "Arc"
-  | "Perspective"
-  | "Minimal"
-  | "Spotlight"
-  | "Cards"
-  | "Custom";
 
 type TransitionName =
   | "Slide"
@@ -91,9 +74,9 @@ const devices: Array<{
   label: string;
   icon: typeof Monitor;
 }> = [
-  { id: "desktop", label: "Desktop", icon: Monitor },
-  { id: "tablet", label: "Tablet", icon: Laptop },
-  { id: "mobile", label: "Mobile", icon: Smartphone },
+  { id: "desktop", label: "Escritorio", icon: Monitor },
+  { id: "tablet", label: "Tableta", icon: Laptop },
+  { id: "mobile", label: "Móvil", icon: Smartphone },
 ];
 
 const presets: PresetName[] = [
@@ -125,156 +108,6 @@ const norm = (value: string) =>
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase();
-
-const neutralPosition: HomeHeroPositionStyle = {
-  scale: 1,
-  rotateX: 0,
-  rotateY: 0,
-  rotateZ: 0,
-  translateX: 0,
-  translateY: 0,
-  translateZ: 0,
-  opacity: 100,
-  blur: 0,
-  brightness: 100,
-  contrast: 100,
-  saturation: 100,
-};
-
-function position(
-  overrides: Partial<HomeHeroPositionStyle>
-): HomeHeroPositionStyle {
-  return { ...neutralPosition, ...overrides };
-}
-
-function transitionMotion(
-  transition: HomeHeroPresentation["transition"]
-): HomeHeroPresentation["motion"] {
-  if (transition === "fade") return "fade";
-  if (transition === "slide") return "slide";
-  return "depth";
-}
-
-function applyPreset(
-  name: PresetName,
-  value: HomeHeroPresentation
-) {
-  if (name === "Custom") {
-    return { ...clone(value), preset: "custom" as const };
-  }
-
-  const next = clone(value);
-  next.positions.all = position({});
-  next.positions.main = position({ translateZ: 80, saturation: 105 });
-
-  const setSides = (
-    near: Partial<HomeHeroPositionStyle>,
-    far: Partial<HomeHeroPositionStyle>
-  ) => {
-    next.positions.left1 = position({ ...near, translateX: -Math.abs(near.translateX ?? 0), rotateY: Math.abs(near.rotateY ?? 0) });
-    next.positions.right1 = position({ ...near, translateX: Math.abs(near.translateX ?? 0), rotateY: -Math.abs(near.rotateY ?? 0) });
-    next.positions.left2 = position({ ...far, translateX: -Math.abs(far.translateX ?? 0), rotateY: Math.abs(far.rotateY ?? 0) });
-    next.positions.right2 = position({ ...far, translateX: Math.abs(far.translateX ?? 0), rotateY: -Math.abs(far.rotateY ?? 0) });
-  };
-
-  if (name === "Classic") {
-    setSides(
-      { scale: .84, translateX: 70, translateZ: -80, opacity: 76, brightness: 82, saturation: 88 },
-      { scale: .69, translateX: 126, translateZ: -170, opacity: 44, blur: 1, brightness: 66, saturation: 72 }
-    );
-    next.radius = 16;
-    next.transition = "slide";
-    next.composition = "studio";
-  }
-
-  if (name === "Coverflow") {
-    setSides(
-      { scale: .8, rotateY: 28, translateX: 92, translateZ: -120, opacity: 74, brightness: 78 },
-      { scale: .64, rotateY: 36, translateX: 156, translateZ: -220, opacity: 42, blur: 1, brightness: 60 }
-    );
-    next.radius = 14;
-    next.transition = "coverflow";
-    next.composition = "studio";
-  }
-
-  if (name === "Cinema") {
-    setSides(
-      { scale: .84, rotateY: 14, translateX: 74, translateZ: -100, opacity: 72, brightness: 74, saturation: 82 },
-      { scale: .68, rotateY: 22, translateX: 126, translateZ: -180, opacity: 42, blur: 1, brightness: 58, saturation: 68 }
-    );
-    next.radius = 18;
-    next.transition = "3d";
-    next.composition = "cinema";
-  }
-
-  if (name === "Stack") {
-    setSides(
-      { scale: .92, translateX: 34, translateY: 10, translateZ: -150, opacity: 62, brightness: 76 },
-      { scale: .84, translateX: 64, translateY: 20, translateZ: -260, opacity: 34, blur: 1, brightness: 58 }
-    );
-    next.radius = 20;
-    next.transition = "stack";
-    next.composition = "focus";
-  }
-
-  if (name === "Arc") {
-    setSides(
-      { scale: .8, rotateY: 12, translateX: 88, translateY: 18, translateZ: -110, opacity: 72, brightness: 78 },
-      { scale: .65, rotateY: 20, translateX: 150, translateY: 42, translateZ: -210, opacity: 40, blur: 1, brightness: 60 }
-    );
-    next.radius = 18;
-    next.transition = "3d";
-    next.composition = "studio";
-  }
-
-  if (name === "Perspective") {
-    setSides(
-      { scale: .76, rotateY: 34, translateX: 102, translateZ: -170, opacity: 66, brightness: 74 },
-      { scale: .58, rotateY: 42, translateX: 175, translateZ: -300, opacity: 34, blur: 1, brightness: 54 }
-    );
-    next.radius = 14;
-    next.transition = "perspective";
-    next.composition = "studio";
-  }
-
-  if (name === "Minimal") {
-    setSides(
-      { scale: .9, translateX: 68, translateZ: -50, opacity: 48, brightness: 82, saturation: 86 },
-      { scale: .76, translateX: 120, translateZ: -120, opacity: 24, brightness: 68, saturation: 72 }
-    );
-    next.radius = 8;
-    next.shadow = 20;
-    next.glow = 0;
-    next.overlay = 30;
-    next.transition = "fade";
-    next.composition = "focus";
-  }
-
-  if (name === "Spotlight") {
-    setSides(
-      { scale: .76, rotateY: 8, translateX: 90, translateZ: -150, opacity: 36, brightness: 54, saturation: 62 },
-      { scale: .6, rotateY: 14, translateX: 154, translateZ: -260, opacity: 18, blur: 2, brightness: 42, saturation: 50 }
-    );
-    next.glow = 50;
-    next.overlay = 62;
-    next.transition = "fade";
-    next.composition = "cinema";
-  }
-
-  if (name === "Cards") {
-    setSides(
-      { scale: .86, translateX: 76, translateZ: -70, opacity: 90, brightness: 94, saturation: 96 },
-      { scale: .72, translateX: 132, translateZ: -150, opacity: 66, brightness: 82, saturation: 88 }
-    );
-    next.radius = 24;
-    next.transition = "slide";
-    next.composition = "studio";
-  }
-
-  next.motion = transitionMotion(next.transition);
-  next.preset = name.toLowerCase() as HomeHeroPresentation["preset"];
-  return next;
-}
 
 function Artwork({
   game,
@@ -316,12 +149,19 @@ function Range({
   unit?: string;
   change: (value: number) => void;
 }) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const finish = () => {
+    const number = draft === null || !draft.trim() ? value : Number(draft);
+    if (Number.isFinite(number)) change(Math.min(max, Math.max(min, Math.round(number / step) * step)));
+    setDraft(null);
+  };
   return (
     <label className={styles.range}>
       <span>{label}</span>
       <div>
         <input
           type="range"
+          aria-label={label}
           min={min}
           max={max}
           step={step}
@@ -331,13 +171,14 @@ function Range({
         <b>
           <input
             type="number"
+            aria-label={`${label}: valor numérico`}
             min={min}
             max={max}
             step={step}
-            value={value}
-            onChange={(event) =>
-              change(Math.min(max, Math.max(min, Number(event.target.value))))
-            }
+            value={draft ?? value}
+            onChange={(event) => setDraft(event.target.value)}
+            onBlur={finish}
+            onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); if (event.key === "Escape") setDraft(null); }}
           />
           {unit}
         </b>
@@ -368,29 +209,47 @@ function Switch({
   );
 }
 
-function gameIndexForPosition(
-  active: number,
-  position: HomeHeroVisualPosition,
-  total: number,
-  loop: boolean
-) {
-  if (!total) return null;
-  const raw = active + homeHeroPositionOffset(position);
-  if (!loop && (raw < 0 || raw >= total)) return null;
-  return ((raw % total) + total) % total;
+type History = { present: State; past: State[]; future: State[] };
+type HistoryAction = { type: "edit"; update: (value: State) => State; coalesce: boolean } | { type: "undo" | "redo" };
+function historyReducer(history: History, action: HistoryAction): History {
+  if (action.type === "edit") {
+    const next = action.update(clone(history.present));
+    if (JSON.stringify(next) === JSON.stringify(history.present)) return history;
+    return { present: next, past: action.coalesce ? history.past : [...history.past.slice(-39), history.present], future: [] };
+  }
+  if (action.type === "undo") {
+    const previous = history.past.at(-1);
+    return previous ? { present: previous, past: history.past.slice(0, -1), future: [history.present, ...history.future] } : history;
+  }
+  const next = history.future[0];
+  return next ? { present: next, past: [...history.past, history.present], future: history.future.slice(1) } : history;
 }
+
+const subscribeStorage = () => () => {};
+const clientReady = () => true;
+const serverReady = () => false;
+
+const selectionModes = [
+  { id: "manual", title: "Manual", description: "Elige los juegos y su orden. No se añaden otros." },
+  { id: "automatic", title: "Automático", description: "El sitio elige hasta cinco juegos según su clasificación." },
+  { id: "hybrid", title: "Mixto", description: "Tus juegos van primero; el sitio completa los espacios." },
+] as const;
+
 
 export default function HomeHeroEditor({
   config,
   games,
   publicGames,
   revision,
+  background,
 }: {
   config: ResolvedHomeConfig;
   games: Game[];
   publicGames: Game[];
   revision: number;
+  background?: Omit<PublicPageBackgroundProps, "children" | "previewPathname">;
 }) {
+  const [editingRevision] = useState(revision);
   const [baseline] = useState<State>(() =>
     clone({
       slugs: config.heroSlugs,
@@ -398,32 +257,66 @@ export default function HomeHeroEditor({
       mode: config.curation.hero.mode,
     })
   );
-  const [state, setState] = useState<State>(() => clone(baseline));
-  const [past, setPast] = useState<State[]>([]);
-  const [future, setFuture] = useState<State[]>([]);
+  const [{ present: state, past, future }, dispatch] = useReducer(historyReducer, { present: baseline, past: [], future: [] });
+  const interaction = useRef<boolean | null>(null);
   const [device, setDevice] = useState<HomeHeroDevice>("desktop");
   const [target, setTarget] = useState<HomeHeroPosition>("main");
-  const [panel, setPanel] = useState("structure");
-  const [active, setActive] = useState(0);
+  const [panel, setPanel] = useState("appearance");
   const [query, setQuery] = useState("");
-  const [playing, setPlaying] = useState(false);
   const [compare, setCompare] = useState(false);
   const [preview, setPreview] = useState(false);
+  const [workspace, setWorkspace] = useState<"content" | "design" | "motion">("content");
+  const [recoveryDismissed, setRecoveryDismissed] = useState(false);
+  const saving = useRef(false);
+  const router = useRouter();
+  const recoveryReady = useSyncExternalStore(subscribeStorage, clientReady, serverReady);
   const [rankingNow] = useState(() => Date.now());
 
   const dirty = JSON.stringify(state) !== JSON.stringify(baseline);
   const bySlug = useMemo(() => new Map(games.map((game) => [game.slug, game])), [games]);
+  const comparing = compare && dirty;
+  const published = useMemo(() => new Set(publicGames.map((game) => game.slug)), [publicGames]);
+  const rankings = useMemo(() => rankHomeGames(publicGames, "hero", rankingNow), [publicGames, rankingNow]);
+  const draftKey = `deuna:hero-draft:${editingRevision}`;
+  const storedDraft = useSyncExternalStore(subscribeStorage, () => {
+    try { return sessionStorage.getItem(draftKey); } catch { return null; }
+  }, () => null);
+  const recovery = useMemo(() => {
+    if (!storedDraft || recoveryDismissed) return null;
+    try {
+      const saved = JSON.parse(storedDraft);
+      const parsed = homeHeroEditorFormSchema.safeParse({ expectedRevision: String(editingRevision), heroJson: JSON.stringify({ ...saved, copy: config.copy.hero }) });
+      return parsed.success ? { slugs: parsed.data.heroJson.slugs, mode: parsed.data.heroJson.mode, presentation: parsed.data.heroJson.presentation } as State : null;
+    } catch { return null; }
+  }, [storedDraft, recoveryDismissed, editingRevision, config.copy.hero]);
+  useEffect(() => {
+    if (!recoveryReady || recovery) return;
+    try { if (dirty) sessionStorage.setItem(draftKey, JSON.stringify(state)); else sessionStorage.removeItem(draftKey); } catch { /* The explicit Save action remains available. */ }
+  }, [state, dirty, draftKey, recoveryReady, recovery]);
+  useEffect(() => {
+    if (!dirty) return;
+    const protect = (event: BeforeUnloadEvent) => { if (saving.current) return; event.preventDefault(); event.returnValue = ""; };
+    window.addEventListener("beforeunload", protect);
+    const protectLinks = (event: MouseEvent) => {
+      const link = (event.target as HTMLElement).closest?.("a");
+      if (!link || link.target === "_blank" || event.ctrlKey || event.metaKey || link.getAttribute("href")?.startsWith("#")) return;
+      if (!window.confirm("Tienes cambios sin guardar en el hero. ¿Quieres salir?")) { event.preventDefault(); event.stopPropagation(); }
+    };
+    document.addEventListener("click", protectLinks, true);
+    return () => { window.removeEventListener("beforeunload", protect); document.removeEventListener("click", protectLinks, true); };
+  }, [dirty]);
+  const displayedState = comparing ? baseline : state;
   const result = useMemo(
     () =>
       resolveHomeCollectionGames(
         publicGames,
         "hero",
-        state.mode,
-        state.slugs,
+        displayedState.mode,
+        displayedState.slugs,
         HOME_HERO_MAX_SLIDES,
         rankingNow
       ),
-    [publicGames, rankingNow, state.mode, state.slugs]
+    [publicGames, rankingNow, displayedState.mode, displayedState.slugs]
   );
   const candidates = useMemo(
     () =>
@@ -436,44 +329,26 @@ export default function HomeHeroEditor({
         .slice(0, 8),
     [games, query, state.slugs]
   );
-  const shown = compare ? baseline.presentation : state.presentation;
+  const shown = displayedState.presentation;
   const responsive = shown.responsive[device];
   const visiblePositions = homeHeroVisiblePositions(
     responsive,
     shown.direction,
     result.length
   );
-  const activeGame = result[active % Math.max(1, result.length)];
   const selected = target === "all" ? shown.positions.all : shown.positions[target];
-  const previewScale = device === "desktop" ? .72 : device === "tablet" ? .82 : 1;
-  const previewStyle = {
-    "--hero-card-width": `${responsive.cardWidth}px`,
-    "--hero-card-height": `${responsive.cardHeight}px`,
-    "--hero-gap": `${responsive.gap}px`,
-    "--hero-perspective": `${responsive.perspective}px`,
-    "--hero-preview-scale": previewScale,
-    "--hero-radius": `${shown.radius}px`,
-    "--hero-duration": `${shown.durationMs}ms`,
-    "--hero-easing": shown.easing,
-    "--hero-shadow": shown.shadow / 100,
-    "--hero-glow": `${shown.glow}%`,
-    "--hero-overlay": shown.overlay / 100,
-    "--hero-border": `${shown.borderWidth}px`,
-    "--hero-slot-left2": `${homeHeroSlotX("left2", responsive)}px`,
-    "--hero-slot-left1": `${homeHeroSlotX("left1", responsive)}px`,
-    "--hero-slot-main": `${homeHeroSlotX("main", responsive)}px`,
-    "--hero-slot-right1": `${homeHeroSlotX("right1", responsive)}px`,
-    "--hero-slot-right2": `${homeHeroSlotX("right2", responsive)}px`,
-  } as CSSProperties;
 
-  const commit = (fn: (state: State) => State) =>
-    setState((current) => {
-      const next = fn(clone(current));
-      if (JSON.stringify(next) === JSON.stringify(current)) return current;
-      setPast((history) => [...history.slice(-39), clone(current)]);
-      setFuture([]);
-      return next;
-    });
+  const commit = (update: (state: State) => State) => {
+    setCompare(false);
+    setRecoveryDismissed(true);
+    dispatch({ type: "edit", update, coalesce: interaction.current === true });
+    if (interaction.current !== null) interaction.current = true;
+  };
+
+  const applyLayout = (layout: typeof carouselLayouts[number]["id"]) => commit((current) => {
+    current.presentation = applyHeroLayout(layout, current.presentation);
+    return current;
+  });
 
   const setPresentation = <Key extends keyof HomeHeroPresentation>(
     key: Key,
@@ -481,6 +356,8 @@ export default function HomeHeroEditor({
   ) =>
     commit((current) => {
       current.presentation[key] = value;
+      if (key === "autoplay" && value === true && !current.presentation.autoplayMs) current.presentation.autoplayMs = 6500;
+      if (["radius", "shadow", "glow", "overlay", "borderWidth", "composition"].includes(key)) current.presentation.preset = "custom";
       return current;
     });
 
@@ -510,18 +387,17 @@ export default function HomeHeroEditor({
 
   const setResponsive = (
     key: keyof typeof responsive,
-    value: number
+    value: number | string | string[]
   ) =>
     commit((current) => {
-      Object.assign(current.presentation.responsive[device], { [key]: value });
+      const settings = current.presentation.responsive[device];
+      Object.assign(settings, { [key]: value });
+      if (settings.alignment === "left" || settings.alignment === "right") {
+        settings.visibleCards = Math.min(3, settings.visibleCards) as 1 | 2 | 3;
+      }
       current.presentation.preset = "custom";
       return current;
     });
-
-  const move = (delta: number) => {
-    if (!result.length) return;
-    setActive((current) => (current + delta + result.length) % result.length);
-  };
 
   const payload = JSON.stringify({
     mode: state.mode,
@@ -530,21 +406,8 @@ export default function HomeHeroEditor({
     copy: config.copy.hero,
   });
 
-  const undo = () => {
-    const previous = past.at(-1);
-    if (!previous) return;
-    setPast((history) => history.slice(0, -1));
-    setFuture((history) => [clone(state), ...history]);
-    setState(clone(previous));
-  };
-
-  const redo = () => {
-    const next = future[0];
-    if (!next) return;
-    setFuture((history) => history.slice(1));
-    setPast((history) => [...history, clone(state)]);
-    setState(clone(next));
-  };
+  const undo = () => { setCompare(false); dispatch({ type: "undo" }); };
+  const redo = () => { setCompare(false); dispatch({ type: "redo" }); };
 
   const accordion = (
     id: string,
@@ -552,10 +415,11 @@ export default function HomeHeroEditor({
     index: string,
     content: React.ReactNode
   ) => (
-    <div className={styles.accordion}>
+    <div className={styles.accordion} data-section={id}>
       <button
         type="button"
         data-open={panel === id}
+        aria-expanded={panel === id}
         onClick={() => setPanel(panel === id ? "" : id)}
       >
         <span><b>{index}</b>{title}</span>
@@ -566,14 +430,21 @@ export default function HomeHeroEditor({
   );
 
   return (
-    <div className={styles.app} data-preview={preview}>
+    <div className={styles.app} data-preview={preview} data-workspace={workspace}
+      onPointerDownCapture={(event) => { if ((event.target as HTMLInputElement).type === "range") interaction.current = false; }}
+      onPointerUpCapture={() => { interaction.current = null; }}
+      onPointerCancelCapture={() => { interaction.current = null; }}
+      onKeyDownCapture={(event) => { if ((event.target as HTMLInputElement).type === "range" && !event.repeat) interaction.current = false; }}
+      onKeyUpCapture={() => { interaction.current = null; }}
+      onBlurCapture={(event) => { if ((event.target as HTMLInputElement).type === "range") interaction.current = null; }}
+    >
       <header className={styles.topbar}>
         <div className={styles.title}>
           <i>H</i>
           <div>
             <h2>Editor de Hero</h2>
             <span data-dirty={dirty}>
-              {dirty ? "Cambios sin guardar" : `Borrador guardado · revisión ${revision}`}
+              {dirty ? "Cambios sin guardar" : `Borrador guardado · revisión ${editingRevision}`}
             </span>
           </div>
         </div>
@@ -581,155 +452,68 @@ export default function HomeHeroEditor({
         <div className={styles.history}>
           <button type="button" onClick={undo} disabled={!past.length} title="Deshacer"><Undo2 size={16} /></button>
           <button type="button" onClick={redo} disabled={!future.length} title="Rehacer"><Redo2 size={16} /></button>
-          <button type="button" onClick={() => commit(() => clone(baseline))} disabled={!dirty}><RotateCcw size={16} /> Resetear</button>
+          <button type="button" onClick={() => commit(() => clone(baseline))} disabled={!dirty}><RotateCcw size={16} /> Restaurar borrador</button>
         </div>
 
         <div className={styles.actions}>
-          <button type="button" data-active={preview} onClick={() => setPreview(!preview)}><Eye size={16} /> Vista previa</button>
-          <button type="button" data-active={compare} onClick={() => setCompare(!compare)} disabled={!dirty}><GitCompare size={16} /> Comparar</button>
-          <form method="post" action="/api/admin/content/home/hero">
-            <input type="hidden" name="expectedRevision" value={revision} />
+          <button type="button" data-active={preview} aria-pressed={preview} onClick={() => setPreview(!preview)}><Eye size={16} /> {preview ? "Volver a editar" : "Probar funcionamiento"}</button>
+          <button type="button" data-active={comparing} aria-pressed={comparing} onClick={() => setCompare(!comparing)} disabled={!dirty}><GitCompare size={16} /> Comparar con guardado</button>
+          <form method="post" action="/api/admin/content/home/hero" onSubmit={() => { saving.current = true; }}>
+            <input type="hidden" name="expectedRevision" value={editingRevision} />
             <input type="hidden" name="heroJson" value={payload} />
             <button className={styles.save} disabled={!dirty}><Save size={16} /> Guardar borrador</button>
           </form>
-          <form method="post" action="/api/admin/content/home/publish">
-            <input type="hidden" name="expectedRevision" value={revision} />
-            <button className={styles.publish} disabled={dirty}><Send size={16} /> Publicar</button>
-          </form>
+          <Link className={styles.publish} href="/admin/portada?seccion=publicacion">Revisar y publicar Inicio</Link>
         </div>
       </header>
 
+      {revision !== editingRevision && <p className={styles.workspaceNote} role="alert">Inicio tiene una revisión más reciente. Tus cambios siguen aquí; el servidor impedirá sobrescribir esa revisión. Recarga para revisar el nuevo borrador.</p>}
+      {recovery && <div className={styles.recovery} role="status"><span>Hay cambios de esta revisión conservados en esta pestaña.</span><button type="button" onClick={() => { commit(() => clone(recovery)); setRecoveryDismissed(true); }}>Recuperar cambios</button><button type="button" onClick={() => { try { sessionStorage.removeItem(draftKey); } catch {} setRecoveryDismissed(true); }}>Descartar copia local</button></div>}
+      <nav className={styles.workspaceTabs} aria-label="Tareas del editor">
+        {([ ["content", "1. Juegos e imágenes"], ["design", "2. Diseño del carrusel"], ["motion", "3. Movimiento"] ] as const).map(([id, label]) => <button type="button" key={id} aria-pressed={workspace === id} onClick={() => { setWorkspace(id); setPanel(id === "motion" ? "behavior" : "structure"); setPreview(false); }}>{label}</button>)}
+      </nav>
+      <p className={styles.workspaceNote}>Guardar conserva el borrador del hero. Revisar y publicar incluye todos los cambios guardados de Inicio.</p>
+      {comparing && <p className={styles.workspaceNote} role="status">Comparación con el borrador guardado, no con la web publicada. Al editar vuelves a tus cambios actuales.</p>}
       <div className={styles.grid}>
-        <main className={styles.main}>
-          <div className={styles.canvasBar}>
-            <div>
-              {devices.map(({ id, label, icon: Icon }) => (
-                <button type="button" key={id} data-active={device === id} onClick={() => setDevice(id)}><Icon size={15} /> {label}</button>
-              ))}
+        <div className={styles.main}>
+          <section className={`${styles.block} ${styles.contentBlock}`}>
+            <Heading over="CONTENIDO" title="Juegos e imágenes del hero" note={`Máximo ${HOME_HERO_MAX_SLIDES} juegos`} />
+            <h3>¿Cómo se eligen los juegos?</h3>
+            <div className={styles.modeChoices} role="group" aria-label="Cómo se eligen los juegos">
+              {selectionModes.map((mode) => <button type="button" key={mode.id} aria-pressed={state.mode === mode.id} onClick={() => commit((current) => { current.mode = mode.id; return current; })}><strong>{mode.title}</strong><span>{mode.description}</span></button>)}
             </div>
-            <span>{responsive.cardWidth} × {responsive.cardHeight} · {responsive.visibleCards} tarjetas · perspectiva {responsive.perspective}px</span>
-          </div>
-
-          <section className={styles.canvas} data-device={device} data-transition={shown.transition} style={previewStyle}>
-            <div className={styles.stage} data-playing={playing}>
-              {activeGame && visiblePositions.map((positionId) => {
-                const index = gameIndexForPosition(active, positionId, result.length, shown.loop);
-                if (index === null) return null;
-                const game = result[index] ?? activeGame;
-                const positionStyle = shown.positions[positionId];
-                const isMain = positionId === "main";
-
-                return (
-                  <button
-                    key={`${active}-${positionId}-${game.slug}`}
-                    type="button"
-                    className={styles.card}
-                    data-position={positionId}
-                    data-main={isMain || undefined}
-                    data-selected={target === positionId || target === "all"}
-                    onClick={() => setTarget(positionId)}
-                    style={{
-                      opacity: positionStyle.opacity / 100,
-                      filter: `blur(${positionStyle.blur}px) brightness(${positionStyle.brightness}%) contrast(${positionStyle.contrast}%) saturate(${positionStyle.saturation}%)`,
-                      transform: homeHeroPositionTransform(positionStyle),
-                    }}
-                  >
-                    <span className={styles.cardSurface}>
-                      <Artwork game={game} aspect={responsive.cardWidth / responsive.cardHeight} />
-                      <i aria-hidden="true" />
-                      {isMain ? (
-                        <span className={styles.previewCopy}>
-                          <small>{[game.category, ...(game.genres ?? [])].filter(Boolean).slice(0, 3).join(" · ")}</small>
-                          <strong>{game.shortTitle ?? game.title}</strong>
-                          <p>{game.description}</p>
-                          <em>
-                            {typeof game.rating === "number" ? `${game.rating.toFixed(1)} ★` : ""}
-                            {game.developer ? `${typeof game.rating === "number" ? " · " : ""}${game.developer}` : ""}
-                          </em>
-                          <b>Ver juego</b>
-                        </span>
-                      ) : (
-                        <span className={styles.sideLabel}><strong>{game.shortTitle ?? game.title}</strong><small>{game.category}</small></span>
-                      )}
-                      <em className={styles.positionLabel}>{positionList.find((entry) => entry.id === positionId)?.label}</em>
-                    </span>
-                  </button>
-                );
-              })}
+            <p className={styles.help}>Hasta cinco juegos. Ocultar una posición del diseño no elimina juegos del carrusel.</p>
+            {state.mode === "hybrid" && <p className={styles.help}>Desfijar quita tu prioridad manual; el sistema aún puede elegir ese juego. Usa Manual si quieres controlar exactamente cuáles aparecen.</p>}
+            {state.mode !== "manual" && <details className={styles.ranking}><summary>Cómo el sitio elige los juegos</summary><p>{homeRankingDescription("hero")}. El resultado puede cambiar al actualizar el catálogo.</p></details>}
+            <h3>{comparing ? "Juegos del borrador guardado" : "Juegos que aparecerán"} · {result.length}</h3>
+            <div className={styles.resultList}>
+              {result.map((game, index) => <article key={game.slug}>
+                <div className={styles.gameThumbnail}><Artwork game={game} aspect={3 / 2} /></div>
+                <div><strong>{index + 1}. {game.title}</strong><small>{displayedState.mode === "automatic" || !displayedState.slugs.includes(game.slug) ? "Elegido automáticamente" : "Elegido por ti"} · {game.heroImage ? "Imagen hero" : game.coverImage ? "Usa la portada" : "Sin imagen"}</small>
+                {state.mode !== "manual" && <small>{rankings.find((entry) => entry.game.slug === game.slug)?.reasons.slice(0, 2).join(" · ")}</small>}
+                {state.mode !== "automatic" && state.slugs.includes(game.slug) && !comparing && <span className={styles.rowActions}>
+                  <button type="button" aria-label={`Subir ${game.title}`} disabled={state.slugs.indexOf(game.slug) === 0} onClick={() => commit((current) => { const index = current.slugs.indexOf(game.slug); [current.slugs[index - 1], current.slugs[index]] = [current.slugs[index], current.slugs[index - 1]]; return current; })}><ArrowUp size={14} /></button>
+                  <button type="button" aria-label={`Bajar ${game.title}`} disabled={state.slugs.indexOf(game.slug) === state.slugs.length - 1} onClick={() => commit((current) => { const index = current.slugs.indexOf(game.slug); [current.slugs[index + 1], current.slugs[index]] = [current.slugs[index], current.slugs[index + 1]]; return current; })}><ArrowDown size={14} /></button>
+                  <button type="button" className={styles.removeSelection} aria-label={`${state.mode === "hybrid" ? "Dejar de fijar" : "Quitar"} ${game.title}`} onClick={() => commit((current) => { current.slugs = current.slugs.filter((slug) => slug !== game.slug); return current; })}><Trash2 size={14} />{state.mode === "hybrid" ? "Desfijar" : "Quitar"}</button>
+                </span>}
+                <div className={styles.imageActions}><a href={`/admin/juegos/${encodeURIComponent(game.slug)}?seccion=multimedia#hero-media`} target="_blank" rel="noopener noreferrer">Cambiar imagen ↗</a><a href={`/admin/juegos/${encodeURIComponent(game.slug)}?seccion=multimedia#${game.heroImage ? "hero-crop" : game.coverImage ? "cover-crop" : "hero-media"}`} target="_blank" rel="noopener noreferrer">Ajustar encuadre ↗</a></div></div>
+              </article>)}
+              {!result.length && <p className={styles.empty}>No hay juegos públicos para esta selección.</p>}
             </div>
-
-            {result.length > 1 && (
-              <>
-                <button type="button" className={`${styles.nav} ${styles.left}`} onClick={() => move(-1)}><ChevronLeft /></button>
-                <button type="button" className={`${styles.nav} ${styles.right}`} onClick={() => move(1)}><ChevronRight /></button>
-                <div className={styles.dots}>
-                  {result.map((game, index) => (
-                    <button type="button" key={game.slug} data-active={index === active % result.length} onClick={() => setActive(index)} />
-                  ))}
-                </div>
-              </>
-            )}
-
-            {compare && <label className={styles.before}>ANTES · configuración guardada</label>}
-          </section>
-
-          <section className={styles.dock}>
-            <div>
-              <span>Aplicar cambios a:</span>
-              {positionList.map((positionItem) => (
-                <button type="button" key={positionItem.id} data-active={target === positionItem.id} onClick={() => setTarget(positionItem.id)}>{positionItem.label}</button>
-              ))}
-            </div>
-            <div>
-              <span>{state.slugs.length} tarjetas activas</span>
-              <button type="button" disabled={!state.slugs.length} onClick={() => commit((current) => { current.slugs.pop(); return current; })}><Minus size={14} /> Tarjeta</button>
-              <button type="button" disabled={!candidates.length || state.slugs.length >= HOME_HERO_MAX_SLIDES} onClick={() => commit((current) => { current.slugs.push(candidates[0]!.slug); return current; })}><Plus size={14} /> Tarjeta</button>
-            </div>
-          </section>
-
-          <section className={styles.infoNotice}>
-            <strong>El contenido del Hero se toma del juego.</strong>
-            <span>Título, categoría y géneros, descripción, valoración, desarrollador, lanzamiento, plataformas y versión se muestran sólo cuando existen. Este editor controla selección, orden, geometría y comportamiento; no inventa ni sobreescribe información del juego.</span>
-          </section>
-
-          <section className={styles.block}>
-            <Heading over="PRESETS DE ESTILO" title="Punto de partida visual" note="Determinísticos y totalmente personalizables" />
-            <div className={styles.presets}>
-              {presets.map((name, index) => (
-                <button type="button" key={name} data-active={state.presentation.preset === name.toLowerCase()} onClick={() => commit((current) => { current.presentation = applyPreset(name, current.presentation); return current; })}>
-                  <span data-kind={index}><i /><i /><i /></span><b>{name}</b>
-                </button>
-              ))}
-            </div>
-          </section>
-
-          <section className={styles.block}>
-            <Heading over="TRANSICIÓN" title="Movimiento entre estados" note="La web pública usa exactamente esta transición" />
-            <div className={styles.transitions}>
-              {transitions.map((name) => {
-                const value = name.toLowerCase() as HomeHeroPresentation["transition"];
-                return <button type="button" key={name} data-active={state.presentation.transition === value} onClick={() => setTransition(value)}><span><i /><i /></span>{name}</button>;
-              })}
-            </div>
-            <div className={styles.timeline}>
-              <button type="button" onClick={() => setPlaying(!playing)}>{playing ? <Pause size={15} /> : <Play size={15} />}</button>
-              <span>{state.presentation.durationMs} ms · {state.presentation.easing}</span>
-              <div><i style={{ animationDuration: `${state.presentation.durationMs}ms`, animationPlayState: playing ? "running" : "paused" }} /></div>
-              <button type="button" onClick={() => { setPlaying(false); requestAnimationFrame(() => setPlaying(true)); }}>Probar transición</button>
-            </div>
-          </section>
-
-          <section className={styles.block}>
-            <Heading over="CONTENIDO" title="Tarjetas del carrusel" note={`Máximo ${HOME_HERO_MAX_SLIDES} juegos`} />
-            <div className={styles.library}>
-              <div className={styles.selectedList}>
+            <p className={styles.help}>Imagen y encuadre se editan en otra pestaña: este trabajo permanece abierto. Guarda y publica los cambios del juego para verlos en Inicio.</p>
+            <button type="button" onClick={() => router.refresh()}>Actualizar catálogo e imágenes</button>
+            {state.mode === "automatic" && <p className={styles.empty}>Tu selección manual se conserva ({state.slugs.length} juegos), pero no interviene mientras uses el modo automático.</p>}
+            {state.mode !== "automatic" && <div className={styles.library}>
+              {state.slugs.some((slug) => !published.has(slug)) && <div className={styles.selectedList}>
+                <h3>Seleccionados que aún no pueden mostrarse</h3>
                 {state.slugs.map((slug, index) => {
+                  if (published.has(slug)) return null;
                   const game = bySlug.get(slug);
-                  if (!game) return null;
+                  if (!game) return <article key={slug}><strong>Juego no disponible: {slug}</strong><button type="button" onClick={() => commit((current) => { current.slugs = current.slugs.filter((item) => item !== slug); return current; })}>Quitar</button></article>;
                   return (
                     <article key={slug}>
                       <b>{index + 1}</b>
-                      <div><strong>{game.title}</strong><small>{game.category}</small></div>
+                      <div><strong>{game.title}</strong><small>{published.has(slug) ? game.category : "Sin publicar: no aparecerá en Inicio"}</small><a className={styles.selectedImageLink} href={`/admin/juegos/${encodeURIComponent(slug)}?seccion=multimedia#hero-media`} target="_blank" rel="noopener noreferrer">Imagen de este juego ↗</a></div>
                       <span className={styles.rowActions}>
                         <button type="button" title="Subir" disabled={index === 0} onClick={() => commit((current) => { [current.slugs[index - 1], current.slugs[index]] = [current.slugs[index], current.slugs[index - 1]]; return current; })}><ArrowUp size={14} /></button>
                         <button type="button" title="Bajar" disabled={index === state.slugs.length - 1} onClick={() => commit((current) => { [current.slugs[index + 1], current.slugs[index]] = [current.slugs[index], current.slugs[index + 1]]; return current; })}><ArrowDown size={14} /></button>
@@ -738,23 +522,94 @@ export default function HomeHeroEditor({
                     </article>
                   );
                 })}
-              </div>
+              </div>}
 
               <aside>
-                <label><Search size={15} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar juego…" /></label>
+                <h3>Añadir juegos</h3>
+                {state.slugs.length >= HOME_HERO_MAX_SLIDES && <p className={styles.help}>Llegaste al máximo de cinco juegos. Quita uno de tu selección para añadir otro.</p>}
+                <label><Search size={15} /><input type="search" aria-label="Buscar juegos para el hero" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar juego…" /></label>
+                {!candidates.length && <p className={styles.empty}>No hay juegos disponibles para esta búsqueda.</p>}
                 {candidates.map((game) => (
                   <button type="button" key={game.slug} disabled={state.slugs.length >= HOME_HERO_MAX_SLIDES} onClick={() => commit((current) => { current.slugs.push(game.slug); return current; })}>
-                    <span>{game.title}<small>{game.category}</small></span><Plus size={15} />
+                    <span>{game.title}<small>{published.has(game.slug) ? game.category : "Sin publicar"}</small></span><Plus size={15} />
                   </button>
                 ))}
               </aside>
+            </div>}
+          </section>
+          <section className={`${styles.block} ${styles.designBlock}`}>
+            <Heading over="TIPO DE CARRUSEL" title="Aplicar una composición completa" note="Configura todos los dispositivos en un clic" />
+            <div className={styles.layoutChoices}>
+              {carouselLayouts.map((layout) => <button type="button" key={layout.id} onClick={() => applyLayout(layout.id)}><span className={styles.layoutSketch} data-layout={layout.id} aria-hidden="true"><i /><i /><i /></span><strong>{layout.title}</strong><small>{layout.description}</small></button>)}
+            </div>
+            <details className={styles.styleDetails}><summary>Personalizar el estilo visual</summary>
+            <Heading over="PRESETS DE ESTILO" title="Punto de partida visual" note="Se aplica sin cambiar los juegos ni las posiciones habilitadas" />
+            <div className={styles.presets}>
+              {presets.map((name, index) => (
+                <button type="button" key={name} data-active={shown.preset === name.toLowerCase()} onClick={() => commit((current) => { current.presentation = applyPreset(name, current.presentation); return current; })}>
+                  <span data-kind={index}><i /><i /><i /></span><b>{name}</b>
+                </button>
+              ))}
+            </div></details>
+          </section>
+          <section className={`${styles.block} ${styles.motionBlock}`}>
+            <Heading over="TRANSICIÓN" title="Movimiento entre estados" note="Comprueba el resultado en Probar funcionamiento" />
+            <div className={styles.transitions}>
+              {transitions.map((name) => {
+                const value = name.toLowerCase() as HomeHeroPresentation["transition"];
+                return <button type="button" key={name} data-active={shown.transition === value} onClick={() => setTransition(value)}><span><i /><i /></span>{name}</button>;
+              })}
+            </div>
+              <Range label="Duración" value={shown.durationMs} min={150} max={2000} step={10} unit="ms" change={(value) => setPresentation("durationMs", value)} />
+              <label className={styles.select}><span>Ritmo de transición (Easing)</span><select value={shown.easing} onChange={(event) => setPresentation("easing", event.target.value as HomeHeroPresentation["easing"])}>{["ease", "ease-in", "ease-out", "ease-in-out", "linear"].map((value) => <option key={value}>{value}</option>)}</select></label>
+            <div className={styles.timeline}>
+              <span>{shown.durationMs} ms · {shown.easing}</span>
+              <button type="button" onClick={() => setPreview(true)}>Probar esta transición en el hero</button>
             </div>
           </section>
-        </main>
+          <div className={styles.canvasBar}>
+            <div>
+              {devices.map(({ id, label, icon: Icon }) => (
+                <button type="button" key={id} data-active={device === id} aria-pressed={device === id} onClick={() => setDevice(id)}><Icon size={15} /> {label}</button>
+              ))}
+            </div>
+            <span>Tamaño base {responsive.cardWidth} × {responsive.cardHeight} · {visiblePositions.length} posiciones visibles · perspectiva {responsive.perspective}px</span>
+          </div>
+
+          <HomeHeroLivePreview
+            games={result}
+            presentation={shown}
+            device={device}
+            playing={preview}
+            background={background}
+            onSelectPosition={(position) => { setTarget(position); if (!preview) setWorkspace("design"); }}
+          />
+
+          <section className={styles.dock}>
+            <div>
+              <span>Aplicar cambios a:</span>
+              {positionList.map((positionItem) => (
+                <button type="button" key={positionItem.id} data-active={target === positionItem.id} aria-pressed={target === positionItem.id} onClick={() => setTarget(positionItem.id)}>{positionItem.label}</button>
+              ))}
+            </div>
+
+          </section>
+
+          <section className={styles.infoNotice}>
+            <strong>El contenido del Hero se toma del juego.</strong>
+            <span>Título, categoría y géneros, descripción, valoración, desarrollador, lanzamiento, plataformas y versión se muestran sólo cuando existen. Este editor controla selección, orden, geometría y comportamiento; no inventa ni sobreescribe información del juego.</span>
+          </section>
+
+
+
+
+
+
+        </div>
 
         <aside className={styles.inspector}>
           <header>
-            <div><span>PROPIEDADES</span><strong>{positionList.find((positionItem) => positionItem.id === target)?.label}</strong></div>
+            <div><span>{workspace === "motion" ? "MOVIMIENTO" : "DISEÑO"}</span><strong>{positionList.find((positionItem) => positionItem.id === target)?.label}</strong></div>
             <button
               type="button"
               onClick={() => commit((current) => {
@@ -764,6 +619,7 @@ export default function HomeHeroEditor({
                 } else {
                   current.presentation.positions[target] = clone(baseline.presentation.positions[target]);
                 }
+                current.presentation.preset = "custom";
                 return current;
               })}
               title="Restaurar posición"
@@ -771,8 +627,16 @@ export default function HomeHeroEditor({
           </header>
 
           <div>
-            {accordion("structure", "Estructura", "01", <>
-              <Range label="Tarjetas visibles" value={responsive.visibleCards} min={3} max={5} change={(value) => setResponsive("visibleCards", value)} />
+            {accordion("structure", "Distribución por dispositivo", "01", <>
+              <p className={styles.help}>Solo cambia {devices.find((entry) => entry.id === device)?.label}. La tarjeta principal siempre permanece visible.</p>
+              <label className={styles.select}><span>Posición de la principal</span><select value={responsive.alignment ?? "center"} onChange={(event) => setResponsive("alignment", event.target.value)}><option value="left">Izquierda</option><option value="center">Centro</option><option value="right">Derecha</option></select></label>
+              <p className={styles.help}>Una composición lateral muestra hasta tres posiciones. Los demás juegos siguen disponibles al avanzar.</p>
+              <p className={styles.help}>Las posiciones habilitadas se muestran según la alineación, la cantidad de tarjetas y los juegos disponibles.</p>
+              {positionList.filter((entry) => entry.id !== "all" && entry.id !== "main").map((entry) => {
+                const id = entry.id as "left1" | "left2" | "right1" | "right2";
+                return <Switch key={id} label={`Habilitar ${entry.label.toLowerCase()}${visiblePositions.includes(id) ? "" : " (fuera de vista)"}`} value={!responsive.hiddenPositions?.includes(id)} change={(value) => setResponsive("hiddenPositions", value ? (responsive.hiddenPositions ?? []).filter((item) => item !== id) : [...(responsive.hiddenPositions ?? []), id])} />;
+              })}
+              <Range label="Tarjetas visibles" value={responsive.visibleCards} min={1} max={responsive.alignment && responsive.alignment !== "center" ? 3 : 5} change={(value) => setResponsive("visibleCards", value)} />
               <Range label="Ancho" value={responsive.cardWidth} min={260} max={1200} unit="px" change={(value) => setResponsive("cardWidth", value)} />
               <Range label="Alto" value={responsive.cardHeight} min={260} max={700} unit="px" change={(value) => setResponsive("cardHeight", value)} />
               <Range label="Separación" value={responsive.gap} min={0} max={100} unit="px" change={(value) => setResponsive("gap", value)} />
@@ -780,24 +644,31 @@ export default function HomeHeroEditor({
             </>)}
 
             {accordion("transform", "Transformación 3D", "02", <>
-              {([ ["Scale", "scale", .4, 1.6, .01, ""], ["Rotate X", "rotateX", -60, 60, 1, "°"], ["Rotate Y", "rotateY", -60, 60, 1, "°"], ["Rotate Z", "rotateZ", -30, 30, 1, "°"], ["Translate X", "translateX", -300, 300, 1, "px"], ["Translate Y", "translateY", -200, 200, 1, "px"], ["Depth / Z", "translateZ", -500, 500, 1, "px"] ] as const).map(([label, key, min, max, step, unit]) => (
+              <p className={styles.help}>Modifica la posición {positionList.find((entry) => entry.id === target)?.label.toLowerCase()} en todos los dispositivos.</p>
+              {([ ["Escala", "scale", .4, 1.6, .01, ""], ["Rotación X", "rotateX", -60, 60, 1, "°"], ["Rotación Y", "rotateY", -60, 60, 1, "°"], ["Rotación Z", "rotateZ", -30, 30, 1, "°"], ["Desplazamiento X", "translateX", -300, 300, 1, "px"], ["Desplazamiento Y", "translateY", -200, 200, 1, "px"], ["Profundidad", "translateZ", -500, 500, 1, "px"] ] as const).map(([label, key, min, max, step, unit]) => (
                 <Range key={key} label={label} value={selected[key]} min={min} max={max} step={step} unit={unit} change={(value) => setPosition(key, value)} />
               ))}
             </>)}
 
             {accordion("appearance", "Apariencia", "03", <>
-              {([ ["Opacidad", "opacity", 0, 100, "%"], ["Blur", "blur", 0, 20, "px"], ["Brillo", "brightness", 20, 180, "%"], ["Contraste", "contrast", 50, 180, "%"], ["Saturación", "saturation", 0, 200, "%"] ] as const).map(([label, key, min, max, unit]) => (
+              <p className={styles.help}>Filtros en todos los dispositivos. Posición: {positionList.find((entry) => entry.id === target)?.label}.</p>
+              {([ ["Opacidad", "opacity", 0, 100, "%"], ["Desenfoque", "blur", 0, 20, "px"], ["Brillo", "brightness", 20, 180, "%"], ["Contraste", "contrast", 50, 180, "%"], ["Saturación", "saturation", 0, 200, "%"] ] as const).map(([label, key, min, max, unit]) => (
                 <Range key={key} label={label} value={selected[key]} min={min} max={max} unit={unit} change={(value) => setPosition(key, value)} />
               ))}
-              <Range label="Radio" value={shown.radius} min={0} max={48} unit="px" change={(value) => setPresentation("radius", value)} />
+              <p className={styles.help}>Estos ajustes cambian todo el hero, en todos los dispositivos.</p>
+              <label className={styles.select}><span>Composición</span><select value={shown.composition} onChange={(event) => setPresentation("composition", event.target.value as HomeHeroPresentation["composition"])}><option value="studio">Studio</option><option value="cinema">Cinema</option><option value="focus">Focus</option></select></label>
+              <Range label="Radio de las esquinas" value={shown.radius} min={0} max={48} unit="px" change={(value) => setPresentation("radius", value)} />
               <Range label="Sombra" value={shown.shadow} min={0} max={100} unit="%" change={(value) => setPresentation("shadow", value)} />
-              <Range label="Glow" value={shown.glow} min={0} max={100} unit="%" change={(value) => setPresentation("glow", value)} />
-              <Range label="Overlay" value={shown.overlay} min={0} max={90} unit="%" change={(value) => setPresentation("overlay", value)} />
+              <Range label="Resplandor" value={shown.glow} min={0} max={100} unit="%" change={(value) => setPresentation("glow", value)} />
+              <Range label="Oscurecimiento" value={shown.overlay} min={0} max={90} unit="%" change={(value) => setPresentation("overlay", value)} />
               <Range label="Borde" value={shown.borderWidth} min={0} max={6} unit="px" change={(value) => setPresentation("borderWidth", value)} />
             </>)}
 
-            {accordion("behavior", "Comportamiento", "04", <>
-              {([ ["Autoplay", "autoplay"], ["Loop infinito", "loop"], ["Pausa al hacer hover", "pauseOnHover"], ["Drag con mouse", "drag"], ["Navegación táctil", "touch"], ["Teclado", "keyboard"], ["Rueda del mouse", "wheel"] ] as const).map(([label, key]) => (
+            {accordion("behavior", "Reproducción e interacción", "04", <>
+              <label className={styles.select}><span>Intervalo automático</span><select disabled={!shown.autoplay} value={shown.autoplayMs || 6500} onChange={(event) => setPresentation("autoplayMs", Number(event.target.value) as HomeHeroPresentation["autoplayMs"])}><option value="4000">4 segundos</option><option value="6500">6,5 segundos</option><option value="8000">8 segundos</option></select></label>
+              <label className={styles.select}><span>Dirección</span><select value={shown.direction} onChange={(event) => setPresentation("direction", event.target.value as HomeHeroPresentation["direction"])}><option value="forward">Hacia la izquierda (siguiente juego)</option><option value="reverse">Hacia la derecha (juego anterior)</option></select></label>
+
+              {([ ["Avance automático", "autoplay"], ["Repetir al llegar al final", "loop"], ["Pausar al pasar el puntero", "pauseOnHover"], ["Arrastrar con el ratón", "drag"], ["Navegación táctil", "touch"], ["Teclado", "keyboard"], ["Rueda del ratón", "wheel"] ] as const).map(([label, key]) => (
                 <Switch key={key} label={label} value={shown[key]} change={(value) => setPresentation(key, value)} />
               ))}
             </>)}
@@ -809,16 +680,6 @@ export default function HomeHeroEditor({
                   {entry.label}<small>{shown.responsive[entry.id].cardWidth}×{shown.responsive[entry.id].cardHeight} · {shown.responsive[entry.id].visibleCards}</small>
                 </button>
               ))}
-            </>)}
-
-            {accordion("advanced", "Avanzado", "06", <>
-              <Range label="Duración" value={shown.durationMs} min={150} max={2000} step={10} unit="ms" change={(value) => setPresentation("durationMs", value)} />
-              <label className={styles.select}><span>Easing</span><select value={shown.easing} onChange={(event) => setPresentation("easing", event.target.value as HomeHeroPresentation["easing"])}>{["ease", "ease-in", "ease-out", "ease-in-out", "linear"].map((value) => <option key={value}>{value}</option>)}</select></label>
-              <label className={styles.select}><span>Composición</span><select value={shown.composition} onChange={(event) => setPresentation("composition", event.target.value as HomeHeroPresentation["composition"])}><option value="studio">Studio</option><option value="cinema">Cinema</option><option value="focus">Focus</option></select></label>
-              <label className={styles.select}><span>Curaduría</span><select value={state.mode} onChange={(event) => commit((current) => { current.mode = event.target.value as HomeCurationMode; return current; })}><option value="manual">Manual</option><option value="hybrid">Asistida</option><option value="automatic">Automática</option></select></label>
-              <label className={styles.select}><span>Intervalo automático</span><select value={state.presentation.autoplayMs} onChange={(event) => setPresentation("autoplayMs", Number(event.target.value) as HomeHeroPresentation["autoplayMs"])}><option value="0">Manual</option><option value="4000">4 segundos</option><option value="6500">6,5 segundos</option><option value="8000">8 segundos</option></select></label>
-              <label className={styles.select}><span>Dirección</span><select value={state.presentation.direction} onChange={(event) => setPresentation("direction", event.target.value as HomeHeroPresentation["direction"])}><option value="forward">Hacia adelante</option><option value="reverse">Hacia atrás</option></select></label>
-              <Link className={styles.mediaLink} href={activeGame ? `/admin/juegos/${encodeURIComponent(activeGame.slug)}?seccion=multimedia` : "/admin/juegos"}>Editar multimedia y recorte del juego activo</Link>
             </>)}
           </div>
         </aside>

@@ -470,6 +470,7 @@ export function resolveHomeCollectionGames(
   }
 
   const selected = [...configured];
+  if (selected.length >= limit) return selected.slice(0, limit);
   const seen = new Set(
     selected.map((game) => game.slug)
   );

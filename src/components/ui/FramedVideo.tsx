@@ -49,7 +49,9 @@ export default function FramedVideo({
       return;
     }
 
-    const bounds = frame.getBoundingClientRect();
+    // Media pixels live in the untransformed frame; perspective and preview
+    // scaling must not be applied a second time to the crop.
+    const bounds = { width: frame.clientWidth, height: frame.clientHeight };
     if (bounds.width <= 0 || bounds.height <= 0) return;
 
     const resolvedLayout = resolveFramedMediaLayout(

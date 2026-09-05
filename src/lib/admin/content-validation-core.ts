@@ -513,7 +513,12 @@ const homeHeroPresentationSchema = z
     radius: z.number().int().min(0).max(48).optional(), shadow: z.number().int().min(0).max(100).optional(), borderWidth: z.number().int().min(0).max(6).optional(), glow: z.number().int().min(0).max(100).optional(), overlay: z.number().int().min(0).max(90).optional(),
     autoplay: z.boolean().optional(), loop: z.boolean().optional(), pauseOnHover: z.boolean().optional(), drag: z.boolean().optional(), touch: z.boolean().optional(), keyboard: z.boolean().optional(), wheel: z.boolean().optional(), direction: z.enum(["forward", "reverse"]).optional(),
     positions: z.record(z.string(), z.object({ scale: z.number(), rotateX: z.number(), rotateY: z.number(), rotateZ: z.number(), translateX: z.number(), translateY: z.number(), translateZ: z.number(), opacity: z.number(), blur: z.number(), brightness: z.number(), contrast: z.number(), saturation: z.number() }).strict()).optional(),
-    responsive: z.record(z.string(), z.object({ visibleCards: z.number(), cardWidth: z.number(), cardHeight: z.number(), gap: z.number(), perspective: z.number() }).strict()).optional(),
+    responsive: z.record(z.string(), z.object({
+      visibleCards: z.number().int().min(1).max(5),
+      cardWidth: z.number(), cardHeight: z.number(), gap: z.number(), perspective: z.number(),
+      alignment: z.enum(["left", "center", "right"]).optional(),
+      hiddenPositions: z.array(z.enum(["left1", "left2", "right1", "right2"])).max(4).refine((items) => new Set(items).size === items.length).optional(),
+    }).strict()).optional(),
   })
   .strict();
 

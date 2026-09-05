@@ -135,7 +135,9 @@ export type HomeHeroPositionStyle = {
 };
 
 export type HomeHeroResponsiveStyle = {
-  visibleCards: 3 | 4 | 5;
+  visibleCards: 1 | 2 | 3 | 4 | 5;
+  alignment?: "left" | "center" | "right";
+  hiddenPositions?: Array<Exclude<HomeHeroPosition, "all" | "main">>;
   cardWidth: number;
   cardHeight: number;
   gap: number;
