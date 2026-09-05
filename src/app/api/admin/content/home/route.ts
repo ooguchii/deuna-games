@@ -6,12 +6,11 @@ import {
   authorizeAdminFormRequest,
 } from "@/lib/admin/admin-route";
 import {
-  getEditorialItem,
-  saveHomeConfigDraft,
-} from "@/lib/admin/content-service";
-import {
   editorialHomeConfigFormSchema,
 } from "@/lib/admin/home-config-forms";
+import {
+  saveHomeCurationDraft,
+} from "@/lib/admin/home-content-service";
 import {
   hasExactAdminFormFields,
 } from "@/lib/admin/request-security";
@@ -23,6 +22,7 @@ const fields = [
   "expectedRevision",
   "curationJson",
 ] as const;
+const target = "/admin/portada?seccion=contenido";
 
 export async function POST(request: NextRequest) {
   const authorized =
@@ -31,8 +31,6 @@ export async function POST(request: NextRequest) {
   if (!authorized.authorized) {
     return authorized.response;
   }
-
-  const target = "/admin/portada?seccion=contenido";
 
   if (
     !hasExactAdminFormFields(
@@ -58,58 +56,20 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const item = await getEditorialItem(
-      "home_config",
-      "home"
-    );
-
-    if (!item) {
-      return adminRedirect(
-        authorized.adminOrigin,
-        `${target}&estado=no-encontrado`
-      );
-    }
-
-    const {
-      expectedRevision,
-      curationJson,
-    } = parsed.data;
-    const result = await saveHomeConfigDraft(
-      expectedRevision,
+    const result = await saveHomeCurationDraft(
+      parsed.data.expectedRevision,
       authorized.session.userId,
-      {
-        heroSlugs: curationJson.hero.slugs,
-        popularSlugs: curationJson.popular.slugs,
-        lowSpecSlugs: curationJson.lowSpec.slugs,
-        recommendedSlugs:
-          curationJson.recommended.slugs,
-        curation: {
-          hero: { mode: curationJson.hero.mode },
-          popular: { mode: curationJson.popular.mode },
-          lowSpec: { mode: curationJson.lowSpec.mode },
-          recommended: {
-            mode: curationJson.recommended.mode,
-          },
-        },
-        heroPresentation: item.payload.heroPresentation,
-        sections: item.payload.sections,
-        copy: item.payload.copy,
-      }
+      parsed.data.curationJson
     );
-
-    if (result.outcome === "not_found") {
-      return adminRedirect(
-        authorized.adminOrigin,
-        `${target}&estado=no-encontrado`
-      );
-    }
 
     return adminRedirect(
       authorized.adminOrigin,
       `${target}&estado=${
         result.outcome === "conflict"
           ? "conflicto"
-          : "guardado"
+          : result.outcome === "not_found"
+            ? "no-encontrado"
+            : "guardado"
       }`
     );
   } catch {
