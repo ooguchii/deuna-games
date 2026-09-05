@@ -6,6 +6,7 @@ import EditorialHistory from "@/components/admin/EditorialHistory";
 import EditorStateNotice from "@/components/admin/EditorStateNotice";
 import HomeContentEditor from "@/components/admin/HomeContentEditor";
 import HomeHeroEditor from "@/components/admin/HomeHeroEditor";
+import HomeHeroSaveBoundary from "@/components/admin/HomeHeroSaveBoundary";
 import PublicationPanel from "@/components/admin/PublicationPanel";
 import {
   resolveHomeConfig,
@@ -86,17 +87,20 @@ export default async function AdminHomeEditorPage({
     );
 
     sectionContent = (
-      <HomeHeroEditor
-        config={resolved}
-        games={curationGames}
-        publicGames={publicGames}
-        revision={item.revision}
-        background={{
-          brandColor: siteConfig.brandColor,
-          customAssets: siteConfig.backgroundLibrary,
-          pageBackgrounds: siteConfig.pageBackgrounds,
-        }}
-      />
+      <HomeHeroSaveBoundary revision={item.revision}>
+        <HomeHeroEditor
+          key={item.revision}
+          config={resolved}
+          games={curationGames}
+          publicGames={publicGames}
+          revision={item.revision}
+          background={{
+            brandColor: siteConfig.brandColor,
+            customAssets: siteConfig.backgroundLibrary,
+            pageBackgrounds: siteConfig.pageBackgrounds,
+          }}
+        />
+      </HomeHeroSaveBoundary>
     );
   }
 
