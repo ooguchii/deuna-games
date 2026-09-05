@@ -17,7 +17,9 @@ import {
   X,
 } from "lucide-react";
 import {
+  useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -37,6 +39,8 @@ import {
 import type { Game } from "@/types/game";
 
 import styles from "./HomeCurationEditor.module.css";
+
+const CURATION_DRAFT_KEY = "deuna:home-curation-draft:latest";
 
 const collections: Array<{
   id: HomeCurationCollectionId;
@@ -122,6 +126,12 @@ type ModeState = Record<
   HomeCurationMode
 >;
 
+type CurationDraft = {
+  revision: number;
+  modes: ModeState;
+  selections: SelectionState;
+};
+
 function normalize(value: string) {
   return value
     .normalize("NFD")
@@ -149,6 +159,58 @@ function modesFromConfig(
     lowSpec: config.curation.lowSpec.mode,
     recommended: config.curation.recommended.mode,
   };
+}
+
+function buildCurationPayload(
+  modes: ModeState,
+  selections: SelectionState
+) {
+  return JSON.stringify({
+    hero: {
+      mode: modes.hero,
+      slugs: selections.hero,
+    },
+    popular: {
+      mode: modes.popular,
+      slugs: selections.popular,
+    },
+    lowSpec: {
+      mode: modes.lowSpec,
+      slugs: selections.lowSpec,
+    },
+    recommended: {
+      mode: modes.recommended,
+      slugs: selections.recommended,
+    },
+  });
+}
+
+function readRecoveryDraft(): CurationDraft | null {
+  try {
+    const raw = sessionStorage.getItem(CURATION_DRAFT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<CurationDraft>;
+    if (
+      typeof parsed.revision !== "number" ||
+      !parsed.modes ||
+      typeof parsed.modes !== "object" ||
+      !parsed.selections ||
+      typeof parsed.selections !== "object"
+    ) {
+      return null;
+    }
+    return parsed as CurationDraft;
+  } catch {
+    return null;
+  }
+}
+
+function clearRecoveryDraft() {
+  try {
+    sessionStorage.removeItem(CURATION_DRAFT_KEY);
+  } catch {
+    // El guardado del servidor sigue siendo la fuente de verdad.
+  }
 }
 
 function GameArtwork({ game }: { game: Game }) {
@@ -180,19 +242,33 @@ export default function HomeCurationEditor({
 }: {
   config: ResolvedHomeConfig;
   games: Game[];
-  publishedSlugs: string[] | null;
+  publishedSlugs: string[];
   revision: number;
   excludeHero?: boolean;
 }) {
+  const baselineModes = useMemo(
+    () => modesFromConfig(config),
+    [config]
+  );
+  const baselineSelections = useMemo(
+    () => selectionFromConfig(config),
+    [config]
+  );
+  const baselinePayload = useMemo(
+    () => buildCurationPayload(baselineModes, baselineSelections),
+    [baselineModes, baselineSelections]
+  );
   const [active, setActive] =
     useState<HomeCurationCollectionId>(excludeHero ? "popular" : "hero");
   const [modes, setModes] = useState<ModeState>(() =>
-    modesFromConfig(config)
+    structuredClone(baselineModes)
   );
   const [selections, setSelections] =
-    useState<SelectionState>(() => selectionFromConfig(config));
+    useState<SelectionState>(() => structuredClone(baselineSelections));
   const [query, setQuery] = useState("");
   const [rankingNow] = useState(() => Date.now());
+  const [recovery, setRecovery] = useState<CurationDraft | null>(null);
+  const saving = useRef(false);
 
   const meta = collections.find(
     (collection) => collection.id === active
@@ -209,20 +285,15 @@ export default function HomeCurationEditor({
   );
 
   const publishedSet = useMemo(
-    () =>
-      publishedSlugs === null
-        ? null
-        : new Set(publishedSlugs),
+    () => new Set(publishedSlugs),
     [publishedSlugs]
   );
 
   const publicCatalog = useMemo(
     () =>
-      publishedSet === null
-        ? games
-        : games.filter((game) =>
-            publishedSet.has(game.slug)
-          ),
+      games.filter((game) =>
+        publishedSet.has(game.slug)
+      ),
     [games, publishedSet]
   );
 
@@ -281,27 +352,57 @@ export default function HomeCurationEditor({
   }, [activeSelection, games, query]);
 
   const serialized = useMemo(
-    () =>
-      JSON.stringify({
-        hero: {
-          mode: modes.hero,
-          slugs: selections.hero,
-        },
-        popular: {
-          mode: modes.popular,
-          slugs: selections.popular,
-        },
-        lowSpec: {
-          mode: modes.lowSpec,
-          slugs: selections.lowSpec,
-        },
-        recommended: {
-          mode: modes.recommended,
-          slugs: selections.recommended,
-        },
-      }),
+    () => buildCurationPayload(modes, selections),
     [modes, selections]
   );
+  const dirty = serialized !== baselinePayload;
+
+  useEffect(() => {
+    const candidate = readRecoveryDraft();
+    if (!candidate) return;
+    if (
+      buildCurationPayload(
+        candidate.modes,
+        candidate.selections
+      ) === baselinePayload
+    ) {
+      clearRecoveryDraft();
+      return;
+    }
+    setRecovery(candidate);
+  }, [baselinePayload]);
+
+  useEffect(() => {
+    try {
+      if (!dirty) {
+        clearRecoveryDraft();
+        return;
+      }
+      sessionStorage.setItem(
+        CURATION_DRAFT_KEY,
+        JSON.stringify({
+          revision,
+          modes,
+          selections,
+        } satisfies CurationDraft)
+      );
+    } catch {
+      // Storage puede estar bloqueado; el formulario sigue funcionando.
+    }
+  }, [dirty, modes, revision, selections]);
+
+  useEffect(() => {
+    const warnBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (!dirty || saving.current) return;
+      event.preventDefault();
+    };
+    window.addEventListener("beforeunload", warnBeforeUnload);
+    return () =>
+      window.removeEventListener(
+        "beforeunload",
+        warnBeforeUnload
+      );
+  }, [dirty]);
 
   function setMode(mode: HomeCurationMode) {
     setModes((current) => ({
@@ -363,6 +464,9 @@ export default function HomeCurationEditor({
       method="post"
       action="/api/admin/content/home"
       className={styles.root}
+      onSubmit={() => {
+        saving.current = true;
+      }}
     >
       <input
         type="hidden"
@@ -374,6 +478,41 @@ export default function HomeCurationEditor({
         name="curationJson"
         value={serialized}
       />
+
+      {recovery && (
+        <section className={styles.overview} role="status">
+          <div>
+            <span>RECUPERACIÓN</span>
+            <h2>Cambios locales recuperables</h2>
+            <p>
+              {recovery.revision === revision
+                ? "Hay una copia local de esta revisión que todavía no fue guardada."
+                : `Hay una copia local iniciada en la revisión ${recovery.revision}. El servidor está en la revisión ${revision}.`}
+            </p>
+          </div>
+          <div className={styles.rowActions}>
+            <button
+              type="button"
+              onClick={() => {
+                setModes(structuredClone(recovery.modes));
+                setSelections(structuredClone(recovery.selections));
+                setRecovery(null);
+              }}
+            >
+              Recuperar
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                clearRecoveryDraft();
+                setRecovery(null);
+              }}
+            >
+              Descartar
+            </button>
+          </div>
+        </section>
+      )}
 
       <section className={styles.overview}>
         <div>
@@ -389,9 +528,7 @@ export default function HomeCurationEditor({
             <span>juegos editoriales</span>
           </div>
           <div>
-            <strong>
-              {publishedSet === null ? "—" : publishedSet.size}
-            </strong>
+            <strong>{publishedSet.size}</strong>
             <span>publicados</span>
           </div>
           <div>
@@ -532,9 +669,7 @@ export default function HomeCurationEditor({
               ) : (
                 activeSelection.map((slug, index) => {
                   const game = gameBySlug.get(slug);
-                  const isPublished =
-                    publishedSet === null ||
-                    publishedSet.has(slug);
+                  const isPublished = publishedSet.has(slug);
 
                   return (
                     <div
@@ -631,9 +766,7 @@ export default function HomeCurationEditor({
                     activeSelection.includes(game.slug);
                   const atLimit =
                     activeSelection.length >= meta.limit;
-                  const isPublished =
-                    publishedSet === null ||
-                    publishedSet.has(game.slug);
+                  const isPublished = publishedSet.has(game.slug);
 
                   return (
                     <div
@@ -769,12 +902,14 @@ export default function HomeCurationEditor({
         <div>
           <strong>Guardar sólo actualiza el borrador</strong>
           <span>
-            Nada cambia en la web pública hasta revisar y publicar la Portada.
+            {dirty
+              ? "Hay cambios sin guardar. Nada cambia en la web pública hasta revisar y publicar la Portada."
+              : "La curaduría coincide con la revisión guardada. Nada cambia en la web pública hasta publicar."}
           </span>
         </div>
-        <button type="submit">
+        <button type="submit" disabled={!dirty}>
           <Check size={18} aria-hidden="true" />
-          Guardar curaduría
+          {dirty ? "Guardar curaduría" : "Curaduría guardada"}
         </button>
       </footer>
     </form>
