@@ -69,8 +69,21 @@ export default function HomeContentEditor({
 
       if (response.redirected) {
         const target = new URL(response.url);
+        const outcome = target.searchParams.get("estado");
+        const saved = outcome === "guardado";
+
+        if (!saved) {
+          setSaving(false);
+          setError(true);
+        }
+
         router.replace(`${target.pathname}${target.search}`);
+      } else {
+        // La ruta coordinada normalmente responde mediante redirect. Si un
+        // middleware cambia ese contrato, no dejes el editor bloqueado.
+        setSaving(false);
       }
+
       router.refresh();
     } catch (saveError) {
       console.error(
@@ -120,7 +133,7 @@ export default function HomeContentEditor({
           </strong>
           <span>
             {error
-              ? "Tus cambios siguen conservados en esta pestaña. Revisa la conexión y vuelve a guardar."
+              ? "Tus cambios siguen conservados en esta pestaña. Revisa el aviso del editor y vuelve a guardar cuando corresponda."
               : "Curaduría, orden, visibilidad y textos se guardan juntos. Pulsar Guardar en cualquiera de los dos bloques conserva todos los cambios pendientes antes de crear la nueva revisión."}
           </span>
         </div>
