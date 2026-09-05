@@ -109,6 +109,39 @@ function responsiveStyleSchema(spaceBefore: number, spaceAfter: number) {
   }).strict();
 }
 
+const navigationStyles = ["segmented-pro", "integrated", "pills", "dots", "timeline", "minimal", "glass", "rail"] as const;
+const navigationDefaults = {
+  desktop: { x: 50, y: 91, scale: 100 },
+  tablet: { x: 50, y: 91, scale: 100 },
+  mobile: { x: 50, y: 92, scale: 92 },
+} as const;
+
+function navigationPlacementSchema(defaults: { x: number; y: number; scale: number }) {
+  return z.object({
+    x: z.number().int().min(0).max(100).default(defaults.x),
+    y: z.number().int().min(0).max(100).default(defaults.y),
+    scale: z.number().int().min(50).max(180).default(defaults.scale),
+  }).strict().default(defaults);
+}
+
+const navigationSchema = z.object({
+  style: z.enum(navigationStyles).default("segmented-pro"),
+  showIndicators: z.boolean().default(true),
+  showPause: z.boolean().default(true),
+  showProgress: z.boolean().default(true),
+  responsive: z.object({
+    desktop: navigationPlacementSchema(navigationDefaults.desktop),
+    tablet: navigationPlacementSchema(navigationDefaults.tablet),
+    mobile: navigationPlacementSchema(navigationDefaults.mobile),
+  }).strict().default(navigationDefaults),
+}).strict().default({
+  style: "segmented-pro",
+  showIndicators: true,
+  showPause: true,
+  showProgress: true,
+  responsive: navigationDefaults,
+});
+
 const heroPresentationSchema = z.object({
   composition: z.enum(["studio", "cinema", "focus"]),
   previewCount: z.union([z.literal(1), z.literal(2), z.literal(3)]),
@@ -122,6 +155,7 @@ const heroPresentationSchema = z.object({
   autoplay: z.boolean(), loop: z.boolean(), pauseOnHover: z.boolean(), drag: z.boolean(), touch: z.boolean(), keyboard: z.boolean(), wheel: z.boolean(), direction: z.enum(["forward", "reverse"]),
   positions: z.object({ all: positionStyleSchema, main: positionStyleSchema, left1: positionStyleSchema, left2: positionStyleSchema, right1: positionStyleSchema, right2: positionStyleSchema }).strict(),
   responsive: z.object({ desktop: responsiveStyleSchema(28, 58), tablet: responsiveStyleSchema(20, 58), mobile: responsiveStyleSchema(14, 38) }).strict(),
+  navigation: navigationSchema,
 }).strict();
 
 const heroCopySchema = z.object({
@@ -130,7 +164,7 @@ const heroCopySchema = z.object({
   secondaryCta: z.string().trim().min(1).max(100),
 }).strict();
 
-const heroJsonSchema = z.string().max(12_000).transform((value, context) => {
+const heroJsonSchema = z.string().max(20_000).transform((value, context) => {
   try {
     return JSON.parse(value) as unknown;
   } catch {
