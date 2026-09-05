@@ -64,14 +64,14 @@ for (const settings of Object.values(old.responsive)) {
 const parsedOld = parse(old);
 assert.ok(parsedOld.success, 'Existing saved drafts without responsive spacing must remain valid');
 assert.equal(parsedOld.data.heroJson.presentation.responsive.desktop.spaceBefore, 28);
-assert.equal(parsedOld.data.heroJson.presentation.responsive.desktop.spaceAfter, 86);
+assert.equal(parsedOld.data.heroJson.presentation.responsive.desktop.spaceAfter, 58);
 assert.equal(parsedOld.data.heroJson.presentation.responsive.tablet.spaceBefore, 20);
-assert.equal(parsedOld.data.heroJson.presentation.responsive.tablet.spaceAfter, 86);
+assert.equal(parsedOld.data.heroJson.presentation.responsive.tablet.spaceAfter, 58);
 assert.equal(parsedOld.data.heroJson.presentation.responsive.mobile.spaceBefore, 14);
-assert.equal(parsedOld.data.heroJson.presentation.responsive.mobile.spaceAfter, 60);
+assert.equal(parsedOld.data.heroJson.presentation.responsive.mobile.spaceAfter, 38);
 const resolvedOld = resolveHomeConfig({ ...sourceHomeConfig, heroPresentation: old }).heroPresentation;
 assert.equal(resolvedOld.responsive.desktop.spaceBefore, 28);
-assert.equal(resolvedOld.responsive.desktop.spaceAfter, 86);
+assert.equal(resolvedOld.responsive.desktop.spaceAfter, 58);
 assert.deepEqual(homeHeroVisiblePositions(old.responsive.desktop, 'forward', 5), ['left2', 'left1', 'main', 'right1', 'right2']);
 const legacyManualAutoplay = resolveHomeConfig({
   ...sourceHomeConfig,
