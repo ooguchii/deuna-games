@@ -12,15 +12,25 @@ import { createPortal } from "react-dom";
 const documentHtml =
   '<!doctype html><html lang="es"><head><meta name="viewport" content="width=device-width, initial-scale=1"></head><body><div id="preview"></div></body></html>';
 
+function hashText(value: string) {
+  let hash = 2_166_136_261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16_777_619);
+  }
+  return (hash >>> 0).toString(36);
+}
+
 function previewStyleSignature() {
   return Array.from(
     document.querySelectorAll('link[rel="stylesheet"], style')
   )
     .map((node) => {
       if (node instanceof HTMLLinkElement) {
-        return `link:${node.href}`;
+        return `link:${node.href}:${node.media}`;
       }
-      return `style:${node.textContent?.length ?? 0}:${node.textContent?.slice(0, 120) ?? ""}`;
+      const content = node.textContent ?? "";
+      return `style:${content.length}:${hashText(content)}`;
     })
     .join("|");
 }
