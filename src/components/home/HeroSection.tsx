@@ -462,13 +462,23 @@ export default function HeroSection({
     const root = rootRef.current;
     const viewport = fit?.parentElement;
     if (!fit || !root || !viewport) return;
+
+    const resetVisualInsets = () => {
+      root.style.setProperty("--hero-visual-inset-top", "0px");
+      root.style.setProperty("--hero-visual-inset-bottom", "0px");
+    };
+
     const update = () => {
       fit.style.transform = "none";
       const origin = viewport.getBoundingClientRect();
       const cards = Array.from(fit.querySelectorAll<HTMLElement>("[data-position]")).filter((card) => card.getClientRects().length > 0);
-      if (!cards.length || !origin.width || !origin.height) return;
+      if (!cards.length || !origin.width || !origin.height) {
+        resetVisualInsets();
+        return;
+      }
       const screenWidth = root.ownerDocument.defaultView?.innerWidth ?? 1440;
       const device = screenWidth <= 680 ? "mobile" : screenWidth <= 1100 ? "tablet" : "desktop";
+      const responsive = presentation.responsive[device];
       // On phones the neighbors are edge previews; fitting them all would make
       // the main title and actions too small to read or tap.
       const fittedCards = device === "mobile" ? cards.filter((card) => card.dataset.position === "main") : cards;
@@ -478,15 +488,54 @@ export default function HeroSection({
         top: Math.min(...bounds.map((box) => box.top)) - origin.top,
         right: Math.max(...bounds.map((box) => box.right)) - origin.left,
         bottom: Math.max(...bounds.map((box) => box.bottom)) - origin.top,
-      }, origin.width, origin.height, presentation.responsive[device].alignment);
+      }, origin.width, origin.height, responsive.alignment);
       fit.style.transform = `translate(${fitted.x}px, ${fitted.y}px) scale(${fitted.scale})`;
+
+      if (responsive.spacingReference === "canvas") {
+        resetVisualInsets();
+        return;
+      }
+
+      const rootBounds = root.getBoundingClientRect();
+      const viewportBounds = viewport.getBoundingClientRect();
+      const verticalBounds: Array<{ top: number; bottom: number }> = [];
+
+      for (const card of cards) {
+        const box = card.getBoundingClientRect();
+        const top = Math.max(box.top, viewportBounds.top);
+        const bottom = Math.min(box.bottom, viewportBounds.bottom);
+        if (bottom > top) verticalBounds.push({ top, bottom });
+      }
+
+      for (const control of root.querySelectorAll<HTMLElement>("[data-hero-spacing-boundary]")) {
+        if (!control.getClientRects().length) continue;
+        const box = control.getBoundingClientRect();
+        if (box.width > 0 && box.height > 0) verticalBounds.push({ top: box.top, bottom: box.bottom });
+      }
+
+      if (!verticalBounds.length) {
+        resetVisualInsets();
+        return;
+      }
+
+      const visualTop = Math.min(...verticalBounds.map((box) => box.top));
+      const visualBottom = Math.max(...verticalBounds.map((box) => box.bottom));
+      const round = (value: number) => Math.round(value * 100) / 100;
+      root.style.setProperty("--hero-visual-inset-top", `${round(visualTop - rootBounds.top)}px`);
+      root.style.setProperty("--hero-visual-inset-bottom", `${round(rootBounds.bottom - visualBottom)}px`);
     };
+
     update();
     const observer = new ResizeObserver(update);
     observer.observe(viewport);
     const view = root.ownerDocument.defaultView;
     view?.addEventListener("resize", update);
-    return () => { observer.disconnect(); view?.removeEventListener("resize", update); };
+    return () => {
+      observer.disconnect();
+      view?.removeEventListener("resize", update);
+      root.style.removeProperty("--hero-visual-inset-top");
+      root.style.removeProperty("--hero-visual-inset-bottom");
+    };
   }, [presentation, games.length, normalizedActiveIndex]);
 
   if (!activeGame) return null;
@@ -680,6 +729,7 @@ export default function HeroSection({
           <button
             type="button"
             className={`${styles.arrow} ${styles.arrowLeft}`}
+            data-hero-spacing-boundary="control"
             aria-label="Juego anterior"
             onClick={previousSlide}
             disabled={!presentation.loop && normalizedActiveIndex === (direction === 1 ? 0 : games.length - 1)}
@@ -689,6 +739,7 @@ export default function HeroSection({
           <button
             type="button"
             className={`${styles.arrow} ${styles.arrowRight}`}
+            data-hero-spacing-boundary="control"
             aria-label="Juego siguiente"
             onClick={nextSlide}
             disabled={!presentation.loop && normalizedActiveIndex === (direction === 1 ? games.length - 1 : 0)}
