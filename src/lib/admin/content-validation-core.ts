@@ -228,16 +228,14 @@ const pageBackgroundsSchema = z
   })
   .strict();
 
-const heroImageTuningSchema = z
-  .object({
-    brightness: z.number().int().min(50).max(220),
-    saturation: z.number().int().min(0).max(200),
-    contrast: z.number().int().min(70).max(160),
-    ambientBlur: z.number().int().min(0).max(90),
-    ambientOpacity: z.number().int().min(0).max(100),
-    overlayStrength: z.number().int().min(0).max(100),
-  })
-  .strict();
+// Unknown legacy keys are intentionally stripped here so saved configurations
+// from before the ambient Hero layer was removed keep loading without reviving it.
+const heroImageTuningSchema = z.object({
+  brightness: z.number().int().min(50).max(220),
+  saturation: z.number().int().min(0).max(200),
+  contrast: z.number().int().min(70).max(160),
+  overlayStrength: z.number().int().min(0).max(100),
+});
 
 const downloadHrefSchema = z
   .string()
