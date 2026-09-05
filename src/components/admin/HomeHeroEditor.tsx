@@ -60,6 +60,29 @@ type TransitionName =
   | "Perspective"
   | "Custom";
 
+type AspectPreset =
+  | "free"
+  | "21:9"
+  | "16:9"
+  | "3:2"
+  | "4:3"
+  | "1:1"
+  | "4:5"
+  | "9:16"
+  | "custom";
+
+type AspectControl = {
+  preset: AspectPreset;
+  locked: boolean;
+  customWidth: number;
+  customHeight: number;
+};
+
+const HERO_FRAME_MIN_WIDTH = 260;
+const HERO_FRAME_MAX_WIDTH = 1800;
+const HERO_FRAME_MIN_HEIGHT = 220;
+const HERO_FRAME_MAX_HEIGHT = 1200;
+
 const positionList: Array<{ id: HomeHeroPosition; label: string }> = [
   { id: "all", label: "Todas" },
   { id: "main", label: "Principal" },
@@ -102,12 +125,79 @@ const transitions: TransitionName[] = [
   "Custom",
 ];
 
+const aspectPresets: Array<{ id: AspectPreset; label: string; ratio?: number }> = [
+  { id: "free", label: "Libre" },
+  { id: "21:9", label: "21:9 · ultrapanorámico", ratio: 21 / 9 },
+  { id: "16:9", label: "16:9 · panorámico", ratio: 16 / 9 },
+  { id: "3:2", label: "3:2 · editorial", ratio: 3 / 2 },
+  { id: "4:3", label: "4:3 · clásico", ratio: 4 / 3 },
+  { id: "1:1", label: "1:1 · cuadrado", ratio: 1 },
+  { id: "4:5", label: "4:5 · vertical", ratio: 4 / 5 },
+  { id: "9:16", label: "9:16 · vertical completo", ratio: 9 / 16 },
+  { id: "custom", label: "Personalizado" },
+];
+
 const clone = <T,>(value: T): T => structuredClone(value);
 const norm = (value: string) =>
   value
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase();
+
+const clamp = (value: number, min: number, max: number) =>
+  Math.max(min, Math.min(max, value));
+
+function gcd(left: number, right: number) {
+  let a = Math.max(1, Math.round(Math.abs(left)));
+  let b = Math.max(1, Math.round(Math.abs(right)));
+  while (b) [a, b] = [b, a % b];
+  return a;
+}
+
+function simplifiedRatio(width: number, height: number) {
+  const divisor = gcd(width, height);
+  return {
+    width: clamp(Math.round(width / divisor), 1, 100),
+    height: clamp(Math.round(height / divisor), 1, 100),
+  };
+}
+
+function aspectRatio(control: AspectControl) {
+  if (control.preset === "custom") {
+    return control.customWidth / Math.max(1, control.customHeight);
+  }
+  return aspectPresets.find((entry) => entry.id === control.preset)?.ratio ?? null;
+}
+
+function fitRatioFromWidth(width: number, ratio: number) {
+  let nextWidth = clamp(Math.round(width), HERO_FRAME_MIN_WIDTH, HERO_FRAME_MAX_WIDTH);
+  let nextHeight = Math.round(nextWidth / ratio);
+
+  if (nextHeight > HERO_FRAME_MAX_HEIGHT) {
+    nextHeight = HERO_FRAME_MAX_HEIGHT;
+    nextWidth = clamp(Math.round(nextHeight * ratio), HERO_FRAME_MIN_WIDTH, HERO_FRAME_MAX_WIDTH);
+  } else if (nextHeight < HERO_FRAME_MIN_HEIGHT) {
+    nextHeight = HERO_FRAME_MIN_HEIGHT;
+    nextWidth = clamp(Math.round(nextHeight * ratio), HERO_FRAME_MIN_WIDTH, HERO_FRAME_MAX_WIDTH);
+  }
+
+  return { width: nextWidth, height: nextHeight };
+}
+
+function fitRatioFromHeight(height: number, ratio: number) {
+  let nextHeight = clamp(Math.round(height), HERO_FRAME_MIN_HEIGHT, HERO_FRAME_MAX_HEIGHT);
+  let nextWidth = Math.round(nextHeight * ratio);
+
+  if (nextWidth > HERO_FRAME_MAX_WIDTH) {
+    nextWidth = HERO_FRAME_MAX_WIDTH;
+    nextHeight = clamp(Math.round(nextWidth / ratio), HERO_FRAME_MIN_HEIGHT, HERO_FRAME_MAX_HEIGHT);
+  } else if (nextWidth < HERO_FRAME_MIN_WIDTH) {
+    nextWidth = HERO_FRAME_MIN_WIDTH;
+    nextHeight = clamp(Math.round(nextWidth / ratio), HERO_FRAME_MIN_HEIGHT, HERO_FRAME_MAX_HEIGHT);
+  }
+
+  return { width: nextWidth, height: nextHeight };
+}
 
 function Artwork({
   game,
@@ -308,6 +398,21 @@ export default function HomeHeroEditor({
   const [preview, setPreview] = useState(false);
   const [workspace, setWorkspace] = useState<"content" | "design" | "motion">("content");
   const [recoveryDismissed, setRecoveryDismissed] = useState(false);
+  const [aspectControls, setAspectControls] = useState<Record<HomeHeroDevice, AspectControl>>(() => {
+    const build = (entry: HomeHeroDevice): AspectControl => {
+      const ratio = simplifiedRatio(
+        config.heroPresentation.responsive[entry].cardWidth,
+        config.heroPresentation.responsive[entry].cardHeight
+      );
+      return {
+        preset: "free",
+        locked: false,
+        customWidth: ratio.width,
+        customHeight: ratio.height,
+      };
+    };
+    return { desktop: build("desktop"), tablet: build("tablet"), mobile: build("mobile") };
+  });
   const saving = useRef(false);
   const router = useRouter();
   const recoveryReady = useSyncExternalStore(subscribeStorage, clientReady, serverReady);
@@ -394,6 +499,7 @@ export default function HomeHeroEditor({
     result.length
   );
   const selected = target === "all" ? shown.positions.all : shown.positions[target];
+  const aspectControl = aspectControls[device];
 
   const commit = (update: (state: State) => State) => {
     if (comparing) {
@@ -458,6 +564,93 @@ export default function HomeHeroEditor({
       current.presentation.preset = "custom";
       return current;
     });
+
+  const setFrameDimension = (key: "cardWidth" | "cardHeight", value: number) => {
+    const ratio = aspectControl.locked ? aspectRatio(aspectControl) : null;
+    if (!ratio) {
+      setResponsive(key, value);
+      return;
+    }
+
+    const next = key === "cardWidth"
+      ? fitRatioFromWidth(value, ratio)
+      : fitRatioFromHeight(value, ratio);
+    commit((current) => {
+      const settings = current.presentation.responsive[device];
+      settings.cardWidth = next.width;
+      settings.cardHeight = next.height;
+      current.presentation.preset = "custom";
+      return current;
+    });
+  };
+
+  const setAspectPreset = (preset: AspectPreset) => {
+    if (preset === "free") {
+      setAspectControls((current) => ({
+        ...current,
+        [device]: { ...current[device], preset, locked: false },
+      }));
+      return;
+    }
+
+    const currentControl = aspectControls[device];
+    const nextControl: AspectControl = { ...currentControl, preset, locked: true };
+    if (preset === "custom") {
+      const simplified = simplifiedRatio(responsive.cardWidth, responsive.cardHeight);
+      nextControl.customWidth = simplified.width;
+      nextControl.customHeight = simplified.height;
+    }
+    const ratio = aspectRatio(nextControl);
+    setAspectControls((current) => ({ ...current, [device]: nextControl }));
+    if (!ratio) return;
+
+    const next = fitRatioFromWidth(responsive.cardWidth, ratio);
+    commit((current) => {
+      current.presentation.responsive[device].cardWidth = next.width;
+      current.presentation.responsive[device].cardHeight = next.height;
+      current.presentation.preset = "custom";
+      return current;
+    });
+  };
+
+  const updateCustomAspect = (key: "customWidth" | "customHeight", value: number) => {
+    const nextControl = {
+      ...aspectControl,
+      preset: "custom" as const,
+      locked: true,
+      [key]: clamp(Math.round(value), 1, 100),
+    };
+    setAspectControls((current) => ({ ...current, [device]: nextControl }));
+    const ratio = aspectRatio(nextControl);
+    if (!ratio) return;
+    const next = fitRatioFromWidth(responsive.cardWidth, ratio);
+    commit((current) => {
+      current.presentation.responsive[device].cardWidth = next.width;
+      current.presentation.responsive[device].cardHeight = next.height;
+      current.presentation.preset = "custom";
+      return current;
+    });
+  };
+
+  const restoreDeviceSize = () => {
+    const original = baseline.presentation.responsive[device];
+    commit((current) => {
+      current.presentation.responsive[device].cardWidth = original.cardWidth;
+      current.presentation.responsive[device].cardHeight = original.cardHeight;
+      current.presentation.preset = "custom";
+      return current;
+    });
+    const simplified = simplifiedRatio(original.cardWidth, original.cardHeight);
+    setAspectControls((current) => ({
+      ...current,
+      [device]: {
+        preset: "free",
+        locked: false,
+        customWidth: simplified.width,
+        customHeight: simplified.height,
+      },
+    }));
+  };
 
   const payload = JSON.stringify({
     mode: state.mode,
@@ -633,7 +826,7 @@ export default function HomeHeroEditor({
                 <button type="button" key={id} data-active={device === id} aria-pressed={device === id} onClick={() => setDevice(id)}><Icon size={15} /> {label}</button>
               ))}
             </div>
-            <span>Tamaño base {responsive.cardWidth} × {responsive.cardHeight} · {visiblePositions.length} posiciones visibles · perspectiva {responsive.perspective}px</span>
+            <span>Tamaño base {responsive.cardWidth} × {responsive.cardHeight} · {aspectControl.locked ? aspectControl.preset === "custom" ? `${aspectControl.customWidth}:${aspectControl.customHeight}` : aspectControl.preset : "Libre"} · {visiblePositions.length} posiciones visibles · perspectiva {responsive.perspective}px</span>
           </div>
 
           <HomeHeroLivePreview
@@ -697,8 +890,28 @@ export default function HomeHeroEditor({
                 return <Switch key={id} label={`Habilitar ${entry.label.toLowerCase()}${visiblePositions.includes(id) ? "" : " (fuera de vista)"}`} value={!responsive.hiddenPositions?.includes(id)} change={(value) => setResponsive("hiddenPositions", value ? (responsive.hiddenPositions ?? []).filter((item) => item !== id) : [...(responsive.hiddenPositions ?? []), id])} />;
               })}
               <Range label="Tarjetas visibles" value={responsive.visibleCards} min={1} max={responsive.alignment && responsive.alignment !== "center" ? 3 : 5} change={(value) => setResponsive("visibleCards", value)} />
-              <Range label="Ancho" value={responsive.cardWidth} min={260} max={1200} unit="px" change={(value) => setResponsive("cardWidth", value)} />
-              <Range label="Alto" value={responsive.cardHeight} min={260} max={700} unit="px" change={(value) => setResponsive("cardHeight", value)} />
+              <label className={styles.select}>
+                <span>Encuadre de la tarjeta</span>
+                <select value={aspectControl.preset} onChange={(event) => setAspectPreset(event.target.value as AspectPreset)}>
+                  {aspectPresets.map((entry) => <option key={entry.id} value={entry.id}>{entry.label}</option>)}
+                </select>
+              </label>
+              {aspectControl.preset === "custom" && <>
+                <Range label="Proporción horizontal" value={aspectControl.customWidth} min={1} max={100} change={(value) => updateCustomAspect("customWidth", value)} />
+                <Range label="Proporción vertical" value={aspectControl.customHeight} min={1} max={100} change={(value) => updateCustomAspect("customHeight", value)} />
+              </>}
+              <Switch
+                label="Mantener proporción al cambiar tamaño"
+                value={aspectControl.locked}
+                change={(value) => setAspectControls((current) => ({
+                  ...current,
+                  [device]: { ...current[device], locked: value, preset: value && current[device].preset === "free" ? "custom" : current[device].preset },
+                }))}
+              />
+              <Range label="Ancho" value={responsive.cardWidth} min={HERO_FRAME_MIN_WIDTH} max={HERO_FRAME_MAX_WIDTH} unit="px" change={(value) => setFrameDimension("cardWidth", value)} />
+              <Range label="Alto" value={responsive.cardHeight} min={HERO_FRAME_MIN_HEIGHT} max={HERO_FRAME_MAX_HEIGHT} unit="px" change={(value) => setFrameDimension("cardHeight", value)} />
+              <p className={styles.help}>El fitting conserva el centro y reduce uniformemente sólo si el encuadre o una rotación no caben. Ya no desplaza todo el carrusel hacia un costado.</p>
+              <button type="button" onClick={restoreDeviceSize}><RotateCcw size={14} /> Restablecer tamaño de {devices.find((entry) => entry.id === device)?.label.toLowerCase()}</button>
               <Range label="Separación" value={responsive.gap} min={0} max={100} unit="px" change={(value) => setResponsive("gap", value)} />
               <Range label="Perspectiva" value={responsive.perspective} min={400} max={2400} step={50} unit="px" change={(value) => setResponsive("perspective", value)} />
             </>)}
