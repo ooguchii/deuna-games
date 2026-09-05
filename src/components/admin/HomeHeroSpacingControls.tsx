@@ -6,6 +6,7 @@ import { useState } from "react";
 import styles from "./HomeHeroEditor.module.css";
 
 const spacingPresets = [
+  { id: "flush", label: "Sin espacio", before: 0, after: 0 },
   { id: "compact", label: "Compacto", before: 12, after: 24 },
   { id: "balanced", label: "Equilibrado", before: 28, after: 48 },
   { id: "spacious", label: "Amplio", before: 44, after: 80 },
@@ -67,7 +68,7 @@ export default function HomeHeroSpacingControls({
   onRestore: () => void;
 }) {
   return <>
-    <p className={styles.help}><strong>Espaciado exterior del Hero.</strong> Define la distancia real respecto del contenido anterior y de la sección que venga después. No se suma al margen de la siguiente sección.</p>
+    <p className={styles.help}><strong>Espaciado exterior real del Hero.</strong> Define la distancia respecto del contenido anterior y de la sección que venga después. Si el Hero es la primera sección, 0px significa que no se añade separación bajo el encabezado. El contenedor ya no reserva aire vertical oculto: su altura real la determina el control <strong>Alto</strong> de la tarjeta.</p>
     <SpacingRange label="Espacio superior" value={spaceBefore} max={160} change={onChangeBefore} />
     <SpacingRange label="Espacio inferior" value={spaceAfter} max={200} change={onChangeAfter} />
     <div role="group" aria-label={`Presets de espaciado para ${deviceLabel}`}>
