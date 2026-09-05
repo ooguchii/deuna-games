@@ -95,13 +95,18 @@ const positionStyleSchema = z.object({
 
 // The renderer uses uniform fitting, so large editorial frames are safe: they
 // are scaled around the Hero center only when the selected viewport requires it.
-const responsiveStyleSchema = z.object({
-  visibleCards: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5)]),
-  alignment: z.enum(["left", "center", "right"]).optional(),
-  hiddenPositions: z.array(z.enum(["left1", "left2", "right1", "right2"])).max(4).refine((items) => new Set(items).size === items.length).optional(),
-  cardWidth: z.number().int().min(260).max(1800), cardHeight: z.number().int().min(220).max(1200),
-  gap: z.number().int().min(0).max(100), perspective: z.number().int().min(400).max(2400),
-}).strict();
+// Spacing defaults keep old saved/session drafts visually compatible.
+function responsiveStyleSchema(spaceBefore: number, spaceAfter: number) {
+  return z.object({
+    visibleCards: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5)]),
+    alignment: z.enum(["left", "center", "right"]).optional(),
+    hiddenPositions: z.array(z.enum(["left1", "left2", "right1", "right2"])).max(4).refine((items) => new Set(items).size === items.length).optional(),
+    cardWidth: z.number().int().min(260).max(1800), cardHeight: z.number().int().min(220).max(1200),
+    gap: z.number().int().min(0).max(100), perspective: z.number().int().min(400).max(2400),
+    spaceBefore: z.number().int().min(0).max(160).default(spaceBefore),
+    spaceAfter: z.number().int().min(0).max(200).default(spaceAfter),
+  }).strict();
+}
 
 const heroPresentationSchema = z.object({
   composition: z.enum(["studio", "cinema", "focus"]),
@@ -115,7 +120,7 @@ const heroPresentationSchema = z.object({
   radius: z.number().int().min(0).max(48), shadow: z.number().int().min(0).max(100), borderWidth: z.number().int().min(0).max(6), glow: z.number().int().min(0).max(100), overlay: z.number().int().min(0).max(90),
   autoplay: z.boolean(), loop: z.boolean(), pauseOnHover: z.boolean(), drag: z.boolean(), touch: z.boolean(), keyboard: z.boolean(), wheel: z.boolean(), direction: z.enum(["forward", "reverse"]),
   positions: z.object({ all: positionStyleSchema, main: positionStyleSchema, left1: positionStyleSchema, left2: positionStyleSchema, right1: positionStyleSchema, right2: positionStyleSchema }).strict(),
-  responsive: z.object({ desktop: responsiveStyleSchema, tablet: responsiveStyleSchema, mobile: responsiveStyleSchema }).strict(),
+  responsive: z.object({ desktop: responsiveStyleSchema(28, 86), tablet: responsiveStyleSchema(20, 86), mobile: responsiveStyleSchema(14, 60) }).strict(),
 }).strict();
 
 const heroCopySchema = z.object({
