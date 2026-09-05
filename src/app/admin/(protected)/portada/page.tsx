@@ -1,4 +1,3 @@
-import { getPublicSiteConfig } from "@/lib/site/public-site-config";
 import { notFound } from "next/navigation";
 
 import AdminPageHeader from "@/components/admin/AdminPageHeader";
@@ -9,18 +8,12 @@ import HomeHeroEditor from "@/components/admin/HomeHeroEditor";
 import HomePresentationEditor from "@/components/admin/HomePresentationEditor";
 import PublicationPanel from "@/components/admin/PublicationPanel";
 import {
-  buildHomeGameCollections,
-} from "@/data/home";
-import {
   resolveHomeConfig,
 } from "@/data/home-config";
 import {
   getEditorialItem,
   listEditorialItems,
 } from "@/lib/admin/content-service";
-import {
-  listPublicationStates,
-} from "@/lib/admin/publication-overview";
 import {
   getHomeConfigPublicationState,
 } from "@/lib/admin/publication-service";
@@ -30,19 +23,21 @@ import {
 import {
   getPublicGames,
 } from "@/lib/games/public-catalog";
+import { getPublicSiteConfig } from "@/lib/site/public-site-config";
 
 import styles from "../../admin.module.css";
 
 export const dynamic = "force-dynamic";
 
-const sections = [
+export const homeAdminSections = [
   "hero",
   "contenido",
   "publicacion",
   "historial",
 ] as const;
 
-type HomeAdminSection = (typeof sections)[number];
+export type HomeAdminSection =
+  (typeof homeAdminSections)[number];
 
 type PageProps = {
   searchParams: Promise<{
@@ -58,66 +53,133 @@ function resolveSection(
     ? value[0]
     : value;
 
-  return sections.includes(candidate as HomeAdminSection)
+  return homeAdminSections.includes(
+    candidate as HomeAdminSection
+  )
     ? (candidate as HomeAdminSection)
     : "hero";
+}
+
+async function readPublicationState() {
+  try {
+    return await getHomeConfigPublicationState();
+  } catch {
+    console.error(
+      "No se pudo leer el estado de publicación de Inicio."
+    );
+    return null;
+  }
 }
 
 export default async function AdminHomeEditorPage({
   searchParams,
 }: PageProps) {
   await verifyAdminSession();
-  const [
-    item,
-    games,
-    publicGames,
-    gamePublicationStates,
-    parameters,
-    siteConfig,
-  ] = await Promise.all([
+
+  const parameters = await searchParams;
+  const section = resolveSection(parameters.seccion);
+  const state = Array.isArray(parameters.estado)
+    ? parameters.estado[0]
+    : parameters.estado;
+
+  const [item, publicationState] = await Promise.all([
     getEditorialItem("home_config", "home"),
-    listEditorialItems("game"),
-    getPublicGames(),
-    listPublicationStates("game"),
-    searchParams,
-    getPublicSiteConfig(),
+    readPublicationState(),
   ]);
 
   if (!item) notFound();
 
-  let publicationState = null;
+  const resolved = resolveHomeConfig(item.payload);
 
-  try {
-    publicationState =
-      await getHomeConfigPublicationState();
-  } catch {
-    console.error(
-      "No se pudo leer el estado de publicación de Inicio."
+  let sectionContent: React.ReactNode = null;
+
+  if (section === "hero") {
+    const [games, publicGames, siteConfig] = await Promise.all([
+      listEditorialItems("game"),
+      getPublicGames(),
+      getPublicSiteConfig(),
+    ]);
+    const publicBySlug = new Map(
+      publicGames.map((game) => [game.slug, game])
+    );
+    const curationGames = games.map((game) =>
+      publicBySlug.get(game.key) ?? game.payload
+    );
+
+    sectionContent = (
+      <HomeHeroEditor
+        config={resolved}
+        games={curationGames}
+        publicGames={publicGames}
+        revision={item.revision}
+        background={{
+          brandColor: siteConfig.brandColor,
+          customAssets: siteConfig.backgroundLibrary,
+          pageBackgrounds: siteConfig.pageBackgrounds,
+        }}
+      />
     );
   }
 
-  const state = Array.isArray(parameters.estado)
-    ? parameters.estado[0]
-    : parameters.estado;
-  const section = resolveSection(parameters.seccion);
-  const resolved = resolveHomeConfig(item.payload);
-  const publishedSlugs =
-    gamePublicationStates === null
-      ? null
-      : gamePublicationStates
-          .filter((game) => game.publicVisible)
-          .map((game) => game.key);
-  const publicBySlug = new Map(
-    publicGames.map((game) => [game.slug, game])
-  );
-  const curationGames = games.map((game) =>
-    publicBySlug.get(game.key) ?? game.payload
-  );
-  const heroPreviewCatalog = publicGames;
-  const previewCollections = buildHomeGameCollections(
-    heroPreviewCatalog,
-    resolved
-  );
+  if (section === "contenido") {
+    const [games, publicGames] = await Promise.all([
+      listEditorialItems("game"),
+      getPublicGames(),
+    ]);
+    const publicBySlug = new Map(
+      publicGames.map((game) => [game.slug, game])
+    );
+    const curationGames = games.map((game) =>
+      publicBySlug.get(game.key) ?? game.payload
+    );
+    const publishedSlugs = publicGames.map(
+      (game) => game.slug
+    );
+
+    sectionContent = (
+      <>
+        <HomeCurationEditor
+          config={resolved}
+          games={curationGames}
+          publishedSlugs={publishedSlugs}
+          revision={item.revision}
+          excludeHero
+        />
+        <HomePresentationEditor
+          config={resolved}
+          revision={item.revision}
+        />
+      </>
+    );
+  }
+
+  if (section === "publicacion") {
+    sectionContent = (
+      <section className={styles.editorPanel}>
+        {publicationState ? (
+          <PublicationPanel
+            state={publicationState}
+            requestState={state}
+            publishAction="/api/admin/content/home/publish"
+            restoreActionBase="/api/admin/content/home-publications"
+          />
+        ) : (
+          <p>
+            La infraestructura de publicación todavía no está disponible en esta base. Aplica las migraciones e importa el contenido editorial antes de publicar Inicio.
+          </p>
+        )}
+      </section>
+    );
+  }
+
+  if (section === "historial") {
+    sectionContent = (
+      <EditorialHistory
+        revisions={item.revisions}
+        currentRevision={item.revision}
+      />
+    );
+  }
 
   return (
     <>
@@ -125,47 +187,19 @@ export default async function AdminHomeEditorPage({
         eyebrow={<>INICIO · REVISIÓN {item.revision}</>}
         title="Inicio"
         description="Administra curaduría, automatización, orden, visibilidad y textos de la página principal sin mezclar contenido con la lógica de los componentes. Todo queda en borrador hasta publicar."
-        action={<span className={styles.draftState}>
-          {publicationState?.hasUnpublishedChanges
-            ? "Cambios sin publicar"
-            : item.status === "synced"
-              ? "Sin cambios"
-              : "Borrador guardado"}
-        </span>}
+        action={
+          <span className={styles.draftState}>
+            {publicationState?.hasUnpublishedChanges
+              ? "Cambios sin publicar"
+              : item.status === "synced"
+                ? "Sin cambios"
+                : "Borrador guardado"}
+          </span>
+        }
       />
 
       <EditorStateNotice state={state} />
-
-      {section === "hero" && <HomeHeroEditor config={resolved} games={curationGames} publicGames={heroPreviewCatalog} revision={item.revision} background={{ brandColor: siteConfig.brandColor, customAssets: siteConfig.backgroundLibrary, pageBackgrounds: siteConfig.pageBackgrounds }} />}
-
-      {section === "contenido" && <>
-        <HomeCurationEditor config={resolved} games={curationGames} publishedSlugs={publishedSlugs} revision={item.revision} excludeHero />
-        <HomePresentationEditor config={resolved} heroGames={previewCollections.heroGames} revision={item.revision} showHeroStudio={false} />
-      </>}
-
-      {section === "publicacion" && (
-        <section className={styles.editorPanel}>
-          {publicationState ? (
-            <PublicationPanel
-              state={publicationState}
-              requestState={state}
-              publishAction="/api/admin/content/home/publish"
-              restoreActionBase="/api/admin/content/home-publications"
-            />
-          ) : (
-            <p>
-              La infraestructura de publicación todavía no está disponible en esta base. Aplica las migraciones e importa el contenido editorial antes de publicar Inicio.
-            </p>
-          )}
-        </section>
-      )}
-
-      {section === "historial" && (
-        <EditorialHistory
-          revisions={item.revisions}
-          currentRevision={item.revision}
-        />
-      )}
+      {sectionContent}
     </>
   );
 }
