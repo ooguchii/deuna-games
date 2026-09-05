@@ -2,6 +2,10 @@
 
 import { RotateCcw } from "lucide-react";
 
+import {
+  AdminRangeField,
+  AdminSwitchField,
+} from "@/components/admin/AdminEditorControls";
 import type {
   HomeHeroNavigationConfig,
   HomeHeroNavigationPlacement,
@@ -37,42 +41,6 @@ const anchorPresets = [
   { label: "↘", title: "Abajo derecha", x: 88, y: 90 },
 ] as const;
 
-function NumberRange({
-  label,
-  value,
-  min,
-  max,
-  unit,
-  onChange,
-}: {
-  label: string;
-  value: number;
-  min: number;
-  max: number;
-  unit: string;
-  onChange: (value: number) => void;
-}) {
-  return (
-    <label className={styles.range}>
-      <span>{label}</span>
-      <div>
-        <input type="range" min={min} max={max} value={value} onChange={(event) => onChange(Number(event.target.value))} />
-        <b>{value}{unit}</b>
-      </div>
-    </label>
-  );
-}
-
-function Toggle({ label, value, onChange }: { label: string; value: boolean; onChange: (value: boolean) => void }) {
-  return (
-    <label className={styles.toggle}>
-      <span>{label}</span>
-      <input type="checkbox" checked={value} onChange={(event) => onChange(event.target.checked)} />
-      <i />
-    </label>
-  );
-}
-
 export default function HomeHeroNavigationControls({
   navigation,
   placement,
@@ -87,14 +55,22 @@ export default function HomeHeroNavigationControls({
   placement: HomeHeroNavigationPlacement;
   deviceLabel: string;
   onStyleChange: (style: HomeHeroNavigationStyle) => void;
-  onToggle: (key: "showIndicators" | "showPause" | "showProgress", value: boolean) => void;
-  onPlacementChange: (key: keyof HomeHeroNavigationPlacement, value: number) => void;
+  onToggle: (
+    key: "showIndicators" | "showPause" | "showProgress",
+    value: boolean
+  ) => void;
+  onPlacementChange: (
+    key: keyof HomeHeroNavigationPlacement,
+    value: number
+  ) => void;
   onPositionChange: (x: number, y: number) => void;
   onRestore: () => void;
 }) {
   return (
     <div className={styles.editor}>
-      <p>Un único sistema se usa en la preview y en Inicio. Cambiar el estilo no altera el autoplay ni la selección de juegos.</p>
+      <p>
+        Un único sistema se usa en la preview y en Inicio. Cambiar el estilo no altera el autoplay ni la selección de juegos.
+      </p>
 
       <strong className={styles.sectionTitle}>Estilo</strong>
       <div className={styles.styleGrid}>
@@ -105,7 +81,13 @@ export default function HomeHeroNavigationControls({
             data-active={navigation.style === entry.id}
             onClick={() => onStyleChange(entry.id)}
           >
-            <span className={styles.mini} data-style={entry.id} aria-hidden="true"><i /><i /><i /><i /></span>
+            <span
+              className={styles.mini}
+              data-style={entry.id}
+              aria-hidden="true"
+            >
+              <i /><i /><i /><i />
+            </span>
             <strong>{entry.title}</strong>
             <small>{entry.description}</small>
           </button>
@@ -113,30 +95,87 @@ export default function HomeHeroNavigationControls({
       </div>
 
       <strong className={styles.sectionTitle}>Elementos</strong>
-      <Toggle label="Indicadores de juegos" value={navigation.showIndicators} onChange={(value) => onToggle("showIndicators", value)} />
-      <Toggle label="Botón pausa / reanudar" value={navigation.showPause} onChange={(value) => onToggle("showPause", value)} />
-      <Toggle label="Progreso del autoplay" value={navigation.showProgress} onChange={(value) => onToggle("showProgress", value)} />
+      <AdminSwitchField
+        className={styles.toggle}
+        label="Indicadores de juegos"
+        value={navigation.showIndicators}
+        onChange={(value) => onToggle("showIndicators", value)}
+      />
+      <AdminSwitchField
+        className={styles.toggle}
+        label="Botón pausa / reanudar"
+        value={navigation.showPause}
+        onChange={(value) => onToggle("showPause", value)}
+      />
+      <AdminSwitchField
+        className={styles.toggle}
+        label="Progreso del autoplay"
+        value={navigation.showProgress}
+        onChange={(value) => onToggle("showProgress", value)}
+      />
 
-      <strong className={styles.sectionTitle}>Posición en {deviceLabel}</strong>
-      <div className={styles.anchorGrid} role="group" aria-label={`Posiciones rápidas para ${deviceLabel}`}>
+      <strong className={styles.sectionTitle}>
+        Posición en {deviceLabel}
+      </strong>
+      <div
+        className={styles.anchorGrid}
+        role="group"
+        aria-label={`Posiciones rápidas para ${deviceLabel}`}
+      >
         {anchorPresets.map((entry) => (
           <button
             key={entry.title}
             type="button"
             title={entry.title}
             aria-label={entry.title}
-            data-active={Math.abs(placement.x - entry.x) <= 1 && Math.abs(placement.y - entry.y) <= 1}
+            data-active={
+              Math.abs(placement.x - entry.x) <= 1 &&
+              Math.abs(placement.y - entry.y) <= 1
+            }
             onClick={() => onPositionChange(entry.x, entry.y)}
-          >{entry.label}</button>
+          >
+            {entry.label}
+          </button>
         ))}
       </div>
-      <p className={styles.hint}>También puedes arrastrar el manejador que aparece sobre la barra en la preview. Shift + flechas mueve de a 5%.</p>
-      <NumberRange label="Posición X" value={placement.x} min={0} max={100} unit="%" onChange={(value) => onPlacementChange("x", value)} />
-      <NumberRange label="Posición Y" value={placement.y} min={0} max={100} unit="%" onChange={(value) => onPlacementChange("y", value)} />
-      <NumberRange label="Escala" value={placement.scale} min={50} max={180} unit="%" onChange={(value) => onPlacementChange("scale", value)} />
+      <p className={styles.hint}>
+        También puedes arrastrar el manejador que aparece sobre la barra en la preview. Shift + flechas mueve de a 5%.
+      </p>
+      <AdminRangeField
+        className={styles.range}
+        label="Posición X"
+        value={placement.x}
+        min={0}
+        max={100}
+        unit="%"
+        onChange={(value) => onPlacementChange("x", value)}
+      />
+      <AdminRangeField
+        className={styles.range}
+        label="Posición Y"
+        value={placement.y}
+        min={0}
+        max={100}
+        unit="%"
+        onChange={(value) => onPlacementChange("y", value)}
+      />
+      <AdminRangeField
+        className={styles.range}
+        label="Escala"
+        value={placement.scale}
+        min={50}
+        max={180}
+        unit="%"
+        onChange={(value) => onPlacementChange("scale", value)}
+      />
 
-      <button type="button" className={styles.restore} onClick={onRestore}>
-        <RotateCcw size={14} aria-hidden="true" /> Restablecer controles de {deviceLabel.toLowerCase()}
+      <button
+        type="button"
+        className={styles.restore}
+        onClick={onRestore}
+      >
+        <RotateCcw size={14} aria-hidden="true" /> Restablecer controles de{" "}
+        {deviceLabel.toLowerCase()}
       </button>
     </div>
   );
