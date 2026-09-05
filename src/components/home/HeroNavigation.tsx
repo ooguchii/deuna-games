@@ -73,7 +73,7 @@ export default function HeroNavigation({
   const progressVisible = config.showProgress && autoplayDelay !== null;
   const pauseVisible = config.showPause && autoplayDelay !== null;
   const activeGame = games[activeIndex];
-  const announceSlideChanges = isPaused || atAutoplayEnd;
+  const announceSlideChanges = isPaused;
 
   const navigationStyle = drag
     ? ({ left: `${drag.x}%`, top: `${drag.y}%` } as CSSProperties)
