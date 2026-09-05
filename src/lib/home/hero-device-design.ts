@@ -9,16 +9,55 @@ type HeroResponsivePatch = Partial<
   Record<HomeHeroDevice, Record<string, unknown>>
 >;
 
+function heroBasePresentation(
+  presentation: HomeHeroPresentation
+): HomeHeroBasePresentation {
+  const { deviceOverrides: _overrides, ...base } = presentation;
+  void _overrides;
+  return base;
+}
+
+/**
+ * A device override owns the visual design used by that device, but the other
+ * responsive slots inside the stored snapshot are only historical copies from
+ * the moment the override was created. Resolve those cross-device slots from
+ * their effective owners so editor operations never read stale baseline data.
+ */
 export function resolveHeroDeviceDesign(
   presentation: HomeHeroPresentation,
   device: HomeHeroDevice
 ): HomeHeroBasePresentation {
-  if (presentation.deviceOverrides?.[device]) {
-    return presentation.deviceOverrides[device];
-  }
-  const { deviceOverrides: _overrides, ...base } = presentation;
-  void _overrides;
-  return base;
+  const base = heroBasePresentation(presentation);
+  const selected = presentation.deviceOverrides?.[device] ?? base;
+
+  return {
+    ...selected,
+    responsive: {
+      desktop:
+        presentation.deviceOverrides?.desktop?.responsive.desktop ??
+        base.responsive.desktop,
+      tablet:
+        presentation.deviceOverrides?.tablet?.responsive.tablet ??
+        base.responsive.tablet,
+      mobile:
+        presentation.deviceOverrides?.mobile?.responsive.mobile ??
+        base.responsive.mobile,
+    },
+    navigation: {
+      ...selected.navigation,
+      responsive: {
+        desktop:
+          presentation.deviceOverrides?.desktop?.navigation.responsive.desktop ??
+          base.navigation.responsive.desktop,
+        tablet:
+          presentation.deviceOverrides?.tablet?.navigation.responsive.tablet ??
+          base.navigation.responsive.tablet,
+        mobile:
+          presentation.deviceOverrides?.mobile?.navigation.responsive.mobile ??
+          base.navigation.responsive.mobile,
+      },
+    },
+  };
 }
 
 export function updateHeroDeviceDesign(
@@ -133,7 +172,7 @@ export function updateHeroDeviceDesign(
     for (const device of HERO_DEVICES) {
       if (presentation.deviceOverrides[device]) {
         next.deviceOverrides[device] = cleanUpdate(
-          presentation.deviceOverrides[device]
+          resolveHeroDeviceDesign(presentation, device)
         );
       }
     }
