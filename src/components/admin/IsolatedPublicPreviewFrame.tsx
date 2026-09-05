@@ -104,6 +104,10 @@ export default function IsolatedPublicPreviewFrame({
 
       frame.addEventListener("load", ready);
       ready();
+
+      return () => {
+        frame.removeEventListener("load", ready);
+      };
     },
     []
   );
@@ -127,9 +131,10 @@ export default function IsolatedPublicPreviewFrame({
       synchronizeRootIdentity(doc);
       if (!disposed) {
         setReadyTarget(target);
-        doc.defaultView?.dispatchEvent(
-          new doc.defaultView.Event("resize")
-        );
+        const view = doc.defaultView;
+        if (view) {
+          view.dispatchEvent(new view.Event("resize"));
+        }
       }
     };
 
