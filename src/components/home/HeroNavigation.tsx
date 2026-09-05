@@ -119,6 +119,7 @@ export default function HeroNavigation({
     <div
       ref={rootRef}
       className={styles.navigation}
+      data-hero-spacing-boundary="navigation"
       data-style={config.style}
       data-editor={editor ? "true" : undefined}
       data-paused={isPaused || atAutoplayEnd ? "true" : undefined}
