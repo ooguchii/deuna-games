@@ -25,6 +25,11 @@ type SaveResponse = {
   revision?: number;
 };
 
+type HeroSaveFields = {
+  expectedRevision: string;
+  heroJson: string;
+};
+
 function clearStoredHeroDrafts() {
   try {
     const keys: string[] = [];
@@ -38,7 +43,7 @@ function clearStoredHeroDrafts() {
   }
 }
 
-function readHeroSaveFields(form: HTMLFormElement) {
+function readHeroSaveFields(form: HTMLFormElement): HeroSaveFields | null {
   const formData = new FormData(form);
   const expectedRevision = formData.get("expectedRevision");
   const heroJson = formData.get("heroJson");
@@ -53,6 +58,32 @@ function readHeroSaveFields(form: HTMLFormElement) {
   return { expectedRevision, heroJson };
 }
 
+function readHeroState(fields: HeroSaveFields) {
+  try {
+    const parsed = JSON.parse(fields.heroJson) as unknown;
+    if (typeof parsed !== "object" || parsed === null) return null;
+    const payload = parsed as Record<string, unknown>;
+    return {
+      mode: payload.mode,
+      slugs: payload.slugs,
+      presentation: payload.presentation,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function normalizedHeroSaveFields(fields: HeroSaveFields): HeroSaveFields | null {
+  const state = readHeroState(fields);
+  if (!state) return null;
+  return {
+    expectedRevision: fields.expectedRevision,
+    // `copy` sólo existía por compatibilidad con borradores antiguos. El Hero
+    // actual no es dueño de esos textos y no debe enviarlos al guardar.
+    heroJson: JSON.stringify(state),
+  };
+}
+
 function persistHeroRecovery(form: HTMLFormElement) {
   const fields = readHeroSaveFields(form);
   if (!fields) return;
@@ -60,15 +91,8 @@ function persistHeroRecovery(form: HTMLFormElement) {
   try {
     const revision = Number(fields.expectedRevision);
     if (!Number.isInteger(revision) || revision < 1) return;
-
-    const parsed = JSON.parse(fields.heroJson) as unknown;
-    if (typeof parsed !== "object" || parsed === null) return;
-    const payload = parsed as Record<string, unknown>;
-    const state = {
-      mode: payload.mode,
-      slugs: payload.slugs,
-      presentation: payload.presentation,
-    };
+    const state = readHeroState(fields);
+    if (!state) return;
 
     sessionStorage.setItem(
       HERO_DRAFT_LATEST_KEY,
@@ -158,6 +182,23 @@ export default function HomeHeroSaveBoundary({
     setSavedRevision(null);
   }, [revision, savedRevision]);
 
+  useEffect(() => {
+    if (savedRevision === null) return;
+    const timeout = window.setTimeout(() => {
+      saving.current = false;
+      setSavePending(false);
+      setNotice((current) =>
+        current?.error
+          ? current
+          : {
+              error: false,
+              message: `Borrador guardado correctamente · revisión ${savedRevision}. Si la revisión visible todavía no cambió, actualiza el panel antes de seguir editando.`,
+            }
+      );
+    }, 5_000);
+    return () => window.clearTimeout(timeout);
+  }, [savedRevision]);
+
   const saveHero = async (event: FormEvent<HTMLDivElement>) => {
     const form = event.target;
     if (
@@ -171,7 +212,8 @@ export default function HomeHeroSaveBoundary({
     event.stopPropagation();
     if (saving.current) return;
 
-    const fields = readHeroSaveFields(form);
+    const rawFields = readHeroSaveFields(form);
+    const fields = rawFields ? normalizedHeroSaveFields(rawFields) : null;
     if (!fields) {
       setNotice({
         error: true,
