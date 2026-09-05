@@ -24,6 +24,17 @@ const positionOffsets: Record<HomeHeroVisualPosition, number> = {
   right2: 2,
 };
 
+const slotGeometry: Record<
+  HomeHeroVisualPosition,
+  { widthFactor: number; gapFactor: number }
+> = {
+  left2: { widthFactor: -.72, gapFactor: -2 },
+  left1: { widthFactor: -.42, gapFactor: -1 },
+  main: { widthFactor: 0, gapFactor: 0 },
+  right1: { widthFactor: .42, gapFactor: 1 },
+  right2: { widthFactor: .72, gapFactor: 2 },
+};
+
 export function homeHeroPositionOffset(
   position: HomeHeroVisualPosition
 ) {
@@ -34,27 +45,19 @@ export function homeHeroSlotX(
   position: HomeHeroVisualPosition,
   responsive: HomeHeroResponsiveStyle
 ) {
-  if (position === "left2") {
-    return -(responsive.cardWidth * .72 + responsive.gap * 2);
-  }
-  if (position === "left1") {
-    return -(responsive.cardWidth * .42 + responsive.gap);
-  }
-  if (position === "right1") {
-    return responsive.cardWidth * .42 + responsive.gap;
-  }
-  if (position === "right2") {
-    return responsive.cardWidth * .72 + responsive.gap * 2;
-  }
-  return 0;
+  const geometry = slotGeometry[position];
+  return (
+    responsive.cardWidth * geometry.widthFactor +
+    responsive.gap * geometry.gapFactor
+  );
 }
 
 /** Resolve offsets from the rendered width, including responsive width limits. */
 export function homeHeroSlotCSS(position: HomeHeroVisualPosition) {
-  const offset = homeHeroPositionOffset(position);
-  if (!offset) return "0px";
-  const factor = Math.abs(offset) === 1 ? .42 : .72;
-  return `calc((var(--hero-card-width) * ${factor} + var(--hero-gap) * ${Math.abs(offset)}) * ${Math.sign(offset)})`;
+  const geometry = slotGeometry[position];
+  if (!geometry.widthFactor && !geometry.gapFactor) return "0px";
+  const sign = Math.sign(geometry.widthFactor || geometry.gapFactor);
+  return `calc((var(--hero-card-width) * ${Math.abs(geometry.widthFactor)} + var(--hero-gap) * ${Math.abs(geometry.gapFactor)}) * ${sign})`;
 }
 
 function defaultVisiblePositions(
@@ -96,11 +99,43 @@ export function homeHeroVisiblePositions(
   return limited.filter((id) => id === "main" || !responsive.hiddenPositions?.includes(id));
 }
 
-/** Align lateral layouts to the same page grid used by Header and Home sections. */
+function anchorOffsetCSS(
+  positions: readonly HomeHeroVisualPosition[]
+) {
+  if (positions.length <= 1) return "50%";
+
+  const first = slotGeometry[positions[0]];
+  const last = slotGeometry[positions[positions.length - 1]];
+  const widthFactor = (first.widthFactor + last.widthFactor) / 2;
+  const gapFactor = (first.gapFactor + last.gapFactor) / 2;
+
+  if (Math.abs(widthFactor) < 1e-9 && Math.abs(gapFactor) < 1e-9) {
+    return "50%";
+  }
+
+  const positive = widthFactor > 0 || (widthFactor === 0 && gapFactor > 0);
+  const operator = positive ? "-" : "+";
+  const terms: string[] = [];
+  if (Math.abs(widthFactor) >= 1e-9) {
+    terms.push(`var(--hero-card-width) * ${Math.abs(widthFactor)}`);
+  }
+  if (Math.abs(gapFactor) >= 1e-9) {
+    terms.push(`var(--hero-gap) * ${Math.abs(gapFactor)}`);
+  }
+
+  return `calc(50% ${operator} (${terms.join(" + ")}))`;
+}
+
+/**
+ * Keep the complete one-sided composition centered in the Hero. `alignment`
+ * chooses which neighboring slots exist; it must not pin the whole carousel to
+ * a page edge. Individual editor translations remain relative to this neutral
+ * centered origin.
+ */
 export function homeHeroAnchor(responsive: HomeHeroResponsiveStyle) {
-  if (responsive.alignment === "left") return "calc(var(--hero-card-width) / 2)";
-  if (responsive.alignment === "right") return "calc(100% - var(--hero-card-width) / 2)";
-  return "50%";
+  if (responsive.alignment === "center") return "50%";
+  const positions = homeHeroVisiblePositions(responsive, "forward");
+  return anchorOffsetCSS(positions);
 }
 
 export function homeHeroPositionDisplay(
@@ -139,10 +174,11 @@ export function fitHomeHeroBounds(bounds: HeroBounds, width: number, height: num
   const centeredWidth = Math.max(contentWidth, 2 * Math.max(width / 2 - bounds.left, bounds.right - width / 2));
   const fittedWidth = alignment === "center" ? centeredWidth : contentWidth;
   const scale = Math.min(1, availableWidth / fittedWidth, availableHeight / contentHeight);
-  const originX = alignment === "left" ? 0 : alignment === "right" ? width : width / 2;
+  const originX = width / 2;
   const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
-  // Preserve user translations whenever they already fit; only compensate for
-  // scaling or overflow. Re-centering the bounds would cancel editor controls.
+  // Scale around the Hero center for every layout. Left/right describe which
+  // slots are visible, not where the complete composition is pinned. Manual
+  // per-card translations are still preserved whenever the result fits.
   return {
     scale,
     x: clamp((1 - scale) * originX, -bounds.left * scale, width - bounds.right * scale),
