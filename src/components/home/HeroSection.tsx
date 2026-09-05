@@ -322,6 +322,8 @@ function deviceVariables(
     variables[`--hero-${device}-card-height`] = `${responsive.cardHeight}px`;
     variables[`--hero-${device}-gap`] = `${responsive.gap}px`;
     variables[`--hero-${device}-perspective`] = `${responsive.perspective}px`;
+    variables[`--hero-${device}-space-before`] = `${responsive.spaceBefore}px`;
+    variables[`--hero-${device}-space-after`] = `${responsive.spaceAfter}px`;
 
     for (const position of HOME_HERO_VISUAL_POSITIONS) {
       variables[`--hero-${device}-display-${position}`] = homeHeroPositionDisplay(
@@ -577,13 +579,6 @@ export default function HeroSection({
       }}
     >
       <h1 className={styles.srOnly}>Juegos destacados</h1>
-
-      {games.length > 1 && (
-        <div className={styles.positionCounter} aria-live="polite">
-          <strong>{String(normalizedActiveIndex + 1).padStart(2, "0")}</strong>
-          <span>/ {String(games.length).padStart(2, "0")}</span>
-        </div>
-      )}
 
       <div
         className={styles.carouselViewport}
