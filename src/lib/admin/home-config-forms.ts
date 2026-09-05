@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import {
+  HOME_HERO_MAX_JSON_CHARS,
   HOME_HERO_MAX_SLIDES,
 } from "@/lib/home/hero-contract";
 import {
@@ -99,7 +100,7 @@ const legacyHeroCopySchema = z
 
 const heroJsonSchema = z
   .string()
-  .max(20_000)
+  .max(HOME_HERO_MAX_JSON_CHARS)
   .transform((value, context) => {
     try {
       return JSON.parse(value) as unknown;

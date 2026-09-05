@@ -1,4 +1,5 @@
 import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 
 import {
   adminRedirect,
@@ -14,6 +15,7 @@ import {
 import {
   hasExactAdminFormFields,
 } from "@/lib/admin/request-security";
+import { HOME_HERO_MAX_FORM_BYTES } from "@/lib/home/hero-contract";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -22,14 +24,39 @@ const fields = ["expectedRevision", "heroJson"] as const;
 const target = "/admin/portada?seccion=hero";
 
 export async function POST(request: NextRequest) {
+  const jsonResponse = request.headers.get("accept")?.includes("application/json");
+  const reply = (
+    adminOrigin: string,
+    state: string,
+    status: number,
+    revision?: number
+  ) =>
+    jsonResponse
+      ? NextResponse.json(
+          { state, revision },
+          {
+            status,
+            headers: {
+              "Cache-Control": "no-store, max-age=0",
+            },
+          }
+        )
+      : adminRedirect(
+          adminOrigin,
+          `${target}&estado=${state}`
+        );
+
   const authorized =
-    await authorizeAdminFormRequest(request);
+    await authorizeAdminFormRequest(request, {
+      maxFormBytes: HOME_HERO_MAX_FORM_BYTES,
+    });
   if (!authorized.authorized) return authorized.response;
 
   if (!hasExactAdminFormFields(authorized.form, fields)) {
-    return adminRedirect(
+    return reply(
       authorized.adminOrigin,
-      `${target}&estado=solicitud`
+      "solicitud",
+      400
     );
   }
 
@@ -37,9 +64,10 @@ export async function POST(request: NextRequest) {
     Object.fromEntries(authorized.form)
   );
   if (!parsed.success) {
-    return adminRedirect(
+    return reply(
       authorized.adminOrigin,
-      `${target}&estado=datos`
+      "datos",
+      400
     );
   }
 
@@ -61,9 +89,15 @@ export async function POST(request: NextRequest) {
           ? "no-encontrado"
           : "guardado";
 
-    return adminRedirect(
+    return reply(
       authorized.adminOrigin,
-      `${target}&estado=${state}`
+      state,
+      result.outcome === "saved"
+        ? 200
+        : result.outcome === "conflict"
+          ? 409
+          : 404,
+      "revision" in result ? result.revision : undefined
     );
   } catch {
     console.error(

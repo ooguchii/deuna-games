@@ -35,3 +35,32 @@ assert.equal(editorialHomeConfigSchema.safeParse({
   heroPresentation: { ...full, deviceOverrides: { mobile: { ...original, deviceOverrides: { mobile: original } } } },
 }).success, false);
 console.log('Hero editorial persistence: OK (device designs survive Home validation and reload; nested overrides rejected).');
+
+// Reproduce a subtle shared-edit case: an override can already have the requested
+// source-device value in its copied desktop slot while its own slot is divergent.
+// A later "all devices" edit must still propagate the source change to that slot.
+let divergent = updateHeroDeviceDesign(original, 'all', design => {
+  design.responsive.desktop.gap = 79;
+  design.navigation.responsive.desktop.y = 20;
+  return design;
+}, 'desktop');
+divergent = updateHeroDeviceDesign(divergent, 'mobile', design => {
+  design.responsive.mobile.gap = 31;
+  design.navigation.responsive.mobile.y = 80;
+  return design;
+});
+divergent = updateHeroDeviceDesign(divergent, 'desktop', design => {
+  design.responsive.desktop.gap = 42;
+  design.navigation.responsive.desktop.y = 40;
+  return design;
+});
+divergent = updateHeroDeviceDesign(divergent, 'all', design => {
+  design.responsive.desktop.gap = 79;
+  design.navigation.responsive.desktop.y = 20;
+  return design;
+}, 'desktop');
+for (const device of ['desktop', 'tablet', 'mobile']) {
+  assert.equal(resolveHeroDeviceDesign(divergent, device).responsive[device].gap, 79);
+  assert.equal(resolveHeroDeviceDesign(divergent, device).navigation.responsive[device].y, 20);
+}
+console.log('Hero shared edits: OK (divergent device snapshots receive the same requested change).');
