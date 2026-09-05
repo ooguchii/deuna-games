@@ -95,7 +95,8 @@ const positionStyleSchema = z.object({
 
 // The renderer uses uniform fitting, so large editorial frames are safe: they
 // are scaled around the Hero center only when the selected viewport requires it.
-// Spacing defaults keep old saved/session drafts visually compatible.
+// Spacing defaults keep old saved/session drafts visually compatible with the
+// margins that previously collapsed between the Hero and its next section.
 function responsiveStyleSchema(spaceBefore: number, spaceAfter: number) {
   return z.object({
     visibleCards: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5)]),
@@ -120,7 +121,7 @@ const heroPresentationSchema = z.object({
   radius: z.number().int().min(0).max(48), shadow: z.number().int().min(0).max(100), borderWidth: z.number().int().min(0).max(6), glow: z.number().int().min(0).max(100), overlay: z.number().int().min(0).max(90),
   autoplay: z.boolean(), loop: z.boolean(), pauseOnHover: z.boolean(), drag: z.boolean(), touch: z.boolean(), keyboard: z.boolean(), wheel: z.boolean(), direction: z.enum(["forward", "reverse"]),
   positions: z.object({ all: positionStyleSchema, main: positionStyleSchema, left1: positionStyleSchema, left2: positionStyleSchema, right1: positionStyleSchema, right2: positionStyleSchema }).strict(),
-  responsive: z.object({ desktop: responsiveStyleSchema(28, 86), tablet: responsiveStyleSchema(20, 86), mobile: responsiveStyleSchema(14, 60) }).strict(),
+  responsive: z.object({ desktop: responsiveStyleSchema(28, 58), tablet: responsiveStyleSchema(20, 58), mobile: responsiveStyleSchema(14, 38) }).strict(),
 }).strict();
 
 const heroCopySchema = z.object({
