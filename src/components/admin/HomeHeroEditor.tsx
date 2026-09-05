@@ -939,7 +939,7 @@ export default function HomeHeroEditor({
                 </span>}
                 <div className={styles.imageActions}><a href={`/admin/juegos/${encodeURIComponent(game.slug)}?seccion=multimedia#hero-media`} target="_blank" rel="noopener noreferrer">Cambiar imagen ↗</a><a href={`/admin/juegos/${encodeURIComponent(game.slug)}?seccion=multimedia#${game.heroImage ? "hero-crop" : game.coverImage ? "cover-crop" : "hero-media"}`} target="_blank" rel="noopener noreferrer">Ajustar encuadre ↗</a></div></div>
               </article>)}
-              {!result.length && <p className={styles.empty}>No hay juegos públicos para mostrar con esta selección.</p>}
+              {!result.length && <p className={styles.empty}>No hay juegos públicos para esta selección.</p>}
             </div>
             <p className={styles.help}>Imagen y encuadre se editan en otra pestaña: este trabajo permanece abierto. Guarda y publica los cambios del juego para verlos en Inicio.</p>
             <button type="button" onClick={() => router.refresh()}>Actualizar catálogo e imágenes</button>
