@@ -93,6 +93,8 @@ const positionStyleSchema = z.object({
   opacity: z.number().min(0).max(100), blur: z.number().min(0).max(20), brightness: z.number().min(20).max(180), contrast: z.number().min(50).max(180), saturation: z.number().min(0).max(200),
 }).strict();
 
+// The renderer uses uniform fitting, so large editorial frames are safe: they
+// are scaled around the Hero center only when the selected viewport requires it.
 const responsiveStyleSchema = z.object({
   visibleCards: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5)]),
   alignment: z.enum(["left", "center", "right"]).optional(),
