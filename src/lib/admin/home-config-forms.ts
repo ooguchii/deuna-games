@@ -97,7 +97,7 @@ const responsiveStyleSchema = z.object({
   visibleCards: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5)]),
   alignment: z.enum(["left", "center", "right"]).optional(),
   hiddenPositions: z.array(z.enum(["left1", "left2", "right1", "right2"])).max(4).refine((items) => new Set(items).size === items.length).optional(),
-  cardWidth: z.number().int().min(260).max(1200), cardHeight: z.number().int().min(260).max(700),
+  cardWidth: z.number().int().min(260).max(1800), cardHeight: z.number().int().min(220).max(1200),
   gap: z.number().int().min(0).max(100), perspective: z.number().int().min(400).max(2400),
 }).strict();
 
