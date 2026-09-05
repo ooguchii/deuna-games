@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import {
   Building2,
@@ -70,7 +69,6 @@ type ResponsiveArtworkProps = {
   game: Game;
   alt: string;
   active?: boolean;
-  ambient?: boolean;
   style?: CSSProperties;
 };
 
@@ -193,24 +191,10 @@ function ResponsiveArtwork({
   game,
   alt,
   active = false,
-  ambient = false,
   style,
 }: ResponsiveArtworkProps) {
   const src = game.heroImage ?? game.coverImage;
   if (!src) return null;
-
-  if (ambient) {
-    return (
-      <Image
-        src={src}
-        alt={alt}
-        fill
-        sizes="100vw"
-        className={styles.ambientImage}
-        style={style}
-      />
-    );
-  }
 
   return (
     <span
@@ -392,16 +376,6 @@ export default function HeroSection({
     }),
     [resolvedTuning]
   );
-  const ambientArtworkStyle = useMemo<CSSProperties>(() => {
-    const ambientBrightness = Math.round(resolvedTuning.brightness * 0.72);
-    const ambientSaturation = Math.min(240, Math.round(resolvedTuning.saturation * 1.2));
-    const scale = 1.12 + resolvedTuning.ambientBlur / 450;
-    return {
-      opacity: resolvedTuning.ambientOpacity / 100,
-      filter: `blur(${resolvedTuning.ambientBlur}px) saturate(${ambientSaturation}%) brightness(${ambientBrightness}%) contrast(${resolvedTuning.contrast}%)`,
-      transform: `scale(${scale.toFixed(3)})`,
-    };
-  }, [resolvedTuning]);
   const tuningOverlayOpacity = resolvedTuning.overlayStrength / 100;
 
   const normalizedActiveIndex = games.length
@@ -603,19 +577,6 @@ export default function HeroSection({
       }}
     >
       <h1 className={styles.srOnly}>Juegos destacados</h1>
-
-      <div className={styles.ambientBackdrop} aria-hidden="true">
-        <div key={activeGame.id} className={styles.ambientFrame}>
-          <ResponsiveArtwork
-            game={activeGame}
-            alt=""
-            active
-            ambient
-            style={ambientArtworkStyle}
-          />
-        </div>
-        <div className={styles.ambientShade} />
-      </div>
 
       {games.length > 1 && (
         <div className={styles.positionCounter} aria-live="polite">
