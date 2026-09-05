@@ -55,8 +55,23 @@ assert.equal(
 );
 assert.deepEqual(applyPreset('Classic', applyPreset('Spotlight', baseline)), applyPreset('Classic', baseline), 'Presets must reset the visual properties they own');
 const old = structuredClone(baseline);
-for (const settings of Object.values(old.responsive)) { delete settings.alignment; delete settings.hiddenPositions; }
-assert.ok(parse(old).success, 'Existing saved drafts must remain valid');
+for (const settings of Object.values(old.responsive)) {
+  delete settings.alignment;
+  delete settings.hiddenPositions;
+  delete settings.spaceBefore;
+  delete settings.spaceAfter;
+}
+const parsedOld = parse(old);
+assert.ok(parsedOld.success, 'Existing saved drafts without responsive spacing must remain valid');
+assert.equal(parsedOld.data.heroJson.presentation.responsive.desktop.spaceBefore, 28);
+assert.equal(parsedOld.data.heroJson.presentation.responsive.desktop.spaceAfter, 86);
+assert.equal(parsedOld.data.heroJson.presentation.responsive.tablet.spaceBefore, 20);
+assert.equal(parsedOld.data.heroJson.presentation.responsive.tablet.spaceAfter, 86);
+assert.equal(parsedOld.data.heroJson.presentation.responsive.mobile.spaceBefore, 14);
+assert.equal(parsedOld.data.heroJson.presentation.responsive.mobile.spaceAfter, 60);
+const resolvedOld = resolveHomeConfig({ ...sourceHomeConfig, heroPresentation: old }).heroPresentation;
+assert.equal(resolvedOld.responsive.desktop.spaceBefore, 28);
+assert.equal(resolvedOld.responsive.desktop.spaceAfter, 86);
 assert.deepEqual(homeHeroVisiblePositions(old.responsive.desktop, 'forward', 5), ['left2', 'left1', 'main', 'right1', 'right2']);
 const legacyManualAutoplay = resolveHomeConfig({
   ...sourceHomeConfig,
@@ -73,6 +88,16 @@ assert.ok(parse(expandedFrame).success, 'The editor must persist the expanded 18
 const oversizedFrame = structuredClone(expandedFrame);
 oversizedFrame.responsive.desktop.cardWidth = 1801;
 assert.equal(parse(oversizedFrame).success, false, 'The editor must reject dimensions beyond the documented frame range');
+const maximumSpacing = structuredClone(baseline);
+maximumSpacing.responsive.desktop.spaceBefore = 160;
+maximumSpacing.responsive.desktop.spaceAfter = 200;
+assert.ok(parse(maximumSpacing).success, 'The editor must persist the documented exterior spacing range');
+const invalidBeforeSpacing = structuredClone(maximumSpacing);
+invalidBeforeSpacing.responsive.desktop.spaceBefore = 161;
+assert.equal(parse(invalidBeforeSpacing).success, false, 'Top Hero spacing must not exceed 160px');
+const invalidAfterSpacing = structuredClone(maximumSpacing);
+invalidAfterSpacing.responsive.desktop.spaceAfter = 201;
+assert.equal(parse(invalidAfterSpacing).success, false, 'Bottom Hero spacing must not exceed 200px');
 const pinned = games.slice(0, 5).map(game => game.slug);
 assert.equal(resolveHomeCollectionGames(games, 'hero', 'hybrid', pinned, 5).length, 5, 'A full mixed selection must not grow beyond the limit');
 assert.deepEqual(resolveHomeCollectionGames(games, 'hero', 'manual', pinned, 5).map(game => game.slug), pinned);
@@ -81,7 +106,7 @@ assert.equal(homeHeroEditorFormSchema.safeParse({
   expectedRevision: '1',
   heroJson: JSON.stringify({ mode: 'manual', slugs: tooManySlugs, copy: sourceHomeConfig.copy.hero, presentation: baseline }),
 }).success, false, 'The unified Hero editor must reject more games than the public Hero can display');
-console.log('Hero layouts: OK (persistence, centered one-sided layouts, legacy drafts, hidden slots, presets, autoplay compatibility, expanded frame range, five-slide contract and mixed selection).');
+console.log('Hero layouts: OK (persistence, centered one-sided layouts, legacy drafts, responsive exterior spacing, hidden slots, presets, autoplay compatibility, expanded frame range, five-slide contract and mixed selection).');
 
 // Large/translated/rotated compositions must remain centered and fully inside.
 for (const alignment of ['left', 'center', 'right']) {
