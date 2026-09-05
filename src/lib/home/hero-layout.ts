@@ -165,8 +165,8 @@ export type HeroBounds = { left: number; top: number; right: number; bottom: num
 export function fitHomeHeroBounds(bounds: HeroBounds, width: number, height: number, _alignment: HomeHeroResponsiveStyle["alignment"] = "center") {
   // Horizontal spacing is owned by `.main-content`. Since every layout is now
   // centered as a complete composition, rotations must never be corrected by
-  // pushing the stage left/right. Instead we measure the furthest rendered edge
-  // from the Hero center and, only if necessary, scale uniformly around it.
+  // pushing the stage left/right. Measure the furthest rendered edge from the
+  // Hero center and, only if necessary, scale uniformly around that same center.
   const verticalPadding = 48;
   const availableWidth = Math.max(1, width);
   const availableHeight = Math.max(1, height - verticalPadding * 2);
