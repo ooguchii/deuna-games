@@ -443,6 +443,32 @@ function resolveCuration(
   };
 }
 
+function resolveHeroPresentation(
+  presentation: HomeHeroPresentationInput | undefined
+): HomeHeroPresentation {
+  const resolved: HomeHeroPresentation = {
+    ...defaultHeroPresentation,
+    ...presentation,
+    positions: {
+      ...defaultHeroPresentation.positions,
+      ...presentation?.positions,
+    },
+    responsive: {
+      ...defaultHeroPresentation.responsive,
+      ...presentation?.responsive,
+    },
+  };
+
+  // Before `autoplay` existed, an interval of zero was the persisted way to
+  // express manual playback. Preserve that semantic instead of inheriting the
+  // new default `autoplay: true` and presenting contradictory editor state.
+  if (resolved.autoplayMs === 0) {
+    resolved.autoplay = false;
+  }
+
+  return resolved;
+}
+
 export function resolveHomeConfig(
   config: HomeConfig
 ): ResolvedHomeConfig {
@@ -452,18 +478,7 @@ export function resolveHomeConfig(
     lowSpecSlugs: [...config.lowSpecSlugs],
     recommendedSlugs: [...config.recommendedSlugs],
     curation: resolveCuration(config.curation),
-    heroPresentation: {
-      ...defaultHeroPresentation,
-      ...config.heroPresentation,
-      positions: {
-        ...defaultHeroPresentation.positions,
-        ...config.heroPresentation?.positions,
-      },
-      responsive: {
-        ...defaultHeroPresentation.responsive,
-        ...config.heroPresentation?.responsive,
-      },
-    },
+    heroPresentation: resolveHeroPresentation(config.heroPresentation),
     sections: resolveSections(config.sections),
     copy: config.copy
       ? {
