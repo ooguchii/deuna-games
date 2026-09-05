@@ -38,11 +38,6 @@ const initialCustomization: ViewportCustomization = {
   mobile: false,
 };
 
-/**
- * Match the CSS viewport used by the real public page. clientWidth is deliberate:
- * unlike physical screenshot pixels it already reflects browser zoom and excludes
- * the scrollbar gutter used by percentage-based page containers.
- */
 function browserViewportSnapshot() {
   if (typeof window === "undefined") return "";
   const width =
@@ -74,7 +69,10 @@ function parseViewportSnapshot(
     : null;
 }
 
-/** The same renderer, page container and CSS viewport as the public home. */
+/**
+ * Same Hero renderer and CSS viewport as the public Home. The surrounding
+ * editor only controls the isolated viewport and never reimplements Hero.
+ */
 export default function HomeHeroLivePreview({
   games,
   presentation,
@@ -145,10 +143,7 @@ export default function HomeHeroLivePreview({
   }, []);
 
   useEffect(() => {
-    if (!showSpacingGuide) {
-      setContentEnd(null);
-      return;
-    }
+    if (!showSpacingGuide) return;
 
     const marker = previewEnd;
     const view = marker?.ownerDocument.defaultView;
