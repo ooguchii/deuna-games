@@ -24,6 +24,7 @@ import type React from "react";
 
 import type { PublicPageBackgroundProps } from "@/components/site/PublicPageBackground";
 import HomeHeroLivePreview from "@/components/admin/HomeHeroLivePreview";
+import HomeHeroNavigationControls from "@/components/admin/HomeHeroNavigationControls";
 import HomeHeroSpacingControls from "@/components/admin/HomeHeroSpacingControls";
 import AdminMediaThumbnail from "@/components/admin/AdminMediaThumbnail";
 import type {
@@ -494,6 +495,8 @@ export default function HomeHeroEditor({
   );
   const shown = displayedState.presentation;
   const responsive = shown.responsive[device];
+  const navigation = shown.navigation;
+  const navigationPlacement = navigation.responsive[device];
   const visiblePositions = homeHeroVisiblePositions(
     responsive,
     shown.direction,
@@ -564,6 +567,38 @@ export default function HomeHeroEditor({
         settings.visibleCards = Math.min(3, settings.visibleCards) as 1 | 2 | 3;
       }
       current.presentation.preset = "custom";
+      return current;
+    });
+
+  const setNavigationStyle = (value: HomeHeroPresentation["navigation"]["style"]) =>
+    commit((current) => {
+      current.presentation.navigation.style = value;
+      return current;
+    });
+
+  const setNavigationToggle = (
+    key: "showIndicators" | "showPause" | "showProgress",
+    value: boolean
+  ) =>
+    commit((current) => {
+      current.presentation.navigation[key] = value;
+      return current;
+    });
+
+  const setNavigationPlacement = (
+    key: "x" | "y" | "scale",
+    value: number
+  ) =>
+    commit((current) => {
+      current.presentation.navigation.responsive[device][key] = value;
+      return current;
+    });
+
+  const setNavigationPosition = (x: number, y: number) =>
+    commit((current) => {
+      const placement = current.presentation.navigation.responsive[device];
+      placement.x = x;
+      placement.y = y;
       return current;
     });
 
@@ -828,7 +863,7 @@ export default function HomeHeroEditor({
                 <button type="button" key={id} data-active={device === id} aria-pressed={device === id} onClick={() => setDevice(id)}><Icon size={15} /> {label}</button>
               ))}
             </div>
-            <span>Tamaño base {responsive.cardWidth} × {responsive.cardHeight} · {aspectControl.locked ? aspectControl.preset === "custom" ? `${aspectControl.customWidth}:${aspectControl.customHeight}` : aspectControl.preset : "Libre"} · {visiblePositions.length} posiciones visibles · perspectiva {responsive.perspective}px · exterior {responsive.spaceBefore}/{responsive.spaceAfter}px</span>
+            <span>Tamaño base {responsive.cardWidth} × {responsive.cardHeight} · {aspectControl.locked ? aspectControl.preset === "custom" ? `${aspectControl.customWidth}:${aspectControl.customHeight}` : aspectControl.preset : "Libre"} · {visiblePositions.length} posiciones visibles · perspectiva {responsive.perspective}px · exterior {responsive.spaceBefore}/{responsive.spaceAfter}px · nav {navigation.style} {navigationPlacement.x}/{navigationPlacement.y}%</span>
           </div>
 
           <HomeHeroLivePreview
@@ -838,6 +873,8 @@ export default function HomeHeroEditor({
             playing={preview}
             background={background}
             showSpacingGuide={workspace === "design" && panel === "structure" && !preview}
+            navigationEditing={workspace === "design" && panel === "navigation" && !preview && !comparing}
+            onNavigationPositionChange={setNavigationPosition}
             onSelectPosition={(position) => { setTarget(position); if (!preview) setWorkspace("design"); }}
           />
 
@@ -848,25 +885,18 @@ export default function HomeHeroEditor({
                 <button type="button" key={positionItem.id} data-active={target === positionItem.id} aria-pressed={target === positionItem.id} onClick={() => setTarget(positionItem.id)}>{positionItem.label}</button>
               ))}
             </div>
-
           </section>
 
           <section className={styles.infoNotice}>
             <strong>El contenido del Hero se toma del juego.</strong>
             <span>Título, categoría y géneros, descripción, valoración, desarrollador, lanzamiento, plataformas y versión se muestran sólo cuando existen. Este editor controla selección, orden, geometría y comportamiento; no inventa ni sobreescribe información del juego.</span>
           </section>
-
-
-
-
-
-
         </div>
 
         <aside className={styles.inspector}>
           <header>
-            <div><span>{workspace === "motion" ? "MOVIMIENTO" : "DISEÑO"}</span><strong>{positionList.find((positionItem) => positionItem.id === target)?.label}</strong></div>
-            <button
+            <div><span>{workspace === "motion" ? "MOVIMIENTO" : "DISEÑO"}</span><strong>{panel === "navigation" ? "Navegación" : positionList.find((positionItem) => positionItem.id === target)?.label}</strong></div>
+            {panel !== "navigation" && <button
               type="button"
               onClick={() => commit((current) => {
                 if (target === "all") {
@@ -879,7 +909,7 @@ export default function HomeHeroEditor({
                 return current;
               })}
               title="Restaurar posición"
-            ><RotateCcw size={14} /></button>
+            ><RotateCcw size={14} /></button>}
           </header>
 
           <div>
@@ -973,11 +1003,30 @@ export default function HomeHeroEditor({
               ))}
             </>)}
 
-            {accordion("responsive", "Responsive", "05", <>
-              <p className={styles.help}>Cada dispositivo conserva ancho, alto, separación entre tarjetas, perspectiva, espaciado exterior y cantidad de tarjetas propios.</p>
+            {accordion("navigation", "Controles del carrusel", "05", <>
+              <HomeHeroNavigationControls
+                navigation={navigation}
+                placement={navigationPlacement}
+                deviceLabel={deviceLabel}
+                onStyleChange={setNavigationStyle}
+                onToggle={setNavigationToggle}
+                onPlacementChange={setNavigationPlacement}
+                onPositionChange={setNavigationPosition}
+                onRestore={() => {
+                  const original = baseline.presentation.navigation.responsive[device];
+                  commit((current) => {
+                    current.presentation.navigation.responsive[device] = clone(original);
+                    return current;
+                  });
+                }}
+              />
+            </>)}
+
+            {accordion("responsive", "Responsive", "06", <>
+              <p className={styles.help}>Cada dispositivo conserva ancho, alto, separación entre tarjetas, perspectiva, espaciado exterior y posición/escala de navegación propios.</p>
               {devices.map((entry) => (
                 <button type="button" className={styles.breakpoint} data-active={device === entry.id} key={entry.id} onClick={() => setDevice(entry.id)}>
-                  {entry.label}<small>{shown.responsive[entry.id].cardWidth}×{shown.responsive[entry.id].cardHeight} · exterior {shown.responsive[entry.id].spaceBefore}/{shown.responsive[entry.id].spaceAfter}px · {shown.responsive[entry.id].visibleCards}</small>
+                  {entry.label}<small>{shown.responsive[entry.id].cardWidth}×{shown.responsive[entry.id].cardHeight} · exterior {shown.responsive[entry.id].spaceBefore}/{shown.responsive[entry.id].spaceAfter}px · nav {shown.navigation.responsive[entry.id].x}/{shown.navigation.responsive[entry.id].y}% · {shown.responsive[entry.id].visibleCards}</small>
                 </button>
               ))}
             </>)}
