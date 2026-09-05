@@ -14,12 +14,6 @@ function requireIncludes(content, marker, message) {
   }
 }
 
-function requirePattern(content, pattern, message) {
-  if (!pattern.test(content)) {
-    failures.push(message);
-  }
-}
-
 function requireExcludes(content, marker, message) {
   if (content.includes(marker)) {
     failures.push(message);
@@ -70,6 +64,7 @@ const theme = await read("src/theme/deuna-theme.css");
 const contract = await read("src/theme/public-theme-contract.css");
 const routeContract = await read("src/theme/public-route-theme-contract.css");
 const hero = await read("src/components/home/HeroSection.module.css");
+const heroComponent = await read("src/components/home/HeroSection.tsx");
 const gamesHero = await read("src/app/juegos/page.module.css");
 
 requireIncludes(
@@ -161,35 +156,32 @@ requireIncludes(
   "src/theme/public-route-theme-contract.css: falta tematizar la barra informativa de la ficha de juego."
 );
 
-requireIncludes(
-  hero,
-  ".ambientBackdrop",
-  "HeroSection: falta la capa ambiental exterior del Hero."
-);
-requirePattern(
-  hero,
-  /inset:\s*-90px\s+-8vw\s+-150px/,
-  "HeroSection: el ambiente cinematográfico debe envolver la escena sin crear una altura vacía artificial."
-);
-requireIncludes(
-  hero,
-  ".ambientImage",
-  "HeroSection: falta reutilizar la imagen activa como ambiente."
-);
-requireIncludes(
-  hero,
-  ".ambientShade",
-  "HeroSection: falta la máscara que integra imagen, fondo y marca."
-);
-requireIncludes(
-  hero,
-  "var(--background)",
-  "HeroSection: el ambiente debe mezclarse con el fondo configurado."
-);
+/*
+ * El Hero ya no debe crear una segunda escena ambiental a partir de la imagen
+ * activa. El fondo configurado de la página es la única capa exterior detrás
+ * del carrusel; así el Hero no puede oscurecer ni invadir la sección siguiente.
+ */
+for (const marker of [
+  "ambientBackdrop",
+  "ambientFrame",
+  "ambientImage",
+  "ambientShade",
+]) {
+  requireExcludes(
+    hero,
+    marker,
+    `HeroSection: reapareció la capa ambiental eliminada (${marker}).`
+  );
+  requireExcludes(
+    heroComponent,
+    marker,
+    `HeroSection.tsx: reapareció la capa ambiental eliminada (${marker}).`
+  );
+}
 requireIncludes(
   hero,
   "var(--brand)",
-  "HeroSection: el ambiente debe responder a la marca configurada."
+  "HeroSection: sus controles y acentos deben seguir respondiendo a la marca configurada."
 );
 
 requireIncludes(
@@ -214,6 +206,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Tema público: OK (marca/fondo dinámicos, contraste adaptable, Heroes integrados y contratos heredados protegidos)."
+    "Tema público: OK (marca/fondo dinámicos, contraste adaptable, Hero sin ambiente exterior y contratos heredados protegidos)."
   );
 }
