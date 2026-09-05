@@ -163,13 +163,15 @@ export type HeroBounds = { left: number; top: number; right: number; bottom: num
 
 /** Fit the complete visible composition, including perspective, inside its stage. */
 export function fitHomeHeroBounds(bounds: HeroBounds, width: number, height: number, _alignment: HomeHeroResponsiveStyle["alignment"] = "center") {
+  // `alignment` remains in the signature for source compatibility. Slot layout
+  // already encodes it before measurement, so fitting only needs the real bounds.
+  void _alignment;
   // Horizontal spacing is owned by `.main-content`. Since every layout is now
   // centered as a complete composition, rotations must never be corrected by
-  // pushing the stage left/right. Measure the furthest rendered edge from the
-  // Hero center and, only if necessary, scale uniformly around that same center.
-  const verticalPadding = 48;
+  // pushing the stage left/right. There is deliberately no hidden vertical
+  // clearance: the configured card height is also the real Hero stage height.
   const availableWidth = Math.max(1, width);
-  const availableHeight = Math.max(1, height - verticalPadding * 2);
+  const availableHeight = Math.max(1, height);
   const contentHeight = Math.max(1, bounds.bottom - bounds.top);
   const originX = width / 2;
   const centeredWidth = Math.max(
@@ -188,8 +190,8 @@ export function fitHomeHeroBounds(bounds: HeroBounds, width: number, height: num
     x: (1 - scale) * originX,
     y: clamp(
       (1 - scale) * height / 2,
-      verticalPadding - bounds.top * scale,
-      height - verticalPadding - bounds.bottom * scale
+      -bounds.top * scale,
+      height - bounds.bottom * scale
     ),
   };
 }
