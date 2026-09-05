@@ -54,6 +54,7 @@ assert.equal(
   'Right layouts must mirror the centered one-sided composition'
 );
 assert.deepEqual(applyPreset('Classic', applyPreset('Spotlight', baseline)), applyPreset('Classic', baseline), 'Presets must reset the visual properties they own');
+
 const old = structuredClone(baseline);
 for (const settings of Object.values(old.responsive)) {
   delete settings.alignment;
@@ -61,18 +62,46 @@ for (const settings of Object.values(old.responsive)) {
   delete settings.spaceBefore;
   delete settings.spaceAfter;
 }
+delete old.navigation;
 const parsedOld = parse(old);
-assert.ok(parsedOld.success, 'Existing saved drafts without responsive spacing must remain valid');
+assert.ok(parsedOld.success, 'Existing saved drafts without responsive spacing or navigation settings must remain valid');
 assert.equal(parsedOld.data.heroJson.presentation.responsive.desktop.spaceBefore, 28);
 assert.equal(parsedOld.data.heroJson.presentation.responsive.desktop.spaceAfter, 58);
 assert.equal(parsedOld.data.heroJson.presentation.responsive.tablet.spaceBefore, 20);
 assert.equal(parsedOld.data.heroJson.presentation.responsive.tablet.spaceAfter, 58);
 assert.equal(parsedOld.data.heroJson.presentation.responsive.mobile.spaceBefore, 14);
 assert.equal(parsedOld.data.heroJson.presentation.responsive.mobile.spaceAfter, 38);
+assert.equal(parsedOld.data.heroJson.presentation.navigation.style, 'segmented-pro');
+assert.deepEqual(parsedOld.data.heroJson.presentation.navigation.responsive.desktop, { x: 50, y: 91, scale: 100 });
+assert.deepEqual(parsedOld.data.heroJson.presentation.navigation.responsive.tablet, { x: 50, y: 91, scale: 100 });
+assert.deepEqual(parsedOld.data.heroJson.presentation.navigation.responsive.mobile, { x: 50, y: 92, scale: 92 });
 const resolvedOld = resolveHomeConfig({ ...sourceHomeConfig, heroPresentation: old }).heroPresentation;
 assert.equal(resolvedOld.responsive.desktop.spaceBefore, 28);
 assert.equal(resolvedOld.responsive.desktop.spaceAfter, 58);
+assert.equal(resolvedOld.navigation.style, 'segmented-pro');
+assert.deepEqual(resolvedOld.navigation.responsive.desktop, { x: 50, y: 91, scale: 100 });
 assert.deepEqual(homeHeroVisiblePositions(old.responsive.desktop, 'forward', 5), ['left2', 'left1', 'main', 'right1', 'right2']);
+
+for (const style of ['segmented-pro', 'integrated', 'pills', 'dots', 'timeline', 'minimal', 'glass', 'rail']) {
+  const presentation = structuredClone(baseline);
+  presentation.navigation.style = style;
+  const parsed = parse(presentation);
+  assert.ok(parsed.success, `Navigation style ${style} must persist through the admin schema`);
+  const saved = editorialHomeConfigSchema.safeParse({ ...sourceHomeConfig, heroPresentation: presentation });
+  assert.ok(saved.success, `Navigation style ${style} must survive publication validation`);
+}
+const maximumNavigation = structuredClone(baseline);
+maximumNavigation.navigation.responsive.desktop.x = 100;
+maximumNavigation.navigation.responsive.desktop.y = 100;
+maximumNavigation.navigation.responsive.desktop.scale = 180;
+assert.ok(parse(maximumNavigation).success, 'Free navigation positioning must persist across the documented range');
+const invalidNavigationX = structuredClone(maximumNavigation);
+invalidNavigationX.navigation.responsive.desktop.x = 101;
+assert.equal(parse(invalidNavigationX).success, false, 'Navigation X must stay inside the Hero percentage range');
+const invalidNavigationScale = structuredClone(maximumNavigation);
+invalidNavigationScale.navigation.responsive.desktop.scale = 181;
+assert.equal(parse(invalidNavigationScale).success, false, 'Navigation scale must not exceed 180 percent');
+
 const legacyManualAutoplay = resolveHomeConfig({
   ...sourceHomeConfig,
   heroPresentation: { ...baseline, autoplay: true, autoplayMs: 0 },
@@ -106,7 +135,7 @@ assert.equal(homeHeroEditorFormSchema.safeParse({
   expectedRevision: '1',
   heroJson: JSON.stringify({ mode: 'manual', slugs: tooManySlugs, copy: sourceHomeConfig.copy.hero, presentation: baseline }),
 }).success, false, 'The unified Hero editor must reject more games than the public Hero can display');
-console.log('Hero layouts: OK (persistence, centered one-sided layouts, legacy drafts, responsive exterior spacing, hidden slots, presets, autoplay compatibility, expanded frame range, five-slide contract and mixed selection).');
+console.log('Hero layouts: OK (persistence, centered one-sided layouts, legacy drafts, responsive exterior spacing, unified navigation styles/placement, hidden slots, presets, autoplay compatibility, expanded frame range, five-slide contract and mixed selection).');
 
 // Large/translated/rotated compositions must remain centered and fully inside.
 for (const alignment of ['left', 'center', 'right']) {
