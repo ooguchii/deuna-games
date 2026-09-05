@@ -116,8 +116,20 @@ export const homeHeroPresetIds = [
   "perspective", "minimal", "spotlight", "cards", "custom",
 ] as const;
 
+export const homeHeroNavigationStyleIds = [
+  "segmented-pro",
+  "integrated",
+  "pills",
+  "dots",
+  "timeline",
+  "minimal",
+  "glass",
+  "rail",
+] as const;
+
 export type HomeHeroDevice = "desktop" | "tablet" | "mobile";
 export type HomeHeroPosition = "all" | "main" | "left1" | "left2" | "right1" | "right2";
+export type HomeHeroNavigationStyle = (typeof homeHeroNavigationStyleIds)[number];
 
 export type HomeHeroPositionStyle = {
   scale: number;
@@ -146,6 +158,20 @@ export type HomeHeroResponsiveStyle = {
   spaceAfter: number;
 };
 
+export type HomeHeroNavigationPlacement = {
+  x: number;
+  y: number;
+  scale: number;
+};
+
+export type HomeHeroNavigationConfig = {
+  style: HomeHeroNavigationStyle;
+  showIndicators: boolean;
+  showPause: boolean;
+  showProgress: boolean;
+  responsive: Record<HomeHeroDevice, HomeHeroNavigationPlacement>;
+};
+
 export type HomeHeroPresentation = {
   composition: (typeof homeHeroCompositionIds)[number];
   previewCount: 1 | 2 | 3;
@@ -170,14 +196,18 @@ export type HomeHeroPresentation = {
   direction: "forward" | "reverse";
   positions: Record<HomeHeroPosition, HomeHeroPositionStyle>;
   responsive: Record<HomeHeroDevice, HomeHeroResponsiveStyle>;
+  navigation: HomeHeroNavigationConfig;
 };
 
 export type HomeHeroPresentationInput = Omit<
   Partial<HomeHeroPresentation>,
-  "positions" | "responsive"
+  "positions" | "responsive" | "navigation"
 > & {
   positions?: Partial<Record<HomeHeroPosition, HomeHeroPositionStyle>>;
   responsive?: Partial<Record<HomeHeroDevice, Partial<HomeHeroResponsiveStyle>>>;
+  navigation?: Partial<Omit<HomeHeroNavigationConfig, "responsive">> & {
+    responsive?: Partial<Record<HomeHeroDevice, Partial<HomeHeroNavigationPlacement>>>;
+  };
 };
 
 export type HomeConfig = {
@@ -253,6 +283,17 @@ const defaultHeroPresentation: HomeHeroPresentation = {
     desktop: { visibleCards: 5, cardWidth: 860, cardHeight: 430, gap: 26, perspective: 1200, spaceBefore: 28, spaceAfter: 58 },
     tablet: { visibleCards: 3, cardWidth: 680, cardHeight: 390, gap: 18, perspective: 1000, spaceBefore: 20, spaceAfter: 58 },
     mobile: { visibleCards: 3, cardWidth: 330, cardHeight: 500, gap: 12, perspective: 800, spaceBefore: 14, spaceAfter: 38 },
+  },
+  navigation: {
+    style: "segmented-pro",
+    showIndicators: true,
+    showPause: true,
+    showProgress: true,
+    responsive: {
+      desktop: { x: 50, y: 91, scale: 100 },
+      tablet: { x: 50, y: 91, scale: 100 },
+      mobile: { x: 50, y: 92, scale: 92 },
+    },
   },
 };
 
@@ -467,6 +508,24 @@ function resolveHeroPresentation(
       mobile: {
         ...defaultHeroPresentation.responsive.mobile,
         ...presentation?.responsive?.mobile,
+      },
+    },
+    navigation: {
+      ...defaultHeroPresentation.navigation,
+      ...presentation?.navigation,
+      responsive: {
+        desktop: {
+          ...defaultHeroPresentation.navigation.responsive.desktop,
+          ...presentation?.navigation?.responsive?.desktop,
+        },
+        tablet: {
+          ...defaultHeroPresentation.navigation.responsive.tablet,
+          ...presentation?.navigation?.responsive?.tablet,
+        },
+        mobile: {
+          ...defaultHeroPresentation.navigation.responsive.mobile,
+          ...presentation?.navigation?.responsive?.mobile,
+        },
       },
     },
   };
