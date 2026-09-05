@@ -1,6 +1,10 @@
 import { z } from "zod";
 
 import {
+  HOME_HERO_MAX_SLIDES,
+} from "@/lib/home/hero-contract";
+
+import {
   expectedRevisionSchema,
 } from "./content-forms";
 
@@ -127,7 +131,7 @@ const heroJsonSchema = z.string().max(12_000).transform((value, context) => {
   }
 }).pipe(z.object({
   mode: modeSchema,
-  slugs: slugArraySchema(8),
+  slugs: slugArraySchema(HOME_HERO_MAX_SLIDES),
   presentation: heroPresentationSchema,
   copy: heroCopySchema,
 }).strict());
