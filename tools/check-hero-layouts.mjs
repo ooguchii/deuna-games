@@ -69,7 +69,7 @@ assert.equal(parse({ ...left, responsive: { ...left.responsive, desktop: { ...le
 const expandedFrame = structuredClone(baseline);
 expandedFrame.responsive.desktop.cardWidth = 1800;
 expandedFrame.responsive.desktop.cardHeight = 1200;
-assert.ok(parse(expandedFrame).success, 'The editor must persist the expanded 1800×1200 frame range');
+assert.ok(parse(expandedFrame).success, 'The editor must persist the expanded 1800×1200 frame range used by wide, tall and custom-ratio frames');
 const oversizedFrame = structuredClone(expandedFrame);
 oversizedFrame.responsive.desktop.cardWidth = 1801;
 assert.equal(parse(oversizedFrame).success, false, 'The editor must reject dimensions beyond the documented frame range');
