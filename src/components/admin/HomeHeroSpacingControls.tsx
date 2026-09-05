@@ -41,6 +41,14 @@ export default function HomeHeroSpacingControls({
   onPreset: (spaceBefore: number, spaceAfter: number) => void;
   onRestore: () => void;
 }) {
+  const restoreSpacing = () => {
+    // Restoring all devices returns each one to its own saved baseline. Those
+    // baselines may intentionally differ, so keeping the link switch enabled
+    // would claim a relationship that is no longer true.
+    if (linked) onLinkedChange(false);
+    onRestore();
+  };
+
   return (
     <>
       <p className={styles.help}>
@@ -114,7 +122,7 @@ export default function HomeHeroSpacingControls({
           </button>
         ))}
       </div>
-      <button type="button" onClick={onRestore}>
+      <button type="button" onClick={restoreSpacing}>
         <RotateCcw size={14} aria-hidden="true" /> Restablecer espaciado de{" "}
         {linked
           ? "todos los dispositivos"
