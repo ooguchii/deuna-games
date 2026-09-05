@@ -218,6 +218,7 @@
 
 .navigation[data-style="timeline"] .indicatorActive {
   width: 58px;
+  background: transparent;
   box-shadow: none;
 }
 
