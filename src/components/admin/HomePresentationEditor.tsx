@@ -41,8 +41,12 @@ type PresentationDraft = {
 function editableCopyFromConfig(
   copy: HomeCopy
 ): EditableHomeCopy {
-  const { hero: _hero, ...editable } = copy;
-  return structuredClone(editable);
+  const editable = structuredClone(copy) as unknown as Record<
+    string,
+    unknown
+  >;
+  delete editable.hero;
+  return editable as EditableHomeCopy;
 }
 
 function buildPayload(
@@ -105,7 +109,21 @@ export default function HomePresentationEditor({
     () => structuredClone(baselineCopy)
   );
   const [recovery, setRecovery] =
-    useState<PresentationDraft | null>(null);
+    useState<PresentationDraft | null>(() => {
+      const candidate = readRecoveryDraft();
+      if (!candidate) return null;
+
+      const candidatePayload = buildPayload(
+        candidate.sections,
+        candidate.copy
+      );
+      if (candidatePayload === baselinePayload) {
+        clearRecoveryDraft();
+        return null;
+      }
+
+      return candidate;
+    });
   const saving = useRef(false);
 
   const serialized = useMemo(
@@ -113,22 +131,6 @@ export default function HomePresentationEditor({
     [copy, sections]
   );
   const dirty = serialized !== baselinePayload;
-
-  useEffect(() => {
-    const candidate = readRecoveryDraft();
-    if (!candidate) return;
-
-    const candidatePayload = buildPayload(
-      candidate.sections,
-      candidate.copy
-    );
-    if (candidatePayload === baselinePayload) {
-      clearRecoveryDraft();
-      return;
-    }
-
-    setRecovery(candidate);
-  }, [baselinePayload]);
 
   useEffect(() => {
     try {
