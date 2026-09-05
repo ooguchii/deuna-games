@@ -400,6 +400,7 @@ export default function HomeHeroEditor({
   const [preview, setPreview] = useState(false);
   const [workspace, setWorkspace] = useState<"content" | "design" | "motion">("content");
   const [recoveryDismissed, setRecoveryDismissed] = useState(false);
+  const [linkSpacingDevices, setLinkSpacingDevices] = useState(false);
   const [aspectControls, setAspectControls] = useState<Record<HomeHeroDevice, AspectControl>>(() => {
     const build = (entry: HomeHeroDevice): AspectControl => {
       const ratio = simplifiedRatio(
@@ -565,6 +566,68 @@ export default function HomeHeroEditor({
       Object.assign(settings, { [key]: value });
       if (settings.alignment === "left" || settings.alignment === "right") {
         settings.visibleCards = Math.min(3, settings.visibleCards) as 1 | 2 | 3;
+      }
+      current.presentation.preset = "custom";
+      return current;
+    });
+
+  const setSpacingValue = (key: "spaceBefore" | "spaceAfter", value: number) =>
+    commit((current) => {
+      const targets = linkSpacingDevices ? devices.map((entry) => entry.id) : [device];
+      for (const targetDevice of targets) current.presentation.responsive[targetDevice][key] = value;
+      current.presentation.preset = "custom";
+      return current;
+    });
+
+  const setSpacingReference = (value: "visual" | "canvas") =>
+    commit((current) => {
+      const targets = linkSpacingDevices ? devices.map((entry) => entry.id) : [device];
+      for (const targetDevice of targets) current.presentation.responsive[targetDevice].spacingReference = value;
+      current.presentation.preset = "custom";
+      return current;
+    });
+
+  const setSpacingLinked = (value: boolean) => {
+    if (comparing) {
+      setCompare(false);
+      return;
+    }
+    setLinkSpacingDevices(value);
+    if (!value) return;
+    commit((current) => {
+      const source = current.presentation.responsive[device];
+      for (const entry of devices) {
+        const settings = current.presentation.responsive[entry.id];
+        settings.spaceBefore = source.spaceBefore;
+        settings.spaceAfter = source.spaceAfter;
+        settings.spacingReference = source.spacingReference;
+      }
+      current.presentation.preset = "custom";
+      return current;
+    });
+  };
+
+  const setSpacingPreset = (spaceBefore: number, spaceAfter: number) =>
+    commit((current) => {
+      const targets = linkSpacingDevices ? devices.map((entry) => entry.id) : [device];
+      for (const targetDevice of targets) {
+        const settings = current.presentation.responsive[targetDevice];
+        settings.spaceBefore = spaceBefore;
+        settings.spaceAfter = spaceAfter;
+      }
+      current.presentation.preset = "custom";
+      return current;
+    });
+
+  const restoreSpacing = () =>
+    commit((current) => {
+      const targets = linkSpacingDevices ? devices.map((entry) => entry.id) : [device];
+      for (const targetDevice of targets) {
+        const original = baseline.presentation.responsive[targetDevice];
+        const settings = current.presentation.responsive[targetDevice];
+        settings.spaceBefore = original.spaceBefore;
+        settings.spaceAfter = original.spaceAfter;
+        settings.spacingReference = original.spacingReference;
       }
       current.presentation.preset = "custom";
       return current;
@@ -863,7 +926,7 @@ export default function HomeHeroEditor({
                 <button type="button" key={id} data-active={device === id} aria-pressed={device === id} onClick={() => setDevice(id)}><Icon size={15} /> {label}</button>
               ))}
             </div>
-            <span>Tamaño base {responsive.cardWidth} × {responsive.cardHeight} · {aspectControl.locked ? aspectControl.preset === "custom" ? `${aspectControl.customWidth}:${aspectControl.customHeight}` : aspectControl.preset : "Libre"} · {visiblePositions.length} posiciones visibles · perspectiva {responsive.perspective}px · exterior {responsive.spaceBefore}/{responsive.spaceAfter}px · nav {navigation.style} {navigationPlacement.x}/{navigationPlacement.y}%</span>
+            <span>Tamaño base {responsive.cardWidth} × {responsive.cardHeight} · {aspectControl.locked ? aspectControl.preset === "custom" ? `${aspectControl.customWidth}:${aspectControl.customHeight}` : aspectControl.preset : "Libre"} · {visiblePositions.length} posiciones visibles · perspectiva {responsive.perspective}px · exterior {responsive.spaceBefore}/{responsive.spaceAfter}px desde {responsive.spacingReference === "visual" ? "contenido visible" : "lienzo"} · nav {navigation.style} {navigationPlacement.x}/{navigationPlacement.y}%</span>
           </div>
 
           <HomeHeroLivePreview
@@ -951,25 +1014,14 @@ export default function HomeHeroEditor({
                 deviceLabel={deviceLabel}
                 spaceBefore={responsive.spaceBefore}
                 spaceAfter={responsive.spaceAfter}
-                onChangeBefore={(value) => setResponsive("spaceBefore", value)}
-                onChangeAfter={(value) => setResponsive("spaceAfter", value)}
-                onPreset={(spaceBefore, spaceAfter) => commit((current) => {
-                  const settings = current.presentation.responsive[device];
-                  settings.spaceBefore = spaceBefore;
-                  settings.spaceAfter = spaceAfter;
-                  current.presentation.preset = "custom";
-                  return current;
-                })}
-                onRestore={() => {
-                  const original = baseline.presentation.responsive[device];
-                  commit((current) => {
-                    const settings = current.presentation.responsive[device];
-                    settings.spaceBefore = original.spaceBefore;
-                    settings.spaceAfter = original.spaceAfter;
-                    current.presentation.preset = "custom";
-                    return current;
-                  });
-                }}
+                spacingReference={responsive.spacingReference}
+                linked={linkSpacingDevices}
+                onChangeBefore={(value) => setSpacingValue("spaceBefore", value)}
+                onChangeAfter={(value) => setSpacingValue("spaceAfter", value)}
+                onReferenceChange={setSpacingReference}
+                onLinkedChange={setSpacingLinked}
+                onPreset={setSpacingPreset}
+                onRestore={restoreSpacing}
               />
             </>)}
 
@@ -1023,10 +1075,10 @@ export default function HomeHeroEditor({
             </>)}
 
             {accordion("responsive", "Responsive", "06", <>
-              <p className={styles.help}>Cada dispositivo conserva ancho, alto, separación entre tarjetas, perspectiva, espaciado exterior y posición/escala de navegación propios.</p>
+              <p className={styles.help}>Cada dispositivo conserva ancho, alto, separación entre tarjetas, perspectiva, espaciado exterior y posición/escala de navegación propios. Activa el vínculo de espaciado si quieres mantener las mismas distancias entre resoluciones.</p>
               {devices.map((entry) => (
                 <button type="button" className={styles.breakpoint} data-active={device === entry.id} key={entry.id} onClick={() => setDevice(entry.id)}>
-                  {entry.label}<small>{shown.responsive[entry.id].cardWidth}×{shown.responsive[entry.id].cardHeight} · exterior {shown.responsive[entry.id].spaceBefore}/{shown.responsive[entry.id].spaceAfter}px · nav {shown.navigation.responsive[entry.id].x}/{shown.navigation.responsive[entry.id].y}% · {shown.responsive[entry.id].visibleCards}</small>
+                  {entry.label}<small>{shown.responsive[entry.id].cardWidth}×{shown.responsive[entry.id].cardHeight} · exterior {shown.responsive[entry.id].spaceBefore}/{shown.responsive[entry.id].spaceAfter}px · {shown.responsive[entry.id].spacingReference === "visual" ? "visible" : "lienzo"} · nav {shown.navigation.responsive[entry.id].x}/{shown.navigation.responsive[entry.id].y}% · {shown.responsive[entry.id].visibleCards}</small>
                 </button>
               ))}
             </>)}
