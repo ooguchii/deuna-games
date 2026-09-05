@@ -64,3 +64,46 @@ for (const device of ['desktop', 'tablet', 'mobile']) {
   assert.equal(resolveHeroDeviceDesign(divergent, device).navigation.responsive[device].y, 20);
 }
 console.log('Hero shared edits: OK (divergent device snapshots receive the same requested change).');
+
+// Linking spacing is different from changing one numeric control: the editor
+// copies the selected device spacing into all three responsive slots at once.
+// The callback must be evaluated from that selected snapshot once; re-running it
+// independently inside every override would copy stale tablet/mobile slots.
+let linkedSpacing = original;
+linkedSpacing = updateHeroDeviceDesign(linkedSpacing, 'desktop', design => {
+  design.responsive.desktop.spaceBefore = 11;
+  design.responsive.desktop.spaceAfter = 17;
+  design.responsive.desktop.spacingReference = 'canvas';
+  return design;
+});
+linkedSpacing = updateHeroDeviceDesign(linkedSpacing, 'tablet', design => {
+  design.responsive.tablet.spaceBefore = 33;
+  design.responsive.tablet.spaceAfter = 47;
+  design.responsive.tablet.spacingReference = 'visual';
+  return design;
+});
+linkedSpacing = updateHeroDeviceDesign(linkedSpacing, 'mobile', design => {
+  design.responsive.mobile.spaceBefore = 55;
+  design.responsive.mobile.spaceAfter = 69;
+  design.responsive.mobile.spacingReference = 'canvas';
+  return design;
+});
+const selectedTabletSpacing = structuredClone(
+  resolveHeroDeviceDesign(linkedSpacing, 'tablet').responsive.tablet
+);
+linkedSpacing = updateHeroDeviceDesign(linkedSpacing, 'all', design => {
+  const source = design.responsive.tablet;
+  for (const device of ['desktop', 'tablet', 'mobile']) {
+    design.responsive[device].spaceBefore = source.spaceBefore;
+    design.responsive[device].spaceAfter = source.spaceAfter;
+    design.responsive[device].spacingReference = source.spacingReference;
+  }
+  return design;
+}, 'tablet');
+for (const device of ['desktop', 'tablet', 'mobile']) {
+  const effective = resolveHeroDeviceDesign(linkedSpacing, device).responsive[device];
+  assert.equal(effective.spaceBefore, selectedTabletSpacing.spaceBefore);
+  assert.equal(effective.spaceAfter, selectedTabletSpacing.spaceAfter);
+  assert.equal(effective.spacingReference, selectedTabletSpacing.spacingReference);
+}
+console.log('Hero linked spacing: OK (the selected device remains the single source across divergent overrides).');
