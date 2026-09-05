@@ -20,6 +20,8 @@ const [
   taxonomy,
   homeCuration,
   homePresentation,
+  heroSaveBoundary,
+  homePage,
   configuration,
   appearance,
   backgrounds,
@@ -37,6 +39,8 @@ const [
   source("src/components/admin/GameTaxonomyEditor.tsx"),
   source("src/components/admin/HomeCurationEditor.tsx"),
   source("src/components/admin/HomePresentationEditor.tsx"),
+  source("src/components/admin/HomeHeroSaveBoundary.tsx"),
+  source("src/app/admin/(protected)/portada/page.tsx"),
   source("src/app/admin/(protected)/configuracion/page.tsx"),
   source("src/components/admin/SiteAppearanceWorkspace.tsx"),
   source("src/components/admin/SiteBackgroundManager.tsx"),
@@ -104,6 +108,18 @@ for (const [label, content, saveCopy] of revisionEditors) {
 }
 
 assert(
+  heroSaveBoundary.includes('Accept: "application/json"') &&
+    heroSaveBoundary.includes("onSubmitCapture={saveHero}") &&
+    heroSaveBoundary.includes("persistHeroRecovery(form)") &&
+    heroSaveBoundary.includes("response.status === 409") &&
+    heroSaveBoundary.includes("clearStoredHeroDrafts()") &&
+    heroSaveBoundary.includes("router.refresh()") &&
+    homePage.includes("<HomeHeroSaveBoundary revision={item.revision}>") &&
+    homePage.includes("key={item.revision}"),
+  "Inicio · Hero debe conservar el guardado protegido: recuperación local, errores sin desmontar el editor y remonte sólo después de una revisión confirmada."
+);
+
+assert(
   newGame.includes('action="/api/admin/content/games"') &&
     newGame.includes("Crear borrador y continuar"),
   "Nuevo juego debe conservar la excepción persistente que crea el primer borrador."
@@ -126,5 +142,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  "Guardado persistente administrativo: OK (editores de borrador cubiertos; publicación, acciones operativas y cargas auxiliares separadas)."
+  "Guardado persistente administrativo: OK (editores de borrador cubiertos; Hero con recuperación segura; publicación, acciones operativas y cargas auxiliares separadas)."
 );

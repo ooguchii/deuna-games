@@ -9,7 +9,10 @@ import {
   homePresentationFormSchema,
 } from "@/lib/admin/frontend-content-forms";
 import {
-  saveHomePresentationDraft,
+  editorialHomeConfigFormSchema,
+} from "@/lib/admin/home-config-forms";
+import {
+  saveHomeContentDraft,
 } from "@/lib/admin/home-content-service";
 import {
   hasExactAdminFormFields,
@@ -20,6 +23,7 @@ export const runtime = "nodejs";
 
 const fields = [
   "expectedRevision",
+  "curationJson",
   "presentationJson",
 ] as const;
 const target = "/admin/portada?seccion=contenido";
@@ -32,11 +36,33 @@ export async function POST(request: NextRequest) {
     return authorized.response;
   }
 
+  if (!hasExactAdminFormFields(authorized.form, fields)) {
+    return adminRedirect(
+      authorized.adminOrigin,
+      `${target}&estado=solicitud`
+    );
+  }
+
+  const raw = Object.fromEntries(authorized.form);
+  const curation = editorialHomeConfigFormSchema.safeParse({
+    expectedRevision: raw.expectedRevision,
+    curationJson: raw.curationJson,
+  });
+  const presentation = homePresentationFormSchema.safeParse({
+    expectedRevision: raw.expectedRevision,
+    presentationJson: raw.presentationJson,
+  });
+
+  if (!curation.success || !presentation.success) {
+    return adminRedirect(
+      authorized.adminOrigin,
+      `${target}&estado=datos`
+    );
+  }
+
   if (
-    !hasExactAdminFormFields(
-      authorized.form,
-      fields
-    )
+    curation.data.expectedRevision !==
+    presentation.data.expectedRevision
   ) {
     return adminRedirect(
       authorized.adminOrigin,
@@ -44,22 +70,12 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const parsed = homePresentationFormSchema.safeParse(
-    Object.fromEntries(authorized.form)
-  );
-
-  if (!parsed.success) {
-    return adminRedirect(
-      authorized.adminOrigin,
-      `${target}&estado=datos`
-    );
-  }
-
   try {
-    const result = await saveHomePresentationDraft(
-      parsed.data.expectedRevision,
+    const result = await saveHomeContentDraft(
+      curation.data.expectedRevision,
       authorized.session.userId,
-      parsed.data.presentationJson
+      curation.data.curationJson,
+      presentation.data.presentationJson
     );
 
     return adminRedirect(
@@ -74,7 +90,7 @@ export async function POST(request: NextRequest) {
     );
   } catch {
     console.error(
-      "No se pudo guardar la presentación de Portada."
+      "No se pudo guardar Resto de Inicio como una revisión atómica."
     );
     return adminUnavailableResponse();
   }

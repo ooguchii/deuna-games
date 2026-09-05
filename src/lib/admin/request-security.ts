@@ -57,7 +57,8 @@ export function hasTrustedAdminOrigin(
 
 export async function readTrustedAdminForm(
   request: NextRequest,
-  adminOrigin: string
+  adminOrigin: string,
+  maxBytes = MAX_ADMIN_FORM_BYTES
 ) {
   const contentType =
     request.headers.get("content-type") ?? "";
@@ -89,23 +90,44 @@ export async function readTrustedAdminForm(
     (
       !Number.isFinite(contentLength) ||
       contentLength < 0 ||
-      contentLength > MAX_ADMIN_FORM_BYTES
+      contentLength > maxBytes
     )
   ) {
     return null;
   }
 
+  if (!request.body) return null;
+
   let body: string;
 
   try {
-    body = await request.text();
+    const reader = request.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let size = 0;
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        size += value.byteLength;
+        if (size > maxBytes) {
+          await reader.cancel();
+          return null;
+        }
+        chunks.push(value);
+      }
+    } finally {
+      reader.releaseLock();
+    }
+
+    body = Buffer.concat(chunks).toString("utf8");
   } catch {
     return null;
   }
 
   if (
     Buffer.byteLength(body, "utf8") >
-    MAX_ADMIN_FORM_BYTES
+    maxBytes
   ) {
     return null;
   }

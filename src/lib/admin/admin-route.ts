@@ -58,7 +58,8 @@ export function adminUnavailableResponse() {
 }
 
 export async function authorizeAdminFormRequest(
-  request: NextRequest
+  request: NextRequest,
+  options?: { maxFormBytes: number }
 ): Promise<AuthorizedAdminForm | RejectedAdminForm> {
   if (!isAdminEnabled()) {
     return {
@@ -88,7 +89,8 @@ export async function authorizeAdminFormRequest(
 
     const form = await readTrustedAdminForm(
       request,
-      adminOrigin
+      adminOrigin,
+      options?.maxFormBytes
     );
 
     if (!form) {

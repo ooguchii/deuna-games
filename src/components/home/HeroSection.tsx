@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import {
   Building2,
@@ -9,7 +8,6 @@ import {
   ChevronRight,
   Gamepad2,
   Info,
-  Pause,
   Play,
   Star,
   Tag,
@@ -21,13 +19,17 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useLayoutEffect,
   useRef,
   useState,
 } from "react";
 
+import HeroNavigation, { type HeroNavigationEditor } from "@/components/home/HeroNavigation";
 import FramedVideo from "@/components/ui/FramedVideo";
 import GameMedia from "@/components/ui/GameMedia";
-import type { HomeHeroPresentation } from "@/data/home-config";
+import { resolveHeroDeviceDesign } from "@/lib/home/hero-device-design";
+import { homeHeroDeviceForWidth } from "@/lib/home/hero-devices";
+import type { HomeHeroDevice, HomeHeroPresentation } from "@/data/home-config";
 import {
   HOME_HERO_AUTOPLAY_MS,
   formatHomeHeroPosition,
@@ -35,9 +37,11 @@ import {
 import {
   HOME_HERO_VISUAL_POSITIONS,
   homeHeroPositionDisplay,
+  homeHeroAnchor,
   homeHeroPositionOffset,
   homeHeroPositionTransform,
-  homeHeroSlotX,
+  homeHeroSlotCSS,
+  fitHomeHeroBounds,
   type HomeHeroVisualPosition,
 } from "@/lib/home/hero-layout";
 import {
@@ -67,7 +71,6 @@ type ResponsiveArtworkProps = {
   game: Game;
   alt: string;
   active?: boolean;
-  ambient?: boolean;
   style?: CSSProperties;
 };
 
@@ -76,9 +79,9 @@ function canUseFineHover() {
 }
 
 function imageViewportForHero(game: Game) {
-  return game.heroImage
-    ? game.imageMedia?.hero
-    : game.imageMedia?.cover;
+  const viewport = game.heroImage ? game.imageMedia?.hero : game.imageMedia?.cover;
+  // The carousel owns its dimensions; gallery aspect metadata cannot resize it.
+  return viewport ? { ...viewport, aspect: undefined } : undefined;
 }
 
 function classificationLine(game: Game) {
@@ -190,24 +193,10 @@ function ResponsiveArtwork({
   game,
   alt,
   active = false,
-  ambient = false,
   style,
 }: ResponsiveArtworkProps) {
   const src = game.heroImage ?? game.coverImage;
   if (!src) return null;
-
-  if (ambient) {
-    return (
-      <Image
-        src={src}
-        alt={alt}
-        fill
-        sizes="100vw"
-        className={styles.ambientImage}
-        style={style}
-      />
-    );
-  }
 
   return (
     <span
@@ -317,6 +306,7 @@ function deviceVariables(
   totalGames: number
 ) {
   const variables: Record<string, string | number> = {
+    "--hero-slide-offset": presentation.direction === "reverse" ? "-90px" : "90px",
     "--hero-editor-radius": `${presentation.radius}px`,
     "--hero-editor-duration": `${presentation.durationMs}ms`,
     "--hero-editor-easing": presentation.easing,
@@ -329,10 +319,17 @@ function deviceVariables(
 
   for (const device of ["desktop", "tablet", "mobile"] as const) {
     const responsive = presentation.responsive[device];
+    const navigation = presentation.navigation.responsive[device];
+    variables[`--hero-${device}-anchor`] = homeHeroAnchor(responsive);
     variables[`--hero-${device}-card-width`] = `${responsive.cardWidth}px`;
     variables[`--hero-${device}-card-height`] = `${responsive.cardHeight}px`;
     variables[`--hero-${device}-gap`] = `${responsive.gap}px`;
     variables[`--hero-${device}-perspective`] = `${responsive.perspective}px`;
+    variables[`--hero-${device}-space-before`] = `${responsive.spaceBefore}px`;
+    variables[`--hero-${device}-space-after`] = `${responsive.spaceAfter}px`;
+    variables[`--hero-${device}-navigation-x`] = `${navigation.x}%`;
+    variables[`--hero-${device}-navigation-y`] = `${navigation.y}%`;
+    variables[`--hero-${device}-navigation-scale`] = navigation.scale;
 
     for (const position of HOME_HERO_VISUAL_POSITIONS) {
       variables[`--hero-${device}-display-${position}`] = homeHeroPositionDisplay(
@@ -341,7 +338,7 @@ function deviceVariables(
         presentation.direction,
         totalGames
       );
-      variables[`--hero-${device}-slot-${position}`] = `${homeHeroSlotX(position, responsive)}px`;
+      variables[`--hero-${device}-slot-${position}`] = homeHeroSlotCSS(position);
     }
   }
 
@@ -350,18 +347,41 @@ function deviceVariables(
 
 export default function HeroSection({
   games,
-  presentation,
+  presentation: sourcePresentation,
   imageEffect = false,
   imageTuning,
+  autoplaySuspended = false,
+  onSelectPosition,
+  navigationEditor,
 }: {
   games: Game[];
   presentation: HomeHeroPresentation;
   imageEffect?: boolean;
   imageTuning?: Partial<HeroImageTuning>;
+  autoplaySuspended?: boolean;
+  onSelectPosition?: (position: HomeHeroVisualPosition) => void;
+  navigationEditor?: HeroNavigationEditor;
 }) {
-  const pointerStartX = useRef<number | null>(null);
+  const rootRef = useRef<HTMLElement>(null);
+  const [designDevice, setDesignDevice] = useState<HomeHeroDevice>("desktop");
+  useLayoutEffect(() => {
+    const view = rootRef.current?.ownerDocument.defaultView;
+    if (!view) return;
+    const update = () => setDesignDevice(homeHeroDeviceForWidth(view.innerWidth));
+    update();
+    view.addEventListener("resize", update);
+    return () => view.removeEventListener("resize", update);
+  }, []);
+  const presentation = useMemo(() => resolveHeroDeviceDesign(sourcePresentation, designDevice), [sourcePresentation, designDevice]);
+  const fitRef = useRef<HTMLDivElement>(null);
+  const pointerStart = useRef<{ x: number; y: number; id: number } | null>(null);
+  const suppressClick = useRef(false);
+  const lastWheel = useRef(0);
+  const autoplayClock = useRef({ key: "", remaining: 0 });
   const [activeIndex, setActiveIndex] = useState(0);
-  const [paused, setPaused] = useState(false);
+  const [hovered, setHovered] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const [documentVisible, setDocumentVisible] = useState(true);
   const [manualPaused, setManualPaused] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
   const [hoverPreviewActive, setHoverPreviewActive] = useState(false);
@@ -376,23 +396,13 @@ export default function HeroSection({
     }),
     [resolvedTuning]
   );
-  const ambientArtworkStyle = useMemo<CSSProperties>(() => {
-    const ambientBrightness = Math.round(resolvedTuning.brightness * 0.72);
-    const ambientSaturation = Math.min(240, Math.round(resolvedTuning.saturation * 1.2));
-    const scale = 1.12 + resolvedTuning.ambientBlur / 450;
-    return {
-      opacity: resolvedTuning.ambientOpacity / 100,
-      filter: `blur(${resolvedTuning.ambientBlur}px) saturate(${ambientSaturation}%) brightness(${ambientBrightness}%) contrast(${resolvedTuning.contrast}%)`,
-      transform: `scale(${scale.toFixed(3)})`,
-    };
-  }, [resolvedTuning]);
   const tuningOverlayOpacity = resolvedTuning.overlayStrength / 100;
 
   const normalizedActiveIndex = games.length
     ? ((activeIndex % games.length) + games.length) % games.length
     : 0;
   const activeGame = games[normalizedActiveIndex] ?? games[0];
-  const isPaused = paused || manualPaused || reducedMotion;
+  const isPaused = (hovered && presentation.pauseOnHover) || focused || manualPaused || reducedMotion || !documentVisible || autoplaySuspended;
   const autoplayDelay = !presentation.autoplay || presentation.autoplayMs === 0
     ? null
     : presentation.autoplayMs || HOME_HERO_AUTOPLAY_MS;
@@ -416,7 +426,7 @@ export default function HeroSection({
   const previousSlide = useCallback(() => moveBy(-direction), [direction, moveBy]);
 
   useEffect(() => {
-    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const media = (rootRef.current?.ownerDocument.defaultView ?? window).matchMedia("(prefers-reduced-motion: reduce)");
     const updatePreference = () => setReducedMotion(media.matches);
     updatePreference();
     media.addEventListener("change", updatePreference);
@@ -424,10 +434,121 @@ export default function HeroSection({
   }, []);
 
   useEffect(() => {
-    if (isPaused || games.length <= 1 || autoplayDelay === null) return;
-    const timer = window.setTimeout(nextSlide, autoplayDelay);
-    return () => window.clearTimeout(timer);
-  }, [activeGame?.id, autoplayDelay, games.length, isPaused, nextSlide]);
+    const doc = rootRef.current?.ownerDocument ?? document;
+    const update = () => setDocumentVisible(!doc.hidden);
+    update();
+    doc.addEventListener("visibilitychange", update);
+    return () => doc.removeEventListener("visibilitychange", update);
+  }, []);
+
+  const atAutoplayEnd = !presentation.loop && normalizedActiveIndex === (direction === 1 ? games.length - 1 : 0);
+  useEffect(() => {
+    const key = `${activeGame?.id}-${autoplayDelay}-${direction}`;
+    if (autoplayClock.current.key !== key) autoplayClock.current = { key, remaining: autoplayDelay ?? 0 };
+    if (isPaused || atAutoplayEnd || games.length <= 1 || autoplayDelay === null) return;
+    const started = performance.now();
+    const timer = window.setTimeout(nextSlide, autoplayClock.current.remaining);
+    return () => {
+      window.clearTimeout(timer);
+      autoplayClock.current.remaining = Math.max(0, autoplayClock.current.remaining - (performance.now() - started));
+    };
+  }, [activeGame?.id, autoplayDelay, direction, games.length, isPaused, atAutoplayEnd, nextSlide]);
+
+  useEffect(() => {
+    const node = rootRef.current;
+    if (!node || !presentation.wheel) return;
+    const onWheel = (event: WheelEvent) => {
+      if (event.ctrlKey || Math.abs(event.deltaY) < 12) return;
+      event.preventDefault();
+      const now = performance.now();
+      if (now - lastWheel.current < Math.max(350, presentation.durationMs)) return;
+      lastWheel.current = now;
+      moveBy(event.deltaY > 0 ? direction : -direction);
+    };
+    node.addEventListener("wheel", onWheel, { passive: false });
+    return () => node.removeEventListener("wheel", onWheel);
+  }, [direction, moveBy, presentation.durationMs, presentation.wheel]);
+
+  useLayoutEffect(() => {
+    const fit = fitRef.current;
+    const root = rootRef.current;
+    const viewport = fit?.parentElement;
+    if (!fit || !root || !viewport) return;
+
+    const resetVisualInsets = () => {
+      root.style.setProperty("--hero-visual-inset-top", "0px");
+      root.style.setProperty("--hero-visual-inset-bottom", "0px");
+    };
+
+    const update = () => {
+      fit.style.transform = "none";
+      const origin = viewport.getBoundingClientRect();
+      const cards = Array.from(fit.querySelectorAll<HTMLElement>("[data-position]")).filter((card) => card.getClientRects().length > 0);
+      if (!cards.length || !origin.width || !origin.height) {
+        resetVisualInsets();
+        return;
+      }
+      const screenWidth = root.ownerDocument.defaultView?.innerWidth ?? 1440;
+      const device = screenWidth <= 680 ? "mobile" : screenWidth <= 1100 ? "tablet" : "desktop";
+      const responsive = presentation.responsive[device];
+      // On phones the neighbors are edge previews; fitting them all would make
+      // the main title and actions too small to read or tap.
+      const fittedCards = device === "mobile" ? cards.filter((card) => card.dataset.position === "main") : cards;
+      const bounds = fittedCards.map((card) => card.getBoundingClientRect());
+      const fitted = fitHomeHeroBounds({
+        left: Math.min(...bounds.map((box) => box.left)) - origin.left,
+        top: Math.min(...bounds.map((box) => box.top)) - origin.top,
+        right: Math.max(...bounds.map((box) => box.right)) - origin.left,
+        bottom: Math.max(...bounds.map((box) => box.bottom)) - origin.top,
+      }, origin.width, origin.height, responsive.alignment);
+      fit.style.transform = `translate(${fitted.x}px, ${fitted.y}px) scale(${fitted.scale})`;
+
+      if (responsive.spacingReference === "canvas") {
+        resetVisualInsets();
+        return;
+      }
+
+      const rootBounds = root.getBoundingClientRect();
+      const viewportBounds = viewport.getBoundingClientRect();
+      const verticalBounds: Array<{ top: number; bottom: number }> = [];
+
+      for (const card of cards) {
+        const box = card.getBoundingClientRect();
+        const top = Math.max(box.top, viewportBounds.top);
+        const bottom = Math.min(box.bottom, viewportBounds.bottom);
+        if (bottom > top) verticalBounds.push({ top, bottom });
+      }
+
+      for (const control of root.querySelectorAll<HTMLElement>("[data-hero-spacing-boundary]")) {
+        if (!control.getClientRects().length) continue;
+        const box = control.getBoundingClientRect();
+        if (box.width > 0 && box.height > 0) verticalBounds.push({ top: box.top, bottom: box.bottom });
+      }
+
+      if (!verticalBounds.length) {
+        resetVisualInsets();
+        return;
+      }
+
+      const visualTop = Math.min(...verticalBounds.map((box) => box.top));
+      const visualBottom = Math.max(...verticalBounds.map((box) => box.bottom));
+      const round = (value: number) => Math.round(value * 100) / 100;
+      root.style.setProperty("--hero-visual-inset-top", `${round(visualTop - rootBounds.top)}px`);
+      root.style.setProperty("--hero-visual-inset-bottom", `${round(rootBounds.bottom - visualBottom)}px`);
+    };
+
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(viewport);
+    const view = root.ownerDocument.defaultView;
+    view?.addEventListener("resize", update);
+    return () => {
+      observer.disconnect();
+      view?.removeEventListener("resize", update);
+      root.style.removeProperty("--hero-visual-inset-top");
+      root.style.removeProperty("--hero-visual-inset-bottom");
+    };
+  }, [presentation, games.length, normalizedActiveIndex]);
 
   if (!activeGame) return null;
 
@@ -460,39 +581,55 @@ export default function HeroSection({
   }
 
   function handlePointerDown(event: PointerEvent<HTMLDivElement>) {
-    if (
-      (event.pointerType === "mouse" && presentation.drag) ||
-      (event.pointerType !== "mouse" && presentation.touch)
-    ) {
-      pointerStartX.current = event.clientX;
+    suppressClick.current = false;
+    if (!event.isPrimary || event.button !== 0) return;
+    if ((event.pointerType === "mouse" && presentation.drag) || (event.pointerType !== "mouse" && presentation.touch)) {
+      pointerStart.current = { x: event.clientX, y: event.clientY, id: event.pointerId };
     }
   }
 
   function resetPointer() {
-    pointerStartX.current = null;
+    pointerStart.current = null;
+  }
+
+  function handlePointerMove(event: PointerEvent<HTMLDivElement>) {
+    const start = pointerStart.current;
+    if (!start || start.id !== event.pointerId) return;
+    const dx = Math.abs(start.x - event.clientX);
+    const dy = Math.abs(start.y - event.clientY);
+    if (dy > dx && dy > 12) { resetPointer(); return; }
+    if (dx >= SWIPE_THRESHOLD && dx > dy) {
+      suppressClick.current = true;
+      event.currentTarget.setPointerCapture(event.pointerId);
+    }
   }
 
   function handlePointerUp(event: PointerEvent<HTMLDivElement>) {
-    if (pointerStartX.current === null) return;
-    const difference = pointerStartX.current - event.clientX;
+    const start = pointerStart.current;
+    if (!start || start.id !== event.pointerId) return;
+    const difference = start.x - event.clientX;
+    const vertical = Math.abs(start.y - event.clientY);
     resetPointer();
-    if (Math.abs(difference) < SWIPE_THRESHOLD) return;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+    if (Math.abs(difference) < SWIPE_THRESHOLD || vertical >= Math.abs(difference)) return;
+    suppressClick.current = true;
     if (difference > 0) nextSlide();
     else previousSlide();
   }
 
   function startHoverPreview() {
     if (hoverPlayback && canUseFineHover()) setHoverPreviewActive(true);
-    if (presentation.pauseOnHover) setPaused(true);
+    setHovered(true);
   }
 
   function stopHoverPreview() {
     if (hoverPlayback) setHoverPreviewActive(false);
-    if (presentation.pauseOnHover) setPaused(false);
+    setHovered(false);
   }
 
   return (
     <section
+      ref={rootRef}
       className={styles.heroSection}
       data-composition={presentation.composition}
       data-transition={presentation.transition}
@@ -503,47 +640,26 @@ export default function HeroSection({
       style={rootStyle}
       onMouseEnter={startHoverPreview}
       onMouseLeave={stopHoverPreview}
-      onWheel={(event) => {
-        if (!presentation.wheel || Math.abs(event.deltaY) < 12) return;
-        event.preventDefault();
-        moveBy(event.deltaY > 0 ? direction : -direction);
-      }}
-      onFocusCapture={() => setPaused(true)}
+      onFocusCapture={() => setFocused(true)}
       onBlurCapture={(event) => {
-        const nextTarget = event.relatedTarget;
-        if (!nextTarget || !event.currentTarget.contains(nextTarget as Node)) {
-          setPaused(false);
-        }
+        if (!event.relatedTarget || !event.currentTarget.contains(event.relatedTarget as Node)) setFocused(false);
       }}
     >
       <h1 className={styles.srOnly}>Juegos destacados</h1>
 
-      <div className={styles.ambientBackdrop} aria-hidden="true">
-        <div key={activeGame.id} className={styles.ambientFrame}>
-          <ResponsiveArtwork
-            game={activeGame}
-            alt=""
-            active
-            ambient
-            style={ambientArtworkStyle}
-          />
-        </div>
-        <div className={styles.ambientShade} />
-      </div>
-
-      {games.length > 1 && (
-        <div className={styles.positionCounter} aria-live="polite">
-          <strong>{String(normalizedActiveIndex + 1).padStart(2, "0")}</strong>
-          <span>/ {String(games.length).padStart(2, "0")}</span>
-        </div>
-      )}
-
       <div
         className={styles.carouselViewport}
         onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
+        onLostPointerCapture={resetPointer}
+        onDragStart={(event) => event.preventDefault()}
+        onClickCapture={(event) => {
+          if (suppressClick.current) { event.preventDefault(); event.stopPropagation(); suppressClick.current = false; }
+        }}
         onPointerCancel={resetPointer}
       >
+        <div ref={fitRef} className={styles.stageFit}>
         <div className={styles.stage}>
           {HOME_HERO_VISUAL_POSITIONS.map((position) => {
             const entry = cardAt(position);
@@ -558,6 +674,7 @@ export default function HeroSection({
                 className={styles.heroCard}
                 data-position={position}
                 data-main={isMain || undefined}
+                onClick={() => onSelectPosition?.(position)}
                 role="group"
                 aria-roledescription="slide"
                 aria-label={`${index + 1} de ${games.length}: ${game.title}`}
@@ -616,6 +733,7 @@ export default function HeroSection({
             );
           })}
         </div>
+        </div>
       </div>
 
       {games.length > 1 && (
@@ -623,63 +741,36 @@ export default function HeroSection({
           <button
             type="button"
             className={`${styles.arrow} ${styles.arrowLeft}`}
+            data-hero-spacing-boundary="control"
             aria-label="Juego anterior"
             onClick={previousSlide}
-            disabled={!presentation.loop && normalizedActiveIndex === 0}
+            disabled={!presentation.loop && normalizedActiveIndex === (direction === 1 ? 0 : games.length - 1)}
           >
             <ChevronLeft size={29} aria-hidden="true" />
           </button>
           <button
             type="button"
             className={`${styles.arrow} ${styles.arrowRight}`}
+            data-hero-spacing-boundary="control"
             aria-label="Juego siguiente"
             onClick={nextSlide}
-            disabled={!presentation.loop && normalizedActiveIndex === games.length - 1}
+            disabled={!presentation.loop && normalizedActiveIndex === (direction === 1 ? games.length - 1 : 0)}
           >
             <ChevronRight size={29} aria-hidden="true" />
           </button>
 
-          <div className={styles.controls}>
-            <div className={styles.segments} aria-label="Elegir juego del carrusel">
-              {games.map((game, index) => (
-                <button
-                  key={game.id}
-                  type="button"
-                  className={index === normalizedActiveIndex ? styles.activeSegment : ""}
-                  aria-label={`Mostrar ${game.title}`}
-                  aria-current={index === normalizedActiveIndex ? "true" : undefined}
-                  onClick={() => setActiveIndex(index)}
-                />
-              ))}
-            </div>
-
-            {presentation.autoplay && presentation.autoplayMs !== 0 && (
-              <button
-                type="button"
-                className={styles.pauseButton}
-                aria-label={manualPaused ? "Reanudar carrusel automático" : "Pausar carrusel automático"}
-                aria-pressed={manualPaused}
-                onClick={() => setManualPaused((current) => !current)}
-              >
-                {manualPaused ? (
-                  <Play size={12} fill="currentColor" aria-hidden="true" />
-                ) : (
-                  <Pause size={12} fill="currentColor" aria-hidden="true" />
-                )}
-                <span>{manualPaused ? "Reanudar" : "Pausar"}</span>
-              </button>
-            )}
-
-            {autoplayDelay !== null && (
-              <div className={styles.progress} aria-hidden="true">
-                <span
-                  key={normalizedActiveIndex}
-                  className={styles.progressBar}
-                  style={{ animationPlayState: isPaused ? "paused" : "running" }}
-                />
-              </div>
-            )}
-          </div>
+          <HeroNavigation
+            games={games}
+            activeIndex={normalizedActiveIndex}
+            config={presentation.navigation}
+            autoplayDelay={autoplayDelay}
+            isPaused={isPaused}
+            manualPaused={manualPaused}
+            atAutoplayEnd={atAutoplayEnd}
+            onSelect={setActiveIndex}
+            onTogglePause={() => setManualPaused((current) => !current)}
+            editor={navigationEditor}
+          />
         </>
       )}
 

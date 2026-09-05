@@ -1,3 +1,41 @@
 .artworkFrame {
   isolation: isolate;
 }
+
+/*
+ * The Hero lives inside `.main-content`, so its outer geometry must use that
+ * same editorial grid instead of creating a second inset. These global rules
+ * apply to the shared HeroSection renderer in both the public Home and the
+ * admin live preview.
+ */
+:global(section[aria-roledescription="carrusel"][aria-label="Juegos destacados"]) {
+  width: 100% !important;
+  margin-inline: 0 !important;
+}
+
+:global(section[aria-roledescription="carrusel"][aria-label="Juegos destacados"] > button[aria-label="Juego anterior"]) {
+  left: 0 !important;
+  box-shadow: none !important;
+}
+
+:global(section[aria-roledescription="carrusel"][aria-label="Juegos destacados"] > button[aria-label="Juego siguiente"]) {
+  right: 0 !important;
+  box-shadow: none !important;
+}
+
+/*
+ * Keep the configurable Shadow control, but ground it inside the card instead
+ * of painting a large black halo outside the composition. Glow remains an
+ * independent exterior effect controlled by the existing Glow setting.
+ */
+:global(section[aria-roledescription="carrusel"][aria-label="Juegos destacados"] article[data-position] > div) {
+  box-shadow:
+    inset 0 -18px 42px rgb(0 0 0 / calc(var(--hero-editor-shadow, .55) * .22)),
+    0 0 54px rgb(from var(--brand) r g b / var(--hero-editor-glow, .18)) !important;
+}
+
+:global(section[aria-roledescription="carrusel"][aria-label="Juegos destacados"] article[data-main="true"] > div) {
+  box-shadow:
+    inset 0 -20px 48px rgb(0 0 0 / calc(var(--hero-editor-shadow, .55) * .24)),
+    0 0 66px rgb(from var(--brand) r g b / var(--hero-editor-glow, .18)) !important;
+}

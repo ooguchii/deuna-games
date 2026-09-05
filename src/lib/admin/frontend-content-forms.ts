@@ -54,13 +54,15 @@ export const frontendSiteConfigFormSchema = z
   })
   .merge(siteFields);
 
-const homePresentationSchema = editorialHomeConfigSchema
-  .pick({
-    heroPresentation: true,
-    sections: true,
-    copy: true,
+const editableHomeCopySchema = editorialHomeConfigSchema.shape.copy
+  .unwrap()
+  .omit({ hero: true });
+const homePresentationSchema = z
+  .object({
+    sections: editorialHomeConfigSchema.shape.sections.unwrap(),
+    copy: editableHomeCopySchema,
   })
-  .required();
+  .strict();
 
 export const homePresentationFormSchema = z.object({
   expectedRevision: expectedRevisionSchema,

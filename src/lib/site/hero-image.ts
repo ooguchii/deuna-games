@@ -2,8 +2,6 @@ export type HeroImageTuning = {
   brightness: number;
   saturation: number;
   contrast: number;
-  ambientBlur: number;
-  ambientOpacity: number;
   overlayStrength: number;
 };
 
@@ -11,8 +9,6 @@ export const defaultHeroImageTuning: HeroImageTuning = {
   brightness: 100,
   saturation: 100,
   contrast: 100,
-  ambientBlur: 54,
-  ambientOpacity: 42,
   overlayStrength: 100,
 };
 
@@ -50,18 +46,6 @@ export function resolveHeroImageTuning(
       70,
       160,
       defaultHeroImageTuning.contrast
-    ),
-    ambientBlur: clamp(
-      tuning?.ambientBlur,
-      0,
-      90,
-      defaultHeroImageTuning.ambientBlur
-    ),
-    ambientOpacity: clamp(
-      tuning?.ambientOpacity,
-      0,
-      100,
-      defaultHeroImageTuning.ambientOpacity
     ),
     overlayStrength: clamp(
       tuning?.overlayStrength,

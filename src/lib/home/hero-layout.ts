@@ -24,6 +24,17 @@ const positionOffsets: Record<HomeHeroVisualPosition, number> = {
   right2: 2,
 };
 
+const slotGeometry: Record<
+  HomeHeroVisualPosition,
+  { widthFactor: number; gapFactor: number }
+> = {
+  left2: { widthFactor: -.72, gapFactor: -2 },
+  left1: { widthFactor: -.42, gapFactor: -1 },
+  main: { widthFactor: 0, gapFactor: 0 },
+  right1: { widthFactor: .42, gapFactor: 1 },
+  right2: { widthFactor: .72, gapFactor: 2 },
+};
+
 export function homeHeroPositionOffset(
   position: HomeHeroVisualPosition
 ) {
@@ -34,22 +45,22 @@ export function homeHeroSlotX(
   position: HomeHeroVisualPosition,
   responsive: HomeHeroResponsiveStyle
 ) {
-  if (position === "left2") {
-    return -(responsive.cardWidth * .72 + responsive.gap * 2);
-  }
-  if (position === "left1") {
-    return -(responsive.cardWidth * .42 + responsive.gap);
-  }
-  if (position === "right1") {
-    return responsive.cardWidth * .42 + responsive.gap;
-  }
-  if (position === "right2") {
-    return responsive.cardWidth * .72 + responsive.gap * 2;
-  }
-  return 0;
+  const geometry = slotGeometry[position];
+  return (
+    responsive.cardWidth * geometry.widthFactor +
+    responsive.gap * geometry.gapFactor
+  );
 }
 
-export function homeHeroVisiblePositions(
+/** Resolve offsets from the rendered width, including responsive width limits. */
+export function homeHeroSlotCSS(position: HomeHeroVisualPosition) {
+  const geometry = slotGeometry[position];
+  if (!geometry.widthFactor && !geometry.gapFactor) return "0px";
+  const sign = Math.sign(geometry.widthFactor || geometry.gapFactor);
+  return `calc((var(--hero-card-width) * ${Math.abs(geometry.widthFactor)} + var(--hero-gap) * ${Math.abs(geometry.gapFactor)}) * ${sign})`;
+}
+
+function defaultVisiblePositions(
   responsive: HomeHeroResponsiveStyle,
   direction: HomeHeroPresentation["direction"],
   totalGames = Number.POSITIVE_INFINITY
@@ -72,6 +83,61 @@ export function homeHeroVisiblePositions(
   return HOME_HERO_VISUAL_POSITIONS;
 }
 
+/** The main card always remains visible; hiding a slot never removes a game. */
+export function homeHeroVisiblePositions(
+  responsive: HomeHeroResponsiveStyle,
+  direction: HomeHeroPresentation["direction"],
+  totalGames = Number.POSITIVE_INFINITY
+): readonly HomeHeroVisualPosition[] {
+  const count = Math.min(responsive.visibleCards, Math.max(1, totalGames));
+  const positions: readonly HomeHeroVisualPosition[] = responsive.alignment === "left"
+    ? ["main", "right1", "right2"]
+    : responsive.alignment === "right"
+      ? ["left2", "left1", "main"]
+      : defaultVisiblePositions(responsive, direction, totalGames);
+  const limited = responsive.alignment === "right" ? positions.slice(-count) : positions.slice(0, count);
+  return limited.filter((id) => id === "main" || !responsive.hiddenPositions?.includes(id));
+}
+
+function anchorOffsetCSS(
+  positions: readonly HomeHeroVisualPosition[]
+) {
+  if (positions.length <= 1) return "50%";
+
+  const first = slotGeometry[positions[0]];
+  const last = slotGeometry[positions[positions.length - 1]];
+  const widthFactor = (first.widthFactor + last.widthFactor) / 2;
+  const gapFactor = (first.gapFactor + last.gapFactor) / 2;
+
+  if (Math.abs(widthFactor) < 1e-9 && Math.abs(gapFactor) < 1e-9) {
+    return "50%";
+  }
+
+  const positive = widthFactor > 0 || (widthFactor === 0 && gapFactor > 0);
+  const operator = positive ? "-" : "+";
+  const terms: string[] = [];
+  if (Math.abs(widthFactor) >= 1e-9) {
+    terms.push(`var(--hero-card-width) * ${Math.abs(widthFactor)}`);
+  }
+  if (Math.abs(gapFactor) >= 1e-9) {
+    terms.push(`var(--hero-gap) * ${Math.abs(gapFactor)}`);
+  }
+
+  return `calc(50% ${operator} (${terms.join(" + ")}))`;
+}
+
+/**
+ * Keep the complete one-sided composition centered in the Hero. `alignment`
+ * chooses which neighboring slots exist; it must not pin the whole carousel to
+ * a page edge. Individual editor translations remain relative to this neutral
+ * centered origin.
+ */
+export function homeHeroAnchor(responsive: HomeHeroResponsiveStyle) {
+  if (responsive.alignment === "center") return "50%";
+  const positions = homeHeroVisiblePositions(responsive, "forward");
+  return anchorOffsetCSS(positions);
+}
+
 export function homeHeroPositionDisplay(
   position: HomeHeroVisualPosition,
   responsive: HomeHeroResponsiveStyle,
@@ -91,4 +157,41 @@ export function homeHeroPositionTransform(
   style: HomeHeroPositionStyle
 ) {
   return `translate3d(calc(-50% + var(--hero-slot-x) + ${style.translateX}px), calc(-50% + ${style.translateY}px), ${style.translateZ}px) rotateX(${style.rotateX}deg) rotateY(${style.rotateY}deg) rotateZ(${style.rotateZ}deg) scale(${style.scale})`;
+}
+
+export type HeroBounds = { left: number; top: number; right: number; bottom: number };
+
+/** Fit the complete visible composition, including perspective, inside its stage. */
+export function fitHomeHeroBounds(bounds: HeroBounds, width: number, height: number, _alignment: HomeHeroResponsiveStyle["alignment"] = "center") {
+  // `alignment` remains in the signature for source compatibility. Slot layout
+  // already encodes it before measurement, so fitting only needs the real bounds.
+  void _alignment;
+  // Horizontal spacing is owned by `.main-content`. Since every layout is now
+  // centered as a complete composition, rotations must never be corrected by
+  // pushing the stage left/right. There is deliberately no hidden vertical
+  // clearance: the configured card height is also the real Hero stage height.
+  const availableWidth = Math.max(1, width);
+  const availableHeight = Math.max(1, height);
+  const contentHeight = Math.max(1, bounds.bottom - bounds.top);
+  const originX = width / 2;
+  const centeredWidth = Math.max(
+    1,
+    2 * Math.max(originX - bounds.left, bounds.right - originX)
+  );
+  const scale = Math.min(
+    1,
+    availableWidth / centeredWidth,
+    availableHeight / contentHeight
+  );
+  const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
+
+  return {
+    scale,
+    x: (1 - scale) * originX,
+    y: clamp(
+      (1 - scale) * height / 2,
+      -bounds.top * scale,
+      height - bounds.bottom * scale
+    ),
+  };
 }

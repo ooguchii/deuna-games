@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 
@@ -8,14 +8,27 @@ const failures = [];
 const read = async (relativePath) =>
   readFile(path.join(root, relativePath), "utf8");
 
-function requireIncludes(content, marker, message) {
-  if (!content.includes(marker)) {
-    failures.push(message);
+async function sourceFiles(directory) {
+  const absolute = path.join(root, directory);
+  const entries = await readdir(absolute, { withFileTypes: true });
+  const files = [];
+
+  for (const entry of entries) {
+    const relative = path.join(directory, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...await sourceFiles(relative));
+      continue;
+    }
+    if (/\.(?:css|js|jsx|mjs|ts|tsx)$/.test(entry.name)) {
+      files.push(relative.replaceAll(path.sep, "/"));
+    }
   }
+
+  return files;
 }
 
-function requirePattern(content, pattern, message) {
-  if (!pattern.test(content)) {
+function requireIncludes(content, marker, message) {
+  if (!content.includes(marker)) {
     failures.push(message);
   }
 }
@@ -70,6 +83,7 @@ const theme = await read("src/theme/deuna-theme.css");
 const contract = await read("src/theme/public-theme-contract.css");
 const routeContract = await read("src/theme/public-route-theme-contract.css");
 const hero = await read("src/components/home/HeroSection.module.css");
+const heroComponent = await read("src/components/home/HeroSection.tsx");
 const gamesHero = await read("src/app/juegos/page.module.css");
 
 requireIncludes(
@@ -161,35 +175,45 @@ requireIncludes(
   "src/theme/public-route-theme-contract.css: falta tematizar la barra informativa de la ficha de juego."
 );
 
-requireIncludes(
+/*
+ * El Hero no puede volver a crear una segunda escena ambiental ni conservar
+ * parámetros de esa implementación retirada. La comprobación recorre todo
+ * `src/` para que tampoco sobrevivan restos en schemas, tipos o editores.
+ */
+const forbiddenHeroAmbientMarkers = [
+  "ambientBackdrop",
+  "ambientFrame",
+  "ambientImage",
+  "ambientShade",
+  "ambientBlur",
+  "ambientOpacity",
+];
+
+for (const file of await sourceFiles("src")) {
+  const content = await read(file);
+  for (const marker of forbiddenHeroAmbientMarkers) {
+    requireExcludes(
+      content,
+      marker,
+      `${file}: quedó un resto de la capa ambiental eliminada (${marker}).`
+    );
+  }
+}
+
+requireExcludes(
   hero,
-  ".ambientBackdrop",
-  "HeroSection: falta la capa ambiental exterior del Hero."
+  "ambientBackdrop",
+  "HeroSection: reapareció la capa ambiental eliminada."
 );
-requirePattern(
-  hero,
-  /inset:\s*-90px\s+-8vw\s+-150px/,
-  "HeroSection: el ambiente cinematográfico debe envolver la escena sin crear una altura vacía artificial."
-);
-requireIncludes(
-  hero,
-  ".ambientImage",
-  "HeroSection: falta reutilizar la imagen activa como ambiente."
-);
-requireIncludes(
-  hero,
-  ".ambientShade",
-  "HeroSection: falta la máscara que integra imagen, fondo y marca."
-);
-requireIncludes(
-  hero,
-  "var(--background)",
-  "HeroSection: el ambiente debe mezclarse con el fondo configurado."
+requireExcludes(
+  heroComponent,
+  "ambientBackdrop",
+  "HeroSection.tsx: reapareció la capa ambiental eliminada."
 );
 requireIncludes(
   hero,
   "var(--brand)",
-  "HeroSection: el ambiente debe responder a la marca configurada."
+  "HeroSection: sus controles y acentos deben seguir respondiendo a la marca configurada."
 );
 
 requireIncludes(
@@ -214,6 +238,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Tema público: OK (marca/fondo dinámicos, contraste adaptable, Heroes integrados y contratos heredados protegidos)."
+    "Tema público: OK (marca/fondo dinámicos, contraste adaptable, Hero sin capa ambiental ni restos heredados y contratos protegidos)."
   );
 }

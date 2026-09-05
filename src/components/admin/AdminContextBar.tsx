@@ -20,6 +20,10 @@ import {
 } from "lucide-react";
 import { usePathname, useSearchParams } from "next/navigation";
 
+import {
+  homeAdminSections as homeAdminSectionContract,
+} from "@/lib/admin/home-admin-sections";
+
 import ia from "./AdminInformationArchitecture.module.css";
 import ux from "./AdminShellUx.module.css";
 
@@ -36,12 +40,17 @@ const catalogSections = [
   { id: "historial", label: "Historial", icon: FileClock },
 ] as const;
 
-const homeSections = [
-  { id: "hero", label: "Editor del Hero", icon: PanelTop },
-  { id: "contenido", label: "Resto de Inicio", icon: SquarePen },
-  { id: "publicacion", label: "Publicación", icon: Rocket },
-  { id: "historial", label: "Historial", icon: FileClock },
-] as const;
+const homeSections = homeAdminSectionContract.map((section) => ({
+  ...section,
+  icon:
+    section.id === "hero"
+      ? PanelTop
+      : section.id === "contenido"
+        ? SquarePen
+        : section.id === "publicacion"
+          ? Rocket
+          : FileClock,
+}));
 
 const publicPageSections = [
   { id: "juegos", label: "Juegos", icon: PanelTop },

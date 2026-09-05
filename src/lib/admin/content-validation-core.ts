@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { homeHeroPresentationInputSchema } from "../home/hero-schema.ts";
+
 import type { Game } from "@/types/game";
 import type {
   GameTaxonomy,
@@ -228,16 +230,14 @@ const pageBackgroundsSchema = z
   })
   .strict();
 
-const heroImageTuningSchema = z
-  .object({
-    brightness: z.number().int().min(50).max(220),
-    saturation: z.number().int().min(0).max(200),
-    contrast: z.number().int().min(70).max(160),
-    ambientBlur: z.number().int().min(0).max(90),
-    ambientOpacity: z.number().int().min(0).max(100),
-    overlayStrength: z.number().int().min(0).max(100),
-  })
-  .strict();
+// Unknown legacy keys are intentionally stripped here so saved configurations
+// from before the ambient Hero layer was removed keep loading without reviving it.
+const heroImageTuningSchema = z.object({
+  brightness: z.number().int().min(50).max(220),
+  saturation: z.number().int().min(0).max(200),
+  contrast: z.number().int().min(70).max(160),
+  overlayStrength: z.number().int().min(0).max(100),
+});
 
 const downloadHrefSchema = z
   .string()
@@ -495,27 +495,7 @@ const homeCurationSchema = z
   })
   .strict();
 
-const homeHeroPresentationSchema = z
-  .object({
-    composition: z.enum(["studio", "cinema", "focus"]),
-    previewCount: z.union([z.literal(1), z.literal(2), z.literal(3)]),
-    motion: z.enum(["depth", "slide", "fade"]),
-    autoplayMs: z.union([
-      z.literal(0),
-      z.literal(4000),
-      z.literal(6500),
-      z.literal(8000),
-    ]),
-    preset: z.enum(["classic", "coverflow", "cinema", "stack", "arc", "perspective", "minimal", "spotlight", "cards", "custom"]).optional(),
-    transition: z.enum(["slide", "coverflow", "fade", "3d", "stack", "perspective", "custom"]).optional(),
-    durationMs: z.number().int().min(150).max(2000).optional(),
-    easing: z.enum(["ease", "ease-in", "ease-out", "ease-in-out", "linear"]).optional(),
-    radius: z.number().int().min(0).max(48).optional(), shadow: z.number().int().min(0).max(100).optional(), borderWidth: z.number().int().min(0).max(6).optional(), glow: z.number().int().min(0).max(100).optional(), overlay: z.number().int().min(0).max(90).optional(),
-    autoplay: z.boolean().optional(), loop: z.boolean().optional(), pauseOnHover: z.boolean().optional(), drag: z.boolean().optional(), touch: z.boolean().optional(), keyboard: z.boolean().optional(), wheel: z.boolean().optional(), direction: z.enum(["forward", "reverse"]).optional(),
-    positions: z.record(z.string(), z.object({ scale: z.number(), rotateX: z.number(), rotateY: z.number(), rotateZ: z.number(), translateX: z.number(), translateY: z.number(), translateZ: z.number(), opacity: z.number(), blur: z.number(), brightness: z.number(), contrast: z.number(), saturation: z.number() }).strict()).optional(),
-    responsive: z.record(z.string(), z.object({ visibleCards: z.number(), cardWidth: z.number(), cardHeight: z.number(), gap: z.number(), perspective: z.number() }).strict()).optional(),
-  })
-  .strict();
+const homeHeroPresentationSchema = homeHeroPresentationInputSchema;
 
 const homeCopySchema = z
   .object({

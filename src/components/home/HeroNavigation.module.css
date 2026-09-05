@@ -1,0 +1,349 @@
+.navigation {
+  position: absolute;
+  z-index: 44;
+  left: var(--hero-desktop-navigation-x, 50%);
+  top: var(--hero-desktop-navigation-y, 91%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  max-width: calc(100% - 24px);
+  transform: translate(-50%, -50%) scale(calc(var(--hero-desktop-navigation-scale, 100) / 100));
+  transform-origin: center;
+  transition: left 180ms ease, top 180ms ease, transform 180ms ease;
+}
+
+.navigation button {
+  font: inherit;
+}
+
+.navigation[data-editor="true"] {
+  outline: 1px dashed color-mix(in srgb, var(--brand) 64%, rgba(255,255,255,.32));
+  outline-offset: 8px;
+  border-radius: 12px;
+}
+
+.dragHandle,
+.indicator,
+.pauseButton {
+  all: unset;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.dragHandle {
+  position: absolute;
+  top: -31px;
+  left: 50%;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 23px;
+  border: 1px solid color-mix(in srgb, var(--brand) 58%, rgba(255,255,255,.28));
+  border-radius: 7px;
+  background: rgba(4, 9, 17, .9);
+  color: #fff;
+  cursor: grab;
+  transform: translateX(-50%);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 22px rgba(0,0,0,.28);
+}
+
+.dragHandle:active { cursor: grabbing; }
+
+.indicators {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.indicator {
+  position: relative;
+  display: block;
+  width: 34px;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(229,235,244,.3);
+  cursor: pointer;
+  transition: width 180ms ease, height 180ms ease, background 180ms ease, transform 180ms ease, opacity 180ms ease;
+}
+
+.indicatorActive {
+  width: 52px;
+  background: var(--brand);
+  box-shadow: 0 0 16px color-mix(in srgb,var(--brand) 40%,transparent);
+}
+
+.pauseButton {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid rgba(220,230,244,.22);
+  border-radius: 7px;
+  background: rgba(5,9,16,.82);
+  color: #fff;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  transition: transform 170ms ease, background 170ms ease, border-color 170ms ease;
+}
+
+.pauseButton:hover {
+  transform: scale(1.06);
+  border-color: color-mix(in srgb,var(--brand) 60%,rgba(255,255,255,.34));
+  background: color-mix(in srgb,var(--brand) 15%,#050910);
+}
+
+.progress {
+  width: 72px;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(230,238,248,.18);
+}
+
+.progressBar,
+.integratedProgress {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--brand);
+  transform-origin: left;
+  animation-name: heroNavigationProgress;
+  animation-timing-function: linear;
+  animation-fill-mode: both;
+}
+
+.integratedProgress {
+  position: absolute;
+  inset: 0;
+}
+
+.navigation[data-style="segmented-pro"] .indicatorActive {
+  background: #fff;
+  box-shadow: 0 0 14px rgba(255,255,255,.24);
+}
+
+.navigation[data-style="segmented-pro"] .progressBar {
+  background: #fff;
+}
+
+.navigation[data-style="integrated"] .indicator {
+  width: 42px;
+  height: 5px;
+  background: rgba(229,235,244,.22);
+}
+
+.navigation[data-style="integrated"] .indicatorActive {
+  width: 58px;
+  background: rgba(229,235,244,.22);
+  box-shadow: none;
+}
+
+.navigation[data-style="pills"] {
+  gap: 12px;
+}
+
+.navigation[data-style="pills"] .indicators {
+  gap: 6px;
+  padding: 6px 8px;
+  border: 1px solid rgba(220,230,244,.14);
+  border-radius: 999px;
+  background: rgba(5,9,16,.54);
+  backdrop-filter: blur(12px);
+}
+
+.navigation[data-style="pills"] .indicator {
+  width: 18px;
+  height: 7px;
+  background: rgba(235,240,248,.3);
+}
+
+.navigation[data-style="pills"] .indicatorActive {
+  width: 42px;
+  background: var(--brand);
+}
+
+.navigation[data-style="dots"] .indicators {
+  gap: 9px;
+}
+
+.navigation[data-style="dots"] .indicator {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: rgba(235,240,248,.34);
+}
+
+.navigation[data-style="dots"] .indicatorActive {
+  width: 26px;
+  border-radius: 999px;
+  background: var(--brand);
+}
+
+.navigation[data-style="timeline"] .indicators {
+  position: relative;
+  gap: 3px;
+  padding: 7px 9px;
+}
+
+.navigation[data-style="timeline"] .indicators::before {
+  position: absolute;
+  right: 9px;
+  bottom: 5px;
+  left: 9px;
+  height: 1px;
+  background: rgba(230,238,248,.22);
+  content: "";
+}
+
+.navigation[data-style="timeline"] .indicator {
+  width: 46px;
+  height: 4px;
+  border-radius: 0;
+  background: transparent;
+}
+
+.navigation[data-style="timeline"] .indicator::before {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background: rgba(235,240,248,.25);
+  content: "";
+}
+
+.navigation[data-style="timeline"] .indicatorActive {
+  width: 58px;
+  background: transparent;
+  box-shadow: none;
+}
+
+.navigation[data-style="minimal"] {
+  gap: 8px;
+}
+
+.navigation[data-style="minimal"] .indicators {
+  gap: 6px;
+}
+
+.navigation[data-style="minimal"] .indicator {
+  width: 22px;
+  height: 3px;
+  opacity: .7;
+}
+
+.navigation[data-style="minimal"] .indicatorActive {
+  width: 36px;
+  opacity: 1;
+  box-shadow: none;
+}
+
+.navigation[data-style="minimal"] .pauseButton {
+  width: 26px;
+  height: 26px;
+  border-color: transparent;
+  background: transparent;
+  backdrop-filter: none;
+}
+
+.navigation[data-style="minimal"] .progress {
+  width: 54px;
+  height: 2px;
+}
+
+.navigation[data-style="glass"] {
+  gap: 9px;
+  padding: 8px 10px;
+  border: 1px solid rgba(224,234,247,.18);
+  border-radius: 14px;
+  background: rgba(4,9,17,.55);
+  backdrop-filter: blur(16px) saturate(130%);
+  box-shadow: 0 14px 34px rgba(0,0,0,.24);
+}
+
+.navigation[data-style="glass"] .indicator {
+  width: 28px;
+  height: 4px;
+}
+
+.navigation[data-style="glass"] .indicatorActive {
+  width: 46px;
+}
+
+.navigation[data-style="glass"] .pauseButton {
+  width: 27px;
+  height: 27px;
+  background: rgba(255,255,255,.05);
+}
+
+.navigation[data-style="rail"] .indicators {
+  position: relative;
+  gap: 24px;
+  padding: 0 8px;
+}
+
+.navigation[data-style="rail"] .indicators::before {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  left: 4px;
+  height: 2px;
+  background: rgba(230,238,248,.2);
+  content: "";
+  transform: translateY(-50%);
+}
+
+.navigation[data-style="rail"] .indicator {
+  width: 8px;
+  height: 8px;
+  border: 2px solid rgba(235,240,248,.5);
+  border-radius: 50%;
+  background: #080d15;
+  box-shadow: 0 0 0 3px rgba(5,9,16,.55);
+}
+
+.navigation[data-style="rail"] .indicatorActive {
+  width: 14px;
+  height: 14px;
+  border-color: var(--brand);
+  background: var(--brand);
+}
+
+.indicator:focus-visible,
+.pauseButton:focus-visible,
+.dragHandle:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+}
+
+@keyframes heroNavigationProgress {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+@media (max-width: 1100px) {
+  .navigation {
+    left: var(--hero-tablet-navigation-x, 50%);
+    top: var(--hero-tablet-navigation-y, 91%);
+    transform: translate(-50%, -50%) scale(calc(var(--hero-tablet-navigation-scale, 100) / 100));
+  }
+}
+
+@media (max-width: 680px) {
+  .navigation {
+    left: var(--hero-mobile-navigation-x, 50%);
+    top: var(--hero-mobile-navigation-y, 92%);
+    gap: 7px;
+    transform: translate(-50%, -50%) scale(calc(var(--hero-mobile-navigation-scale, 92) / 100));
+  }
+
+  .progress { width: 54px; }
+  .indicator { width: 25px; }
+  .indicatorActive { width: 39px; }
+  .navigation[data-style="timeline"] .indicator { width: 34px; }
+  .navigation[data-style="timeline"] .indicatorActive { width: 42px; }
+}

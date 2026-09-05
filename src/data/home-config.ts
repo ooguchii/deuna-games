@@ -116,8 +116,20 @@ export const homeHeroPresetIds = [
   "perspective", "minimal", "spotlight", "cards", "custom",
 ] as const;
 
+export const homeHeroNavigationStyleIds = [
+  "segmented-pro",
+  "integrated",
+  "pills",
+  "dots",
+  "timeline",
+  "minimal",
+  "glass",
+  "rail",
+] as const;
+
 export type HomeHeroDevice = "desktop" | "tablet" | "mobile";
 export type HomeHeroPosition = "all" | "main" | "left1" | "left2" | "right1" | "right2";
+export type HomeHeroNavigationStyle = (typeof homeHeroNavigationStyleIds)[number];
 
 export type HomeHeroPositionStyle = {
   scale: number;
@@ -135,14 +147,33 @@ export type HomeHeroPositionStyle = {
 };
 
 export type HomeHeroResponsiveStyle = {
-  visibleCards: 3 | 4 | 5;
+  visibleCards: 1 | 2 | 3 | 4 | 5;
+  alignment?: "left" | "center" | "right";
+  hiddenPositions?: Array<Exclude<HomeHeroPosition, "all" | "main">>;
   cardWidth: number;
   cardHeight: number;
   gap: number;
   perspective: number;
+  spaceBefore: number;
+  spaceAfter: number;
+  spacingReference: "visual" | "canvas";
 };
 
-export type HomeHeroPresentation = {
+export type HomeHeroNavigationPlacement = {
+  x: number;
+  y: number;
+  scale: number;
+};
+
+export type HomeHeroNavigationConfig = {
+  style: HomeHeroNavigationStyle;
+  showIndicators: boolean;
+  showPause: boolean;
+  showProgress: boolean;
+  responsive: Record<HomeHeroDevice, HomeHeroNavigationPlacement>;
+};
+
+export type HomeHeroBasePresentation = {
   composition: (typeof homeHeroCompositionIds)[number];
   previewCount: 1 | 2 | 3;
   motion: "depth" | "slide" | "fade";
@@ -166,14 +197,22 @@ export type HomeHeroPresentation = {
   direction: "forward" | "reverse";
   positions: Record<HomeHeroPosition, HomeHeroPositionStyle>;
   responsive: Record<HomeHeroDevice, HomeHeroResponsiveStyle>;
+  navigation: HomeHeroNavigationConfig;
+};
+
+export type HomeHeroPresentation = HomeHeroBasePresentation & {
+  deviceOverrides?: Partial<Record<HomeHeroDevice, HomeHeroBasePresentation>>;
 };
 
 export type HomeHeroPresentationInput = Omit<
   Partial<HomeHeroPresentation>,
-  "positions" | "responsive"
+  "positions" | "responsive" | "navigation"
 > & {
   positions?: Partial<Record<HomeHeroPosition, HomeHeroPositionStyle>>;
-  responsive?: Partial<Record<HomeHeroDevice, HomeHeroResponsiveStyle>>;
+  responsive?: Partial<Record<HomeHeroDevice, Partial<HomeHeroResponsiveStyle>>>;
+  navigation?: Partial<Omit<HomeHeroNavigationConfig, "responsive">> & {
+    responsive?: Partial<Record<HomeHeroDevice, Partial<HomeHeroNavigationPlacement>>>;
+  };
 };
 
 export type HomeConfig = {
@@ -246,9 +285,20 @@ const defaultHeroPresentation: HomeHeroPresentation = {
     right2: { scale: .68, rotateX: 0, rotateY: -22, rotateZ: 0, translateX: 126, translateY: 15, translateZ: -180, opacity: 42, blur: 1, brightness: 58, contrast: 105, saturation: 62 },
   },
   responsive: {
-    desktop: { visibleCards: 5, cardWidth: 860, cardHeight: 430, gap: 26, perspective: 1200 },
-    tablet: { visibleCards: 3, cardWidth: 680, cardHeight: 390, gap: 18, perspective: 1000 },
-    mobile: { visibleCards: 3, cardWidth: 330, cardHeight: 500, gap: 12, perspective: 800 },
+    desktop: { visibleCards: 5, cardWidth: 860, cardHeight: 430, gap: 26, perspective: 1200, spaceBefore: 28, spaceAfter: 58, spacingReference: "visual" },
+    tablet: { visibleCards: 3, cardWidth: 680, cardHeight: 390, gap: 18, perspective: 1000, spaceBefore: 20, spaceAfter: 58, spacingReference: "visual" },
+    mobile: { visibleCards: 3, cardWidth: 330, cardHeight: 500, gap: 12, perspective: 800, spaceBefore: 14, spaceAfter: 38, spacingReference: "visual" },
+  },
+  navigation: {
+    style: "segmented-pro",
+    showIndicators: true,
+    showPause: true,
+    showProgress: true,
+    responsive: {
+      desktop: { x: 50, y: 91, scale: 100 },
+      tablet: { x: 50, y: 91, scale: 100 },
+      mobile: { x: 50, y: 92, scale: 92 },
+    },
   },
 };
 
@@ -441,6 +491,60 @@ function resolveCuration(
   };
 }
 
+function resolveHeroPresentation(
+  presentation: HomeHeroPresentationInput | undefined
+): HomeHeroPresentation {
+  const resolved: HomeHeroPresentation = {
+    ...defaultHeroPresentation,
+    ...presentation,
+    positions: {
+      ...defaultHeroPresentation.positions,
+      ...presentation?.positions,
+    },
+    responsive: {
+      desktop: {
+        ...defaultHeroPresentation.responsive.desktop,
+        ...presentation?.responsive?.desktop,
+      },
+      tablet: {
+        ...defaultHeroPresentation.responsive.tablet,
+        ...presentation?.responsive?.tablet,
+      },
+      mobile: {
+        ...defaultHeroPresentation.responsive.mobile,
+        ...presentation?.responsive?.mobile,
+      },
+    },
+    navigation: {
+      ...defaultHeroPresentation.navigation,
+      ...presentation?.navigation,
+      responsive: {
+        desktop: {
+          ...defaultHeroPresentation.navigation.responsive.desktop,
+          ...presentation?.navigation?.responsive?.desktop,
+        },
+        tablet: {
+          ...defaultHeroPresentation.navigation.responsive.tablet,
+          ...presentation?.navigation?.responsive?.tablet,
+        },
+        mobile: {
+          ...defaultHeroPresentation.navigation.responsive.mobile,
+          ...presentation?.navigation?.responsive?.mobile,
+        },
+      },
+    },
+  };
+
+  // Before `autoplay` existed, an interval of zero was the persisted way to
+  // express manual playback. Preserve that semantic instead of inheriting the
+  // new default `autoplay: true` and presenting contradictory editor state.
+  if (resolved.autoplayMs === 0) {
+    resolved.autoplay = false;
+  }
+
+  return resolved;
+}
+
 export function resolveHomeConfig(
   config: HomeConfig
 ): ResolvedHomeConfig {
@@ -450,18 +554,7 @@ export function resolveHomeConfig(
     lowSpecSlugs: [...config.lowSpecSlugs],
     recommendedSlugs: [...config.recommendedSlugs],
     curation: resolveCuration(config.curation),
-    heroPresentation: {
-      ...defaultHeroPresentation,
-      ...config.heroPresentation,
-      positions: {
-        ...defaultHeroPresentation.positions,
-        ...config.heroPresentation?.positions,
-      },
-      responsive: {
-        ...defaultHeroPresentation.responsive,
-        ...config.heroPresentation?.responsive,
-      },
-    },
+    heroPresentation: resolveHeroPresentation(config.heroPresentation),
     sections: resolveSections(config.sections),
     copy: config.copy
       ? {

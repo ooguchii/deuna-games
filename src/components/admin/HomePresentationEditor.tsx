@@ -1,16 +1,23 @@
 "use client";
 
 import { ArrowDown, ArrowUp } from "lucide-react";
-import { useMemo, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import type {
   HomeCopy,
   HomeSectionConfig,
   ResolvedHomeConfig,
 } from "@/data/home-config";
-import type { Game } from "@/types/game";
 
 import styles from "./HomePresentationEditor.module.css";
+
+const PRESENTATION_DRAFT_KEY =
+  "deuna:home-presentation-draft:latest";
 
 const sectionLabels: Record<HomeSectionConfig["id"], string> = {
   hero: "Hero principal",
@@ -24,8 +31,56 @@ const sectionLabels: Record<HomeSectionConfig["id"], string> = {
   trust: "Bloque de confianza",
 };
 
-function cloneCopy(copy: HomeCopy): HomeCopy {
-  return structuredClone(copy);
+type EditableHomeCopy = Omit<HomeCopy, "hero">;
+type PresentationDraft = {
+  revision: number;
+  sections: HomeSectionConfig[];
+  copy: EditableHomeCopy;
+};
+
+function editableCopyFromConfig(
+  copy: HomeCopy
+): EditableHomeCopy {
+  const editable = structuredClone(copy) as unknown as Record<
+    string,
+    unknown
+  >;
+  delete editable.hero;
+  return editable as EditableHomeCopy;
+}
+
+function buildPayload(
+  sections: HomeSectionConfig[],
+  copy: EditableHomeCopy
+) {
+  return JSON.stringify({ sections, copy });
+}
+
+function readRecoveryDraft(): PresentationDraft | null {
+  try {
+    const raw = sessionStorage.getItem(PRESENTATION_DRAFT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<PresentationDraft>;
+    if (
+      typeof parsed.revision !== "number" ||
+      !Array.isArray(parsed.sections) ||
+      !parsed.copy ||
+      typeof parsed.copy !== "object"
+    ) {
+      return null;
+    }
+    return parsed as PresentationDraft;
+  } catch {
+    return null;
+  }
+}
+
+function clearRecoveryDraft() {
+  try {
+    sessionStorage.removeItem(PRESENTATION_DRAFT_KEY);
+  } catch {
+    // El guardado del servidor sigue siendo la fuente de verdad.
+  }
 }
 
 export default function HomePresentationEditor({
@@ -33,24 +88,83 @@ export default function HomePresentationEditor({
   revision,
 }: {
   config: ResolvedHomeConfig;
-  heroGames: Game[];
   revision: number;
-  showHeroStudio?: boolean;
 }) {
-  const [sections, setSections] = useState<HomeSectionConfig[]>(() =>
-    config.sections.map((section) => ({ ...section }))
+  const baselineSections = useMemo(
+    () => config.sections.map((section) => ({ ...section })),
+    [config.sections]
   );
-  const [copy, setCopy] = useState<HomeCopy>(() => cloneCopy(config.copy));
+  const baselineCopy = useMemo(
+    () => editableCopyFromConfig(config.copy),
+    [config.copy]
+  );
+  const baselinePayload = useMemo(
+    () => buildPayload(baselineSections, baselineCopy),
+    [baselineCopy, baselineSections]
+  );
+  const [sections, setSections] = useState<HomeSectionConfig[]>(
+    () => baselineSections.map((section) => ({ ...section }))
+  );
+  const [copy, setCopy] = useState<EditableHomeCopy>(
+    () => structuredClone(baselineCopy)
+  );
+  const [recovery, setRecovery] =
+    useState<PresentationDraft | null>(() => {
+      const candidate = readRecoveryDraft();
+      if (!candidate) return null;
+
+      const candidatePayload = buildPayload(
+        candidate.sections,
+        candidate.copy
+      );
+      if (candidatePayload === baselinePayload) {
+        clearRecoveryDraft();
+        return null;
+      }
+
+      return candidate;
+    });
+  const saving = useRef(false);
 
   const serialized = useMemo(
-    () =>
-      JSON.stringify({
-        heroPresentation: config.heroPresentation,
-        sections,
-        copy,
-      }),
-    [config.heroPresentation, copy, sections]
+    () => buildPayload(sections, copy),
+    [copy, sections]
   );
+  const dirty = serialized !== baselinePayload;
+
+  useEffect(() => {
+    try {
+      if (!dirty) {
+        clearRecoveryDraft();
+        return;
+      }
+
+      sessionStorage.setItem(
+        PRESENTATION_DRAFT_KEY,
+        JSON.stringify({
+          revision,
+          sections,
+          copy,
+        } satisfies PresentationDraft)
+      );
+    } catch {
+      // El navegador puede bloquear storage; el formulario sigue funcionando.
+    }
+  }, [copy, dirty, revision, sections]);
+
+  useEffect(() => {
+    const warnBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (!dirty || saving.current) return;
+      event.preventDefault();
+    };
+
+    window.addEventListener("beforeunload", warnBeforeUnload);
+    return () =>
+      window.removeEventListener(
+        "beforeunload",
+        warnBeforeUnload
+      );
+  }, [dirty]);
 
   function moveSection(index: number, direction: -1 | 1) {
     setSections((current) => {
@@ -73,12 +187,12 @@ export default function HomePresentationEditor({
   }
 
   function setCopyField<
-    Section extends keyof HomeCopy,
-    Field extends keyof HomeCopy[Section],
+    Section extends keyof EditableHomeCopy,
+    Field extends keyof EditableHomeCopy[Section],
   >(
     section: Section,
     field: Field,
-    value: HomeCopy[Section][Field]
+    value: EditableHomeCopy[Section][Field]
   ) {
     setCopy((current) => ({
       ...current,
@@ -105,7 +219,7 @@ export default function HomePresentationEditor({
           ...current[section],
           [field]: list,
         },
-      } as HomeCopy;
+      } as EditableHomeCopy;
     });
   }
 
@@ -115,7 +229,7 @@ export default function HomePresentationEditor({
     value: string
   ) {
     setCopy((current) => {
-      const items = current.trust.items.map((item) => ({ ...item })) as HomeCopy["trust"]["items"];
+      const items = current.trust.items.map((item) => ({ ...item })) as EditableHomeCopy["trust"]["items"];
       items[index] = { ...items[index], [field]: value };
       return { ...current, trust: { items } };
     });
@@ -126,9 +240,56 @@ export default function HomePresentationEditor({
       method="post"
       action="/api/admin/content/home/presentation"
       className={styles.root}
+      onSubmit={() => {
+        saving.current = true;
+      }}
     >
-      <input type="hidden" name="expectedRevision" value={revision} />
-      <input type="hidden" name="presentationJson" value={serialized} />
+      <input
+        type="hidden"
+        name="expectedRevision"
+        value={revision}
+      />
+      <input
+        type="hidden"
+        name="presentationJson"
+        value={serialized}
+      />
+
+      {recovery && (
+        <div className={styles.recovery} role="status">
+          <div>
+            <strong>Cambios locales recuperables</strong>
+            <span>
+              {recovery.revision === revision
+                ? "Hay una copia local de esta revisión que todavía no fue guardada."
+                : `Hay una copia local iniciada en la revisión ${recovery.revision}. El servidor está en la revisión ${revision}.`}
+            </span>
+          </div>
+          <div>
+            <button
+              type="button"
+              onClick={() => {
+                setSections(
+                  recovery.sections.map((section) => ({ ...section }))
+                );
+                setCopy(structuredClone(recovery.copy));
+                setRecovery(null);
+              }}
+            >
+              Recuperar
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                clearRecoveryDraft();
+                setRecovery(null);
+              }}
+            >
+              Descartar copia
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className={styles.summary}>
         <div>
@@ -137,7 +298,9 @@ export default function HomePresentationEditor({
             Ordena, muestra u oculta bloques y edita sus textos. El Hero tiene un editor propio: aquí no se modifica su contenido ni su geometría.
           </p>
         </div>
-        <span>Revisión {revision}</span>
+        <span data-dirty={dirty ? "true" : "false"}>
+          {dirty ? "Cambios sin guardar" : `Revisión ${revision}`}
+        </span>
       </div>
 
       <section className={styles.structurePanel}>
@@ -244,13 +407,7 @@ export default function HomePresentationEditor({
               {copy.finder.features.map((feature, index) => (
                 <label key={index}>
                   <span>Señal {index + 1}</span>
-                  <input
-                    value={feature}
-                    maxLength={100}
-                    onChange={(event) =>
-                      setTupleValue("finder", "features", index, event.target.value)
-                    }
-                  />
+                  <input value={feature} maxLength={100} onChange={(event) => setTupleValue("finder", "features", index, event.target.value)} />
                 </label>
               ))}
             </div>
@@ -268,13 +425,7 @@ export default function HomePresentationEditor({
               ] as const).map(([field, label]) => (
                 <label key={field}>
                   <span>{label}</span>
-                  <input
-                    value={copy.updates[field]}
-                    maxLength={180}
-                    onChange={(event) =>
-                      setCopyField("updates", field, event.target.value)
-                    }
-                  />
+                  <input value={copy.updates[field]} maxLength={180} onChange={(event) => setCopyField("updates", field, event.target.value)} />
                 </label>
               ))}
             </div>
@@ -294,13 +445,7 @@ export default function HomePresentationEditor({
               ] as const).map(([field, label]) => (
                 <label key={field}>
                   <span>{label}</span>
-                  <input
-                    value={copy.lowSpec[field]}
-                    maxLength={180}
-                    onChange={(event) =>
-                      setCopyField("lowSpec", field, event.target.value)
-                    }
-                  />
+                  <input value={copy.lowSpec[field]} maxLength={180} onChange={(event) => setCopyField("lowSpec", field, event.target.value)} />
                 </label>
               ))}
               <label data-wide="true"><span>Descripción</span><textarea value={copy.lowSpec.text} maxLength={900} onChange={(event) => setCopyField("lowSpec", "text", event.target.value)} /></label>
@@ -355,7 +500,9 @@ export default function HomePresentationEditor({
         <p>
           Guardar sólo modifica el borrador de Portada. El orden, visibilidad y textos públicos no cambian hasta publicar.
         </p>
-        <button type="submit">Guardar presentación</button>
+        <button type="submit" disabled={!dirty}>
+          {dirty ? "Guardar presentación" : "Presentación guardada"}
+        </button>
       </div>
     </form>
   );
