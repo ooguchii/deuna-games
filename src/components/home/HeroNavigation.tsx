@@ -31,6 +31,18 @@ type DragState = {
 const clamp = (value: number, min: number, max: number) =>
   Math.max(min, Math.min(max, value));
 
+const visuallyHiddenStyle: CSSProperties = {
+  position: "absolute",
+  width: 1,
+  height: 1,
+  padding: 0,
+  margin: -1,
+  overflow: "hidden",
+  border: 0,
+  clip: "rect(0, 0, 0, 0)",
+  whiteSpace: "nowrap",
+};
+
 export default function HeroNavigation({
   games,
   activeIndex,
@@ -60,6 +72,8 @@ export default function HeroNavigation({
   const integratedProgress = config.showIndicators && (config.style === "integrated" || config.style === "timeline");
   const progressVisible = config.showProgress && autoplayDelay !== null;
   const pauseVisible = config.showPause && autoplayDelay !== null;
+  const activeGame = games[activeIndex];
+  const announceSlideChanges = isPaused || atAutoplayEnd;
 
   const navigationStyle = drag
     ? ({ left: `${drag.x}%`, top: `${drag.y}%` } as CSSProperties)
@@ -125,6 +139,14 @@ export default function HeroNavigation({
       data-paused={isPaused || atAutoplayEnd ? "true" : undefined}
       style={navigationStyle}
     >
+      <span
+        style={visuallyHiddenStyle}
+        aria-live={announceSlideChanges ? "polite" : "off"}
+        aria-atomic="true"
+      >
+        {activeGame ? `${activeIndex + 1} de ${games.length}: ${activeGame.title}` : ""}
+      </span>
+
       {editor && (
         <button
           type="button"
