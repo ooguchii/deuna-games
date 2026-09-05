@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 
 import HeroSection from "@/components/home/HeroSection";
@@ -12,11 +12,18 @@ import type { Game } from "@/types/game";
 import styles from "./HomeHeroEditor.module.css";
 
 type ViewportSize = { width: number; height: number };
+type ViewportOverrides = Record<HomeHeroDevice, ViewportSize>;
+type ViewportCustomization = Record<HomeHeroDevice, boolean>;
 
-const fallbackViewports: Record<HomeHeroDevice, ViewportSize> = {
+const fallbackViewports: ViewportOverrides = {
   desktop: { width: 1440, height: 900 },
   tablet: { width: 900, height: 1024 },
   mobile: { width: 390, height: 844 },
+};
+const initialCustomization: ViewportCustomization = {
+  desktop: false,
+  tablet: false,
+  mobile: false,
 };
 const widthLimits: Record<HomeHeroDevice, readonly [number, number]> = {
   desktop: [1101, 3840],
@@ -44,12 +51,29 @@ function clampViewport(device: HomeHeroDevice, viewport: ViewportSize): Viewport
  * unlike physical screenshot pixels it already reflects browser zoom and excludes
  * the scrollbar gutter used by percentage-based page containers.
  */
-function readBrowserViewport(): ViewportSize | null {
-  if (typeof window === "undefined") return null;
-  return {
-    width: document.documentElement.clientWidth || window.innerWidth,
-    height: document.documentElement.clientHeight || window.innerHeight,
-  };
+function browserViewportSnapshot() {
+  if (typeof window === "undefined") return "";
+  const width = document.documentElement.clientWidth || window.innerWidth;
+  const height = document.documentElement.clientHeight || window.innerHeight;
+  return `${width}:${height}`;
+}
+
+function serverViewportSnapshot() {
+  return "";
+}
+
+function subscribeBrowserViewport(callback: () => void) {
+  if (typeof window === "undefined") return () => {};
+  window.addEventListener("resize", callback);
+  return () => window.removeEventListener("resize", callback);
+}
+
+function parseViewportSnapshot(snapshot: string): ViewportSize | null {
+  if (!snapshot) return null;
+  const [rawWidth, rawHeight] = snapshot.split(":");
+  const width = Number(rawWidth);
+  const height = Number(rawHeight);
+  return Number.isFinite(width) && Number.isFinite(height) ? { width, height } : null;
 }
 
 async function synchronizePreviewStyles(doc: Document) {
@@ -100,37 +124,22 @@ export default function HomeHeroLivePreview({ games, presentation, device, playi
     return () => frame.removeEventListener("load", ready);
   }, []);
   const [availableWidth, setAvailableWidth] = useState(fallbackViewports.desktop.width);
-  const [sizes, setSizes] = useState(fallbackViewports);
-  const [browserViewport, setBrowserViewport] = useState<ViewportSize | null>(null);
-  const { width, height } = sizes[device];
-  const scale = Math.min(1, availableWidth / width);
+  const [manualSizes, setManualSizes] = useState<ViewportOverrides>(fallbackViewports);
+  const [customized, setCustomized] = useState<ViewportCustomization>(initialCustomization);
+  const browserSnapshot = useSyncExternalStore(
+    subscribeBrowserViewport,
+    browserViewportSnapshot,
+    serverViewportSnapshot
+  );
+  const browserViewport = parseViewportSnapshot(browserSnapshot);
   const browserDevice = browserViewport ? viewportDevice(browserViewport.width) : null;
   const browserMatchesSelection = browserDevice === device;
-  const previewMatchesBrowser = Boolean(
-    browserViewport &&
-    browserMatchesSelection &&
-    width === clampViewport(device, browserViewport).width &&
-    height === clampViewport(device, browserViewport).height
-  );
-
-  const useBrowserViewport = useCallback((viewport: ViewportSize, targetDevice: HomeHeroDevice) => {
-    const next = clampViewport(targetDevice, viewport);
-    setSizes((current) => ({ ...current, [targetDevice]: next }));
-  }, []);
-
-  useEffect(() => {
-    const initial = readBrowserViewport();
-    if (!initial) return;
-    setBrowserViewport(initial);
-    useBrowserViewport(initial, viewportDevice(initial.width));
-
-    const trackBrowserViewport = () => {
-      const next = readBrowserViewport();
-      if (next) setBrowserViewport(next);
-    };
-    window.addEventListener("resize", trackBrowserViewport);
-    return () => window.removeEventListener("resize", trackBrowserViewport);
-  }, [useBrowserViewport]);
+  const followsBrowserViewport = Boolean(browserViewport && browserMatchesSelection && !customized[device]);
+  const selectedViewport = followsBrowserViewport && browserViewport
+    ? clampViewport(device, browserViewport)
+    : manualSizes[device];
+  const { width, height } = selectedViewport;
+  const scale = Math.min(1, availableWidth / width);
 
   useEffect(() => {
     const node = container.current;
@@ -163,6 +172,14 @@ export default function HomeHeroLivePreview({ games, presentation, device, playi
     return () => { disposed = true; observer.disconnect(); doc.removeEventListener("click", openGame, true); };
   }, [target]);
 
+  const setManualViewportDimension = (key: keyof ViewportSize, value: number) => {
+    setManualSizes((current) => ({
+      ...current,
+      [device]: { ...selectedViewport, [key]: value },
+    }));
+    setCustomized((current) => ({ ...current, [device]: true }));
+  };
+
   const hero = <main className="main-content">
     {games.length ? <HeroSection
       games={games}
@@ -180,18 +197,18 @@ export default function HomeHeroLivePreview({ games, presentation, device, playi
           const value = Number(event.target.value);
           const next = Number.isFinite(value) ? Math.min(widthLimits[device][1], Math.max(widthLimits[device][0], Math.round(value))) : width;
           event.target.value = String(next);
-          setSizes((current) => ({ ...current, [device]: { ...current[device], width: next } }));
+          setManualViewportDimension("width", next);
         }} /> px</label>
         <label>Alto de pantalla <input key={`${device}-${height}-height`} type="number" min={320} max={2160} defaultValue={height} onBlur={(event) => {
           const value = Number(event.target.value);
           const next = Number.isFinite(value) ? Math.min(2160, Math.max(320, Math.round(value))) : height;
           event.target.value = String(next);
-          setSizes((current) => ({ ...current, [device]: { ...current[device], height: next } }));
+          setManualViewportDimension("height", next);
         }} /> px</label>
         <span>Escala de visualización: {Math.round(scale * 100)} %</span>
         {browserViewport && <span>Ventana actual: {Math.round(browserViewport.width)} × {Math.round(browserViewport.height)} CSS px</span>}
-        {browserViewport && browserMatchesSelection && !previewMatchesBrowser && <button type="button" className={styles.breakpoint} onClick={() => useBrowserViewport(browserViewport, device)}>Usar ventana actual</button>}
-        {previewMatchesBrowser && <span>Vista sincronizada con la ventana actual</span>}
+        {browserViewport && browserMatchesSelection && customized[device] && <button type="button" className={styles.breakpoint} onClick={() => setCustomized((current) => ({ ...current, [device]: false }))}>Usar ventana actual</button>}
+        {followsBrowserViewport && <span>Vista sincronizada con la ventana actual</span>}
       </div>
     </div>
     <div style={{ height: height * scale, position: "relative", overflow: "hidden" }}>
