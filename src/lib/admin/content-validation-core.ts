@@ -519,6 +519,17 @@ const homeHeroPresentationSchema = z
       alignment: z.enum(["left", "center", "right"]).optional(),
       hiddenPositions: z.array(z.enum(["left1", "left2", "right1", "right2"])).max(4).refine((items) => new Set(items).size === items.length).optional(),
     }).strict()).optional(),
+    navigation: z.object({
+      style: z.enum(["segmented-pro", "integrated", "pills", "dots", "timeline", "minimal", "glass", "rail"]),
+      showIndicators: z.boolean(),
+      showPause: z.boolean(),
+      showProgress: z.boolean(),
+      responsive: z.record(z.string(), z.object({
+        x: z.number().int().min(0).max(100),
+        y: z.number().int().min(0).max(100),
+        scale: z.number().int().min(50).max(180),
+      }).strict()),
+    }).strict().optional(),
   })
   .strict();
 
