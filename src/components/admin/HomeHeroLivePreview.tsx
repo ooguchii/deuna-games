@@ -188,10 +188,7 @@ export default function HomeHeroLivePreview({
   }, [target]);
 
   useEffect(() => {
-    if (!showSpacingGuide || !target || styledTarget !== target) {
-      setContentEnd(null);
-      return;
-    }
+    if (!showSpacingGuide || !target || styledTarget !== target) return;
     const doc = frameRef.current?.contentDocument;
     const marker = previewEndRef.current;
     const view = doc?.defaultView;
