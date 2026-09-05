@@ -106,6 +106,7 @@ function responsiveStyleSchema(spaceBefore: number, spaceAfter: number) {
     gap: z.number().int().min(0).max(100), perspective: z.number().int().min(400).max(2400),
     spaceBefore: z.number().int().min(0).max(160).default(spaceBefore),
     spaceAfter: z.number().int().min(0).max(200).default(spaceAfter),
+    spacingReference: z.enum(["visual", "canvas"]).default("visual"),
   }).strict();
 }
 
