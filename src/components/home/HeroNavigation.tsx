@@ -57,7 +57,7 @@ export default function HeroNavigation({
   const rootRef = useRef<HTMLDivElement>(null);
   const [drag, setDrag] = useState<DragState | null>(null);
   const placement = editor ? config.responsive[editor.device] : null;
-  const integratedProgress = config.style === "integrated" || config.style === "timeline" || config.style === "rail";
+  const integratedProgress = config.showIndicators && (config.style === "integrated" || config.style === "timeline");
   const progressVisible = config.showProgress && autoplayDelay !== null;
   const pauseVisible = config.showPause && autoplayDelay !== null;
 
@@ -79,18 +79,21 @@ export default function HeroNavigation({
   const startDrag = (event: PointerEvent<HTMLButtonElement>) => {
     if (!editor || !placement || !event.isPrimary || event.button !== 0) return;
     event.preventDefault();
+    event.stopPropagation();
     event.currentTarget.setPointerCapture(event.pointerId);
     setDrag({ pointerId: event.pointerId, x: placement.x, y: placement.y });
   };
 
   const moveDrag = (event: PointerEvent<HTMLButtonElement>) => {
     if (!editor || !drag || drag.pointerId !== event.pointerId) return;
+    event.stopPropagation();
     const next = positionFromPointer(event);
     if (next) setDrag({ pointerId: event.pointerId, ...next });
   };
 
   const finishDrag = (event: PointerEvent<HTMLButtonElement>) => {
     if (!editor || !drag || drag.pointerId !== event.pointerId) return;
+    event.stopPropagation();
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
@@ -108,6 +111,7 @@ export default function HeroNavigation({
     else if (event.key === "ArrowDown") y += amount;
     else return;
     event.preventDefault();
+    event.stopPropagation();
     editor.onPositionChange(clamp(x, 0, 100), clamp(y, 0, 100));
   };
 
@@ -129,7 +133,7 @@ export default function HeroNavigation({
           onPointerDown={startDrag}
           onPointerMove={moveDrag}
           onPointerUp={finishDrag}
-          onPointerCancel={() => setDrag(null)}
+          onPointerCancel={(event) => { event.stopPropagation(); setDrag(null); }}
           onKeyDown={moveWithKeyboard}
         >
           <Move size={14} aria-hidden="true" />
