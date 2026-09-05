@@ -103,13 +103,14 @@ async function synchronizePreviewStyles(doc: Document) {
 }
 
 /** The same renderer, page container and CSS viewport as the public home. */
-export default function HomeHeroLivePreview({ games, presentation, device, playing, onSelectPosition, background }: {
+export default function HomeHeroLivePreview({ games, presentation, device, playing, onSelectPosition, background, showSpacingGuide = false }: {
   games: Game[];
   presentation: HomeHeroPresentation;
   device: HomeHeroDevice;
   playing: boolean;
   onSelectPosition: (position: HomeHeroVisualPosition) => void;
   background?: Omit<PublicPageBackgroundProps, "children" | "previewPathname">;
+  showSpacingGuide?: boolean;
 }) {
   const container = useRef<HTMLDivElement>(null);
   const frameRef = useRef<HTMLIFrameElement>(null);
@@ -180,13 +181,30 @@ export default function HomeHeroLivePreview({ games, presentation, device, playi
     setCustomized((current) => ({ ...current, [device]: true }));
   };
 
+  const responsive = presentation.responsive[device];
   const hero = <main className="main-content">
-    {games.length ? <HeroSection
-      games={games}
-      presentation={presentation}
-      autoplaySuspended={!playing}
-      onSelectPosition={playing ? undefined : onSelectPosition}
-    /> : <p role="status">No hay juegos públicos para mostrar con esta selección.</p>}
+    {games.length ? <>
+      <HeroSection
+        games={games}
+        presentation={presentation}
+        autoplaySuspended={!playing}
+        onSelectPosition={playing ? undefined : onSelectPosition}
+      />
+      {showSpacingGuide && <div
+        aria-hidden="true"
+        style={{
+          minHeight: 54,
+          borderTop: "1px dashed color-mix(in srgb, var(--brand) 68%, rgba(255,255,255,.35))",
+          color: "color-mix(in srgb, var(--brand) 78%, #fff)",
+          fontSize: 12,
+          fontWeight: 800,
+          letterSpacing: ".04em",
+          paddingTop: 10,
+        }}
+      >
+        COMIENZO DE LA SIGUIENTE SECCIÓN · separación inferior {responsive.spaceAfter}px
+      </div>}
+    </> : <p role="status">No hay juegos públicos para mostrar con esta selección.</p>}
   </main>;
 
   return <div ref={container} className={styles.livePreview}>
