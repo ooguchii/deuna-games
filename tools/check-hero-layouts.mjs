@@ -121,6 +121,10 @@ const maximumSpacing = structuredClone(baseline);
 maximumSpacing.responsive.desktop.spaceBefore = 160;
 maximumSpacing.responsive.desktop.spaceAfter = 200;
 assert.ok(parse(maximumSpacing).success, 'The editor must persist the documented exterior spacing range');
+const zeroSpacing = structuredClone(baseline);
+zeroSpacing.responsive.desktop.spaceBefore = 0;
+zeroSpacing.responsive.desktop.spaceAfter = 0;
+assert.ok(parse(zeroSpacing).success, 'The editor must allow a Hero with no exterior spacing');
 const invalidBeforeSpacing = structuredClone(maximumSpacing);
 invalidBeforeSpacing.responsive.desktop.spaceBefore = 161;
 assert.equal(parse(invalidBeforeSpacing).success, false, 'Top Hero spacing must not exceed 160px');
@@ -135,9 +139,10 @@ assert.equal(homeHeroEditorFormSchema.safeParse({
   expectedRevision: '1',
   heroJson: JSON.stringify({ mode: 'manual', slugs: tooManySlugs, copy: sourceHomeConfig.copy.hero, presentation: baseline }),
 }).success, false, 'The unified Hero editor must reject more games than the public Hero can display');
-console.log('Hero layouts: OK (persistence, centered one-sided layouts, legacy drafts, responsive exterior spacing, unified navigation styles/placement, hidden slots, presets, autoplay compatibility, expanded frame range, five-slide contract and mixed selection).');
+console.log('Hero layouts: OK (persistence, centered one-sided layouts, legacy drafts, true zero exterior spacing, unified navigation styles/placement, hidden slots, presets, autoplay compatibility, expanded frame range, five-slide contract and mixed selection).');
 
-// Large/translated/rotated compositions must remain centered and fully inside.
+// Large/translated/rotated compositions must remain centered and fully inside
+// the exact configured stage. There is no hidden 48px vertical reserve anymore.
 for (const alignment of ['left', 'center', 'right']) {
   for (const [width, height] of [[300, 400], [680, 500], [1440, 700]]) {
     for (const bounds of [
@@ -149,14 +154,15 @@ for (const alignment of ['left', 'center', 'right']) {
       assert.ok(fit.scale > 0 && fit.scale <= 1);
       assert.ok(bounds.left * fit.scale + fit.x >= -1e-6);
       assert.ok(bounds.right * fit.scale + fit.x <= width + 1e-6);
-      assert.ok(bounds.top * fit.scale + fit.y >= 48 - 1e-6);
-      assert.ok(bounds.bottom * fit.scale + fit.y <= height - 48 + 1e-6);
+      assert.ok(bounds.top * fit.scale + fit.y >= -1e-6);
+      assert.ok(bounds.bottom * fit.scale + fit.y <= height + 1e-6);
       assert.equal(fit.x, (1 - fit.scale) * width / 2, 'Horizontal fitting must scale around the Hero center instead of translating a rotated composition sideways');
     }
   }
 }
 assert.equal(homeHeroSlotCSS('main'), '0px');
 assert.ok(homeHeroSlotCSS('right2').includes('var(--hero-card-width)'));
-console.log('Hero fitting: OK (center-stable rotations, vertical control clearance, perspective overflow and all alignments).');
+console.log('Hero fitting: OK (exact stage height, center-stable rotations, perspective overflow and all alignments).');
 
 assert.deepEqual(fitHomeHeroBounds({ left: 100, top: 60, right: 600, bottom: 400 }, 1440, 700), { scale: 1, x: 0, y: 0 }, 'Fitting must not cancel manual translations when the cards already fit');
+assert.deepEqual(fitHomeHeroBounds({ left: 0, top: 0, right: 300, bottom: 400 }, 300, 400), { scale: 1, x: 0, y: 0 }, 'A card that exactly fills the configured stage must require no hidden vertical clearance');
