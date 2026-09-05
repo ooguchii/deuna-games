@@ -1,0 +1,199 @@
+"use client";
+
+import { Move, Pause, Play } from "lucide-react";
+import {
+  type CSSProperties,
+  type KeyboardEvent,
+  type PointerEvent,
+  useRef,
+  useState,
+} from "react";
+
+import type {
+  HomeHeroDevice,
+  HomeHeroNavigationConfig,
+} from "@/data/home-config";
+import type { Game } from "@/types/game";
+
+import styles from "./HeroNavigation.module.css";
+
+export type HeroNavigationEditor = {
+  device: HomeHeroDevice;
+  onPositionChange: (x: number, y: number) => void;
+};
+
+type DragState = {
+  pointerId: number;
+  x: number;
+  y: number;
+};
+
+const clamp = (value: number, min: number, max: number) =>
+  Math.max(min, Math.min(max, value));
+
+export default function HeroNavigation({
+  games,
+  activeIndex,
+  config,
+  autoplayDelay,
+  isPaused,
+  manualPaused,
+  atAutoplayEnd,
+  onSelect,
+  onTogglePause,
+  editor,
+}: {
+  games: Game[];
+  activeIndex: number;
+  config: HomeHeroNavigationConfig;
+  autoplayDelay: number | null;
+  isPaused: boolean;
+  manualPaused: boolean;
+  atAutoplayEnd: boolean;
+  onSelect: (index: number) => void;
+  onTogglePause: () => void;
+  editor?: HeroNavigationEditor;
+}) {
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [drag, setDrag] = useState<DragState | null>(null);
+  const placement = editor ? config.responsive[editor.device] : null;
+  const integratedProgress = config.style === "integrated" || config.style === "timeline" || config.style === "rail";
+  const progressVisible = config.showProgress && autoplayDelay !== null;
+  const pauseVisible = config.showPause && autoplayDelay !== null;
+
+  const navigationStyle = drag
+    ? ({ left: `${drag.x}%`, top: `${drag.y}%` } as CSSProperties)
+    : undefined;
+
+  const positionFromPointer = (event: PointerEvent<HTMLButtonElement>) => {
+    const section = rootRef.current?.closest("section");
+    if (!section) return null;
+    const rect = section.getBoundingClientRect();
+    if (!rect.width || !rect.height) return null;
+    return {
+      x: clamp(Math.round(((event.clientX - rect.left) / rect.width) * 100), 0, 100),
+      y: clamp(Math.round(((event.clientY - rect.top) / rect.height) * 100), 0, 100),
+    };
+  };
+
+  const startDrag = (event: PointerEvent<HTMLButtonElement>) => {
+    if (!editor || !placement || !event.isPrimary || event.button !== 0) return;
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setDrag({ pointerId: event.pointerId, x: placement.x, y: placement.y });
+  };
+
+  const moveDrag = (event: PointerEvent<HTMLButtonElement>) => {
+    if (!editor || !drag || drag.pointerId !== event.pointerId) return;
+    const next = positionFromPointer(event);
+    if (next) setDrag({ pointerId: event.pointerId, ...next });
+  };
+
+  const finishDrag = (event: PointerEvent<HTMLButtonElement>) => {
+    if (!editor || !drag || drag.pointerId !== event.pointerId) return;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    editor.onPositionChange(drag.x, drag.y);
+    setDrag(null);
+  };
+
+  const moveWithKeyboard = (event: KeyboardEvent<HTMLButtonElement>) => {
+    if (!editor || !placement) return;
+    const amount = event.shiftKey ? 5 : 1;
+    let { x, y } = placement;
+    if (event.key === "ArrowLeft") x -= amount;
+    else if (event.key === "ArrowRight") x += amount;
+    else if (event.key === "ArrowUp") y -= amount;
+    else if (event.key === "ArrowDown") y += amount;
+    else return;
+    event.preventDefault();
+    editor.onPositionChange(clamp(x, 0, 100), clamp(y, 0, 100));
+  };
+
+  return (
+    <div
+      ref={rootRef}
+      className={styles.navigation}
+      data-style={config.style}
+      data-editor={editor ? "true" : undefined}
+      data-paused={isPaused || atAutoplayEnd ? "true" : undefined}
+      style={navigationStyle}
+    >
+      {editor && (
+        <button
+          type="button"
+          className={styles.dragHandle}
+          aria-label="Mover controles del carrusel. Arrastra o usa las flechas del teclado."
+          title="Arrastra para mover · Shift + flechas mueve 5%"
+          onPointerDown={startDrag}
+          onPointerMove={moveDrag}
+          onPointerUp={finishDrag}
+          onPointerCancel={() => setDrag(null)}
+          onKeyDown={moveWithKeyboard}
+        >
+          <Move size={14} aria-hidden="true" />
+        </button>
+      )}
+
+      {config.showIndicators && (
+        <div className={styles.indicators} aria-label="Elegir juego del carrusel">
+          {games.map((game, index) => {
+            const active = index === activeIndex;
+            return (
+              <button
+                key={game.id}
+                type="button"
+                className={`${styles.indicator} ${active ? styles.indicatorActive : ""}`}
+                aria-label={`Mostrar ${game.title}`}
+                aria-current={active ? "true" : undefined}
+                onClick={() => onSelect(index)}
+              >
+                {active && integratedProgress && progressVisible && (
+                  <span
+                    key={`${game.id}-${activeIndex}-${autoplayDelay}`}
+                    className={styles.integratedProgress}
+                    style={{
+                      animationDuration: `${autoplayDelay}ms`,
+                      animationPlayState: isPaused || atAutoplayEnd ? "paused" : "running",
+                    }}
+                    aria-hidden="true"
+                  />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {pauseVisible && (
+        <button
+          type="button"
+          className={styles.pauseButton}
+          aria-label={manualPaused ? "Reanudar carrusel automático" : "Pausar carrusel automático"}
+          aria-pressed={manualPaused}
+          onClick={onTogglePause}
+        >
+          {manualPaused ? (
+            <Play size={12} fill="currentColor" aria-hidden="true" />
+          ) : (
+            <Pause size={12} fill="currentColor" aria-hidden="true" />
+          )}
+        </button>
+      )}
+
+      {progressVisible && !integratedProgress && (
+        <div className={styles.progress} aria-hidden="true">
+          <span
+            key={`${activeIndex}-${autoplayDelay}`}
+            className={styles.progressBar}
+            style={{
+              animationDuration: `${autoplayDelay}ms`,
+              animationPlayState: isPaused || atAutoplayEnd ? "paused" : "running",
+            }}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
