@@ -24,6 +24,7 @@ import type React from "react";
 
 import type { PublicPageBackgroundProps } from "@/components/site/PublicPageBackground";
 import { resolveHeroDeviceDesign, updateHeroDeviceDesign } from "@/lib/home/hero-device-design";
+import { simplifyHeroFrameRatio } from "@/lib/home/hero-frame-aspect";
 
 import HomeHeroLivePreview from "@/components/admin/HomeHeroLivePreview";
 import HomeHeroNavigationControls from "@/components/admin/HomeHeroNavigationControls";
@@ -151,19 +152,8 @@ const norm = (value: string) =>
 const clamp = (value: number, min: number, max: number) =>
   Math.max(min, Math.min(max, value));
 
-function gcd(left: number, right: number) {
-  let a = Math.max(1, Math.round(Math.abs(left)));
-  let b = Math.max(1, Math.round(Math.abs(right)));
-  while (b) [a, b] = [b, a % b];
-  return a;
-}
-
 function simplifiedRatio(width: number, height: number) {
-  const divisor = gcd(width, height);
-  return {
-    width: clamp(Math.round(width / divisor), 1, 100),
-    height: clamp(Math.round(height / divisor), 1, 100),
-  };
+  return simplifyHeroFrameRatio(width, height);
 }
 
 function aspectRatio(control: AspectControl) {
