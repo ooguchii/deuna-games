@@ -514,6 +514,8 @@ const homeHeroPresentationSchema = z
     responsive: z.record(z.string(), z.object({
       visibleCards: z.number().int().min(1).max(5),
       cardWidth: z.number(), cardHeight: z.number(), gap: z.number(), perspective: z.number(),
+      spaceBefore: z.number().int().min(0).max(160).optional(),
+      spaceAfter: z.number().int().min(0).max(200).optional(),
       alignment: z.enum(["left", "center", "right"]).optional(),
       hiddenPositions: z.array(z.enum(["left1", "left2", "right1", "right2"])).max(4).refine((items) => new Set(items).size === items.length).optional(),
     }).strict()).optional(),
