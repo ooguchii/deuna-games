@@ -89,6 +89,14 @@ export const editorialHomeConfigFormSchema = z
   })
   .strict();
 
+const legacyHeroCopySchema = z
+  .object({
+    accessibleTitle: z.string().trim().min(1).max(180),
+    primaryCta: z.string().trim().min(1).max(100),
+    secondaryCta: z.string().trim().min(1).max(100),
+  })
+  .strict();
+
 const heroJsonSchema = z
   .string()
   .max(20_000)
@@ -110,6 +118,9 @@ const heroJsonSchema = z
         mode: modeSchema,
         slugs: slugArraySchema(HOME_HERO_MAX_SLIDES),
         presentation: homeHeroPresentationEditorSchema,
+        // Compatibilidad transitoria con borradores de sesión creados antes de
+        // separar definitivamente el copy del Hero. La ruta no persiste esto.
+        copy: legacyHeroCopySchema.optional(),
       })
       .strict()
   );
