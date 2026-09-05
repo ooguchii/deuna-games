@@ -146,3 +146,34 @@ assert.match(
   'Restoring all Hero spacing baselines must disable the link because those saved baselines may differ by device.'
 );
 console.log('Hero spacing restore: OK (restoring per-device baselines cannot leave the same-spacing switch enabled).');
+
+const heroEditorSource = await readFile(
+  new URL('../src/components/admin/HomeHeroEditor.tsx', import.meta.url),
+  'utf8'
+);
+assert.match(
+  heroEditorSource,
+  /resolveHeroDeviceDesign\(\s*config\.heroPresentation,\s*entry\s*\)\.responsive\[entry\]/,
+  'Hero aspect controls must initialize from each effective device design, not the shared base snapshot.'
+);
+assert.match(
+  heroEditorSource,
+  /const setAspectLocked = \(value: boolean\) => \{[\s\S]*?simplifiedRatio\(\s*responsive\.cardWidth,\s*responsive\.cardHeight\s*\)[\s\S]*?preset:[\s\S]*?"custom"/,
+  'Enabling aspect lock from Libre must capture the currently rendered frame ratio.'
+);
+assert.match(
+  heroEditorSource,
+  /const updateAspectControls = \(nextControl: AspectControl\) => \{[\s\S]*?editScope === "all"[\s\S]*?devices\.map/,
+  'Aspect helper state must follow the all-devices edit scope instead of diverging from the persisted frame changes.'
+);
+assert.match(
+  heroEditorSource,
+  /label="Mantener proporción al cambiar tamaño"[\s\S]*?change=\{setAspectLocked\}/,
+  'The aspect lock switch must use the current-frame capture path.'
+);
+assert.doesNotMatch(
+  heroEditorSource,
+  /locked: value, preset: value && current\[device\]\.preset === "free"/,
+  'The old stale-ratio lock toggle must not return.'
+);
+console.log('Hero aspect controls: OK (effective initialization, current-ratio locking and all-device helper state are guarded).');
