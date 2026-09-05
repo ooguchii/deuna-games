@@ -130,7 +130,7 @@ export default function HomeHeroNavigationControls({
           >{entry.label}</button>
         ))}
       </div>
-      <p className={styles.hint}>También podés arrastrar el manejador que aparece sobre la barra en la preview. Shift + flechas mueve de a 5%.</p>
+      <p className={styles.hint}>También puedes arrastrar el manejador que aparece sobre la barra en la preview. Shift + flechas mueve de a 5%.</p>
       <NumberRange label="Posición X" value={placement.x} min={0} max={100} unit="%" onChange={(value) => onPlacementChange("x", value)} />
       <NumberRange label="Posición Y" value={placement.y} min={0} max={100} unit="%" onChange={(value) => onPlacementChange("y", value)} />
       <NumberRange label="Escala" value={placement.scale} min={50} max={180} unit="%" onChange={(value) => onPlacementChange("scale", value)} />
