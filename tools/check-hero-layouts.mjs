@@ -42,6 +42,12 @@ const old = structuredClone(baseline);
 for (const settings of Object.values(old.responsive)) { delete settings.alignment; delete settings.hiddenPositions; }
 assert.ok(parse(old).success, 'Existing saved drafts must remain valid');
 assert.deepEqual(homeHeroVisiblePositions(old.responsive.desktop, 'forward', 5), ['left2', 'left1', 'main', 'right1', 'right2']);
+const legacyManualAutoplay = resolveHomeConfig({
+  ...sourceHomeConfig,
+  heroPresentation: { ...baseline, autoplay: true, autoplayMs: 0 },
+}).heroPresentation;
+assert.equal(legacyManualAutoplay.autoplayMs, 0);
+assert.equal(legacyManualAutoplay.autoplay, false, 'Legacy autoplayMs=0 must remain manual instead of inheriting an enabled autoplay switch');
 assert.equal(parse({ ...left, responsive: { ...left.responsive, desktop: { ...left.responsive.desktop, hiddenPositions: ['main'] } } }).success, false);
 assert.equal(parse({ ...left, responsive: { ...left.responsive, desktop: { ...left.responsive.desktop, visibleCards: 0 } } }).success, false);
 const pinned = games.slice(0, 5).map(game => game.slug);
@@ -52,7 +58,7 @@ assert.equal(homeHeroEditorFormSchema.safeParse({
   expectedRevision: '1',
   heroJson: JSON.stringify({ mode: 'manual', slugs: tooManySlugs, copy: sourceHomeConfig.copy.hero, presentation: baseline }),
 }).success, false, 'The unified Hero editor must reject more games than the public Hero can display');
-console.log('Hero layouts: OK (persistence, legacy drafts, layouts, hidden slots, presets, five-slide contract and mixed selection).');
+console.log('Hero layouts: OK (persistence, legacy drafts, layouts, hidden slots, presets, autoplay compatibility, five-slide contract and mixed selection).');
 
 // Large/translated compositions must keep every enabled card within the frame.
 for (const alignment of ['left', 'center', 'right']) {
