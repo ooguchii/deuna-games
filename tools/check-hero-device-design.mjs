@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { sourceHomeConfig, resolveHomeConfig } from '../src/data/home-config.ts';
 import { applyHeroLayout, applyPreset } from '../src/lib/home/hero-presets.ts';
 import { resolveHeroDeviceDesign, updateHeroDeviceDesign } from '../src/lib/home/hero-device-design.ts';
@@ -134,3 +135,14 @@ for (const device of ['desktop', 'tablet', 'mobile']) {
   assert.equal(effective.spacingReference, selectedTabletSpacing.spacingReference);
 }
 console.log('Hero linked spacing: OK (effective cross-device baselines stay current and the selected device remains the single source).');
+
+const spacingControlsSource = await readFile(
+  new URL('../src/components/admin/HomeHeroSpacingControls.tsx', import.meta.url),
+  'utf8'
+);
+assert.match(
+  spacingControlsSource,
+  /if \(linked\) onLinkedChange\(false\);\s*onRestore\(\);/,
+  'Restoring all Hero spacing baselines must disable the link because those saved baselines may differ by device.'
+);
+console.log('Hero spacing restore: OK (restoring per-device baselines cannot leave the same-spacing switch enabled).');
