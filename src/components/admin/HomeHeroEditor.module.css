@@ -182,3 +182,6 @@
   .canvasBar button { padding-inline: 8px; }
   .gameThumbnail { width: 70px; }
 }
+
+.editScope { display: flex; align-items: center; gap: 8px; margin-right: auto; color: #c8d3df; font-size: 12px; }
+.editScope select { min-height: 40px; max-width: 100%; padding: 0 10px; border: 1px solid var(--admin-brand-border); border-radius: 7px; background: var(--panel); color: #fff; }

@@ -23,6 +23,8 @@ import { useEffect, useMemo, useReducer, useRef, useState, useSyncExternalStore 
 import type React from "react";
 
 import type { PublicPageBackgroundProps } from "@/components/site/PublicPageBackground";
+import { resolveHeroDeviceDesign, updateHeroDeviceDesign } from "@/lib/home/hero-device-design";
+
 import HomeHeroLivePreview from "@/components/admin/HomeHeroLivePreview";
 import HomeHeroNavigationControls from "@/components/admin/HomeHeroNavigationControls";
 import HomeHeroSpacingControls from "@/components/admin/HomeHeroSpacingControls";
@@ -494,7 +496,8 @@ export default function HomeHeroEditor({
         .slice(0, 8),
     [games, query, state.slugs]
   );
-  const shown = displayedState.presentation;
+  const [editScope, setEditScope] = useState<"device" | "all">("device");
+  const shown = resolveHeroDeviceDesign(displayedState.presentation, device);
   const responsive = shown.responsive[device];
   const navigation = shown.navigation;
   const navigationPlacement = navigation.responsive[device];
@@ -507,13 +510,24 @@ export default function HomeHeroEditor({
   const aspectControl = aspectControls[device];
   const deviceLabel = devices.find((entry) => entry.id === device)?.label ?? device;
 
-  const commit = (update: (state: State) => State) => {
+  const commit = (update: (state: State) => State, scope: HomeHeroDevice | "all" = editScope === "all" ? "all" : device, restoreAll = false) => {
     if (comparing) {
       setCompare(false);
       return;
     }
     setRecoveryDismissed(true);
-    dispatch({ type: "edit", update, coalesce: interaction.current === true });
+    dispatch({ type: "edit", update: (current) => {
+      if (restoreAll) return update(clone(current));
+      const editingPresentation = resolveHeroDeviceDesign(current.presentation, device);
+      const next = update({ ...clone(current), presentation: clone(editingPresentation) });
+      if (scope === "all" || JSON.stringify(next.presentation) !== JSON.stringify(editingPresentation)) {
+        next.presentation = updateHeroDeviceDesign(current.presentation, scope,
+          (presentation) => update({ ...clone(current), presentation }).presentation, device);
+      } else {
+        next.presentation = current.presentation;
+      }
+      return next;
+    }, coalesce: interaction.current === true });
     if (interaction.current !== null) interaction.current = true;
   };
 
@@ -577,7 +591,7 @@ export default function HomeHeroEditor({
       for (const targetDevice of targets) current.presentation.responsive[targetDevice][key] = value;
       current.presentation.preset = "custom";
       return current;
-    });
+    }, linkSpacingDevices ? "all" : undefined);
 
   const setSpacingReference = (value: "visual" | "canvas") =>
     commit((current) => {
@@ -585,7 +599,7 @@ export default function HomeHeroEditor({
       for (const targetDevice of targets) current.presentation.responsive[targetDevice].spacingReference = value;
       current.presentation.preset = "custom";
       return current;
-    });
+    }, linkSpacingDevices ? "all" : undefined);
 
   const setSpacingLinked = (value: boolean) => {
     if (comparing) {
@@ -604,7 +618,7 @@ export default function HomeHeroEditor({
       }
       current.presentation.preset = "custom";
       return current;
-    });
+    }, "all");
   };
 
   const setSpacingPreset = (spaceBefore: number, spaceAfter: number) =>
@@ -617,13 +631,13 @@ export default function HomeHeroEditor({
       }
       current.presentation.preset = "custom";
       return current;
-    });
+    }, linkSpacingDevices ? "all" : undefined);
 
   const restoreSpacing = () =>
     commit((current) => {
       const targets = linkSpacingDevices ? devices.map((entry) => entry.id) : [device];
       for (const targetDevice of targets) {
-        const original = baseline.presentation.responsive[targetDevice];
+        const original = resolveHeroDeviceDesign(baseline.presentation, device).responsive[targetDevice];
         const settings = current.presentation.responsive[targetDevice];
         settings.spaceBefore = original.spaceBefore;
         settings.spaceAfter = original.spaceAfter;
@@ -631,7 +645,7 @@ export default function HomeHeroEditor({
       }
       current.presentation.preset = "custom";
       return current;
-    });
+    }, linkSpacingDevices ? "all" : undefined);
 
   const setNavigationStyle = (value: HomeHeroPresentation["navigation"]["style"]) =>
     commit((current) => {
@@ -733,7 +747,7 @@ export default function HomeHeroEditor({
   };
 
   const restoreDeviceSize = () => {
-    const original = baseline.presentation.responsive[device];
+    const original = resolveHeroDeviceDesign(baseline.presentation, device).responsive[device];
     commit((current) => {
       current.presentation.responsive[device].cardWidth = original.cardWidth;
       current.presentation.responsive[device].cardHeight = original.cardHeight;
@@ -805,7 +819,7 @@ export default function HomeHeroEditor({
         <div className={styles.history}>
           <button type="button" onClick={undo} disabled={!past.length} title="Deshacer"><Undo2 size={16} /></button>
           <button type="button" onClick={redo} disabled={!future.length} title="Rehacer"><Redo2 size={16} /></button>
-          <button type="button" onClick={() => commit(() => clone(baseline))} disabled={!dirty}><RotateCcw size={16} /> Restaurar borrador</button>
+          <button type="button" onClick={() => commit(() => clone(baseline), "all", true)} disabled={!dirty}><RotateCcw size={16} /> Restaurar borrador</button>
         </div>
 
         <div className={styles.actions}>
@@ -836,12 +850,19 @@ export default function HomeHeroEditor({
                 <button type="button" key={id} data-active={device === id} aria-pressed={device === id} onClick={() => setDevice(id)}><Icon size={15} /> {label}</button>
               ))}
             </div>
+            <label className={styles.editScope}>
+              Editar
+              <select aria-label="Alcance de los cambios del hero" value={editScope} onChange={(event) => { setEditScope(event.target.value as "device" | "all"); setLinkSpacingDevices(false); }}>
+                <option value="device">Solo {deviceLabel.toLowerCase()}</option>
+                <option value="all">Todos los dispositivos</option>
+              </select>
+            </label>
             <span>{responsive.cardWidth} × {responsive.cardHeight} px · {visiblePositions.length} posiciones visibles</span>
           </div>
 
           <HomeHeroLivePreview
             games={result}
-            presentation={shown}
+            presentation={displayedState.presentation}
             device={device}
             playing={preview}
             background={background}
@@ -914,7 +935,7 @@ export default function HomeHeroEditor({
             </div>}
           </section>
           <section className={`${styles.block} ${styles.designBlock}`}>
-            <Heading over="TIPO DE CARRUSEL" title="Aplicar una composición completa" note="Configura todos los dispositivos en un clic" />
+            <Heading over="TIPO DE CARRUSEL" title="Aplicar una composición completa" note={editScope === "all" ? "Se aplica a todos los dispositivos" : `Se aplica solo a ${deviceLabel.toLowerCase()}`} />
             <div className={styles.layoutChoices}>
               {carouselLayouts.map((layout) => <button type="button" key={layout.id} onClick={() => applyLayout(layout.id)}><span className={styles.layoutSketch} data-layout={layout.id} aria-hidden="true"><i /><i /><i /></span><strong>{layout.title}</strong><small>{layout.description}</small></button>)}
             </div>
@@ -956,10 +977,10 @@ export default function HomeHeroEditor({
               type="button"
               onClick={() => commit((current) => {
                 if (target === "all") {
-                  current.presentation.positions.all = clone(baseline.presentation.positions.all);
-                  for (const id of HOME_HERO_VISUAL_POSITIONS) current.presentation.positions[id] = clone(baseline.presentation.positions[id]);
+                  current.presentation.positions.all = clone(resolveHeroDeviceDesign(baseline.presentation, device).positions.all);
+                  for (const id of HOME_HERO_VISUAL_POSITIONS) current.presentation.positions[id] = clone(resolveHeroDeviceDesign(baseline.presentation, device).positions[id]);
                 } else {
-                  current.presentation.positions[target] = clone(baseline.presentation.positions[target]);
+                  current.presentation.positions[target] = clone(resolveHeroDeviceDesign(baseline.presentation, device).positions[target]);
                 }
                 current.presentation.preset = "custom";
                 return current;
@@ -1025,18 +1046,18 @@ export default function HomeHeroEditor({
             </>)}
 
             {accordion("transform", "Transformación 3D", "02", <>
-              <p className={styles.help}>Modifica la posición {positionList.find((entry) => entry.id === target)?.label.toLowerCase()} en todos los dispositivos.</p>
+              <p className={styles.help}>Modifica la posición {positionList.find((entry) => entry.id === target)?.label.toLowerCase()} según el alcance elegido.</p>
               {([ ["Escala", "scale", .4, 1.6, .01, ""], ["Rotación X", "rotateX", -60, 60, 1, "°"], ["Rotación Y", "rotateY", -60, 60, 1, "°"], ["Rotación Z", "rotateZ", -30, 30, 1, "°"], ["Desplazamiento X", "translateX", -300, 300, 1, "px"], ["Desplazamiento Y", "translateY", -200, 200, 1, "px"], ["Profundidad", "translateZ", -500, 500, 1, "px"] ] as const).map(([label, key, min, max, step, unit]) => (
                 <Range key={key} label={label} value={selected[key]} min={min} max={max} step={step} unit={unit} change={(value) => setPosition(key, value)} />
               ))}
             </>)}
 
             {accordion("appearance", "Apariencia", "03", <>
-              <p className={styles.help}>Filtros en todos los dispositivos. Posición: {positionList.find((entry) => entry.id === target)?.label}.</p>
+              <p className={styles.help}>Filtros según el alcance elegido. Posición: {positionList.find((entry) => entry.id === target)?.label}.</p>
               {([ ["Opacidad", "opacity", 0, 100, "%"], ["Desenfoque", "blur", 0, 20, "px"], ["Brillo", "brightness", 20, 180, "%"], ["Contraste", "contrast", 50, 180, "%"], ["Saturación", "saturation", 0, 200, "%"] ] as const).map(([label, key, min, max, unit]) => (
                 <Range key={key} label={label} value={selected[key]} min={min} max={max} unit={unit} change={(value) => setPosition(key, value)} />
               ))}
-              <p className={styles.help}>Estos ajustes cambian todo el hero, en todos los dispositivos.</p>
+              <p className={styles.help}>Estos ajustes respetan el alcance elegido junto a la vista previa.</p>
               <label className={styles.select}><span>Composición</span><select value={shown.composition} onChange={(event) => setPresentation("composition", event.target.value as HomeHeroPresentation["composition"])}><option value="studio">Studio</option><option value="cinema">Cinema</option><option value="focus">Focus</option></select></label>
               <Range label="Radio de las esquinas" value={shown.radius} min={0} max={48} unit="px" change={(value) => setPresentation("radius", value)} />
               <Range label="Sombra" value={shown.shadow} min={0} max={100} unit="%" change={(value) => setPresentation("shadow", value)} />
@@ -1064,7 +1085,7 @@ export default function HomeHeroEditor({
                 onPlacementChange={setNavigationPlacement}
                 onPositionChange={setNavigationPosition}
                 onRestore={() => {
-                  const original = baseline.presentation.navigation.responsive[device];
+                  const original = resolveHeroDeviceDesign(baseline.presentation, device).navigation.responsive[device];
                   commit((current) => {
                     current.presentation.navigation.responsive[device] = clone(original);
                     return current;
@@ -1074,12 +1095,14 @@ export default function HomeHeroEditor({
             </>)}
 
             {accordion("responsive", "Responsive", "06", <>
-              <p className={styles.help}>Cada dispositivo conserva ancho, alto, separación entre tarjetas, perspectiva, espaciado exterior y posición/escala de navegación propios. Activa el vínculo de espaciado si quieres mantener las mismas distancias entre resoluciones.</p>
-              {devices.map((entry) => (
+              <p className={styles.help}>Selecciona un dispositivo junto a la vista previa para editar su diseño. El alcance «Todos los dispositivos» aplica los cambios también a los demás.</p>
+              {devices.map((entry) => {
+                const design = resolveHeroDeviceDesign(displayedState.presentation, entry.id);
+                return (
                 <button type="button" className={styles.breakpoint} data-active={device === entry.id} key={entry.id} onClick={() => setDevice(entry.id)}>
-                  {entry.label}<small>{shown.responsive[entry.id].cardWidth}×{shown.responsive[entry.id].cardHeight} · exterior {shown.responsive[entry.id].spaceBefore}/{shown.responsive[entry.id].spaceAfter}px · {shown.responsive[entry.id].spacingReference === "visual" ? "visible" : "lienzo"} · nav {shown.navigation.responsive[entry.id].x}/{shown.navigation.responsive[entry.id].y}% · {shown.responsive[entry.id].visibleCards}</small>
+                  {entry.label}<small>{design.responsive[entry.id].cardWidth}×{design.responsive[entry.id].cardHeight} · exterior {design.responsive[entry.id].spaceBefore}/{design.responsive[entry.id].spaceAfter}px · {design.responsive[entry.id].spacingReference === "visual" ? "visible" : "lienzo"} · nav {design.navigation.responsive[entry.id].x}/{design.navigation.responsive[entry.id].y}% · {design.responsive[entry.id].visibleCards}</small>
                 </button>
-              ))}
+              ); })}
             </>)}
           </div>
         </aside>

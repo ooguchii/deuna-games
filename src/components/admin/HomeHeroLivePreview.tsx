@@ -24,6 +24,7 @@ import {
   HOME_HERO_VIEWPORT_WIDTH_LIMITS,
   type HomeHeroViewport,
 } from "@/lib/home/hero-devices";
+import { resolveHeroDeviceDesign } from "@/lib/home/hero-device-design";
 import type { HomeHeroVisualPosition } from "@/lib/home/hero-layout";
 import type { Game } from "@/types/game";
 
@@ -197,7 +198,7 @@ export default function HomeHeroLivePreview({
     }));
   };
 
-  const responsive = presentation.responsive[device];
+  const responsive = resolveHeroDeviceDesign(presentation, device).responsive[device];
   const visiblePreviewHeight =
     contentEnd !== null
       ? Math.min(height, contentEnd)

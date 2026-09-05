@@ -27,7 +27,9 @@ import {
 import HeroNavigation, { type HeroNavigationEditor } from "@/components/home/HeroNavigation";
 import FramedVideo from "@/components/ui/FramedVideo";
 import GameMedia from "@/components/ui/GameMedia";
-import type { HomeHeroPresentation } from "@/data/home-config";
+import { resolveHeroDeviceDesign } from "@/lib/home/hero-device-design";
+import { homeHeroDeviceForWidth } from "@/lib/home/hero-devices";
+import type { HomeHeroDevice, HomeHeroPresentation } from "@/data/home-config";
 import {
   HOME_HERO_AUTOPLAY_MS,
   formatHomeHeroPosition,
@@ -345,7 +347,7 @@ function deviceVariables(
 
 export default function HeroSection({
   games,
-  presentation,
+  presentation: sourcePresentation,
   imageEffect = false,
   imageTuning,
   autoplaySuspended = false,
@@ -361,6 +363,16 @@ export default function HeroSection({
   navigationEditor?: HeroNavigationEditor;
 }) {
   const rootRef = useRef<HTMLElement>(null);
+  const [designDevice, setDesignDevice] = useState<HomeHeroDevice>("desktop");
+  useLayoutEffect(() => {
+    const view = rootRef.current?.ownerDocument.defaultView;
+    if (!view) return;
+    const update = () => setDesignDevice(homeHeroDeviceForWidth(view.innerWidth));
+    update();
+    view.addEventListener("resize", update);
+    return () => view.removeEventListener("resize", update);
+  }, []);
+  const presentation = useMemo(() => resolveHeroDeviceDesign(sourcePresentation, designDevice), [sourcePresentation, designDevice]);
   const fitRef = useRef<HTMLDivElement>(null);
   const pointerStart = useRef<{ x: number; y: number; id: number } | null>(null);
   const suppressClick = useRef(false);

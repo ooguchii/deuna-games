@@ -274,7 +274,7 @@ const optionalPresentationFields = {
  * newer fields optional, but validate every value against the same bounds used
  * by the current editor and reject unknown position/device keys.
  */
-export const homeHeroPresentationInputSchema = z
+const basePresentationInputSchema = z
   .object({
     ...commonRequiredFields,
     ...optionalPresentationFields,
@@ -289,7 +289,7 @@ export const homeHeroPresentationInputSchema = z
  * older local/session drafts existed; current server drafts already resolve to
  * the complete shape before reaching the editor.
  */
-export const homeHeroPresentationEditorSchema = z
+const basePresentationEditorSchema = z
   .object({
     ...commonRequiredFields,
     preset: z.enum(homeHeroPresetIds),
@@ -320,3 +320,17 @@ export const homeHeroPresentationEditorSchema = z
     navigation: editorNavigationSchema,
   })
   .strict();
+
+// Device snapshots are bounded: they cannot contain further overrides.
+const deviceOverridesSchema = z.object({
+  desktop: basePresentationEditorSchema.optional(),
+  tablet: basePresentationEditorSchema.optional(),
+  mobile: basePresentationEditorSchema.optional(),
+}).strict().optional();
+
+export const homeHeroPresentationInputSchema = basePresentationInputSchema.extend({
+  deviceOverrides: deviceOverridesSchema,
+});
+export const homeHeroPresentationEditorSchema = basePresentationEditorSchema.extend({
+  deviceOverrides: deviceOverridesSchema,
+});

@@ -173,7 +173,7 @@ export type HomeHeroNavigationConfig = {
   responsive: Record<HomeHeroDevice, HomeHeroNavigationPlacement>;
 };
 
-export type HomeHeroPresentation = {
+export type HomeHeroBasePresentation = {
   composition: (typeof homeHeroCompositionIds)[number];
   previewCount: 1 | 2 | 3;
   motion: "depth" | "slide" | "fade";
@@ -198,6 +198,10 @@ export type HomeHeroPresentation = {
   positions: Record<HomeHeroPosition, HomeHeroPositionStyle>;
   responsive: Record<HomeHeroDevice, HomeHeroResponsiveStyle>;
   navigation: HomeHeroNavigationConfig;
+};
+
+export type HomeHeroPresentation = HomeHeroBasePresentation & {
+  deviceOverrides?: Partial<Record<HomeHeroDevice, HomeHeroBasePresentation>>;
 };
 
 export type HomeHeroPresentationInput = Omit<
