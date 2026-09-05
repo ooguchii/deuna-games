@@ -1,11 +1,11 @@
 import { notFound } from "next/navigation";
+import type { ReactNode } from "react";
 
 import AdminPageHeader from "@/components/admin/AdminPageHeader";
 import EditorialHistory from "@/components/admin/EditorialHistory";
 import EditorStateNotice from "@/components/admin/EditorStateNotice";
-import HomeCurationEditor from "@/components/admin/HomeCurationEditor";
+import HomeContentEditor from "@/components/admin/HomeContentEditor";
 import HomeHeroEditor from "@/components/admin/HomeHeroEditor";
-import HomePresentationEditor from "@/components/admin/HomePresentationEditor";
 import PublicationPanel from "@/components/admin/PublicationPanel";
 import {
   resolveHomeConfig,
@@ -70,7 +70,7 @@ export default async function AdminHomeEditorPage({
 
   const resolved = resolveHomeConfig(item.payload);
 
-  let sectionContent: React.ReactNode = null;
+  let sectionContent: ReactNode = null;
 
   if (section === "hero") {
     const [games, publicGames, siteConfig] = await Promise.all([
@@ -116,19 +116,13 @@ export default async function AdminHomeEditorPage({
     );
 
     sectionContent = (
-      <>
-        <HomeCurationEditor
-          config={resolved}
-          games={curationGames}
-          publishedSlugs={publishedSlugs}
-          revision={item.revision}
-          excludeHero
-        />
-        <HomePresentationEditor
-          config={resolved}
-          revision={item.revision}
-        />
-      </>
+      <HomeContentEditor
+        key={item.revision}
+        config={resolved}
+        games={curationGames}
+        publishedSlugs={publishedSlugs}
+        revision={item.revision}
+      />
     );
   }
 
