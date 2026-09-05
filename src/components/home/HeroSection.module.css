@@ -40,7 +40,13 @@
 .fact > span { overflow: hidden; text-overflow: ellipsis; }
 @media (max-width: 680px) {
   .title { font-size: clamp(24px, 7.5vw, 36px); }
-  .content { gap: 8px; padding: 48px 14px 16px; }
+  /* Match the focus composition's specificity so desktop width cannot win. */
+  .content,
+  .heroSection[data-composition="focus"] .content {
+    width: 100%;
+    gap: 8px;
+    padding: 48px 14px 68px;
+  }
   .classificationLine span { white-space: normal; }
   .actions { gap: 6px; }
   .primaryButton, .secondaryButton { padding-inline: 6px; gap: 5px; font-size: 11px; }
