@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { homeHeroPresentationInputSchema } from "../home/hero-schema.ts";
+
 import type { Game } from "@/types/game";
 import type {
   GameTaxonomy,
@@ -493,46 +495,7 @@ const homeCurationSchema = z
   })
   .strict();
 
-const homeHeroPresentationSchema = z
-  .object({
-    composition: z.enum(["studio", "cinema", "focus"]),
-    previewCount: z.union([z.literal(1), z.literal(2), z.literal(3)]),
-    motion: z.enum(["depth", "slide", "fade"]),
-    autoplayMs: z.union([
-      z.literal(0),
-      z.literal(4000),
-      z.literal(6500),
-      z.literal(8000),
-    ]),
-    preset: z.enum(["classic", "coverflow", "cinema", "stack", "arc", "perspective", "minimal", "spotlight", "cards", "custom"]).optional(),
-    transition: z.enum(["slide", "coverflow", "fade", "3d", "stack", "perspective", "custom"]).optional(),
-    durationMs: z.number().int().min(150).max(2000).optional(),
-    easing: z.enum(["ease", "ease-in", "ease-out", "ease-in-out", "linear"]).optional(),
-    radius: z.number().int().min(0).max(48).optional(), shadow: z.number().int().min(0).max(100).optional(), borderWidth: z.number().int().min(0).max(6).optional(), glow: z.number().int().min(0).max(100).optional(), overlay: z.number().int().min(0).max(90).optional(),
-    autoplay: z.boolean().optional(), loop: z.boolean().optional(), pauseOnHover: z.boolean().optional(), drag: z.boolean().optional(), touch: z.boolean().optional(), keyboard: z.boolean().optional(), wheel: z.boolean().optional(), direction: z.enum(["forward", "reverse"]).optional(),
-    positions: z.record(z.string(), z.object({ scale: z.number(), rotateX: z.number(), rotateY: z.number(), rotateZ: z.number(), translateX: z.number(), translateY: z.number(), translateZ: z.number(), opacity: z.number(), blur: z.number(), brightness: z.number(), contrast: z.number(), saturation: z.number() }).strict()).optional(),
-    responsive: z.record(z.string(), z.object({
-      visibleCards: z.number().int().min(1).max(5),
-      cardWidth: z.number(), cardHeight: z.number(), gap: z.number(), perspective: z.number(),
-      spaceBefore: z.number().int().min(0).max(160).optional(),
-      spaceAfter: z.number().int().min(0).max(200).optional(),
-      spacingReference: z.enum(["visual", "canvas"]).optional(),
-      alignment: z.enum(["left", "center", "right"]).optional(),
-      hiddenPositions: z.array(z.enum(["left1", "left2", "right1", "right2"])).max(4).refine((items) => new Set(items).size === items.length).optional(),
-    }).strict()).optional(),
-    navigation: z.object({
-      style: z.enum(["segmented-pro", "integrated", "pills", "dots", "timeline", "minimal", "glass", "rail"]),
-      showIndicators: z.boolean(),
-      showPause: z.boolean(),
-      showProgress: z.boolean(),
-      responsive: z.record(z.string(), z.object({
-        x: z.number().int().min(0).max(100),
-        y: z.number().int().min(0).max(100),
-        scale: z.number().int().min(50).max(180),
-      }).strict()),
-    }).strict().optional(),
-  })
-  .strict();
+const homeHeroPresentationSchema = homeHeroPresentationInputSchema;
 
 const homeCopySchema = z
   .object({

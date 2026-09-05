@@ -4,7 +4,7 @@ import {
   homeHeroCompositionIds,
   homeHeroNavigationStyleIds,
   homeHeroPresetIds,
-} from "@/data/home-config";
+} from "../../data/home-config.ts";
 
 const visibleCardsSchema = z.union([
   z.literal(1),

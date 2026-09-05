@@ -4,6 +4,7 @@ import { applyHeroLayout, applyPreset } from '../src/lib/home/hero-presets.ts';
 import { resolveHeroDeviceDesign, updateHeroDeviceDesign } from '../src/lib/home/hero-device-design.ts';
 import { homeHeroPresentationEditorSchema, homeHeroPresentationInputSchema } from '../src/lib/home/hero-schema.ts';
 import { homeHeroEditorFormSchema } from '../src/lib/admin/home-config-forms.ts';
+import { editorialHomeConfigSchema } from '../src/lib/admin/content-validation-core.ts';
 const original = structuredClone(sourceHomeConfig.heroPresentation);
 const mobile = updateHeroDeviceDesign(original, 'mobile', p => applyPreset('Cinema', applyHeroLayout('single', p)));
 assert.deepEqual(resolveHeroDeviceDesign(mobile, 'desktop'), original);
@@ -26,3 +27,11 @@ let full = original;
 for (const device of ['desktop','tablet','mobile']) full = updateHeroDeviceDesign(full, device, p => applyPreset('Cinema', p));
 assert.ok(homeHeroEditorFormSchema.safeParse({expectedRevision:'1',heroJson:JSON.stringify({mode:'manual',slugs:sourceHomeConfig.heroSlugs,presentation:full})}).success);
 console.log('Hero form: OK (all three device designs fit and survive form validation).');
+const persistedHome = editorialHomeConfigSchema.parse({ ...sourceHomeConfig, heroPresentation: full });
+assert.deepEqual(persistedHome.heroPresentation, full);
+assert.deepEqual(resolveHomeConfig(JSON.parse(JSON.stringify(persistedHome))).heroPresentation, full);
+assert.equal(editorialHomeConfigSchema.safeParse({
+  ...sourceHomeConfig,
+  heroPresentation: { ...full, deviceOverrides: { mobile: { ...original, deviceOverrides: { mobile: original } } } },
+}).success, false);
+console.log('Hero editorial persistence: OK (device designs survive Home validation and reload; nested overrides rejected).');
