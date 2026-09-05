@@ -8,7 +8,6 @@ import {
   ChevronRight,
   Gamepad2,
   Info,
-  Pause,
   Play,
   Star,
   Tag,
@@ -25,6 +24,7 @@ import {
   useState,
 } from "react";
 
+import HeroNavigation, { type HeroNavigationEditor } from "@/components/home/HeroNavigation";
 import FramedVideo from "@/components/ui/FramedVideo";
 import GameMedia from "@/components/ui/GameMedia";
 import type { HomeHeroPresentation } from "@/data/home-config";
@@ -317,6 +317,7 @@ function deviceVariables(
 
   for (const device of ["desktop", "tablet", "mobile"] as const) {
     const responsive = presentation.responsive[device];
+    const navigation = presentation.navigation.responsive[device];
     variables[`--hero-${device}-anchor`] = homeHeroAnchor(responsive);
     variables[`--hero-${device}-card-width`] = `${responsive.cardWidth}px`;
     variables[`--hero-${device}-card-height`] = `${responsive.cardHeight}px`;
@@ -324,6 +325,9 @@ function deviceVariables(
     variables[`--hero-${device}-perspective`] = `${responsive.perspective}px`;
     variables[`--hero-${device}-space-before`] = `${responsive.spaceBefore}px`;
     variables[`--hero-${device}-space-after`] = `${responsive.spaceAfter}px`;
+    variables[`--hero-${device}-navigation-x`] = `${navigation.x}%`;
+    variables[`--hero-${device}-navigation-y`] = `${navigation.y}%`;
+    variables[`--hero-${device}-navigation-scale`] = navigation.scale;
 
     for (const position of HOME_HERO_VISUAL_POSITIONS) {
       variables[`--hero-${device}-display-${position}`] = homeHeroPositionDisplay(
@@ -346,6 +350,7 @@ export default function HeroSection({
   imageTuning,
   autoplaySuspended = false,
   onSelectPosition,
+  navigationEditor,
 }: {
   games: Game[];
   presentation: HomeHeroPresentation;
@@ -353,6 +358,7 @@ export default function HeroSection({
   imageTuning?: Partial<HeroImageTuning>;
   autoplaySuspended?: boolean;
   onSelectPosition?: (position: HomeHeroVisualPosition) => void;
+  navigationEditor?: HeroNavigationEditor;
 }) {
   const rootRef = useRef<HTMLElement>(null);
   const fitRef = useRef<HTMLDivElement>(null);
@@ -690,47 +696,18 @@ export default function HeroSection({
             <ChevronRight size={29} aria-hidden="true" />
           </button>
 
-          <div className={styles.controls}>
-            <div className={styles.segments} aria-label="Elegir juego del carrusel">
-              {games.map((game, index) => (
-                <button
-                  key={game.id}
-                  type="button"
-                  className={index === normalizedActiveIndex ? styles.activeSegment : ""}
-                  aria-label={`Mostrar ${game.title}`}
-                  aria-current={index === normalizedActiveIndex ? "true" : undefined}
-                  onClick={() => setActiveIndex(index)}
-                />
-              ))}
-            </div>
-
-            {presentation.autoplay && presentation.autoplayMs !== 0 && (
-              <button
-                type="button"
-                className={styles.pauseButton}
-                aria-label={manualPaused ? "Reanudar carrusel automático" : "Pausar carrusel automático"}
-                aria-pressed={manualPaused}
-                onClick={() => setManualPaused((current) => !current)}
-              >
-                {manualPaused ? (
-                  <Play size={12} fill="currentColor" aria-hidden="true" />
-                ) : (
-                  <Pause size={12} fill="currentColor" aria-hidden="true" />
-                )}
-                <span>{manualPaused ? "Reanudar" : "Pausar"}</span>
-              </button>
-            )}
-
-            {autoplayDelay !== null && (
-              <div className={styles.progress} aria-hidden="true">
-                <span
-                  key={`${normalizedActiveIndex}-${autoplayDelay}-${direction}`}
-                  className={styles.progressBar}
-                  style={{ animationPlayState: isPaused || atAutoplayEnd ? "paused" : "running" }}
-                />
-              </div>
-            )}
-          </div>
+          <HeroNavigation
+            games={games}
+            activeIndex={normalizedActiveIndex}
+            config={presentation.navigation}
+            autoplayDelay={autoplayDelay}
+            isPaused={isPaused}
+            manualPaused={manualPaused}
+            atAutoplayEnd={atAutoplayEnd}
+            onSelect={setActiveIndex}
+            onTogglePause={() => setManualPaused((current) => !current)}
+            editor={navigationEditor}
+          />
         </>
       )}
 
