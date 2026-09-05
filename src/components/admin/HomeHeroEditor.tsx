@@ -24,6 +24,7 @@ import type React from "react";
 
 import type { PublicPageBackgroundProps } from "@/components/site/PublicPageBackground";
 import HomeHeroLivePreview from "@/components/admin/HomeHeroLivePreview";
+import HomeHeroSpacingControls from "@/components/admin/HomeHeroSpacingControls";
 import AdminMediaThumbnail from "@/components/admin/AdminMediaThumbnail";
 import type {
   HomeCurationMode,
@@ -500,6 +501,7 @@ export default function HomeHeroEditor({
   );
   const selected = target === "all" ? shown.positions.all : shown.positions[target];
   const aspectControl = aspectControls[device];
+  const deviceLabel = devices.find((entry) => entry.id === device)?.label ?? device;
 
   const commit = (update: (state: State) => State) => {
     if (comparing) {
@@ -826,7 +828,7 @@ export default function HomeHeroEditor({
                 <button type="button" key={id} data-active={device === id} aria-pressed={device === id} onClick={() => setDevice(id)}><Icon size={15} /> {label}</button>
               ))}
             </div>
-            <span>Tamaño base {responsive.cardWidth} × {responsive.cardHeight} · {aspectControl.locked ? aspectControl.preset === "custom" ? `${aspectControl.customWidth}:${aspectControl.customHeight}` : aspectControl.preset : "Libre"} · {visiblePositions.length} posiciones visibles · perspectiva {responsive.perspective}px</span>
+            <span>Tamaño base {responsive.cardWidth} × {responsive.cardHeight} · {aspectControl.locked ? aspectControl.preset === "custom" ? `${aspectControl.customWidth}:${aspectControl.customHeight}` : aspectControl.preset : "Libre"} · {visiblePositions.length} posiciones visibles · perspectiva {responsive.perspective}px · exterior {responsive.spaceBefore}/{responsive.spaceAfter}px</span>
           </div>
 
           <HomeHeroLivePreview
@@ -835,6 +837,7 @@ export default function HomeHeroEditor({
             device={device}
             playing={preview}
             background={background}
+            showSpacingGuide={workspace === "design" && panel === "structure" && !preview}
             onSelectPosition={(position) => { setTarget(position); if (!preview) setWorkspace("design"); }}
           />
 
@@ -881,7 +884,7 @@ export default function HomeHeroEditor({
 
           <div>
             {accordion("structure", "Distribución por dispositivo", "01", <>
-              <p className={styles.help}>Solo cambia {devices.find((entry) => entry.id === device)?.label}. La tarjeta principal siempre permanece visible.</p>
+              <p className={styles.help}>Solo cambia {deviceLabel}. La tarjeta principal siempre permanece visible.</p>
               <label className={styles.select}><span>Posición de la principal</span><select value={responsive.alignment ?? "center"} onChange={(event) => setResponsive("alignment", event.target.value)}><option value="left">Izquierda</option><option value="center">Centro</option><option value="right">Derecha</option></select></label>
               <p className={styles.help}>Una composición lateral muestra hasta tres posiciones. Los demás juegos siguen disponibles al avanzar.</p>
               <p className={styles.help}>Las posiciones habilitadas se muestran según la alineación, la cantidad de tarjetas y los juegos disponibles.</p>
@@ -911,9 +914,33 @@ export default function HomeHeroEditor({
               <Range label="Ancho" value={responsive.cardWidth} min={HERO_FRAME_MIN_WIDTH} max={HERO_FRAME_MAX_WIDTH} unit="px" change={(value) => setFrameDimension("cardWidth", value)} />
               <Range label="Alto" value={responsive.cardHeight} min={HERO_FRAME_MIN_HEIGHT} max={HERO_FRAME_MAX_HEIGHT} unit="px" change={(value) => setFrameDimension("cardHeight", value)} />
               <p className={styles.help}>El fitting conserva el centro y reduce uniformemente sólo si el encuadre o una rotación no caben. Ya no desplaza todo el carrusel hacia un costado.</p>
-              <button type="button" onClick={restoreDeviceSize}><RotateCcw size={14} /> Restablecer tamaño de {devices.find((entry) => entry.id === device)?.label.toLowerCase()}</button>
+              <button type="button" onClick={restoreDeviceSize}><RotateCcw size={14} /> Restablecer tamaño de {deviceLabel.toLowerCase()}</button>
               <Range label="Separación" value={responsive.gap} min={0} max={100} unit="px" change={(value) => setResponsive("gap", value)} />
               <Range label="Perspectiva" value={responsive.perspective} min={400} max={2400} step={50} unit="px" change={(value) => setResponsive("perspective", value)} />
+              <HomeHeroSpacingControls
+                deviceLabel={deviceLabel}
+                spaceBefore={responsive.spaceBefore}
+                spaceAfter={responsive.spaceAfter}
+                onChangeBefore={(value) => setResponsive("spaceBefore", value)}
+                onChangeAfter={(value) => setResponsive("spaceAfter", value)}
+                onPreset={(spaceBefore, spaceAfter) => commit((current) => {
+                  const settings = current.presentation.responsive[device];
+                  settings.spaceBefore = spaceBefore;
+                  settings.spaceAfter = spaceAfter;
+                  current.presentation.preset = "custom";
+                  return current;
+                })}
+                onRestore={() => {
+                  const original = baseline.presentation.responsive[device];
+                  commit((current) => {
+                    const settings = current.presentation.responsive[device];
+                    settings.spaceBefore = original.spaceBefore;
+                    settings.spaceAfter = original.spaceAfter;
+                    current.presentation.preset = "custom";
+                    return current;
+                  });
+                }}
+              />
             </>)}
 
             {accordion("transform", "Transformación 3D", "02", <>
@@ -947,10 +974,10 @@ export default function HomeHeroEditor({
             </>)}
 
             {accordion("responsive", "Responsive", "05", <>
-              <p className={styles.help}>Cada dispositivo conserva ancho, alto, separación, perspectiva y cantidad de tarjetas propios.</p>
+              <p className={styles.help}>Cada dispositivo conserva ancho, alto, separación entre tarjetas, perspectiva, espaciado exterior y cantidad de tarjetas propios.</p>
               {devices.map((entry) => (
                 <button type="button" className={styles.breakpoint} data-active={device === entry.id} key={entry.id} onClick={() => setDevice(entry.id)}>
-                  {entry.label}<small>{shown.responsive[entry.id].cardWidth}×{shown.responsive[entry.id].cardHeight} · {shown.responsive[entry.id].visibleCards}</small>
+                  {entry.label}<small>{shown.responsive[entry.id].cardWidth}×{shown.responsive[entry.id].cardHeight} · exterior {shown.responsive[entry.id].spaceBefore}/{shown.responsive[entry.id].spaceAfter}px · {shown.responsive[entry.id].visibleCards}</small>
                 </button>
               ))}
             </>)}
