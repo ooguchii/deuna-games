@@ -85,7 +85,7 @@
   .modeChoices { grid-template-columns: 1fr; }
   .library { grid-template-columns: 1fr; }
   .grid { display: flex; flex-direction: column; }
-  .inspector { order: -1; }
+  .inspector { order: 0; }
   .topbar { position: sticky; }
 }
 @media (max-width: 650px) {
@@ -102,16 +102,6 @@
 .styleDetails { margin-top: 16px; }
 .styleDetails > summary { cursor: pointer; min-height: 44px; padding: 12px 0; color: var(--admin-brand-text); font-size: 14px; }
 .selectedImageLink { display: inline-flex; align-items: center; min-height: 32px; color: var(--admin-brand-text); }
-@media (max-width: 900px) {
-  .app:not([data-workspace="content"]) .grid { display: grid; padding: 9px; }
-  .app:not([data-workspace="content"]) .main { display: contents; }
-  .app:not([data-workspace="content"]) .inspector { order: 2; }
-  .designBlock, .motionBlock { order: 0; }
-  .dock { order: 1; }
-  .canvasBar { order: 3; }
-  .livePreview { order: 4; }
-  .infoNotice { order: 5; }
-}
 
 .dock { position: static; }
 .resultList .rowActions { margin-top: 10px; }
@@ -130,3 +120,65 @@
 .previewToolbar label { display: flex; align-items: center; gap: 6px; font-size: 12px; }
 .previewToolbar input { width: 80px; min-height: 36px; border: 1px solid var(--line); border-radius: 5px; background: var(--panel); color: inherit; }
 .previewToolbar span { color: var(--muted); font-size: 12px; }
+
+/* Consistent workspace order: preview, task controls, detailed settings. */
+.grid { align-items: start; }
+.main { display: grid; align-content: start; gap: 12px; }
+.main > .block, .main > .infoNotice { margin: 0; }
+.previewWorkspace { min-width: 0; }
+.canvasBar { margin: 0 0 8px; }
+.canvasBar > span { font-size: 12px; }
+.workspaceTabs button[aria-pressed="true"],
+.modeChoices button[aria-pressed="true"] {
+  border-color: var(--brand);
+  background: var(--admin-brand-surface);
+  color: #fff;
+}
+.workspaceTabs { gap: 6px; padding-top: 12px; }
+.workspaceTabs button { padding: 8px 12px; }
+.contentBlock h3 { margin: 12px 0 8px; font-size: 14px; }
+.modeChoices { gap: 8px; margin-bottom: 10px; }
+.modeChoices button { gap: 4px; padding: 10px 12px; }
+.modeChoices strong { font-size: 14px; }
+.modeChoices span { font-size: 12px; line-height: 1.45; }
+.resultList { grid-template-columns: repeat(auto-fit, minmax(min(100%, 310px), 1fr)); gap: 8px; }
+.resultList article { gap: 10px; padding: 10px; }
+.gameThumbnail { width: 88px; }
+.imageActions { gap: 0 10px; margin-top: 4px; }
+.resultList .rowActions { margin-top: 6px; flex-wrap: wrap; }
+.layoutChoices { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin-bottom: 0; }
+.layoutChoices button { padding: 10px; gap: 6px; }
+.layoutChoices small { font-size: 12px; line-height: 1.45; }
+.motionBlock { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.motionBlock > .heading, .motionBlock > .transitions, .motionBlock > .timeline { grid-column: 1 / -1; margin: 0; }
+.inspector .dock { margin: 10px; padding: 10px; box-shadow: none; }
+.inspector .dock > div { gap: 6px; }
+.inspector .dock span { width: 100%; }
+.inspector .dock button { flex: 1 1 auto; }
+.inspector > header { min-height: 64px; }
+.previewToolbar { padding: 8px 10px; gap: 6px; border-bottom: 1px solid var(--line); }
+.previewToolbar > div { gap: 6px 12px; }
+.previewToolbar input { width: 72px; }
+.app[data-preview="true"] .workspaceTabs { display: none; }
+@media (min-width: 1500px) {
+  .topbar { grid-template-columns: auto 1fr auto; gap: 12px; }
+  .history { justify-content: center; }
+  .actions { grid-column: auto; justify-content: flex-end; }
+}
+@media (max-width: 900px) {
+  .grid { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .main { padding: 12px; }
+  .inspector { border-top: 1px solid var(--line); }
+  .modeChoices { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .canvasBar { flex-direction: row; align-items: center; }
+}
+@media (max-width: 650px) {
+  .topbar { position: static; }
+  .main { padding: 9px; }
+  .modeChoices { grid-template-columns: 1fr; gap: 6px; }
+  .modeChoices button { gap: 2px; }
+  .motionBlock { grid-template-columns: minmax(0, 1fr); }
+  .canvasBar > div { flex-wrap: wrap; }
+  .canvasBar button { padding-inline: 8px; }
+  .gameThumbnail { width: 70px; }
+}

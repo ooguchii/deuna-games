@@ -143,8 +143,6 @@ export default function HomeHeroLivePreview({
   }, []);
 
   useEffect(() => {
-    if (!showSpacingGuide) return;
-
     const marker = previewEnd;
     const view = marker?.ownerDocument.defaultView;
     if (!marker || !view) return;
@@ -155,7 +153,7 @@ export default function HomeHeroLivePreview({
       frame = view.requestAnimationFrame(() => {
         const next = Math.max(
           1,
-          Math.ceil(marker.getBoundingClientRect().top)
+          Math.ceil(marker.getBoundingClientRect().top + view.scrollY)
         );
         setContentEnd((current) =>
           current === next ? current : next
@@ -201,7 +199,7 @@ export default function HomeHeroLivePreview({
 
   const responsive = presentation.responsive[device];
   const visiblePreviewHeight =
-    showSpacingGuide && contentEnd !== null
+    contentEnd !== null
       ? Math.min(height, contentEnd)
       : height;
   const hero = (

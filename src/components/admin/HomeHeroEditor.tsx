@@ -829,6 +829,29 @@ export default function HomeHeroEditor({
       {comparing && <p className={styles.workspaceNote} role="status">Comparación de solo lectura con el borrador guardado. Sal de la comparación antes de editar.</p>}
       <div className={styles.grid}>
         <div className={styles.main}>
+          <section className={styles.previewWorkspace} aria-label="Vista previa del hero">
+          <div className={styles.canvasBar}>
+            <div>
+              {devices.map(({ id, label, icon: Icon }) => (
+                <button type="button" key={id} data-active={device === id} aria-pressed={device === id} onClick={() => setDevice(id)}><Icon size={15} /> {label}</button>
+              ))}
+            </div>
+            <span>{responsive.cardWidth} × {responsive.cardHeight} px · {visiblePositions.length} posiciones visibles</span>
+          </div>
+
+          <HomeHeroLivePreview
+            games={result}
+            presentation={shown}
+            device={device}
+            playing={preview}
+            background={background}
+            showSpacingGuide={workspace === "design" && panel === "structure" && !preview}
+            navigationEditing={workspace === "design" && panel === "navigation" && !preview && !comparing}
+            onNavigationPositionChange={setNavigationPosition}
+            onSelectPosition={(position) => { setTarget(position); if (!preview) setWorkspace("design"); }}
+          />
+
+          </section>
           <section className={`${styles.block} ${styles.contentBlock}`}>
             <Heading over="CONTENIDO" title="Juegos e imágenes del hero" note={`Máximo ${HOME_HERO_MAX_SLIDES} juegos`} />
             <h3>¿Cómo se eligen los juegos?</h3>
@@ -920,46 +943,16 @@ export default function HomeHeroEditor({
               <button type="button" onClick={() => setPreview(true)}>Probar esta transición en el hero</button>
             </div>
           </section>
-          <div className={styles.canvasBar}>
-            <div>
-              {devices.map(({ id, label, icon: Icon }) => (
-                <button type="button" key={id} data-active={device === id} aria-pressed={device === id} onClick={() => setDevice(id)}><Icon size={15} /> {label}</button>
-              ))}
-            </div>
-            <span>Tamaño base {responsive.cardWidth} × {responsive.cardHeight} · {aspectControl.locked ? aspectControl.preset === "custom" ? `${aspectControl.customWidth}:${aspectControl.customHeight}` : aspectControl.preset : "Libre"} · {visiblePositions.length} posiciones visibles · perspectiva {responsive.perspective}px · exterior {responsive.spaceBefore}/{responsive.spaceAfter}px desde {responsive.spacingReference === "visual" ? "contenido visible" : "lienzo"} · nav {navigation.style} {navigationPlacement.x}/{navigationPlacement.y}%</span>
-          </div>
-
-          <HomeHeroLivePreview
-            games={result}
-            presentation={shown}
-            device={device}
-            playing={preview}
-            background={background}
-            showSpacingGuide={workspace === "design" && panel === "structure" && !preview}
-            navigationEditing={workspace === "design" && panel === "navigation" && !preview && !comparing}
-            onNavigationPositionChange={setNavigationPosition}
-            onSelectPosition={(position) => { setTarget(position); if (!preview) setWorkspace("design"); }}
-          />
-
-          <section className={styles.dock}>
-            <div>
-              <span>Aplicar cambios a:</span>
-              {positionList.map((positionItem) => (
-                <button type="button" key={positionItem.id} data-active={target === positionItem.id} aria-pressed={target === positionItem.id} onClick={() => setTarget(positionItem.id)}>{positionItem.label}</button>
-              ))}
-            </div>
-          </section>
-
           <section className={styles.infoNotice}>
             <strong>El contenido del Hero se toma del juego.</strong>
-            <span>Título, categoría y géneros, descripción, valoración, desarrollador, lanzamiento, plataformas y versión se muestran sólo cuando existen. Este editor controla selección, orden, geometría y comportamiento; no inventa ni sobreescribe información del juego.</span>
+            <span>Edita sus textos y datos en la ficha del juego. Aquí eliges los juegos, sus imágenes y el comportamiento del carrusel.</span>
           </section>
         </div>
 
         <aside className={styles.inspector}>
           <header>
-            <div><span>{workspace === "motion" ? "MOVIMIENTO" : "DISEÑO"}</span><strong>{panel === "navigation" ? "Navegación" : positionList.find((positionItem) => positionItem.id === target)?.label}</strong></div>
-            {panel !== "navigation" && <button
+            <div><span>{workspace === "motion" ? "MOVIMIENTO" : "DISEÑO"}</span><strong>{workspace === "motion" ? "Reproducción e interacción" : panel === "navigation" ? "Navegación" : positionList.find((positionItem) => positionItem.id === target)?.label}</strong></div>
+            {workspace === "design" && panel !== "navigation" && <button
               type="button"
               onClick={() => commit((current) => {
                 if (target === "all") {
@@ -974,6 +967,15 @@ export default function HomeHeroEditor({
               title="Restaurar posición"
             ><RotateCcw size={14} /></button>}
           </header>
+
+          <section className={styles.dock}>
+            <div>
+              <span>Aplicar cambios a:</span>
+              {positionList.map((positionItem) => (
+                <button type="button" key={positionItem.id} data-active={target === positionItem.id} aria-pressed={target === positionItem.id} onClick={() => setTarget(positionItem.id)}>{positionItem.label}</button>
+              ))}
+            </div>
+          </section>
 
           <div>
             {accordion("structure", "Distribución por dispositivo", "01", <>
