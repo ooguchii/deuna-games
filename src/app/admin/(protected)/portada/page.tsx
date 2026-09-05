@@ -15,6 +15,9 @@ import {
   listEditorialItems,
 } from "@/lib/admin/content-service";
 import {
+  resolveHomeAdminSection,
+} from "@/lib/admin/home-admin-sections";
+import {
   getHomeConfigPublicationState,
 } from "@/lib/admin/publication-service";
 import {
@@ -29,36 +32,12 @@ import styles from "../../admin.module.css";
 
 export const dynamic = "force-dynamic";
 
-export const homeAdminSections = [
-  "hero",
-  "contenido",
-  "publicacion",
-  "historial",
-] as const;
-
-export type HomeAdminSection =
-  (typeof homeAdminSections)[number];
-
 type PageProps = {
   searchParams: Promise<{
     estado?: string | string[];
     seccion?: string | string[];
   }>;
 };
-
-function resolveSection(
-  value: string | string[] | undefined
-): HomeAdminSection {
-  const candidate = Array.isArray(value)
-    ? value[0]
-    : value;
-
-  return homeAdminSections.includes(
-    candidate as HomeAdminSection
-  )
-    ? (candidate as HomeAdminSection)
-    : "hero";
-}
 
 async function readPublicationState() {
   try {
@@ -77,7 +56,7 @@ export default async function AdminHomeEditorPage({
   await verifyAdminSession();
 
   const parameters = await searchParams;
-  const section = resolveSection(parameters.seccion);
+  const section = resolveHomeAdminSection(parameters.seccion);
   const state = Array.isArray(parameters.estado)
     ? parameters.estado[0]
     : parameters.estado;
