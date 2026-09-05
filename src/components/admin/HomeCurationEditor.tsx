@@ -267,7 +267,18 @@ export default function HomeCurationEditor({
     useState<SelectionState>(() => structuredClone(baselineSelections));
   const [query, setQuery] = useState("");
   const [rankingNow] = useState(() => Date.now());
-  const [recovery, setRecovery] = useState<CurationDraft | null>(null);
+  const [recovery, setRecovery] = useState<CurationDraft | null>(() => {
+    const candidate = readRecoveryDraft();
+    if (!candidate) return null;
+    if (
+      buildCurationPayload(candidate.modes, candidate.selections) ===
+      baselinePayload
+    ) {
+      clearRecoveryDraft();
+      return null;
+    }
+    return candidate;
+  });
   const saving = useRef(false);
 
   const meta = collections.find(
@@ -290,10 +301,7 @@ export default function HomeCurationEditor({
   );
 
   const publicCatalog = useMemo(
-    () =>
-      games.filter((game) =>
-        publishedSet.has(game.slug)
-      ),
+    () => games.filter((game) => publishedSet.has(game.slug)),
     [games, publishedSet]
   );
 
@@ -356,21 +364,6 @@ export default function HomeCurationEditor({
     [modes, selections]
   );
   const dirty = serialized !== baselinePayload;
-
-  useEffect(() => {
-    const candidate = readRecoveryDraft();
-    if (!candidate) return;
-    if (
-      buildCurationPayload(
-        candidate.modes,
-        candidate.selections
-      ) === baselinePayload
-    ) {
-      clearRecoveryDraft();
-      return;
-    }
-    setRecovery(candidate);
-  }, [baselinePayload]);
 
   useEffect(() => {
     try {
@@ -712,9 +705,7 @@ export default function HomeCurationEditor({
                         </button>
                         <button
                           type="button"
-                          disabled={
-                            index === activeSelection.length - 1
-                          }
+                          disabled={index === activeSelection.length - 1}
                           onClick={() => moveGame(index, 1)}
                           aria-label={`Bajar ${game?.title ?? slug}`}
                         >
@@ -823,8 +814,7 @@ export default function HomeCurationEditor({
 
             <ol className={styles.previewList}>
               {preview.map((game, index) => {
-                const rankingEntry =
-                  rankingBySlug.get(game.slug);
+                const rankingEntry = rankingBySlug.get(game.slug);
                 const manuallyPinned =
                   activeMode !== "automatic" &&
                   activeSelection.includes(game.slug);
