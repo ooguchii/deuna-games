@@ -162,26 +162,34 @@ export function homeHeroPositionTransform(
 export type HeroBounds = { left: number; top: number; right: number; bottom: number };
 
 /** Fit the complete visible composition, including perspective, inside its stage. */
-export function fitHomeHeroBounds(bounds: HeroBounds, width: number, height: number, alignment: HomeHeroResponsiveStyle["alignment"] = "center") {
-  // Horizontal spacing is owned by `.main-content`. Reserving another inset
-  // here made the Hero narrower than Header and the rest of Home. Vertical
-  // breathing room remains local because controls live above/below the cards.
+export function fitHomeHeroBounds(bounds: HeroBounds, width: number, height: number, _alignment: HomeHeroResponsiveStyle["alignment"] = "center") {
+  // Horizontal spacing is owned by `.main-content`. Since every layout is now
+  // centered as a complete composition, rotations must never be corrected by
+  // pushing the stage left/right. Instead we measure the furthest rendered edge
+  // from the Hero center and, only if necessary, scale uniformly around it.
   const verticalPadding = 48;
   const availableWidth = Math.max(1, width);
   const availableHeight = Math.max(1, height - verticalPadding * 2);
-  const contentWidth = Math.max(1, bounds.right - bounds.left);
   const contentHeight = Math.max(1, bounds.bottom - bounds.top);
-  const centeredWidth = Math.max(contentWidth, 2 * Math.max(width / 2 - bounds.left, bounds.right - width / 2));
-  const fittedWidth = alignment === "center" ? centeredWidth : contentWidth;
-  const scale = Math.min(1, availableWidth / fittedWidth, availableHeight / contentHeight);
   const originX = width / 2;
+  const centeredWidth = Math.max(
+    1,
+    2 * Math.max(originX - bounds.left, bounds.right - originX)
+  );
+  const scale = Math.min(
+    1,
+    availableWidth / centeredWidth,
+    availableHeight / contentHeight
+  );
   const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
-  // Scale around the Hero center for every layout. Left/right describe which
-  // slots are visible, not where the complete composition is pinned. Manual
-  // per-card translations are still preserved whenever the result fits.
+
   return {
     scale,
-    x: clamp((1 - scale) * originX, -bounds.left * scale, width - bounds.right * scale),
-    y: clamp((1 - scale) * height / 2, verticalPadding - bounds.top * scale, height - verticalPadding - bounds.bottom * scale),
+    x: (1 - scale) * originX,
+    y: clamp(
+      (1 - scale) * height / 2,
+      verticalPadding - bounds.top * scale,
+      height - verticalPadding - bounds.bottom * scale
+    ),
   };
 }
