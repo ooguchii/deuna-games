@@ -8,8 +8,8 @@ const source = await readFile(
 
 assert.match(
   source,
-  /const announceSlideChanges = isPaused \|\| atAutoplayEnd;/,
-  'Hero slide announcements must only become live when automatic rotation is paused or finished.'
+  /const announceSlideChanges = isPaused;/,
+  'Hero slide announcements must only become live while rotation is paused by user attention, reduced motion, or explicit suspension.'
 );
 assert.match(
   source,
@@ -26,7 +26,12 @@ assert.doesNotMatch(
   /aria-live="polite"/,
   'Hero live announcements must not be permanently polite during autoplay.'
 );
+assert.doesNotMatch(
+  source,
+  /announceSlideChanges = isPaused \|\| atAutoplayEnd/,
+  'The final autoplay transition must remain silent unless the carousel is otherwise paused.'
+);
 assert.match(source, /aria-current=\{active \? "true" : undefined\}/);
 assert.match(source, /aria-pressed=\{manualPaused\}/);
 
-console.log('Hero accessibility: OK (manual/paused slide changes are announced without noisy autoplay announcements).');
+console.log('Hero accessibility: OK (paused/manual slide changes are announced while autoplay transitions stay silent).');
