@@ -140,6 +140,8 @@ export default function HomeHeroSaveBoundary({
   const [savePending, setSavePending] = useState(false);
   const [savedRevision, setSavedRevision] = useState<number | null>(null);
   const [notice, setNotice] = useState<SaveNotice | null>(null);
+  const waitingForRefresh = savedRevision !== null && revision < savedRevision;
+  const busy = savePending || waitingForRefresh;
 
   const findHeroForm = () =>
     rootRef.current?.querySelector<HTMLFormElement>(
@@ -178,15 +180,13 @@ export default function HomeHeroSaveBoundary({
   useEffect(() => {
     if (savedRevision === null || revision < savedRevision) return;
     saving.current = false;
-    setSavePending(false);
-    setSavedRevision(null);
   }, [revision, savedRevision]);
 
   useEffect(() => {
-    if (savedRevision === null) return;
+    if (!waitingForRefresh || savedRevision === null) return;
     const timeout = window.setTimeout(() => {
       saving.current = false;
-      setSavePending(false);
+      setSavedRevision(null);
       setNotice((current) =>
         current?.error
           ? current
@@ -197,7 +197,7 @@ export default function HomeHeroSaveBoundary({
       );
     }, 5_000);
     return () => window.clearTimeout(timeout);
-  }, [savedRevision]);
+  }, [waitingForRefresh, savedRevision]);
 
   const saveHero = async (event: FormEvent<HTMLDivElement>) => {
     const form = event.target;
@@ -258,6 +258,7 @@ export default function HomeHeroSaveBoundary({
 
       const nextRevision = result.revision as number;
       clearStoredHeroDrafts();
+      setSavePending(false);
       setSavedRevision(nextRevision);
       setNotice({
         error: false,
@@ -285,7 +286,7 @@ export default function HomeHeroSaveBoundary({
   return (
     <div
       ref={rootRef}
-      aria-busy={savePending}
+      aria-busy={busy}
       onSubmitCapture={saveHero}
       onClickCapture={scheduleRecoverySnapshot}
       onChangeCapture={scheduleRecoverySnapshot}
@@ -301,7 +302,7 @@ export default function HomeHeroSaveBoundary({
           {notice.message}
         </p>
       )}
-      <div inert={savePending || undefined}>{children}</div>
+      <div inert={busy || undefined}>{children}</div>
     </div>
   );
 }
