@@ -977,10 +977,7 @@ export default function HomeHeroEditor({
 
           <div>
             {accordion("structure", "Distribución por dispositivo", "01", <>
-              <p className={styles.help}>Solo cambia {deviceLabel}. La tarjeta principal siempre permanece visible.</p>
-              <label className={styles.select}><span>Posición de la principal</span><select value={responsive.alignment ?? "center"} onChange={(event) => setResponsive("alignment", event.target.value)}><option value="left">Izquierda</option><option value="center">Centro</option><option value="right">Derecha</option></select></label>
-              <p className={styles.help}>Una composición lateral muestra hasta tres posiciones. Los demás juegos siguen disponibles al avanzar.</p>
-              <p className={styles.help}>Las posiciones habilitadas se muestran según la alineación, la cantidad de tarjetas y los juegos disponibles.</p>
+              <p className={styles.help}>Ajustes para {deviceLabel.toLowerCase()}. La posición principal se elige en Tipo de carrusel.</p>
               {positionList.filter((entry) => entry.id !== "all" && entry.id !== "main").map((entry) => {
                 const id = entry.id as "left1" | "left2" | "right1" | "right2";
                 return <Switch key={id} label={`Habilitar ${entry.label.toLowerCase()}${visiblePositions.includes(id) ? "" : " (fuera de vista)"}`} value={!responsive.hiddenPositions?.includes(id)} change={(value) => setResponsive("hiddenPositions", value ? (responsive.hiddenPositions ?? []).filter((item) => item !== id) : [...(responsive.hiddenPositions ?? []), id])} />;
