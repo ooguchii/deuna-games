@@ -1,4 +1,6 @@
 .navigation {
+  --hero-navigation-scale: var(--hero-desktop-navigation-scale, 100);
+  --hero-navigation-target-size: max(24px, calc(2400px / var(--hero-navigation-scale)));
   position: absolute;
   z-index: 44;
   left: var(--hero-desktop-navigation-x, 50%);
@@ -6,9 +8,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: max(10px, calc(var(--hero-navigation-target-size) - 19px));
   max-width: calc(100% - 24px);
-  transform: translate(-50%, -50%) scale(calc(var(--hero-desktop-navigation-scale, 100) / 100));
+  transform: translate(-50%, -50%) scale(calc(var(--hero-navigation-scale) / 100));
   transform-origin: center;
   transition: left 180ms ease, top 180ms ease, transform 180ms ease;
 }
@@ -39,6 +41,7 @@
   place-items: center;
   width: 28px;
   height: 23px;
+  overflow: visible;
   border: 1px solid color-mix(in srgb, var(--brand) 58%, rgba(255,255,255,.28));
   border-radius: 7px;
   background: rgba(4, 9, 17, .9);
@@ -55,7 +58,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: max(8px, calc(var(--hero-navigation-target-size) - 34px));
 }
 
 .indicator {
@@ -70,15 +73,17 @@
   transition: width 180ms ease, height 180ms ease, background 180ms ease, transform 180ms ease, opacity 180ms ease;
 }
 
-/* Keep the visual marks compact while giving every carousel selector a real
- * 24×24 pointer target. Generated content belongs to the button for hit testing,
- * so the interactive area expands without changing the rendered mark itself. */
-.indicator::after {
+/* The whole navigation can be editorially scaled down to 50%. Counter that
+ * scale only in transparent hit areas and spacing: the visible marks still use
+ * the requested scale, while every final pointer target remains at least 24px. */
+.indicator::after,
+.pauseButton::after,
+.dragHandle::after {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 24px;
-  height: 24px;
+  width: var(--hero-navigation-target-size);
+  height: var(--hero-navigation-target-size);
   content: "";
   transform: translate(-50%, -50%);
 }
@@ -90,10 +95,12 @@
 }
 
 .pauseButton {
+  position: relative;
   display: grid;
   place-items: center;
   width: 30px;
   height: 30px;
+  overflow: visible;
   border: 1px solid rgba(220,230,244,.22);
   border-radius: 7px;
   background: rgba(5,9,16,.82);
@@ -145,6 +152,10 @@
   background: #fff;
 }
 
+.navigation[data-style="integrated"] .indicators {
+  gap: max(8px, calc(var(--hero-navigation-target-size) - 42px));
+}
+
 .navigation[data-style="integrated"] .indicator {
   width: 42px;
   height: 5px;
@@ -158,11 +169,11 @@
 }
 
 .navigation[data-style="pills"] {
-  gap: 12px;
+  gap: max(12px, calc(var(--hero-navigation-target-size) - 19px));
 }
 
 .navigation[data-style="pills"] .indicators {
-  gap: 6px;
+  gap: max(6px, calc(var(--hero-navigation-target-size) - 18px));
   padding: 6px 8px;
   border: 1px solid rgba(220,230,244,.14);
   border-radius: 999px;
@@ -182,7 +193,7 @@
 }
 
 .navigation[data-style="dots"] .indicators {
-  gap: 15px;
+  gap: max(15px, calc(var(--hero-navigation-target-size) - 9px));
 }
 
 .navigation[data-style="dots"] .indicator {
@@ -200,7 +211,7 @@
 
 .navigation[data-style="timeline"] .indicators {
   position: relative;
-  gap: 3px;
+  gap: max(3px, calc(var(--hero-navigation-target-size) - 46px));
   padding: 7px 9px;
 }
 
@@ -238,11 +249,11 @@
 }
 
 .navigation[data-style="minimal"] {
-  gap: 8px;
+  gap: max(8px, calc(var(--hero-navigation-target-size) - 19px));
 }
 
 .navigation[data-style="minimal"] .indicators {
-  gap: 6px;
+  gap: max(6px, calc(var(--hero-navigation-target-size) - 22px));
 }
 
 .navigation[data-style="minimal"] .indicator {
@@ -271,13 +282,17 @@
 }
 
 .navigation[data-style="glass"] {
-  gap: 9px;
+  gap: max(9px, calc(var(--hero-navigation-target-size) - 19px));
   padding: 8px 10px;
   border: 1px solid rgba(224,234,247,.18);
   border-radius: 14px;
   background: rgba(4,9,17,.55);
   backdrop-filter: blur(16px) saturate(130%);
   box-shadow: 0 14px 34px rgba(0,0,0,.24);
+}
+
+.navigation[data-style="glass"] .indicators {
+  gap: max(8px, calc(var(--hero-navigation-target-size) - 28px));
 }
 
 .navigation[data-style="glass"] .indicator {
@@ -297,7 +312,7 @@
 
 .navigation[data-style="rail"] .indicators {
   position: relative;
-  gap: 24px;
+  gap: max(24px, calc(var(--hero-navigation-target-size) - 8px));
   padding: 0 8px;
 }
 
@@ -342,23 +357,25 @@
 
 @media (max-width: 1100px) {
   .navigation {
+    --hero-navigation-scale: var(--hero-tablet-navigation-scale, 100);
     left: var(--hero-tablet-navigation-x, 50%);
     top: var(--hero-tablet-navigation-y, 91%);
-    transform: translate(-50%, -50%) scale(calc(var(--hero-tablet-navigation-scale, 100) / 100));
   }
 }
 
 @media (max-width: 680px) {
   .navigation {
+    --hero-navigation-scale: var(--hero-mobile-navigation-scale, 92);
     left: var(--hero-mobile-navigation-x, 50%);
     top: var(--hero-mobile-navigation-y, 92%);
-    gap: 7px;
-    transform: translate(-50%, -50%) scale(calc(var(--hero-mobile-navigation-scale, 92) / 100));
+    gap: max(7px, calc(var(--hero-navigation-target-size) - 19px));
   }
 
   .progress { width: 54px; }
+  .indicators { gap: max(8px, calc(var(--hero-navigation-target-size) - 25px)); }
   .indicator { width: 25px; }
   .indicatorActive { width: 39px; }
+  .navigation[data-style="timeline"] .indicators { gap: max(3px, calc(var(--hero-navigation-target-size) - 34px)); }
   .navigation[data-style="timeline"] .indicator { width: 34px; }
   .navigation[data-style="timeline"] .indicatorActive { width: 42px; }
 }
