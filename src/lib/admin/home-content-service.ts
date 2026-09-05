@@ -46,6 +46,11 @@ async function getResolvedHomeDraft() {
   };
 }
 
+/**
+ * Legacy/specialized curation save. The "Resto de Inicio" workspace never
+ * owns Hero, so preserve its selection and mode even if an older client sends
+ * those fields in the curation payload.
+ */
 export async function saveHomeCurationDraft(
   expectedRevision: number,
   actorUserId: string,
@@ -60,12 +65,12 @@ export async function saveHomeCurationDraft(
     expectedRevision,
     actorUserId,
     {
-      heroSlugs: input.hero.slugs,
+      heroSlugs: current.heroSlugs,
       popularSlugs: input.popular.slugs,
       lowSpecSlugs: input.lowSpec.slugs,
       recommendedSlugs: input.recommended.slugs,
       curation: {
-        hero: { mode: input.hero.mode },
+        hero: current.curation.hero,
         popular: { mode: input.popular.mode },
         lowSpec: { mode: input.lowSpec.mode },
         recommended: { mode: input.recommended.mode },
@@ -101,6 +106,46 @@ export async function saveHomePresentationDraft(
       copy: {
         hero: current.copy.hero,
         ...input.copy,
+      },
+    }
+  );
+}
+
+/**
+ * Atomic save for everything owned by "Resto de Inicio". Curated collections,
+ * section order/visibility and copy become one editorial revision, so one local
+ * editor cannot invalidate or silently discard another editor's pending state.
+ */
+export async function saveHomeContentDraft(
+  expectedRevision: number,
+  actorUserId: string,
+  curation: HomeCurationDraftInput,
+  presentation: HomePresentationDraftInput
+): Promise<EditorialMutationResult> {
+  const resolved = await getResolvedHomeDraft();
+  if (!resolved) return { outcome: "not_found" };
+
+  const { current } = resolved;
+
+  return saveHomeConfigDraft(
+    expectedRevision,
+    actorUserId,
+    {
+      heroSlugs: current.heroSlugs,
+      popularSlugs: curation.popular.slugs,
+      lowSpecSlugs: curation.lowSpec.slugs,
+      recommendedSlugs: curation.recommended.slugs,
+      curation: {
+        hero: current.curation.hero,
+        popular: { mode: curation.popular.mode },
+        lowSpec: { mode: curation.lowSpec.mode },
+        recommended: { mode: curation.recommended.mode },
+      },
+      heroPresentation: current.heroPresentation,
+      sections: presentation.sections,
+      copy: {
+        hero: current.copy.hero,
+        ...presentation.copy,
       },
     }
   );
