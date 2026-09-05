@@ -228,13 +228,54 @@ function historyReducer(history: History, action: HistoryAction): History {
 const subscribeStorage = () => () => {};
 const clientReady = () => true;
 const serverReady = () => false;
+const HERO_DRAFT_PREFIX = "deuna:hero-draft:";
+const HERO_DRAFT_LATEST_KEY = `${HERO_DRAFT_PREFIX}latest`;
+
+function readStoredHeroDraft(editingRevision: number) {
+  try {
+    const stable = sessionStorage.getItem(HERO_DRAFT_LATEST_KEY);
+    if (stable) return stable;
+
+    const current = sessionStorage.getItem(`${HERO_DRAFT_PREFIX}${editingRevision}`);
+    if (current) return current;
+
+    let newestRevision = -1;
+    let newestDraft: string | null = null;
+    for (let index = 0; index < sessionStorage.length; index += 1) {
+      const key = sessionStorage.key(index);
+      const match = key?.match(/^deuna:hero-draft:(\d+)$/);
+      if (!match) continue;
+      const revision = Number(match[1]);
+      if (revision <= newestRevision) continue;
+      const value = sessionStorage.getItem(key!);
+      if (!value) continue;
+      newestRevision = revision;
+      newestDraft = value;
+    }
+    return newestDraft;
+  } catch {
+    return null;
+  }
+}
+
+function clearStoredHeroDrafts() {
+  try {
+    const keys: string[] = [];
+    for (let index = 0; index < sessionStorage.length; index += 1) {
+      const key = sessionStorage.key(index);
+      if (key?.startsWith(HERO_DRAFT_PREFIX)) keys.push(key);
+    }
+    keys.forEach((key) => sessionStorage.removeItem(key));
+  } catch {
+    // Saving on the server remains the source of truth when storage is blocked.
+  }
+}
 
 const selectionModes = [
   { id: "manual", title: "Manual", description: "Elige los juegos y su orden. No se añaden otros." },
   { id: "automatic", title: "Automático", description: "El sitio elige hasta cinco juegos según su clasificación." },
   { id: "hybrid", title: "Mixto", description: "Tus juegos van primero; el sitio completa los espacios." },
 ] as const;
-
 
 export default function HomeHeroEditor({
   config,
@@ -277,22 +318,38 @@ export default function HomeHeroEditor({
   const comparing = compare && dirty;
   const published = useMemo(() => new Set(publicGames.map((game) => game.slug)), [publicGames]);
   const rankings = useMemo(() => rankHomeGames(publicGames, "hero", rankingNow), [publicGames, rankingNow]);
-  const draftKey = `deuna:hero-draft:${editingRevision}`;
-  const storedDraft = useSyncExternalStore(subscribeStorage, () => {
-    try { return sessionStorage.getItem(draftKey); } catch { return null; }
-  }, () => null);
+  const draftKey = `${HERO_DRAFT_PREFIX}${editingRevision}`;
+  const storedDraft = useSyncExternalStore(subscribeStorage, () => readStoredHeroDraft(editingRevision), () => null);
   const recovery = useMemo(() => {
     if (!storedDraft || recoveryDismissed) return null;
     try {
-      const saved = JSON.parse(storedDraft);
-      const parsed = homeHeroEditorFormSchema.safeParse({ expectedRevision: String(editingRevision), heroJson: JSON.stringify({ ...saved, copy: config.copy.hero }) });
-      return parsed.success ? { slugs: parsed.data.heroJson.slugs, mode: parsed.data.heroJson.mode, presentation: parsed.data.heroJson.presentation } as State : null;
+      const saved = JSON.parse(storedDraft) as { revision?: unknown; state?: unknown } | State;
+      const wrappedState = typeof saved === "object" && saved !== null && "state" in saved
+        ? saved.state
+        : saved;
+      const savedRevision = typeof saved === "object" && saved !== null && "revision" in saved && Number.isInteger(saved.revision)
+        ? Number(saved.revision)
+        : null;
+      const parsed = homeHeroEditorFormSchema.safeParse({ expectedRevision: String(editingRevision), heroJson: JSON.stringify({ ...(wrappedState as State), copy: config.copy.hero }) });
+      if (!parsed.success) return null;
+      const recoveredState = { slugs: parsed.data.heroJson.slugs, mode: parsed.data.heroJson.mode, presentation: parsed.data.heroJson.presentation } as State;
+      if (JSON.stringify(recoveredState) === JSON.stringify(baseline)) return null;
+      return { state: recoveredState, revision: savedRevision };
     } catch { return null; }
-  }, [storedDraft, recoveryDismissed, editingRevision, config.copy.hero]);
+  }, [storedDraft, recoveryDismissed, editingRevision, config.copy.hero, baseline]);
   useEffect(() => {
     if (!recoveryReady || recovery) return;
-    try { if (dirty) sessionStorage.setItem(draftKey, JSON.stringify(state)); else sessionStorage.removeItem(draftKey); } catch { /* The explicit Save action remains available. */ }
-  }, [state, dirty, draftKey, recoveryReady, recovery]);
+    try {
+      if (dirty) {
+        sessionStorage.setItem(HERO_DRAFT_LATEST_KEY, JSON.stringify({ revision: editingRevision, state }));
+        sessionStorage.setItem(draftKey, JSON.stringify(state));
+      } else {
+        clearStoredHeroDrafts();
+      }
+    } catch {
+      /* The explicit Save action remains available. */
+    }
+  }, [state, dirty, draftKey, editingRevision, recoveryReady, recovery]);
   useEffect(() => {
     if (!dirty) return;
     const protect = (event: BeforeUnloadEvent) => { if (saving.current) return; event.preventDefault(); event.returnValue = ""; };
@@ -339,7 +396,10 @@ export default function HomeHeroEditor({
   const selected = target === "all" ? shown.positions.all : shown.positions[target];
 
   const commit = (update: (state: State) => State) => {
-    setCompare(false);
+    if (comparing) {
+      setCompare(false);
+      return;
+    }
     setRecoveryDismissed(true);
     dispatch({ type: "edit", update, coalesce: interaction.current === true });
     if (interaction.current !== null) interaction.current = true;
@@ -468,12 +528,12 @@ export default function HomeHeroEditor({
       </header>
 
       {revision !== editingRevision && <p className={styles.workspaceNote} role="alert">Inicio tiene una revisión más reciente. Tus cambios siguen aquí; el servidor impedirá sobrescribir esa revisión. Recarga para revisar el nuevo borrador.</p>}
-      {recovery && <div className={styles.recovery} role="status"><span>Hay cambios de esta revisión conservados en esta pestaña.</span><button type="button" onClick={() => { commit(() => clone(recovery)); setRecoveryDismissed(true); }}>Recuperar cambios</button><button type="button" onClick={() => { try { sessionStorage.removeItem(draftKey); } catch {} setRecoveryDismissed(true); }}>Descartar copia local</button></div>}
+      {recovery && <div className={styles.recovery} role="status"><span>{recovery.revision !== null && recovery.revision !== editingRevision ? `Hay cambios locales conservados de la revisión ${recovery.revision}. Revísalos antes de guardarlos sobre la revisión ${editingRevision}.` : "Hay cambios de esta revisión conservados en esta pestaña."}</span><button type="button" onClick={() => { setCompare(false); setRecoveryDismissed(true); dispatch({ type: "edit", update: () => clone(recovery.state), coalesce: false }); }}>Recuperar cambios</button><button type="button" onClick={() => { clearStoredHeroDrafts(); setRecoveryDismissed(true); }}>Descartar copia local</button></div>}
       <nav className={styles.workspaceTabs} aria-label="Tareas del editor">
         {([ ["content", "1. Juegos e imágenes"], ["design", "2. Diseño del carrusel"], ["motion", "3. Movimiento"] ] as const).map(([id, label]) => <button type="button" key={id} aria-pressed={workspace === id} onClick={() => { setWorkspace(id); setPanel(id === "motion" ? "behavior" : "structure"); setPreview(false); }}>{label}</button>)}
       </nav>
       <p className={styles.workspaceNote}>Guardar conserva el borrador del hero. Revisar y publicar incluye todos los cambios guardados de Inicio.</p>
-      {comparing && <p className={styles.workspaceNote} role="status">Comparación con el borrador guardado, no con la web publicada. Al editar vuelves a tus cambios actuales.</p>}
+      {comparing && <p className={styles.workspaceNote} role="status">Comparación de solo lectura con el borrador guardado. Sal de la comparación antes de editar.</p>}
       <div className={styles.grid}>
         <div className={styles.main}>
           <section className={`${styles.block} ${styles.contentBlock}`}>
