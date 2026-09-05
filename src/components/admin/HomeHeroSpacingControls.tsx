@@ -54,21 +54,41 @@ export default function HomeHeroSpacingControls({
   deviceLabel,
   spaceBefore,
   spaceAfter,
+  spacingReference,
+  linked,
   onChangeBefore,
   onChangeAfter,
+  onReferenceChange,
+  onLinkedChange,
   onPreset,
   onRestore,
 }: {
   deviceLabel: string;
   spaceBefore: number;
   spaceAfter: number;
+  spacingReference: "visual" | "canvas";
+  linked: boolean;
   onChangeBefore: (value: number) => void;
   onChangeAfter: (value: number) => void;
+  onReferenceChange: (value: "visual" | "canvas") => void;
+  onLinkedChange: (value: boolean) => void;
   onPreset: (spaceBefore: number, spaceAfter: number) => void;
   onRestore: () => void;
 }) {
   return <>
-    <p className={styles.help}><strong>Espaciado exterior real del Hero.</strong> Define la distancia respecto del contenido anterior y de la sección que venga después. Si el Hero es la primera sección, 0px significa que no se añade separación bajo el encabezado. El contenedor ya no reserva aire vertical oculto: su altura real la determina el control <strong>Alto</strong> de la tarjeta.</p>
+    <p className={styles.help}><strong>Espaciado exterior real del Hero.</strong> Con <strong>Contenido visible</strong>, la distancia se calcula desde lo que realmente queda renderizado después del fitting, incluidas las tarjetas y los controles del carrusel. Así 0px sigue siendo 0px aunque cambie la resolución. Usa <strong>Lienzo del Hero</strong> sólo si quieres conservar deliberadamente el aire interno del encuadre.</p>
+    <label className={styles.select}>
+      <span>Referencia del espaciado</span>
+      <select value={spacingReference} onChange={(event) => onReferenceChange(event.target.value as "visual" | "canvas")}>
+        <option value="visual">Contenido visible · recomendado</option>
+        <option value="canvas">Lienzo del Hero</option>
+      </select>
+    </label>
+    <label className={styles.switch}>
+      <span>Mismo espaciado en todos los dispositivos</span>
+      <input type="checkbox" checked={linked} onChange={(event) => onLinkedChange(event.target.checked)} />
+      <i />
+    </label>
     <SpacingRange label="Espacio superior" value={spaceBefore} max={160} change={onChangeBefore} />
     <SpacingRange label="Espacio inferior" value={spaceAfter} max={200} change={onChangeAfter} />
     <div role="group" aria-label={`Presets de espaciado para ${deviceLabel}`}>
@@ -82,6 +102,6 @@ export default function HomeHeroSpacingControls({
         {preset.label}<small>{preset.before}px arriba · {preset.after}px abajo</small>
       </button>)}
     </div>
-    <button type="button" onClick={onRestore}><RotateCcw size={14} /> Restablecer espaciado de {deviceLabel.toLowerCase()}</button>
+    <button type="button" onClick={onRestore}><RotateCcw size={14} /> Restablecer espaciado de {linked ? "todos los dispositivos" : deviceLabel.toLowerCase()}</button>
   </>;
 }
