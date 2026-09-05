@@ -61,16 +61,20 @@ for (const settings of Object.values(old.responsive)) {
   delete settings.hiddenPositions;
   delete settings.spaceBefore;
   delete settings.spaceAfter;
+  delete settings.spacingReference;
 }
 delete old.navigation;
 const parsedOld = parse(old);
-assert.ok(parsedOld.success, 'Existing saved drafts without responsive spacing or navigation settings must remain valid');
+assert.ok(parsedOld.success, 'Existing saved drafts without responsive spacing, spacing reference or navigation settings must remain valid');
 assert.equal(parsedOld.data.heroJson.presentation.responsive.desktop.spaceBefore, 28);
 assert.equal(parsedOld.data.heroJson.presentation.responsive.desktop.spaceAfter, 58);
+assert.equal(parsedOld.data.heroJson.presentation.responsive.desktop.spacingReference, 'visual');
 assert.equal(parsedOld.data.heroJson.presentation.responsive.tablet.spaceBefore, 20);
 assert.equal(parsedOld.data.heroJson.presentation.responsive.tablet.spaceAfter, 58);
+assert.equal(parsedOld.data.heroJson.presentation.responsive.tablet.spacingReference, 'visual');
 assert.equal(parsedOld.data.heroJson.presentation.responsive.mobile.spaceBefore, 14);
 assert.equal(parsedOld.data.heroJson.presentation.responsive.mobile.spaceAfter, 38);
+assert.equal(parsedOld.data.heroJson.presentation.responsive.mobile.spacingReference, 'visual');
 assert.equal(parsedOld.data.heroJson.presentation.navigation.style, 'segmented-pro');
 assert.deepEqual(parsedOld.data.heroJson.presentation.navigation.responsive.desktop, { x: 50, y: 91, scale: 100 });
 assert.deepEqual(parsedOld.data.heroJson.presentation.navigation.responsive.tablet, { x: 50, y: 91, scale: 100 });
@@ -78,6 +82,7 @@ assert.deepEqual(parsedOld.data.heroJson.presentation.navigation.responsive.mobi
 const resolvedOld = resolveHomeConfig({ ...sourceHomeConfig, heroPresentation: old }).heroPresentation;
 assert.equal(resolvedOld.responsive.desktop.spaceBefore, 28);
 assert.equal(resolvedOld.responsive.desktop.spaceAfter, 58);
+assert.equal(resolvedOld.responsive.desktop.spacingReference, 'visual');
 assert.equal(resolvedOld.navigation.style, 'segmented-pro');
 assert.deepEqual(resolvedOld.navigation.responsive.desktop, { x: 50, y: 91, scale: 100 });
 assert.deepEqual(homeHeroVisiblePositions(old.responsive.desktop, 'forward', 5), ['left2', 'left1', 'main', 'right1', 'right2']);
@@ -125,6 +130,13 @@ const zeroSpacing = structuredClone(baseline);
 zeroSpacing.responsive.desktop.spaceBefore = 0;
 zeroSpacing.responsive.desktop.spaceAfter = 0;
 assert.ok(parse(zeroSpacing).success, 'The editor must allow a Hero with no exterior spacing');
+const canvasSpacing = structuredClone(baseline);
+canvasSpacing.responsive.desktop.spacingReference = 'canvas';
+assert.ok(parse(canvasSpacing).success, 'The editor must persist canvas-based spacing when explicitly requested');
+assert.ok(editorialHomeConfigSchema.safeParse({ ...sourceHomeConfig, heroPresentation: canvasSpacing }).success, 'Canvas-based spacing must survive publication validation');
+const invalidSpacingReference = structuredClone(baseline);
+invalidSpacingReference.responsive.desktop.spacingReference = 'viewport';
+assert.equal(parse(invalidSpacingReference).success, false, 'Unknown spacing references must be rejected');
 const invalidBeforeSpacing = structuredClone(maximumSpacing);
 invalidBeforeSpacing.responsive.desktop.spaceBefore = 161;
 assert.equal(parse(invalidBeforeSpacing).success, false, 'Top Hero spacing must not exceed 160px');
@@ -139,7 +151,7 @@ assert.equal(homeHeroEditorFormSchema.safeParse({
   expectedRevision: '1',
   heroJson: JSON.stringify({ mode: 'manual', slugs: tooManySlugs, copy: sourceHomeConfig.copy.hero, presentation: baseline }),
 }).success, false, 'The unified Hero editor must reject more games than the public Hero can display');
-console.log('Hero layouts: OK (persistence, centered one-sided layouts, legacy drafts, true zero exterior spacing, unified navigation styles/placement, hidden slots, presets, autoplay compatibility, expanded frame range, five-slide contract and mixed selection).');
+console.log('Hero layouts: OK (persistence, centered one-sided layouts, legacy drafts, resolution-stable visual spacing, optional canvas spacing, unified navigation styles/placement, hidden slots, presets, autoplay compatibility, expanded frame range, five-slide contract and mixed selection).');
 
 // Large/translated/rotated compositions must remain centered and fully inside
 // the exact configured stage. There is no hidden 48px vertical reserve anymore.
