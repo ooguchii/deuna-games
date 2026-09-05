@@ -66,6 +66,13 @@ assert.equal(legacyManualAutoplay.autoplayMs, 0);
 assert.equal(legacyManualAutoplay.autoplay, false, 'Legacy autoplayMs=0 must remain manual instead of inheriting an enabled autoplay switch');
 assert.equal(parse({ ...left, responsive: { ...left.responsive, desktop: { ...left.responsive.desktop, hiddenPositions: ['main'] } } }).success, false);
 assert.equal(parse({ ...left, responsive: { ...left.responsive, desktop: { ...left.responsive.desktop, visibleCards: 0 } } }).success, false);
+const expandedFrame = structuredClone(baseline);
+expandedFrame.responsive.desktop.cardWidth = 1800;
+expandedFrame.responsive.desktop.cardHeight = 1200;
+assert.ok(parse(expandedFrame).success, 'The editor must persist the expanded 1800×1200 frame range');
+const oversizedFrame = structuredClone(expandedFrame);
+oversizedFrame.responsive.desktop.cardWidth = 1801;
+assert.equal(parse(oversizedFrame).success, false, 'The editor must reject dimensions beyond the documented frame range');
 const pinned = games.slice(0, 5).map(game => game.slug);
 assert.equal(resolveHomeCollectionGames(games, 'hero', 'hybrid', pinned, 5).length, 5, 'A full mixed selection must not grow beyond the limit');
 assert.deepEqual(resolveHomeCollectionGames(games, 'hero', 'manual', pinned, 5).map(game => game.slug), pinned);
@@ -74,9 +81,9 @@ assert.equal(homeHeroEditorFormSchema.safeParse({
   expectedRevision: '1',
   heroJson: JSON.stringify({ mode: 'manual', slugs: tooManySlugs, copy: sourceHomeConfig.copy.hero, presentation: baseline }),
 }).success, false, 'The unified Hero editor must reject more games than the public Hero can display');
-console.log('Hero layouts: OK (persistence, centered one-sided layouts, legacy drafts, hidden slots, presets, autoplay compatibility, five-slide contract and mixed selection).');
+console.log('Hero layouts: OK (persistence, centered one-sided layouts, legacy drafts, hidden slots, presets, autoplay compatibility, expanded frame range, five-slide contract and mixed selection).');
 
-// Large/translated compositions must keep every enabled card within the frame.
+// Large/translated/rotated compositions must remain centered and fully inside.
 for (const alignment of ['left', 'center', 'right']) {
   for (const [width, height] of [[300, 400], [680, 500], [1440, 700]]) {
     for (const bounds of [
@@ -90,11 +97,12 @@ for (const alignment of ['left', 'center', 'right']) {
       assert.ok(bounds.right * fit.scale + fit.x <= width + 1e-6);
       assert.ok(bounds.top * fit.scale + fit.y >= 48 - 1e-6);
       assert.ok(bounds.bottom * fit.scale + fit.y <= height - 48 + 1e-6);
+      assert.equal(fit.x, (1 - fit.scale) * width / 2, 'Horizontal fitting must scale around the Hero center instead of translating a rotated composition sideways');
     }
   }
 }
 assert.equal(homeHeroSlotCSS('main'), '0px');
 assert.ok(homeHeroSlotCSS('right2').includes('var(--hero-card-width)'));
-console.log('Hero fitting: OK (center-origin scaling, vertical control clearance, perspective overflow and all alignments).');
+console.log('Hero fitting: OK (center-stable rotations, vertical control clearance, perspective overflow and all alignments).');
 
 assert.deepEqual(fitHomeHeroBounds({ left: 100, top: 60, right: 600, bottom: 400 }, 1440, 700), { scale: 1, x: 0, y: 0 }, 'Fitting must not cancel manual translations when the cards already fit');
