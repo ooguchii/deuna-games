@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 
@@ -7,6 +7,25 @@ const failures = [];
 
 const read = async (relativePath) =>
   readFile(path.join(root, relativePath), "utf8");
+
+async function sourceFiles(directory) {
+  const absolute = path.join(root, directory);
+  const entries = await readdir(absolute, { withFileTypes: true });
+  const files = [];
+
+  for (const entry of entries) {
+    const relative = path.join(directory, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...await sourceFiles(relative));
+      continue;
+    }
+    if (/\.(?:css|js|jsx|mjs|ts|tsx)$/.test(entry.name)) {
+      files.push(relative.replaceAll(path.sep, "/"));
+    }
+  }
+
+  return files;
+}
 
 function requireIncludes(content, marker, message) {
   if (!content.includes(marker)) {
@@ -157,27 +176,40 @@ requireIncludes(
 );
 
 /*
- * El Hero ya no debe crear una segunda escena ambiental a partir de la imagen
- * activa. El fondo configurado de la página es la única capa exterior detrás
- * del carrusel; así el Hero no puede oscurecer ni invadir la sección siguiente.
+ * El Hero no puede volver a crear una segunda escena ambiental ni conservar
+ * parámetros de esa implementación retirada. La comprobación recorre todo
+ * `src/` para que tampoco sobrevivan restos en schemas, tipos o editores.
  */
-for (const marker of [
+const forbiddenHeroAmbientMarkers = [
   "ambientBackdrop",
   "ambientFrame",
   "ambientImage",
   "ambientShade",
-]) {
-  requireExcludes(
-    hero,
-    marker,
-    `HeroSection: reapareció la capa ambiental eliminada (${marker}).`
-  );
-  requireExcludes(
-    heroComponent,
-    marker,
-    `HeroSection.tsx: reapareció la capa ambiental eliminada (${marker}).`
-  );
+  "ambientBlur",
+  "ambientOpacity",
+];
+
+for (const file of await sourceFiles("src")) {
+  const content = await read(file);
+  for (const marker of forbiddenHeroAmbientMarkers) {
+    requireExcludes(
+      content,
+      marker,
+      `${file}: quedó un resto de la capa ambiental eliminada (${marker}).`
+    );
+  }
 }
+
+requireExcludes(
+  hero,
+  "ambientBackdrop",
+  "HeroSection: reapareció la capa ambiental eliminada."
+);
+requireExcludes(
+  heroComponent,
+  "ambientBackdrop",
+  "HeroSection.tsx: reapareció la capa ambiental eliminada."
+);
 requireIncludes(
   hero,
   "var(--brand)",
@@ -206,6 +238,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Tema público: OK (marca/fondo dinámicos, contraste adaptable, Hero sin ambiente exterior y contratos heredados protegidos)."
+    "Tema público: OK (marca/fondo dinámicos, contraste adaptable, Hero sin capa ambiental ni restos heredados y contratos protegidos)."
   );
 }
