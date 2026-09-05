@@ -134,6 +134,19 @@ assert(
   "El Hero público debe reproducir Video continuo o Imagen+hover según el modo: el video queda limitado a la tarjeta principal, hover sólo se activa con puntero compatible y reduced-motion siempre lo deshabilita."
 );
 
+assert(
+  has(
+    heroSection,
+    "const [documentVisible, setDocumentVisible] = useState(true)",
+    "const syncVisibility = () => setDocumentVisible(!document.hidden)",
+    "syncVisibility();",
+    'document.addEventListener("visibilitychange", syncVisibility)',
+    'document.removeEventListener("visibilitychange", syncVisibility)'
+  ) &&
+    !heroSection.includes('typeof document === "undefined" || !document.hidden'),
+  "La visibilidad del documento del video Hero debe partir de un estado SSR/cliente idéntico y sincronizar document.hidden sólo después de hidratar."
+);
+
 if (failures.length) {
   console.error("\nHero hover video: ERROR\n");
   failures.forEach((failure) => console.error(`- ${failure}`));
@@ -141,5 +154,5 @@ if (failures.length) {
 }
 
 console.log(
-  "Hero hover video: OK (modo explícito Imagen | Video | Imagen+hover, selección/recortes por capa, preview responsive exacto y reproducción pública accesible)."
+  "Hero hover video: OK (modo explícito Imagen | Video | Imagen+hover, selección/recortes por capa, hidratación determinista y reproducción pública accesible)."
 );
