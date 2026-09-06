@@ -39,6 +39,8 @@ const [
   isolatedPreview,
   adminContext,
   homeAdminSections,
+  gamesForYourPc,
+  cardCarousel,
 ] = await Promise.all([
   source("src/data/home.ts"),
   source("src/lib/home/ranking.ts"),
@@ -65,6 +67,8 @@ const [
   source("src/components/admin/IsolatedPublicPreviewFrame.tsx"),
   source("src/components/admin/AdminContextBar.tsx"),
   source("src/lib/admin/home-admin-sections.ts"),
+  source("src/components/home/GamesForYourPC.tsx"),
+  source("src/components/ui/CardCarousel.tsx"),
 ]);
 
 assert(
@@ -135,12 +139,33 @@ assert(
 );
 
 assert(
+  (adminHomePage.match(/rankingReferenceTime=\{rankingReferenceTime\}/g) ?? [])
+    .length === 2 &&
+    curationEditor.includes("rankingReferenceTime: number") &&
+    curationEditor.includes("const rankingNow = rankingReferenceTime") &&
+    !curationEditor.includes("Date.now()"),
+  "Hero y Resto de Inicio deben congelar el mismo tipo de referencia temporal desde el servidor para evitar rankings distintos durante hidratación."
+);
+
+assert(
   homeContentEditor.includes("onSubmitCapture") &&
     homeContentEditor.includes("/api/admin/content/home/content") &&
     homeContentEditor.includes('input[name="curationJson"]') &&
     homeContentEditor.includes('input[name="presentationJson"]') &&
     homeContentEditor.includes("router.refresh()"),
   "Resto de Inicio debe interceptar los dos formularios y guardarlos mediante una única operación."
+);
+
+assert(
+  homeContentEditor.includes('form[data-home-editor-dirty="true"]') &&
+    homeContentEditor.includes("beforeunload") &&
+    homeContentEditor.includes('document.addEventListener("click", protectLinks, true)') &&
+    homeContentEditor.includes("window.confirm") &&
+    curationEditor.includes("data-home-editor-dirty") &&
+    presentationEditor.includes("data-home-editor-dirty") &&
+    !curationEditor.includes("beforeunload") &&
+    !presentationEditor.includes("beforeunload"),
+  "La protección contra pérdida de cambios de Resto de Inicio debe vivir en el coordinador y cubrir cierre de pestaña y navegación interna."
 );
 
 assert(
@@ -174,10 +199,14 @@ assert(
 
 assert(
   curationEditor.includes("deuna:home-curation-draft:latest") &&
-    curationEditor.includes("beforeunload") &&
+    curationEditor.includes("useState<CurationDraft | null>(null)") &&
+    curationEditor.includes("recoveryReady") &&
+    curationEditor.includes("isCurationDraft") &&
     presentationEditor.includes("deuna:home-presentation-draft:latest") &&
-    presentationEditor.includes("beforeunload"),
-  "Los dos bloques de Resto de Inicio deben conservar cambios locales y advertir antes de abandonar trabajo sin guardar."
+    presentationEditor.includes("useState<PresentationDraft | null>(null)") &&
+    presentationEditor.includes("recoveryReady") &&
+    presentationEditor.includes("hasSameShape"),
+  "Los dos bloques de Resto de Inicio deben leer copias locales después de hidratar, validarlas y conservarlas hasta una decisión explícita."
 );
 
 assert(
@@ -305,6 +334,20 @@ assert(
 );
 
 assert(
+  !gamesForYourPc.includes("/cuenta#mi-pc") &&
+    gamesForYourPc.includes('personalized ? "/cuenta"'),
+  "La Home personalizada no debe enlazar a un hash de Mi PC que el dashboard de cuenta no interpreta."
+);
+
+assert(
+  cardCarousel.includes("prefers-reduced-motion: reduce") &&
+    cardCarousel.includes("behavior: reducedMotion") &&
+    cardCarousel.includes('? "auto"') &&
+    cardCarousel.includes(': "smooth"'),
+  "Los carruseles de Inicio deben respetar movimiento reducido también en el scroll disparado por JavaScript."
+);
+
+assert(
   creationService.includes("addedAt: new Date().toISOString().slice(0, 10)"),
   "Los juegos nuevos deben conservar fecha UTC de incorporación."
 );
@@ -315,6 +358,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Home editorial: OK (ownership aislado, guardado atómico, catálogo público fail-closed, preview pública compartida y carga por sección)."
+    "Home editorial: OK (ownership aislado, guardado atómico, recuperación post-hidratación, navegación protegida, catálogo público fail-closed y preview pública compartida)."
   );
 }
