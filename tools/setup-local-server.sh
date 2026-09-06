@@ -15,11 +15,17 @@ declare -a temporary_files=()
 new_private_path=""
 migration_password=""
 runtime_password=""
+account_data_key=""
 
 cleanup() {
   migration_password=""
   runtime_password=""
-  unset PGPASSWORD DEUNA_SETUP_MIGRATION_PASSWORD DEUNA_SETUP_RUNTIME_PASSWORD
+  account_data_key=""
+  unset \
+    PGPASSWORD \
+    DEUNA_SETUP_MIGRATION_PASSWORD \
+    DEUNA_SETUP_RUNTIME_PASSWORD \
+    DEUNA_SETUP_ACCOUNT_DATA_KEY
 
   local temporary_file
   for temporary_file in "${temporary_files[@]}"; do
@@ -37,6 +43,9 @@ clear_inherited_environment() {
     DEUNA_ADMIN_ORIGIN \
     DEUNA_ADMIN_OWNER_USERNAME \
     DEUNA_ADMIN_OWNER_PASSWORD \
+    DEUNA_ACCOUNT_SESSION_DAYS \
+    DEUNA_ACCOUNT_DATA_KEY \
+    DEUNA_ACCOUNT_REGISTRATION_ENABLED \
     DEUNA_DATABASE_HOST \
     DEUNA_DATABASE_PORT \
     DEUNA_DATABASE_NAME \
@@ -85,6 +94,21 @@ read_env_value() {
   ' "${file}"
 }
 
+env_has_key() {
+  local file="$1"
+  local key="$2"
+
+  awk -v key="${key}" '
+    index($0, key "=") == 1 {
+      found = 1
+      exit
+    }
+    END {
+      exit found ? 0 : 1
+    }
+  ' "${file}"
+}
+
 require_env_value() {
   local file="$1"
   local key="$2"
@@ -102,6 +126,22 @@ require_generated_password() {
 
   [[ "${password}" =~ ^[0-9a-f]{64}$ ]] ||
     fail "${file} no contiene una credencial generada válida. No se modificó la base."
+}
+
+require_account_data_key() {
+  local key="$1"
+  local file="$2"
+
+  [[ "${key}" =~ ^[A-Za-z0-9_-]{43}$ ]] ||
+    fail "${file} no contiene una DEUNA_ACCOUNT_DATA_KEY base64url válida de 32 bytes."
+
+  DEUNA_SETUP_ACCOUNT_DATA_KEY="${key}" node -e '
+    const raw = process.env.DEUNA_SETUP_ACCOUNT_DATA_KEY ?? "";
+    const decoded = Buffer.from(raw, "base64url");
+    if (decoded.length !== 32 || decoded.toString("base64url") !== raw) {
+      process.exit(1);
+    }
+  ' || fail "${file} no contiene una DEUNA_ACCOUNT_DATA_KEY canónica de 32 bytes."
 }
 
 new_private_file() {
@@ -147,6 +187,9 @@ write_runtime_environment() {
     printf '%s\n' 'DEUNA_ADMIN_ENABLED=true'
     printf '%s\n' 'DEUNA_ADMIN_SESSION_HOURS=8'
     printf '%s\n' 'DEUNA_ADMIN_ORIGIN=http://localhost:3000'
+    printf '%s\n' 'DEUNA_ACCOUNT_SESSION_DAYS=30'
+    printf 'DEUNA_ACCOUNT_DATA_KEY=%s\n' "${account_data_key}"
+    printf '%s\n' 'DEUNA_ACCOUNT_REGISTRATION_ENABLED=auto'
     printf '%s\n' 'DEUNA_DATABASE_HOST=127.0.0.1'
     printf '%s\n' 'DEUNA_DATABASE_PORT=5432'
     printf '%s\n' 'DEUNA_DATABASE_NAME=deuna_games'
@@ -157,6 +200,45 @@ write_runtime_environment() {
 
   mv -- "${temporary_file}" "${RUNTIME_ENV}"
   chmod 600 -- "${RUNTIME_ENV}"
+}
+
+append_runtime_env_value() {
+  local key="$1"
+  local value="$2"
+
+  if env_has_key "${RUNTIME_ENV}" "${key}"; then
+    fail "${RUNTIME_ENV} contiene ${key} vacío. Corrige ese valor antes de continuar."
+  fi
+
+  printf '%s=%s\n' "${key}" "${value}" >>"${RUNTIME_ENV}"
+  chmod 600 -- "${RUNTIME_ENV}"
+}
+
+ensure_runtime_account_environment() {
+  [[ -f "${RUNTIME_ENV}" && ! -L "${RUNTIME_ENV}" ]] ||
+    fail "${RUNTIME_ENV} debe ser un archivo regular y no un enlace."
+  [[ -O "${RUNTIME_ENV}" ]] ||
+    fail "${RUNTIME_ENV} debe pertenecer al usuario actual."
+
+  local value
+
+  value="$(read_env_value "${RUNTIME_ENV}" DEUNA_ACCOUNT_SESSION_DAYS)"
+  if [[ -z "${value}" ]]; then
+    append_runtime_env_value DEUNA_ACCOUNT_SESSION_DAYS 30
+  fi
+
+  value="$(read_env_value "${RUNTIME_ENV}" DEUNA_ACCOUNT_DATA_KEY)"
+  if [[ -z "${value}" ]]; then
+    account_data_key="$(
+      node -e 'process.stdout.write(require("node:crypto").randomBytes(32).toString("base64url"))'
+    )"
+    append_runtime_env_value DEUNA_ACCOUNT_DATA_KEY "${account_data_key}"
+  fi
+
+  value="$(read_env_value "${RUNTIME_ENV}" DEUNA_ACCOUNT_REGISTRATION_ENABLED)"
+  if [[ -z "${value}" ]]; then
+    append_runtime_env_value DEUNA_ACCOUNT_REGISTRATION_ENABLED auto
+  fi
 }
 
 validate_migration_environment() {
@@ -201,6 +283,20 @@ validate_runtime_environment() {
     read_env_value "${RUNTIME_ENV}" DEUNA_DATABASE_PASSWORD
   )"
   require_generated_password "${runtime_password}" "${RUNTIME_ENV}"
+
+  account_data_key="$(
+    read_env_value "${RUNTIME_ENV}" DEUNA_ACCOUNT_DATA_KEY
+  )"
+  require_account_data_key "${account_data_key}" "${RUNTIME_ENV}"
+
+  local account_session_days
+  account_session_days="$(
+    read_env_value "${RUNTIME_ENV}" DEUNA_ACCOUNT_SESSION_DAYS
+  )"
+  [[ "${account_session_days}" =~ ^[0-9]+$ ]] &&
+    (( account_session_days >= 1 && account_session_days <= 90 )) ||
+    fail "${RUNTIME_ENV} debe configurar DEUNA_ACCOUNT_SESSION_DAYS entre 1 y 90."
+
   chmod 600 -- "${RUNTIME_ENV}"
 }
 
@@ -309,9 +405,13 @@ else
 fi
 
 if [[ -e "${RUNTIME_ENV}" ]]; then
+  ensure_runtime_account_environment
   validate_runtime_environment
 else
   runtime_password="$(openssl rand -hex 32)"
+  account_data_key="$(
+    node -e 'process.stdout.write(require("node:crypto").randomBytes(32).toString("base64url"))'
+  )"
   write_runtime_environment
   validate_runtime_environment
 fi
@@ -385,11 +485,13 @@ say "Ejecutando controles de privacidad y privilegios"
 npm run check:privacy
 npm run check:admin-security
 npm run admin:preflight:migration
+npm run admin:preflight:local
 
 NODE_ENV=production \
 NEXT_PUBLIC_SITE_URL=https://localhost \
 DEUNA_ADMIN_ENABLED=false \
 DEUNA_ADMIN_ORIGIN=https://localhost \
+DEUNA_ACCOUNT_DATA_KEY="${account_data_key}" \
   npm run admin:preflight:runtime
 
 npm run audit:deps

@@ -170,11 +170,15 @@ El área `/admin` incorpora:
 
 ### Entorno local seguro
 
-El flujo local soportado usa WSL2/Ubuntu con PostgreSQL en loopback. El instalador repetible es:
+El flujo local soportado usa WSL2/Ubuntu con PostgreSQL en loopback. El bootstrap completo exige Node.js 24 o superior y PostgreSQL 18 o superior con `data_checksums=on`; el repositorio debe estar dentro del filesystem Linux y no bajo `/mnt/*`. La CI mantiene además una base aislada en PostgreSQL 17 para detectar incompatibilidades de la aplicación, sin rebajar el baseline endurecido del instalador local.
+
+El instalador repetible es:
 
 ```bash
 npm run local:setup
 ```
+
+`local:setup` crea o valida `.env.local` y `.env.admin-migration.local` con permisos privados, mantiene separadas las credenciales runtime/migrador y genera la clave `DEUNA_ACCOUNT_DATA_KEY` necesaria para cifrar datos opcionales de cuentas. Si encuentra un `.env.local` antiguo creado sin las variables de cuentas, completa únicamente ese contrato sin rotar las credenciales de PostgreSQL. Antes de terminar ejecuta el preflight contra los env files y la base locales reales.
 
 Para actualizar un entorno ya instalado después de traer cambios editoriales/migraciones:
 
