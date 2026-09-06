@@ -450,6 +450,7 @@ export default function HomeCurationEditor({
     storedDraft,
   ]);
   const recoveryMatchesRevision = recovery?.revision === revision;
+  const recoveryRequiresDecision = Boolean(recovery);
 
   useEffect(() => {
     if (!recoveryReady || recovery) return;
@@ -562,8 +563,8 @@ export default function HomeCurationEditor({
             <h2>Cambios locales recuperables</h2>
             <p>
               {recoveryMatchesRevision
-                ? "Hay una copia local de esta revisión que todavía no fue guardada."
-                : `Hay una copia local iniciada en la revisión ${recovery.revision}, pero el servidor ya está en la revisión ${revision}. Por seguridad no puede recuperarse automáticamente sobre una revisión posterior.`}
+                ? "Hay una copia local de esta revisión que todavía no fue guardada. Recupérala o descártala antes de continuar editando."
+                : `Hay una copia local iniciada en la revisión ${recovery.revision}, pero el servidor ya está en la revisión ${revision}. Por seguridad no puede recuperarse automáticamente sobre una revisión posterior. Descarta la copia para desbloquear la edición de la revisión actual.`}
             </p>
           </div>
           <div className={styles.rowActions}>
@@ -592,7 +593,7 @@ export default function HomeCurationEditor({
         </section>
       )}
 
-      <section className={styles.overview}>
+      <section className={styles.overview} inert={recoveryRequiresDecision}>
         <div>
           <span>CURADURÍA INTELIGENTE</span>
           <h2>Control editorial + ranking automático</h2>
@@ -619,6 +620,7 @@ export default function HomeCurationEditor({
       <nav
         className={styles.collectionTabs}
         aria-label="Bloques de juegos de la portada"
+        inert={recoveryRequiresDecision}
       >
         {visibleCollections.map((collection) => {
           const selected = collection.id === active;
@@ -642,7 +644,7 @@ export default function HomeCurationEditor({
         })}
       </nav>
 
-      <section className={styles.workspace}>
+      <section className={styles.workspace} inert={recoveryRequiresDecision}>
         <header className={styles.workspaceHeader}>
           <div>
             <span>{meta.label}</span>
@@ -973,7 +975,7 @@ export default function HomeCurationEditor({
         </div>
       </section>
 
-      <footer className={styles.actions}>
+      <footer className={styles.actions} inert={recoveryRequiresDecision}>
         <div>
           <strong>Guardar sólo actualiza el borrador</strong>
           <span>
