@@ -120,6 +120,19 @@ assert(
 );
 
 assert(
+  themeContract.includes('button[aria-label^="Subir "]') &&
+    themeContract.includes('button[aria-label^="Bajar "]') &&
+    themeContract.includes('button[aria-label^="Quitar "]') &&
+    themeContract.includes('button[title="Deshacer"]') &&
+    themeContract.includes('button[title="Rehacer"]') &&
+    themeContract.includes('details > summary') &&
+    themeContract.includes('a[href*="?seccion=multimedia#"]') &&
+    themeContract.includes("min-width: 44px") &&
+    themeContract.includes("min-height: 44px"),
+  "Los controles editoriales compactos de Inicio deben conservar hit-areas táctiles reales de al menos 44px."
+);
+
+assert(
   shellUx.includes('.main :is(a, button):focus-visible') &&
     shellUx.includes('.main :is(input, textarea, select):focus-visible') &&
     shellUx.includes('.main input[type="search"]:focus-visible') &&
@@ -339,6 +352,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    `Accesibilidad administrativa: OK (${adminCssFiles.length} módulos revisados; identidad dinámica y contrastada, navegación móvil desplegable, login accesible, skip-link único, contraste adaptable, escala legible, foco único, tema adaptativo, teclado, movimiento reducido, publicación anunciable y catálogos semánticos).`
+    `Accesibilidad administrativa: OK (${adminCssFiles.length} módulos revisados; identidad dinámica y contrastada, navegación móvil desplegable, login accesible, skip-link único, contraste adaptable, escala legible, foco único, tema adaptativo, teclado, movimiento reducido, publicación anunciable, targets editoriales táctiles y catálogos semánticos).`
   );
 }
