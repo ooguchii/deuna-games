@@ -357,7 +357,8 @@ export default function HomeHeroLivePreview({
         style={{
           height: visiblePreviewHeight * scale,
           position: "relative",
-          overflow: "hidden",
+          // Focus inside the iframe must not scroll this cropped canvas.
+          overflow: "clip",
         }}
       >
         <IsolatedPublicPreviewFrame

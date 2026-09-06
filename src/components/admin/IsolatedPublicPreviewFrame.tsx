@@ -12,6 +12,21 @@ import { createPortal } from "react-dom";
 const documentHtml =
   '<!doctype html><html lang="es"><head><meta name="viewport" content="width=device-width, initial-scale=1"></head><body><div id="preview"></div></body></html>';
 
+const stylesheetSelector = 'link[rel="stylesheet"], style';
+
+function changesPreviewStyles(mutation: MutationRecord) {
+  const target = mutation.target instanceof Element
+    ? mutation.target
+    : mutation.target.parentElement;
+  if (mutation.type === "attributes" && target?.tagName === "LINK") return true;
+  if (target?.closest(stylesheetSelector)) return true;
+  return [...mutation.addedNodes, ...mutation.removedNodes].some(
+    (node) => node instanceof Element && (
+      node.matches(stylesheetSelector) || node.querySelector(stylesheetSelector)
+    )
+  );
+}
+
 function hashText(value: string) {
   let hash = 2_166_136_261;
   for (let index = 0; index < value.length; index += 1) {
@@ -23,14 +38,14 @@ function hashText(value: string) {
 
 function previewStyleSignature() {
   return Array.from(
-    document.querySelectorAll('link[rel="stylesheet"], style')
+    document.querySelectorAll(stylesheetSelector)
   )
     .map((node) => {
       if (node instanceof HTMLLinkElement) {
-        return `link:${node.href}:${node.media}`;
+        return `link:${node.href}:${node.media}:${node.disabled}`;
       }
       const content = node.textContent ?? "";
-      return `style:${content.length}:${hashText(content)}`;
+      return `style:${node.getAttribute("media") ?? ""}:${content.length}:${hashText(content)}`;
     })
     .join("|");
 }
@@ -41,9 +56,8 @@ async function synchronizePreviewStyles(doc: Document) {
   );
   const loaded: Promise<void>[] = [];
 
-  for (const node of document.querySelectorAll(
-    'link[rel="stylesheet"], style'
-  )) {
+  for (const node of document.querySelectorAll(stylesheetSelector)) {
+    if (node instanceof HTMLLinkElement && node.disabled) continue;
     const copy = node.cloneNode(true) as HTMLElement;
     copy.setAttribute("data-public-preview-style", "");
 
@@ -128,16 +142,25 @@ export default function IsolatedPublicPreviewFrame({
     if (!doc) return;
 
     let disposed = false;
+    let synchronizing = false;
+    let pending = false;
 
     const synchronize = async (force = false) => {
+      if (synchronizing) {
+        pending = true;
+        return;
+      }
       const signature = previewStyleSignature();
       if (!force && signature === lastStyleSignature.current) {
         synchronizeRootIdentity(doc);
         return;
       }
 
-      lastStyleSignature.current = signature;
+      synchronizing = true;
       await synchronizePreviewStyles(doc);
+      synchronizing = false;
+      if (disposed) return;
+      lastStyleSignature.current = signature;
       synchronizeRootIdentity(doc);
       if (!disposed) {
         setReadyTarget(target);
@@ -145,6 +168,10 @@ export default function IsolatedPublicPreviewFrame({
         if (view) {
           view.dispatchEvent(new view.Event("resize"));
         }
+      }
+      if (pending) {
+        pending = false;
+        void synchronize();
       }
     };
 
@@ -157,13 +184,17 @@ export default function IsolatedPublicPreviewFrame({
 
     void synchronize(true);
 
-    const headObserver = new MutationObserver(scheduleSynchronize);
-    headObserver.observe(document.head, {
+    // React/Next can place route styles in the body as well as the head.
+    // Ignore ordinary editor mutations so previews only reload styles when needed.
+    const styleObserver = new MutationObserver((mutations) => {
+      if (mutations.some(changesPreviewStyles)) scheduleSynchronize();
+    });
+    styleObserver.observe(document.documentElement, {
       childList: true,
       subtree: true,
       characterData: true,
       attributes: true,
-      attributeFilter: ["href", "media"],
+      attributeFilter: ["href", "media", "rel", "disabled"],
     });
 
     const identityObserver = new MutationObserver(() => {
@@ -189,7 +220,7 @@ export default function IsolatedPublicPreviewFrame({
     return () => {
       disposed = true;
       window.cancelAnimationFrame(syncFrame.current);
-      headObserver.disconnect();
+      styleObserver.disconnect();
       identityObserver.disconnect();
       doc.removeEventListener("click", openPublicLink, true);
     };
@@ -208,6 +239,7 @@ export default function IsolatedPublicPreviewFrame({
           transformOrigin: "top left",
           border: 0,
           position: "absolute",
+          top: 0,
           left: "50%",
           marginLeft: -(width * scale) / 2,
         }}
