@@ -27,6 +27,9 @@ import {
 import {
   getPublicGames,
 } from "@/lib/games/public-catalog";
+import {
+  getHomeRankingReferenceTime,
+} from "@/lib/home/server-ranking-reference";
 import { getPublicSiteConfig } from "@/lib/site/public-site-config";
 
 import styles from "../../admin.module.css";
@@ -74,7 +77,7 @@ export default async function AdminHomeEditorPage({
   let sectionContent: ReactNode = null;
 
   if (section === "hero") {
-    const rankingReferenceTime = Date.now();
+    const rankingReferenceTime = getHomeRankingReferenceTime();
     const [games, publicGames, siteConfig] = await Promise.all([
       listEditorialItems("game"),
       getPublicGames(),
