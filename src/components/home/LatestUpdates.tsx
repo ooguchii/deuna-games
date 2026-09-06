@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 
 import GameMedia from "@/components/ui/GameMedia";
+import touchStyles from "@/components/ui/TouchTarget.module.css";
 import type { HomeCopy } from "@/data/home-config";
 import {
   formatUpdateDate,
@@ -51,7 +52,10 @@ export default function LatestUpdates({
           </span>
         </h2>
 
-        <Link href="/actualizaciones">
+        <Link
+          href="/actualizaciones"
+          className={touchStyles.hitArea}
+        >
           {copy.linkLabel}
         </Link>
       </div>
