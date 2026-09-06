@@ -203,7 +203,7 @@ export default function HomeContentEditor({
           <span>
             {error
               ? "Tus cambios siguen conservados en esta pestaña. Revisa el aviso del editor y vuelve a guardar cuando corresponda."
-              : "Curaduría, orden, visibilidad y textos se guardan juntos. Pulsar Guardar en cualquiera de los dos bloques conserva todos los cambios pendientes antes de crear la nueva revisión."}
+              : "Curaduría, orden, visibilidad y textos se guardan juntos. Pulsa Guardar en el bloque que tenga cambios para conservar todo lo pendiente antes de crear la nueva revisión."}
           </span>
         </div>
         <b>{saving ? "GUARDANDO…" : `REVISIÓN ${revision}`}</b>
