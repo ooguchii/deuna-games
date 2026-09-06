@@ -1,6 +1,8 @@
 import {
   hasGameCivilDateSyntax,
+  hasGameIsoDatePrefix,
   parseGameCivilDate,
+  parseGameIsoDatePrefix,
 } from "@/lib/games/game-date";
 import type { Game } from "@/types/game";
 import type {
@@ -126,6 +128,13 @@ export function parseGameDate(
 
   // Do not let Date.parse normalize impossible civil dates such as 31/02.
   if (hasGameCivilDateSyntax(trimmed)) {
+    return 0;
+  }
+
+  if (
+    hasGameIsoDatePrefix(trimmed) &&
+    parseGameIsoDatePrefix(trimmed) === null
+  ) {
     return 0;
   }
 
