@@ -41,6 +41,9 @@ const [
   homeAdminSections,
   gamesForYourPc,
   cardCarousel,
+  accountPage,
+  accountDashboard,
+  accountDashboardView,
 ] = await Promise.all([
   source("src/data/home.ts"),
   source("src/lib/home/ranking.ts"),
@@ -69,6 +72,9 @@ const [
   source("src/lib/admin/home-admin-sections.ts"),
   source("src/components/home/GamesForYourPC.tsx"),
   source("src/components/ui/CardCarousel.tsx"),
+  source("src/app/cuenta/page.tsx"),
+  source("src/app/cuenta/AccountDashboardClient.tsx"),
+  source("src/lib/accounts/dashboard-view.ts"),
 ]);
 
 assert(
@@ -199,14 +205,20 @@ assert(
 
 assert(
   curationEditor.includes("deuna:home-curation-draft:latest") &&
-    curationEditor.includes("useState<CurationDraft | null>(null)") &&
-    curationEditor.includes("recoveryReady") &&
-    curationEditor.includes("isCurationDraft") &&
+    curationEditor.includes("useSyncExternalStore") &&
+    curationEditor.includes("const storedDraft = useSyncExternalStore") &&
+    curationEditor.includes("const recovery = useMemo") &&
+    curationEditor.includes("parseRecoveryDraft") &&
+    curationEditor.includes("recoveryDismissed") &&
+    !curationEditor.includes("setRecovery(") &&
     presentationEditor.includes("deuna:home-presentation-draft:latest") &&
-    presentationEditor.includes("useState<PresentationDraft | null>(null)") &&
-    presentationEditor.includes("recoveryReady") &&
-    presentationEditor.includes("hasSameShape"),
-  "Los dos bloques de Resto de Inicio deben leer copias locales después de hidratar, validarlas y conservarlas hasta una decisión explícita."
+    presentationEditor.includes("useSyncExternalStore") &&
+    presentationEditor.includes("const storedDraft = useSyncExternalStore") &&
+    presentationEditor.includes("const recovery = useMemo") &&
+    presentationEditor.includes("parseRecoveryDraft") &&
+    presentationEditor.includes("recoveryDismissed") &&
+    !presentationEditor.includes("setRecovery("),
+  "Los dos bloques de Resto de Inicio deben leer storage como snapshot post-hidratación, derivar recuperación sin setState en efectos, validarla y conservarla hasta una decisión explícita."
 );
 
 assert(
@@ -335,8 +347,16 @@ assert(
 
 assert(
   !gamesForYourPc.includes("/cuenta#mi-pc") &&
-    gamesForYourPc.includes('personalized ? "/cuenta"'),
-  "La Home personalizada no debe enlazar a un hash de Mi PC que el dashboard de cuenta no interpreta."
+    gamesForYourPc.includes('personalized ? "/cuenta?vista=pc"') &&
+    accountPage.includes("resolveAccountDashboardView") &&
+    accountPage.includes("searchParams") &&
+    accountPage.includes("initialView={initialView}") &&
+    accountDashboard.includes("initialView: AccountDashboardView") &&
+    accountDashboard.includes("useState<AccountDashboardView>(initialView)") &&
+    accountDashboardView.includes('"overview"') &&
+    accountDashboardView.includes('"pc"') &&
+    accountDashboardView.includes(': "overview"'),
+  "La Home personalizada debe abrir Mi PC mediante un deep-link SSR determinista y con fallback seguro."
 );
 
 assert(
@@ -358,6 +378,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Home editorial: OK (ownership aislado, guardado atómico, recuperación post-hidratación, navegación protegida, catálogo público fail-closed y preview pública compartida)."
+    "Home editorial: OK (ownership aislado, guardado atómico, recuperación post-hidratación, navegación protegida, deep-link de Mi PC, catálogo público fail-closed y preview pública compartida)."
   );
 }
