@@ -96,6 +96,13 @@ type Notification = {
   publishedAt: string;
 };
 
+type PerformanceEstimate = {
+  minFps: number;
+  maxFps: number;
+  tier: "excellent" | "good" | "acceptable" | "basic";
+  confidence: "high" | "medium" | "low";
+};
+
 type Recommendation = {
   slug: string;
   title: string;
@@ -104,7 +111,7 @@ type Recommendation = {
   imageViewport?: GameImageViewport;
   rating?: number;
   reasons: string[];
-  compatibilityPercent: number | null;
+  performanceEstimate: PerformanceEstimate | null;
 };
 
 type ApiResult = {
@@ -123,8 +130,8 @@ type DashboardProps = {
   gpus: HardwareOption[];
   notifications: Notification[];
   recommendations: Recommendation[];
-  compatibilityPercent: number | null;
-  compatibilityLabel: string;
+  hardwareEstimateCount: number;
+  hardwareCoveragePercent: number | null;
   rewards: AccountRewardsSnapshot;
 };
 
@@ -138,6 +145,19 @@ const memoryLabels: Record<NonNullable<HardwareSelection>["memoryMode"], string>
   unknown: "No especificada",
   single: "Single channel",
   dual: "Dual channel",
+};
+
+const performanceTierLabels: Record<PerformanceEstimate["tier"], string> = {
+  excellent: "Excelente",
+  good: "Buena",
+  acceptable: "Aceptable",
+  basic: "Básica",
+};
+
+const confidenceLabels: Record<PerformanceEstimate["confidence"], string> = {
+  high: "alta",
+  medium: "media",
+  low: "baja",
 };
 
 async function postForm(
@@ -221,6 +241,8 @@ function RecommendationCard({
 }: {
   recommendation: Recommendation;
 }) {
+  const estimate = recommendation.performanceEstimate;
+
   return (
     <Link
       href={`/juegos/${recommendation.slug}`}
@@ -247,11 +269,17 @@ function RecommendationCard({
               ? `★ ${recommendation.rating.toFixed(1)}/5`
               : "Selección DeUna"}
           </span>
-          {recommendation.compatibilityPercent !== null && (
-            <b>{recommendation.compatibilityPercent}% compatible</b>
+          {estimate && (
+            <b>
+              {estimate.minFps}–{estimate.maxFps} FPS estimados
+            </b>
           )}
         </div>
-        <small>{recommendation.reasons[0] ?? "Recomendado para ti"}</small>
+        <small>
+          {estimate
+            ? `${performanceTierLabels[estimate.tier]} · confianza ${confidenceLabels[estimate.confidence]}`
+            : recommendation.reasons[0] ?? "Recomendado para ti"}
+        </small>
       </div>
     </Link>
   );
@@ -268,8 +296,8 @@ export default function AccountDashboardClient({
   gpus,
   notifications,
   recommendations,
-  compatibilityPercent,
-  compatibilityLabel,
+  hardwareEstimateCount,
+  hardwareCoveragePercent,
   rewards,
 }: DashboardProps) {
   const router = useRouter();
@@ -433,7 +461,7 @@ export default function AccountDashboardClient({
       }
 
       setHardwareMessage(
-        "PC guardada. DeUna ya puede usarla para ordenar compatibilidad."
+        "PC guardada. DeUna ya puede usarla para ordenar recomendaciones por rendimiento estimado."
       );
       router.refresh();
     } catch {
@@ -609,7 +637,10 @@ export default function AccountDashboardClient({
           </div>
           <div className={styles.statItem}>
             <span className={styles.statIcon}><Gauge size={22} /></span>
-            <div><strong>{compatibilityLabel}</strong><small>Compatibilidad general</small></div>
+            <div>
+              <strong>{hardware ? hardwareEstimateCount : "—"}</strong>
+              <small>{hardware ? "Juegos con estimación FPS" : "Configura Mi PC"}</small>
+            </div>
           </div>
         </section>
 
@@ -658,18 +689,19 @@ export default function AccountDashboardClient({
                 </dl>
                 <div className={styles.performanceBox}>
                   <div>
-                    <span>Rendimiento promedio en juegos</span>
-                    <strong>{compatibilityLabel}</strong>
-                    <small>Basado en tu configuración actual</small>
+                    <span>Cobertura del motor FPS</span>
+                    <strong>{hardwareEstimateCount} de {games.length} juegos</strong>
+                    <small>Con calibración para rango estimado en 1080p medio.</small>
                   </div>
-                  {compatibilityPercent !== null && (
+                  {hardwareCoveragePercent !== null && (
                     <div
                       className={styles.performanceGauge}
                       style={{
-                        "--gauge": `${compatibilityPercent * 3.6}deg`,
+                        "--gauge": `${hardwareCoveragePercent * 3.6}deg`,
                       } as CSSProperties}
+                      aria-label={`${hardwareCoveragePercent}% del catálogo tiene estimación FPS disponible`}
                     >
-                      <span>{compatibilityPercent}%</span>
+                      <span>{hardwareCoveragePercent}%</span>
                     </div>
                   )}
                 </div>
@@ -926,7 +958,7 @@ export default function AccountDashboardClient({
               Configúrala una vez y DeUna reutiliza esos datos explícitos en FPS y recomendaciones.
             </p>
           </div>
-          {hardware && <strong>{compatibilityLabel}</strong>}
+          {hardware && <strong>{hardwareEstimateCount} estimables</strong>}
         </div>
 
         <div className={styles.pcWorkspace}>
@@ -1011,11 +1043,13 @@ export default function AccountDashboardClient({
 
           <div className={styles.pcSummaryLarge}>
             <MonitorCog size={30} />
-            <span>Compatibilidad general</span>
-            <strong>{compatibilityLabel}</strong>
-            {compatibilityPercent !== null && <b>{compatibilityPercent}%</b>}
+            <span>Cobertura de estimaciones</span>
+            <strong>{hardwareEstimateCount} de {games.length} juegos</strong>
+            {hardwareCoveragePercent !== null && (
+              <b>{hardwareCoveragePercent}% del catálogo</b>
+            )}
             <small>
-              Estimación orientativa con el mismo motor de FPS de DeUna.
+              Este porcentaje mide cobertura de calibración, no compatibilidad. Los FPS se muestran por juego como rangos estimados y con nivel de confianza.
             </small>
           </div>
         </div>
@@ -1095,7 +1129,7 @@ export default function AccountDashboardClient({
             <span>PARA TI</span>
             <h1>Descubrimientos</h1>
             <p>
-              Ordenados por tus elecciones explícitas y por la compatibilidad de Mi PC cuando está configurada.
+              Ordenados por tus elecciones explícitas y por el rendimiento estimado de Mi PC cuando está configurada.
             </p>
           </div>
           <strong>{recommendations.length} sugerencias</strong>
