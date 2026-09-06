@@ -54,6 +54,7 @@
     "check:css-vars": "node ./tools/check-css-vars.mjs",
     "check:css-modules": "node ./tools/check-css-modules.mjs",
     "smoke": "node ./tools/smoke-test.mjs",
+    "visual:smoke": "node ./tools/visual-smoke.mjs",
     "check": "npm run lint && npm run typecheck && npm run check:architecture && npm run check:maintenance && npm run check:source && npm run check:encoding && npm run check:privacy && npm run check:admin-security && npm run check:admin-content && npm run check:data && npm run check:assets && npm run check:routes && npm run check:css-vars && npm run check:css-modules && npm run build && npm run smoke",
     "audit:deps": "npm audit --audit-level=high",
     "audit:prod": "npm audit --omit=dev --audit-level=high",
