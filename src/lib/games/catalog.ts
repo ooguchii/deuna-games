@@ -1,3 +1,9 @@
+import {
+  hasGameCivilDateSyntax,
+  hasGameIsoDatePrefix,
+  parseGameCivilDate,
+  parseGameIsoDatePrefix,
+} from "@/lib/games/game-date";
 import type { Game } from "@/types/game";
 import type {
   GameTaxonomyTerm,
@@ -110,32 +116,29 @@ export function reviewScore(
 export function parseGameDate(
   value?: string
 ) {
-  if (!value) {
+  const trimmed = value?.trim();
+  if (!trimmed) {
     return 0;
   }
 
-  const ddmmyyyy =
-    value.match(
-      /^(\d{2})\/(\d{2})\/(\d{4})$/
-    );
-
-  if (ddmmyyyy) {
-    const [
-      ,
-      day,
-      month,
-      year,
-    ] = ddmmyyyy;
-
-    return Date.UTC(
-      Number(year),
-      Number(month) - 1,
-      Number(day)
-    );
+  const civil = parseGameCivilDate(trimmed);
+  if (civil !== null) {
+    return civil;
   }
 
-  const parsed =
-    Date.parse(value);
+  // Do not let Date.parse normalize impossible civil dates such as 31/02.
+  if (hasGameCivilDateSyntax(trimmed)) {
+    return 0;
+  }
+
+  if (
+    hasGameIsoDatePrefix(trimmed) &&
+    parseGameIsoDatePrefix(trimmed) === null
+  ) {
+    return 0;
+  }
+
+  const parsed = Date.parse(trimmed);
 
   return Number.isNaN(parsed)
     ? 0

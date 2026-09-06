@@ -27,6 +27,7 @@ import {
 import HeroNavigation, { type HeroNavigationEditor } from "@/components/home/HeroNavigation";
 import FramedVideo from "@/components/ui/FramedVideo";
 import GameMedia from "@/components/ui/GameMedia";
+import { formatGameReleaseDate } from "@/lib/games/game-date";
 import { resolveHeroDeviceDesign } from "@/lib/home/hero-device-design";
 import { homeHeroDeviceForWidth } from "@/lib/home/hero-devices";
 import type { HomeHeroDevice, HomeHeroPresentation } from "@/data/home-config";
@@ -119,37 +120,6 @@ function heroTitleParts(game: Game) {
   };
 }
 
-function formatReleaseDate(value: string | undefined) {
-  if (!value) return null;
-  const trimmed = value.trim();
-  if (!trimmed) return null;
-
-  const localDate = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(trimmed);
-  if (localDate) {
-    const [, day, month, year] = localDate;
-    const parsed = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
-    if (!Number.isNaN(parsed.valueOf())) {
-      return new Intl.DateTimeFormat("es", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-        timeZone: "UTC",
-      }).format(parsed);
-    }
-  }
-
-  const parsed = new Date(trimmed);
-  if (!Number.isNaN(parsed.valueOf())) {
-    return new Intl.DateTimeFormat("es", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    }).format(parsed);
-  }
-
-  return trimmed;
-}
-
 function heroFacts(game: Game): HeroFact[] {
   const facts: HeroFact[] = [];
 
@@ -165,7 +135,7 @@ function heroFacts(game: Game): HeroFact[] {
     facts.push({ kind: "developer", label: game.developer.trim() });
   }
 
-  const release = formatReleaseDate(game.releaseDate);
+  const release = formatGameReleaseDate(game.releaseDate);
   if (release) {
     facts.push({ kind: "release", label: release });
   }
