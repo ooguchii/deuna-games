@@ -1,0 +1,62 @@
+/* Site-wide mobile interaction contract.
+ *
+ * Every actionable control must expose a real touch target of at least 44px on
+ * narrow viewports. This complements component styling instead of changing the
+ * visual density of inline text links. Keep exceptions visual-only: the update
+ * carousel uses a 44px button while drawing its compact progress bar inside.
+ */
+
+@media (max-width: 680px) {
+  body :where(button, summary) {
+    min-inline-size: 44px !important;
+    min-block-size: 44px !important;
+  }
+
+  body :where(
+    input:not([type="hidden"]):not([type="radio"]):not([type="checkbox"]),
+    select,
+    textarea
+  ) {
+    min-block-size: 44px !important;
+  }
+
+  body a[href] {
+    min-block-size: 44px;
+  }
+
+  nav[aria-label="Migas de pan"] a[href] {
+    min-inline-size: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  [role="tablist"][aria-label="Seleccionar actualización destacada"] {
+    gap: 0 !important;
+  }
+
+  [role="tablist"][aria-label="Seleccionar actualización destacada"] button {
+    position: relative;
+    width: 44px !important;
+    height: 44px !important;
+    display: grid !important;
+    place-items: center;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  [role="tablist"][aria-label="Seleccionar actualización destacada"] button::before {
+    content: "";
+    width: 20px;
+    height: 4px;
+    border-radius: var(--radius-pill);
+    background: rgba(255, 255, 255, 0.27);
+  }
+
+  [role="tablist"][aria-label="Seleccionar actualización destacada"] button[aria-selected="true"]::before {
+    width: 30px;
+    background: var(--brand);
+    box-shadow: 0 0 14px color-mix(in srgb, var(--brand) 48%, transparent);
+  }
+}
