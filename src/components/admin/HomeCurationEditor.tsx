@@ -20,6 +20,7 @@ import {
   useEffect,
   useMemo,
   useState,
+  useSyncExternalStore,
 } from "react";
 
 import type {
@@ -41,6 +42,9 @@ import styles from "./HomeCurationEditor.module.css";
 
 const CURATION_DRAFT_KEY = "deuna:home-curation-draft:latest";
 const slugPattern = /^[a-z0-9][a-z0-9._-]*$/;
+const subscribeStorage = () => () => {};
+const clientReady = () => true;
+const serverReady = () => false;
 
 const collections: Array<{
   id: HomeCurationCollectionId;
@@ -238,20 +242,21 @@ function clearRecoveryDraft() {
   }
 }
 
-function readRecoveryDraft(): CurationDraft | null {
+function readRecoveryRaw() {
   try {
-    const raw = sessionStorage.getItem(CURATION_DRAFT_KEY);
-    if (!raw) return null;
-
-    const parsed: unknown = JSON.parse(raw);
-    if (!isCurationDraft(parsed)) {
-      clearRecoveryDraft();
-      return null;
-    }
-
-    return parsed;
+    return sessionStorage.getItem(CURATION_DRAFT_KEY);
   } catch {
-    clearRecoveryDraft();
+    return null;
+  }
+}
+
+function parseRecoveryDraft(raw: string | null): CurationDraft | null {
+  if (!raw) return null;
+
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return isCurationDraft(parsed) ? parsed : null;
+  } catch {
     return null;
   }
 }
@@ -311,8 +316,17 @@ export default function HomeCurationEditor({
   const [selections, setSelections] =
     useState<SelectionState>(() => structuredClone(baselineSelections));
   const [query, setQuery] = useState("");
-  const [recovery, setRecovery] = useState<CurationDraft | null>(null);
-  const [recoveryReady, setRecoveryReady] = useState(false);
+  const [recoveryDismissed, setRecoveryDismissed] = useState(false);
+  const recoveryReady = useSyncExternalStore(
+    subscribeStorage,
+    clientReady,
+    serverReady
+  );
+  const storedDraft = useSyncExternalStore(
+    subscribeStorage,
+    readRecoveryRaw,
+    () => null
+  );
   const rankingNow = rankingReferenceTime;
 
   const meta = collections.find(
@@ -398,42 +412,39 @@ export default function HomeCurationEditor({
     [modes, selections]
   );
   const dirty = serialized !== baselinePayload;
+  const recovery = useMemo(() => {
+    if (!storedDraft || recoveryDismissed) return null;
 
-  useEffect(() => {
-    const candidate = readRecoveryDraft();
+    const candidate = parseRecoveryDraft(storedDraft);
+    if (!candidate) return null;
 
-    if (candidate) {
-      const resolvedCandidate = excludeHero
-        ? {
-            ...candidate,
-            modes: {
-              ...candidate.modes,
-              hero: baselineModes.hero,
-            },
-            selections: {
-              ...candidate.selections,
-              hero: [...baselineSelections.hero],
-            },
-          }
-        : candidate;
-      const candidatePayload = buildCurationPayload(
-        resolvedCandidate.modes,
-        resolvedCandidate.selections
-      );
+    const resolvedCandidate = excludeHero
+      ? {
+          ...candidate,
+          modes: {
+            ...candidate.modes,
+            hero: baselineModes.hero,
+          },
+          selections: {
+            ...candidate.selections,
+            hero: [...baselineSelections.hero],
+          },
+        }
+      : candidate;
 
-      if (candidatePayload === baselinePayload) {
-        clearRecoveryDraft();
-      } else {
-        setRecovery(resolvedCandidate);
-      }
-    }
-
-    setRecoveryReady(true);
+    return buildCurationPayload(
+      resolvedCandidate.modes,
+      resolvedCandidate.selections
+    ) === baselinePayload
+      ? null
+      : resolvedCandidate;
   }, [
     baselineModes,
     baselinePayload,
     baselineSelections,
     excludeHero,
+    recoveryDismissed,
+    storedDraft,
   ]);
 
   useEffect(() => {
@@ -554,7 +565,7 @@ export default function HomeCurationEditor({
               onClick={() => {
                 setModes(structuredClone(recovery.modes));
                 setSelections(structuredClone(recovery.selections));
-                setRecovery(null);
+                setRecoveryDismissed(true);
               }}
             >
               Recuperar
@@ -563,7 +574,7 @@ export default function HomeCurationEditor({
               type="button"
               onClick={() => {
                 clearRecoveryDraft();
-                setRecovery(null);
+                setRecoveryDismissed(true);
               }}
             >
               Descartar
