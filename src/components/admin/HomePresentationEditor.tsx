@@ -277,6 +277,7 @@ export default function HomePresentationEditor({
     storedDraft,
   ]);
   const recoveryMatchesRevision = recovery?.revision === revision;
+  const recoveryIsStale = Boolean(recovery && !recoveryMatchesRevision);
 
   useEffect(() => {
     if (!recoveryReady || recovery) return;
@@ -404,7 +405,7 @@ export default function HomePresentationEditor({
             <span>
               {recoveryMatchesRevision
                 ? "Hay una copia local de esta revisión que todavía no fue guardada."
-                : `Hay una copia local iniciada en la revisión ${recovery.revision}, pero el servidor ya está en la revisión ${revision}. Por seguridad no puede recuperarse automáticamente sobre una revisión posterior.`}
+                : `Hay una copia local iniciada en la revisión ${recovery.revision}, pero el servidor ya está en la revisión ${revision}. Por seguridad no puede recuperarse automáticamente sobre una revisión posterior. Descarta la copia para desbloquear la edición de la revisión actual.`}
             </span>
           </div>
           <div>
@@ -447,7 +448,7 @@ export default function HomePresentationEditor({
         </span>
       </div>
 
-      <section className={styles.structurePanel}>
+      <section className={styles.structurePanel} inert={recoveryIsStale}>
         <p className={styles.structureIntro}>
           El orden se reutiliza directamente al renderizar Inicio. Ocultar un bloque no borra su configuración ni sus juegos seleccionados.
         </p>
@@ -489,7 +490,7 @@ export default function HomePresentationEditor({
         </div>
       </section>
 
-      <section className={styles.copyPanel}>
+      <section className={styles.copyPanel} inert={recoveryIsStale}>
         <div className={styles.copyHeader}>
           <strong>Textos de los bloques</strong>
           <p>
@@ -660,7 +661,7 @@ export default function HomePresentationEditor({
         </div>
       </section>
 
-      <div className={styles.actions}>
+      <div className={styles.actions} inert={recoveryIsStale}>
         <p>
           Guardar sólo modifica el borrador de Portada. El orden, visibilidad y textos públicos no cambian hasta publicar.
         </p>
