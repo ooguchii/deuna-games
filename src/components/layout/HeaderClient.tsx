@@ -11,6 +11,8 @@ import {
   X,
 } from "lucide-react";
 
+import touchStyles from "@/components/ui/TouchTarget.module.css";
+
 import HeaderNavigation from "./HeaderNavigation";
 import styles from "./Header.module.css";
 import SiteBrand from "./SiteBrand";
@@ -130,7 +132,7 @@ export default function HeaderClient({
 
             <Link
               href="/requisitos"
-              className={styles.gameFinder}
+              className={`${styles.gameFinder} ${touchStyles.minimum}`}
               data-brand-action="true"
             >
               <Gamepad2
@@ -143,7 +145,7 @@ export default function HeaderClient({
 
             <button
               type="button"
-              className={styles.notificationButton}
+              className={`${styles.notificationButton} ${touchStyles.minimum}`}
               aria-label="Notificaciones (próximamente)"
               title="Notificaciones próximamente"
               disabled
@@ -161,7 +163,7 @@ export default function HeaderClient({
 
             <Link
               href="/cuenta"
-              className={styles.profileButton}
+              className={`${styles.profileButton} ${touchStyles.minimum}`}
               aria-label="Cuenta"
               title="Cuenta"
             >
@@ -175,7 +177,7 @@ export default function HeaderClient({
             <button
               ref={menuButtonRef}
               type="button"
-              className={`${styles.menuButton} ${mobileMenuOpen ? styles.menuButtonOpen : ""}`}
+              className={`${styles.menuButton} ${touchStyles.minimum} ${mobileMenuOpen ? styles.menuButtonOpen : ""}`}
               aria-label={mobileMenuOpen ? "Cerrar menú" : "Abrir menú"}
               aria-expanded={mobileMenuOpen}
               aria-controls="mobile-navigation"
