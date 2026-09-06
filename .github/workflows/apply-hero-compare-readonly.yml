@@ -1,20 +1,20 @@
 name: Apply Hero compare read-only fix
 
 on:
-  push:
-    branches: [fix/hero-compare-readonly]
+  pull_request:
+    types: [opened, synchronize, reopened]
 
 permissions:
   contents: write
 
 jobs:
   patch:
-    if: github.actor != 'github-actions[bot]'
+    if: github.event.pull_request.head.ref == 'fix/hero-compare-readonly' && github.actor != 'github-actions[bot]'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
 
     steps:
-      - name: Checkout
+      - name: Checkout source branch
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           ref: fix/hero-compare-readonly
@@ -49,13 +49,11 @@ jobs:
           invariant = '''
 assert(
   heroEditor.includes(
-    'const updateAspectControls = (nextControl: AspectControl) => {\\n    if (comparing) {\\n      setCompare(false);\\n      return;\\nn    }'.replace('\\n\\n', '\\n')
+    'const updateAspectControls = (nextControl: AspectControl) => {\\n    if (comparing) {\\n      setCompare(false);\\n      return;\\n    }'
   ),
   "Comparar con guardado debe descartar también cambios auxiliares de proporción antes de mutar aspectControls."
 );
 '''
-          # Keep the assertion readable in source while matching the exact guard.
-          invariant = invariant.replace("return;\\n\\n    }", "return;\\n    }")
           if checker.count(marker) != 1:
               raise SystemExit("check-home-editorial failure marker changed; refusing to patch.")
           if "cambios auxiliares de proporción" in checker:
