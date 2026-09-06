@@ -74,7 +74,10 @@ export default function AdminShell({
               name="intent"
               value="logout"
             />
-            <button type="submit">
+            <button
+              type="submit"
+              className={ux.logoutButton}
+            >
               <LogOut size={16} aria-hidden="true" />
               Salir
             </button>
