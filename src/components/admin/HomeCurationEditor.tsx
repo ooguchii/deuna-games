@@ -225,11 +225,14 @@ function isCurationDraft(value: unknown): value is CurationDraft {
     return false;
   }
 
+  const modes = value.modes;
+  const selections = value.selections;
+
   return collections.every(({ id }) => {
     const maximum = id === "hero" ? HOME_HERO_MAX_SLIDES : 24;
     return (
-      isMode(value.modes[id]) &&
-      isSlugList(value.selections[id], maximum)
+      isMode(modes[id]) &&
+      isSlugList(selections[id], maximum)
     );
   });
 }
