@@ -1,0 +1,29 @@
+/* Public mobile touch-target contract.
+ *
+ * Compact visuals may keep their existing size, but actionable areas must stay
+ * at least 44px. Component-level transparent hit areas live in
+ * TouchTarget.module.css; this file covers structural public surfaces where an
+ * actual 44px box is preferable (stacked footer links and Hero controls).
+ */
+
+@media (max-width: 680px) {
+  .skip-link {
+    min-height: 44px;
+  }
+
+  section[aria-label="Juegos destacados"] a[href] {
+    min-height: 44px;
+  }
+
+  section[aria-label="Juegos destacados"]
+    > button[data-hero-spacing-boundary="control"] {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  footer a[href] {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+}
