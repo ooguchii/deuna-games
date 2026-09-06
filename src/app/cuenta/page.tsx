@@ -66,22 +66,6 @@ type PageProps = {
   }>;
 };
 
-function compatibilityPercent(
-  minFps: number | undefined,
-  canEstimate: boolean | undefined
-) {
-  if (!canEstimate || !minFps) return null;
-  return Math.max(0, Math.min(100, Math.round((minFps / 60) * 100)));
-}
-
-function compatibilityLabel(percent: number | null) {
-  if (percent === null) return "Sin configurar";
-  if (percent >= 85) return "Muy buena";
-  if (percent >= 70) return "Buena";
-  if (percent >= 50) return "Aceptable";
-  return "Básica";
-}
-
 export default async function AccountPage({
   searchParams,
 }: PageProps) {
@@ -148,20 +132,11 @@ export default async function AccountPage({
             personalization.hardware
           )
         : [];
-      const compatiblePercents = hardwareRanking
-        .map((entry) =>
-          compatibilityPercent(
-            entry.estimate?.minFps,
-            entry.estimate?.canEstimate
-          )
-        )
-        .filter((value): value is number => value !== null);
-      const overallCompatibility = compatiblePercents.length > 0
-        ? Math.round(
-            compatiblePercents.reduce((total, value) => total + value, 0) /
-              compatiblePercents.length
-          )
-        : null;
+      const hardwareEstimateCount = hardwareRanking.length;
+      const hardwareCoveragePercent =
+        personalization.hardware && games.length > 0
+          ? Math.round((hardwareEstimateCount / games.length) * 100)
+          : null;
 
       return (
         <AccountDashboardClient
@@ -224,13 +199,17 @@ export default async function AccountPage({
               entry.game.imageMedia?.cover,
             rating: entry.game.rating,
             reasons: entry.reasons,
-            compatibilityPercent: compatibilityPercent(
-              entry.estimate?.minFps,
-              entry.estimate?.canEstimate
-            ),
+            performanceEstimate: entry.estimate?.canEstimate
+              ? {
+                  minFps: entry.estimate.minFps,
+                  maxFps: entry.estimate.maxFps,
+                  tier: entry.estimate.tier,
+                  confidence: entry.estimate.confidence,
+                }
+              : null,
           }))}
-          compatibilityPercent={overallCompatibility}
-          compatibilityLabel={compatibilityLabel(overallCompatibility)}
+          hardwareEstimateCount={hardwareEstimateCount}
+          hardwareCoveragePercent={hardwareCoveragePercent}
           rewards={rewards}
         />
       );
