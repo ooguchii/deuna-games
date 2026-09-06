@@ -185,9 +185,13 @@ aside nav a[aria-current="page"] svg {
  * expectedRevision identifica formularios que editan un borrador/configuración.
  * Publicar, ocultar, restaurar y los subflujos de carga quedan fuera. Nuevo juego
  * es la única excepción porque crea la revisión inicial y todavía no tiene una.
+ * Los dos formularios hijos de Resto de Inicio también quedan inline: su wrapper
+ * intercepta ambos submits y persiste curaduría + presentación en una sola revisión.
  */
 .admin-professional:has(
   form:has(> input[name="expectedRevision"]):not(:is(
+    [action="/api/admin/content/home"],
+    [action="/api/admin/content/home/presentation"],
     [action*="/publish"],
     [action*="/hide"],
     [action*="/restore"],
@@ -207,6 +211,8 @@ aside nav a[aria-current="page"] svg {
 
 .admin-professional
   form:has(> input[name="expectedRevision"]):not(:is(
+    [action="/api/admin/content/home"],
+    [action="/api/admin/content/home/presentation"],
     [action*="/publish"],
     [action*="/hide"],
     [action*="/restore"],
@@ -248,6 +254,8 @@ aside nav a[aria-current="page"] svg {
 
 .admin-professional
   form:has(> input[name="expectedRevision"]):not(:is(
+    [action="/api/admin/content/home"],
+    [action="/api/admin/content/home/presentation"],
     [action*="/publish"],
     [action*="/hide"],
     [action*="/restore"],
@@ -274,6 +282,8 @@ aside nav a[aria-current="page"] svg {
 
 .admin-professional
   form:has(> input[name="expectedRevision"]):not(:is(
+    [action="/api/admin/content/home"],
+    [action="/api/admin/content/home/presentation"],
     [action*="/publish"],
     [action*="/hide"],
     [action*="/restore"],
@@ -296,6 +306,8 @@ aside nav a[aria-current="page"] svg {
 @media (max-width: 1100px) {
   .admin-professional
     form:has(> input[name="expectedRevision"]):not(:is(
+      [action="/api/admin/content/home"],
+      [action="/api/admin/content/home/presentation"],
       [action*="/publish"],
       [action*="/hide"],
       [action*="/restore"],
@@ -315,6 +327,8 @@ aside nav a[aria-current="page"] svg {
 @media (max-width: 760px) {
   .admin-professional:has(
     form:has(> input[name="expectedRevision"]):not(:is(
+      [action="/api/admin/content/home"],
+      [action="/api/admin/content/home/presentation"],
       [action*="/publish"],
       [action*="/hide"],
       [action*="/restore"],
@@ -334,6 +348,8 @@ aside nav a[aria-current="page"] svg {
 
   .admin-professional
     form:has(> input[name="expectedRevision"]):not(:is(
+      [action="/api/admin/content/home"],
+      [action="/api/admin/content/home/presentation"],
       [action*="/publish"],
       [action*="/hide"],
       [action*="/restore"],
@@ -356,6 +372,8 @@ aside nav a[aria-current="page"] svg {
 
   .admin-professional
     form:has(> input[name="expectedRevision"]):not(:is(
+      [action="/api/admin/content/home"],
+      [action="/api/admin/content/home/presentation"],
       [action*="/publish"],
       [action*="/hide"],
       [action*="/restore"],
@@ -383,6 +401,8 @@ aside nav a[aria-current="page"] svg {
 
   .admin-professional
     form:has(> input[name="expectedRevision"]):not(:is(
+      [action="/api/admin/content/home"],
+      [action="/api/admin/content/home/presentation"],
       [action*="/publish"],
       [action*="/hide"],
       [action*="/restore"],
