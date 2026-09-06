@@ -46,16 +46,20 @@ for (const [label, editor, minimumInertRegions] of [
 
 assert(
   heroBoundary.includes("function readBlockedHeroRecovery(") &&
+    heroBoundary.includes("typeof parsed.revision === \"number\"") &&
     heroBoundary.includes("recoveryRevision === currentRevision") &&
     heroBoundary.includes("return { revision: null }") &&
-    heroBoundary.includes("setBlockedRecovery(readBlockedHeroRecovery(revision))"),
-  "Hero debe clasificar como bloqueada cualquier copia cuya revisión no coincida o cuyo origen no pueda verificarse.",
+    heroBoundary.includes("useSyncExternalStore(") &&
+    heroBoundary.includes("readBlockedHeroRecoverySnapshot(revision)") &&
+    !heroBoundary.includes("setBlockedRecovery("),
+  "Hero debe derivar con snapshot SSR estable cualquier copia cuya revisión no coincida o cuyo origen no pueda verificarse, sin setState dentro de efectos.",
 );
 
 assert(
   heroBoundary.includes("inert={busy || blockedRecovery !== null || undefined}") &&
     heroBoundary.includes("if (saving.current || blockedRecovery) return") &&
-    heroBoundary.includes("Descartar copia obsoleta"),
+    heroBoundary.includes("Descartar copia obsoleta") &&
+    heroBoundary.includes("setDismissedBlockedSnapshot(blockedRecoverySnapshot)"),
   "Hero debe quedar inerte ante una copia obsoleta y sólo desbloquearse mediante descarte explícito.",
 );
 
@@ -73,6 +77,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Home recovery gate: OK (Curaduría/Presentación exigen resolver cualquier copia pendiente y Hero bloquea copias de otra revisión o de origen no verificable).",
+    "Home recovery gate: OK (Curaduría/Presentación exigen resolver cualquier copia pendiente y Hero bloquea copias de otra revisión o de origen no verificable con snapshot SSR estable).",
   );
 }
