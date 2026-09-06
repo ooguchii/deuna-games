@@ -37,5 +37,5 @@ if (regressions.length > 0) {
 }
 
 console.log(
-  "Targets táctiles del Admin: OK (vistas mobile del smoke sin controles visuales interactivos menores a 40px)."
+  "Targets táctiles del Admin: OK (vistas mobile del smoke sin controles visuales interactivos menores a 44px)."
 );
