@@ -23,3 +23,11 @@ export function resolveAccountDashboardView(
     ? (candidate as AccountDashboardView)
     : "overview";
 }
+
+export function accountDashboardViewHref(
+  view: AccountDashboardView
+) {
+  return view === "overview"
+    ? "/cuenta"
+    : `/cuenta?vista=${view}`;
+}
