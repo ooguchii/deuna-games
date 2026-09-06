@@ -14,6 +14,9 @@ import {
   gpuCatalog,
 } from "@/features/game-finder/hardware-catalog";
 import {
+  resolveAccountDashboardView,
+} from "@/lib/accounts/dashboard-view";
+import {
   getAccountPersonalization,
 } from "@/lib/accounts/personalization-service";
 import {
@@ -57,6 +60,12 @@ export const metadata: Metadata = {
   },
 };
 
+type PageProps = {
+  searchParams: Promise<{
+    vista?: string | string[];
+  }>;
+};
+
 function compatibilityPercent(
   minFps: number | undefined,
   canEstimate: boolean | undefined
@@ -73,7 +82,11 @@ function compatibilityLabel(percent: number | null) {
   return "Básica";
 }
 
-export default async function AccountPage() {
+export default async function AccountPage({
+  searchParams,
+}: PageProps) {
+  const parameters = await searchParams;
+  const initialView = resolveAccountDashboardView(parameters.vista);
   const session = await readAccountSession();
 
   if (session) {
@@ -152,6 +165,7 @@ export default async function AccountPage() {
 
       return (
         <AccountDashboardClient
+          initialView={initialView}
           siteName={siteConfig.name}
           profile={{
             ...profile,
