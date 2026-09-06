@@ -74,6 +74,7 @@ export default async function AdminHomeEditorPage({
   let sectionContent: ReactNode = null;
 
   if (section === "hero") {
+    const rankingReferenceTime = Date.now();
     const [games, publicGames, siteConfig] = await Promise.all([
       listEditorialItems("game"),
       getPublicGames(),
@@ -94,6 +95,7 @@ export default async function AdminHomeEditorPage({
           games={curationGames}
           publicGames={publicGames}
           revision={item.revision}
+          rankingReferenceTime={rankingReferenceTime}
           background={{
             brandColor: siteConfig.brandColor,
             customAssets: siteConfig.backgroundLibrary,
