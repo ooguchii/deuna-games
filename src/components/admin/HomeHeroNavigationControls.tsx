@@ -101,12 +101,9 @@ export default function HomeHeroNavigationControls({
         value={navigation.showIndicators}
         onChange={(value) => onToggle("showIndicators", value)}
       />
-      <AdminSwitchField
-        className={styles.toggle}
-        label="Botón pausa / reanudar"
-        value={navigation.showPause}
-        onChange={(value) => onToggle("showPause", value)}
-      />
+      <p className={styles.hint}>
+        Pausa / reanudar se muestra automáticamente siempre que el avance automático está activo.
+      </p>
       <AdminSwitchField
         className={styles.toggle}
         label="Progreso del autoplay"
