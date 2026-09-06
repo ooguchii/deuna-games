@@ -1,6 +1,6 @@
 const DAY_MONTH_YEAR = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
 const YEAR_MONTH_DAY = /^(\d{4})-(\d{2})-(\d{2})$/;
-const ISO_INSTANT = /^\d{4}-\d{2}-\d{2}T/;
+const ISO_INSTANT = /^(\d{4})-(\d{2})-(\d{2})T/;
 
 const releaseDateFormatter = new Intl.DateTimeFormat("es", {
   day: "numeric",
@@ -71,6 +71,24 @@ export function parseGameCivilDate(value?: string) {
   return null;
 }
 
+export function hasGameIsoDatePrefix(value: string) {
+  return ISO_INSTANT.test(value.trim());
+}
+
+export function parseGameIsoDatePrefix(value?: string) {
+  const trimmed = value?.trim();
+  if (!trimmed) return null;
+
+  const match = ISO_INSTANT.exec(trimmed);
+  if (!match) return null;
+
+  return utcCivilTimestamp(
+    Number(match[1]),
+    Number(match[2]),
+    Number(match[3])
+  );
+}
+
 export function formatGameReleaseDate(value?: string) {
   const trimmed = value?.trim();
   if (!trimmed) return null;
@@ -86,15 +104,20 @@ export function formatGameReleaseDate(value?: string) {
     return trimmed;
   }
 
-  // Preserve deterministic formatting for explicit ISO instants. Free-form
-  // editorial text is not guessed as a date because Date.parse semantics are
-  // not an appropriate contract for a civil release date.
-  if (ISO_INSTANT.test(trimmed)) {
+  // Preserve deterministic formatting for explicit ISO instants, but validate
+  // their calendar prefix first so Date.parse cannot normalize 31 February.
+  if (hasGameIsoDatePrefix(trimmed)) {
+    if (parseGameIsoDatePrefix(trimmed) === null) {
+      return trimmed;
+    }
+
     const instant = Date.parse(trimmed);
     if (!Number.isNaN(instant)) {
       return releaseDateFormatter.format(new Date(instant));
     }
   }
 
+  // Free-form editorial text is not guessed as a date. This keeps SSR/client
+  // output deterministic and avoids inventing semantics for human labels.
   return trimmed;
 }
