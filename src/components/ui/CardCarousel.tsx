@@ -135,6 +135,9 @@ export default function CardCarousel({
 
     const amount =
       getScrollAmount();
+    const reducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)"
+    ).matches;
 
     track.scrollBy({
       left:
@@ -142,7 +145,9 @@ export default function CardCarousel({
           ? amount
           : -amount,
 
-      behavior: "smooth",
+      behavior: reducedMotion
+        ? "auto"
+        : "smooth",
     });
   }
 
