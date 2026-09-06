@@ -4,7 +4,6 @@ import { ArrowDown, ArrowUp } from "lucide-react";
 import {
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from "react";
 
@@ -56,23 +55,38 @@ function buildPayload(
   return JSON.stringify({ sections, copy });
 }
 
-function readRecoveryDraft(): PresentationDraft | null {
-  try {
-    const raw = sessionStorage.getItem(PRESENTATION_DRAFT_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as Partial<PresentationDraft>;
-    if (
-      typeof parsed.revision !== "number" ||
-      !Array.isArray(parsed.sections) ||
-      !parsed.copy ||
-      typeof parsed.copy !== "object"
-    ) {
-      return null;
-    }
-    return parsed as PresentationDraft;
-  } catch {
-    return null;
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function hasSameShape(value: unknown, template: unknown): boolean {
+  if (template === null) return value === null;
+
+  if (Array.isArray(template)) {
+    return (
+      Array.isArray(value) &&
+      value.length === template.length &&
+      template.every((item, index) =>
+        hasSameShape(value[index], item)
+      )
+    );
   }
+
+  if (isRecord(template)) {
+    if (!isRecord(value)) return false;
+
+    const templateKeys = Object.keys(template);
+    const valueKeys = Object.keys(value);
+    if (templateKeys.length !== valueKeys.length) return false;
+
+    return templateKeys.every(
+      (key) =>
+        Object.hasOwn(value, key) &&
+        hasSameShape(value[key], template[key])
+    );
+  }
+
+  return typeof value === typeof template;
 }
 
 function clearRecoveryDraft() {
@@ -80,6 +94,73 @@ function clearRecoveryDraft() {
     sessionStorage.removeItem(PRESENTATION_DRAFT_KEY);
   } catch {
     // El guardado del servidor sigue siendo la fuente de verdad.
+  }
+}
+
+function readRecoveryDraft(
+  baselineSections: HomeSectionConfig[],
+  baselineCopy: EditableHomeCopy
+): PresentationDraft | null {
+  try {
+    const raw = sessionStorage.getItem(PRESENTATION_DRAFT_KEY);
+    if (!raw) return null;
+
+    const parsed: unknown = JSON.parse(raw);
+    if (
+      !isRecord(parsed) ||
+      typeof parsed.revision !== "number" ||
+      !Number.isInteger(parsed.revision) ||
+      parsed.revision < 0 ||
+      !Array.isArray(parsed.sections) ||
+      !hasSameShape(parsed.copy, baselineCopy)
+    ) {
+      clearRecoveryDraft();
+      return null;
+    }
+
+    const allowedIds = new Set(
+      baselineSections.map((section) => section.id)
+    );
+    const seenIds = new Set<HomeSectionConfig["id"]>();
+    const sections: HomeSectionConfig[] = [];
+
+    for (const item of parsed.sections) {
+      if (
+        !isRecord(item) ||
+        typeof item.id !== "string" ||
+        !allowedIds.has(item.id as HomeSectionConfig["id"]) ||
+        typeof item.visible !== "boolean"
+      ) {
+        clearRecoveryDraft();
+        return null;
+      }
+
+      const id = item.id as HomeSectionConfig["id"];
+      if (seenIds.has(id)) {
+        clearRecoveryDraft();
+        return null;
+      }
+
+      seenIds.add(id);
+      sections.push({ id, visible: item.visible });
+    }
+
+    if (
+      sections.length !== baselineSections.length ||
+      seenIds.size !== allowedIds.size
+    ) {
+      clearRecoveryDraft();
+      return null;
+    }
+
+    return {
+      revision: parsed.revision,
+      sections,
+      copy: structuredClone(parsed.copy) as EditableHomeCopy,
+    };
+  } catch {
+    clearRecoveryDraft();
+    return null;
   }
 }
 
@@ -109,22 +190,8 @@ export default function HomePresentationEditor({
     () => structuredClone(baselineCopy)
   );
   const [recovery, setRecovery] =
-    useState<PresentationDraft | null>(() => {
-      const candidate = readRecoveryDraft();
-      if (!candidate) return null;
-
-      const candidatePayload = buildPayload(
-        candidate.sections,
-        candidate.copy
-      );
-      if (candidatePayload === baselinePayload) {
-        clearRecoveryDraft();
-        return null;
-      }
-
-      return candidate;
-    });
-  const saving = useRef(false);
+    useState<PresentationDraft | null>(null);
+  const [recoveryReady, setRecoveryReady] = useState(false);
 
   const serialized = useMemo(
     () => buildPayload(sections, copy),
@@ -133,6 +200,30 @@ export default function HomePresentationEditor({
   const dirty = serialized !== baselinePayload;
 
   useEffect(() => {
+    const candidate = readRecoveryDraft(
+      baselineSections,
+      baselineCopy
+    );
+
+    if (candidate) {
+      const candidatePayload = buildPayload(
+        candidate.sections,
+        candidate.copy
+      );
+
+      if (candidatePayload === baselinePayload) {
+        clearRecoveryDraft();
+      } else {
+        setRecovery(candidate);
+      }
+    }
+
+    setRecoveryReady(true);
+  }, [baselineCopy, baselinePayload, baselineSections]);
+
+  useEffect(() => {
+    if (!recoveryReady || recovery) return;
+
     try {
       if (!dirty) {
         clearRecoveryDraft();
@@ -150,21 +241,14 @@ export default function HomePresentationEditor({
     } catch {
       // El navegador puede bloquear storage; el formulario sigue funcionando.
     }
-  }, [copy, dirty, revision, sections]);
-
-  useEffect(() => {
-    const warnBeforeUnload = (event: BeforeUnloadEvent) => {
-      if (!dirty || saving.current) return;
-      event.preventDefault();
-    };
-
-    window.addEventListener("beforeunload", warnBeforeUnload);
-    return () =>
-      window.removeEventListener(
-        "beforeunload",
-        warnBeforeUnload
-      );
-  }, [dirty]);
+  }, [
+    copy,
+    dirty,
+    recovery,
+    recoveryReady,
+    revision,
+    sections,
+  ]);
 
   function moveSection(index: number, direction: -1 | 1) {
     setSections((current) => {
@@ -240,9 +324,7 @@ export default function HomePresentationEditor({
       method="post"
       action="/api/admin/content/home/presentation"
       className={styles.root}
-      onSubmit={() => {
-        saving.current = true;
-      }}
+      data-home-editor-dirty={dirty ? "true" : "false"}
     >
       <input
         type="hidden"
