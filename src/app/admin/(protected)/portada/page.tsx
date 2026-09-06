@@ -110,6 +110,7 @@ export default async function AdminHomeEditorPage({
   }
 
   if (section === "contenido") {
+    const rankingReferenceTime = getHomeRankingReferenceTime();
     const [games, publicGames] = await Promise.all([
       listEditorialItems("game"),
       getPublicGames(),
@@ -131,6 +132,7 @@ export default async function AdminHomeEditorPage({
         games={curationGames}
         publishedSlugs={publishedSlugs}
         revision={item.revision}
+        rankingReferenceTime={rankingReferenceTime}
       />
     );
   }
