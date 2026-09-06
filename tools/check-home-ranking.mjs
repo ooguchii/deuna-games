@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 
 import {
   parseGameDate,
@@ -18,6 +19,27 @@ import {
 import {
   games as sourceGames,
 } from "../src/data/games.ts";
+
+const heroSectionSource = await readFile(
+  new URL("../src/components/home/HeroSection.tsx", import.meta.url),
+  "utf8"
+);
+
+assert.match(
+  heroSectionSource,
+  /import \{ formatGameReleaseDate \} from "@\/lib\/games\/game-date";/,
+  "El Hero público debe consumir el formatter compartido de fecha civil."
+);
+assert.match(
+  heroSectionSource,
+  /const release = formatGameReleaseDate\(game\.releaseDate\);/,
+  "Los facts del Hero deben renderizar releaseDate con el contrato compartido."
+);
+assert.doesNotMatch(
+  heroSectionSource,
+  /function formatReleaseDate\(/,
+  "El Hero no debe volver a mantener un formatter de fechas paralelo."
+);
 
 const reference = Date.UTC(
   2026,
@@ -108,6 +130,11 @@ assert.equal(
   "El ranking no debe otorgar actualidad a una fecha ISO imposible."
 );
 assert.equal(
+  parseGameDate("2026-02-31T00:00:00Z"),
+  0,
+  "Un instante ISO con día calendario imposible tampoco debe esquivar la validación."
+);
+assert.equal(
   formatGameReleaseDate("05/09/2026"),
   formatGameReleaseDate("2026-09-05"),
   "El Hero debe mostrar igual una misma fecha civil sin depender del formato persistido."
@@ -121,6 +148,11 @@ assert.equal(
   formatGameReleaseDate("31/02/2026"),
   "31/02/2026",
   "Una fecha civil inválida debe conservarse visible como dato editorial, no inventar otro día."
+);
+assert.equal(
+  formatGameReleaseDate("2026-02-31T00:00:00Z"),
+  "2026-02-31T00:00:00Z",
+  "Un instante ISO con calendario imposible debe conservarse visible y no normalizarse."
 );
 assert.equal(
   formatGameReleaseDate("A confirmar"),
