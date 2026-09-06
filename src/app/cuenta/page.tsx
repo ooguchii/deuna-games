@@ -71,7 +71,7 @@ function compatibilityPercent(
   canEstimate: boolean | undefined
 ) {
   if (!canEstimate || !minFps) return null;
-  return Math.max(30, Math.min(100, Math.round((minFps / 60) * 100)));
+  return Math.max(0, Math.min(100, Math.round((minFps / 60) * 100)));
 }
 
 function compatibilityLabel(percent: number | null) {
