@@ -2,12 +2,20 @@ const DAY_MONTH_YEAR = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
 const YEAR_MONTH_DAY = /^(\d{4})-(\d{2})-(\d{2})$/;
 const ISO_INSTANT = /^(\d{4})-(\d{2})-(\d{2})T/;
 
-const releaseDateFormatter = new Intl.DateTimeFormat("es", {
-  day: "numeric",
-  month: "short",
-  year: "numeric",
-  timeZone: "UTC",
-});
+const SPANISH_SHORT_MONTHS = [
+  "ene",
+  "feb",
+  "mar",
+  "abr",
+  "may",
+  "jun",
+  "jul",
+  "ago",
+  "sept",
+  "oct",
+  "nov",
+  "dic",
+] as const;
 
 function utcCivilTimestamp(
   year: number,
@@ -39,6 +47,11 @@ function utcCivilTimestamp(
   }
 
   return date.getTime();
+}
+
+function formatUtcDate(timestamp: number) {
+  const date = new Date(timestamp);
+  return `${date.getUTCDate()} ${SPANISH_SHORT_MONTHS[date.getUTCMonth()]} ${date.getUTCFullYear()}`;
 }
 
 export function hasGameCivilDateSyntax(value: string) {
@@ -95,7 +108,7 @@ export function formatGameReleaseDate(value?: string) {
 
   const civil = parseGameCivilDate(trimmed);
   if (civil !== null) {
-    return releaseDateFormatter.format(new Date(civil));
+    return formatUtcDate(civil);
   }
 
   // A date-looking value with an impossible calendar day must stay visible as
@@ -113,7 +126,7 @@ export function formatGameReleaseDate(value?: string) {
 
     const instant = Date.parse(trimmed);
     if (!Number.isNaN(instant)) {
-      return releaseDateFormatter.format(new Date(instant));
+      return formatUtcDate(instant);
     }
   }
 
