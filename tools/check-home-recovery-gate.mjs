@@ -13,9 +13,10 @@ async function source(relativePath) {
   return readFile(path.join(root, relativePath), "utf8");
 }
 
-const [curationEditor, presentationEditor, heroBoundary] = await Promise.all([
+const [curationEditor, presentationEditor, heroEditor, heroBoundary] = await Promise.all([
   source("src/components/admin/HomeCurationEditor.tsx"),
   source("src/components/admin/HomePresentationEditor.tsx"),
+  source("src/components/admin/HomeHeroEditor.tsx"),
   source("src/components/admin/HomeHeroSaveBoundary.tsx"),
 ]);
 
@@ -43,6 +44,21 @@ for (const [label, editor, minimumInertRegions] of [
     `${label} nunca debe permitir recuperar una copia obsoleta sobre una revisión posterior.`,
   );
 }
+
+assert(
+  heroEditor.includes("const recoveryRequiresDecision = Boolean(recovery)") &&
+    heroEditor.includes("const recoveryMatchesRevision = Boolean(") &&
+    (heroEditor.match(/inert=\{recoveryRequiresDecision \|\| undefined\}/g) ?? []).length >= 3 &&
+    heroEditor.includes("if (recoveryRequiresDecision) return;") &&
+    heroEditor.includes("Recupéralos o descártalos antes de continuar editando"),
+  "Hero debe exigir una decisión explícita sobre cualquier copia recuperable antes de habilitar topbar, tabs o workspace, con una defensa adicional en commit().",
+);
+
+assert(
+  heroEditor.includes("recoveryMatchesRevision && <>") &&
+    heroEditor.includes("Resuelve la copia desde el aviso de seguridad antes de continuar"),
+  "Hero sólo debe exponer Recuperar/Descartar dentro del editor cuando la copia corresponde a la revisión actual; las copias obsoletas quedan a cargo del boundary fail-closed.",
+);
 
 assert(
   heroBoundary.includes("function readBlockedHeroRecovery(") &&
@@ -78,6 +94,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Home recovery gate: OK (Curaduría/Presentación exigen resolver cualquier copia pendiente y Hero bloquea copias de otra revisión o de origen no verificable con snapshot SSR estable y remount seguro al descartar).",
+    "Home recovery gate: OK (Curaduría, Presentación y Hero exigen resolver cualquier copia pendiente; Hero bloquea además copias de otra revisión o de origen no verificable con snapshot SSR estable y remount seguro al descartar).",
   );
 }
