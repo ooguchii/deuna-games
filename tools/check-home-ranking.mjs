@@ -20,10 +20,16 @@ import {
   games as sourceGames,
 } from "../src/data/games.ts";
 
-const heroSectionSource = await readFile(
-  new URL("../src/components/home/HeroSection.tsx", import.meta.url),
-  "utf8"
-);
+const [heroSectionSource, gameDateSource] = await Promise.all([
+  readFile(
+    new URL("../src/components/home/HeroSection.tsx", import.meta.url),
+    "utf8"
+  ),
+  readFile(
+    new URL("../src/lib/games/game-date.ts", import.meta.url),
+    "utf8"
+  ),
+]);
 
 assert.match(
   heroSectionSource,
@@ -39,6 +45,16 @@ assert.doesNotMatch(
   heroSectionSource,
   /function formatReleaseDate\(/,
   "El Hero no debe volver a mantener un formatter de fechas paralelo."
+);
+assert.match(
+  gameDateSource,
+  /const SPANISH_SHORT_MONTHS = \[/,
+  "Las etiquetas del Hero deben usar un vocabulario de meses controlado por el producto."
+);
+assert.doesNotMatch(
+  gameDateSource,
+  /Intl\.DateTimeFormat/,
+  "El formatter de fecha del Hero no debe depender de diferencias de ICU entre SSR y navegador."
 );
 
 const reference = Date.UTC(
@@ -136,13 +152,18 @@ assert.equal(
 );
 assert.equal(
   formatGameReleaseDate("05/09/2026"),
+  "5 sept 2026",
+  "La etiqueta civil debe ser exacta e independiente de timezone e ICU."
+);
+assert.equal(
   formatGameReleaseDate("2026-09-05"),
-  "El Hero debe mostrar igual una misma fecha civil sin depender del formato persistido."
+  "5 sept 2026",
+  "YYYY-MM-DD debe producir la misma etiqueta civil controlada."
 );
 assert.equal(
   formatGameReleaseDate("2026-09-05T00:30:00Z"),
-  formatGameReleaseDate("2026-09-05"),
-  "Los instantes ISO explícitos deben formatearse en UTC y no según el timezone del navegador."
+  "5 sept 2026",
+  "Los instantes ISO explícitos deben formatearse por componentes UTC."
 );
 assert.equal(
   formatGameReleaseDate("31/02/2026"),
@@ -460,5 +481,5 @@ assert.ok(
 );
 
 console.log(
-  `Ranking de Portada: OK (${sourceGames.length} juegos reales + casos sintéticos; perfiles al 100%, fechas civiles UTC, estabilidad diaria, fama, rating, actualidad, RAM, Hero, explicación, Manual, Automático e Híbrido verificados).`
+  `Ranking de Portada: OK (${sourceGames.length} juegos reales + casos sintéticos; perfiles al 100%, fechas civiles UTC/ICU-independent, estabilidad diaria, fama, rating, actualidad, RAM, Hero, explicación, Manual, Automático e Híbrido verificados).`
 );
