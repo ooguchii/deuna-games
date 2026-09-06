@@ -19,7 +19,6 @@ import {
 import {
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from "react";
 
@@ -41,6 +40,7 @@ import type { Game } from "@/types/game";
 import styles from "./HomeCurationEditor.module.css";
 
 const CURATION_DRAFT_KEY = "deuna:home-curation-draft:latest";
+const slugPattern = /^[a-z0-9][a-z0-9._-]*$/;
 
 const collections: Array<{
   id: HomeCurationCollectionId;
@@ -185,24 +185,49 @@ function buildCurationPayload(
   });
 }
 
-function readRecoveryDraft(): CurationDraft | null {
-  try {
-    const raw = sessionStorage.getItem(CURATION_DRAFT_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as Partial<CurationDraft>;
-    if (
-      typeof parsed.revision !== "number" ||
-      !parsed.modes ||
-      typeof parsed.modes !== "object" ||
-      !parsed.selections ||
-      typeof parsed.selections !== "object"
-    ) {
-      return null;
-    }
-    return parsed as CurationDraft;
-  } catch {
-    return null;
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function isMode(value: unknown): value is HomeCurationMode {
+  return value === "manual" || value === "automatic" || value === "hybrid";
+}
+
+function isSlugList(value: unknown, maximum: number): value is string[] {
+  return (
+    Array.isArray(value) &&
+    value.length <= maximum &&
+    value.every(
+      (slug) =>
+        typeof slug === "string" &&
+        slug.length > 0 &&
+        slug.length <= 160 &&
+        slugPattern.test(slug)
+    ) &&
+    new Set(value).size === value.length
+  );
+}
+
+function isCurationDraft(value: unknown): value is CurationDraft {
+  if (!isRecord(value) || !isRecord(value.modes) || !isRecord(value.selections)) {
+    return false;
   }
+
+  if (
+    typeof value.revision !== "number" ||
+    !Number.isInteger(value.revision) ||
+    value.revision < 0
+  ) {
+    return false;
+  }
+
+  return collections.every(({ id }) => {
+    const maximum = id === "hero" ? HOME_HERO_MAX_SLIDES : 24;
+    return (
+      isMode(value.modes[id]) &&
+      isSlugList(value.selections[id], maximum)
+    );
+  });
 }
 
 function clearRecoveryDraft() {
@@ -210,6 +235,24 @@ function clearRecoveryDraft() {
     sessionStorage.removeItem(CURATION_DRAFT_KEY);
   } catch {
     // El guardado del servidor sigue siendo la fuente de verdad.
+  }
+}
+
+function readRecoveryDraft(): CurationDraft | null {
+  try {
+    const raw = sessionStorage.getItem(CURATION_DRAFT_KEY);
+    if (!raw) return null;
+
+    const parsed: unknown = JSON.parse(raw);
+    if (!isCurationDraft(parsed)) {
+      clearRecoveryDraft();
+      return null;
+    }
+
+    return parsed;
+  } catch {
+    clearRecoveryDraft();
+    return null;
   }
 }
 
@@ -238,12 +281,14 @@ export default function HomeCurationEditor({
   games,
   publishedSlugs,
   revision,
+  rankingReferenceTime,
   excludeHero = false,
 }: {
   config: ResolvedHomeConfig;
   games: Game[];
   publishedSlugs: string[];
   revision: number;
+  rankingReferenceTime: number;
   excludeHero?: boolean;
 }) {
   const baselineModes = useMemo(
@@ -266,20 +311,9 @@ export default function HomeCurationEditor({
   const [selections, setSelections] =
     useState<SelectionState>(() => structuredClone(baselineSelections));
   const [query, setQuery] = useState("");
-  const [rankingNow] = useState(() => Date.now());
-  const [recovery, setRecovery] = useState<CurationDraft | null>(() => {
-    const candidate = readRecoveryDraft();
-    if (!candidate) return null;
-    if (
-      buildCurationPayload(candidate.modes, candidate.selections) ===
-      baselinePayload
-    ) {
-      clearRecoveryDraft();
-      return null;
-    }
-    return candidate;
-  });
-  const saving = useRef(false);
+  const [recovery, setRecovery] = useState<CurationDraft | null>(null);
+  const [recoveryReady, setRecoveryReady] = useState(false);
+  const rankingNow = rankingReferenceTime;
 
   const meta = collections.find(
     (collection) => collection.id === active
@@ -366,6 +400,45 @@ export default function HomeCurationEditor({
   const dirty = serialized !== baselinePayload;
 
   useEffect(() => {
+    const candidate = readRecoveryDraft();
+
+    if (candidate) {
+      const resolvedCandidate = excludeHero
+        ? {
+            ...candidate,
+            modes: {
+              ...candidate.modes,
+              hero: baselineModes.hero,
+            },
+            selections: {
+              ...candidate.selections,
+              hero: [...baselineSelections.hero],
+            },
+          }
+        : candidate;
+      const candidatePayload = buildCurationPayload(
+        resolvedCandidate.modes,
+        resolvedCandidate.selections
+      );
+
+      if (candidatePayload === baselinePayload) {
+        clearRecoveryDraft();
+      } else {
+        setRecovery(resolvedCandidate);
+      }
+    }
+
+    setRecoveryReady(true);
+  }, [
+    baselineModes,
+    baselinePayload,
+    baselineSelections,
+    excludeHero,
+  ]);
+
+  useEffect(() => {
+    if (!recoveryReady || recovery) return;
+
     try {
       if (!dirty) {
         clearRecoveryDraft();
@@ -382,20 +455,14 @@ export default function HomeCurationEditor({
     } catch {
       // Storage puede estar bloqueado; el formulario sigue funcionando.
     }
-  }, [dirty, modes, revision, selections]);
-
-  useEffect(() => {
-    const warnBeforeUnload = (event: BeforeUnloadEvent) => {
-      if (!dirty || saving.current) return;
-      event.preventDefault();
-    };
-    window.addEventListener("beforeunload", warnBeforeUnload);
-    return () =>
-      window.removeEventListener(
-        "beforeunload",
-        warnBeforeUnload
-      );
-  }, [dirty]);
+  }, [
+    dirty,
+    modes,
+    recovery,
+    recoveryReady,
+    revision,
+    selections,
+  ]);
 
   function setMode(mode: HomeCurationMode) {
     setModes((current) => ({
@@ -457,9 +524,7 @@ export default function HomeCurationEditor({
       method="post"
       action="/api/admin/content/home"
       className={styles.root}
-      onSubmit={() => {
-        saving.current = true;
-      }}
+      data-home-editor-dirty={dirty ? "true" : "false"}
     >
       <input
         type="hidden"
