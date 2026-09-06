@@ -6,6 +6,7 @@ import {
   authorizeAdminFormRequest,
 } from "@/lib/admin/admin-route";
 import {
+  GAME_TAXONOMY_MAX_FORM_BYTES,
   gameTaxonomyFormSchema,
 } from "@/lib/admin/game-taxonomy-forms";
 import {
@@ -35,7 +36,9 @@ function target(page: string, state: string, section: string) {
 
 export async function POST(request: NextRequest) {
   const authorized =
-    await authorizeAdminFormRequest(request);
+    await authorizeAdminFormRequest(request, {
+      maxFormBytes: GAME_TAXONOMY_MAX_FORM_BYTES,
+    });
 
   if (!authorized.authorized) {
     return authorized.response;
