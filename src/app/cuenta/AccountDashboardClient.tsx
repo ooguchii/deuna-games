@@ -34,6 +34,7 @@ import {
 
 import SiteBrand from "@/components/layout/SiteBrand";
 import GameMedia from "@/components/ui/GameMedia";
+import type { AccountDashboardView } from "@/lib/accounts/dashboard-view";
 import type { GameImageViewport } from "@/types/game";
 
 import {
@@ -42,16 +43,6 @@ import {
   type AccountRewardsSnapshot,
 } from "./AccountRewardsPanel";
 import styles from "./account-dashboard.module.css";
-
-type DashboardView =
-  | "overview"
-  | "rewards"
-  | "games"
-  | "pc"
-  | "alerts"
-  | "discover"
-  | "profile"
-  | "settings";
 
 type Profile = {
   username: string;
@@ -117,6 +108,7 @@ type ApiResult = {
 };
 
 type DashboardProps = {
+  initialView: AccountDashboardView;
   siteName: string;
   profile: Profile;
   games: GameOption[];
@@ -261,6 +253,7 @@ function RecommendationCard({
 }
 
 export default function AccountDashboardClient({
+  initialView,
   siteName,
   profile,
   games,
@@ -275,7 +268,7 @@ export default function AccountDashboardClient({
   rewards,
 }: DashboardProps) {
   const router = useRouter();
-  const [view, setView] = useState<DashboardView>("overview");
+  const [view, setView] = useState<AccountDashboardView>(initialView);
   const [pending, setPending] = useState(false);
   const [profileSaved, setProfileSaved] = useState(false);
   const [profileMessage, setProfileMessage] = useState<string | null>(null);
@@ -312,7 +305,7 @@ export default function AccountDashboardClient({
   const displayName = profile.displayName?.trim() || profile.username;
 
   const navItems: Array<{
-    id: DashboardView;
+    id: AccountDashboardView;
     label: string;
     icon: typeof Gamepad2;
     badge?: number;
