@@ -3,6 +3,8 @@
 import {
   type FormEvent,
   useCallback,
+  useEffect,
+  useRef,
   useState,
 } from "react";
 import { useRouter } from "next/navigation";
@@ -15,19 +17,23 @@ import HomePresentationEditor from "./HomePresentationEditor";
 import styles from "./HomeContentEditor.module.css";
 
 const combinedAction = "/api/admin/content/home/content";
+const dirtySelector = 'form[data-home-editor-dirty="true"]';
 
 export default function HomeContentEditor({
   config,
   games,
   publishedSlugs,
   revision,
+  rankingReferenceTime,
 }: {
   config: ResolvedHomeConfig;
   games: Game[];
   publishedSlugs: string[];
   revision: number;
+  rankingReferenceTime: number;
 }) {
   const router = useRouter();
+  const rootRef = useRef<HTMLDivElement>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(false);
 
@@ -113,8 +119,66 @@ export default function HomeContentEditor({
     [saveAll]
   );
 
+  useEffect(() => {
+    const hasUnsavedChanges = () =>
+      Boolean(rootRef.current?.querySelector(dirtySelector));
+
+    const warnBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (!hasUnsavedChanges()) return;
+      event.preventDefault();
+      event.returnValue = "";
+    };
+
+    const protectLinks = (event: MouseEvent) => {
+      if (
+        !hasUnsavedChanges() ||
+        event.defaultPrevented ||
+        event.button !== 0 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey
+      ) {
+        return;
+      }
+
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+
+      const link = target.closest<HTMLAnchorElement>("a[href]");
+      if (
+        !link ||
+        link.target === "_blank" ||
+        link.hasAttribute("download")
+      ) {
+        return;
+      }
+
+      const href = link.getAttribute("href");
+      if (!href || href.startsWith("#")) return;
+
+      if (
+        !window.confirm(
+          "Tienes cambios sin guardar en Resto de Inicio. ¿Quieres salir?"
+        )
+      ) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    };
+
+    window.addEventListener("beforeunload", warnBeforeUnload);
+    document.addEventListener("click", protectLinks, true);
+
+    return () => {
+      window.removeEventListener("beforeunload", warnBeforeUnload);
+      document.removeEventListener("click", protectLinks, true);
+    };
+  }, []);
+
   return (
     <div
+      ref={rootRef}
       className={styles.root}
       data-saving={saving ? "true" : "false"}
       aria-busy={saving}
@@ -145,6 +209,7 @@ export default function HomeContentEditor({
         games={games}
         publishedSlugs={publishedSlugs}
         revision={revision}
+        rankingReferenceTime={rankingReferenceTime}
         excludeHero
       />
       <HomePresentationEditor
