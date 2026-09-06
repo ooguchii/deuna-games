@@ -21,9 +21,13 @@ export type HomeCurationDraftInput = {
   recommended: { mode: HomeCurationMode; slugs: string[] };
 };
 
+type HomePresentationCopy = Omit<HomeCopy, "hero"> & {
+  hero: Pick<HomeCopy["hero"], "accessibleTitle">;
+};
+
 export type HomePresentationDraftInput = {
   sections: HomeSectionConfig[];
-  copy: Omit<HomeCopy, "hero">;
+  copy: HomePresentationCopy;
 };
 
 export type HomeHeroDraftInput = {
@@ -43,6 +47,21 @@ async function getResolvedHomeDraft() {
   return {
     item,
     current: resolveHomeConfig(item.payload),
+  };
+}
+
+function mergeHomePresentationCopy(
+  current: HomeCopy,
+  input: HomePresentationCopy
+): HomeCopy {
+  const { hero, ...rest } = input;
+
+  return {
+    ...rest,
+    hero: {
+      ...current.hero,
+      accessibleTitle: hero.accessibleTitle,
+    },
   };
 }
 
@@ -103,10 +122,10 @@ export async function saveHomePresentationDraft(
       curation: current.curation,
       heroPresentation: current.heroPresentation,
       sections: input.sections,
-      copy: {
-        hero: current.copy.hero,
-        ...input.copy,
-      },
+      copy: mergeHomePresentationCopy(
+        current.copy,
+        input.copy
+      ),
     }
   );
 }
@@ -143,10 +162,10 @@ export async function saveHomeContentDraft(
       },
       heroPresentation: current.heroPresentation,
       sections: presentation.sections,
-      copy: {
-        hero: current.copy.hero,
-        ...presentation.copy,
-      },
+      copy: mergeHomePresentationCopy(
+        current.copy,
+        presentation.copy
+      ),
     }
   );
 }
