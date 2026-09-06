@@ -196,6 +196,23 @@ assert(
   "El staging seguro debe copiar los wrappers requeridos por build y smoke."
 );
 
+const localSetup = await read(
+  "tools/setup-local-server.sh"
+);
+assert(
+  localSetup.includes("DEUNA_ACCOUNT_SESSION_DAYS=30") &&
+    localSetup.includes("DEUNA_ACCOUNT_DATA_KEY=%s") &&
+    localSetup.includes("DEUNA_ACCOUNT_REGISTRATION_ENABLED=auto") &&
+    localSetup.includes("ensure_runtime_account_environment") &&
+    localSetup.includes("require_account_data_key"),
+  "El bootstrap local debe crear o completar el contrato privado de cuentas sin depender del entorno heredado."
+);
+assert(
+  localSetup.includes("DEUNA_ACCOUNT_DATA_KEY \\") &&
+    localSetup.includes("npm run admin:preflight:local"),
+  "El bootstrap local debe limpiar claves heredadas y validar los env files reales antes de terminar."
+);
+
 const visualSmoke = await read(
   "tools/visual-smoke.mjs"
 );
