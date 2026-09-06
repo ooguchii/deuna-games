@@ -355,6 +355,19 @@
   to { transform: scaleX(1); }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .navigation,
+  .indicator,
+  .pauseButton {
+    transition: none;
+  }
+
+  .progressBar,
+  .integratedProgress {
+    animation: none;
+  }
+}
+
 @media (max-width: 1100px) {
   .navigation {
     --hero-navigation-scale: var(--hero-tablet-navigation-scale, 100);
