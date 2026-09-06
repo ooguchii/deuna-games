@@ -267,11 +267,11 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
-      NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3000
+      NEXT_PUBLIC_SITE_URL: https://127.0.0.1:3443
       NEXT_TELEMETRY_DISABLED: 1
       DEUNA_ADMIN_ENABLED: "true"
       DEUNA_ADMIN_SESSION_HOURS: "8"
-      DEUNA_ADMIN_ORIGIN: http://127.0.0.1:3000
+      DEUNA_ADMIN_ORIGIN: https://127.0.0.1:3443
       DEUNA_ACCOUNT_SESSION_DAYS: "30"
       DEUNA_ACCOUNT_REGISTRATION_ENABLED: "false"
       DEUNA_DATABASE_HOST: 127.0.0.1
@@ -280,9 +280,13 @@ jobs:
       DEUNA_DATABASE_USER: deuna_runtime
       DEUNA_DATABASE_MIGRATION_USER: deuna_migrator
       DEUNA_DATABASE_SSL: "false"
-      DEUNA_VISUAL_BASE_URL: http://127.0.0.1:3000
+      DEUNA_VISUAL_BASE_URL: https://127.0.0.1:3443
       DEUNA_VISUAL_OUTPUT_DIR: artifacts/visual-smoke
       DEUNA_VISUAL_ADMIN_USERNAME: visual_owner
+      DEUNA_VISUAL_PROXY_HOST: 127.0.0.1
+      DEUNA_VISUAL_PROXY_PORT: "3443"
+      DEUNA_VISUAL_UPSTREAM_HOST: 127.0.0.1
+      DEUNA_VISUAL_UPSTREAM_PORT: "3000"
 
     services:
       postgres:
@@ -384,9 +388,47 @@ jobs:
           NODE_ENV: production
         run: npm run build
 
-      - name: Start visual runtime
+      - name: Prepare production visual runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p .next/standalone/.next
+          rm -rf .next/standalone/public .next/standalone/.next/static
+          cp -R public .next/standalone/public
+          cp -R .next/static .next/standalone/.next/static
+
+          tls_dir="$RUNNER_TEMP/deuna-visual-tls"
+          mkdir -p "$tls_dir"
+          tls_key="$tls_dir/server.key"
+          tls_cert="$tls_dir/server.pem"
+
+          openssl req \
+            -x509 \
+            -newkey rsa:2048 \
+            -sha256 \
+            -nodes \
+            -days 1 \
+            -subj '/CN=127.0.0.1' \
+            -addext 'subjectAltName=IP:127.0.0.1' \
+            -keyout "$tls_key" \
+            -out "$tls_cert" \
+            >/dev/null 2>&1
+
+          printf 'DEUNA_VISUAL_TLS_KEY=%s\n' "$tls_key" >> "$GITHUB_ENV"
+          printf 'DEUNA_VISUAL_TLS_CERT=%s\n' "$tls_cert" >> "$GITHUB_ENV"
+
+          chrome_real="$(command -v google-chrome-stable || command -v google-chrome || command -v chromium || command -v chromium-browser)"
+          chrome_wrapper="$RUNNER_TEMP/deuna-visual-chrome"
+          printf '#!/usr/bin/env bash\nexec %q --ignore-certificate-errors "$@"\n' "$chrome_real" > "$chrome_wrapper"
+          chmod 700 "$chrome_wrapper"
+          printf 'CHROME_BIN=%s\n' "$chrome_wrapper" >> "$GITHUB_ENV"
+
+      - name: Start production visual runtime
         env:
           NODE_ENV: production
+          HOSTNAME: 127.0.0.1
+          PORT: "3000"
         shell: bash
         run: |
           set -euo pipefail
@@ -394,34 +436,47 @@ jobs:
           printf 'DEUNA_EDITORIAL_MEDIA_ROOT=%s\n' "$DEUNA_EDITORIAL_MEDIA_ROOT" >> "$GITHUB_ENV"
           mkdir -p "$DEUNA_EDITORIAL_MEDIA_ROOT" artifacts/visual-smoke
 
-          npm run start -- --hostname 127.0.0.1 --port 3000 > "$RUNNER_TEMP/deuna-visual-next.log" 2>&1 &
+          node .next/standalone/server.js > "$RUNNER_TEMP/deuna-visual-standalone.log" 2>&1 &
           app_pid=$!
           printf 'DEUNA_VISUAL_APP_PID=%s\n' "$app_pid" >> "$GITHUB_ENV"
 
+          node ./tools/visual-https-proxy.mjs > "$RUNNER_TEMP/deuna-visual-proxy.log" 2>&1 &
+          proxy_pid=$!
+          printf 'DEUNA_VISUAL_PROXY_PID=%s\n' "$proxy_pid" >> "$GITHUB_ENV"
+
           for attempt in $(seq 1 90); do
-            if curl --fail --silent --show-error "$DEUNA_VISUAL_BASE_URL/" > /dev/null; then
+            if curl --insecure --fail --silent --show-error "$DEUNA_VISUAL_BASE_URL/" > /dev/null; then
               exit 0
             fi
 
             if ! kill -0 "$app_pid" 2>/dev/null; then
-              cat "$RUNNER_TEMP/deuna-visual-next.log"
+              cat "$RUNNER_TEMP/deuna-visual-standalone.log"
+              exit 1
+            fi
+
+            if ! kill -0 "$proxy_pid" 2>/dev/null; then
+              cat "$RUNNER_TEMP/deuna-visual-proxy.log"
               exit 1
             fi
 
             sleep 1
           done
 
-          cat "$RUNNER_TEMP/deuna-visual-next.log"
-          echo "::error::La app no quedó disponible para la validación visual."
+          cat "$RUNNER_TEMP/deuna-visual-standalone.log"
+          cat "$RUNNER_TEMP/deuna-visual-proxy.log"
+          echo "::error::El runtime standalone HTTPS no quedó disponible para la validación visual."
           exit 1
 
       - name: Browser visual smoke
         run: npm run visual:smoke
 
-      - name: Stop visual runtime
+      - name: Stop production visual runtime
         if: always()
         shell: bash
         run: |
+          if [ -n "${DEUNA_VISUAL_PROXY_PID:-}" ]; then
+            kill "$DEUNA_VISUAL_PROXY_PID" 2>/dev/null || true
+          fi
           if [ -n "${DEUNA_VISUAL_APP_PID:-}" ]; then
             kill "$DEUNA_VISUAL_APP_PID" 2>/dev/null || true
           fi
@@ -433,6 +488,7 @@ jobs:
           name: visual-smoke-${{ github.sha }}
           path: |
             artifacts/visual-smoke
-            ${{ runner.temp }}/deuna-visual-next.log
+            ${{ runner.temp }}/deuna-visual-standalone.log
+            ${{ runner.temp }}/deuna-visual-proxy.log
           if-no-files-found: warn
           retention-days: 14
