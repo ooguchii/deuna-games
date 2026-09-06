@@ -28,13 +28,18 @@ import { useRouter } from "next/navigation";
 import {
   type CSSProperties,
   type FormEvent,
+  useEffect,
   useMemo,
   useState,
 } from "react";
 
 import SiteBrand from "@/components/layout/SiteBrand";
 import GameMedia from "@/components/ui/GameMedia";
-import type { AccountDashboardView } from "@/lib/accounts/dashboard-view";
+import {
+  accountDashboardViewHref,
+  resolveAccountDashboardView,
+  type AccountDashboardView,
+} from "@/lib/accounts/dashboard-view";
 import type { GameImageViewport } from "@/types/game";
 
 import {
@@ -276,6 +281,32 @@ export default function AccountDashboardClient({
   const [hardwareMessage, setHardwareMessage] = useState<string | null>(null);
   const [addMessage, setAddMessage] = useState<string | null>(null);
   const [notificationPending, setNotificationPending] = useState(false);
+
+  function openView(nextView: AccountDashboardView) {
+    if (nextView === view) return;
+    setView(nextView);
+    window.history.pushState(null, "", accountDashboardViewHref(nextView));
+  }
+
+  useEffect(() => {
+    const currentView = new URLSearchParams(window.location.search).get("vista");
+    if (
+      currentView !== null &&
+      resolveAccountDashboardView(currentView) === "overview"
+    ) {
+      window.history.replaceState(null, "", accountDashboardViewHref("overview"));
+    }
+
+    const syncViewFromLocation = () => {
+      const parameters = new URLSearchParams(window.location.search);
+      setView(
+        resolveAccountDashboardView(parameters.get("vista") ?? undefined)
+      );
+    };
+
+    window.addEventListener("popstate", syncViewFromLocation);
+    return () => window.removeEventListener("popstate", syncViewFromLocation);
+  }, []);
 
   const gamesBySlug = useMemo(
     () => new Map(games.map((game) => [game.slug, game])),
@@ -547,7 +578,7 @@ export default function AccountDashboardClient({
           <button
             type="button"
             className={styles.outlineAccentButton}
-            onClick={() => setView("games")}
+            onClick={() => openView("games")}
           >
             <SlidersHorizontal size={17} aria-hidden="true" />
             Personalizar DeUna
@@ -556,7 +587,7 @@ export default function AccountDashboardClient({
 
         <AccountRewardSummary
           rewards={rewards}
-          onOpen={() => setView("rewards")}
+          onOpen={() => openView("rewards")}
         />
 
         <section className={styles.statsStrip} aria-label="Resumen de Mi DeUna">
@@ -586,7 +617,7 @@ export default function AccountDashboardClient({
           <section className={styles.dashboardCard}>
             <div className={styles.cardHeading}>
               <div><Gamepad2 size={19} /><h2>Mis juegos</h2></div>
-              <button type="button" onClick={() => setView("games")}>Ver todos →</button>
+              <button type="button" onClick={() => openView("games")}>Ver todos →</button>
             </div>
             <div className={styles.compactGameList}>
               {overviewGames.length > 0 ? (
@@ -604,7 +635,7 @@ export default function AccountDashboardClient({
             <button
               type="button"
               className={styles.cardFooterButton}
-              onClick={() => setView("games")}
+              onClick={() => openView("games")}
             >
               Ver todos mis juegos
             </button>
@@ -613,7 +644,7 @@ export default function AccountDashboardClient({
           <section className={styles.dashboardCard}>
             <div className={styles.cardHeading}>
               <div><MonitorCog size={19} /><h2>Mi PC</h2></div>
-              <button type="button" onClick={() => setView("pc")}>
+              <button type="button" onClick={() => openView("pc")}>
                 {hardware ? "Editar" : "Configurar"}
               </button>
             </div>
@@ -655,7 +686,7 @@ export default function AccountDashboardClient({
             <button
               type="button"
               className={styles.cardFooterButton}
-              onClick={() => setView("pc")}
+              onClick={() => openView("pc")}
             >
               {hardware ? "Ver detalles de rendimiento" : "Configurar Mi PC"}
             </button>
@@ -664,7 +695,7 @@ export default function AccountDashboardClient({
           <section className={styles.dashboardCard}>
             <div className={styles.cardHeading}>
               <div><Bell size={19} /><h2>Avisos recientes</h2></div>
-              <button type="button" onClick={() => setView("alerts")}>Ver todos →</button>
+              <button type="button" onClick={() => openView("alerts")}>Ver todos →</button>
             </div>
             <div className={styles.alertPreviewList}>
               {overviewAlerts.length > 0 ? (
@@ -698,7 +729,7 @@ export default function AccountDashboardClient({
             <button
               type="button"
               className={styles.cardFooterButton}
-              onClick={() => setView("alerts")}
+              onClick={() => openView("alerts")}
             >
               Ir a avisos
             </button>
@@ -708,7 +739,7 @@ export default function AccountDashboardClient({
         <section className={styles.recommendationsPanel}>
           <div className={styles.cardHeading}>
             <div><Sparkles size={19} /><h2>Recomendados para ti</h2></div>
-            <button type="button" onClick={() => setView("discover")}>Ver todos →</button>
+            <button type="button" onClick={() => openView("discover")}>Ver todos →</button>
           </div>
           <div className={styles.recommendationGrid}>
             {recommendations.length > 0 ? (
@@ -1265,7 +1296,8 @@ export default function AccountDashboardClient({
                   key={item.id}
                   type="button"
                   data-active={view === item.id}
-                  onClick={() => setView(item.id)}
+                  aria-current={view === item.id ? "page" : undefined}
+                  onClick={() => openView(item.id)}
                 >
                   <Icon size={19} aria-hidden="true" />
                   <span>{item.label}</span>
