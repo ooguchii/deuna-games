@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import SiteLogoMark from "@/components/brand/SiteLogoMark";
+import touchStyles from "@/components/ui/TouchTarget.module.css";
 
 import styles from "./Header.module.css";
 
@@ -31,7 +32,7 @@ export default function SiteBrand({
   return (
     <Link
       href={href}
-      className={`${styles.brand}${className ? ` ${className}` : ""}`}
+      className={`${styles.brand} ${touchStyles.minimum}${className ? ` ${className}` : ""}`}
       aria-label={`${siteName} - Inicio`}
     >
       <span className={styles.brandIcon}>
