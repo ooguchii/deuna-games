@@ -219,8 +219,11 @@ assert(
 );
 assert(
   localSetup.includes("DEUNA_ACCOUNT_DATA_KEY \\") &&
-    localSetup.includes("npm run admin:preflight:local"),
-  "El bootstrap local debe limpiar claves heredadas y validar los env files reales antes de terminar."
+    localSetup.includes("npm run admin:preflight:local") &&
+    localSetup.includes(
+      'node --env-file="${RUNTIME_ENV}" ./tools/admin/preflight.ts --purpose=runtime'
+    ),
+  "El bootstrap local debe limpiar claves heredadas y validar los env files reales, incluido el runtime con las credenciales privadas locales, antes de terminar."
 );
 
 const visualSmoke = await read(
