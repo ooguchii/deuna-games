@@ -449,7 +449,7 @@ async function auditLayout(
             if (style.display === "inline") return false;
           }
           const rect = element.getBoundingClientRect();
-          return rect.width < 40 || rect.height < 40;
+          return rect.width < 44 || rect.height < 44;
         })
         .slice(0, 20)
         .map((element) => {
@@ -869,7 +869,7 @@ async function main() {
         `[visual] ${result.page}/${result.viewport}: ` +
         `${result.audit.viewportWidth}x${result.audit.viewportHeight}, ` +
         `alto ${result.audit.scrollHeight}px, ` +
-        `${result.audit.smallTouchTargets.length} rectángulos visuales interactivos <40px (señal), ` +
+        `${result.audit.smallTouchTargets.length} rectángulos visuales interactivos <44px (señal), ` +
         `${result.capture.truncated ? "captura truncada" : "captura completa"}`
       );
     }
