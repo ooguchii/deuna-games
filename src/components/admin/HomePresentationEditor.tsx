@@ -118,13 +118,29 @@ function normalizeRecoveryCopy(
   value: unknown,
   baselineCopy: EditableHomeCopy
 ): unknown {
-  if (!isRecord(value) || Object.hasOwn(value, "hero")) {
+  if (!isRecord(value)) return value;
+
+  const { hero, ...rest } = value;
+
+  if (hero === undefined) {
+    return {
+      ...rest,
+      hero: structuredClone(baselineCopy.hero),
+    };
+  }
+
+  if (
+    !isRecord(hero) ||
+    typeof hero.accessibleTitle !== "string"
+  ) {
     return value;
   }
 
   return {
-    ...value,
-    hero: structuredClone(baselineCopy.hero),
+    ...rest,
+    hero: {
+      accessibleTitle: hero.accessibleTitle,
+    },
   };
 }
 
