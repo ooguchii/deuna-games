@@ -438,3 +438,24 @@ aside nav a[aria-current="page"] svg {
     transition: none;
   }
 }
+
+/*
+ * Controles editoriales compactos siguen siendo táctiles: el contenido visual
+ * puede medir menos, pero el hit-area real no baja de 44px en el Admin.
+ */
+.admin-professional button[aria-label^="Subir "],
+.admin-professional button[aria-label^="Bajar "],
+.admin-professional button[aria-label^="Quitar "],
+.admin-professional button[title="Subir"],
+.admin-professional button[title="Bajar"],
+.admin-professional button[title="Quitar"],
+.admin-professional button[title="Deshacer"],
+.admin-professional button[title="Rehacer"] {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.admin-professional details > summary,
+.admin-professional a[href*="?seccion=multimedia#"] {
+  min-height: 44px;
+}
