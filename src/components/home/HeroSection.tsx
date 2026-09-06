@@ -485,6 +485,7 @@ export default function HeroSection({
       const origin = viewport.getBoundingClientRect();
       const cards = Array.from(fit.querySelectorAll<HTMLElement>("[data-position]")).filter((card) => card.getClientRects().length > 0);
       if (!cards.length || !origin.width || !origin.height) {
+        root.style.removeProperty("--hero-fit-transform");
         resetVisualInsets();
         return;
       }
@@ -502,6 +503,7 @@ export default function HeroSection({
         bottom: Math.max(...bounds.map((box) => box.bottom)) - origin.top,
       }, origin.width, origin.height, responsive.alignment);
       fit.style.transform = `translate(${fitted.x}px, ${fitted.y}px) scale(${fitted.scale})`;
+      root.style.setProperty("--hero-fit-transform", fit.style.transform);
 
       if (responsive.spacingReference === "canvas") {
         resetVisualInsets();
@@ -547,6 +549,7 @@ export default function HeroSection({
       view?.removeEventListener("resize", update);
       root.style.removeProperty("--hero-visual-inset-top");
       root.style.removeProperty("--hero-visual-inset-bottom");
+      root.style.removeProperty("--hero-fit-transform");
     };
   }, [presentation, games.length, normalizedActiveIndex]);
 
@@ -759,18 +762,20 @@ export default function HeroSection({
             <ChevronRight size={29} aria-hidden="true" />
           </button>
 
-          <HeroNavigation
-            games={games}
-            activeIndex={normalizedActiveIndex}
-            config={presentation.navigation}
-            autoplayDelay={autoplayDelay}
-            isPaused={isPaused}
-            manualPaused={manualPaused}
-            atAutoplayEnd={atAutoplayEnd}
-            onSelect={setActiveIndex}
-            onTogglePause={() => setManualPaused((current) => !current)}
-            editor={navigationEditor}
-          />
+          <div className={styles.navigationFit} data-hero-navigation-frame="true">
+            <HeroNavigation
+              games={games}
+              activeIndex={normalizedActiveIndex}
+              config={presentation.navigation}
+              autoplayDelay={autoplayDelay}
+              isPaused={isPaused}
+              manualPaused={manualPaused}
+              atAutoplayEnd={atAutoplayEnd}
+              onSelect={setActiveIndex}
+              onTogglePause={() => setManualPaused((current) => !current)}
+              editor={navigationEditor}
+            />
+          </div>
         </>
       )}
 

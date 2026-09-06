@@ -66,9 +66,9 @@ export default function HeroNavigation({
     : undefined;
 
   const positionFromPointer = (event: PointerEvent<HTMLButtonElement>) => {
-    const section = rootRef.current?.closest("section");
-    if (!section) return null;
-    const rect = section.getBoundingClientRect();
+    const frame = rootRef.current?.closest("[data-hero-navigation-frame]");
+    if (!frame) return null;
+    const rect = frame.getBoundingClientRect();
     if (!rect.width || !rect.height) return null;
     return {
       x: clamp(Math.round(((event.clientX - rect.left) / rect.width) * 100), 0, 100),
