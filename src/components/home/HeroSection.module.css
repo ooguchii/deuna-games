@@ -34,6 +34,16 @@
 /* The Hero owns the exact distance to whichever Home section follows it. */
 .heroSection + * { margin-top: 0 !important; }
 
+/* Reserve the responsive canvas while its device design and fit are prepared. */
+.heroSection:not([data-layout-ready="true"]) {
+  visibility: hidden;
+}
+
+.heroSection:not([data-layout-ready="true"]) .heroCard,
+.heroSection:not([data-layout-ready="true"]) .navigationFit > * {
+  transition: none;
+}
+
 /* Keep navigation in the same fitted coordinate system as the cards. */
 .navigationFit {
   position: absolute;

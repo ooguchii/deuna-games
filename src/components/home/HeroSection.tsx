@@ -303,7 +303,8 @@ function MainCardContent({ game }: { game: Game }) {
 
 function deviceVariables(
   presentation: HomeHeroPresentation,
-  totalGames: number
+  totalGames: number,
+  sourcePresentation: HomeHeroPresentation
 ) {
   const variables: Record<string, string | number> = {
     "--hero-slide-offset": presentation.direction === "reverse" ? "-90px" : "90px",
@@ -318,8 +319,9 @@ function deviceVariables(
   };
 
   for (const device of ["desktop", "tablet", "mobile"] as const) {
-    const responsive = presentation.responsive[device];
-    const navigation = presentation.navigation.responsive[device];
+    const design = resolveHeroDeviceDesign(sourcePresentation, device);
+    const responsive = design.responsive[device];
+    const navigation = design.navigation.responsive[device];
     variables[`--hero-${device}-anchor`] = homeHeroAnchor(responsive);
     variables[`--hero-${device}-card-width`] = `${responsive.cardWidth}px`;
     variables[`--hero-${device}-card-height`] = `${responsive.cardHeight}px`;
@@ -335,7 +337,7 @@ function deviceVariables(
       variables[`--hero-${device}-display-${position}`] = homeHeroPositionDisplay(
         position,
         responsive,
-        presentation.direction,
+        design.direction,
         totalGames
       );
       variables[`--hero-${device}-slot-${position}`] = homeHeroSlotCSS(position);
@@ -364,21 +366,19 @@ export default function HeroSection({
 }) {
   const rootRef = useRef<HTMLElement>(null);
   const [designDevice, setDesignDevice] = useState<HomeHeroDevice>("desktop");
-  useLayoutEffect(() => {
-    const view = rootRef.current?.ownerDocument.defaultView;
-    if (!view) return;
-    const update = () => setDesignDevice(homeHeroDeviceForWidth(view.innerWidth));
-    update();
-    view.addEventListener("resize", update);
-    return () => view.removeEventListener("resize", update);
-  }, []);
   const presentation = useMemo(() => resolveHeroDeviceDesign(sourcePresentation, designDevice), [sourcePresentation, designDevice]);
   const fitRef = useRef<HTMLDivElement>(null);
   const pointerStart = useRef<{ x: number; y: number; id: number } | null>(null);
   const suppressClick = useRef(false);
   const lastWheel = useRef(0);
   const autoplayClock = useRef({ key: "", remaining: 0 });
-  const [activeIndex, setActiveIndex] = useState(0);
+  const [{ index: activeIndex, animated }, setSlide] = useState({ index: 0, animated: false });
+  const setActiveIndex = useCallback((value: number | ((current: number) => number)) => {
+    setSlide((current) => {
+      const index = typeof value === "function" ? value(current.index) : value;
+      return index === current.index ? current : { index, animated: true };
+    });
+  }, []);
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
   const [documentVisible, setDocumentVisible] = useState(true);
@@ -408,8 +408,8 @@ export default function HeroSection({
     : presentation.autoplayMs || HOME_HERO_AUTOPLAY_MS;
   const direction = presentation.direction === "reverse" ? -1 : 1;
   const rootStyle = useMemo(
-    () => deviceVariables(presentation, games.length),
-    [games.length, presentation]
+    () => deviceVariables(presentation, games.length, sourcePresentation),
+    [games.length, presentation, sourcePresentation]
   );
 
   const moveBy = useCallback((delta: number) => {
@@ -420,7 +420,7 @@ export default function HeroSection({
       if (!presentation.loop) return Math.max(0, Math.min(games.length - 1, next));
       return (next + games.length) % games.length;
     });
-  }, [games.length, presentation.loop]);
+  }, [games.length, presentation.loop, setActiveIndex]);
 
   const nextSlide = useCallback(() => moveBy(direction), [direction, moveBy]);
   const previousSlide = useCallback(() => moveBy(-direction), [direction, moveBy]);
@@ -481,6 +481,15 @@ export default function HeroSection({
     };
 
     const update = () => {
+      const view = root.ownerDocument.defaultView;
+      if (!view) return;
+      const device = homeHeroDeviceForWidth(view.innerWidth);
+      // Never paint or measure a design belonging to the previous breakpoint.
+      root.removeAttribute("data-layout-ready");
+      if (device !== designDevice) {
+        setDesignDevice(device);
+        return;
+      }
       fit.style.transform = "none";
       const origin = viewport.getBoundingClientRect();
       const cards = Array.from(fit.querySelectorAll<HTMLElement>("[data-position]")).filter((card) => card.getClientRects().length > 0);
@@ -489,8 +498,6 @@ export default function HeroSection({
         resetVisualInsets();
         return;
       }
-      const screenWidth = root.ownerDocument.defaultView?.innerWidth ?? 1440;
-      const device = screenWidth <= 680 ? "mobile" : screenWidth <= 1100 ? "tablet" : "desktop";
       const responsive = presentation.responsive[device];
       // On phones the neighbors are edge previews; fitting them all would make
       // the main title and actions too small to read or tap.
@@ -507,6 +514,7 @@ export default function HeroSection({
 
       if (responsive.spacingReference === "canvas") {
         resetVisualInsets();
+        root.setAttribute("data-layout-ready", "true");
         return;
       }
 
@@ -529,6 +537,7 @@ export default function HeroSection({
 
       if (!verticalBounds.length) {
         resetVisualInsets();
+        root.setAttribute("data-layout-ready", "true");
         return;
       }
 
@@ -537,6 +546,7 @@ export default function HeroSection({
       const round = (value: number) => Math.round(value * 100) / 100;
       root.style.setProperty("--hero-visual-inset-top", `${round(visualTop - rootBounds.top)}px`);
       root.style.setProperty("--hero-visual-inset-bottom", `${round(rootBounds.bottom - visualBottom)}px`);
+      root.setAttribute("data-layout-ready", "true");
     };
 
     update();
@@ -550,8 +560,9 @@ export default function HeroSection({
       root.style.removeProperty("--hero-visual-inset-top");
       root.style.removeProperty("--hero-visual-inset-bottom");
       root.style.removeProperty("--hero-fit-transform");
+      root.removeAttribute("data-layout-ready");
     };
-  }, [presentation, games.length, normalizedActiveIndex]);
+  }, [presentation, designDevice, games.length, normalizedActiveIndex]);
 
   if (!activeGame) return null;
 
@@ -635,7 +646,7 @@ export default function HeroSection({
       ref={rootRef}
       className={styles.heroSection}
       data-composition={presentation.composition}
-      data-transition={presentation.transition}
+      data-transition={animated ? presentation.transition : undefined}
       aria-label="Juegos destacados"
       aria-roledescription="carrusel"
       tabIndex={0}
