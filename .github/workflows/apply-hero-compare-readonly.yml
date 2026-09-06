@@ -1,0 +1,79 @@
+name: Apply Hero compare read-only fix
+
+on:
+  push:
+    branches: [fix/hero-compare-readonly]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: fix/hero-compare-readonly
+          persist-credentials: true
+
+      - name: Apply exact patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          editor_path = Path("src/components/admin/HomeHeroEditor.tsx")
+          editor = editor_path.read_text(encoding="utf-8")
+          needle = '  const updateAspectControls = (nextControl: AspectControl) => {\n'
+          replacement = (
+              needle
+              + '    if (comparing) {\n'
+              + '      setCompare(false);\n'
+              + '      return;\n'
+              + '    }\n'
+          )
+          if editor.count(needle) != 1:
+              raise SystemExit("HomeHeroEditor updateAspectControls signature changed; refusing to patch.")
+          if replacement in editor:
+              raise SystemExit("HomeHeroEditor compare guard already exists; refusing duplicate patch.")
+          editor_path.write_text(editor.replace(needle, replacement, 1), encoding="utf-8")
+
+          checker_path = Path("tools/check-home-editorial.mjs")
+          checker = checker_path.read_text(encoding="utf-8")
+          marker = '\nif (failures.length > 0) {'
+          invariant = '''
+assert(
+  heroEditor.includes(
+    'const updateAspectControls = (nextControl: AspectControl) => {\\n    if (comparing) {\\n      setCompare(false);\\n      return;\\nn    }'.replace('\\n\\n', '\\n')
+  ),
+  "Comparar con guardado debe descartar también cambios auxiliares de proporción antes de mutar aspectControls."
+);
+'''
+          # Keep the assertion readable in source while matching the exact guard.
+          invariant = invariant.replace("return;\\n\\n    }", "return;\\n    }")
+          if checker.count(marker) != 1:
+              raise SystemExit("check-home-editorial failure marker changed; refusing to patch.")
+          if "cambios auxiliares de proporción" in checker:
+              raise SystemExit("Hero compare invariant already exists; refusing duplicate patch.")
+          checker_path.write_text(checker.replace(marker, invariant + marker, 1), encoding="utf-8")
+
+          Path(".github/workflows/apply-hero-compare-readonly.yml").unlink()
+          PY
+
+          git diff --check
+          git diff -- src/components/admin/HomeHeroEditor.tsx tools/check-home-editorial.mjs
+
+      - name: Commit source-only result
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix: keep Hero compare mode read-only"
+          git push origin HEAD:fix/hero-compare-readonly
