@@ -541,8 +541,7 @@ async function loginAdmin(cdp) {
   await navigate(cdp, `${baseUrl}/admin/login`);
   await waitForApplication(cdp);
 
-  const loaded = cdp.waitFor("Page.loadEventFired");
-  const submitted = await cdp.evaluate(`
+  const prepared = await cdp.evaluate(`
     (() => {
       const username = document.querySelector("#admin-username");
       const password = document.querySelector("#admin-password");
@@ -555,14 +554,24 @@ async function loginAdmin(cdp) {
       password.value = ${JSON.stringify(adminPassword)};
       username.dispatchEvent(new Event("input", { bubbles: true }));
       password.dispatchEvent(new Event("input", { bubbles: true }));
-      form.requestSubmit();
       return true;
     })()
   `);
 
-  if (!submitted) {
+  if (!prepared) {
     throw new Error("No se encontró el formulario real de login del Admin.");
   }
+
+  const loaded = cdp.waitFor("Page.loadEventFired");
+  await cdp.evaluate(`
+    (() => {
+      const form = document.querySelector('form[action="/api/admin/auth/login"]');
+      if (!(form instanceof HTMLFormElement)) {
+        throw new Error("El formulario de login desapareció antes del submit.");
+      }
+      form.requestSubmit();
+    })()
+  `);
 
   await loaded;
   await delay(250);
