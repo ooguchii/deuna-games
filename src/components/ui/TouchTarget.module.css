@@ -1,4 +1,4 @@
-.minimum {
+.minimum.minimum {
   min-width: 44px;
   min-height: 44px;
 }
@@ -17,7 +17,7 @@
   transform: translate(-50%, -50%);
 }
 
-.heroNavigation {
+.heroNavigation.heroNavigation {
   /* Hero navigation may be scaled editorially. Keep the final pointer target
      at least 44px while the existing spacing formulas prevent overlap. */
   --hero-navigation-target-size:
