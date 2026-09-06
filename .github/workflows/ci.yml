@@ -214,7 +214,7 @@ jobs:
             TO deuna_migrator, deuna_runtime;
           SQL
 
-      - name: Apply migrations 001-011
+      - name: Apply database migrations
         run: node ./tools/admin/migrate.ts
 
       - name: Import editorial fixtures
@@ -265,7 +265,7 @@ jobs:
   visual-smoke:
     needs: [quality, postgres-foundation]
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 20
     env:
       NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3000
       NEXT_TELEMETRY_DISABLED: 1
@@ -365,7 +365,7 @@ jobs:
             TO deuna_migrator, deuna_runtime;
           SQL
 
-      - name: Apply migrations 001-011
+      - name: Apply database migrations
         run: node ./tools/admin/migrate.ts
 
       - name: Import editorial fixtures
@@ -379,7 +379,14 @@ jobs:
           export DEUNA_ADMIN_OWNER_PASSWORD="$DEUNA_VISUAL_ADMIN_PASSWORD"
           node ./tools/admin/create-owner.ts
 
+      - name: Build visual runtime
+        env:
+          NODE_ENV: production
+        run: npm run build
+
       - name: Start visual runtime
+        env:
+          NODE_ENV: production
         shell: bash
         run: |
           set -euo pipefail
@@ -387,7 +394,7 @@ jobs:
           printf 'DEUNA_EDITORIAL_MEDIA_ROOT=%s\n' "$DEUNA_EDITORIAL_MEDIA_ROOT" >> "$GITHUB_ENV"
           mkdir -p "$DEUNA_EDITORIAL_MEDIA_ROOT" artifacts/visual-smoke
 
-          npm run dev > "$RUNNER_TEMP/deuna-visual-next.log" 2>&1 &
+          npm run start -- --hostname 127.0.0.1 --port 3000 > "$RUNNER_TEMP/deuna-visual-next.log" 2>&1 &
           app_pid=$!
           printf 'DEUNA_VISUAL_APP_PID=%s\n' "$app_pid" >> "$GITHUB_ENV"
 
