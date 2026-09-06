@@ -353,10 +353,21 @@ assert(
     accountPage.includes("initialView={initialView}") &&
     accountDashboard.includes("initialView: AccountDashboardView") &&
     accountDashboard.includes("useState<AccountDashboardView>(initialView)") &&
+    accountDashboard.includes("accountDashboardViewHref") &&
+    accountDashboard.includes("window.history.pushState") &&
+    accountDashboard.includes('window.addEventListener("popstate"') &&
+    accountDashboard.includes("aria-current") &&
+    accountDashboardView.includes("accountDashboardViewHref") &&
     accountDashboardView.includes('"overview"') &&
     accountDashboardView.includes('"pc"') &&
     accountDashboardView.includes(': "overview"'),
-  "La Home personalizada debe abrir Mi PC mediante un deep-link SSR determinista y con fallback seguro."
+  "La Home personalizada debe abrir Mi PC mediante un deep-link SSR determinista y Mi DeUna debe mantener vista, URL y navegación Back/Forward sincronizadas."
+);
+
+assert(
+  accountPage.includes("Math.max(0, Math.min(100") &&
+    !accountPage.includes("Math.max(30, Math.min(100"),
+  "Mi DeUna no debe imponer un piso artificial de compatibilidad que infle estimaciones de hardware bajas."
 );
 
 assert(
@@ -378,6 +389,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Home editorial: OK (ownership aislado, guardado atómico, recuperación post-hidratación, navegación protegida, deep-link de Mi PC, catálogo público fail-closed y preview pública compartida)."
+    "Home editorial: OK (ownership aislado, guardado atómico, recuperación post-hidratación, navegación protegida, deep-link de Mi PC navegable, catálogo público fail-closed y preview pública compartida)."
   );
 }
