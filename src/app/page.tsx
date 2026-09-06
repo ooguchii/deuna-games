@@ -25,9 +25,6 @@ import {
   getPublicGames,
 } from "@/lib/games/public-catalog";
 import {
-  HOME_PAGE_TITLE,
-} from "@/lib/home/page-contract";
-import {
   getPublicHomeConfig,
 } from "@/lib/home/public-home-config";
 import {
@@ -46,8 +43,12 @@ import styles from "./page.module.css";
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const config = await getPublicSiteConfig();
-  const title = `${config.name} | ${HOME_PAGE_TITLE}`;
+  const [config, homeConfig] = await Promise.all([
+    getPublicSiteConfig(),
+    getPublicHomeConfig(),
+  ]);
+  const title =
+    `${config.name} | ${homeConfig.copy.hero.accessibleTitle}`;
 
   return {
     alternates: {
@@ -216,7 +217,9 @@ export default async function Home() {
         id="main-content"
         className="main-content"
       >
-        <h1 className={styles.pageTitle}>{HOME_PAGE_TITLE}</h1>
+        <h1 className={styles.pageTitle}>
+          {homeConfig.copy.hero.accessibleTitle}
+        </h1>
         {homeConfig.sections.map(renderSection)}
       </main>
 
