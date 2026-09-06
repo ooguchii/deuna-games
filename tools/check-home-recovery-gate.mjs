@@ -13,9 +13,10 @@ async function source(relativePath) {
   return readFile(path.join(root, relativePath), "utf8");
 }
 
-const [curationEditor, presentationEditor] = await Promise.all([
+const [curationEditor, presentationEditor, heroBoundary] = await Promise.all([
   source("src/components/admin/HomeCurationEditor.tsx"),
   source("src/components/admin/HomePresentationEditor.tsx"),
+  source("src/components/admin/HomeHeroSaveBoundary.tsx"),
 ]);
 
 for (const [label, editor, minimumInertRegions] of [
@@ -43,6 +44,28 @@ for (const [label, editor, minimumInertRegions] of [
   );
 }
 
+assert(
+  heroBoundary.includes("function readBlockedHeroRecovery(") &&
+    heroBoundary.includes("recoveryRevision === currentRevision") &&
+    heroBoundary.includes("return { revision: null }") &&
+    heroBoundary.includes("setBlockedRecovery(readBlockedHeroRecovery(revision))"),
+  "Hero debe clasificar como bloqueada cualquier copia cuya revisión no coincida o cuyo origen no pueda verificarse.",
+);
+
+assert(
+  heroBoundary.includes("inert={busy || blockedRecovery !== null || undefined}") &&
+    heroBoundary.includes("if (saving.current || blockedRecovery) return") &&
+    heroBoundary.includes("Descartar copia obsoleta"),
+  "Hero debe quedar inerte ante una copia obsoleta y sólo desbloquearse mediante descarte explícito.",
+);
+
+assert(
+  heroBoundary.includes("mantenlos en esta pestaña") &&
+    heroBoundary.includes("antes de recargar") &&
+    !heroBoundary.includes("recarga y revísalos antes de volver a guardar"),
+  "El mensaje de conflicto de Hero no debe sugerir recargar una copia que luego quedaría obsoleta.",
+);
+
 if (failures.length > 0) {
   for (const failure of failures) {
     console.error(`Home recovery gate: ${failure}`);
@@ -50,6 +73,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Home recovery gate: OK (cualquier copia pendiente exige Recuperar/Descartar antes de editar y una copia obsoleta nunca puede rebasarse).",
+    "Home recovery gate: OK (Curaduría/Presentación exigen resolver cualquier copia pendiente y Hero bloquea copias de otra revisión o de origen no verificable).",
   );
 }
