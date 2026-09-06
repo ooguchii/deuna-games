@@ -31,7 +31,6 @@ const [
   editorialHistory,
   rootLayout,
   homePage,
-  homePageContract,
   globalCss,
   protectedLayout,
   adminLayout,
@@ -61,7 +60,6 @@ const [
   source("src/components/admin/EditorialHistory.tsx"),
   source("src/app/layout.tsx"),
   source("src/app/page.tsx"),
-  source("src/lib/home/page-contract.ts"),
   source("src/app/globals.css"),
   source("src/app/admin/(protected)/layout.tsx"),
   source("src/app/admin/layout.tsx"),
@@ -89,14 +87,13 @@ assert(
 );
 
 assert(
-  homePageContract.includes("HOME_PAGE_TITLE") &&
-    rootLayout.includes("HOME_PAGE_TITLE") &&
-    !rootLayout.includes("getPublicHomeConfig") &&
-    !rootLayout.includes("copy.hero.accessibleTitle") &&
-    homePage.includes("HOME_PAGE_TITLE") &&
-    homePage.includes("<h1 className={styles.pageTitle}>{HOME_PAGE_TITLE}</h1>") &&
-    !homePage.includes("copy.hero.accessibleTitle"),
-  "La Home debe compartir un título de página explícito para metadata y H1, sin volver a depender del copy legado del Hero."
+  rootLayout.includes("getPublicHomeConfig") &&
+    rootLayout.includes("homeConfig.copy.hero.accessibleTitle") &&
+    homePage.includes("homeConfig.copy.hero.accessibleTitle") &&
+    homePage.includes("<h1 className={styles.pageTitle}") &&
+    !rootLayout.includes("HOME_PAGE_TITLE") &&
+    !homePage.includes("HOME_PAGE_TITLE"),
+  "La Home debe compartir el título publicado de Portada entre metadata y H1 accesible, sin copy SEO fijo paralelo."
 );
 
 assert(
