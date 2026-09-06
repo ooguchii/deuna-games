@@ -15,6 +15,15 @@ import {
   resolveAdminSession,
 } from "./session";
 
+/*
+ * Login y lectores genéricos conservan el límite defensivo de 8 KiB definido
+ * en request-security. Después de validar una sesión Admin real, los formularios
+ * editoriales necesitan un techo mayor porque application/x-www-form-urlencoded
+ * puede expandir texto/JSON válido varias veces. Los dominios que superan este
+ * techo (Hero, Inicio y Catálogos) deben declarar un maxFormBytes explícito.
+ */
+const MAX_AUTHORIZED_ADMIN_FORM_BYTES = 64 * 1024;
+
 export type AuthorizedAdminForm = {
   authorized: true;
   adminOrigin: string;
@@ -87,10 +96,13 @@ export async function authorizeAdminFormRequest(
       };
     }
 
+    const maxFormBytes =
+      options?.maxFormBytes ??
+      MAX_AUTHORIZED_ADMIN_FORM_BYTES;
     const form = await readTrustedAdminForm(
       request,
       adminOrigin,
-      options?.maxFormBytes
+      maxFormBytes
     );
 
     if (!form) {
