@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import { access, readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
@@ -198,6 +199,15 @@ assert(
 
 const localSetup = await read(
   "tools/setup-local-server.sh"
+);
+const localSetupSyntax = spawnSync(
+  "bash",
+  ["-n", path.join(root, "tools/setup-local-server.sh")],
+  { encoding: "utf8" }
+);
+assert(
+  localSetupSyntax.status === 0,
+  `El bootstrap local debe conservar sintaxis Bash válida: ${localSetupSyntax.stderr.trim() || "bash -n falló"}.`
 );
 assert(
   localSetup.includes("DEUNA_ACCOUNT_SESSION_DAYS=30") &&
