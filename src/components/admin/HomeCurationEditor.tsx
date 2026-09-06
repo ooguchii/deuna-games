@@ -449,6 +449,7 @@ export default function HomeCurationEditor({
     recoveryDismissed,
     storedDraft,
   ]);
+  const recoveryMatchesRevision = recovery?.revision === revision;
 
   useEffect(() => {
     if (!recoveryReady || recovery) return;
@@ -552,26 +553,31 @@ export default function HomeCurationEditor({
       />
 
       {recovery && (
-        <section className={styles.overview} role="status">
+        <section
+          className={styles.overview}
+          role={recoveryMatchesRevision ? "status" : "alert"}
+        >
           <div>
             <span>RECUPERACIÓN</span>
             <h2>Cambios locales recuperables</h2>
             <p>
-              {recovery.revision === revision
+              {recoveryMatchesRevision
                 ? "Hay una copia local de esta revisión que todavía no fue guardada."
-                : `Hay una copia local iniciada en la revisión ${recovery.revision}. El servidor está en la revisión ${revision}.`}
+                : `Hay una copia local iniciada en la revisión ${recovery.revision}, pero el servidor ya está en la revisión ${revision}. Por seguridad no puede recuperarse automáticamente sobre una revisión posterior.`}
             </p>
           </div>
           <div className={styles.rowActions}>
             <button
               type="button"
+              disabled={!recoveryMatchesRevision}
               onClick={() => {
+                if (!recoveryMatchesRevision) return;
                 setModes(structuredClone(recovery.modes));
                 setSelections(structuredClone(recovery.selections));
                 setRecoveryDismissed(true);
               }}
             >
-              Recuperar
+              {recoveryMatchesRevision ? "Recuperar" : "Copia obsoleta"}
             </button>
             <button
               type="button"
