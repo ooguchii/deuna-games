@@ -5,6 +5,7 @@ import {
   useEffect,
   useMemo,
   useState,
+  useSyncExternalStore,
 } from "react";
 
 import type {
@@ -17,6 +18,9 @@ import styles from "./HomePresentationEditor.module.css";
 
 const PRESENTATION_DRAFT_KEY =
   "deuna:home-presentation-draft:latest";
+const subscribeStorage = () => () => {};
+const clientReady = () => true;
+const serverReady = () => false;
 
 const sectionLabels: Record<HomeSectionConfig["id"], string> = {
   hero: "Hero principal",
@@ -97,14 +101,22 @@ function clearRecoveryDraft() {
   }
 }
 
-function readRecoveryDraft(
+function readRecoveryRaw() {
+  try {
+    return sessionStorage.getItem(PRESENTATION_DRAFT_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function parseRecoveryDraft(
+  raw: string | null,
   baselineSections: HomeSectionConfig[],
   baselineCopy: EditableHomeCopy
 ): PresentationDraft | null {
-  try {
-    const raw = sessionStorage.getItem(PRESENTATION_DRAFT_KEY);
-    if (!raw) return null;
+  if (!raw) return null;
 
+  try {
     const parsed: unknown = JSON.parse(raw);
     if (
       !isRecord(parsed) ||
@@ -114,7 +126,6 @@ function readRecoveryDraft(
       !Array.isArray(parsed.sections) ||
       !hasSameShape(parsed.copy, baselineCopy)
     ) {
-      clearRecoveryDraft();
       return null;
     }
 
@@ -131,15 +142,11 @@ function readRecoveryDraft(
         !allowedIds.has(item.id as HomeSectionConfig["id"]) ||
         typeof item.visible !== "boolean"
       ) {
-        clearRecoveryDraft();
         return null;
       }
 
       const id = item.id as HomeSectionConfig["id"];
-      if (seenIds.has(id)) {
-        clearRecoveryDraft();
-        return null;
-      }
+      if (seenIds.has(id)) return null;
 
       seenIds.add(id);
       sections.push({ id, visible: item.visible });
@@ -149,7 +156,6 @@ function readRecoveryDraft(
       sections.length !== baselineSections.length ||
       seenIds.size !== allowedIds.size
     ) {
-      clearRecoveryDraft();
       return null;
     }
 
@@ -159,7 +165,6 @@ function readRecoveryDraft(
       copy: structuredClone(parsed.copy) as EditableHomeCopy,
     };
   } catch {
-    clearRecoveryDraft();
     return null;
   }
 }
@@ -189,37 +194,46 @@ export default function HomePresentationEditor({
   const [copy, setCopy] = useState<EditableHomeCopy>(
     () => structuredClone(baselineCopy)
   );
-  const [recovery, setRecovery] =
-    useState<PresentationDraft | null>(null);
-  const [recoveryReady, setRecoveryReady] = useState(false);
+  const [recoveryDismissed, setRecoveryDismissed] = useState(false);
+  const recoveryReady = useSyncExternalStore(
+    subscribeStorage,
+    clientReady,
+    serverReady
+  );
+  const storedDraft = useSyncExternalStore(
+    subscribeStorage,
+    readRecoveryRaw,
+    () => null
+  );
 
   const serialized = useMemo(
     () => buildPayload(sections, copy),
     [copy, sections]
   );
   const dirty = serialized !== baselinePayload;
+  const recovery = useMemo(() => {
+    if (!storedDraft || recoveryDismissed) return null;
 
-  useEffect(() => {
-    const candidate = readRecoveryDraft(
+    const candidate = parseRecoveryDraft(
+      storedDraft,
       baselineSections,
       baselineCopy
     );
+    if (!candidate) return null;
 
-    if (candidate) {
-      const candidatePayload = buildPayload(
-        candidate.sections,
-        candidate.copy
-      );
-
-      if (candidatePayload === baselinePayload) {
-        clearRecoveryDraft();
-      } else {
-        setRecovery(candidate);
-      }
-    }
-
-    setRecoveryReady(true);
-  }, [baselineCopy, baselinePayload, baselineSections]);
+    return buildPayload(
+      candidate.sections,
+      candidate.copy
+    ) === baselinePayload
+      ? null
+      : candidate;
+  }, [
+    baselineCopy,
+    baselinePayload,
+    baselineSections,
+    recoveryDismissed,
+    storedDraft,
+  ]);
 
   useEffect(() => {
     if (!recoveryReady || recovery) return;
@@ -355,7 +369,7 @@ export default function HomePresentationEditor({
                   recovery.sections.map((section) => ({ ...section }))
                 );
                 setCopy(structuredClone(recovery.copy));
-                setRecovery(null);
+                setRecoveryDismissed(true);
               }}
             >
               Recuperar
@@ -364,7 +378,7 @@ export default function HomePresentationEditor({
               type="button"
               onClick={() => {
                 clearRecoveryDraft();
-                setRecovery(null);
+                setRecoveryDismissed(true);
               }}
             >
               Descartar copia
