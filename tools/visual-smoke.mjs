@@ -77,6 +77,18 @@ const adminPages = [
     expectedSelector: "main#main-content",
     expectedText: "Resto de Inicio",
   },
+  {
+    id: "admin-home-publication",
+    pathname: "/admin/portada?seccion=publicacion",
+    expectedSelector: "main#main-content",
+    expectedText: "Historial de publicaciones",
+  },
+  {
+    id: "admin-home-history",
+    pathname: "/admin/portada?seccion=historial",
+    expectedSelector: "main#main-content",
+    expectedText: "Historial de revisiones",
+  },
 ];
 
 function findChrome() {
@@ -848,7 +860,7 @@ async function main() {
         `[visual] ${result.page}/${result.viewport}: ` +
         `${result.audit.viewportWidth}x${result.audit.viewportHeight}, ` +
         `alto ${result.audit.scrollHeight}px, ` +
-        `${result.audit.smallTouchTargets.length} touch targets <40px, ` +
+        `${result.audit.smallTouchTargets.length} rectángulos visuales interactivos <40px (señal), ` +
         `${result.capture.truncated ? "captura truncada" : "captura completa"}`
       );
     }
