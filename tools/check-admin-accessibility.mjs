@@ -27,6 +27,8 @@ const [
   updateWorkspace,
   dashboard,
   publicationOverview,
+  publicationPanel,
+  editorialHistory,
   rootLayout,
   globalCss,
   protectedLayout,
@@ -53,6 +55,8 @@ const [
   source("src/app/admin/(protected)/juegos/[slug]/actualizacion/page.tsx"),
   source("src/app/admin/(protected)/page.tsx"),
   source("src/lib/admin/publication-overview.ts"),
+  source("src/components/admin/PublicationPanel.tsx"),
+  source("src/components/admin/EditorialHistory.tsx"),
   source("src/app/layout.tsx"),
   source("src/app/globals.css"),
   source("src/app/admin/(protected)/layout.tsx"),
@@ -256,6 +260,14 @@ assert(
 );
 
 assert(
+  publicationPanel.includes('role="status"') &&
+    publicationPanel.includes('role="alert"') &&
+    publicationPanel.includes("Restaurar publicación ${publication.publicationNumber}") &&
+    editorialHistory.includes("Restaurar revisión ${revision.revision}"),
+  "Publicación e Historial deben anunciar resultados y distinguir cada acción de restauración para tecnologías de asistencia."
+);
+
+assert(
   gamesCatalog.includes("Todas las clasificaciones") &&
     gamesCatalog.includes(">Clasificación<") &&
     !gamesCatalog.includes("Todas las categorías"),
@@ -309,6 +321,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    `Accesibilidad administrativa: OK (${adminCssFiles.length} módulos revisados; identidad dinámica y contrastada, navegación móvil desplegable, login accesible, skip-link único, contraste adaptable, escala legible, foco único, tema adaptativo, teclado, movimiento reducido y catálogos semánticos).`
+    `Accesibilidad administrativa: OK (${adminCssFiles.length} módulos revisados; identidad dinámica y contrastada, navegación móvil desplegable, login accesible, skip-link único, contraste adaptable, escala legible, foco único, tema adaptativo, teclado, movimiento reducido, publicación anunciable y catálogos semánticos).`
   );
 }
