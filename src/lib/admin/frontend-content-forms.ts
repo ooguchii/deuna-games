@@ -1,6 +1,10 @@
 import { z } from "zod";
 
 import {
+  HOME_PRESENTATION_MAX_JSON_CHARS,
+} from "@/lib/home/editorial-limits";
+
+import {
   editorialHomeConfigSchema,
   editorialPublicPagesConfigSchema,
   editorialSiteConfigSchema,
@@ -71,9 +75,9 @@ const homePresentationSchema = z
 
 export const homePresentationFormSchema = z.object({
   expectedRevision: expectedRevisionSchema,
-  presentationJson: jsonField(24_000).pipe(
-    homePresentationSchema
-  ),
+  presentationJson: jsonField(
+    HOME_PRESENTATION_MAX_JSON_CHARS
+  ).pipe(homePresentationSchema),
 });
 
 export const publicGamesFormSchema = z

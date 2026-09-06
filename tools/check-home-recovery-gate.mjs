@@ -13,11 +13,30 @@ async function source(relativePath) {
   return readFile(path.join(root, relativePath), "utf8");
 }
 
-const [curationEditor, presentationEditor, heroEditor, heroBoundary] = await Promise.all([
+const [
+  curationEditor,
+  presentationEditor,
+  heroEditor,
+  heroBoundary,
+  homeLimits,
+  homeConfigForms,
+  frontendContentForms,
+  curationRoute,
+  presentationRoute,
+  combinedContentRoute,
+  requestSecurity,
+] = await Promise.all([
   source("src/components/admin/HomeCurationEditor.tsx"),
   source("src/components/admin/HomePresentationEditor.tsx"),
   source("src/components/admin/HomeHeroEditor.tsx"),
   source("src/components/admin/HomeHeroSaveBoundary.tsx"),
+  source("src/lib/home/editorial-limits.ts"),
+  source("src/lib/admin/home-config-forms.ts"),
+  source("src/lib/admin/frontend-content-forms.ts"),
+  source("src/app/api/admin/content/home/route.ts"),
+  source("src/app/api/admin/content/home/presentation/route.ts"),
+  source("src/app/api/admin/content/home/content/route.ts"),
+  source("src/lib/admin/request-security.ts"),
 ]);
 
 for (const [label, editor, minimumInertRegions] of [
@@ -87,13 +106,49 @@ assert(
   "El mensaje de conflicto de Hero no debe sugerir recargar una copia que luego quedaría obsoleta.",
 );
 
+assert(
+  homeLimits.includes("HOME_CURATION_MAX_JSON_CHARS = 20_000") &&
+    homeLimits.includes("HOME_PRESENTATION_MAX_JSON_CHARS = 24_000") &&
+    homeLimits.includes("URL_ENCODED_MAX_BYTES_PER_JSON_CHAR = 9") &&
+    homeLimits.includes("HOME_CURATION_MAX_FORM_BYTES") &&
+    homeLimits.includes("HOME_PRESENTATION_MAX_FORM_BYTES") &&
+    homeLimits.includes("HOME_CONTENT_MAX_FORM_BYTES"),
+  "Los límites de payload de Resto de Inicio deben vivir en un contrato Home compartido y contemplar el peor caso de percent-encoding del formulario.",
+);
+
+assert(
+  homeConfigForms.includes("HOME_CURATION_MAX_JSON_CHARS") &&
+    homeConfigForms.includes(".max(HOME_CURATION_MAX_JSON_CHARS)") &&
+    !homeConfigForms.includes(".max(20_000)") &&
+    frontendContentForms.includes("HOME_PRESENTATION_MAX_JSON_CHARS") &&
+    frontendContentForms.includes("HOME_PRESENTATION_MAX_JSON_CHARS\n  ).pipe") &&
+    !frontendContentForms.includes("jsonField(24_000)"),
+  "Zod debe reutilizar los máximos Home compartidos en vez de mantener literales paralelos.",
+);
+
+assert(
+  curationRoute.includes("HOME_CURATION_MAX_FORM_BYTES") &&
+    curationRoute.includes("maxFormBytes: HOME_CURATION_MAX_FORM_BYTES") &&
+    presentationRoute.includes("HOME_PRESENTATION_MAX_FORM_BYTES") &&
+    presentationRoute.includes("maxFormBytes: HOME_PRESENTATION_MAX_FORM_BYTES") &&
+    combinedContentRoute.includes("HOME_CONTENT_MAX_FORM_BYTES") &&
+    combinedContentRoute.includes("maxFormBytes: HOME_CONTENT_MAX_FORM_BYTES"),
+  "Las tres rutas de Resto de Inicio deben aceptar todo payload válido según sus schemas antes de Zod, sin depender del límite Admin genérico de 8 KiB.",
+);
+
+assert(
+  requestSecurity.includes("const MAX_ADMIN_FORM_BYTES = 8 * 1024") &&
+    !requestSecurity.includes("HOME_CONTENT_MAX_FORM_BYTES"),
+  "El hardening de Home no debe ensanchar el límite global de formularios del Admin.",
+);
+
 if (failures.length > 0) {
   for (const failure of failures) {
-    console.error(`Home recovery gate: ${failure}`);
+    console.error(`Home recovery/save gate: ${failure}`);
   }
   process.exitCode = 1;
 } else {
   console.log(
-    "Home recovery gate: OK (Curaduría, Presentación y Hero exigen resolver cualquier copia pendiente; Hero bloquea además copias de otra revisión o de origen no verificable con snapshot SSR estable y remount seguro al descartar).",
+    "Home recovery/save gate: OK (Curaduría, Presentación y Hero exigen resolver cualquier copia pendiente; Hero falla cerrado ante copias obsoletas y las rutas de Resto alinean límites HTTP con sus contratos Zod sin ampliar el Admin global).",
   );
 }
