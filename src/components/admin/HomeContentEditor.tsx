@@ -34,11 +34,12 @@ export default function HomeContentEditor({
 }) {
   const router = useRouter();
   const rootRef = useRef<HTMLDivElement>(null);
+  const savingRef = useRef(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(false);
 
   const saveAll = useCallback(async (root: HTMLElement) => {
-    if (saving) return;
+    if (savingRef.current) return;
 
     const curation = root.querySelector<HTMLInputElement>(
       'input[name="curationJson"]'
@@ -52,6 +53,7 @@ export default function HomeContentEditor({
       return;
     }
 
+    savingRef.current = true;
     setSaving(true);
     setError(false);
 
@@ -79,6 +81,7 @@ export default function HomeContentEditor({
         const saved = outcome === "guardado";
 
         if (!saved) {
+          savingRef.current = false;
           setSaving(false);
           setError(true);
         }
@@ -87,6 +90,7 @@ export default function HomeContentEditor({
       } else {
         // La ruta coordinada normalmente responde mediante redirect. Si un
         // middleware cambia ese contrato, no dejes el editor bloqueado.
+        savingRef.current = false;
         setSaving(false);
       }
 
@@ -96,10 +100,11 @@ export default function HomeContentEditor({
         "No se pudo guardar Resto de Inicio de forma coordinada.",
         saveError
       );
+      savingRef.current = false;
       setSaving(false);
       setError(true);
     }
-  }, [revision, router, saving]);
+  }, [revision, router]);
 
   const interceptChildSubmit = useCallback(
     (event: FormEvent<HTMLDivElement>) => {
