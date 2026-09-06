@@ -63,8 +63,8 @@
   font-size: 12px;
 }
 
-.sidebar.sidebar > div:last-of-type button {
-  min-height: 38px;
+.sidebar.sidebar .logoutButton {
+  min-height: 44px;
   padding: 0 10px;
   font-size: 12px;
 }
@@ -231,8 +231,12 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-.main form button {
-  min-height: 40px;
+/*
+ * Baseline táctil global deliberadamente de baja especificidad: cada editor
+ * puede pedir controles mayores (64/118px, etc.) sin que el shell los reduzca.
+ */
+.main :where(form button) {
+  min-height: 44px;
   font-size: 13px;
 }
 

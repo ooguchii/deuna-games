@@ -5,6 +5,7 @@ import {
   useEffect,
   useRef,
   useState,
+  useSyncExternalStore,
   type FormEvent,
   type ReactNode,
 } from "react";
@@ -14,6 +15,8 @@ import styles from "./HomeHeroEditor.module.css";
 const HERO_SAVE_ACTION = "/api/admin/content/home/hero";
 const HERO_DRAFT_PREFIX = "deuna:hero-draft:";
 const HERO_DRAFT_LATEST_KEY = `${HERO_DRAFT_PREFIX}latest`;
+const subscribeStorage = () => () => {};
+const serverBlockedRecoverySnapshot = () => "";
 
 type SaveNotice = {
   error: boolean;
@@ -30,6 +33,10 @@ type HeroSaveFields = {
   heroJson: string;
 };
 
+type BlockedRecovery = {
+  revision: number | null;
+};
+
 function clearStoredHeroDrafts() {
   try {
     const keys: string[] = [];
@@ -41,6 +48,88 @@ function clearStoredHeroDrafts() {
   } catch {
     // El guardado confirmado en el servidor sigue siendo la fuente de verdad.
   }
+}
+
+function readBlockedHeroRecovery(
+  currentRevision: number
+): BlockedRecovery | null {
+  try {
+    const stable = sessionStorage.getItem(HERO_DRAFT_LATEST_KEY);
+
+    if (stable) {
+      try {
+        const parsed = JSON.parse(stable) as unknown;
+        if (
+          typeof parsed === "object" &&
+          parsed !== null &&
+          "revision" in parsed &&
+          typeof parsed.revision === "number" &&
+          Number.isInteger(parsed.revision)
+        ) {
+          const recoveryRevision = parsed.revision;
+          return recoveryRevision === currentRevision
+            ? null
+            : { revision: recoveryRevision };
+        }
+      } catch {
+        // Una copia sin metadatos verificables nunca debe rebasarse sobre otra revisión.
+      }
+
+      return { revision: null };
+    }
+
+    if (
+      sessionStorage.getItem(
+        `${HERO_DRAFT_PREFIX}${currentRevision}`
+      )
+    ) {
+      return null;
+    }
+
+    let newestRevision: number | null = null;
+    for (let index = 0; index < sessionStorage.length; index += 1) {
+      const key = sessionStorage.key(index);
+      const match = key?.match(/^deuna:hero-draft:(\d+)$/);
+      if (!match) continue;
+      const recoveryRevision = Number(match[1]);
+      if (
+        !Number.isInteger(recoveryRevision) ||
+        recoveryRevision === currentRevision ||
+        (newestRevision !== null && recoveryRevision <= newestRevision)
+      ) {
+        continue;
+      }
+      if (!sessionStorage.getItem(key!)) continue;
+      newestRevision = recoveryRevision;
+    }
+
+    return newestRevision === null
+      ? null
+      : { revision: newestRevision };
+  } catch {
+    return null;
+  }
+}
+
+function readBlockedHeroRecoverySnapshot(currentRevision: number) {
+  const blocked = readBlockedHeroRecovery(currentRevision);
+  if (!blocked) return "";
+  return blocked.revision === null
+    ? "unknown"
+    : `revision:${blocked.revision}`;
+}
+
+function decodeBlockedHeroRecoverySnapshot(
+  snapshot: string
+): BlockedRecovery | null {
+  if (!snapshot) return null;
+  if (snapshot === "unknown") return { revision: null };
+  const match = snapshot.match(/^revision:(\d+)$/);
+  if (!match) return { revision: null };
+  const revision = Number(match[1]);
+  return Number.isInteger(revision)
+    ? { revision }
+    : { revision: null };
 }
 
 function readHeroSaveFields(form: HTMLFormElement): HeroSaveFields | null {
@@ -109,7 +198,7 @@ function persistHeroRecovery(form: HTMLFormElement) {
 
 function errorMessage(response: Response, result: SaveResponse | null) {
   if (response.status === 409) {
-    return "Hay una revisión más reciente de Inicio. Tus cambios siguen aquí y en la copia local; recarga y revísalos antes de volver a guardar.";
+    return "Hay una revisión más reciente de Inicio. Tus cambios siguen abiertos y en la copia local; mantenlos en esta pestaña y compara la revisión nueva antes de recargar para no rebasar cambios antiguos sobre un borrador más reciente.";
   }
   if (response.status === 403) {
     return "El servidor rechazó la solicitud. Abre el editor desde su dirección HTTPS autorizada e intenta de nuevo. Tus cambios siguen aquí.";
@@ -140,6 +229,15 @@ export default function HomeHeroSaveBoundary({
   const [savePending, setSavePending] = useState(false);
   const [savedRevision, setSavedRevision] = useState<number | null>(null);
   const [notice, setNotice] = useState<SaveNotice | null>(null);
+  const [recoveryEpoch, setRecoveryEpoch] = useState(0);
+  const blockedRecoverySnapshot = useSyncExternalStore(
+    subscribeStorage,
+    () => readBlockedHeroRecoverySnapshot(revision),
+    serverBlockedRecoverySnapshot
+  );
+  const blockedRecovery = decodeBlockedHeroRecoverySnapshot(
+    blockedRecoverySnapshot
+  );
   const waitingForRefresh = savedRevision !== null && revision < savedRevision;
   const busy = savePending || waitingForRefresh;
 
@@ -149,13 +247,13 @@ export default function HomeHeroSaveBoundary({
     ) ?? null;
 
   const scheduleRecoverySnapshot = () => {
-    if (saving.current) return;
+    if (saving.current || blockedRecovery) return;
     if (backupFrame.current !== null) {
       cancelAnimationFrame(backupFrame.current);
     }
     backupFrame.current = requestAnimationFrame(() => {
       backupFrame.current = null;
-      if (saving.current) return;
+      if (saving.current || blockedRecovery) return;
       const form = findHeroForm();
       if (!form) return;
       const submit = form.querySelector<HTMLButtonElement>(
@@ -210,7 +308,7 @@ export default function HomeHeroSaveBoundary({
 
     event.preventDefault();
     event.stopPropagation();
-    if (saving.current) return;
+    if (saving.current || blockedRecovery) return;
 
     const rawFields = readHeroSaveFields(form);
     const fields = rawFields ? normalizedHeroSaveFields(rawFields) : null;
@@ -283,6 +381,15 @@ export default function HomeHeroSaveBoundary({
     }
   };
 
+  const discardBlockedRecovery = () => {
+    if (backupFrame.current !== null) {
+      cancelAnimationFrame(backupFrame.current);
+      backupFrame.current = null;
+    }
+    clearStoredHeroDrafts();
+    setRecoveryEpoch((current) => current + 1);
+  };
+
   return (
     <div
       ref={rootRef}
@@ -302,7 +409,24 @@ export default function HomeHeroSaveBoundary({
           {notice.message}
         </p>
       )}
-      <div inert={busy || undefined}>{children}</div>
+      {blockedRecovery && (
+        <div className={styles.workspaceNote} role="alert">
+          <strong>Copia local de otra revisión bloqueada.</strong>{" "}
+          {blockedRecovery.revision === null
+            ? "No se pudo verificar de qué revisión proviene. Por seguridad no puede recuperarse sobre el borrador actual."
+            : `La copia pertenece a la revisión ${blockedRecovery.revision} y el servidor está en la revisión ${revision}. Por seguridad no puede recuperarse sobre una revisión distinta.`}{" "}
+          Descarta esa copia para desbloquear el Hero actual.
+          <button type="button" onClick={discardBlockedRecovery}>
+            Descartar copia obsoleta
+          </button>
+        </div>
+      )}
+      <div
+        key={recoveryEpoch}
+        inert={busy || blockedRecovery !== null || undefined}
+      >
+        {children}
+      </div>
     </div>
   );
 }

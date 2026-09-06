@@ -22,6 +22,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 
 import {
   homeAdminSections as homeAdminSectionContract,
+  resolveHomeAdminSection,
 } from "@/lib/admin/home-admin-sections";
 
 import ia from "./AdminInformationArchitecture.module.css";
@@ -368,7 +369,9 @@ export default function AdminContextBar() {
         label="Secciones del editor de Inicio"
         items={simpleItems(
           pathname,
-          searchParams.get("seccion") ?? "hero",
+          resolveHomeAdminSection(
+            searchParams.get("seccion") ?? undefined
+          ),
           homeSections
         )}
       />

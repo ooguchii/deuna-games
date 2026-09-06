@@ -38,6 +38,8 @@ import {
   getPublicResolvedUpdates,
 } from "@/lib/updates/public-updates";
 
+import styles from "./page.module.css";
+
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -215,6 +217,9 @@ export default async function Home() {
         id="main-content"
         className="main-content"
       >
+        <h1 className={styles.pageTitle}>
+          {homeConfig.copy.hero.accessibleTitle}
+        </h1>
         {homeConfig.sections.map(renderSection)}
       </main>
 

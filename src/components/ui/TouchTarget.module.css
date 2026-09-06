@@ -1,0 +1,26 @@
+.minimum.minimum {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.hitArea {
+  position: relative;
+}
+
+.hitArea::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: max(45px, 100%);
+  height: max(45px, 100%);
+  transform: translate(-50%, -50%);
+}
+
+.heroNavigation.heroNavigation {
+  /* Hero navigation may be scaled editorially. Keep one logical pixel of
+     safety so the rendered pointer target stays >=44px after subpixel scaling
+     while the existing spacing formulas prevent overlap. */
+  --hero-navigation-target-size:
+    max(45px, calc(4500px / var(--hero-navigation-scale, 100)));
+}

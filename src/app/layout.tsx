@@ -20,6 +20,7 @@ import "./globals.css";
 import "@/theme/deuna-theme.css";
 import "@/theme/public-theme-contract.css";
 import "@/theme/public-route-theme-contract.css";
+import "@/theme/public-touch-contract.css";
 
 export const dynamic = "force-dynamic";
 

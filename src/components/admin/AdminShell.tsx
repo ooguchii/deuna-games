@@ -28,7 +28,10 @@ export default function AdminShell({
   const compactName = siteShortName.trim() || siteName;
 
   return (
-    <div className={`${styles.shell} ${ux.shell}`}>
+    <div
+      className={`${styles.shell} ${ux.shell}`}
+      data-admin-shell="true"
+    >
       <aside className={`${styles.sidebar} ${ux.sidebar}`}>
         <Link
           href="/admin"
@@ -74,7 +77,10 @@ export default function AdminShell({
               name="intent"
               value="logout"
             />
-            <button type="submit">
+            <button
+              type="submit"
+              className={ux.logoutButton}
+            >
               <LogOut size={16} aria-hidden="true" />
               Salir
             </button>

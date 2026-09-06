@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 
 import CardCarousel from "@/components/ui/CardCarousel";
+import touchStyles from "@/components/ui/TouchTarget.module.css";
 import UniversalGameCard from "@/components/ui/UniversalGameCard";
 import type { HomeCopy } from "@/data/home-config";
 import type { Game } from "@/types/game";
@@ -23,9 +24,9 @@ export default function RecentlyAdded({
           {copy.title} <span>{copy.highlight}</span>
         </h2>
 
-        <Link href="/juegos/nuevos">
+        <Link href="/juegos/nuevos" className={touchStyles.hitArea}>
           {copy.linkLabel}
-          <ChevronRight size={18} />
+          <ChevronRight size={18} aria-hidden="true" />
         </Link>
       </div>
 

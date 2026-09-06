@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 
 import CardCarousel from "@/components/ui/CardCarousel";
+import touchStyles from "@/components/ui/TouchTarget.module.css";
 import UniversalGameCard from "@/components/ui/UniversalGameCard";
 import type { HomeCopy } from "@/data/home-config";
 import type { Game } from "@/types/game";
@@ -79,7 +80,7 @@ export default function GamesForYourPC({
           )}
         </div>
 
-        <Link href="/requisitos">
+        <Link href="/requisitos" className={touchStyles.hitArea}>
           {copy.cta}
           <ChevronRight size={18} aria-hidden="true" />
         </Link>
@@ -122,7 +123,10 @@ export default function GamesForYourPC({
           <span>{personalized ? "en tu PC" : copy.listHighlight}</span>
         </h3>
 
-        <Link href={personalized ? "/cuenta#mi-pc" : "/juegos/bajos-recursos"}>
+        <Link
+          href={personalized ? "/cuenta?vista=pc" : "/juegos/bajos-recursos"}
+          className={touchStyles.hitArea}
+        >
           {personalized ? "Ver Mi PC" : copy.listLinkLabel}
           <ChevronRight size={18} aria-hidden="true" />
         </Link>

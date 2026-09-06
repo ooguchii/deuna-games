@@ -3,6 +3,8 @@
 import {
   type FormEvent,
   useCallback,
+  useEffect,
+  useRef,
   useState,
 } from "react";
 import { useRouter } from "next/navigation";
@@ -15,24 +17,29 @@ import HomePresentationEditor from "./HomePresentationEditor";
 import styles from "./HomeContentEditor.module.css";
 
 const combinedAction = "/api/admin/content/home/content";
+const dirtySelector = 'form[data-home-editor-dirty="true"]';
 
 export default function HomeContentEditor({
   config,
   games,
   publishedSlugs,
   revision,
+  rankingReferenceTime,
 }: {
   config: ResolvedHomeConfig;
   games: Game[];
   publishedSlugs: string[];
   revision: number;
+  rankingReferenceTime: number;
 }) {
   const router = useRouter();
+  const rootRef = useRef<HTMLDivElement>(null);
+  const savingRef = useRef(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(false);
 
   const saveAll = useCallback(async (root: HTMLElement) => {
-    if (saving) return;
+    if (savingRef.current) return;
 
     const curation = root.querySelector<HTMLInputElement>(
       'input[name="curationJson"]'
@@ -46,6 +53,7 @@ export default function HomeContentEditor({
       return;
     }
 
+    savingRef.current = true;
     setSaving(true);
     setError(false);
 
@@ -73,6 +81,7 @@ export default function HomeContentEditor({
         const saved = outcome === "guardado";
 
         if (!saved) {
+          savingRef.current = false;
           setSaving(false);
           setError(true);
         }
@@ -81,6 +90,7 @@ export default function HomeContentEditor({
       } else {
         // La ruta coordinada normalmente responde mediante redirect. Si un
         // middleware cambia ese contrato, no dejes el editor bloqueado.
+        savingRef.current = false;
         setSaving(false);
       }
 
@@ -90,10 +100,11 @@ export default function HomeContentEditor({
         "No se pudo guardar Resto de Inicio de forma coordinada.",
         saveError
       );
+      savingRef.current = false;
       setSaving(false);
       setError(true);
     }
-  }, [revision, router, saving]);
+  }, [revision, router]);
 
   const interceptChildSubmit = useCallback(
     (event: FormEvent<HTMLDivElement>) => {
@@ -113,8 +124,66 @@ export default function HomeContentEditor({
     [saveAll]
   );
 
+  useEffect(() => {
+    const hasUnsavedChanges = () =>
+      Boolean(rootRef.current?.querySelector(dirtySelector));
+
+    const warnBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (!hasUnsavedChanges()) return;
+      event.preventDefault();
+      event.returnValue = "";
+    };
+
+    const protectLinks = (event: MouseEvent) => {
+      if (
+        !hasUnsavedChanges() ||
+        event.defaultPrevented ||
+        event.button !== 0 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey
+      ) {
+        return;
+      }
+
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+
+      const link = target.closest<HTMLAnchorElement>("a[href]");
+      if (
+        !link ||
+        link.target === "_blank" ||
+        link.hasAttribute("download")
+      ) {
+        return;
+      }
+
+      const href = link.getAttribute("href");
+      if (!href || href.startsWith("#")) return;
+
+      if (
+        !window.confirm(
+          "Tienes cambios sin guardar en Resto de Inicio. ¿Quieres salir?"
+        )
+      ) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    };
+
+    window.addEventListener("beforeunload", warnBeforeUnload);
+    document.addEventListener("click", protectLinks, true);
+
+    return () => {
+      window.removeEventListener("beforeunload", warnBeforeUnload);
+      document.removeEventListener("click", protectLinks, true);
+    };
+  }, []);
+
   return (
     <div
+      ref={rootRef}
       className={styles.root}
       data-saving={saving ? "true" : "false"}
       aria-busy={saving}
@@ -134,7 +203,7 @@ export default function HomeContentEditor({
           <span>
             {error
               ? "Tus cambios siguen conservados en esta pestaña. Revisa el aviso del editor y vuelve a guardar cuando corresponda."
-              : "Curaduría, orden, visibilidad y textos se guardan juntos. Pulsar Guardar en cualquiera de los dos bloques conserva todos los cambios pendientes antes de crear la nueva revisión."}
+              : "Curaduría, orden, visibilidad y textos se guardan juntos. Pulsa Guardar en el bloque que tenga cambios para conservar todo lo pendiente antes de crear la nueva revisión."}
           </span>
         </div>
         <b>{saving ? "GUARDANDO…" : `REVISIÓN ${revision}`}</b>
@@ -145,6 +214,7 @@ export default function HomeContentEditor({
         games={games}
         publishedSlugs={publishedSlugs}
         revision={revision}
+        rankingReferenceTime={rankingReferenceTime}
         excludeHero
       />
       <HomePresentationEditor

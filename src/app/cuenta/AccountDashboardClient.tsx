@@ -28,12 +28,18 @@ import { useRouter } from "next/navigation";
 import {
   type CSSProperties,
   type FormEvent,
+  useEffect,
   useMemo,
   useState,
 } from "react";
 
 import SiteBrand from "@/components/layout/SiteBrand";
 import GameMedia from "@/components/ui/GameMedia";
+import {
+  accountDashboardViewHref,
+  resolveAccountDashboardView,
+  type AccountDashboardView,
+} from "@/lib/accounts/dashboard-view";
 import type { GameImageViewport } from "@/types/game";
 
 import {
@@ -42,16 +48,6 @@ import {
   type AccountRewardsSnapshot,
 } from "./AccountRewardsPanel";
 import styles from "./account-dashboard.module.css";
-
-type DashboardView =
-  | "overview"
-  | "rewards"
-  | "games"
-  | "pc"
-  | "alerts"
-  | "discover"
-  | "profile"
-  | "settings";
 
 type Profile = {
   username: string;
@@ -100,6 +96,13 @@ type Notification = {
   publishedAt: string;
 };
 
+type PerformanceEstimate = {
+  minFps: number;
+  maxFps: number;
+  tier: "excellent" | "good" | "acceptable" | "basic";
+  confidence: "high" | "medium" | "low";
+};
+
 type Recommendation = {
   slug: string;
   title: string;
@@ -108,7 +111,7 @@ type Recommendation = {
   imageViewport?: GameImageViewport;
   rating?: number;
   reasons: string[];
-  compatibilityPercent: number | null;
+  performanceEstimate: PerformanceEstimate | null;
 };
 
 type ApiResult = {
@@ -117,6 +120,7 @@ type ApiResult = {
 };
 
 type DashboardProps = {
+  initialView: AccountDashboardView;
   siteName: string;
   profile: Profile;
   games: GameOption[];
@@ -126,8 +130,8 @@ type DashboardProps = {
   gpus: HardwareOption[];
   notifications: Notification[];
   recommendations: Recommendation[];
-  compatibilityPercent: number | null;
-  compatibilityLabel: string;
+  hardwareEstimateCount: number;
+  hardwareCoveragePercent: number | null;
   rewards: AccountRewardsSnapshot;
 };
 
@@ -141,6 +145,19 @@ const memoryLabels: Record<NonNullable<HardwareSelection>["memoryMode"], string>
   unknown: "No especificada",
   single: "Single channel",
   dual: "Dual channel",
+};
+
+const performanceTierLabels: Record<PerformanceEstimate["tier"], string> = {
+  excellent: "Excelente",
+  good: "Buena",
+  acceptable: "Aceptable",
+  basic: "Básica",
+};
+
+const confidenceLabels: Record<PerformanceEstimate["confidence"], string> = {
+  high: "alta",
+  medium: "media",
+  low: "baja",
 };
 
 async function postForm(
@@ -224,6 +241,8 @@ function RecommendationCard({
 }: {
   recommendation: Recommendation;
 }) {
+  const estimate = recommendation.performanceEstimate;
+
   return (
     <Link
       href={`/juegos/${recommendation.slug}`}
@@ -250,17 +269,24 @@ function RecommendationCard({
               ? `★ ${recommendation.rating.toFixed(1)}/5`
               : "Selección DeUna"}
           </span>
-          {recommendation.compatibilityPercent !== null && (
-            <b>{recommendation.compatibilityPercent}% compatible</b>
+          {estimate && (
+            <b>
+              {estimate.minFps}–{estimate.maxFps} FPS estimados
+            </b>
           )}
         </div>
-        <small>{recommendation.reasons[0] ?? "Recomendado para ti"}</small>
+        <small>
+          {estimate
+            ? `${performanceTierLabels[estimate.tier]} · confianza ${confidenceLabels[estimate.confidence]}`
+            : recommendation.reasons[0] ?? "Recomendado para ti"}
+        </small>
       </div>
     </Link>
   );
 }
 
 export default function AccountDashboardClient({
+  initialView,
   siteName,
   profile,
   games,
@@ -270,12 +296,12 @@ export default function AccountDashboardClient({
   gpus,
   notifications,
   recommendations,
-  compatibilityPercent,
-  compatibilityLabel,
+  hardwareEstimateCount,
+  hardwareCoveragePercent,
   rewards,
 }: DashboardProps) {
   const router = useRouter();
-  const [view, setView] = useState<DashboardView>("overview");
+  const [view, setView] = useState<AccountDashboardView>(initialView);
   const [pending, setPending] = useState(false);
   const [profileSaved, setProfileSaved] = useState(false);
   const [profileMessage, setProfileMessage] = useState<string | null>(null);
@@ -283,6 +309,32 @@ export default function AccountDashboardClient({
   const [hardwareMessage, setHardwareMessage] = useState<string | null>(null);
   const [addMessage, setAddMessage] = useState<string | null>(null);
   const [notificationPending, setNotificationPending] = useState(false);
+
+  function openView(nextView: AccountDashboardView) {
+    if (nextView === view) return;
+    setView(nextView);
+    window.history.pushState(null, "", accountDashboardViewHref(nextView));
+  }
+
+  useEffect(() => {
+    const currentView = new URLSearchParams(window.location.search).get("vista");
+    if (
+      currentView !== null &&
+      resolveAccountDashboardView(currentView) === "overview"
+    ) {
+      window.history.replaceState(null, "", accountDashboardViewHref("overview"));
+    }
+
+    const syncViewFromLocation = () => {
+      const parameters = new URLSearchParams(window.location.search);
+      setView(
+        resolveAccountDashboardView(parameters.get("vista") ?? undefined)
+      );
+    };
+
+    window.addEventListener("popstate", syncViewFromLocation);
+    return () => window.removeEventListener("popstate", syncViewFromLocation);
+  }, []);
 
   const gamesBySlug = useMemo(
     () => new Map(games.map((game) => [game.slug, game])),
@@ -312,7 +364,7 @@ export default function AccountDashboardClient({
   const displayName = profile.displayName?.trim() || profile.username;
 
   const navItems: Array<{
-    id: DashboardView;
+    id: AccountDashboardView;
     label: string;
     icon: typeof Gamepad2;
     badge?: number;
@@ -409,7 +461,7 @@ export default function AccountDashboardClient({
       }
 
       setHardwareMessage(
-        "PC guardada. DeUna ya puede usarla para ordenar compatibilidad."
+        "PC guardada. DeUna ya puede usarla para ordenar recomendaciones por rendimiento estimado."
       );
       router.refresh();
     } catch {
@@ -554,7 +606,7 @@ export default function AccountDashboardClient({
           <button
             type="button"
             className={styles.outlineAccentButton}
-            onClick={() => setView("games")}
+            onClick={() => openView("games")}
           >
             <SlidersHorizontal size={17} aria-hidden="true" />
             Personalizar DeUna
@@ -563,7 +615,7 @@ export default function AccountDashboardClient({
 
         <AccountRewardSummary
           rewards={rewards}
-          onOpen={() => setView("rewards")}
+          onOpen={() => openView("rewards")}
         />
 
         <section className={styles.statsStrip} aria-label="Resumen de Mi DeUna">
@@ -585,7 +637,10 @@ export default function AccountDashboardClient({
           </div>
           <div className={styles.statItem}>
             <span className={styles.statIcon}><Gauge size={22} /></span>
-            <div><strong>{compatibilityLabel}</strong><small>Compatibilidad general</small></div>
+            <div>
+              <strong>{hardware ? hardwareEstimateCount : "—"}</strong>
+              <small>{hardware ? "Juegos con estimación FPS" : "Configura Mi PC"}</small>
+            </div>
           </div>
         </section>
 
@@ -593,7 +648,7 @@ export default function AccountDashboardClient({
           <section className={styles.dashboardCard}>
             <div className={styles.cardHeading}>
               <div><Gamepad2 size={19} /><h2>Mis juegos</h2></div>
-              <button type="button" onClick={() => setView("games")}>Ver todos →</button>
+              <button type="button" onClick={() => openView("games")}>Ver todos →</button>
             </div>
             <div className={styles.compactGameList}>
               {overviewGames.length > 0 ? (
@@ -611,7 +666,7 @@ export default function AccountDashboardClient({
             <button
               type="button"
               className={styles.cardFooterButton}
-              onClick={() => setView("games")}
+              onClick={() => openView("games")}
             >
               Ver todos mis juegos
             </button>
@@ -620,7 +675,7 @@ export default function AccountDashboardClient({
           <section className={styles.dashboardCard}>
             <div className={styles.cardHeading}>
               <div><MonitorCog size={19} /><h2>Mi PC</h2></div>
-              <button type="button" onClick={() => setView("pc")}>
+              <button type="button" onClick={() => openView("pc")}>
                 {hardware ? "Editar" : "Configurar"}
               </button>
             </div>
@@ -634,18 +689,19 @@ export default function AccountDashboardClient({
                 </dl>
                 <div className={styles.performanceBox}>
                   <div>
-                    <span>Rendimiento promedio en juegos</span>
-                    <strong>{compatibilityLabel}</strong>
-                    <small>Basado en tu configuración actual</small>
+                    <span>Cobertura del motor FPS</span>
+                    <strong>{hardwareEstimateCount} de {games.length} juegos</strong>
+                    <small>Con calibración para rango estimado en 1080p medio.</small>
                   </div>
-                  {compatibilityPercent !== null && (
+                  {hardwareCoveragePercent !== null && (
                     <div
                       className={styles.performanceGauge}
                       style={{
-                        "--gauge": `${compatibilityPercent * 3.6}deg`,
+                        "--gauge": `${hardwareCoveragePercent * 3.6}deg`,
                       } as CSSProperties}
+                      aria-label={`${hardwareCoveragePercent}% del catálogo tiene estimación FPS disponible`}
                     >
-                      <span>{compatibilityPercent}%</span>
+                      <span>{hardwareCoveragePercent}%</span>
                     </div>
                   )}
                 </div>
@@ -662,7 +718,7 @@ export default function AccountDashboardClient({
             <button
               type="button"
               className={styles.cardFooterButton}
-              onClick={() => setView("pc")}
+              onClick={() => openView("pc")}
             >
               {hardware ? "Ver detalles de rendimiento" : "Configurar Mi PC"}
             </button>
@@ -671,7 +727,7 @@ export default function AccountDashboardClient({
           <section className={styles.dashboardCard}>
             <div className={styles.cardHeading}>
               <div><Bell size={19} /><h2>Avisos recientes</h2></div>
-              <button type="button" onClick={() => setView("alerts")}>Ver todos →</button>
+              <button type="button" onClick={() => openView("alerts")}>Ver todos →</button>
             </div>
             <div className={styles.alertPreviewList}>
               {overviewAlerts.length > 0 ? (
@@ -705,7 +761,7 @@ export default function AccountDashboardClient({
             <button
               type="button"
               className={styles.cardFooterButton}
-              onClick={() => setView("alerts")}
+              onClick={() => openView("alerts")}
             >
               Ir a avisos
             </button>
@@ -715,7 +771,7 @@ export default function AccountDashboardClient({
         <section className={styles.recommendationsPanel}>
           <div className={styles.cardHeading}>
             <div><Sparkles size={19} /><h2>Recomendados para ti</h2></div>
-            <button type="button" onClick={() => setView("discover")}>Ver todos →</button>
+            <button type="button" onClick={() => openView("discover")}>Ver todos →</button>
           </div>
           <div className={styles.recommendationGrid}>
             {recommendations.length > 0 ? (
@@ -902,7 +958,7 @@ export default function AccountDashboardClient({
               Configúrala una vez y DeUna reutiliza esos datos explícitos en FPS y recomendaciones.
             </p>
           </div>
-          {hardware && <strong>{compatibilityLabel}</strong>}
+          {hardware && <strong>{hardwareEstimateCount} estimables</strong>}
         </div>
 
         <div className={styles.pcWorkspace}>
@@ -987,11 +1043,13 @@ export default function AccountDashboardClient({
 
           <div className={styles.pcSummaryLarge}>
             <MonitorCog size={30} />
-            <span>Compatibilidad general</span>
-            <strong>{compatibilityLabel}</strong>
-            {compatibilityPercent !== null && <b>{compatibilityPercent}%</b>}
+            <span>Cobertura de estimaciones</span>
+            <strong>{hardwareEstimateCount} de {games.length} juegos</strong>
+            {hardwareCoveragePercent !== null && (
+              <b>{hardwareCoveragePercent}% del catálogo</b>
+            )}
             <small>
-              Estimación orientativa con el mismo motor de FPS de DeUna.
+              Este porcentaje mide cobertura de calibración, no compatibilidad. Los FPS se muestran por juego como rangos estimados y con nivel de confianza.
             </small>
           </div>
         </div>
@@ -1071,7 +1129,7 @@ export default function AccountDashboardClient({
             <span>PARA TI</span>
             <h1>Descubrimientos</h1>
             <p>
-              Ordenados por tus elecciones explícitas y por la compatibilidad de Mi PC cuando está configurada.
+              Ordenados por tus elecciones explícitas y por el rendimiento estimado de Mi PC cuando está configurada.
             </p>
           </div>
           <strong>{recommendations.length} sugerencias</strong>
@@ -1272,7 +1330,8 @@ export default function AccountDashboardClient({
                   key={item.id}
                   type="button"
                   data-active={view === item.id}
-                  onClick={() => setView(item.id)}
+                  aria-current={view === item.id ? "page" : undefined}
+                  onClick={() => openView(item.id)}
                 >
                   <Icon size={19} aria-hidden="true" />
                   <span>{item.label}</span>

@@ -7,6 +7,7 @@ import { getPublicSiteConfig } from "@/lib/site/public-site-config";
 import "../admin-professional.css";
 import "../admin-professional-details.css";
 import "../admin-theme-contract.css";
+import "../admin-touch-contract.css";
 
 export default async function ProtectedAdminLayout({
   children,

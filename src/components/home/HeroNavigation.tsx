@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 
+import touchStyles from "@/components/ui/TouchTarget.module.css";
 import type {
   HomeHeroDevice,
   HomeHeroNavigationConfig,
@@ -132,7 +133,7 @@ export default function HeroNavigation({
   return (
     <div
       ref={rootRef}
-      className={styles.navigation}
+      className={`${styles.navigation} ${touchStyles.heroNavigation}`}
       data-hero-spacing-boundary="navigation"
       data-style={config.style}
       data-editor={editor ? "true" : undefined}

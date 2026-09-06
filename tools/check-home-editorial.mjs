@@ -16,6 +16,7 @@ async function source(relativePath) {
 const [
   homeCollections,
   rankingEngine,
+  rootLayout,
   homePage,
   adminHomePage,
   sourceConfig,
@@ -24,6 +25,7 @@ const [
   curationRoute,
   presentationRoute,
   combinedContentRoute,
+  frontendContentForms,
   homeContentService,
   homeContentEditor,
   creationService,
@@ -39,9 +41,15 @@ const [
   isolatedPreview,
   adminContext,
   homeAdminSections,
+  gamesForYourPc,
+  cardCarousel,
+  accountPage,
+  accountDashboard,
+  accountDashboardView,
 ] = await Promise.all([
   source("src/data/home.ts"),
   source("src/lib/home/ranking.ts"),
+  source("src/app/layout.tsx"),
   source("src/app/page.tsx"),
   source("src/app/admin/(protected)/portada/page.tsx"),
   source("src/data/home-config.ts"),
@@ -50,6 +58,7 @@ const [
   source("src/app/api/admin/content/home/route.ts"),
   source("src/app/api/admin/content/home/presentation/route.ts"),
   source("src/app/api/admin/content/home/content/route.ts"),
+  source("src/lib/admin/frontend-content-forms.ts"),
   source("src/lib/admin/home-content-service.ts"),
   source("src/components/admin/HomeContentEditor.tsx"),
   source("src/lib/admin/content-create-service.ts"),
@@ -65,6 +74,11 @@ const [
   source("src/components/admin/IsolatedPublicPreviewFrame.tsx"),
   source("src/components/admin/AdminContextBar.tsx"),
   source("src/lib/admin/home-admin-sections.ts"),
+  source("src/components/home/GamesForYourPC.tsx"),
+  source("src/components/ui/CardCarousel.tsx"),
+  source("src/app/cuenta/page.tsx"),
+  source("src/app/cuenta/AccountDashboardClient.tsx"),
+  source("src/lib/accounts/dashboard-view.ts"),
 ]);
 
 assert(
@@ -109,6 +123,16 @@ assert(
 );
 
 assert(
+  rootLayout.includes("getPublicHomeConfig") &&
+    rootLayout.includes("homeConfig.copy.hero.accessibleTitle") &&
+    homePage.includes("homeConfig.copy.hero.accessibleTitle") &&
+    homePage.includes("<h1 className={styles.pageTitle}") &&
+    !rootLayout.includes("HOME_PAGE_TITLE") &&
+    !homePage.includes("HOME_PAGE_TITLE"),
+  "Metadata, social y H1 de Inicio deben reutilizar el título accesible del snapshot publicado, sin copy SEO paralelo."
+);
+
+assert(
   homePage.includes("getPublicHomeConfig") &&
     homePage.includes("collections.heroGames.length > 0") &&
     homePage.includes("presentation={homeConfig.heroPresentation}") &&
@@ -135,12 +159,42 @@ assert(
 );
 
 assert(
+  (adminHomePage.match(/rankingReferenceTime=\{rankingReferenceTime\}/g) ?? [])
+    .length === 2 &&
+    curationEditor.includes("rankingReferenceTime: number") &&
+    curationEditor.includes("const rankingNow = rankingReferenceTime") &&
+    !curationEditor.includes("Date.now()"),
+  "Hero y Resto de Inicio deben congelar el mismo tipo de referencia temporal desde el servidor para evitar rankings distintos durante hidratación."
+);
+
+assert(
   homeContentEditor.includes("onSubmitCapture") &&
     homeContentEditor.includes("/api/admin/content/home/content") &&
     homeContentEditor.includes('input[name="curationJson"]') &&
     homeContentEditor.includes('input[name="presentationJson"]') &&
     homeContentEditor.includes("router.refresh()"),
   "Resto de Inicio debe interceptar los dos formularios y guardarlos mediante una única operación."
+);
+
+assert(
+  homeContentEditor.includes("const savingRef = useRef(false)") &&
+    homeContentEditor.includes("if (savingRef.current) return") &&
+    homeContentEditor.includes("savingRef.current = true") &&
+    (homeContentEditor.match(/savingRef\.current = false/g) ?? []).length >= 3 &&
+    !homeContentEditor.includes("if (saving) return"),
+  "El guardado atómico de Resto de Inicio debe usar un lock síncrono para impedir POST duplicados antes del siguiente render de React."
+);
+
+assert(
+  homeContentEditor.includes('form[data-home-editor-dirty="true"]') &&
+    homeContentEditor.includes("beforeunload") &&
+    homeContentEditor.includes('document.addEventListener("click", protectLinks, true)') &&
+    homeContentEditor.includes("window.confirm") &&
+    curationEditor.includes("data-home-editor-dirty") &&
+    presentationEditor.includes("data-home-editor-dirty") &&
+    !curationEditor.includes("beforeunload") &&
+    !presentationEditor.includes("beforeunload"),
+  "La protección contra pérdida de cambios de Resto de Inicio debe vivir en el coordinador y cubrir cierre de pestaña y navegación interna."
 );
 
 assert(
@@ -156,8 +210,20 @@ assert(
     homeContentService.includes("heroSlugs: current.heroSlugs") &&
     homeContentService.includes("hero: current.curation.hero") &&
     homeContentService.includes("heroPresentation: current.heroPresentation") &&
-    homeContentService.includes("hero: current.copy.hero"),
-  "Resto de Inicio debe preservar autoritativamente todo el dominio del Hero."
+    homeContentService.includes("mergeHomePresentationCopy") &&
+    homeContentService.includes("...current.hero") &&
+    homeContentService.includes("accessibleTitle: hero.accessibleTitle"),
+  "Resto de Inicio debe preservar selección, curaduría y diseño del Hero; sólo puede actualizar su título SEO/accesible y debe conservar los campos Hero legacy."
+);
+
+assert(
+  frontendContentForms.includes("const editableHomeCopySchema") &&
+    frontendContentForms.includes(".omit({ hero: true })") &&
+    frontendContentForms.includes("hero: homeCopySchema.shape.hero.pick") &&
+    frontendContentForms.includes("accessibleTitle: true") &&
+    !frontendContentForms.includes("primaryCta: true") &&
+    !frontendContentForms.includes("secondaryCta: true"),
+  "El contrato HTTP de Presentación debe aceptar únicamente accessibleTitle del slice Hero, nunca sus CTAs legacy."
 );
 
 assert(
@@ -174,19 +240,46 @@ assert(
 
 assert(
   curationEditor.includes("deuna:home-curation-draft:latest") &&
-    curationEditor.includes("beforeunload") &&
+    curationEditor.includes("useSyncExternalStore") &&
+    curationEditor.includes("const storedDraft = useSyncExternalStore") &&
+    curationEditor.includes("const recovery = useMemo") &&
+    curationEditor.includes("parseRecoveryDraft") &&
+    curationEditor.includes("recoveryDismissed") &&
+    !curationEditor.includes("setRecovery(") &&
     presentationEditor.includes("deuna:home-presentation-draft:latest") &&
-    presentationEditor.includes("beforeunload"),
-  "Los dos bloques de Resto de Inicio deben conservar cambios locales y advertir antes de abandonar trabajo sin guardar."
+    presentationEditor.includes("useSyncExternalStore") &&
+    presentationEditor.includes("const storedDraft = useSyncExternalStore") &&
+    presentationEditor.includes("const recovery = useMemo") &&
+    presentationEditor.includes("parseRecoveryDraft") &&
+    presentationEditor.includes("recoveryDismissed") &&
+    !presentationEditor.includes("setRecovery("),
+  "Los dos bloques de Resto de Inicio deben leer storage como snapshot post-hidratación, derivar recuperación sin setState en efectos, validarla y conservarla hasta una decisión explícita."
 );
 
 assert(
-  presentationEditor.includes("type EditableHomeCopy = Omit<HomeCopy, \"hero\">") &&
+  curationEditor.includes("const recoveryMatchesRevision = recovery?.revision === revision") &&
+    curationEditor.includes("disabled={!recoveryMatchesRevision}") &&
+    curationEditor.includes("if (!recoveryMatchesRevision) return") &&
+    presentationEditor.includes("const recoveryMatchesRevision = recovery?.revision === revision") &&
+    presentationEditor.includes("disabled={!recoveryMatchesRevision}") &&
+    presentationEditor.includes("if (!recoveryMatchesRevision) return") &&
+    curationEditor.includes("no puede recuperarse automáticamente sobre una revisión posterior") &&
+    presentationEditor.includes("no puede recuperarse automáticamente sobre una revisión posterior"),
+  "Una copia local de una revisión anterior nunca debe poder rebasarse silenciosamente sobre la revisión actual; debe permanecer visible pero no recuperable hasta descartarla explícitamente."
+);
+
+assert(
+  presentationEditor.includes('hero: Pick<HomeCopy["hero"], "accessibleTitle">') &&
+    presentationEditor.includes("normalizeRecoveryCopy") &&
+    presentationEditor.includes("SEO y accesibilidad de Inicio") &&
+    presentationEditor.includes("copy.hero.accessibleTitle") &&
     presentationEditor.includes("buildPayload") &&
     !presentationEditor.includes("heroPresentation: config.heroPresentation") &&
     !presentationEditor.includes("heroGames:") &&
-    !presentationEditor.includes("showHeroStudio"),
-  "Presentación debe enviar sólo secciones y copy no-Hero, sin props ni payload fantasma."
+    !presentationEditor.includes("showHeroStudio") &&
+    !presentationEditor.includes("primaryCta") &&
+    !presentationEditor.includes("secondaryCta"),
+  "Presentación debe poseer secciones, copy no-Hero y sólo el título SEO/accesible; la recuperación vieja debe normalizarse sin reintroducir copy fantasma del Hero."
 );
 
 assert(
@@ -300,8 +393,49 @@ assert(
 assert(
   adminContext.includes("homeAdminSectionContract") &&
     adminContext.includes("homeSections = homeAdminSectionContract.map") &&
+    adminContext.includes("resolveHomeAdminSection") &&
+    adminContext.includes('searchParams.get("seccion") ?? undefined') &&
     homeAdminSections.includes("resolveHomeAdminSection"),
-  "IDs y labels de navegación de Inicio deben tener una única fuente administrativa."
+  "Página y navegación de Inicio deben compartir IDs, labels y fallback de sección administrativa."
+);
+
+assert(
+  !gamesForYourPc.includes("/cuenta#mi-pc") &&
+    gamesForYourPc.includes('personalized ? "/cuenta?vista=pc"') &&
+    accountPage.includes("resolveAccountDashboardView") &&
+    accountPage.includes("searchParams") &&
+    accountPage.includes("initialView={initialView}") &&
+    accountDashboard.includes("initialView: AccountDashboardView") &&
+    accountDashboard.includes("useState<AccountDashboardView>(initialView)") &&
+    accountDashboard.includes("accountDashboardViewHref") &&
+    accountDashboard.includes("window.history.pushState") &&
+    accountDashboard.includes('window.addEventListener("popstate"') &&
+    accountDashboard.includes("aria-current") &&
+    accountDashboardView.includes("accountDashboardViewHref") &&
+    accountDashboardView.includes('"overview"') &&
+    accountDashboardView.includes('"pc"') &&
+    accountDashboardView.includes(': "overview"'),
+  "La Home personalizada debe abrir Mi PC mediante un deep-link SSR determinista y Mi DeUna debe mantener vista, URL y navegación Back/Forward sincronizadas."
+);
+
+assert(
+  !accountPage.includes("compatibilityPercent") &&
+    !accountDashboard.includes("% compatible") &&
+    accountPage.includes("performanceEstimate: entry.estimate?.canEstimate") &&
+    accountPage.includes("hardwareEstimateCount / games.length") &&
+    accountDashboard.includes("FPS estimados") &&
+    accountDashboard.includes("confianza") &&
+    accountDashboard.includes("hardwareCoveragePercent") &&
+    accountDashboard.includes("Este porcentaje mide cobertura de calibración, no compatibilidad"),
+  "Mi PC debe mostrar rangos FPS estimados y confianza del motor real; cualquier porcentaje debe representar sólo cobertura de calibración, no una compatibilidad inventada."
+);
+
+assert(
+  cardCarousel.includes("prefers-reduced-motion: reduce") &&
+    cardCarousel.includes("behavior: reducedMotion") &&
+    cardCarousel.includes('? "auto"') &&
+    cardCarousel.includes(': "smooth"'),
+  "Los carruseles de Inicio deben respetar movimiento reducido también en el scroll disparado por JavaScript."
 );
 
 assert(
@@ -315,6 +449,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Home editorial: OK (ownership aislado, guardado atómico, catálogo público fail-closed, preview pública compartida y carga por sección)."
+    "Home editorial: OK (ownership aislado, título SEO/accesible publicado con dueño explícito, guardado atómico con lock, recuperación post-hidratación sin rebase silencioso de revisiones obsoletas, navegación protegida, deep-link de Mi PC navegable, FPS sin falsa precisión, catálogo público fail-closed y preview pública compartida)."
   );
 }

@@ -27,7 +27,10 @@ const [
   updateWorkspace,
   dashboard,
   publicationOverview,
+  publicationPanel,
+  editorialHistory,
   rootLayout,
+  homePage,
   globalCss,
   protectedLayout,
   adminLayout,
@@ -53,7 +56,10 @@ const [
   source("src/app/admin/(protected)/juegos/[slug]/actualizacion/page.tsx"),
   source("src/app/admin/(protected)/page.tsx"),
   source("src/lib/admin/publication-overview.ts"),
+  source("src/components/admin/PublicationPanel.tsx"),
+  source("src/components/admin/EditorialHistory.tsx"),
   source("src/app/layout.tsx"),
+  source("src/app/page.tsx"),
   source("src/app/globals.css"),
   source("src/app/admin/(protected)/layout.tsx"),
   source("src/app/admin/layout.tsx"),
@@ -81,6 +87,16 @@ assert(
 );
 
 assert(
+  rootLayout.includes("getPublicHomeConfig") &&
+    rootLayout.includes("homeConfig.copy.hero.accessibleTitle") &&
+    homePage.includes("homeConfig.copy.hero.accessibleTitle") &&
+    homePage.includes("<h1 className={styles.pageTitle}") &&
+    !rootLayout.includes("HOME_PAGE_TITLE") &&
+    !homePage.includes("HOME_PAGE_TITLE"),
+  "La Home debe compartir el título publicado de Portada entre metadata y H1 accesible, sin copy SEO fijo paralelo."
+);
+
+assert(
   globalCss.includes(".skip-link") &&
     globalCss.includes("color-mix(in srgb, var(--brand)") &&
     !globalCss.includes("rgba(255, 8, 71, 0.55)") &&
@@ -95,6 +111,25 @@ assert(
     shellUx.includes("min-height: 44px") &&
     shellUx.includes("font-size: 14px"),
   "El shell administrativo debe conservar foco visible, reducción de movimiento y una escala legible de controles."
+);
+
+assert(
+  shell.includes("className={ux.logoutButton}") &&
+    /\.sidebar\.sidebar \.logoutButton\s*\{[^}]*min-height:\s*44px;/.test(shellUx),
+  "Salir debe tener una clase semántica estable y conservar un target táctil mínimo de 44px."
+);
+
+assert(
+  themeContract.includes('button[aria-label^="Subir "]') &&
+    themeContract.includes('button[aria-label^="Bajar "]') &&
+    themeContract.includes('button[aria-label^="Quitar "]') &&
+    themeContract.includes('button[title="Deshacer"]') &&
+    themeContract.includes('button[title="Rehacer"]') &&
+    themeContract.includes('details > summary') &&
+    themeContract.includes('a[href*="?seccion=multimedia#"]') &&
+    themeContract.includes("min-width: 44px") &&
+    themeContract.includes("min-height: 44px"),
+  "Los controles editoriales compactos de Inicio deben conservar hit-areas táctiles reales de al menos 44px."
 );
 
 assert(
@@ -256,6 +291,14 @@ assert(
 );
 
 assert(
+  publicationPanel.includes('role="status"') &&
+    publicationPanel.includes('role="alert"') &&
+    publicationPanel.includes("Restaurar publicación ${publication.publicationNumber}") &&
+    editorialHistory.includes("Restaurar revisión ${revision.revision}"),
+  "Publicación e Historial deben anunciar resultados y distinguir cada acción de restauración para tecnologías de asistencia."
+);
+
+assert(
   gamesCatalog.includes("Todas las clasificaciones") &&
     gamesCatalog.includes(">Clasificación<") &&
     !gamesCatalog.includes("Todas las categorías"),
@@ -309,6 +352,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    `Accesibilidad administrativa: OK (${adminCssFiles.length} módulos revisados; identidad dinámica y contrastada, navegación móvil desplegable, login accesible, skip-link único, contraste adaptable, escala legible, foco único, tema adaptativo, teclado, movimiento reducido y catálogos semánticos).`
+    `Accesibilidad administrativa: OK (${adminCssFiles.length} módulos revisados; identidad dinámica y contrastada, navegación móvil desplegable, login accesible, skip-link único, contraste adaptable, escala legible, foco único, tema adaptativo, teclado, movimiento reducido, publicación anunciable, targets editoriales táctiles y catálogos semánticos).`
   );
 }

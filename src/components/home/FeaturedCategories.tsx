@@ -3,6 +3,7 @@ import { ChevronRight } from "lucide-react";
 import type { CSSProperties } from "react";
 
 import TaxonomyIcon from "@/components/taxonomy/TaxonomyIcon";
+import touchStyles from "@/components/ui/TouchTarget.module.css";
 import type { HomeCopy } from "@/data/home-config";
 import {
   getOrderedClassificationStats,
@@ -39,7 +40,7 @@ export default async function FeaturedCategories({
           {copy.title} <span>{copy.highlight}</span>
         </h2>
 
-        <Link href="/juegos">
+        <Link href="/juegos" className={touchStyles.hitArea}>
           {copy.linkLabel}
           <ChevronRight size={19} />
         </Link>

@@ -18,6 +18,7 @@ const [
   gameActions,
   newGame,
   taxonomy,
+  homeContent,
   homeCuration,
   homePresentation,
   heroSaveBoundary,
@@ -37,6 +38,7 @@ const [
   source("src/components/admin/GameEditorFormActions.tsx"),
   source("src/components/admin/NewGameForm.tsx"),
   source("src/components/admin/GameTaxonomyEditor.tsx"),
+  source("src/components/admin/HomeContentEditor.tsx"),
   source("src/components/admin/HomeCurationEditor.tsx"),
   source("src/components/admin/HomePresentationEditor.tsx"),
   source("src/components/admin/HomeHeroSaveBoundary.tsx"),
@@ -81,6 +83,19 @@ for (const excludedAction of [
 }
 
 assert(
+  themeContract.includes('[action="/api/admin/content/home"]') &&
+    themeContract.includes('[action="/api/admin/content/home/presentation"]') &&
+    homeCuration.includes('action="/api/admin/content/home"') &&
+    homePresentation.includes('action="/api/admin/content/home/presentation"') &&
+    homeContent.includes('const combinedAction = "/api/admin/content/home/content"') &&
+    homeContent.includes("onSubmitCapture={interceptChildSubmit}") &&
+    homeContent.includes("curationJson") &&
+    homeContent.includes("presentationJson") &&
+    homeContent.includes("savingRef"),
+  "Los dos formularios hijos de Resto de Inicio deben quedar inline sólo porque HomeContentEditor intercepta ambos y los persiste juntos con lock síncrono."
+);
+
+assert(
   gameActions.includes("admin-form-actions") &&
     gameActions.includes("saveLabel") &&
     gameActions.includes("continueLabel") &&
@@ -90,8 +105,6 @@ assert(
 
 const revisionEditors = [
   ["Clasificaciones y etiquetas", taxonomy, "Guardar"],
-  ["Inicio · Curaduría", homeCuration, "Guardar curaduría"],
-  ["Inicio · Presentación", homePresentation, "Guardar presentación"],
   ["Marca · Identidad", configuration, "Guardar borrador"],
   ["Marca · Paleta", appearance, "Guardar colores"],
   ["Marca · Fondos", backgrounds, "Guardar fondo"],
@@ -106,6 +119,14 @@ for (const [label, content, saveCopy] of revisionEditors) {
     `${label} debe seguir usando revisión editorial y una acción de guardado cubierta por la barra persistente.`
   );
 }
+
+assert(
+  homeCuration.includes("expectedRevision") &&
+    homeCuration.includes("Guardar curaduría") &&
+    homePresentation.includes("expectedRevision") &&
+    homePresentation.includes("Guardar presentación"),
+  "Los bloques de Resto de Inicio deben conservar sus acciones inline y revisión esperada aunque el guardado final sea conjunto."
+);
 
 assert(
   heroSaveBoundary.includes('Accept: "application/json"') &&
@@ -142,5 +163,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  "Guardado persistente administrativo: OK (editores de borrador cubiertos; Hero con recuperación segura; publicación, acciones operativas y cargas auxiliares separadas)."
+  "Guardado persistente administrativo: OK (editores de borrador cubiertos; Resto de Inicio coordinado sin barras fijas superpuestas; Hero con recuperación segura; publicación, acciones operativas y cargas auxiliares separadas)."
 );

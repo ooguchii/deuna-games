@@ -4,8 +4,8 @@ import { ArrowDown, ArrowUp } from "lucide-react";
 import {
   useEffect,
   useMemo,
-  useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
 
 import type {
@@ -18,6 +18,9 @@ import styles from "./HomePresentationEditor.module.css";
 
 const PRESENTATION_DRAFT_KEY =
   "deuna:home-presentation-draft:latest";
+const subscribeStorage = () => () => {};
+const clientReady = () => true;
+const serverReady = () => false;
 
 const sectionLabels: Record<HomeSectionConfig["id"], string> = {
   hero: "Hero principal",
@@ -31,7 +34,9 @@ const sectionLabels: Record<HomeSectionConfig["id"], string> = {
   trust: "Bloque de confianza",
 };
 
-type EditableHomeCopy = Omit<HomeCopy, "hero">;
+type EditableHomeCopy = Omit<HomeCopy, "hero"> & {
+  hero: Pick<HomeCopy["hero"], "accessibleTitle">;
+};
 type PresentationDraft = {
   revision: number;
   sections: HomeSectionConfig[];
@@ -41,12 +46,15 @@ type PresentationDraft = {
 function editableCopyFromConfig(
   copy: HomeCopy
 ): EditableHomeCopy {
-  const editable = structuredClone(copy) as unknown as Record<
-    string,
-    unknown
-  >;
-  delete editable.hero;
-  return editable as EditableHomeCopy;
+  const cloned = structuredClone(copy);
+  const { hero, ...rest } = cloned;
+
+  return {
+    ...rest,
+    hero: {
+      accessibleTitle: hero.accessibleTitle,
+    },
+  };
 }
 
 function buildPayload(
@@ -56,23 +64,38 @@ function buildPayload(
   return JSON.stringify({ sections, copy });
 }
 
-function readRecoveryDraft(): PresentationDraft | null {
-  try {
-    const raw = sessionStorage.getItem(PRESENTATION_DRAFT_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as Partial<PresentationDraft>;
-    if (
-      typeof parsed.revision !== "number" ||
-      !Array.isArray(parsed.sections) ||
-      !parsed.copy ||
-      typeof parsed.copy !== "object"
-    ) {
-      return null;
-    }
-    return parsed as PresentationDraft;
-  } catch {
-    return null;
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function hasSameShape(value: unknown, template: unknown): boolean {
+  if (template === null) return value === null;
+
+  if (Array.isArray(template)) {
+    return (
+      Array.isArray(value) &&
+      value.length === template.length &&
+      template.every((item, index) =>
+        hasSameShape(value[index], item)
+      )
+    );
   }
+
+  if (isRecord(template)) {
+    if (!isRecord(value)) return false;
+
+    const templateKeys = Object.keys(template);
+    const valueKeys = Object.keys(value);
+    if (templateKeys.length !== valueKeys.length) return false;
+
+    return templateKeys.every(
+      (key) =>
+        Object.hasOwn(value, key) &&
+        hasSameShape(value[key], template[key])
+    );
+  }
+
+  return typeof value === typeof template;
 }
 
 function clearRecoveryDraft() {
@@ -80,6 +103,111 @@ function clearRecoveryDraft() {
     sessionStorage.removeItem(PRESENTATION_DRAFT_KEY);
   } catch {
     // El guardado del servidor sigue siendo la fuente de verdad.
+  }
+}
+
+function readRecoveryRaw() {
+  try {
+    return sessionStorage.getItem(PRESENTATION_DRAFT_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function normalizeRecoveryCopy(
+  value: unknown,
+  baselineCopy: EditableHomeCopy
+): unknown {
+  if (!isRecord(value)) return value;
+
+  const { hero, ...rest } = value;
+
+  if (hero === undefined) {
+    return {
+      ...rest,
+      hero: structuredClone(baselineCopy.hero),
+    };
+  }
+
+  if (
+    !isRecord(hero) ||
+    typeof hero.accessibleTitle !== "string"
+  ) {
+    return value;
+  }
+
+  return {
+    ...rest,
+    hero: {
+      accessibleTitle: hero.accessibleTitle,
+    },
+  };
+}
+
+function parseRecoveryDraft(
+  raw: string | null,
+  baselineSections: HomeSectionConfig[],
+  baselineCopy: EditableHomeCopy
+): PresentationDraft | null {
+  if (!raw) return null;
+
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (
+      !isRecord(parsed) ||
+      typeof parsed.revision !== "number" ||
+      !Number.isInteger(parsed.revision) ||
+      parsed.revision < 0 ||
+      !Array.isArray(parsed.sections)
+    ) {
+      return null;
+    }
+
+    const recoveryCopy = normalizeRecoveryCopy(
+      parsed.copy,
+      baselineCopy
+    );
+    if (!hasSameShape(recoveryCopy, baselineCopy)) {
+      return null;
+    }
+
+    const allowedIds = new Set(
+      baselineSections.map((section) => section.id)
+    );
+    const seenIds = new Set<HomeSectionConfig["id"]>();
+    const sections: HomeSectionConfig[] = [];
+
+    for (const item of parsed.sections) {
+      if (
+        !isRecord(item) ||
+        typeof item.id !== "string" ||
+        !allowedIds.has(item.id as HomeSectionConfig["id"]) ||
+        typeof item.visible !== "boolean"
+      ) {
+        return null;
+      }
+
+      const id = item.id as HomeSectionConfig["id"];
+      if (seenIds.has(id)) return null;
+
+      seenIds.add(id);
+      sections.push({ id, visible: item.visible });
+    }
+
+    if (
+      sections.length !== baselineSections.length ||
+      seenIds.size !== allowedIds.size
+    ) {
+      return null;
+    }
+
+    return {
+      revision: parsed.revision,
+      sections,
+      copy: structuredClone(recoveryCopy) as EditableHomeCopy,
+    };
+  } catch {
+    return null;
   }
 }
 
@@ -108,31 +236,52 @@ export default function HomePresentationEditor({
   const [copy, setCopy] = useState<EditableHomeCopy>(
     () => structuredClone(baselineCopy)
   );
-  const [recovery, setRecovery] =
-    useState<PresentationDraft | null>(() => {
-      const candidate = readRecoveryDraft();
-      if (!candidate) return null;
-
-      const candidatePayload = buildPayload(
-        candidate.sections,
-        candidate.copy
-      );
-      if (candidatePayload === baselinePayload) {
-        clearRecoveryDraft();
-        return null;
-      }
-
-      return candidate;
-    });
-  const saving = useRef(false);
+  const [recoveryDismissed, setRecoveryDismissed] = useState(false);
+  const recoveryReady = useSyncExternalStore(
+    subscribeStorage,
+    clientReady,
+    serverReady
+  );
+  const storedDraft = useSyncExternalStore(
+    subscribeStorage,
+    readRecoveryRaw,
+    () => null
+  );
 
   const serialized = useMemo(
     () => buildPayload(sections, copy),
     [copy, sections]
   );
   const dirty = serialized !== baselinePayload;
+  const recovery = useMemo(() => {
+    if (!storedDraft || recoveryDismissed) return null;
+
+    const candidate = parseRecoveryDraft(
+      storedDraft,
+      baselineSections,
+      baselineCopy
+    );
+    if (!candidate) return null;
+
+    return buildPayload(
+      candidate.sections,
+      candidate.copy
+    ) === baselinePayload
+      ? null
+      : candidate;
+  }, [
+    baselineCopy,
+    baselinePayload,
+    baselineSections,
+    recoveryDismissed,
+    storedDraft,
+  ]);
+  const recoveryMatchesRevision = recovery?.revision === revision;
+  const recoveryRequiresDecision = Boolean(recovery);
 
   useEffect(() => {
+    if (!recoveryReady || recovery) return;
+
     try {
       if (!dirty) {
         clearRecoveryDraft();
@@ -150,21 +299,14 @@ export default function HomePresentationEditor({
     } catch {
       // El navegador puede bloquear storage; el formulario sigue funcionando.
     }
-  }, [copy, dirty, revision, sections]);
-
-  useEffect(() => {
-    const warnBeforeUnload = (event: BeforeUnloadEvent) => {
-      if (!dirty || saving.current) return;
-      event.preventDefault();
-    };
-
-    window.addEventListener("beforeunload", warnBeforeUnload);
-    return () =>
-      window.removeEventListener(
-        "beforeunload",
-        warnBeforeUnload
-      );
-  }, [dirty]);
+  }, [
+    copy,
+    dirty,
+    recovery,
+    recoveryReady,
+    revision,
+    sections,
+  ]);
 
   function moveSection(index: number, direction: -1 | 1) {
     setSections((current) => {
@@ -240,9 +382,7 @@ export default function HomePresentationEditor({
       method="post"
       action="/api/admin/content/home/presentation"
       className={styles.root}
-      onSubmit={() => {
-        saving.current = true;
-      }}
+      data-home-editor-dirty={dirty ? "true" : "false"}
     >
       <input
         type="hidden"
@@ -256,33 +396,38 @@ export default function HomePresentationEditor({
       />
 
       {recovery && (
-        <div className={styles.recovery} role="status">
+        <div
+          className={styles.recovery}
+          role={recoveryMatchesRevision ? "status" : "alert"}
+        >
           <div>
             <strong>Cambios locales recuperables</strong>
             <span>
-              {recovery.revision === revision
-                ? "Hay una copia local de esta revisión que todavía no fue guardada."
-                : `Hay una copia local iniciada en la revisión ${recovery.revision}. El servidor está en la revisión ${revision}.`}
+              {recoveryMatchesRevision
+                ? "Hay una copia local de esta revisión que todavía no fue guardada. Recupérala o descártala antes de continuar editando."
+                : `Hay una copia local iniciada en la revisión ${recovery.revision}, pero el servidor ya está en la revisión ${revision}. Por seguridad no puede recuperarse automáticamente sobre una revisión posterior. Descarta la copia para desbloquear la edición de la revisión actual.`}
             </span>
           </div>
           <div>
             <button
               type="button"
+              disabled={!recoveryMatchesRevision}
               onClick={() => {
+                if (!recoveryMatchesRevision) return;
                 setSections(
                   recovery.sections.map((section) => ({ ...section }))
                 );
                 setCopy(structuredClone(recovery.copy));
-                setRecovery(null);
+                setRecoveryDismissed(true);
               }}
             >
-              Recuperar
+              {recoveryMatchesRevision ? "Recuperar" : "Copia obsoleta"}
             </button>
             <button
               type="button"
               onClick={() => {
                 clearRecoveryDraft();
-                setRecovery(null);
+                setRecoveryDismissed(true);
               }}
             >
               Descartar copia
@@ -295,7 +440,7 @@ export default function HomePresentationEditor({
         <div>
           <strong>Presentación pública de Inicio</strong>
           <p>
-            Ordena, muestra u oculta bloques y edita sus textos. El Hero tiene un editor propio: aquí no se modifica su contenido ni su geometría.
+            Ordena, muestra u oculta bloques y edita sus textos. El Hero tiene un editor propio para juegos y geometría; aquí también controlas el título SEO y accesible de la página.
           </p>
         </div>
         <span data-dirty={dirty ? "true" : "false"}>
@@ -303,7 +448,7 @@ export default function HomePresentationEditor({
         </span>
       </div>
 
-      <section className={styles.structurePanel}>
+      <section className={styles.structurePanel} inert={recoveryRequiresDecision}>
         <p className={styles.structureIntro}>
           El orden se reutiliza directamente al renderizar Inicio. Ocultar un bloque no borra su configuración ni sus juegos seleccionados.
         </p>
@@ -345,15 +490,35 @@ export default function HomePresentationEditor({
         </div>
       </section>
 
-      <section className={styles.copyPanel}>
+      <section className={styles.copyPanel} inert={recoveryRequiresDecision}>
         <div className={styles.copyHeader}>
           <strong>Textos de los bloques</strong>
           <p>
-            El Hero queda excluido: título, descripción y datos visibles salen directamente del juego. Aquí sólo editas los textos editoriales de las demás secciones.
+            El contenido visible del Hero sale directamente del juego. Aquí editas los textos de las demás secciones y el título de página que comparten accesibilidad, metadata y previews sociales.
           </p>
         </div>
 
         <div className={styles.copyGroups}>
+          <details className={styles.copyGroup}>
+            <summary>SEO y accesibilidad de Inicio</summary>
+            <div className={styles.copyFields}>
+              <label data-wide="true">
+                <span>Título SEO/accesible</span>
+                <input
+                  value={copy.hero.accessibleTitle}
+                  maxLength={180}
+                  onChange={(event) =>
+                    setCopyField(
+                      "hero",
+                      "accessibleTitle",
+                      event.target.value
+                    )
+                  }
+                />
+              </label>
+            </div>
+          </details>
+
           {([
             ["popular", "Juegos populares"],
             ["classifications", "Clasificaciones destacadas"],
@@ -496,7 +661,7 @@ export default function HomePresentationEditor({
         </div>
       </section>
 
-      <div className={styles.actions}>
+      <div className={styles.actions} inert={recoveryRequiresDecision}>
         <p>
           Guardar sólo modifica el borrador de Portada. El orden, visibilidad y textos públicos no cambian hasta publicar.
         </p>

@@ -17,6 +17,9 @@ import {
 import {
   hasExactAdminFormFields,
 } from "@/lib/admin/request-security";
+import {
+  HOME_CONTENT_MAX_FORM_BYTES,
+} from "@/lib/home/editorial-limits";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -30,7 +33,9 @@ const target = "/admin/portada?seccion=contenido";
 
 export async function POST(request: NextRequest) {
   const authorized =
-    await authorizeAdminFormRequest(request);
+    await authorizeAdminFormRequest(request, {
+      maxFormBytes: HOME_CONTENT_MAX_FORM_BYTES,
+    });
 
   if (!authorized.authorized) {
     return authorized.response;

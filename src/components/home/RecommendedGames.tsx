@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 
 import CardCarousel from "@/components/ui/CardCarousel";
+import touchStyles from "@/components/ui/TouchTarget.module.css";
 import UniversalGameCard from "@/components/ui/UniversalGameCard";
 import type { HomeCopy } from "@/data/home-config";
 import type { Game } from "@/types/game";
@@ -55,7 +56,7 @@ export default function RecommendedGames({
           )}
         </div>
 
-        <Link href="/juegos">
+        <Link href="/juegos" className={touchStyles.hitArea}>
           {copy.linkLabel}
           <ChevronRight size={18} aria-hidden="true" />
         </Link>

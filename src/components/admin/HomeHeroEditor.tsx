@@ -443,6 +443,11 @@ export default function HomeHeroEditor({
       return { state: recoveredState, revision: savedRevision };
     } catch { return null; }
   }, [storedDraft, recoveryDismissed, editingRevision, config.copy.hero, baseline]);
+  const recoveryRequiresDecision = Boolean(recovery);
+  const recoveryMatchesRevision = Boolean(
+    recovery &&
+      (recovery.revision === null || recovery.revision === editingRevision)
+  );
   useEffect(() => {
     if (!recoveryReady || recovery) return;
     try {
@@ -507,6 +512,7 @@ export default function HomeHeroEditor({
   const deviceLabel = devices.find((entry) => entry.id === device)?.label ?? device;
 
   const commit = (update: (state: State) => State, scope: HomeHeroDevice | "all" = editScope === "all" ? "all" : device, restoreAll = false) => {
+    if (recoveryRequiresDecision) return;
     if (comparing) {
       setCompare(false);
       return;
@@ -845,7 +851,7 @@ export default function HomeHeroEditor({
       onKeyUpCapture={() => { interaction.current = null; }}
       onBlurCapture={(event) => { if ((event.target as HTMLInputElement).type === "range") interaction.current = null; }}
     >
-      <header className={styles.topbar}>
+      <header className={styles.topbar} inert={recoveryRequiresDecision || undefined}>
         <div className={styles.title}>
           <i>H</i>
           <div>
@@ -875,13 +881,13 @@ export default function HomeHeroEditor({
       </header>
 
       {revision !== editingRevision && <p className={styles.workspaceNote} role="alert">Inicio tiene una revisión más reciente. Tus cambios siguen aquí; el servidor impedirá sobrescribir esa revisión. Recarga para revisar el nuevo borrador.</p>}
-      {recovery && <div className={styles.recovery} role="status"><span>{recovery.revision !== null && recovery.revision !== editingRevision ? `Hay cambios locales conservados de la revisión ${recovery.revision}. Revísalos antes de guardarlos sobre la revisión ${editingRevision}.` : "Hay cambios de esta revisión conservados en esta pestaña."}</span><button type="button" onClick={() => { setCompare(false); setRecoveryDismissed(true); dispatch({ type: "edit", update: () => clone(recovery.state), coalesce: false }); }}>Recuperar cambios</button><button type="button" onClick={() => { clearStoredHeroDrafts(); setRecoveryDismissed(true); }}>Descartar copia local</button></div>}
-      <nav className={styles.workspaceTabs} aria-label="Tareas del editor">
+      {recovery && <div className={styles.recovery} role="alert"><span>{recoveryMatchesRevision ? "Hay cambios de esta revisión conservados en esta pestaña. Recupéralos o descártalos antes de continuar editando." : `Hay cambios locales conservados de la revisión ${recovery.revision ?? "desconocida"}. Resuelve la copia desde el aviso de seguridad antes de continuar.`}</span>{recoveryMatchesRevision && <><button type="button" onClick={() => { setCompare(false); setRecoveryDismissed(true); dispatch({ type: "edit", update: () => clone(recovery.state), coalesce: false }); }}>Recuperar cambios</button><button type="button" onClick={() => { clearStoredHeroDrafts(); setRecoveryDismissed(true); }}>Descartar copia local</button></>}</div>}
+      <nav className={styles.workspaceTabs} aria-label="Tareas del editor" inert={recoveryRequiresDecision || undefined}>
         {([ ["content", "1. Juegos e imágenes"], ["design", "2. Diseño del carrusel"], ["motion", "3. Movimiento"] ] as const).map(([id, label]) => <button type="button" key={id} aria-pressed={workspace === id} onClick={() => { setWorkspace(id); setPanel(id === "motion" ? "behavior" : "structure"); setPreview(false); }}>{label}</button>)}
       </nav>
       <p className={styles.workspaceNote}>Guardar conserva el borrador del hero. Revisar y publicar incluye todos los cambios guardados de Inicio.</p>
       {comparing && <p className={styles.workspaceNote} role="status">Comparación de solo lectura con el borrador guardado. Sal de la comparación antes de editar.</p>}
-      <div className={styles.grid}>
+      <div className={styles.grid} inert={recoveryRequiresDecision || undefined}>
         <div className={styles.main}>
           <section className={styles.previewWorkspace} aria-label="Vista previa del hero">
           <div className={styles.canvasBar}>

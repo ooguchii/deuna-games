@@ -1,0 +1,16 @@
+/*
+ * Piso táctil del shell administrativo en viewport móvil.
+ * El baseline del shell queda en baja especificidad para que cada editor pueda
+ * conservar controles deliberadamente mayores; este contrato sólo impide que
+ * un control accionable termine por debajo del target de 44px por cascada.
+ */
+@media (max-width: 760px) {
+  [data-admin-shell="true"][data-admin-shell="true"] :is(a, button, summary) {
+    min-height: var(--control-md);
+  }
+
+  /* El skip-link vive fuera del shell, pero forma parte del mismo documento. */
+  .skip-link {
+    min-height: var(--control-md);
+  }
+}

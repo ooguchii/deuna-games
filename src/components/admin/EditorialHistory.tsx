@@ -72,6 +72,7 @@ export default function EditorialHistory({
                   <button
                     type="submit"
                     className="admin-history-action"
+                    aria-label={`Restaurar revisión ${revision.revision}`}
                   >
                     Restaurar
                   </button>
