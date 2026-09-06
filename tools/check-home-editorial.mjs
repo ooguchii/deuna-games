@@ -257,6 +257,18 @@ assert(
 );
 
 assert(
+  curationEditor.includes("const recoveryMatchesRevision = recovery?.revision === revision") &&
+    curationEditor.includes("disabled={!recoveryMatchesRevision}") &&
+    curationEditor.includes("if (!recoveryMatchesRevision) return") &&
+    presentationEditor.includes("const recoveryMatchesRevision = recovery?.revision === revision") &&
+    presentationEditor.includes("disabled={!recoveryMatchesRevision}") &&
+    presentationEditor.includes("if (!recoveryMatchesRevision) return") &&
+    curationEditor.includes("no puede recuperarse automáticamente sobre una revisión posterior") &&
+    presentationEditor.includes("no puede recuperarse automáticamente sobre una revisión posterior"),
+  "Una copia local de una revisión anterior nunca debe poder rebasarse silenciosamente sobre la revisión actual; debe permanecer visible pero no recuperable hasta descartarla explícitamente."
+);
+
+assert(
   presentationEditor.includes('hero: Pick<HomeCopy["hero"], "accessibleTitle">') &&
     presentationEditor.includes("normalizeRecoveryCopy") &&
     presentationEditor.includes("SEO y accesibilidad de Inicio") &&
@@ -437,6 +449,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Home editorial: OK (ownership aislado, título SEO/accesible publicado con dueño explícito, guardado atómico con lock, recuperación post-hidratación, navegación protegida, deep-link de Mi PC navegable, FPS sin falsa precisión, catálogo público fail-closed y preview pública compartida)."
+    "Home editorial: OK (ownership aislado, título SEO/accesible publicado con dueño explícito, guardado atómico con lock, recuperación post-hidratación sin rebase silencioso de revisiones obsoletas, navegación protegida, deep-link de Mi PC navegable, FPS sin falsa precisión, catálogo público fail-closed y preview pública compartida)."
   );
 }
