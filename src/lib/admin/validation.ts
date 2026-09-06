@@ -3,7 +3,7 @@ import { z } from "zod";
 import {
   ADMIN_PASSWORD_MAX_LENGTH,
   ADMIN_PASSWORD_MIN_LENGTH,
-} from "./password";
+} from "./password.ts";
 
 export const ADMIN_USERNAME_PATTERN =
   /^[a-zA-Z0-9._-]+$/;
