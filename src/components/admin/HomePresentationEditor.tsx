@@ -34,7 +34,9 @@ const sectionLabels: Record<HomeSectionConfig["id"], string> = {
   trust: "Bloque de confianza",
 };
 
-type EditableHomeCopy = Omit<HomeCopy, "hero">;
+type EditableHomeCopy = Omit<HomeCopy, "hero"> & {
+  hero: Pick<HomeCopy["hero"], "accessibleTitle">;
+};
 type PresentationDraft = {
   revision: number;
   sections: HomeSectionConfig[];
@@ -44,12 +46,15 @@ type PresentationDraft = {
 function editableCopyFromConfig(
   copy: HomeCopy
 ): EditableHomeCopy {
-  const editable = structuredClone(copy) as unknown as Record<
-    string,
-    unknown
-  >;
-  delete editable.hero;
-  return editable as EditableHomeCopy;
+  const cloned = structuredClone(copy);
+  const { hero, ...rest } = cloned;
+
+  return {
+    ...rest,
+    hero: {
+      accessibleTitle: hero.accessibleTitle,
+    },
+  };
 }
 
 function buildPayload(
@@ -109,6 +114,20 @@ function readRecoveryRaw() {
   }
 }
 
+function normalizeRecoveryCopy(
+  value: unknown,
+  baselineCopy: EditableHomeCopy
+): unknown {
+  if (!isRecord(value) || Object.hasOwn(value, "hero")) {
+    return value;
+  }
+
+  return {
+    ...value,
+    hero: structuredClone(baselineCopy.hero),
+  };
+}
+
 function parseRecoveryDraft(
   raw: string | null,
   baselineSections: HomeSectionConfig[],
@@ -123,9 +142,16 @@ function parseRecoveryDraft(
       typeof parsed.revision !== "number" ||
       !Number.isInteger(parsed.revision) ||
       parsed.revision < 0 ||
-      !Array.isArray(parsed.sections) ||
-      !hasSameShape(parsed.copy, baselineCopy)
+      !Array.isArray(parsed.sections)
     ) {
+      return null;
+    }
+
+    const recoveryCopy = normalizeRecoveryCopy(
+      parsed.copy,
+      baselineCopy
+    );
+    if (!hasSameShape(recoveryCopy, baselineCopy)) {
       return null;
     }
 
@@ -162,7 +188,7 @@ function parseRecoveryDraft(
     return {
       revision: parsed.revision,
       sections,
-      copy: structuredClone(parsed.copy) as EditableHomeCopy,
+      copy: structuredClone(recoveryCopy) as EditableHomeCopy,
     };
   } catch {
     return null;
@@ -391,7 +417,7 @@ export default function HomePresentationEditor({
         <div>
           <strong>Presentación pública de Inicio</strong>
           <p>
-            Ordena, muestra u oculta bloques y edita sus textos. El Hero tiene un editor propio: aquí no se modifica su contenido ni su geometría.
+            Ordena, muestra u oculta bloques y edita sus textos. El Hero tiene un editor propio para juegos y geometría; aquí también controlas el título SEO y accesible de la página.
           </p>
         </div>
         <span data-dirty={dirty ? "true" : "false"}>
@@ -445,11 +471,31 @@ export default function HomePresentationEditor({
         <div className={styles.copyHeader}>
           <strong>Textos de los bloques</strong>
           <p>
-            El Hero queda excluido: título, descripción y datos visibles salen directamente del juego. Aquí sólo editas los textos editoriales de las demás secciones.
+            El contenido visible del Hero sale directamente del juego. Aquí editas los textos de las demás secciones y el título de página que comparten accesibilidad, metadata y previews sociales.
           </p>
         </div>
 
         <div className={styles.copyGroups}>
+          <details className={styles.copyGroup}>
+            <summary>SEO y accesibilidad de Inicio</summary>
+            <div className={styles.copyFields}>
+              <label data-wide="true">
+                <span>Título SEO/accesible</span>
+                <input
+                  value={copy.hero.accessibleTitle}
+                  maxLength={180}
+                  onChange={(event) =>
+                    setCopyField(
+                      "hero",
+                      "accessibleTitle",
+                      event.target.value
+                    )
+                  }
+                />
+              </label>
+            </div>
+          </details>
+
           {([
             ["popular", "Juegos populares"],
             ["classifications", "Clasificaciones destacadas"],
