@@ -5,6 +5,7 @@ import {
   useEffect,
   useRef,
   useState,
+  useSyncExternalStore,
   type FormEvent,
   type ReactNode,
 } from "react";
@@ -14,6 +15,8 @@ import styles from "./HomeHeroEditor.module.css";
 const HERO_SAVE_ACTION = "/api/admin/content/home/hero";
 const HERO_DRAFT_PREFIX = "deuna:hero-draft:";
 const HERO_DRAFT_LATEST_KEY = `${HERO_DRAFT_PREFIX}latest`;
+const subscribeStorage = () => () => {};
+const serverBlockedRecoverySnapshot = () => "";
 
 type SaveNotice = {
   error: boolean;
@@ -60,9 +63,10 @@ function readBlockedHeroRecovery(
           typeof parsed === "object" &&
           parsed !== null &&
           "revision" in parsed &&
+          typeof parsed.revision === "number" &&
           Number.isInteger(parsed.revision)
         ) {
-          const recoveryRevision = Number(parsed.revision);
+          const recoveryRevision = parsed.revision;
           return recoveryRevision === currentRevision
             ? null
             : { revision: recoveryRevision };
@@ -105,6 +109,27 @@ function readBlockedHeroRecovery(
   } catch {
     return null;
   }
+}
+
+function readBlockedHeroRecoverySnapshot(currentRevision: number) {
+  const blocked = readBlockedHeroRecovery(currentRevision);
+  if (!blocked) return "";
+  return blocked.revision === null
+    ? "unknown"
+    : `revision:${blocked.revision}`;
+}
+
+function decodeBlockedHeroRecoverySnapshot(
+  snapshot: string
+): BlockedRecovery | null {
+  if (!snapshot) return null;
+  if (snapshot === "unknown") return { revision: null };
+  const match = snapshot.match(/^revision:(\d+)$/);
+  if (!match) return { revision: null };
+  const revision = Number(match[1]);
+  return Number.isInteger(revision)
+    ? { revision }
+    : { revision: null };
 }
 
 function readHeroSaveFields(form: HTMLFormElement): HeroSaveFields | null {
@@ -204,8 +229,18 @@ export default function HomeHeroSaveBoundary({
   const [savePending, setSavePending] = useState(false);
   const [savedRevision, setSavedRevision] = useState<number | null>(null);
   const [notice, setNotice] = useState<SaveNotice | null>(null);
-  const [blockedRecovery, setBlockedRecovery] =
-    useState<BlockedRecovery | null>(null);
+  const [dismissedBlockedSnapshot, setDismissedBlockedSnapshot] =
+    useState<string | null>(null);
+  const blockedRecoverySnapshot = useSyncExternalStore(
+    subscribeStorage,
+    () => readBlockedHeroRecoverySnapshot(revision),
+    serverBlockedRecoverySnapshot
+  );
+  const blockedRecovery =
+    blockedRecoverySnapshot &&
+    blockedRecoverySnapshot !== dismissedBlockedSnapshot
+      ? decodeBlockedHeroRecoverySnapshot(blockedRecoverySnapshot)
+      : null;
   const waitingForRefresh = savedRevision !== null && revision < savedRevision;
   const busy = savePending || waitingForRefresh;
 
@@ -234,10 +269,6 @@ export default function HomeHeroSaveBoundary({
       persistHeroRecovery(form);
     });
   };
-
-  useEffect(() => {
-    setBlockedRecovery(readBlockedHeroRecovery(revision));
-  }, [revision]);
 
   useEffect(() => {
     return () => {
@@ -359,7 +390,7 @@ export default function HomeHeroSaveBoundary({
       backupFrame.current = null;
     }
     clearStoredHeroDrafts();
-    setBlockedRecovery(null);
+    setDismissedBlockedSnapshot(blockedRecoverySnapshot);
   };
 
   return (
