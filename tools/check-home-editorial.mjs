@@ -163,6 +163,15 @@ assert(
 );
 
 assert(
+  homeContentEditor.includes("const savingRef = useRef(false)") &&
+    homeContentEditor.includes("if (savingRef.current) return") &&
+    homeContentEditor.includes("savingRef.current = true") &&
+    (homeContentEditor.match(/savingRef\.current = false/g) ?? []).length >= 3 &&
+    !homeContentEditor.includes("if (saving) return"),
+  "El guardado atómico de Resto de Inicio debe usar un lock síncrono para impedir POST duplicados antes del siguiente render de React."
+);
+
+assert(
   homeContentEditor.includes('form[data-home-editor-dirty="true"]') &&
     homeContentEditor.includes("beforeunload") &&
     homeContentEditor.includes('document.addEventListener("click", protectLinks, true)') &&
@@ -389,6 +398,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Home editorial: OK (ownership aislado, guardado atómico, recuperación post-hidratación, navegación protegida, deep-link de Mi PC navegable, catálogo público fail-closed y preview pública compartida)."
+    "Home editorial: OK (ownership aislado, guardado atómico con lock, recuperación post-hidratación, navegación protegida, deep-link de Mi PC navegable, catálogo público fail-closed y preview pública compartida)."
   );
 }
