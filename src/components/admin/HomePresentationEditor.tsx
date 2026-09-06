@@ -277,7 +277,7 @@ export default function HomePresentationEditor({
     storedDraft,
   ]);
   const recoveryMatchesRevision = recovery?.revision === revision;
-  const recoveryIsStale = Boolean(recovery && !recoveryMatchesRevision);
+  const recoveryRequiresDecision = Boolean(recovery);
 
   useEffect(() => {
     if (!recoveryReady || recovery) return;
@@ -404,7 +404,7 @@ export default function HomePresentationEditor({
             <strong>Cambios locales recuperables</strong>
             <span>
               {recoveryMatchesRevision
-                ? "Hay una copia local de esta revisión que todavía no fue guardada."
+                ? "Hay una copia local de esta revisión que todavía no fue guardada. Recupérala o descártala antes de continuar editando."
                 : `Hay una copia local iniciada en la revisión ${recovery.revision}, pero el servidor ya está en la revisión ${revision}. Por seguridad no puede recuperarse automáticamente sobre una revisión posterior. Descarta la copia para desbloquear la edición de la revisión actual.`}
             </span>
           </div>
@@ -448,7 +448,7 @@ export default function HomePresentationEditor({
         </span>
       </div>
 
-      <section className={styles.structurePanel} inert={recoveryIsStale}>
+      <section className={styles.structurePanel} inert={recoveryRequiresDecision}>
         <p className={styles.structureIntro}>
           El orden se reutiliza directamente al renderizar Inicio. Ocultar un bloque no borra su configuración ni sus juegos seleccionados.
         </p>
@@ -490,7 +490,7 @@ export default function HomePresentationEditor({
         </div>
       </section>
 
-      <section className={styles.copyPanel} inert={recoveryIsStale}>
+      <section className={styles.copyPanel} inert={recoveryRequiresDecision}>
         <div className={styles.copyHeader}>
           <strong>Textos de los bloques</strong>
           <p>
@@ -661,7 +661,7 @@ export default function HomePresentationEditor({
         </div>
       </section>
 
-      <div className={styles.actions} inert={recoveryIsStale}>
+      <div className={styles.actions} inert={recoveryRequiresDecision}>
         <p>
           Guardar sólo modifica el borrador de Portada. El orden, visibilidad y textos públicos no cambian hasta publicar.
         </p>
