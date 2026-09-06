@@ -12,14 +12,15 @@
   position: absolute;
   top: 50%;
   left: 50%;
-  width: max(44px, 100%);
-  height: max(44px, 100%);
+  width: max(45px, 100%);
+  height: max(45px, 100%);
   transform: translate(-50%, -50%);
 }
 
 .heroNavigation.heroNavigation {
-  /* Hero navigation may be scaled editorially. Keep the final pointer target
-     at least 44px while the existing spacing formulas prevent overlap. */
+  /* Hero navigation may be scaled editorially. Keep one logical pixel of
+     safety so the rendered pointer target stays >=44px after subpixel scaling
+     while the existing spacing formulas prevent overlap. */
   --hero-navigation-target-size:
-    max(44px, calc(4400px / var(--hero-navigation-scale, 100)));
+    max(45px, calc(4500px / var(--hero-navigation-scale, 100)));
 }
