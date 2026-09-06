@@ -99,6 +99,16 @@ assert.match(
   /\.integratedProgress\s*\{[\s\S]*?border-radius:\s*inherit;/,
   'Expanding hit areas must preserve clipping semantics for the integrated rounded progress mark.'
 );
+assert.match(
+  css,
+  /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?\.progressBar,\s*\.integratedProgress\s*\{\s*animation:\s*none;/,
+  'Reduced-motion users must not see Hero progress animation before client hydration pauses autoplay.'
+);
+assert.match(
+  css,
+  /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?\.navigation,[\s\S]*?transition:\s*none;/,
+  'Reduced motion must also suppress navigation transitions from the first paint.'
+);
 assert.match(css, /--hero-navigation-scale:\s*var\(--hero-tablet-navigation-scale, 100\);/);
 assert.match(css, /--hero-navigation-scale:\s*var\(--hero-mobile-navigation-scale, 92\);/);
 
@@ -111,4 +121,4 @@ for (const scale of [50, 92, 100, 180]) {
   );
 }
 
-console.log('Hero accessibility: OK (autoplay always exposes pause/resume, paused changes are announced, autoplay stays silent, and navigation keeps 24px pointer targets across the full scale contract).');
+console.log('Hero accessibility: OK (autoplay always exposes pause/resume, reduced motion is respected before hydration, paused changes are announced, autoplay stays silent, and navigation keeps 24px pointer targets across the full scale contract).');
