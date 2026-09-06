@@ -276,6 +276,7 @@ export default function HomePresentationEditor({
     recoveryDismissed,
     storedDraft,
   ]);
+  const recoveryMatchesRevision = recovery?.revision === revision;
 
   useEffect(() => {
     if (!recoveryReady || recovery) return;
@@ -394,19 +395,24 @@ export default function HomePresentationEditor({
       />
 
       {recovery && (
-        <div className={styles.recovery} role="status">
+        <div
+          className={styles.recovery}
+          role={recoveryMatchesRevision ? "status" : "alert"}
+        >
           <div>
             <strong>Cambios locales recuperables</strong>
             <span>
-              {recovery.revision === revision
+              {recoveryMatchesRevision
                 ? "Hay una copia local de esta revisión que todavía no fue guardada."
-                : `Hay una copia local iniciada en la revisión ${recovery.revision}. El servidor está en la revisión ${revision}.`}
+                : `Hay una copia local iniciada en la revisión ${recovery.revision}, pero el servidor ya está en la revisión ${revision}. Por seguridad no puede recuperarse automáticamente sobre una revisión posterior.`}
             </span>
           </div>
           <div>
             <button
               type="button"
+              disabled={!recoveryMatchesRevision}
               onClick={() => {
+                if (!recoveryMatchesRevision) return;
                 setSections(
                   recovery.sections.map((section) => ({ ...section }))
                 );
@@ -414,7 +420,7 @@ export default function HomePresentationEditor({
                 setRecoveryDismissed(true);
               }}
             >
-              Recuperar
+              {recoveryMatchesRevision ? "Recuperar" : "Copia obsoleta"}
             </button>
             <button
               type="button"
