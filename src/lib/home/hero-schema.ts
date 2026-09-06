@@ -321,16 +321,60 @@ const basePresentationEditorSchema = z
   })
   .strict();
 
-// Device snapshots are bounded: they cannot contain further overrides.
-const deviceOverridesSchema = z.object({
-  desktop: basePresentationEditorSchema.optional(),
-  tablet: basePresentationEditorSchema.optional(),
-  mobile: basePresentationEditorSchema.optional(),
-}).strict().optional();
+const normalizeEditorPlayback = (
+  presentation: z.infer<typeof basePresentationEditorSchema>
+) => {
+  const autoplay =
+    presentation.autoplayMs === 0
+      ? false
+      : presentation.autoplay;
 
-export const homeHeroPresentationInputSchema = basePresentationInputSchema.extend({
-  deviceOverrides: deviceOverridesSchema,
-});
-export const homeHeroPresentationEditorSchema = basePresentationEditorSchema.extend({
-  deviceOverrides: deviceOverridesSchema,
-});
+  return {
+    ...presentation,
+    autoplay,
+    navigation: {
+      ...presentation.navigation,
+      showPause:
+        autoplay || presentation.navigation.showPause,
+    },
+  };
+};
+
+const editorBasePresentationSchema =
+  basePresentationEditorSchema.transform(
+    normalizeEditorPlayback
+  );
+
+// Device snapshots are bounded: they cannot contain further overrides.
+const persistedDeviceOverridesSchema = z
+  .object({
+    desktop: basePresentationEditorSchema.optional(),
+    tablet: basePresentationEditorSchema.optional(),
+    mobile: basePresentationEditorSchema.optional(),
+  })
+  .strict()
+  .optional();
+
+const editorDeviceOverridesSchema = z
+  .object({
+    desktop: editorBasePresentationSchema.optional(),
+    tablet: editorBasePresentationSchema.optional(),
+    mobile: editorBasePresentationSchema.optional(),
+  })
+  .strict()
+  .optional();
+
+export const homeHeroPresentationInputSchema =
+  basePresentationInputSchema.extend({
+    deviceOverrides: persistedDeviceOverridesSchema,
+  });
+
+export const homeHeroPresentationEditorSchema =
+  basePresentationEditorSchema
+    .extend({
+      deviceOverrides: editorDeviceOverridesSchema,
+    })
+    .transform((presentation) => ({
+      ...presentation,
+      ...normalizeEditorPlayback(presentation),
+    }));
