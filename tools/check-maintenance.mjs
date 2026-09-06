@@ -196,6 +196,24 @@ assert(
   "El staging seguro debe copiar los wrappers requeridos por build y smoke."
 );
 
+const visualSmoke = await read(
+  "tools/visual-smoke.mjs"
+);
+const loginPreflight = visualSmoke.indexOf(
+  "const prepared = await cdp.evaluate"
+);
+const loginNavigationWait = visualSmoke.indexOf(
+  'const loaded = cdp.waitFor("Page.loadEventFired")',
+  loginPreflight
+);
+assert(
+  loginPreflight >= 0 &&
+    visualSmoke.includes("if (!prepared)") &&
+    visualSmoke.includes("No se encontró el formulario real de login del Admin.") &&
+    loginNavigationWait > loginPreflight,
+  "El smoke visual debe validar el formulario real de login antes de iniciar la espera de navegación, evitando timeouts huérfanos y diagnósticos duplicados."
+);
+
 const workflow = await read(
   ".github/workflows/ci.yml"
 );
