@@ -54,9 +54,14 @@ export const frontendSiteConfigFormSchema = z
   })
   .merge(siteFields);
 
-const editableHomeCopySchema = editorialHomeConfigSchema.shape.copy
-  .unwrap()
-  .omit({ hero: true });
+const homeCopySchema = editorialHomeConfigSchema.shape.copy.unwrap();
+const editableHomeCopySchema = homeCopySchema
+  .omit({ hero: true })
+  .extend({
+    hero: homeCopySchema.shape.hero.pick({
+      accessibleTitle: true,
+    }),
+  });
 const homePresentationSchema = z
   .object({
     sections: editorialHomeConfigSchema.shape.sections.unwrap(),
