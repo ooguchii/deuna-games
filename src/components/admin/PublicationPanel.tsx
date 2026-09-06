@@ -47,7 +47,10 @@ function StateNotice({
 
   if (state === "publicado") {
     return (
-      <div className={`${styles.notice} ${styles.noticeSuccess}`}>
+      <div
+        className={`${styles.notice} ${styles.noticeSuccess}`}
+        role="status"
+      >
         El borrador fue publicado correctamente y ya es el snapshot activo.
       </div>
     );
@@ -55,7 +58,10 @@ function StateNotice({
 
   if (state === "oculto") {
     return (
-      <div className={`${styles.notice} ${styles.noticeWarning}`}>
+      <div
+        className={`${styles.notice} ${styles.noticeWarning}`}
+        role="status"
+      >
         El contenido fue retirado de la web. El borrador, el snapshot y todo el historial siguen conservados.
       </div>
     );
@@ -63,7 +69,10 @@ function StateNotice({
 
   if (state === "publicacion-restaurada") {
     return (
-      <div className={`${styles.notice} ${styles.noticeSuccess}`}>
+      <div
+        className={`${styles.notice} ${styles.noticeSuccess}`}
+        role="status"
+      >
         La publicación histórica fue restaurada como una nueva publicación activa.
       </div>
     );
@@ -71,7 +80,7 @@ function StateNotice({
 
   if (state === "sin-cambios") {
     return (
-      <div className={styles.notice}>
+      <div className={styles.notice} role="status">
         No se realizaron cambios porque el estado solicitado ya estaba aplicado.
       </div>
     );
@@ -82,7 +91,10 @@ function StateNotice({
     state === "conflicto-publicacion"
   ) {
     return (
-      <div className={`${styles.notice} ${styles.noticeWarning}`}>
+      <div
+        className={`${styles.notice} ${styles.noticeWarning}`}
+        role="alert"
+      >
         El contenido cambió mientras se procesaba la operación. La página se actualizó sin sobrescribir cambios más recientes.
       </div>
     );
@@ -90,7 +102,10 @@ function StateNotice({
 
   if (state === "solicitud" || state === "datos") {
     return (
-      <div className={`${styles.notice} ${styles.noticeError}`}>
+      <div
+        className={`${styles.notice} ${styles.noticeError}`}
+        role="alert"
+      >
         La solicitud de publicación fue rechazada porque no superó la validación administrativa.
       </div>
     );
@@ -291,6 +306,11 @@ export default function PublicationPanel({
                     type="submit"
                     className={styles.restoreButton}
                     disabled={isCurrent}
+                    aria-label={
+                      isCurrent
+                        ? undefined
+                        : `Restaurar publicación ${publication.publicationNumber}`
+                    }
                   >
                     <RotateCcw size={14} aria-hidden="true" />
                     {isCurrent
