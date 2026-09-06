@@ -63,7 +63,7 @@
   font-size: 12px;
 }
 
-.sidebar.sidebar > div:last-of-type button {
+.sidebar.sidebar .logoutButton {
   min-height: 44px;
   padding: 0 10px;
   font-size: 12px;
