@@ -491,8 +491,7 @@ NODE_ENV=production \
 NEXT_PUBLIC_SITE_URL=https://localhost \
 DEUNA_ADMIN_ENABLED=false \
 DEUNA_ADMIN_ORIGIN=https://localhost \
-DEUNA_ACCOUNT_DATA_KEY="${account_data_key}" \
-  npm run admin:preflight:runtime
+  node --env-file="${RUNTIME_ENV}" ./tools/admin/preflight.ts --purpose=runtime
 
 npm run audit:deps
 
