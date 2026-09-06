@@ -366,12 +366,14 @@ export default function HomeHeroEditor({
   games,
   publicGames,
   revision,
+  rankingReferenceTime,
   background,
 }: {
   config: ResolvedHomeConfig;
   games: Game[];
   publicGames: Game[];
   revision: number;
+  rankingReferenceTime: number;
   background?: Omit<PublicPageBackgroundProps, "children" | "previewPathname">;
 }) {
   const [editingRevision] = useState(revision);
@@ -415,7 +417,7 @@ export default function HomeHeroEditor({
   const saving = useRef(false);
   const router = useRouter();
   const recoveryReady = useSyncExternalStore(subscribeStorage, clientReady, serverReady);
-  const [rankingNow] = useState(() => Date.now());
+  const rankingNow = rankingReferenceTime;
 
   const dirty = JSON.stringify(state) !== JSON.stringify(baseline);
   const bySlug = useMemo(() => new Map(games.map((game) => [game.slug, game])), [games]);
@@ -674,6 +676,10 @@ export default function HomeHeroEditor({
     });
 
   const updateAspectControls = (nextControl: AspectControl) => {
+    if (comparing) {
+      setCompare(false);
+      return;
+    }
     const targets = editScope === "all"
       ? devices.map((entry) => entry.id)
       : [device];
