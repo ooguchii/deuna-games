@@ -11,7 +11,9 @@ const adminPassword =
   process.env.DEUNA_VISUAL_ADMIN_PASSWORD;
 
 const LEGACY_ADMIN_FORM_LIMIT_BYTES = 8 * 1024;
+const AUTHORIZED_ADMIN_FORM_LIMIT_BYTES = 64 * 1024;
 const TARGET_PRESENTATION_JSON_CHARS = 12_000;
+const TARGET_TAXONOMY_JSON_CHARS = 70_000;
 const MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
 
 if (
@@ -154,7 +156,7 @@ function inputValues(html, name) {
 
   if (matches.length === 0) {
     throw new Error(
-      `No se encontró el input SSR ${name} en Resto de Inicio.`
+      `No se encontró el input SSR ${name}.`
     );
   }
 
@@ -172,6 +174,50 @@ function singleValue(html, name) {
   }
 
   return unique[0];
+}
+
+function firstSelectValue(html, name) {
+  const selects = html.match(/<select\b[\s\S]*?<\/select>/gi) ?? [];
+
+  for (const select of selects) {
+    const openingTag = select.match(/^<select\b[^>]*>/i)?.[0] ?? "";
+    const nameMatch = openingTag.match(/\bname="([^"]*)"/i);
+    if (!nameMatch || decodeHtmlAttribute(nameMatch[1]) !== name) {
+      continue;
+    }
+
+    const optionPattern = /<option\b[^>]*\bvalue="([^"]*)"[^>]*>/gi;
+    let option;
+    while ((option = optionPattern.exec(select)) !== null) {
+      const value = decodeHtmlAttribute(option[1]);
+      if (value) return value;
+    }
+  }
+
+  throw new Error(
+    `No se encontró una opción SSR utilizable para ${name}.`
+  );
+}
+
+function redirectLocation(response, label) {
+  if (response.status !== 303) {
+    throw new Error(
+      `${label} respondió ${response.status}; se esperaba 303.`
+    );
+  }
+
+  const location = response.headers.location;
+  if (!location) {
+    throw new Error(`${label} no devolvió Location.`);
+  }
+
+  const url = new URL(location, baseUrl);
+  if (url.origin !== baseUrl.origin) {
+    throw new Error(
+      `${label} intentó redirigir fuera del origen visual: ${url.origin}.`
+    );
+  }
+  return url;
 }
 
 const loginPage = await request("/admin/login");
@@ -194,15 +240,21 @@ const loginResponse = await request(
   }
 );
 
-if (loginResponse.status !== 303) {
+const loginRedirect = redirectLocation(
+  loginResponse,
+  "El login HTTP del smoke"
+);
+if (loginRedirect.pathname !== "/admin") {
   throw new Error(
-    `El login HTTP del smoke respondió ${loginResponse.status}, se esperaba 303.`
+    `El login HTTP terminó en ${loginRedirect.pathname}, se esperaba /admin.`
   );
 }
 
 const cookie = sessionCookie(
   loginResponse.headers["set-cookie"]
 );
+
+// 1) Inicio combinado: prueba el límite explícito grande del dominio Home.
 const contentPath = "/admin/portada?seccion=contenido";
 const contentPage = await request(contentPath, {
   headers: { cookie },
@@ -278,21 +330,11 @@ const saveResponse = await request(
   }
 );
 
-if (saveResponse.status !== 303) {
-  throw new Error(
-    `El guardado grande respondió ${saveResponse.status}; se esperaba 303.`
-  );
-}
-
-const location = saveResponse.headers.location;
-if (!location) {
-  throw new Error(
-    "El guardado grande no devolvió Location."
-  );
-}
-const redirectUrl = new URL(location, baseUrl);
+const redirectUrl = redirectLocation(
+  saveResponse,
+  "El guardado grande de Inicio"
+);
 if (
-  redirectUrl.origin !== baseUrl.origin ||
   redirectUrl.pathname !== "/admin/portada" ||
   redirectUrl.searchParams.get("seccion") !== "contenido" ||
   redirectUrl.searchParams.get("estado") !== "guardado"
@@ -326,4 +368,174 @@ if (
 
 console.log(
   `Home large-save smoke: OK (${requestBytes} bytes, revisión ${beforeRevision} -> ${afterRevision}, sólo borrador).`
+);
+
+// 2) Formulario editorial autenticado normal: prueba el nuevo techo de 64 KiB.
+const newGamePath = "/admin/juegos/nuevo";
+const newGamePage = await request(newGamePath, {
+  headers: { cookie },
+});
+if (newGamePage.status !== 200) {
+  throw new Error(
+    `Nuevo juego respondió ${newGamePage.status} durante el smoke de tamaño.`
+  );
+}
+
+const category = firstSelectValue(newGamePage.body, "category");
+const gameSlug =
+  `visual-large-form-${Date.now().toString(36)}-${process.pid}`;
+const gameTitle = "Visual Large Form Smoke";
+const gameBody = new URLSearchParams({
+  slug: gameSlug,
+  title: gameTitle,
+  description: "á".repeat(1_600),
+  category,
+  version: "",
+  badge: "",
+  imageAlt: `Portada de ${gameTitle}`,
+}).toString();
+const gameRequestBytes = Buffer.byteLength(gameBody, "utf8");
+
+if (
+  gameRequestBytes <= LEGACY_ADMIN_FORM_LIMIT_BYTES ||
+  gameRequestBytes >= AUTHORIZED_ADMIN_FORM_LIMIT_BYTES
+) {
+  throw new Error(
+    `El smoke de juego debe quedar entre 8 y 64 KiB (${gameRequestBytes} bytes).`
+  );
+}
+
+const createGameResponse = await request(
+  "/api/admin/content/games",
+  {
+    method: "POST",
+    headers: formHeaders(newGamePath, cookie),
+    body: gameBody,
+  }
+);
+const gameRedirect = redirectLocation(
+  createGameResponse,
+  "La creación grande de juego"
+);
+if (
+  gameRedirect.pathname !== `/admin/juegos/${gameSlug}` ||
+  gameRedirect.searchParams.get("estado") !== "creado"
+) {
+  throw new Error(
+    `La creación grande no terminó en el borrador esperado: ${gameRedirect.href}.`
+  );
+}
+
+const createdGamePage = await request(
+  `${gameRedirect.pathname}${gameRedirect.search}`,
+  { headers: { cookie } }
+);
+if (
+  createdGamePage.status !== 200 ||
+  !createdGamePage.body.includes(gameTitle)
+) {
+  throw new Error(
+    `El borrador grande de juego no pudo releerse (${createdGamePage.status}).`
+  );
+}
+
+console.log(
+  `Game large-create smoke: OK (${gameRequestBytes} bytes, borrador ${gameSlug}, sin publicar).`
+);
+
+// 3) Catálogos: prueba una excepción explícita mayor a 64 KiB sin cambiar datos.
+const catalogPath = "/admin/catalogos?seccion=clasificaciones";
+const catalogPage = await request(catalogPath, {
+  headers: { cookie },
+});
+if (catalogPage.status !== 200) {
+  throw new Error(
+    `Catálogos respondió ${catalogPage.status} durante el smoke de tamaño.`
+  );
+}
+
+const catalogRevision = Number(
+  singleValue(catalogPage.body, "expectedRevision")
+);
+const taxonomyJson = singleValue(
+  catalogPage.body,
+  "taxonomyJson"
+);
+if (!Number.isInteger(catalogRevision) || catalogRevision <= 0) {
+  throw new Error(
+    `La revisión de Catálogos no es válida: ${catalogRevision}.`
+  );
+}
+
+const taxonomyPadding = Math.max(
+  0,
+  TARGET_TAXONOMY_JSON_CHARS - taxonomyJson.length
+);
+const paddedTaxonomyJson =
+  `${taxonomyJson}${" ".repeat(taxonomyPadding)}`;
+if (paddedTaxonomyJson.length > 100_000) {
+  throw new Error(
+    `El catálogo SSR supera el contrato de 100.000 caracteres (${paddedTaxonomyJson.length}).`
+  );
+}
+
+const catalogBody = new URLSearchParams({
+  expectedRevision: String(catalogRevision),
+  taxonomyJson: paddedTaxonomyJson,
+}).toString();
+const catalogRequestBytes = Buffer.byteLength(
+  catalogBody,
+  "utf8"
+);
+if (catalogRequestBytes <= AUTHORIZED_ADMIN_FORM_LIMIT_BYTES) {
+  throw new Error(
+    `El smoke de Catálogos no superó 64 KiB (${catalogRequestBytes} bytes).`
+  );
+}
+
+const catalogResponse = await request(
+  "/api/admin/content/catalogs/games?seccion=clasificaciones",
+  {
+    method: "POST",
+    headers: formHeaders(catalogPath, cookie),
+    body: catalogBody,
+  }
+);
+const catalogRedirect = redirectLocation(
+  catalogResponse,
+  "El guardado grande de Catálogos"
+);
+if (
+  catalogRedirect.pathname !== "/admin/catalogos" ||
+  catalogRedirect.searchParams.get("estado") !== "catalogo-guardado" ||
+  catalogRedirect.searchParams.get("seccion") !== "clasificaciones"
+) {
+  throw new Error(
+    `Catálogos no terminó en catalogo-guardado: ${catalogRedirect.href}.`
+  );
+}
+
+const refreshedCatalog = await request(
+  `${catalogRedirect.pathname}${catalogRedirect.search}`,
+  { headers: { cookie } }
+);
+if (refreshedCatalog.status !== 200) {
+  throw new Error(
+    `Catálogos no pudo releerse (${refreshedCatalog.status}).`
+  );
+}
+const catalogAfterRevision = Number(
+  singleValue(refreshedCatalog.body, "expectedRevision")
+);
+if (
+  !Number.isInteger(catalogAfterRevision) ||
+  catalogAfterRevision <= catalogRevision
+) {
+  throw new Error(
+    `El POST grande de Catálogos no avanzó revisión (${catalogRevision} -> ${catalogAfterRevision}).`
+  );
+}
+
+console.log(
+  `Catalog large-save smoke: OK (${catalogRequestBytes} bytes, revisión ${catalogRevision} -> ${catalogAfterRevision}, sólo borrador).`
 );
