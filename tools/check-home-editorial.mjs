@@ -350,8 +350,10 @@ assert(
 assert(
   adminContext.includes("homeAdminSectionContract") &&
     adminContext.includes("homeSections = homeAdminSectionContract.map") &&
+    adminContext.includes("resolveHomeAdminSection") &&
+    adminContext.includes('searchParams.get("seccion") ?? undefined') &&
     homeAdminSections.includes("resolveHomeAdminSection"),
-  "IDs y labels de navegación de Inicio deben tener una única fuente administrativa."
+  "Página y navegación de Inicio deben compartir IDs, labels y fallback de sección administrativa."
 );
 
 assert(
@@ -374,9 +376,15 @@ assert(
 );
 
 assert(
-  accountPage.includes("Math.max(0, Math.min(100") &&
-    !accountPage.includes("Math.max(30, Math.min(100"),
-  "Mi DeUna no debe imponer un piso artificial de compatibilidad que infle estimaciones de hardware bajas."
+  !accountPage.includes("compatibilityPercent") &&
+    !accountDashboard.includes("% compatible") &&
+    accountPage.includes("performanceEstimate: entry.estimate?.canEstimate") &&
+    accountPage.includes("hardwareEstimateCount / games.length") &&
+    accountDashboard.includes("FPS estimados") &&
+    accountDashboard.includes("confianza") &&
+    accountDashboard.includes("hardwareCoveragePercent") &&
+    accountDashboard.includes("Este porcentaje mide cobertura de calibración, no compatibilidad"),
+  "Mi PC debe mostrar rangos FPS estimados y confianza del motor real; cualquier porcentaje debe representar sólo cobertura de calibración, no una compatibilidad inventada."
 );
 
 assert(
@@ -398,6 +406,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Home editorial: OK (ownership aislado, guardado atómico con lock, recuperación post-hidratación, navegación protegida, deep-link de Mi PC navegable, catálogo público fail-closed y preview pública compartida)."
+    "Home editorial: OK (ownership aislado, guardado atómico con lock, recuperación post-hidratación, navegación protegida, deep-link de Mi PC navegable, FPS sin falsa precisión, catálogo público fail-closed y preview pública compartida)."
   );
 }
