@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 
 import {
+  parseGameDate,
+} from "../src/lib/games/catalog.ts";
+import {
+  formatGameReleaseDate,
+  parseGameCivilDate,
+} from "../src/lib/games/game-date.ts";
+import {
   homeRankingDay,
   homeRankingProfiles,
   minimumRamGb,
@@ -68,6 +75,59 @@ assert.equal(
   "El ranking debe usar una referencia diaria estable."
 );
 
+const civilDmy = parseGameCivilDate("05/09/2026");
+const civilIso = parseGameCivilDate("2026-09-05");
+assert.equal(
+  civilDmy,
+  Date.UTC(2026, 8, 5),
+  "DD/MM/YYYY debe convertirse a la fecha civil UTC exacta."
+);
+assert.equal(
+  civilIso,
+  civilDmy,
+  "YYYY-MM-DD y DD/MM/YYYY deben representar la misma fecha civil."
+);
+assert.equal(
+  parseGameCivilDate("31/02/2026"),
+  null,
+  "Una fecha civil imposible en formato local debe rechazarse en vez de normalizarse."
+);
+assert.equal(
+  parseGameCivilDate("2026-02-31"),
+  null,
+  "Una fecha civil imposible en formato ISO debe rechazarse en vez de normalizarse."
+);
+assert.equal(
+  parseGameDate("31/02/2026"),
+  0,
+  "El ranking no debe otorgar actualidad a una fecha local imposible."
+);
+assert.equal(
+  parseGameDate("2026-02-31"),
+  0,
+  "El ranking no debe otorgar actualidad a una fecha ISO imposible."
+);
+assert.equal(
+  formatGameReleaseDate("05/09/2026"),
+  formatGameReleaseDate("2026-09-05"),
+  "El Hero debe mostrar igual una misma fecha civil sin depender del formato persistido."
+);
+assert.equal(
+  formatGameReleaseDate("2026-09-05T00:30:00Z"),
+  formatGameReleaseDate("2026-09-05"),
+  "Los instantes ISO explícitos deben formatearse en UTC y no según el timezone del navegador."
+);
+assert.equal(
+  formatGameReleaseDate("31/02/2026"),
+  "31/02/2026",
+  "Una fecha civil inválida debe conservarse visible como dato editorial, no inventar otro día."
+);
+assert.equal(
+  formatGameReleaseDate("A confirmar"),
+  "A confirmar",
+  "El texto editorial que no es fecha debe conservarse sin interpretación heurística."
+);
+
 const fameLow = game("fame-low", {
   rating: 4.5,
   reviews: "20",
@@ -116,6 +176,15 @@ assert.equal(
   scoreHomeGame(futureRelease, "popular", reference).score,
   scoreHomeGame(noRelease, "popular", reference).score,
   "Una fecha futura no debe recibir un bonus de actualidad."
+);
+
+const invalidRelease = game("invalid-release", {
+  releaseDate: "31/02/2026",
+});
+assert.equal(
+  scoreHomeGame(invalidRelease, "popular", reference).score,
+  scoreHomeGame(noRelease, "popular", reference).score,
+  "Una fecha de calendario imposible debe comportarse como desconocida en el ranking."
 );
 
 const sameDayMorning = scoreHomeGame(
@@ -359,5 +428,5 @@ assert.ok(
 );
 
 console.log(
-  `Ranking de Portada: OK (${sourceGames.length} juegos reales + casos sintéticos; perfiles al 100%, estabilidad diaria, fama, rating, actualidad, RAM, Hero, explicación, Manual, Automático e Híbrido verificados).`
+  `Ranking de Portada: OK (${sourceGames.length} juegos reales + casos sintéticos; perfiles al 100%, fechas civiles UTC, estabilidad diaria, fama, rating, actualidad, RAM, Hero, explicación, Manual, Automático e Híbrido verificados).`
 );
