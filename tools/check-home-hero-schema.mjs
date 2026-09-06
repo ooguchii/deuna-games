@@ -56,6 +56,80 @@ assert(
   "El contrato del editor debe migrar borradores locales anteriores sin inventar geometría distinta de los defaults actuales."
 );
 
+const legacyUnsafeAutoplay = clone(current);
+legacyUnsafeAutoplay.autoplay = true;
+legacyUnsafeAutoplay.navigation.showPause = false;
+const persistedUnsafeAutoplay =
+  homeHeroPresentationInputSchema.safeParse(
+    legacyUnsafeAutoplay
+  );
+const normalizedUnsafeAutoplay =
+  homeHeroPresentationEditorSchema.safeParse(
+    legacyUnsafeAutoplay
+  );
+assert(
+  persistedUnsafeAutoplay.success &&
+    persistedUnsafeAutoplay.data.navigation?.showPause === false,
+  "El contrato persistido debe seguir leyendo snapshots históricos que ocultaban pausa durante autoplay."
+);
+assert(
+  normalizedUnsafeAutoplay.success &&
+    normalizedUnsafeAutoplay.data.autoplay === true &&
+    normalizedUnsafeAutoplay.data.navigation.showPause === true,
+  "El contrato del editor debe normalizar pausa/reanudar como obligatoria cuando autoplay está activo."
+);
+
+const manualPlayback = clone(current);
+manualPlayback.autoplay = false;
+manualPlayback.navigation.showPause = false;
+const normalizedManualPlayback =
+  homeHeroPresentationEditorSchema.safeParse(
+    manualPlayback
+  );
+assert(
+  normalizedManualPlayback.success &&
+    normalizedManualPlayback.data.autoplay === false &&
+    normalizedManualPlayback.data.navigation.showPause === false,
+  "La normalización no debe inventar un control de pausa cuando el carrusel es manual."
+);
+
+const zeroInterval = clone(current);
+zeroInterval.autoplay = true;
+zeroInterval.autoplayMs = 0;
+zeroInterval.navigation.showPause = false;
+const normalizedZeroInterval =
+  homeHeroPresentationEditorSchema.safeParse(zeroInterval);
+assert(
+  normalizedZeroInterval.success &&
+    normalizedZeroInterval.data.autoplay === false,
+  "Un intervalo histórico de cero debe seguir resolviendo reproducción manual en el contrato del editor."
+);
+
+const overrideUnsafeAutoplay = clone(current);
+overrideUnsafeAutoplay.deviceOverrides = {
+  mobile: clone(current),
+};
+overrideUnsafeAutoplay.deviceOverrides.mobile.autoplay = true;
+overrideUnsafeAutoplay.deviceOverrides.mobile.navigation.showPause = false;
+const persistedOverride =
+  homeHeroPresentationInputSchema.safeParse(
+    overrideUnsafeAutoplay
+  );
+const normalizedOverride =
+  homeHeroPresentationEditorSchema.safeParse(
+    overrideUnsafeAutoplay
+  );
+assert(
+  persistedOverride.success &&
+    persistedOverride.data.deviceOverrides?.mobile?.navigation.showPause === false,
+  "Los overrides históricos deben conservar compatibilidad de lectura aunque ocultaran pausa."
+);
+assert(
+  normalizedOverride.success &&
+    normalizedOverride.data.deviceOverrides?.mobile?.navigation.showPause === true,
+  "Cada override de dispositivo debe normalizar el control de pausa cuando activa autoplay."
+);
+
 const invalidScale = clone(current);
 invalidScale.positions.main.scale = 1.61;
 assert(
@@ -98,6 +172,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Hero schema: OK (contrato actual único, límites compartidos y compatibilidad de borradores antiguos)."
+    "Hero schema: OK (contrato actual único, autoplay con pausa normalizada, límites compartidos y compatibilidad de borradores antiguos)."
   );
 }
