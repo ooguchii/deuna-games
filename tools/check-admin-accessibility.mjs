@@ -102,6 +102,12 @@ assert(
 );
 
 assert(
+  shell.includes("className={ux.logoutButton}") &&
+    /\.sidebar\.sidebar \.logoutButton\s*\{[^}]*min-height:\s*44px;/.test(shellUx),
+  "Salir debe tener una clase semántica estable y conservar un target táctil mínimo de 44px."
+);
+
+assert(
   shellUx.includes('.main :is(a, button):focus-visible') &&
     shellUx.includes('.main :is(input, textarea, select):focus-visible') &&
     shellUx.includes('.main input[type="search"]:focus-visible') &&
