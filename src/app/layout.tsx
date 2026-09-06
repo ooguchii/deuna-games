@@ -3,8 +3,8 @@ import type { Metadata, Viewport } from "next";
 
 import PublicPageBackground from "@/components/site/PublicPageBackground";
 import {
-  getPublicHomeConfig,
-} from "@/lib/home/public-home-config";
+  HOME_PAGE_TITLE,
+} from "@/lib/home/page-contract";
 import {
   siteUrl,
 } from "@/lib/site";
@@ -24,12 +24,8 @@ import "@/theme/public-route-theme-contract.css";
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const [config, homeConfig] = await Promise.all([
-    getPublicSiteConfig(),
-    getPublicHomeConfig(),
-  ]);
-  const homeTitle =
-    `${config.name} | ${homeConfig.copy.hero.accessibleTitle}`;
+  const config = await getPublicSiteConfig();
+  const homeTitle = `${config.name} | ${HOME_PAGE_TITLE}`;
 
   return {
     metadataBase: new URL(siteUrl),
