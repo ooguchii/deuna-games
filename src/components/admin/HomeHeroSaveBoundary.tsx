@@ -229,18 +229,15 @@ export default function HomeHeroSaveBoundary({
   const [savePending, setSavePending] = useState(false);
   const [savedRevision, setSavedRevision] = useState<number | null>(null);
   const [notice, setNotice] = useState<SaveNotice | null>(null);
-  const [dismissedBlockedSnapshot, setDismissedBlockedSnapshot] =
-    useState<string | null>(null);
+  const [recoveryEpoch, setRecoveryEpoch] = useState(0);
   const blockedRecoverySnapshot = useSyncExternalStore(
     subscribeStorage,
     () => readBlockedHeroRecoverySnapshot(revision),
     serverBlockedRecoverySnapshot
   );
-  const blockedRecovery =
-    blockedRecoverySnapshot &&
-    blockedRecoverySnapshot !== dismissedBlockedSnapshot
-      ? decodeBlockedHeroRecoverySnapshot(blockedRecoverySnapshot)
-      : null;
+  const blockedRecovery = decodeBlockedHeroRecoverySnapshot(
+    blockedRecoverySnapshot
+  );
   const waitingForRefresh = savedRevision !== null && revision < savedRevision;
   const busy = savePending || waitingForRefresh;
 
@@ -390,7 +387,7 @@ export default function HomeHeroSaveBoundary({
       backupFrame.current = null;
     }
     clearStoredHeroDrafts();
-    setDismissedBlockedSnapshot(blockedRecoverySnapshot);
+    setRecoveryEpoch((current) => current + 1);
   };
 
   return (
@@ -424,7 +421,12 @@ export default function HomeHeroSaveBoundary({
           </button>
         </div>
       )}
-      <div inert={busy || blockedRecovery !== null || undefined}>{children}</div>
+      <div
+        key={recoveryEpoch}
+        inert={busy || blockedRecovery !== null || undefined}
+      >
+        {children}
+      </div>
     </div>
   );
 }
