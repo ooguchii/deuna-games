@@ -59,8 +59,9 @@ assert(
   heroBoundary.includes("inert={busy || blockedRecovery !== null || undefined}") &&
     heroBoundary.includes("if (saving.current || blockedRecovery) return") &&
     heroBoundary.includes("Descartar copia obsoleta") &&
-    heroBoundary.includes("setDismissedBlockedSnapshot(blockedRecoverySnapshot)"),
-  "Hero debe quedar inerte ante una copia obsoleta y sólo desbloquearse mediante descarte explícito.",
+    heroBoundary.includes("setRecoveryEpoch((current) => current + 1)") &&
+    heroBoundary.includes("key={recoveryEpoch}"),
+  "Hero debe quedar inerte ante una copia obsoleta y el descarte debe limpiar storage y remontear el editor desde el borrador de servidor.",
 );
 
 assert(
@@ -77,6 +78,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Home recovery gate: OK (Curaduría/Presentación exigen resolver cualquier copia pendiente y Hero bloquea copias de otra revisión o de origen no verificable con snapshot SSR estable).",
+    "Home recovery gate: OK (Curaduría/Presentación exigen resolver cualquier copia pendiente y Hero bloquea copias de otra revisión o de origen no verificable con snapshot SSR estable y remount seguro al descartar).",
   );
 }
