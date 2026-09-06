@@ -16,6 +16,7 @@ async function source(relativePath) {
 const [
   homeCollections,
   rankingEngine,
+  rootLayout,
   homePage,
   adminHomePage,
   sourceConfig,
@@ -24,6 +25,7 @@ const [
   curationRoute,
   presentationRoute,
   combinedContentRoute,
+  frontendContentForms,
   homeContentService,
   homeContentEditor,
   creationService,
@@ -47,6 +49,7 @@ const [
 ] = await Promise.all([
   source("src/data/home.ts"),
   source("src/lib/home/ranking.ts"),
+  source("src/app/layout.tsx"),
   source("src/app/page.tsx"),
   source("src/app/admin/(protected)/portada/page.tsx"),
   source("src/data/home-config.ts"),
@@ -55,6 +58,7 @@ const [
   source("src/app/api/admin/content/home/route.ts"),
   source("src/app/api/admin/content/home/presentation/route.ts"),
   source("src/app/api/admin/content/home/content/route.ts"),
+  source("src/lib/admin/frontend-content-forms.ts"),
   source("src/lib/admin/home-content-service.ts"),
   source("src/components/admin/HomeContentEditor.tsx"),
   source("src/lib/admin/content-create-service.ts"),
@@ -116,6 +120,16 @@ assert(
     publicConfig.includes("public_visible = true") &&
     !publicConfig.includes("draft_payload"),
   "La portada pública debe leer sólo el snapshot publicado."
+);
+
+assert(
+  rootLayout.includes("getPublicHomeConfig") &&
+    rootLayout.includes("homeConfig.copy.hero.accessibleTitle") &&
+    homePage.includes("homeConfig.copy.hero.accessibleTitle") &&
+    homePage.includes("<h1 className={styles.pageTitle}") &&
+    !rootLayout.includes("HOME_PAGE_TITLE") &&
+    !homePage.includes("HOME_PAGE_TITLE"),
+  "Metadata, social y H1 de Inicio deben reutilizar el título accesible del snapshot publicado, sin copy SEO paralelo."
 );
 
 assert(
@@ -196,8 +210,20 @@ assert(
     homeContentService.includes("heroSlugs: current.heroSlugs") &&
     homeContentService.includes("hero: current.curation.hero") &&
     homeContentService.includes("heroPresentation: current.heroPresentation") &&
-    homeContentService.includes("hero: current.copy.hero"),
-  "Resto de Inicio debe preservar autoritativamente todo el dominio del Hero."
+    homeContentService.includes("mergeHomePresentationCopy") &&
+    homeContentService.includes("...current.hero") &&
+    homeContentService.includes("accessibleTitle: hero.accessibleTitle"),
+  "Resto de Inicio debe preservar selección, curaduría y diseño del Hero; sólo puede actualizar su título SEO/accesible y debe conservar los campos Hero legacy."
+);
+
+assert(
+  frontendContentForms.includes("const editableHomeCopySchema") &&
+    frontendContentForms.includes(".omit({ hero: true })") &&
+    frontendContentForms.includes("hero: homeCopySchema.shape.hero.pick") &&
+    frontendContentForms.includes("accessibleTitle: true") &&
+    !frontendContentForms.includes("primaryCta: true") &&
+    !frontendContentForms.includes("secondaryCta: true"),
+  "El contrato HTTP de Presentación debe aceptar únicamente accessibleTitle del slice Hero, nunca sus CTAs legacy."
 );
 
 assert(
@@ -231,12 +257,17 @@ assert(
 );
 
 assert(
-  presentationEditor.includes("type EditableHomeCopy = Omit<HomeCopy, \"hero\">") &&
+  presentationEditor.includes('hero: Pick<HomeCopy["hero"], "accessibleTitle">') &&
+    presentationEditor.includes("normalizeRecoveryCopy") &&
+    presentationEditor.includes("SEO y accesibilidad de Inicio") &&
+    presentationEditor.includes("copy.hero.accessibleTitle") &&
     presentationEditor.includes("buildPayload") &&
     !presentationEditor.includes("heroPresentation: config.heroPresentation") &&
     !presentationEditor.includes("heroGames:") &&
-    !presentationEditor.includes("showHeroStudio"),
-  "Presentación debe enviar sólo secciones y copy no-Hero, sin props ni payload fantasma."
+    !presentationEditor.includes("showHeroStudio") &&
+    !presentationEditor.includes("primaryCta") &&
+    !presentationEditor.includes("secondaryCta"),
+  "Presentación debe poseer secciones, copy no-Hero y sólo el título SEO/accesible; la recuperación vieja debe normalizarse sin reintroducir copy fantasma del Hero."
 );
 
 assert(
@@ -406,6 +437,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Home editorial: OK (ownership aislado, guardado atómico con lock, recuperación post-hidratación, navegación protegida, deep-link de Mi PC navegable, FPS sin falsa precisión, catálogo público fail-closed y preview pública compartida)."
+    "Home editorial: OK (ownership aislado, título SEO/accesible publicado con dueño explícito, guardado atómico con lock, recuperación post-hidratación, navegación protegida, deep-link de Mi PC navegable, FPS sin falsa precisión, catálogo público fail-closed y preview pública compartida)."
   );
 }
