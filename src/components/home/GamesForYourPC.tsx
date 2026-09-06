@@ -122,7 +122,7 @@ export default function GamesForYourPC({
           <span>{personalized ? "en tu PC" : copy.listHighlight}</span>
         </h3>
 
-        <Link href={personalized ? "/cuenta" : "/juegos/bajos-recursos"}>
+        <Link href={personalized ? "/cuenta?vista=pc" : "/juegos/bajos-recursos"}>
           {personalized ? "Ver Mi PC" : copy.listLinkLabel}
           <ChevronRight size={18} aria-hidden="true" />
         </Link>
