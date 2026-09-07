@@ -5,10 +5,10 @@
 
 .notificationBadge {
   position: absolute;
-  top: 2px;
-  right: 0;
-  min-width: 20px;
-  height: 20px;
+  top: 3px;
+  right: 1px;
+  min-width: 18px;
+  height: 18px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -226,7 +226,8 @@
   text-align: center;
 }
 
-.mobileNotificationLink {
+.mobileNotificationLink[href] {
+  min-block-size: 48px;
   min-height: 48px;
   display: flex;
   align-items: center;
