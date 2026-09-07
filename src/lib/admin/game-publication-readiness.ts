@@ -4,7 +4,10 @@ import {
 import {
   hasCompleteContextualMediaAccessibility,
 } from "@/lib/media/game-media-accessibility";
-import { evaluateGameMediaRequirements } from "@/lib/media/game-media-requirements";
+import {
+  evaluateGameMediaRequirements,
+  REQUIRED_DESTINATION_ASPECTS,
+} from "@/lib/media/game-media-requirements";
 import type { Game } from "@/types/game";
 
 export type GameReadinessSection =
@@ -200,7 +203,7 @@ export function evaluateGamePublicationReadiness(
     },
     {
       id: "cover-crop",
-      label: "Portada · recorte 4:5",
+      label: `Portada · recorte ${REQUIRED_DESTINATION_ASPECTS.cover}`,
       detail: "La Portada debe completar los recursos exigidos por su modo activo.",
       section: "multimedia",
       complete: media.cover.cropReady,
@@ -208,7 +211,7 @@ export function evaluateGamePublicationReadiness(
     },
     {
       id: "hero-crop",
-      label: "Hero · recorte 16:9",
+      label: `Hero · recorte ${REQUIRED_DESTINATION_ASPECTS.hero}`,
       detail: "El Hero debe completar los recursos exigidos por su modo activo.",
       section: "multimedia",
       complete: media.hero.cropReady,
@@ -216,7 +219,7 @@ export function evaluateGamePublicationReadiness(
     },
     {
       id: "card-crop",
-      label: "Card · recorte 3:2",
+      label: `Card · recorte ${REQUIRED_DESTINATION_ASPECTS.card}`,
       detail: "La Card debe completar los recursos y recortes exigidos por su modo activo.",
       section: "multimedia",
       complete: media.card.cropReady,

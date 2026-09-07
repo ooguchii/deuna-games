@@ -284,6 +284,18 @@ for (const id of [
 }
 
 assert(
+  has(
+    publicationReadiness,
+    "REQUIRED_DESTINATION_ASPECTS",
+    'label: `Portada · recorte ${REQUIRED_DESTINATION_ASPECTS.cover}`',
+    'label: `Hero · recorte ${REQUIRED_DESTINATION_ASPECTS.hero}`',
+    'label: `Card · recorte ${REQUIRED_DESTINATION_ASPECTS.card}`'
+  ) &&
+    !publicationReadiness.includes('label: "Hero · recorte 16:9"'),
+  "El panel de publicación debe derivar Portada/Hero/Card del contrato central de relaciones y no repetir etiquetas obsoletas."
+);
+
+assert(
   publicationReadiness.includes("complete: media.detail.cropReady") &&
     publicationReadiness.includes("complete: media.gallery.cropReady") &&
     publicationWorkspace.includes("!readiness.essentialsReady") &&
