@@ -340,6 +340,25 @@ async function auditPage(cdp, page, viewport) {
           return true;
         }
         if ("labels" in element && element.labels?.length) return true;
+
+        // Chrome exposes native label relationships inconsistently for some
+        // range controls through this DevTools evaluation path. Recognize the
+        // two valid HTML labelling forms explicitly rather than weakening the
+        // accessible-name requirement or adding per-page exceptions.
+        const wrappingLabel = element.closest("label");
+        if (wrappingLabel && (wrappingLabel.textContent ?? "").trim()) {
+          return true;
+        }
+        const controlId = element.id?.trim();
+        if (controlId) {
+          const explicitLabel = Array.from(document.querySelectorAll("label[for]"))
+            .find((label) =>
+              label.htmlFor === controlId &&
+              (label.textContent ?? "").trim()
+            );
+          if (explicitLabel) return true;
+        }
+
         if ((element.textContent ?? "").trim()) return true;
         if (element.getAttribute("title")?.trim()) return true;
         if (element instanceof HTMLInputElement &&
