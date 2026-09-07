@@ -54,9 +54,7 @@ export default function HeaderClient({
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [notifications, setNotifications] = useState(
-    accountNotifications ?? []
-  );
+  const [dismissedNotificationFeed, setDismissedNotificationFeed] = useState<string | null>(null);
   const [notificationPending, setNotificationPending] = useState(false);
   const [notificationMessage, setNotificationMessage] = useState<string | null>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
@@ -65,6 +63,10 @@ export default function HeaderClient({
   const notificationRootRef = useRef<HTMLDivElement>(null);
   const notificationPanelRef = useRef<HTMLDivElement>(null);
   const notificationsAvailable = accountNotifications !== null;
+  const notificationFeed = JSON.stringify(accountNotifications);
+  const notifications = dismissedNotificationFeed === notificationFeed
+    ? []
+    : accountNotifications ?? [];
   const unseenCount = notifications.length;
 
   const closeMobileMenu = useCallback((restoreFocus = false) => {
@@ -199,7 +201,7 @@ export default function HeaderClient({
         throw new Error("No se pudieron marcar los avisos como vistos.");
       }
 
-      setNotifications([]);
+      setDismissedNotificationFeed(notificationFeed);
       router.refresh();
     } catch {
       setNotificationMessage(
