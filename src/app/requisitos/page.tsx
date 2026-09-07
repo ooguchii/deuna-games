@@ -175,6 +175,7 @@ export default async function RequirementsPage({
           <AccountAwareGameFinder
             games={games}
             focusedSlug={focusedSlug}
+            authenticated={Boolean(accountSession)}
             accountHardware={accountHardware
               ? {
                   cpuId: accountHardware.cpuId,

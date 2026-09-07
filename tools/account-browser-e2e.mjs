@@ -18,8 +18,11 @@ import { setTimeout as delay } from "node:timers/promises";
 
 import {
   authenticateAccount,
+  deleteAccount,
   registerAccount,
 } from "../src/lib/accounts/service.ts";
+
+import { resolveAccountSession } from "../src/lib/accounts/session-store.ts";
 
 const baseUrl = (
   process.env.DEUNA_VISUAL_BASE_URL ?? "https://127.0.0.1:3443"
@@ -244,6 +247,21 @@ async function setInput(cdp, selector, value) {
   if (!ok) throw new Error(`No se encontró el campo ${selector}.`);
 }
 
+async function searchHardware(cdp, field, query, expectedLabel, prefix = "account") {
+  await cdp.evaluate(`document.getElementById(${JSON.stringify(`${prefix}-${field}`)}).click()`);
+  await waitFor(cdp, `Boolean(document.querySelector('input[role="combobox"]'))`, "Buscador de hardware");
+  await setInput(cdp, 'input[role="combobox"]', query);
+  await settle(cdp);
+  const selected = await cdp.evaluate(`(() => {
+    const option = Array.from(document.querySelectorAll('[role="option"]')).find((entry) => entry.textContent.trim() === ${JSON.stringify(expectedLabel)});
+    if (!option) return false;
+    option.click();
+    return true;
+  })()`);
+  if (!selected) throw new Error(`El buscador no encontró ${expectedLabel}.`);
+  await settle(cdp);
+}
+
 async function selectFirstRealOption(cdp, selector) {
   const value = await cdp.evaluate(`
     (() => {
@@ -404,6 +422,11 @@ try {
     }),
   ]);
 
+  // Opt-in sólo para la CA de desarrollo del origen loopback validado arriba.
+  if (process.env.DEUNA_VISUAL_ALLOW_LOCAL_CERT === "true") {
+    await cdp.send("Security.setIgnoreCertificateErrors", { ignore: true });
+  }
+
   cdp.on("Runtime.exceptionThrown", (event) => {
     runtimeFailures.push(
       event.exceptionDetails?.exception?.description ??
@@ -438,7 +461,7 @@ try {
       tab.textContent?.trim() === "Crear cuenta"
     )
   `);
-  if (!registrationClosed) {
+  if (!registrationClosed && process.env.DEUNA_VISUAL_EXPECT_REGISTRATION_CLOSED !== "false") {
     throw new Error(
       "El runtime visual dejó de representar correctamente el registro público cerrado."
     );
@@ -455,17 +478,51 @@ try {
   await screenshot(cdp, "01-overview");
 
   await openAccountView(cdp, "Mi PC", "pc", "Mi PC");
-  const cpu = await selectFirstRealOption(cdp, 'select[name="cpuId"]');
-  const gpu = await selectFirstRealOption(cdp, 'select[name="gpuId"]');
-  await setInput(cdp, 'input[name="ramGb"]', "16");
+  await waitFor(cdp, `document.querySelector('form[aria-label="Configurar Mi PC"] button[type="submit"]').disabled`, "No guardar un perfil incompleto");
+  await cdp.evaluate(`document.getElementById("account-cpu").click()`);
+  await setInput(cdp, 'input[role="combobox"]', "zzzz-no-existe");
+  await waitFor(cdp, `document.body.innerText.includes("No encontramos coincidencias")`, "Búsqueda sin resultados");
+  await cdp.send("Input.dispatchKeyEvent", { type: "keyDown", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
+  await waitFor(cdp, `document.activeElement?.id === "account-cpu"`, "Escape devuelve el foco al selector");
+  const cpu = { value: "ryzen-5-5600g", label: "AMD Ryzen 5 5600G" };
+  const gpu = { value: "radeon-vega-7", label: "AMD Radeon Vega 7" };
+  await searchHardware(cdp, "cpu", "5600g", cpu.label);
+  await searchHardware(cdp, "gpu", "vega 7", gpu.label);
+  await searchHardware(cdp, "ram", "16", "16 GB");
   await selectValue(cdp, 'select[name="memoryMode"]', "dual");
-  await submit(cdp, 'form:has(select[name="cpuId"]):has(select[name="gpuId"])');
-  await waitFor(
-    cdp,
-    `document.body.innerText.includes("PC guardada. DeUna ya puede usarla")`,
-    "Persistencia de Mi PC"
-  );
-  await screenshot(cdp, "02-pc-guardada");
+  await submit(cdp, 'form[aria-label="Configurar Mi PC"]');
+  await waitFor(cdp, `document.body.innerText.includes("PC guardada. DeUna ya puede usarla")`, "Persistencia de Mi PC");
+  await waitFor(cdp, `document.querySelector('form[aria-label="Configurar Mi PC"] button[type="submit"]').disabled`, "Guardado actualizado");
+  for (const [name, width, height] of [["desktop", 1440, 1000], ["tablet", 1024, 900], ["mobile", 390, 844]]) {
+    await cdp.send("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: 1, mobile: width === 390 });
+    await settle(cdp);
+    await screenshot(cdp, `02-pc-${name}`);
+    await cdp.evaluate(`document.getElementById("account-cpu").click()`);
+    await setInput(cdp, 'input[role="combobox"]', "5600");
+    await settle(cdp);
+    await screenshot(cdp, `02-pc-${name}-search`);
+    const fits = await cdp.evaluate(`document.documentElement.scrollWidth <= innerWidth && Array.from(document.querySelectorAll('[role="listbox"]')).every((node) => { const rect = node.getBoundingClientRect(); return rect.left >= 0 && rect.right <= innerWidth; })`);
+    if (!fits) throw new Error(`El buscador desborda en ${name}.`);
+    await cdp.send("Input.dispatchKeyEvent", { type: "keyDown", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
+  }
+  await cdp.send("Emulation.setDeviceMetricsOverride", { width: 1280, height: 1000, deviceScaleFactor: 1, mobile: false });
+  await searchHardware(cdp, "ram", "32", "32 GB");
+  await cdp.evaluate(`Array.from(document.querySelectorAll('button')).find((button) => button.textContent.trim() === "Cancelar cambios").click()`);
+  await waitFor(cdp, `document.querySelector('input[name="ramGb"]').value === "16"`, "Cancelar restaura la RAM guardada");
+
+  // El configurador público debe leer la cuenta y guardar cambios en la misma cuenta.
+  await navigate(cdp, "/requisitos");
+  await waitFor(cdp, `Array.from(document.querySelectorAll('button')).some((button) => button.textContent.trim() === "Configurar perfil")`, "Configurador público disponible");
+  await cdp.evaluate(`Array.from(document.querySelectorAll('button')).find((button) => button.textContent.trim() === "Configurar perfil").click()`);
+  await waitFor(cdp, `document.querySelector('#manual-cpu') && document.querySelector('input[name="ramGb"]').value === "16"`, "El configurador público reutiliza Mi PC");
+  await searchHardware(cdp, "ram", "32", "32 GB", "manual");
+  await cdp.evaluate(`Array.from(document.querySelectorAll('button')).find((button) => button.textContent.includes("Guardar y recalcular")).click()`);
+  await waitFor(cdp, `!document.querySelector('#manual-cpu')`, "Guardado público confirmado");
+  await navigate(cdp, "/cuenta?vista=pc");
+  await waitFor(cdp, `document.querySelector('input[name="ramGb"]')?.value === "32"`, "La cuenta refleja el guardado público");
+  await searchHardware(cdp, "ram", "16", "16 GB");
+  await submit(cdp, 'form[aria-label="Configurar Mi PC"]');
+  await waitFor(cdp, `document.body.innerText.includes("PC guardada. DeUna ya puede usarla")`, "Restauración de la RAM de prueba");
 
   await openAccountView(cdp, "Mis juegos", "games", "Mis juegos");
   const game = await selectFirstRealOption(cdp, 'select[name="gameSlug"]');
@@ -525,8 +582,8 @@ try {
 
   await navigate(cdp, "/cuenta?vista=pc");
   const hardwarePersisted = await cdp.evaluate(`
-    document.querySelector('select[name="cpuId"]')?.value === ${JSON.stringify(cpu.value)} &&
-    document.querySelector('select[name="gpuId"]')?.value === ${JSON.stringify(gpu.value)} &&
+    document.querySelector('input[name="cpuId"]')?.value === ${JSON.stringify(cpu.value)} &&
+    document.querySelector('input[name="gpuId"]')?.value === ${JSON.stringify(gpu.value)} &&
     document.querySelector('input[name="ramGb"]')?.value === "16" &&
     document.querySelector('select[name="memoryMode"]')?.value === "dual"
   `);
@@ -562,8 +619,11 @@ try {
     `${JSON.stringify({
       generatedAt: new Date().toISOString(),
       login: true,
-      registrationClosed: true,
+      registrationClosed,
       hardwarePersistence: true,
+      hardwareSearchAndCancellation: true,
+      bidirectionalHardwarePersistence: true,
+      hardwareResponsiveViewports: [1440, 1024, 390],
       gamePreferencePersistence: true,
       profilePersistence: true,
       publicAccountBoundary: true,
@@ -579,7 +639,7 @@ try {
   );
 
   console.log(
-    "Cuenta browser E2E: OK (login real, Mi PC, Mis juegos, perfil, ficha pública y eliminación sobre PostgreSQL efímera)."
+    "Cuenta browser E2E: OK (login real, Mi PC, Mis juegos, perfil, ficha pública y eliminación de la cuenta temporal en PostgreSQL)."
   );
 } catch (error) {
   if (browserError.trim()) {
@@ -587,6 +647,8 @@ try {
   }
   throw error;
 } finally {
+  const remainingSession = await resolveAccountSession(registration.token);
+  if (remainingSession) await deleteAccount(remainingSession.userId, password);
   cdp?.close();
   browser.kill("SIGTERM");
   await rm(profileDir, { recursive: true, force: true }).catch(() => {});
