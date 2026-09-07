@@ -539,6 +539,36 @@ for (const target of ["card-image", "detail-image"]) {
   revision = media.revision;
 }
 
+for (const target of ["cover", "hero", "card", "detail"]) {
+  const modeRedirect = await postAdminForm(
+    `/api/admin/content/games/${encodeURIComponent(slug)}/media-library`,
+    `${editorPath}?seccion=multimedia`,
+    cookie,
+    {
+      expectedRevision: String(revision),
+      target: `${target}-mode`,
+      resource: "image",
+    },
+    `El modo Imagen de ${target}`
+  );
+
+  if (modeRedirect.searchParams.get("estado") !== "recurso-asignado") {
+    throw new Error(
+      `${target} no terminó en modo Imagen: ${modeRedirect.href}.`
+    );
+  }
+
+  media = await mediaSnapshot(slug, cookie);
+  revision = media.revision;
+  const modeKey = `${target}Mode`;
+
+  if (media.assignments?.[modeKey] !== "image") {
+    throw new Error(
+      `${target} no persistió el modo Imagen en Biblioteca multimedia.`
+    );
+  }
+}
+
 async function confirmCrop(target, aspect, resource) {
   const fields = {
     expectedRevision: String(revision),
