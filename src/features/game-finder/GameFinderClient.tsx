@@ -517,7 +517,14 @@ export default function GameFinderClient({
       }
 
       const saved = readStoredHardwareProfile();
-      if (!saved) return;
+      if (!saved) {
+        setSnapshot(null);
+        setHardware(null);
+        setManualDraft(profileToManualDraft(null));
+        setDetectionState("idle");
+        void runDetection();
+        return;
+      }
 
       setSnapshot(null);
       setHardware(saved);
@@ -527,7 +534,7 @@ export default function GameFinderClient({
 
     window.addEventListener("storage", handleStorage);
     return () => window.removeEventListener("storage", handleStorage);
-  }, []);
+  }, [runDetection]);
 
   useEffect(() => {
     if (
@@ -1065,7 +1072,11 @@ export default function GameFinderClient({
               <ShieldCheck size={18} aria-hidden="true" />
               <div>
                 <strong>Tu privacidad primero</strong>
-                <p>El perfil confirmado se guarda solo en este navegador. Una nueva detección automática no borra ese perfil.</p>
+                <p>
+                  {onSaveProfile
+                    ? "CPU, gráfica y RAM confirmadas se guardan en tu cuenta. El sistema operativo queda en este navegador y la detección automática no se sube."
+                    : "El perfil confirmado se guarda solo en este navegador. Una nueva detección automática no borra ese perfil."}
+                </p>
               </div>
             </div>
           </aside>
