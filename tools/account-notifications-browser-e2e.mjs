@@ -27,9 +27,6 @@ import {
 import {
   resolveAccountSession,
 } from "../src/lib/accounts/session-store.ts";
-import {
-  getPublicResolvedUpdates,
-} from "../src/lib/updates/public-updates.ts";
 
 const baseUrl = (
   process.env.DEUNA_VISUAL_BASE_URL ?? "https://127.0.0.1:3443"
@@ -38,11 +35,16 @@ const parsedBaseUrl = new URL(baseUrl);
 const outputRoot = path.resolve(
   process.env.DEUNA_VISUAL_OUTPUT_DIR ?? "artifacts/visual-smoke"
 );
-const outputDir = path.join(outputRoot, "account-notifications-e2e");
+const outputDir = path.join(
+  outputRoot,
+  "account-notifications-e2e"
+);
 
 if (
   parsedBaseUrl.protocol !== "https:" ||
-  !["127.0.0.1", "localhost", "::1"].includes(parsedBaseUrl.hostname)
+  !["127.0.0.1", "localhost", "::1"].includes(
+    parsedBaseUrl.hostname
+  )
 ) {
   throw new Error(
     "El E2E de avisos sólo puede ejecutarse contra el runtime HTTPS local aislado."
@@ -62,7 +64,10 @@ function findChrome() {
     const result = spawnSync(
       "sh",
       ["-lc", `command -v ${JSON.stringify(candidate)}`],
-      { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }
+      {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "ignore"],
+      }
     );
     const resolved = result.stdout.trim();
     if (result.status === 0 && resolved) return resolved;
@@ -73,22 +78,103 @@ function findChrome() {
   );
 }
 
+async function readPublishedUpdateFixture() {
+  const [updatesResult, gamesResult] = await Promise.all([
+    accountQuery(
+      `SELECT
+         item_key,
+         published_payload
+       FROM deuna_admin.editorial_items
+       WHERE item_type = 'game_update'
+         AND public_visible = true
+       ORDER BY item_key ASC`
+    ),
+    accountQuery(
+      `SELECT item_key
+       FROM deuna_admin.editorial_items
+       WHERE item_type = 'game'
+         AND public_visible = true
+       ORDER BY item_key ASC`
+    ),
+  ]);
+  const visibleGames = new Set(
+    gamesResult.rows.map((row) => String(row.item_key))
+  );
+  const candidates = updatesResult.rows
+    .map((row) => {
+      const payload = row.published_payload;
+      if (
+        !payload ||
+        typeof payload !== "object" ||
+        Array.isArray(payload)
+      ) {
+        return null;
+      }
+
+      const gameSlug = payload.gameSlug;
+      const version = payload.version;
+      const publishedAt = payload.publishedAt;
+      if (
+        typeof gameSlug !== "string" ||
+        typeof version !== "string" ||
+        typeof publishedAt !== "string" ||
+        !visibleGames.has(gameSlug)
+      ) {
+        return null;
+      }
+
+      const publishedTime = Date.parse(publishedAt);
+      if (!Number.isFinite(publishedTime)) return null;
+
+      return {
+        id: String(row.item_key),
+        gameSlug,
+        version,
+        publishedAt,
+        publishedTime,
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => b.publishedTime - a.publishedTime);
+
+  if (!candidates[0]) {
+    throw new Error(
+      "El fixture visual necesita una actualización y un juego publicados para validar avisos."
+    );
+  }
+
+  return candidates[0];
+}
+
 async function waitForDebugger(profileDir) {
-  const activePortPath = path.join(profileDir, "DevToolsActivePort");
+  const activePortPath = path.join(
+    profileDir,
+    "DevToolsActivePort"
+  );
   const deadline = Date.now() + 15_000;
   let lastError = null;
 
   while (Date.now() < deadline) {
     try {
-      const raw = await import("node:fs/promises")
-        .then(({ readFile }) => readFile(activePortPath, "utf8"));
-      const port = Number.parseInt(raw.split(/\r?\n/, 1)[0] ?? "", 10);
-      if (!Number.isFinite(port)) throw new Error("Puerto DevTools inválido.");
-      const response = await fetch(`http://127.0.0.1:${port}/json/list`);
+      const raw = await import("node:fs/promises").then(
+        ({ readFile }) => readFile(activePortPath, "utf8")
+      );
+      const port = Number.parseInt(
+        raw.split(/\r?\n/, 1)[0] ?? "",
+        10
+      );
+      if (!Number.isFinite(port)) {
+        throw new Error("Puerto DevTools inválido.");
+      }
+      const response = await fetch(
+        `http://127.0.0.1:${port}/json/list`
+      );
       if (response.ok) {
         const targets = await response.json();
         const page = targets.find(
-          (target) => target.type === "page" && target.webSocketDebuggerUrl
+          (target) =>
+            target.type === "page" &&
+            target.webSocketDebuggerUrl
         );
         if (page) return page;
       }
@@ -107,18 +193,30 @@ function openWebSocket(url) {
   return new Promise((resolve, reject) => {
     const socket = new WebSocket(url);
     const timer = setTimeout(
-      () => reject(new Error("Timeout conectando con Chrome DevTools.")),
+      () => reject(
+        new Error("Timeout conectando con Chrome DevTools.")
+      ),
       10_000
     );
 
-    socket.addEventListener("open", () => {
-      clearTimeout(timer);
-      resolve(socket);
-    }, { once: true });
-    socket.addEventListener("error", () => {
-      clearTimeout(timer);
-      reject(new Error("No se pudo abrir Chrome DevTools."));
-    }, { once: true });
+    socket.addEventListener(
+      "open",
+      () => {
+        clearTimeout(timer);
+        resolve(socket);
+      },
+      { once: true }
+    );
+    socket.addEventListener(
+      "error",
+      () => {
+        clearTimeout(timer);
+        reject(
+          new Error("No se pudo abrir Chrome DevTools.")
+        );
+      },
+      { once: true }
+    );
   });
 }
 
@@ -137,7 +235,9 @@ class CdpSession {
         this.pending.delete(message.id);
         if (message.error) {
           pending.reject(
-            new Error(`${pending.method}: ${message.error.message}`)
+            new Error(
+              `${pending.method}: ${message.error.message}`
+            )
           );
         } else {
           pending.resolve(message.result ?? {});
@@ -156,13 +256,20 @@ class CdpSession {
   send(method, params = {}) {
     const id = this.nextId++;
     return new Promise((resolve, reject) => {
-      this.pending.set(id, { method, resolve, reject });
-      this.socket.send(JSON.stringify({ id, method, params }));
+      this.pending.set(id, {
+        method,
+        resolve,
+        reject,
+      });
+      this.socket.send(
+        JSON.stringify({ id, method, params })
+      );
     });
   }
 
   on(method, listener) {
-    const listeners = this.listeners.get(method) ?? new Set();
+    const listeners =
+      this.listeners.get(method) ?? new Set();
     listeners.add(listener);
     this.listeners.set(method, listeners);
   }
@@ -178,8 +285,8 @@ class CdpSession {
     if (result.exceptionDetails) {
       throw new Error(
         result.exceptionDetails.exception?.description ??
-        result.exceptionDetails.text ??
-        "Runtime.evaluate falló."
+          result.exceptionDetails.text ??
+          "Runtime.evaluate falló."
       );
     }
 
@@ -211,12 +318,16 @@ async function settle(cdp) {
 async function navigate(cdp, pathname) {
   const url = new URL(pathname, baseUrl);
   if (url.origin !== parsedBaseUrl.origin) {
-    throw new Error(`Navegación fuera del origen visual: ${url.origin}.`);
+    throw new Error(
+      `Navegación fuera del origen visual: ${url.origin}.`
+    );
   }
 
   const loaded = new Promise((resolve, reject) => {
     const timer = setTimeout(
-      () => reject(new Error(`Timeout cargando ${url.pathname}.`)),
+      () => reject(
+        new Error(`Timeout cargando ${url.pathname}.`)
+      ),
       20_000
     );
     cdp.on("Page.loadEventFired", () => {
@@ -225,7 +336,9 @@ async function navigate(cdp, pathname) {
     });
   });
 
-  const navigation = await cdp.send("Page.navigate", { url: url.href });
+  const navigation = await cdp.send("Page.navigate", {
+    url: url.href,
+  });
   if (navigation.errorText) {
     throw new Error(
       `No se pudo navegar a ${url.href}: ${navigation.errorText}`
@@ -236,7 +349,12 @@ async function navigate(cdp, pathname) {
   await settle(cdp);
 }
 
-async function waitFor(cdp, expression, label, timeoutMs = 12_000) {
+async function waitFor(
+  cdp,
+  expression,
+  label,
+  timeoutMs = 12_000
+) {
   const deadline = Date.now() + timeoutMs;
   let lastValue;
 
@@ -267,7 +385,9 @@ async function setInput(cdp, selector, value) {
     })()
   `);
 
-  if (!ok) throw new Error(`No se encontró el campo ${selector}.`);
+  if (!ok) {
+    throw new Error(`No se encontró el campo ${selector}.`);
+  }
 }
 
 async function submit(cdp, selector) {
@@ -280,7 +400,9 @@ async function submit(cdp, selector) {
     })()
   `);
 
-  if (!ok) throw new Error(`No se encontró el formulario ${selector}.`);
+  if (!ok) {
+    throw new Error(`No se encontró el formulario ${selector}.`);
+  }
 }
 
 async function screenshot(cdp, name) {
@@ -296,38 +418,35 @@ async function screenshot(cdp, name) {
   );
 }
 
-const suffix = `${Date.now().toString(36)}${process.pid.toString(36)}`.slice(-14);
+const suffix =
+  `${Date.now().toString(36)}${process.pid.toString(36)}`
+    .slice(-14);
 const username = `avisos_${suffix}`.slice(0, 40);
-const password = `Qa!${randomBytes(18).toString("base64url")}9`;
+const password =
+  `Qa!${randomBytes(18).toString("base64url")}9`;
 
 const registration = await registerAccount({
   username,
   password,
 });
-
 if (!registration.created) {
-  throw new Error("No se pudo provisionar la cuenta efímera de avisos.");
-}
-
-const accountSession = await resolveAccountSession(registration.token);
-if (!accountSession) {
-  throw new Error("La cuenta efímera de avisos no expuso una sesión válida.");
-}
-
-const updates = (await getPublicResolvedUpdates())
-  .filter((update) => Number.isFinite(Date.parse(update.publishedAt)))
-  .sort(
-    (a, b) => Date.parse(b.publishedAt) - Date.parse(a.publishedAt)
-  );
-const notificationUpdate = updates[0];
-
-if (!notificationUpdate) {
   throw new Error(
-    "El catálogo visual necesita al menos una actualización publicada para validar avisos."
+    "No se pudo provisionar la cuenta efímera de avisos."
   );
 }
 
-const publishedAt = Date.parse(notificationUpdate.publishedAt);
+const accountSession = await resolveAccountSession(
+  registration.token
+);
+if (!accountSession) {
+  throw new Error(
+    "La cuenta efímera de avisos no expuso una sesión válida."
+  );
+}
+
+const notificationUpdate =
+  await readPublishedUpdateFixture();
+
 await saveAccountGamePreference(accountSession.userId, {
   gameSlug: notificationUpdate.gameSlug,
   favorite: false,
@@ -345,12 +464,13 @@ const seeded = await accountQuery(
   [
     accountSession.userId,
     notificationUpdate.gameSlug,
-    new Date(publishedAt - 1_000),
+    new Date(notificationUpdate.publishedTime - 1_000),
   ]
 );
-
 if (seeded.rowCount !== 1) {
-  throw new Error("No se pudo preparar el límite temporal del aviso efímero.");
+  throw new Error(
+    "No se pudo preparar el límite temporal del aviso efímero."
+  );
 }
 
 await mkdir(outputDir, { recursive: true });
@@ -386,7 +506,9 @@ const runtimeFailures = [];
 
 try {
   const target = await waitForDebugger(profileDir);
-  cdp = new CdpSession(await openWebSocket(target.webSocketDebuggerUrl));
+  cdp = new CdpSession(
+    await openWebSocket(target.webSocketDebuggerUrl)
+  );
 
   await Promise.all([
     cdp.send("Page.enable"),
@@ -402,23 +524,33 @@ try {
     }),
   ]);
 
-  if (process.env.DEUNA_VISUAL_ALLOW_LOCAL_CERT === "true") {
-    await cdp.send("Security.setIgnoreCertificateErrors", { ignore: true });
+  if (
+    process.env.DEUNA_VISUAL_ALLOW_LOCAL_CERT === "true"
+  ) {
+    await cdp.send(
+      "Security.setIgnoreCertificateErrors",
+      { ignore: true }
+    );
   }
 
   cdp.on("Runtime.exceptionThrown", (event) => {
     runtimeFailures.push(
       event.exceptionDetails?.exception?.description ??
-      event.exceptionDetails?.text ??
-      "Excepción JavaScript sin detalle."
+        event.exceptionDetails?.text ??
+        "Excepción JavaScript sin detalle."
     );
   });
   cdp.on("Runtime.consoleAPICalled", (event) => {
     if (event.type !== "error") return;
     runtimeFailures.push(
-      event.args?.map((argument) =>
-        argument.value ?? argument.description ?? argument.type
-      ).join(" ") ?? "console.error sin detalle."
+      event.args
+        ?.map(
+          (argument) =>
+            argument.value ??
+            argument.description ??
+            argument.type
+        )
+        .join(" ") ?? "console.error sin detalle."
     );
   });
   cdp.on("Network.responseReceived", (event) => {
@@ -427,7 +559,9 @@ try {
     if (status < 400 || !url) return;
 
     try {
-      if (new URL(url).origin !== parsedBaseUrl.origin) return;
+      if (new URL(url).origin !== parsedBaseUrl.origin) {
+        return;
+      }
     } catch {
       return;
     }
@@ -435,10 +569,17 @@ try {
     runtimeFailures.push(`${status} ${url}`);
   });
 
-  // La campana también es una entrada a Avisos para quien todavía no inició sesión.
   await navigate(cdp, "/cuenta?vista=alerts");
-  await setInput(cdp, "#account-login-username", username);
-  await setInput(cdp, "#account-login-password", password);
+  await setInput(
+    cdp,
+    "#account-login-username",
+    username
+  );
+  await setInput(
+    cdp,
+    "#account-login-password",
+    password
+  );
   await submit(cdp, "#account-panel-login");
   await waitFor(
     cdp,
@@ -465,13 +606,15 @@ try {
       return true;
     })()
   `);
-  if (!opened) throw new Error("No se pudo abrir la campana de avisos.");
+  if (!opened) {
+    throw new Error("No se pudo abrir la campana de avisos.");
+  }
 
   await waitFor(
     cdp,
     `Boolean(document.querySelector("#header-notifications")) &&
-      document.querySelector("#header-notifications")?.innerText.includes(${JSON.stringify(notificationUpdate.game.title)}) &&
-      document.querySelector("#header-notifications")?.innerText.includes(${JSON.stringify(notificationUpdate.version)})`,
+      document.querySelector("#header-notifications")?.innerText.includes(${JSON.stringify(notificationUpdate.version)}) &&
+      Boolean(document.querySelector(${JSON.stringify(`#header-notifications a[href="/juegos/${notificationUpdate.gameSlug}#versions"]`)}))`,
     "El popover muestra la actualización publicada"
   );
   await waitFor(
@@ -485,21 +628,24 @@ try {
       const dialog = document.querySelector("#header-notifications");
       if (!(dialog instanceof HTMLElement)) return null;
       const rect = dialog.getBoundingClientRect();
-      const actions = Array.from(dialog.querySelectorAll("button, a"));
+      const actions = Array.from(
+        dialog.querySelectorAll("button, a")
+      );
       return {
         insideViewport:
           rect.left >= 0 &&
           rect.right <= innerWidth &&
           rect.top >= 0 &&
           rect.bottom <= innerHeight,
-        actionTargets: actions.every((entry) =>
-          entry.getBoundingClientRect().height >= 44
+        actionTargets: actions.every(
+          (entry) =>
+            entry.getBoundingClientRect().height >= 44
         ),
-        horizontalOverflow: document.documentElement.scrollWidth > innerWidth,
+        horizontalOverflow:
+          document.documentElement.scrollWidth > innerWidth,
       };
     })()
   `);
-
   if (
     !desktopAudit?.insideViewport ||
     !desktopAudit.actionTargets ||
@@ -524,14 +670,17 @@ try {
     "Escape cierra y devuelve el foco a la campana"
   );
 
-  await cdp.send("Emulation.setDeviceMetricsOverride", {
-    width: 390,
-    height: 844,
-    deviceScaleFactor: 1,
-    mobile: true,
-    screenWidth: 390,
-    screenHeight: 844,
-  });
+  await cdp.send(
+    "Emulation.setDeviceMetricsOverride",
+    {
+      width: 390,
+      height: 844,
+      deviceScaleFactor: 1,
+      mobile: true,
+      screenWidth: 390,
+      screenHeight: 844,
+    }
+  );
   await navigate(cdp, "/");
 
   const menuOpened = await cdp.evaluate(`
@@ -544,38 +693,67 @@ try {
       return true;
     })()
   `);
-  if (!menuOpened) throw new Error("No se pudo abrir el menú mobile.");
+  if (!menuOpened) {
+    throw new Error("No se pudo abrir el menú mobile.");
+  }
 
-  const mobileAudit = await waitFor(
+  await waitFor(
     cdp,
-    `(() => {
+    `Boolean(document.querySelector('#mobile-navigation a[href="/cuenta?vista=alerts"]'))`,
+    "Acceso mobile a Avisos"
+  );
+  await cdp.evaluate(`
+    document.querySelector(
+      '#mobile-navigation a[href="/cuenta?vista=alerts"]'
+    )?.scrollIntoView({ block: "center" })
+  `);
+  await settle(cdp);
+  const mobileAudit = await cdp.evaluate(`
+    (() => {
       const link = document.querySelector(
         '#mobile-navigation a[href="/cuenta?vista=alerts"]'
       );
       if (!(link instanceof HTMLAnchorElement)) return null;
       const rect = link.getBoundingClientRect();
-      const badge = link.querySelector('[aria-label*="avisos nuevos"]');
-      return rect.height >= 44 &&
-        rect.top < innerHeight &&
-        rect.bottom > 0 &&
-        Boolean(badge) &&
-        document.documentElement.scrollWidth <= innerWidth;
-    })()`,
-    "Acceso mobile a Avisos con badge"
-  );
-  if (!mobileAudit) {
-    throw new Error("El acceso mobile a Avisos no quedó visible o desbordó.");
+      return {
+        target: rect.height >= 44,
+        visible:
+          rect.top >= 0 &&
+          rect.bottom <= innerHeight,
+        badge: Boolean(
+          link.querySelector('[aria-label*="avisos nuevos"]')
+        ),
+        horizontalOverflow:
+          document.documentElement.scrollWidth > innerWidth,
+      };
+    })()
+  `);
+  if (
+    !mobileAudit?.target ||
+    !mobileAudit.visible ||
+    !mobileAudit.badge ||
+    mobileAudit.horizontalOverflow
+  ) {
+    throw new Error(
+      `El acceso mobile a Avisos no cumple el contrato: ${JSON.stringify(mobileAudit)}.`
+    );
   }
-  await screenshot(cdp, "02-notifications-mobile-menu");
+  await screenshot(
+    cdp,
+    "02-notifications-mobile-menu"
+  );
 
-  await cdp.send("Emulation.setDeviceMetricsOverride", {
-    width: 1280,
-    height: 1000,
-    deviceScaleFactor: 1,
-    mobile: false,
-    screenWidth: 1280,
-    screenHeight: 1000,
-  });
+  await cdp.send(
+    "Emulation.setDeviceMetricsOverride",
+    {
+      width: 1280,
+      height: 1000,
+      deviceScaleFactor: 1,
+      mobile: false,
+      screenWidth: 1280,
+      screenHeight: 1000,
+    }
+  );
   await navigate(cdp, "/");
   await cdp.evaluate(`
     document.querySelector(
@@ -591,14 +769,20 @@ try {
   const markSeen = await cdp.evaluate(`
     (() => {
       const button = Array.from(
-        document.querySelectorAll("#header-notifications button")
-      ).find((entry) => entry.textContent?.includes("Marcar vistos"));
+        document.querySelectorAll(
+          "#header-notifications button"
+        )
+      ).find((entry) =>
+        entry.textContent?.includes("Marcar vistos")
+      );
       if (!(button instanceof HTMLButtonElement)) return false;
       button.click();
       return true;
     })()
   `);
-  if (!markSeen) throw new Error("No apareció la acción Marcar vistos.");
+  if (!markSeen) {
+    throw new Error("No apareció la acción Marcar vistos.");
+  }
 
   await waitFor(
     cdp,
@@ -606,7 +790,6 @@ try {
     "La campana se actualiza al marcar vistos"
   );
 
-  // La recarga completa demuestra que el estado visto quedó persistido server-side.
   await navigate(cdp, "/");
   await waitFor(
     cdp,
@@ -629,20 +812,24 @@ try {
 
   await writeFile(
     path.join(outputDir, "report.json"),
-    `${JSON.stringify({
-      generatedAt: new Date().toISOString(),
-      deepLinkAfterLogin: true,
-      desktopPopover: true,
-      keyboardFocus: true,
-      mobileMenu: true,
-      markSeenPersistence: true,
-      fixture: {
-        gameSlug: notificationUpdate.gameSlug,
-        gameTitle: notificationUpdate.game.title,
-        version: notificationUpdate.version,
-        publishedAt: notificationUpdate.publishedAt,
+    `${JSON.stringify(
+      {
+        generatedAt: new Date().toISOString(),
+        deepLinkAfterLogin: true,
+        desktopPopover: true,
+        keyboardFocus: true,
+        mobileMenu: true,
+        markSeenPersistence: true,
+        fixture: {
+          id: notificationUpdate.id,
+          gameSlug: notificationUpdate.gameSlug,
+          version: notificationUpdate.version,
+          publishedAt: notificationUpdate.publishedAt,
+        },
       },
-    }, null, 2)}\n`,
+      null,
+      2
+    )}\n`,
     "utf8"
   );
 
@@ -651,12 +838,21 @@ try {
   );
 } catch (error) {
   if (browserError.trim()) {
-    console.error("Chrome stderr (Avisos):\n", browserError.trim());
+    console.error(
+      "Chrome stderr (Avisos):\n",
+      browserError.trim()
+    );
   }
   throw error;
 } finally {
-  await deleteAccount(accountSession.userId, password).catch(() => false);
+  await deleteAccount(
+    accountSession.userId,
+    password
+  ).catch(() => false);
   cdp?.close();
   browser.kill("SIGTERM");
-  await rm(profileDir, { recursive: true, force: true }).catch(() => {});
+  await rm(profileDir, {
+    recursive: true,
+    force: true,
+  }).catch(() => {});
 }
