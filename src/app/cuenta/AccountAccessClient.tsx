@@ -16,6 +16,11 @@ import {
   useState,
 } from "react";
 
+import {
+  accountDashboardViewHref,
+  resolveAccountDashboardView,
+} from "@/lib/accounts/dashboard-view";
+
 import styles from "./account.module.css";
 
 type Mode = "login" | "register" | "recover";
@@ -123,7 +128,12 @@ export default function AccountAccessClient({
   }
 
   function openProfile() {
-    router.replace("/cuenta");
+    const parameters = new URLSearchParams(window.location.search);
+    const requestedView = resolveAccountDashboardView(
+      parameters.get("vista") ?? undefined
+    );
+
+    router.replace(accountDashboardViewHref(requestedView));
     router.refresh();
   }
 
