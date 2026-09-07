@@ -4,6 +4,9 @@ import {
   findGpuById,
 } from "../src/features/game-finder/hardware-catalog.ts";
 import {
+  resolveAccountUpdateNotifications,
+} from "../src/lib/accounts/update-notifications.ts";
+import {
   hasRecommendationSignals,
   rankGamesForSavedHardware,
   rankPersonalizedRecommendations,
@@ -126,6 +129,98 @@ assert(
   "Excluir un seguimiento no debe alterar la afinidad construida con elecciones de gusto reales."
 );
 
+const notificationGame = {
+  title: "Origen Acción",
+  coverImage: "/synthetic-source.webp",
+};
+const notificationPreference = {
+  ...followingOnly,
+  followedAt: new Date("2026-08-31T10:00:00Z"),
+  updatesSeenThrough: new Date("2026-09-01T00:00:00Z"),
+};
+const notificationUpdates = [
+  {
+    id: "update-newest",
+    gameSlug: "source-action",
+    version: "1.2.0",
+    publishedAt: "2026-09-03T00:00:00Z",
+    type: "update",
+    summary: "Nueva actualización visible.",
+    game: notificationGame,
+    downloadable: false,
+  },
+  {
+    id: "update-new",
+    gameSlug: "source-action",
+    version: "1.1.0",
+    publishedAt: "2026-09-02T00:00:00Z",
+    type: "fix",
+    summary: "Corrección visible.",
+    game: notificationGame,
+    downloadable: false,
+  },
+  {
+    id: "update-seen-boundary",
+    gameSlug: "source-action",
+    version: "1.0.1",
+    publishedAt: "2026-09-01T00:00:00Z",
+    type: "fix",
+    summary: "Ya vista.",
+    game: notificationGame,
+    downloadable: false,
+  },
+  {
+    id: "update-before-follow",
+    gameSlug: "source-action",
+    version: "1.0.0",
+    publishedAt: "2026-08-30T00:00:00Z",
+    type: "update",
+    summary: "Anterior al seguimiento.",
+    game: notificationGame,
+    downloadable: false,
+  },
+];
+const resolvedNotifications = resolveAccountUpdateNotifications(
+  [notificationPreference],
+  [...notificationUpdates].reverse()
+);
+
+assert(
+  resolvedNotifications.map((entry) => entry.id).join(",") ===
+    "update-newest,update-new",
+  "Los avisos deben incluir sólo publicaciones posteriores al seguimiento/visto y ordenarse de más nueva a más antigua."
+);
+assert(
+  resolvedNotifications.every(
+    (entry) =>
+      entry.gameTitle === notificationGame.title &&
+      entry.gameCoverImage === notificationGame.coverImage
+  ),
+  "El resolver compartido debe entregar el mismo contrato serializable a Header y Mi DeUna."
+);
+
+const staleSeenBoundary = {
+  ...notificationPreference,
+  followedAt: new Date("2026-09-01T12:00:00Z"),
+  updatesSeenThrough: new Date("2026-08-01T00:00:00Z"),
+};
+const guardedNotifications = resolveAccountUpdateNotifications(
+  [staleSeenBoundary],
+  notificationUpdates
+);
+
+assert(
+  !guardedNotifications.some((entry) => entry.id === "update-seen-boundary"),
+  "Un marcador de visto anterior al seguimiento nunca debe reintroducir actualizaciones previas a seguir el juego."
+);
+assert(
+  resolveAccountUpdateNotifications(
+    [{ ...notificationPreference, followUpdates: false }],
+    notificationUpdates
+  ).length === 0,
+  "Desactivar el seguimiento debe quitar todos los avisos de ese juego."
+);
+
 const cpu = findCpuById("ryzen-5-5600x");
 const gpu = findGpuById("rtx-3060");
 
@@ -183,5 +278,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  "Personalización de cuentas: OK (afinidad explícita, seguimiento no inferido como gusto, exclusión de Mi DeUna, razones públicas y ranking por el motor real de FPS verificados)."
+  "Personalización de cuentas: OK (afinidad explícita, avisos compartidos con límites de seguimiento/visto, seguimiento no inferido como gusto, exclusión de Mi DeUna, razones públicas y ranking por el motor real de FPS verificados)."
 );
