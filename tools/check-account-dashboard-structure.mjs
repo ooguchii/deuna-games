@@ -178,6 +178,16 @@ if (!/resolveAccountUpdateNotifications/.test(page)) {
 if (!/resolveAccountUpdateNotifications/.test(headerServer)) {
   errors.push("El Header debe resolver avisos mediante el mismo contrato que Mi DeUna.");
 }
+if (!/key=\{notificationFeedKey\}/.test(headerServer)) {
+  errors.push("El Header debe reinicializar su estado cliente cuando cambie el feed server-side de avisos.");
+}
+if (
+  !/resolveAccountDashboardView/.test(access) ||
+  !/accountDashboardViewHref/.test(access) ||
+  !/parameters\.get\("vista"\)/.test(access)
+) {
+  errors.push("El acceso a cuenta debe conservar la vista solicitada, incluido el deep-link de Avisos.");
+}
 if (
   !/followedAt/.test(notificationResolver) ||
   !/updatesSeenThrough/.test(notificationResolver) ||
@@ -197,5 +207,5 @@ if (errors.length) {
 }
 
 console.log(
-  `Dashboard de cuenta: OK (${cssClasses(dashboardCss).size} clases de dashboard, ${cssClasses(rewardsCss).size} de Rewards y ${cssClasses(accessCss).size} de acceso; Header y Mi DeUna comparten contrato de avisos sin overlays, !important, microtexto ni CSS huérfano).`
+  `Dashboard de cuenta: OK (${cssClasses(dashboardCss).size} clases de dashboard, ${cssClasses(rewardsCss).size} de Rewards y ${cssClasses(accessCss).size} de acceso; Header y Mi DeUna comparten contrato de avisos y deep-links sin overlays, !important, microtexto ni CSS huérfano).`
 );
