@@ -5,10 +5,10 @@
 
 .notificationBadge {
   position: absolute;
-  top: 3px;
-  right: 1px;
-  min-width: 18px;
-  height: 18px;
+  top: 2px;
+  right: 0;
+  min-width: 20px;
+  height: 20px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -18,7 +18,7 @@
   border-radius: 999px;
   background: var(--brand);
   box-shadow: 0 0 12px color-mix(in srgb, var(--brand) 44%, transparent);
-  font-size: var(--font-micro);
+  font-size: var(--font-xs);
   line-height: 1;
   font-weight: 800;
   pointer-events: none;
@@ -128,7 +128,7 @@
 
 .notificationItemCopy span {
   color: var(--brand);
-  font-size: var(--font-micro);
+  font-size: var(--font-xs);
   font-weight: 750;
 }
 
@@ -146,7 +146,7 @@
 .notificationItem time {
   align-self: start;
   color: var(--text-soft);
-  font-size: var(--font-micro);
+  font-size: var(--font-xs);
   white-space: nowrap;
 }
 
@@ -256,7 +256,7 @@
   color: var(--text-on-brand);
   border-radius: 999px;
   background: var(--brand);
-  font-size: var(--font-micro);
+  font-size: var(--font-xs);
   font-weight: 800;
 }
 
