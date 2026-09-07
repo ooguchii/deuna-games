@@ -383,7 +383,7 @@ export default function HardwareConfigurationFields({ draft, onChange, idPrefix 
             <option value="dual">Dual-channel / dos módulos</option>
           </select>
         </label>
-      ) : <input type="hidden" name="memoryMode" value={draft.memoryMode} />}
+      ) : <input type="hidden" name="memoryMode" value="unknown" />}
     </fieldset>
   );
 }
