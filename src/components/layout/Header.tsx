@@ -39,8 +39,15 @@ export default async function Header() {
     }
   }
 
+  const notificationFeedKey = session
+    ? notifications === null
+      ? "account:unavailable"
+      : `account:${JSON.stringify(notifications)}`
+    : "guest";
+
   return (
     <HeaderClient
+      key={notificationFeedKey}
       siteName={config.name}
       accountAuthenticated={Boolean(session)}
       accountNotifications={notifications}
