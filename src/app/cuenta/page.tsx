@@ -32,6 +32,9 @@ import {
   readAccountSession,
 } from "@/lib/accounts/session";
 import {
+  resolveAccountUpdateNotifications,
+} from "@/lib/accounts/update-notifications";
+import {
   getPublicGames,
 } from "@/lib/games/public-catalog";
 import {
@@ -91,31 +94,10 @@ export default async function AccountPage({
     ]);
 
     if (profile) {
-      const preferenceBySlug = new Map(
-        personalization.preferences.map((preference) => [
-          preference.gameSlug,
-          preference,
-        ])
+      const notifications = resolveAccountUpdateNotifications(
+        personalization.preferences,
+        updates
       );
-      const notifications = updates.filter((update) => {
-        const preference = preferenceBySlug.get(update.gameSlug);
-
-        if (
-          !preference?.followUpdates ||
-          !preference.followedAt
-        ) {
-          return false;
-        }
-
-        const boundary =
-          preference.updatesSeenThrough ?? preference.followedAt;
-        const publishedAt = Date.parse(update.publishedAt);
-
-        return (
-          Number.isFinite(publishedAt) &&
-          publishedAt > boundary.getTime()
-        );
-      });
       const recommendations = hasRecommendationSignals(
         personalization.preferences,
         personalization.hardware
@@ -177,18 +159,7 @@ export default async function AccountPage({
             id: gpu.id,
             name: gpu.name,
           }))}
-          notifications={notifications.map((update) => ({
-            id: update.id,
-            gameSlug: update.gameSlug,
-            gameTitle: update.game.title,
-            gameCoverImage: update.game.cardImage ?? update.game.coverImage,
-            gameImageViewport:
-              update.game.imageMedia?.card ??
-              update.game.imageMedia?.cover,
-            version: update.version,
-            summary: update.summary,
-            publishedAt: update.publishedAt,
-          }))}
+          notifications={notifications}
           recommendations={recommendations.map((entry) => ({
             slug: entry.game.slug,
             title: entry.game.title,
