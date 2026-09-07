@@ -169,6 +169,9 @@ if (/Notificaciones \(próximamente\)|Notificaciones próximamente/.test(header)
 if (!/accountAuthenticated/.test(header) || !/accountNotifications/.test(header)) {
   errors.push("HeaderClient debe recibir el estado real de avisos de la cuenta.");
 }
+if (!/dismissedNotificationFeed/.test(header)) {
+  errors.push("HeaderClient debe derivar los avisos del feed server-side y limitar su estado local al snapshot marcado visto.");
+}
 if (!/\/cuenta\?vista=alerts/.test(header)) {
   errors.push("La campana del Header debe enlazar con la vista canónica de Avisos en Mi DeUna.");
 }
@@ -177,9 +180,6 @@ if (!/resolveAccountUpdateNotifications/.test(page)) {
 }
 if (!/resolveAccountUpdateNotifications/.test(headerServer)) {
   errors.push("El Header debe resolver avisos mediante el mismo contrato que Mi DeUna.");
-}
-if (!/key=\{notificationFeedKey\}/.test(headerServer)) {
-  errors.push("El Header debe reinicializar su estado cliente cuando cambie el feed server-side de avisos.");
 }
 if (
   !/resolveAccountDashboardView/.test(access) ||
