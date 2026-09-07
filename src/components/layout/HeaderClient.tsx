@@ -63,6 +63,7 @@ export default function HeaderClient({
   const mobilePanelRef = useRef<HTMLDivElement>(null);
   const notificationButtonRef = useRef<HTMLButtonElement>(null);
   const notificationRootRef = useRef<HTMLDivElement>(null);
+  const notificationPanelRef = useRef<HTMLDivElement>(null);
   const notificationsAvailable = accountNotifications !== null;
   const unseenCount = notifications.length;
 
@@ -162,7 +163,14 @@ export default function HeaderClient({
     document.addEventListener("pointerdown", handlePointerDown);
     document.addEventListener("keydown", handleKeyDown);
 
+    const focusFrame = window.requestAnimationFrame(() => {
+      notificationPanelRef.current
+        ?.querySelector<HTMLElement>('a[href], button:not([disabled])')
+        ?.focus();
+    });
+
     return () => {
+      window.cancelAnimationFrame(focusFrame);
       document.removeEventListener("pointerdown", handlePointerDown);
       document.removeEventListener("keydown", handleKeyDown);
     };
@@ -289,6 +297,7 @@ export default function HeaderClient({
                 {notificationsOpen && (
                   <div
                     id="header-notifications"
+                    ref={notificationPanelRef}
                     className={notificationStyles.popover}
                     role="dialog"
                     aria-label="Avisos de Mi DeUna"
