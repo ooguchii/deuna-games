@@ -131,6 +131,9 @@ export function storeExplicitHardwareProfile(input: {
     return false;
   }
 
+  const previous = readStoredHardwareProfile();
+  const preserveOs = previous?.cpu?.id === input.cpuId && previous?.gpu?.id === input.gpuId && previous?.osConfirmed === true;
+
   try {
     window.localStorage.setItem(
       PROFILE_STORAGE_KEY,
@@ -138,12 +141,31 @@ export function storeExplicitHardwareProfile(input: {
         cpuId: input.cpuId,
         gpuId: input.gpuId,
         ramGb: input.ramGb,
-        os: "Sistema sin confirmar",
-        osConfirmed: false,
+        os: preserveOs ? previous.os : "Sistema sin confirmar",
+        osConfirmed: preserveOs,
         memoryMode: input.memoryMode,
         updatedAt: input.updatedAt ?? nowIso(),
       })
     );
+    window.dispatchEvent(new StorageEvent("storage", {
+      key: PROFILE_STORAGE_KEY,
+      storageArea: window.localStorage,
+    }));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function clearStoredHardwareProfile() {
+  if (typeof window === "undefined") return false;
+
+  try {
+    window.localStorage.removeItem(PROFILE_STORAGE_KEY);
+    window.dispatchEvent(new StorageEvent("storage", {
+      key: PROFILE_STORAGE_KEY,
+      storageArea: window.localStorage,
+    }));
     return true;
   } catch {
     return false;

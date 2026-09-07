@@ -15,6 +15,7 @@ import {
   storeExplicitHardwareProfile,
 } from "./hardware-storage";
 import type {
+  HardwareProfile,
   MemoryMode,
 } from "./types";
 
@@ -30,10 +31,12 @@ export default function AccountAwareGameFinder({
   games,
   focusedSlug,
   accountHardware,
+  authenticated,
 }: {
   games: Game[];
   focusedSlug?: string;
   accountHardware: AccountHardware;
+  authenticated: boolean;
 }) {
   const [ready, setReady] = useState(
     accountHardware === null
@@ -80,10 +83,27 @@ export default function AccountAwareGameFinder({
     );
   }
 
+  async function saveAccountProfile(profile: HardwareProfile) {
+    const response = await fetch("/api/account/hardware", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        intent: "save",
+        cpuId: profile.cpu?.id ?? "",
+        gpuId: profile.gpu?.id ?? "",
+        ramGb: String(profile.ramGb ?? ""),
+        memoryMode: profile.memoryMode,
+      }),
+    });
+    const result = await response.json();
+    if (!response.ok || !result.ok) throw new Error("No se pudo guardar Mi PC.");
+  }
+
   return (
     <GameFinderClient
       games={games}
       focusedSlug={focusedSlug}
+      onSaveProfile={authenticated ? saveAccountProfile : undefined}
     />
   );
 }

@@ -33,6 +33,9 @@ import {
   useState,
 } from "react";
 
+import HardwareConfigurationFields, { type ManualDraft } from "@/features/game-finder/HardwareConfigurationFields";
+import { findCpuById, findGpuById } from "@/features/game-finder/hardware-catalog";
+import { clearStoredHardwareProfile, storeExplicitHardwareProfile } from "@/features/game-finder/hardware-storage";
 import SiteBrand from "@/components/layout/SiteBrand";
 import GameMedia from "@/components/ui/GameMedia";
 import {
@@ -79,6 +82,65 @@ type HardwareSelection = {
   ramGb: number;
   memoryMode: "unknown" | "single" | "dual";
 } | null;
+
+function AccountHardwareForm({ hardware, pending, message, onSubmit, onClear }: {
+  hardware: HardwareSelection;
+  pending: boolean;
+  message: string | null;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  onClear: () => void;
+}) {
+  const initialDraft: ManualDraft = {
+    cpuId: hardware?.cpuId ?? "",
+    gpuId: hardware?.gpuId ?? "",
+    ramGb: hardware ? String(hardware.ramGb) : "",
+    memoryMode: hardware?.memoryMode ?? "unknown",
+    os: "",
+  };
+  const [draft, setDraft] = useState(initialDraft);
+  const ready = Boolean(findCpuById(draft.cpuId) && findGpuById(draft.gpuId)
+    && Number(draft.ramGb) >= 1 && Number(draft.ramGb) <= 256);
+  const dirty = JSON.stringify(draft) !== JSON.stringify(initialDraft);
+
+  return (
+    <form className={styles.hardwareForm} onSubmit={onSubmit} aria-label="Configurar Mi PC">
+      <p className={styles.hardwareHelp}>
+        Busca el modelo exacto de tu procesador y tu gráfica y confirma la RAM física.
+        Se guardarán en tu cuenta para usarlos en FPS y recomendaciones.
+      </p>
+      <fieldset disabled={pending} className={styles.hardwareFields}>
+        <legend className={styles.hardwareLegend}>Componentes de tu PC</legend>
+        <HardwareConfigurationFields
+          draft={draft}
+          onChange={setDraft}
+          idPrefix="account"
+          showOperatingSystem={false}
+        />
+      </fieldset>
+      {findGpuById(draft.gpuId)?.integrated && (
+        <p className={styles.hardwareHelp}>
+          En gráficas integradas, usar uno o dos canales de memoria puede cambiar el rendimiento estimado.
+        </p>
+      )}
+      <div className={styles.formActions}>
+        <button type="submit" className={styles.accentButton} disabled={pending || !ready || !dirty}>
+          <Cpu size={17} /> {pending ? "Guardando..." : "Guardar Mi PC"}
+        </button>
+        {dirty && (
+          <button type="button" className={styles.ghostButton} disabled={pending} onClick={() => setDraft(initialDraft)}>
+            Cancelar cambios
+          </button>
+        )}
+        {hardware && (
+          <button type="button" className={styles.ghostButton} disabled={pending} onClick={onClear}>
+            <Trash2 size={16} /> Quitar PC guardada
+          </button>
+        )}
+      </div>
+      {message && <p className={styles.inlineStatus} role="status">{message}</p>}
+    </form>
+  );
+}
 
 type HardwareOption = {
   id: string;
@@ -441,6 +503,7 @@ export default function AccountDashboardClient({
 
   async function handleHardware(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (pending) return;
     const form = new FormData(event.currentTarget);
 
     setPending(true);
@@ -460,6 +523,12 @@ export default function AccountDashboardClient({
         return;
       }
 
+      storeExplicitHardwareProfile({
+        cpuId: String(form.get("cpuId")),
+        gpuId: String(form.get("gpuId")),
+        ramGb: Number(form.get("ramGb")),
+        memoryMode: String(form.get("memoryMode")) as NonNullable<HardwareSelection>["memoryMode"],
+      });
       setHardwareMessage(
         "PC guardada. DeUna ya puede usarla para ordenar recomendaciones por rendimiento estimado."
       );
@@ -489,6 +558,7 @@ export default function AccountDashboardClient({
         return;
       }
 
+      clearStoredHardwareProfile();
       setHardwareMessage("PC eliminada de tu cuenta.");
       router.refresh();
     } catch {
@@ -962,84 +1032,14 @@ export default function AccountDashboardClient({
         </div>
 
         <div className={styles.pcWorkspace}>
-          <form className={styles.hardwareForm} onSubmit={handleHardware}>
-            <label>
-              Procesador
-              <select
-                name="cpuId"
-                defaultValue={hardware?.cpuId ?? ""}
-                required
-              >
-                <option value="" disabled>Elige tu CPU</option>
-                {cpus.map((cpu) => (
-                  <option key={cpu.id} value={cpu.id}>{cpu.name}</option>
-                ))}
-              </select>
-            </label>
-
-            <label>
-              Gráfica
-              <select
-                name="gpuId"
-                defaultValue={hardware?.gpuId ?? ""}
-                required
-              >
-                <option value="" disabled>Elige tu GPU</option>
-                {gpus.map((gpu) => (
-                  <option key={gpu.id} value={gpu.id}>{gpu.name}</option>
-                ))}
-              </select>
-            </label>
-
-            <label>
-              RAM (GB)
-              <input
-                name="ramGb"
-                type="number"
-                min="1"
-                max="256"
-                step="0.5"
-                defaultValue={hardware?.ramGb ?? 16}
-                required
-              />
-            </label>
-
-            <label>
-              Memoria
-              <select
-                name="memoryMode"
-                defaultValue={hardware?.memoryMode ?? "unknown"}
-              >
-                <option value="unknown">No sé / no importa</option>
-                <option value="single">Single channel</option>
-                <option value="dual">Dual channel</option>
-              </select>
-            </label>
-
-            <div className={styles.formActions}>
-              <button
-                type="submit"
-                className={styles.accentButton}
-                disabled={pending}
-              >
-                <Cpu size={17} />
-                {pending ? "Guardando..." : "Guardar Mi PC"}
-              </button>
-              {hardware && (
-                <button
-                  type="button"
-                  className={styles.ghostButton}
-                  disabled={pending}
-                  onClick={clearHardware}
-                >
-                  <Trash2 size={16} /> Quitar PC guardada
-                </button>
-              )}
-            </div>
-            {hardwareMessage && (
-              <p className={styles.inlineStatus}>{hardwareMessage}</p>
-            )}
-          </form>
+          <AccountHardwareForm
+            key={JSON.stringify(hardware)}
+            hardware={hardware}
+            pending={pending}
+            message={hardwareMessage}
+            onSubmit={handleHardware}
+            onClear={clearHardware}
+          />
 
           <div className={styles.pcSummaryLarge}>
             <MonitorCog size={30} />

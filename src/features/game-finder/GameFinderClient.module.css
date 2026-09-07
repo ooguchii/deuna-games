@@ -196,7 +196,7 @@
   left: 0;
   z-index: 80;
   width: 100%;
-  min-width: min(420px, calc(100vw - 56px));
+  min-width: 0;
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--brand) 28%, transparent);
   border-radius: 11px;

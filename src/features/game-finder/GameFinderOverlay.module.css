@@ -183,7 +183,10 @@
   transform: rotate(3deg);
 }
 
-.dialog > section > div:nth-child(2) {
+.configuration {
+  min-width: 0;
+  margin: 0;
+  border: 0;
   min-height: 0;
   overflow: visible;
 
@@ -200,7 +203,7 @@
     rgba(4, 8, 14, 0.34);
 }
 
-.dialog > section > div:nth-child(2) > * {
+.configuration > :not(input[type="hidden"]) {
   min-width: 0;
   min-height: 108px;
 
@@ -226,8 +229,8 @@
     transform 170ms ease;
 }
 
-.dialog > section > div:nth-child(2) > *:hover,
-.dialog > section > div:nth-child(2) > *:focus-within {
+.configuration > :not(input[type="hidden"]):hover,
+.configuration > :not(input[type="hidden"]):focus-within {
   border-color: rgba(255, 61, 107, 0.3);
   background:
     linear-gradient(180deg, rgba(19, 27, 40, 0.95), rgba(8, 14, 22, 0.9));
@@ -237,18 +240,18 @@
     0 0 24px rgba(255, 8, 71, 0.025);
 }
 
-.dialog > section > div:nth-child(2) > * > span:first-child {
+.configuration > :not(input[type="hidden"]) > span:first-child {
   min-height: 22px;
   display: inline-flex;
   align-items: center;
 
   color: #c7d0dc !important;
-  font-size: 11px !important;
+  font-size: 12px !important;
   font-weight: 840 !important;
   letter-spacing: 0.025em;
 }
 
-.dialog button[aria-haspopup="listbox"] {
+.configuration button[aria-haspopup="listbox"] {
   min-height: 48px !important;
   padding: 0 14px !important;
 
@@ -264,8 +267,8 @@
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.018);
 }
 
-.dialog button[aria-haspopup="listbox"]:hover,
-.dialog button[aria-haspopup="listbox"][aria-expanded="true"] {
+.configuration button[aria-haspopup="listbox"]:hover,
+.configuration button[aria-haspopup="listbox"][aria-expanded="true"] {
   border-color: rgba(255, 61, 107, 0.48) !important;
   background:
     linear-gradient(180deg, rgba(16, 23, 34, 0.99), rgba(7, 12, 19, 0.99)) !important;
@@ -274,7 +277,7 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.022);
 }
 
-.dialog select {
+.configuration select {
   min-height: 48px !important;
   padding-left: 14px !important;
 
@@ -286,7 +289,7 @@
   font-size: 12px !important;
 }
 
-.dialog button[aria-haspopup="listbox"][aria-expanded="true"] + div {
+.configuration button[aria-haspopup="listbox"][aria-expanded="true"] + div {
   top: calc(100% + 8px) !important;
   z-index: 300 !important;
 
@@ -307,7 +310,7 @@
   backdrop-filter: blur(18px);
 }
 
-.dialog input[role="combobox"] {
+.configuration input[role="combobox"] {
   min-height: 42px !important;
   border-radius: 9px !important;
   border-color: rgba(158, 178, 204, 0.2) !important;
@@ -315,30 +318,30 @@
   font-size: 12px !important;
 }
 
-.dialog [role="listbox"] {
+.configuration [role="listbox"] {
   max-height: 218px !important;
   overflow-y: auto !important;
   overscroll-behavior: contain;
   padding: 5px !important;
 }
 
-.dialog [role="option"] {
-  min-height: 39px !important;
+.configuration [role="option"] {
+  min-height: 44px !important;
   padding: 7px 10px !important;
   border-radius: 8px !important;
 
   color: #b9c4d1 !important;
-  font-size: 11.5px !important;
+  font-size: 12px !important;
   font-weight: 690 !important;
 }
 
-.dialog [role="option"]:hover,
-.dialog [role="option"]:focus-visible {
+.configuration [role="option"]:hover,
+.configuration [role="option"]:focus-visible {
   color: #fff !important;
   background: rgba(255, 8, 71, 0.09) !important;
 }
 
-.dialog [role="option"][aria-selected="true"] {
+.configuration [role="option"][aria-selected="true"] {
   color: #fff !important;
   border: 1px solid rgba(255, 61, 107, 0.32) !important;
   background:
@@ -461,7 +464,7 @@
     left: 22px;
   }
 
-  .dialog > section > div:nth-child(2) {
+  .dialog > section > fieldset {
     overflow-y: auto;
     overscroll-behavior: contain;
     scrollbar-gutter: stable;
@@ -486,7 +489,7 @@
     grid-template-rows: auto minmax(0, 1fr) auto;
   }
 
-  .dialog > section > div:nth-child(2) {
+  .dialog > section > fieldset {
     overflow-y: auto;
     overscroll-behavior: contain;
     scrollbar-gutter: stable;
@@ -534,11 +537,11 @@
     font-size: 12px !important;
   }
 
-  .dialog > section > div:nth-child(2) {
+  .dialog > section > fieldset {
     padding: 29px 15px 18px !important;
   }
 
-  .dialog > section > div:nth-child(2) > * {
+  .dialog > section > fieldset > * {
     min-height: 102px;
     padding: 14px !important;
   }
@@ -567,5 +570,12 @@
 
   .dialog * {
     scroll-behavior: auto !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .configuration {
+    grid-template-columns: minmax(0, 1fr) !important;
+    padding: 18px 0 !important;
   }
 }
