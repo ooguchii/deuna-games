@@ -22,7 +22,7 @@ import {
 } from "./recovery-codes";
 import {
   createAccountSession,
-} from "./session";
+} from "./session-store";
 import {
   normalizeAccountUsername,
 } from "./validation";

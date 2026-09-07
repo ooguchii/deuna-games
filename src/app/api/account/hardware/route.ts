@@ -51,8 +51,12 @@ export async function GET() {
     await readAccountSessionToken()
   );
 
+  // Esta lectura es personalización opcional para componentes públicos. Un
+  // visitante sin sesión equivale a "sin perfil guardado": no hay datos de
+  // cuenta que revelar y evitamos convertir ese estado normal en un 401 de
+  // red. Las escrituras siguen requiriendo sesión en POST.
   if (!session) {
-    return json({ ok: false, error: "sesion" }, 401);
+    return json({ ok: true, hardware: null });
   }
 
   try {

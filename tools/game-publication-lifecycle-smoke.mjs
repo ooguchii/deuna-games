@@ -1,0 +1,936 @@
+import https from "node:https";
+import process from "node:process";
+
+import {
+  representativeGameSlug,
+} from "./browser-page-manifest.mjs";
+
+const baseUrl = new URL(
+  process.env.DEUNA_VISUAL_BASE_URL ??
+    "https://127.0.0.1:3443"
+);
+const adminUsername =
+  process.env.DEUNA_VISUAL_ADMIN_USERNAME?.trim();
+const adminPassword =
+  process.env.DEUNA_VISUAL_ADMIN_PASSWORD;
+const MAX_RESPONSE_BYTES = 8 * 1024 * 1024;
+
+if (
+  baseUrl.protocol !== "https:" ||
+  !["127.0.0.1", "localhost", "::1"].includes(baseUrl.hostname)
+) {
+  throw new Error(
+    "El lifecycle editorial de juego sólo puede ejecutarse contra el runtime HTTPS local aislado."
+  );
+}
+
+if (!adminUsername || !adminPassword) {
+  throw new Error(
+    "Faltan DEUNA_VISUAL_ADMIN_USERNAME/DEUNA_VISUAL_ADMIN_PASSWORD."
+  );
+}
+
+function request(pathname, options = {}) {
+  const url = new URL(pathname, baseUrl);
+
+  if (url.origin !== baseUrl.origin) {
+    throw new Error(
+      `El lifecycle rechazó un destino fuera del origen visual: ${url.origin}.`
+    );
+  }
+
+  const body = options.body ?? "";
+  const headers = { ...(options.headers ?? {}) };
+
+  if (body) {
+    headers["content-length"] = String(
+      Buffer.byteLength(body, "utf8")
+    );
+  }
+
+  return new Promise((resolve, reject) => {
+    const req = https.request(
+      url,
+      {
+        method: options.method ?? "GET",
+        headers,
+        rejectUnauthorized: false,
+      },
+      (response) => {
+        const chunks = [];
+        let size = 0;
+
+        response.on("data", (chunk) => {
+          size += chunk.length;
+
+          if (size > MAX_RESPONSE_BYTES) {
+            req.destroy(
+              new Error(
+                `La respuesta de ${url.pathname} superó ${MAX_RESPONSE_BYTES} bytes.`
+              )
+            );
+            return;
+          }
+
+          chunks.push(chunk);
+        });
+        response.on("end", () => {
+          resolve({
+            status: response.statusCode ?? 0,
+            headers: response.headers,
+            body: Buffer.concat(chunks).toString("utf8"),
+          });
+        });
+      }
+    );
+
+    req.on("error", reject);
+    if (body) req.write(body);
+    req.end();
+  });
+}
+
+function formHeaders(referer, cookie) {
+  return {
+    "content-type": "application/x-www-form-urlencoded;charset=UTF-8",
+    origin: baseUrl.origin,
+    referer: new URL(referer, baseUrl).href,
+    "sec-fetch-site": "same-origin",
+    ...(cookie ? { cookie } : {}),
+  };
+}
+
+function sessionCookie(setCookie) {
+  const values = Array.isArray(setCookie)
+    ? setCookie
+    : setCookie
+      ? [setCookie]
+      : [];
+  const cookies = values
+    .map((value) => value.split(";", 1)[0]?.trim())
+    .filter(Boolean);
+
+  if (cookies.length === 0) {
+    throw new Error(
+      "El login del lifecycle no devolvió una cookie de sesión."
+    );
+  }
+
+  return cookies.join("; ");
+}
+
+function decodeHtml(value) {
+  return value
+    .replace(/&#x([0-9a-f]+);/gi, (_, code) =>
+      String.fromCodePoint(Number.parseInt(code, 16))
+    )
+    .replace(/&#([0-9]+);/g, (_, code) =>
+      String.fromCodePoint(Number.parseInt(code, 10))
+    )
+    .replaceAll("&quot;", '"')
+    .replaceAll("&apos;", "'")
+    .replaceAll("&lt;", "<")
+    .replaceAll("&gt;", ">")
+    .replaceAll("&amp;", "&");
+}
+
+function visibleText(html) {
+  return decodeHtml(
+    html
+      .replace(/<script\b[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style\b[\s\S]*?<\/style>/gi, " ")
+      .replace(/<[^>]+>/g, " ")
+  )
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function firstH1(html) {
+  const match = html.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i);
+  if (!match) return "";
+
+  return decodeHtml(match[1].replace(/<[^>]+>/g, " "))
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function attributeValue(tag, attribute) {
+  const pattern = new RegExp(
+    `\\b${attribute}="([^"]*)"`,
+    "i"
+  );
+  const match = tag.match(pattern);
+  return match ? decodeHtml(match[1]) : null;
+}
+
+function inputValues(html, name) {
+  const inputs = html.match(/<input\b[^>]*>/gi) ?? [];
+  const matches = [];
+
+  for (const input of inputs) {
+    if (attributeValue(input, "name") !== name) continue;
+
+    const value = attributeValue(input, "value");
+    if (value === null) {
+      throw new Error(
+        `El input ${name} existe pero no expone un value SSR.`
+      );
+    }
+    matches.push(value);
+  }
+
+  return matches;
+}
+
+function singleInputValue(html, name) {
+  const unique = [...new Set(inputValues(html, name))];
+
+  if (unique.length === 0) {
+    throw new Error(`No se encontró el input SSR ${name}.`);
+  }
+
+  if (unique.length !== 1) {
+    throw new Error(
+      `${name} no tiene un único valor coherente (${unique.length} variantes).`
+    );
+  }
+
+  return unique[0];
+}
+
+function positiveInputNumber(html, name) {
+  const value = Number(singleInputValue(html, name));
+
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new Error(`${name} no es válido: ${value}.`);
+  }
+
+  return value;
+}
+
+function selectOptionValues(html, name) {
+  const selects = html.match(/<select\b[\s\S]*?<\/select>/gi) ?? [];
+
+  for (const select of selects) {
+    const opening = select.match(/^<select\b[^>]*>/i)?.[0] ?? "";
+    if (attributeValue(opening, "name") !== name) continue;
+
+    return (select.match(/<option\b[^>]*>/gi) ?? [])
+      .map((option) => attributeValue(option, "value"))
+      .filter((value) => typeof value === "string" && value.trim())
+      .map((value) => value.trim());
+  }
+
+  return [];
+}
+
+function restoreActions(html) {
+  const forms = html.match(/<form\b[\s\S]*?<\/form>/gi) ?? [];
+
+  return forms
+    .map((form) => {
+      const opening = form.match(/^<form\b[^>]*>/i)?.[0] ?? "";
+      return attributeValue(opening, "action");
+    })
+    .filter(
+      (action) =>
+        typeof action === "string" &&
+        action.startsWith("/api/admin/content/publications/") &&
+        action.endsWith("/restore")
+    );
+}
+
+function redirectLocation(response, label) {
+  if (response.status !== 303) {
+    throw new Error(
+      `${label} respondió ${response.status}; se esperaba 303.`
+    );
+  }
+
+  const location = response.headers.location;
+  if (!location) {
+    throw new Error(`${label} no devolvió Location.`);
+  }
+
+  const url = new URL(location, baseUrl);
+  if (url.origin !== baseUrl.origin) {
+    throw new Error(
+      `${label} intentó redirigir fuera del origen visual: ${url.origin}.`
+    );
+  }
+
+  return url;
+}
+
+function requirePage(response, label, status = 200) {
+  if (response.status !== status) {
+    throw new Error(
+      `${label} respondió ${response.status}; se esperaba ${status}.`
+    );
+  }
+
+  return response;
+}
+
+function parseJson(response, label) {
+  requirePage(response, label);
+
+  try {
+    return JSON.parse(response.body);
+  } catch {
+    throw new Error(`${label} no devolvió JSON válido.`);
+  }
+}
+
+async function postAdminForm(pathname, referer, cookie, fields, label) {
+  const response = await request(pathname, {
+    method: "POST",
+    headers: formHeaders(referer, cookie),
+    body: new URLSearchParams(fields).toString(),
+  });
+
+  return redirectLocation(response, label);
+}
+
+async function mediaSnapshot(slug, cookie) {
+  return parseJson(
+    await request(
+      `/api/admin/content/games/${encodeURIComponent(slug)}/media-library`,
+      { headers: { cookie } }
+    ),
+    `Biblioteca multimedia de ${slug}`
+  );
+}
+
+async function publicationPage(slug, cookie) {
+  return requirePage(
+    await request(
+      `/admin/juegos/${encodeURIComponent(slug)}/publicacion`,
+      { headers: { cookie } }
+    ),
+    `Publicación de ${slug}`
+  ).body;
+}
+
+function assertRedirectState(url, expected, label) {
+  if (url.searchParams.get("estado") !== expected) {
+    throw new Error(
+      `${label} no terminó en estado=${expected}: ${url.href}.`
+    );
+  }
+}
+
+const suffix = `${Date.now().toString(36)}-${process.pid.toString(36)}`;
+const slug = `visual-lifecycle-${suffix}`.slice(0, 160);
+const initialTitle = `Lifecycle privado ${suffix}`;
+const markerA = `Lifecycle publicado A ${suffix}`;
+const markerB = `Lifecycle borrador B ${suffix}`;
+const updateVersion = `2.0.0-e2e-${suffix}`.slice(0, 80);
+const updateSummary = `Actualización sintética E2E ${suffix}`;
+const editorPath = `/admin/juegos/${encodeURIComponent(slug)}`;
+const publicPath = `/juegos/${encodeURIComponent(slug)}`;
+
+const loginResponse = await request("/api/admin/auth/login", {
+  method: "POST",
+  headers: formHeaders("/admin/login"),
+  body: new URLSearchParams({
+    username: adminUsername,
+    password: adminPassword,
+  }).toString(),
+});
+const loginRedirect = redirectLocation(
+  loginResponse,
+  "El login HTTP del lifecycle de juego"
+);
+if (loginRedirect.pathname !== "/admin") {
+  throw new Error(
+    `El login terminó en ${loginRedirect.pathname}; se esperaba /admin.`
+  );
+}
+const cookie = sessionCookie(loginResponse.headers["set-cookie"]);
+
+const newGamePage = requirePage(
+  await request("/admin/juegos/nuevo", { headers: { cookie } }),
+  "Alta de juego"
+).body;
+const categories = selectOptionValues(newGamePage, "category");
+if (categories.length === 0) {
+  throw new Error(
+    "El alta de juego no expone ninguna clasificación editorial disponible."
+  );
+}
+const category = categories[0];
+
+const fixtureMedia = await mediaSnapshot(representativeGameSlug, cookie);
+const fixtureCandidates = [
+  fixtureMedia.assignments?.coverImage,
+  fixtureMedia.assignments?.heroImage,
+  fixtureMedia.assignments?.cardImage,
+  fixtureMedia.assignments?.detailImage,
+  ...(Array.isArray(fixtureMedia.assignments?.screenshots)
+    ? fixtureMedia.assignments.screenshots
+    : []),
+  ...(Array.isArray(fixtureMedia.resources)
+    ? fixtureMedia.resources.map((resource) => resource?.src)
+    : []),
+].filter(
+  (value) =>
+    typeof value === "string" &&
+    value.startsWith("/images/")
+);
+const sourceImage = [...new Set(fixtureCandidates)][0];
+if (!sourceImage) {
+  throw new Error(
+    `El fixture ${representativeGameSlug} no expone una imagen bundled reutilizable para el lifecycle.`
+  );
+}
+
+const createRedirect = await postAdminForm(
+  "/api/admin/content/games",
+  "/admin/juegos/nuevo",
+  cookie,
+  {
+    slug,
+    title: initialTitle,
+    description:
+      "Borrador sintético aislado para verificar el contrato editorial completo de un juego.",
+    category,
+    version: "1.0.0-e2e",
+    badge: "",
+    imageAlt: `Arte sintético de ${initialTitle}`,
+  },
+  "La creación del juego sintético"
+);
+if (createRedirect.pathname !== editorPath) {
+  throw new Error(
+    `El alta terminó fuera del editor esperado: ${createRedirect.href}.`
+  );
+}
+assertRedirectState(createRedirect, "creado", "El alta");
+
+requirePage(
+  await request(publicPath),
+  "Juego privado antes de publicar",
+  404
+);
+
+let editorHtml = requirePage(
+  await request(`${editorPath}?seccion=ficha`, { headers: { cookie } }),
+  "Editor del juego recién creado"
+).body;
+let revision = positiveInputNumber(editorHtml, "expectedRevision");
+const createdRevision = revision;
+
+const informationA = await postAdminForm(
+  `/api/admin/content/games/${encodeURIComponent(slug)}/information`,
+  `${editorPath}?seccion=ficha`,
+  cookie,
+  {
+    expectedRevision: String(revision),
+    title: markerA,
+    description:
+      "Primera revisión sintética preparada para demostrar que editar y publicar son operaciones separadas.",
+    shortTitle: "",
+    highlightedTitle: "",
+    developer: "",
+    publisher: "",
+    releaseDate: "",
+    version: "1.0.0-e2e",
+    badge: "",
+    imageAlt: `Arte sintético de ${markerA}`,
+  },
+  "El guardado de Información A"
+);
+assertRedirectState(informationA, "guardado", "Información A");
+
+editorHtml = requirePage(
+  await request(`${editorPath}?seccion=ficha`, { headers: { cookie } }),
+  "Editor después de guardar Información A"
+).body;
+revision = positiveInputNumber(editorHtml, "expectedRevision");
+if (revision <= createdRevision) {
+  throw new Error(
+    `Guardar Información no avanzó revisión (${createdRevision} -> ${revision}).`
+  );
+}
+if (singleInputValue(editorHtml, "title") !== markerA) {
+  throw new Error(
+    "El título A no quedó persistido en el borrador del juego."
+  );
+}
+
+const mediaBase = await postAdminForm(
+  `/api/admin/content/games/${encodeURIComponent(slug)}/media`,
+  `${editorPath}?seccion=multimedia`,
+  cookie,
+  {
+    expectedRevision: String(revision),
+    coverImage: sourceImage,
+    heroImage: sourceImage,
+    screenshotsText: sourceImage,
+  },
+  "La asignación multimedia base"
+);
+assertRedirectState(mediaBase, "guardado", "Multimedia base");
+
+let media = await mediaSnapshot(slug, cookie);
+revision = media.revision;
+if (!Number.isInteger(revision) || revision <= 0) {
+  throw new Error("La biblioteca multimedia no devolvió una revisión válida.");
+}
+if (
+  !Array.isArray(media.resources) ||
+  !media.resources.some(
+    (resource) =>
+      resource?.kind === "image" &&
+      resource.src === sourceImage
+  )
+) {
+  throw new Error(
+    "La imagen asignada no apareció en la Biblioteca multimedia del borrador."
+  );
+}
+
+for (const target of ["card-image", "detail-image"]) {
+  const assigned = await postAdminForm(
+    `/api/admin/content/games/${encodeURIComponent(slug)}/media-library`,
+    `${editorPath}?seccion=multimedia`,
+    cookie,
+    {
+      expectedRevision: String(revision),
+      target,
+      resource: sourceImage,
+    },
+    `La asignación ${target}`
+  );
+  assertRedirectState(assigned, "recurso-asignado", target);
+  media = await mediaSnapshot(slug, cookie);
+  revision = media.revision;
+}
+
+for (const target of ["cover", "hero", "card", "detail"]) {
+  const mode = await postAdminForm(
+    `/api/admin/content/games/${encodeURIComponent(slug)}/media-library`,
+    `${editorPath}?seccion=multimedia`,
+    cookie,
+    {
+      expectedRevision: String(revision),
+      target: `${target}-mode`,
+      resource: "image",
+    },
+    `El modo Imagen de ${target}`
+  );
+  assertRedirectState(mode, "recurso-asignado", `Modo ${target}`);
+
+  media = await mediaSnapshot(slug, cookie);
+  revision = media.revision;
+  if (media.assignments?.[`${target}Mode`] !== "image") {
+    throw new Error(
+      `${target} no persistió el modo Imagen en Biblioteca multimedia.`
+    );
+  }
+}
+
+async function confirmCrop(target, aspect, resource) {
+  const crop = await postAdminForm(
+    `/api/admin/content/games/${encodeURIComponent(slug)}/image-layout`,
+    `${editorPath}?seccion=multimedia`,
+    cookie,
+    {
+      expectedRevision: String(revision),
+      target,
+      viewportX: "0.5",
+      viewportY: "0.5",
+      viewportZoom: "1",
+      ...(aspect !== null ? { viewportAspect: aspect } : {}),
+      ...(target === "gallery"
+        ? {
+            resource,
+            viewportAspectRatio: "",
+          }
+        : {}),
+    },
+    `La confirmación de crop ${target}`
+  );
+  assertRedirectState(
+    crop,
+    "imagen-encuadre-guardado",
+    `Crop ${target}`
+  );
+
+  media = await mediaSnapshot(slug, cookie);
+  revision = media.revision;
+}
+
+await confirmCrop("cover", "4:5");
+await confirmCrop("hero", "3:1");
+await confirmCrop("card", "3:2");
+await confirmCrop("detail", null);
+await confirmCrop("gallery", "16:9", sourceImage);
+
+media = await mediaSnapshot(slug, cookie);
+revision = media.revision;
+if (media.requirements?.ready !== true) {
+  throw new Error(
+    `El juego sintético no quedó listo en Multimedia: ${JSON.stringify(media.requirements)}.`
+  );
+}
+
+const previewA = requirePage(
+  await request(`${editorPath}/vista-previa`, { headers: { cookie } }),
+  "Vista previa A"
+);
+if (!visibleText(previewA.body).includes(markerA)) {
+  throw new Error(
+    "La vista previa no renderizó el título A desde el borrador real."
+  );
+}
+requirePage(
+  await request(publicPath),
+  "Juego todavía privado después del preview",
+  404
+);
+
+let publicationHtml = await publicationPage(slug, cookie);
+const publishRevisionA = positiveInputNumber(
+  publicationHtml,
+  "expectedRevision"
+);
+if (publishRevisionA !== revision) {
+  throw new Error(
+    `Publicación ve revisión ${publishRevisionA}, pero Multimedia terminó en ${revision}.`
+  );
+}
+if (!visibleText(publicationHtml).includes("NUNCA PUBLICADO")) {
+  throw new Error(
+    "La publicación inicial no se presenta como NUNCA PUBLICADO."
+  );
+}
+if (inputValues(publicationHtml, "expectedPublicationNumber").length !== 0) {
+  throw new Error(
+    "Un juego nunca publicado expuso un token de mutación de publicación antes de tener snapshot público."
+  );
+}
+if (restoreActions(publicationHtml).length !== 0) {
+  throw new Error(
+    "Un juego nunca publicado expuso una restauración histórica inexistente."
+  );
+}
+
+const firstPublish = await postAdminForm(
+  `/api/admin/content/games/${encodeURIComponent(slug)}/publish`,
+  `${editorPath}/publicacion`,
+  cookie,
+  { expectedRevision: String(revision) },
+  "La primera publicación"
+);
+assertRedirectState(firstPublish, "publicado", "Primera publicación");
+
+publicationHtml = await publicationPage(slug, cookie);
+const publicationA = positiveInputNumber(
+  publicationHtml,
+  "expectedPublicationNumber"
+);
+if (restoreActions(publicationHtml).length !== 0) {
+  throw new Error(
+    "El snapshot público actual ofreció una restauración sobre sí mismo."
+  );
+}
+
+const publicA = requirePage(
+  await request(publicPath),
+  "Juego público A"
+);
+if (!firstH1(publicA.body).includes(markerA)) {
+  throw new Error(
+    `La web pública no mostró el snapshot A. H1=${JSON.stringify(firstH1(publicA.body))}.`
+  );
+}
+
+editorHtml = requirePage(
+  await request(`${editorPath}?seccion=ficha`, { headers: { cookie } }),
+  "Editor antes del borrador B"
+).body;
+revision = positiveInputNumber(editorHtml, "expectedRevision");
+const revisionA = revision;
+
+const informationB = await postAdminForm(
+  `/api/admin/content/games/${encodeURIComponent(slug)}/information`,
+  `${editorPath}?seccion=ficha`,
+  cookie,
+  {
+    expectedRevision: String(revision),
+    title: markerB,
+    description:
+      "Segunda revisión sintética. Debe permanecer privada hasta una nueva publicación explícita.",
+    shortTitle: "",
+    highlightedTitle: "",
+    developer: "",
+    publisher: "",
+    releaseDate: "",
+    version: "1.0.0-e2e",
+    badge: "",
+    imageAlt: `Arte sintético de ${markerB}`,
+  },
+  "El guardado del borrador B"
+);
+assertRedirectState(informationB, "guardado", "Borrador B");
+
+editorHtml = requirePage(
+  await request(`${editorPath}?seccion=ficha`, { headers: { cookie } }),
+  "Editor después del borrador B"
+).body;
+revision = positiveInputNumber(editorHtml, "expectedRevision");
+if (revision <= revisionA) {
+  throw new Error(
+    `El borrador B no avanzó revisión (${revisionA} -> ${revision}).`
+  );
+}
+const revisionB = revision;
+
+const previewB = requirePage(
+  await request(`${editorPath}/vista-previa`, { headers: { cookie } }),
+  "Vista previa B"
+);
+if (!visibleText(previewB.body).includes(markerB)) {
+  throw new Error("La vista previa no reflejó el borrador B.");
+}
+
+const publicStillA = requirePage(
+  await request(publicPath),
+  "Web pública mientras B sigue en borrador"
+);
+const publicStillAH1 = firstH1(publicStillA.body);
+if (
+  !publicStillAH1.includes(markerA) ||
+  publicStillAH1.includes(markerB)
+) {
+  throw new Error(
+    `Guardar B filtró el borrador a la web pública: ${JSON.stringify(publicStillAH1)}.`
+  );
+}
+
+const secondPublish = await postAdminForm(
+  `/api/admin/content/games/${encodeURIComponent(slug)}/publish`,
+  `${editorPath}/publicacion`,
+  cookie,
+  { expectedRevision: String(revisionB) },
+  "La publicación del snapshot B"
+);
+assertRedirectState(secondPublish, "publicado", "Publicación B");
+
+publicationHtml = await publicationPage(slug, cookie);
+const publicationB = positiveInputNumber(
+  publicationHtml,
+  "expectedPublicationNumber"
+);
+if (publicationB <= publicationA) {
+  throw new Error(
+    `La publicación B no avanzó (${publicationA} -> ${publicationB}).`
+  );
+}
+const historicalAfterB = restoreActions(publicationHtml);
+if (historicalAfterB.length !== 1) {
+  throw new Error(
+    `Después de publicar B se esperaba una única restauración histórica para A y aparecieron ${historicalAfterB.length}.`
+  );
+}
+const restorePublicationA = historicalAfterB[0];
+
+const publicB = requirePage(
+  await request(publicPath),
+  "Juego público B"
+);
+if (!firstH1(publicB.body).includes(markerB)) {
+  throw new Error("La web pública no reflejó el snapshot B.");
+}
+
+const restoreA = await postAdminForm(
+  restorePublicationA,
+  `${editorPath}/publicacion`,
+  cookie,
+  {
+    expectedPublicationNumber: String(publicationB),
+  },
+  "La restauración del snapshot A"
+);
+assertRedirectState(
+  restoreA,
+  "publicacion-restaurada",
+  "Restauración A"
+);
+
+publicationHtml = await publicationPage(slug, cookie);
+const publicationRestoredA = positiveInputNumber(
+  publicationHtml,
+  "expectedPublicationNumber"
+);
+if (publicationRestoredA <= publicationB) {
+  throw new Error(
+    `Restaurar no creó una publicación nueva (${publicationB} -> ${publicationRestoredA}).`
+  );
+}
+
+const publicRestoredA = requirePage(
+  await request(publicPath),
+  "Juego después de restaurar A"
+);
+if (!firstH1(publicRestoredA.body).includes(markerA)) {
+  throw new Error(
+    "Restaurar A no cambió el snapshot público al contenido histórico esperado."
+  );
+}
+
+const previewAfterRestore = requirePage(
+  await request(`${editorPath}/vista-previa`, { headers: { cookie } }),
+  "Borrador después de restaurar A"
+);
+if (!visibleText(previewAfterRestore.body).includes(markerB)) {
+  throw new Error(
+    "Restaurar una publicación histórica reescribió o perdió el borrador B."
+  );
+}
+
+publicationHtml = await publicationPage(slug, cookie);
+const revisionAfterRestore = positiveInputNumber(
+  publicationHtml,
+  "expectedRevision"
+);
+if (revisionAfterRestore !== revisionB) {
+  throw new Error(
+    `Restaurar cambió la revisión del borrador (${revisionB} -> ${revisionAfterRestore}).`
+  );
+}
+
+const republishB = await postAdminForm(
+  `/api/admin/content/games/${encodeURIComponent(slug)}/publish`,
+  `${editorPath}/publicacion`,
+  cookie,
+  { expectedRevision: String(revisionB) },
+  "La republicación del borrador B"
+);
+assertRedirectState(republishB, "publicado", "Republicación B");
+
+publicationHtml = await publicationPage(slug, cookie);
+const publicationResyncedB = positiveInputNumber(
+  publicationHtml,
+  "expectedPublicationNumber"
+);
+if (publicationResyncedB <= publicationRestoredA) {
+  throw new Error(
+    `Republicar B no avanzó publicación (${publicationRestoredA} -> ${publicationResyncedB}).`
+  );
+}
+
+const publicResyncedB = requirePage(
+  await request(publicPath),
+  "Juego B resincronizado"
+);
+if (!firstH1(publicResyncedB.body).includes(markerB)) {
+  throw new Error(
+    "Republicar el borrador B no resincronizó la web pública."
+  );
+}
+
+const updateRedirect = await postAdminForm(
+  `/api/admin/content/games/${encodeURIComponent(slug)}/publish-update`,
+  `${editorPath}/actualizacion`,
+  cookie,
+  {
+    expectedRevision: String(revisionB),
+    version: updateVersion,
+    type: "update",
+    summary: updateSummary,
+    featured: "false",
+    sizeGb: "",
+    fileCount: "",
+    platform: "PC",
+    channel: "",
+    checksumSha256: "",
+    sourcesJson: JSON.stringify([
+      {
+        id: "primary",
+        name: "Descarga E2E",
+        href: `${publicPath}/descargar`,
+        label: "Fuente sintética aislada",
+        enabled: true,
+        status: "available",
+      },
+    ]),
+  },
+  "La actualización integrada"
+);
+assertRedirectState(
+  updateRedirect,
+  "actualizacion-publicada",
+  "Actualización integrada"
+);
+
+publicationHtml = await publicationPage(slug, cookie);
+const revisionAfterUpdate = positiveInputNumber(
+  publicationHtml,
+  "expectedRevision"
+);
+const publicationAfterUpdate = positiveInputNumber(
+  publicationHtml,
+  "expectedPublicationNumber"
+);
+if (
+  revisionAfterUpdate <= revisionB ||
+  publicationAfterUpdate <= publicationResyncedB
+) {
+  throw new Error(
+    `La actualización integrada no avanzó revisión/publicación (${revisionB}/${publicationResyncedB} -> ${revisionAfterUpdate}/${publicationAfterUpdate}).`
+  );
+}
+
+const publicUpdatedGame = requirePage(
+  await request(publicPath),
+  "Juego después de actualización integrada"
+);
+if (!visibleText(publicUpdatedGame.body).includes(updateVersion)) {
+  throw new Error(
+    "La ficha pública no reflejó la versión de la actualización integrada."
+  );
+}
+
+const publicUpdates = requirePage(
+  await request("/actualizaciones"),
+  "Listado público de actualizaciones"
+);
+if (!visibleText(publicUpdates.body).includes(updateSummary)) {
+  throw new Error(
+    "La actualización integrada no apareció en la superficie pública de Actualizaciones."
+  );
+}
+
+const hideRedirect = await postAdminForm(
+  `/api/admin/content/games/${encodeURIComponent(slug)}/hide`,
+  `${editorPath}/publicacion`,
+  cookie,
+  {
+    expectedPublicationNumber: String(publicationAfterUpdate),
+  },
+  "El ocultamiento final del juego"
+);
+assertRedirectState(hideRedirect, "oculto", "Ocultamiento final");
+
+requirePage(
+  await request(publicPath),
+  "Juego oculto al final del lifecycle",
+  404
+);
+
+const updatesAfterHide = requirePage(
+  await request("/actualizaciones"),
+  "Actualizaciones después de ocultar el juego"
+);
+if (visibleText(updatesAfterHide.body).includes(updateSummary)) {
+  throw new Error(
+    "Ocultar el juego dejó visible su actualización integrada en la web pública."
+  );
+}
+
+console.log(
+  `Game publication lifecycle smoke: OK (revisión ${createdRevision} -> ${revisionB} -> ${revisionAfterUpdate}; publicación ${publicationA} -> ${publicationB} -> ${publicationRestoredA} -> ${publicationResyncedB} -> ${publicationAfterUpdate}; preview, separación draft/público, restauración, update integrada y ocultamiento verificados).`
+);

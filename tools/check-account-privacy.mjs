@@ -269,9 +269,24 @@ requirePattern(
 );
 
 const session = await read("src/lib/accounts/session.ts");
+const sessionStore = await read("src/lib/accounts/session-store.ts");
 requirePattern(session, /httpOnly:\s*true/, "La cookie pública debe ser HttpOnly.");
 requirePattern(session, /sameSite:\s*"lax"/, "La cookie pública debe conservar SameSite=Lax.");
-requirePattern(session, /hashAccountSessionToken\(token\)/, "El token de sesión debe hashearse antes de consultar PostgreSQL.");
+requirePattern(
+  session,
+  /from\s+["']\.\/session-store["']/,
+  "El adaptador Next de sesión debe delegar la persistencia al store server-side."
+);
+requirePattern(
+  sessionStore,
+  /hashAccountSessionToken\(token\)/,
+  "El token de sesión debe hashearse antes de consultar PostgreSQL."
+);
+forbidPattern(
+  sessionStore,
+  /next\/(?:headers|navigation)/,
+  "El store de sesión no puede depender de adaptadores de Next.js."
+);
 
 const service = await read("src/lib/accounts/service.ts");
 requirePattern(
