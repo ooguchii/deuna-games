@@ -13,6 +13,21 @@ const paths = {
   accessCss: path.join(accountDir, "account.module.css"),
   page: path.join(accountDir, "page.tsx"),
   header: path.join(root, "src", "components", "layout", "HeaderClient.tsx"),
+  headerServer: path.join(root, "src", "components", "layout", "Header.tsx"),
+  headerNotificationsCss: path.join(
+    root,
+    "src",
+    "components",
+    "layout",
+    "HeaderNotifications.module.css"
+  ),
+  notificationResolver: path.join(
+    root,
+    "src",
+    "lib",
+    "accounts",
+    "update-notifications.ts"
+  ),
   siteBrand: path.join(root, "src", "components", "layout", "SiteBrand.tsx"),
 };
 
@@ -109,6 +124,9 @@ const access = read(paths.access);
 const accessCss = read(paths.accessCss);
 const page = read(paths.page);
 const header = read(paths.header);
+const headerServer = read(paths.headerServer);
+const headerNotificationsCss = read(paths.headerNotificationsCss);
+const notificationResolver = read(paths.notificationResolver);
 const siteBrand = read(paths.siteBrand);
 
 compareClasses("Dashboard de cuenta", dashboardCss, [dashboard]);
@@ -116,6 +134,7 @@ compareClasses("Rewards de cuenta", rewardsCss, [rewards]);
 compareClasses("Acceso de cuenta", accessCss, [access, page]);
 checkCleanCss("Dashboard de cuenta", dashboardCss);
 checkCleanCss("Rewards de cuenta", rewardsCss);
+checkCleanCss("Avisos del Header", headerNotificationsCss);
 
 if (/account\.module\.css/.test(dashboard)) {
   errors.push("AccountDashboardClient no debe depender del CSS del acceso.");
@@ -144,6 +163,41 @@ if (!/AccountDashboardClient/.test(page)) {
 if (/recommendationRail|overflow-x\s*:\s*auto[^}]*recommend/i.test(dashboardCss)) {
   errors.push("El resumen de recomendaciones no debe depender de un carril horizontal con scrollbar.");
 }
+if (/Notificaciones \(próximamente\)|Notificaciones próximamente/.test(header)) {
+  errors.push("La campana del Header volvió a quedar deshabilitada o marcada como próximamente.");
+}
+if (!/accountAuthenticated/.test(header) || !/accountNotifications/.test(header)) {
+  errors.push("HeaderClient debe recibir el estado real de avisos de la cuenta.");
+}
+if (!/dismissedNotificationFeed/.test(header)) {
+  errors.push("HeaderClient debe derivar los avisos del feed server-side y limitar su estado local al snapshot marcado visto.");
+}
+if (!/\/cuenta\?vista=alerts/.test(header)) {
+  errors.push("La campana del Header debe enlazar con la vista canónica de Avisos en Mi DeUna.");
+}
+if (!/resolveAccountUpdateNotifications/.test(page)) {
+  errors.push("Mi DeUna debe resolver avisos mediante el contrato compartido.");
+}
+if (!/resolveAccountUpdateNotifications/.test(headerServer)) {
+  errors.push("El Header debe resolver avisos mediante el mismo contrato que Mi DeUna.");
+}
+if (
+  !/resolveAccountDashboardView/.test(access) ||
+  !/accountDashboardViewHref/.test(access) ||
+  !/parameters\.get\("vista"\)/.test(access)
+) {
+  errors.push("El acceso a cuenta debe conservar la vista solicitada, incluido el deep-link de Avisos.");
+}
+if (
+  !/followedAt/.test(notificationResolver) ||
+  !/updatesSeenThrough/.test(notificationResolver) ||
+  !/Math\.max\(followedAt, seenThrough\)/.test(notificationResolver)
+) {
+  errors.push("El resolver de avisos debe respetar seguimiento, visto y el límite más reciente de ambos.");
+}
+if (!/HeaderNotifications\.module\.css/.test(header)) {
+  errors.push("La UI de avisos del Header debe mantener su módulo visual dedicado.");
+}
 
 if (errors.length) {
   console.error("\nEstructura del dashboard de cuenta: ERROR\n");
@@ -153,5 +207,5 @@ if (errors.length) {
 }
 
 console.log(
-  `Dashboard de cuenta: OK (${cssClasses(dashboardCss).size} clases de dashboard, ${cssClasses(rewardsCss).size} de Rewards y ${cssClasses(accessCss).size} de acceso, sin overlays, !important, microtexto ni CSS huérfano).`
+  `Dashboard de cuenta: OK (${cssClasses(dashboardCss).size} clases de dashboard, ${cssClasses(rewardsCss).size} de Rewards y ${cssClasses(accessCss).size} de acceso; Header y Mi DeUna comparten contrato de avisos y deep-links sin overlays, !important, microtexto ni CSS huérfano).`
 );
