@@ -66,10 +66,6 @@ export default function HeaderClient({
   const notificationsAvailable = accountNotifications !== null;
   const unseenCount = notifications.length;
 
-  useEffect(() => {
-    setNotifications(accountNotifications ?? []);
-  }, [accountNotifications]);
-
   const closeMobileMenu = useCallback((restoreFocus = false) => {
     setMobileMenuOpen(false);
 
