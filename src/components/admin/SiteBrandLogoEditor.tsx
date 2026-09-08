@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import {
   type CSSProperties,
+  useEffect,
   useRef,
   useState,
 } from "react";
@@ -40,6 +41,7 @@ export default function SiteBrandLogoEditor({
   initialColorMode,
   initialCustomColor,
 }: SiteBrandLogoEditorProps) {
+  const editorRef = useRef<HTMLElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [asset, setAsset] = useState(initialAsset ?? "");
   const [colorMode, setColorMode] =
@@ -53,6 +55,40 @@ export default function SiteBrandLogoEditor({
     logoColorMode: colorMode,
     logoCustomColor: customColor,
   });
+
+  useEffect(() => {
+    if (!uploading) return;
+
+    const form = editorRef.current?.closest("form");
+    if (!form) return;
+
+    const submitControls = Array.from(
+      form.querySelectorAll<
+        HTMLButtonElement | HTMLInputElement
+      >('button[type="submit"], input[type="submit"]')
+    );
+    const disabledBeforeUpload = submitControls.map(
+      (control) => control.disabled
+    );
+    const blockSubmit = (event: SubmitEvent) => {
+      event.preventDefault();
+      setMessage(
+        "Espera a que termine la validación del logo antes de guardar el borrador."
+      );
+    };
+
+    submitControls.forEach((control) => {
+      control.disabled = true;
+    });
+    form.addEventListener("submit", blockSubmit);
+
+    return () => {
+      form.removeEventListener("submit", blockSubmit);
+      submitControls.forEach((control, index) => {
+        control.disabled = disabledBeforeUpload[index] ?? false;
+      });
+    };
+  }, [uploading]);
 
   async function uploadLogo(file: File) {
     if (uploading) return;
@@ -103,6 +139,7 @@ export default function SiteBrandLogoEditor({
 
   return (
     <section
+      ref={editorRef}
       className={styles.editor}
       aria-labelledby="site-logo-editor-title"
       aria-busy={uploading}
