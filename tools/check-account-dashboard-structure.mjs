@@ -221,6 +221,9 @@ if (!/HeaderAccountMenu\.module\.css/.test(header)) {
 if (!/accountDashboardDestinations/.test(dashboardView)) {
   errors.push("Las vistas de Mi DeUna deben exponer metadata canónica para accesos rápidos.");
 }
+if (!/accountDashboardDestinations/.test(header) || !/accountDashboardDestinations/.test(dashboard)) {
+  errors.push("Header y sidebar de Mi DeUna deben consumir la misma metadata canónica de destinos.");
+}
 
 if (errors.length) {
   console.error("\nEstructura del dashboard de cuenta: ERROR\n");
