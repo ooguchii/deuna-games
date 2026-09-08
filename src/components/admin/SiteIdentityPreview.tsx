@@ -3,7 +3,6 @@ import { CheckCircle2 } from "lucide-react";
 
 import SiteLogoMark from "@/components/brand/SiteLogoMark";
 import {
-  brandForeground,
   safeThemeBackground,
 } from "@/lib/site/brand-foreground";
 import {
@@ -47,7 +46,6 @@ export default function SiteIdentityPreview({
   const previewStyle = {
     "--preview-bg": appliedThemeColor,
     "--preview-brand": brandColor,
-    "--preview-on-brand": brandForeground(brandColor),
   } as CSSProperties;
   const compactName = shortName.trim() || name;
   const backgroundWasAdapted =
