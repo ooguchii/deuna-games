@@ -1,0 +1,149 @@
+import {
+  access,
+  readFile,
+} from "node:fs/promises";
+import path from "node:path";
+import process from "node:process";
+
+const root = process.cwd();
+const failures = [];
+
+function assert(condition, message) {
+  if (!condition) failures.push(message);
+}
+
+async function source(relativePath) {
+  return readFile(path.join(root, relativePath), "utf8");
+}
+
+const [
+  accountPage,
+  accountDashboard,
+  adminLogin,
+  adminShell,
+  notFound,
+  rootLayout,
+  manifest,
+  appIconRoute,
+  appIconRenderer,
+  logoImageResolver,
+  socialImage,
+] = await Promise.all([
+  source("src/app/cuenta/page.tsx"),
+  source("src/app/cuenta/AccountDashboardClient.tsx"),
+  source("src/app/admin/login/page.tsx"),
+  source("src/components/admin/AdminShell.tsx"),
+  source("src/app/not-found.tsx"),
+  source("src/app/layout.tsx"),
+  source("src/app/manifest.ts"),
+  source("src/app/app-icon/[size]/route.ts"),
+  source("src/lib/site-app-icon.tsx"),
+  source("src/lib/site-logo-image.ts"),
+  source("src/lib/social-image.tsx"),
+]);
+
+assert(
+  accountPage.includes('from "@/components/brand/SiteLogoMark"') &&
+    accountPage.includes("<SiteLogoMark size={16}"),
+  "Mi DeUna sin sesión debe mostrar el renderer canónico del logo publicado."
+);
+
+assert(
+  accountDashboard.includes("<SiteBrand") &&
+    accountDashboard.includes("siteName={siteName}"),
+  "Mi DeUna autenticado debe conservar SiteBrand y la identidad publicada."
+);
+
+assert(
+  adminLogin.includes('from "@/components/brand/SiteLogoMark"') &&
+    adminLogin.includes("<SiteLogoMark size={30}"),
+  "El login Admin debe mostrar el mismo logo publicado que el panel protegido."
+);
+
+assert(
+  adminShell.includes("<SiteLogoMark") &&
+    adminShell.includes("siteName"),
+  "El shell Admin protegido debe conservar el renderer canónico del logo."
+);
+
+assert(
+  notFound.includes("<Header") &&
+    notFound.includes("<Footer"),
+  "La página 404 debe heredar la identidad publicada a través de Header y Footer."
+);
+
+assert(
+  logoImageResolver.includes("buildSiteBrandLogoDataUri") &&
+    logoImageResolver.includes("resolveSiteLogoColor") &&
+    logoImageResolver.includes("resolveSiteLogoColorMode") &&
+    logoImageResolver.includes('colorMode === "original" ? null : color'),
+  "La resolución server-side del logo debe centralizar fallback, recolor SVG y raster original."
+);
+
+assert(
+  socialImage.includes("resolveSiteLogoImage") &&
+    socialImage.includes("logoDataUri") &&
+    socialImage.includes("src: logoDataUri"),
+  "Open Graph/Twitter deben consumir el resolver server-side compartido."
+);
+
+assert(
+  appIconRenderer.includes("getPublicSiteConfig") &&
+    appIconRenderer.includes("resolveSiteLogoImage") &&
+    appIconRenderer.includes("safeThemeBackground") &&
+    appIconRenderer.includes("siteAppIconVersion") &&
+    appIconRenderer.includes("32,") &&
+    appIconRenderer.includes("180,") &&
+    appIconRenderer.includes("192,") &&
+    appIconRenderer.includes("512,"),
+  "Los iconos de navegador/PWA deben generarse desde el snapshot publicado y el mismo resolver del logo."
+);
+
+assert(
+  appIconRoute.includes('dynamic = "force-dynamic"') &&
+    appIconRoute.includes('runtime = "nodejs"') &&
+    appIconRoute.includes("isSiteAppIconSize") &&
+    appIconRoute.includes("X-Content-Type-Options") &&
+    !appIconRoute.includes("immutable"),
+  "El endpoint de iconos debe validar tamaños, usar runtime server y no prometer inmutabilidad sobre una identidad dinámica."
+);
+
+assert(
+  rootLayout.includes("siteAppIconVersion(config)") &&
+    rootLayout.includes("/app-icon/32?v=") &&
+    rootLayout.includes("/app-icon/64?v=") &&
+    rootLayout.includes("/app-icon/180?v=") &&
+    rootLayout.includes('sizes: "32x32"') &&
+    rootLayout.includes('sizes: "180x180"'),
+  "Metadata debe exponer favicon y Apple icon versionados por la identidad publicada."
+);
+
+assert(
+  manifest.includes("siteAppIconVersion(config)") &&
+    manifest.includes("/app-icon/192?v=") &&
+    manifest.includes("/app-icon/512?v=") &&
+    manifest.includes('purpose: "any"'),
+  "El manifest PWA debe publicar iconos 192/512 derivados de la identidad activa."
+);
+
+let staticFaviconExists = true;
+try {
+  await access(path.join(root, "src/app/favicon.ico"));
+} catch {
+  staticFaviconExists = false;
+}
+
+assert(
+  !staticFaviconExists,
+  "No debe coexistir un favicon.ico estático que pueda contradecir el logo editorial publicado."
+);
+
+if (failures.length > 0) {
+  console.error("\nSuperficies del logo global: REGRESIÓN\n");
+  failures.forEach((failure) => console.error(`- ${failure}`));
+  process.exitCode = 1;
+} else {
+  console.log(
+    "Superficies del logo global: OK (Header/Footer/404, Mi DeUna, Admin, metadata, PWA y social convergen en identidad publicada)."
+  );
+}
