@@ -18,11 +18,13 @@ export default function UniversalGameCard({
   variant = "standard",
   presentation,
   supplementalContent,
+  onFavoriteChange,
 }: {
   game: Game;
   variant?: UniversalGameCardVariant;
   presentation?: GameCardPresentationMode;
   supplementalContent?: ReactNode;
+  onFavoriteChange?: (favorite: boolean) => void;
 }) {
   return (
     <UniversalGameCardBase
@@ -35,6 +37,7 @@ export default function UniversalGameCard({
           gameSlug={game.slug}
           gameTitle={game.title}
           className={styles.favorite}
+          onFavoriteChange={onFavoriteChange}
         />
       )}
     />
