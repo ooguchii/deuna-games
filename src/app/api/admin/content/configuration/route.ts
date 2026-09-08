@@ -28,6 +28,9 @@ const fields = [
   "themeColor",
   "brandColor",
   "footerTagline",
+  "logoAsset",
+  "logoColorMode",
+  "logoCustomColor",
 ] as const;
 
 export async function POST(request: NextRequest) {
