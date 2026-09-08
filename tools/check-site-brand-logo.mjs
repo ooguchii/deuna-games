@@ -173,9 +173,11 @@ assert(
 assert(
   privacySafeSvg.includes("sanitizeSiteBrandLogoEmbeddedRasters") &&
     privacySafeSvg.includes("sanitizeSiteBrandLogoRaster") &&
-    privacySafeSvg.includes("inspectPrivacySafeSiteBrandLogoSvg") &&
-    privacySafeSvg.includes("normalized.equals(input)"),
-  "Los raster embebidos dentro de SVG deben cruzar la misma frontera de privacidad y quedar canónicos antes de almacenar."
+    privacySafeSvg.includes("stripNonVisualSiteBrandSvgMetadata") &&
+    privacySafeSvg.includes("return sanitizeSiteBrandLogoSvg(output)") &&
+    privacySafeSvg.includes("withoutNonVisualMetadata.equals(input)") &&
+    privacySafeSvg.includes("normalizedRasters.equals(input)"),
+  "Los raster embebidos dentro de SVG deben cruzar la misma frontera de privacidad, recanonizar el documento y permanecer estables al releerlo."
 );
 
 assert(
