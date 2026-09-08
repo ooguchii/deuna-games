@@ -7,6 +7,8 @@ import {
 } from "@/lib/site/brand-foreground";
 import {
   resolveSiteLogoColor,
+  resolveSiteLogoColorMode,
+  siteBrandLogoSupportsRecolor,
   type SiteLogoColorMode,
 } from "@/lib/site/logo";
 
@@ -38,9 +40,13 @@ export default function SiteIdentityPreview({
   logoCustomColor,
 }: SiteIdentityPreviewProps) {
   const appliedThemeColor = safeThemeBackground(themeColor);
+  const effectiveLogoColorMode = resolveSiteLogoColorMode(
+    logoAsset,
+    logoColorMode
+  );
   const logoColor = resolveSiteLogoColor({
     brandColor,
-    logoColorMode,
+    logoColorMode: effectiveLogoColorMode,
     logoCustomColor,
   });
   const previewStyle = {
@@ -50,8 +56,10 @@ export default function SiteIdentityPreview({
   const compactName = shortName.trim() || name;
   const backgroundWasAdapted =
     appliedThemeColor.toLowerCase() !== themeColor.toLowerCase();
-  const keepsOriginalSvgColors =
-    Boolean(logoAsset) && logoColorMode === "original";
+  const customAssetUsesOriginalColors =
+    Boolean(logoAsset) && effectiveLogoColorMode === "original";
+  const isRasterLogo =
+    Boolean(logoAsset) && !siteBrandLogoSupportsRecolor(logoAsset);
 
   return (
     <div className={styles.stack}>
@@ -71,7 +79,7 @@ export default function SiteIdentityPreview({
                   asset={logoAsset ?? null}
                   scale={logoScale}
                   color={logoColor}
-                  colorMode={logoColorMode}
+                  colorMode={effectiveLogoColorMode}
                 />
               </span>
               <strong>{compactName}</strong>
@@ -92,7 +100,7 @@ export default function SiteIdentityPreview({
                   asset={logoAsset ?? null}
                   scale={logoScale}
                   color={logoColor}
-                  colorMode={logoColorMode}
+                  colorMode={effectiveLogoColorMode}
                 />
               </span>
               <strong>{compactName}</strong>
@@ -127,16 +135,16 @@ export default function SiteIdentityPreview({
           </div>
           <div>
             <dt>Logo</dt>
-            <dd title={keepsOriginalSvgColors ? "El logo conserva sus colores y degradados originales." : logoColorMode === "brand" ? "El logo seguirá cualquier cambio futuro del color de marca." : "El logo conserva un color independiente."}>
-              <i style={{ background: keepsOriginalSvgColors ? "transparent" : logoColor }} />
+            <dd title={customAssetUsesOriginalColors ? "El logo conserva sus colores originales." : effectiveLogoColorMode === "brand" ? "El logo seguirá cualquier cambio futuro del color de marca." : "El logo conserva un color independiente."}>
+              <i style={{ background: customAssetUsesOriginalColors ? "transparent" : logoColor }} />
               <code>
-                {logoAsset ? "Personalizado" : "Original"} · {keepsOriginalSvgColors ? "Colores SVG" : logoColorMode === "brand" ? "Marca" : logoColor}
+                {logoAsset ? "Personalizado" : "Original"} · {customAssetUsesOriginalColors ? (isRasterLogo ? "Colores raster" : "Colores SVG") : effectiveLogoColorMode === "brand" ? "Marca" : logoColor}
               </code>
             </dd>
           </div>
         </dl>
         <p className={styles.appearanceHint}>
-          La marca adapta automáticamente el texto de los botones; el logo puede conservar sus colores SVG, seguir el color principal o usar un tono independiente.
+          La marca adapta automáticamente el texto de los botones. Los SVG pueden conservar sus colores o recolorearse; PNG, JPEG, WebP y GIF conservan siempre sus colores saneados.
         </p>
         <div className={styles.activeState}>
           <CheckCircle2 size={15} aria-hidden="true" />
