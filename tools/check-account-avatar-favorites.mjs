@@ -21,6 +21,7 @@ const [
   avatarRoute,
   avatarSecurity,
   avatarService,
+  avatarEditor,
   accountDashboard,
   headerClient,
   favoriteRoute,
@@ -37,6 +38,7 @@ const [
   read("src/app/api/account/avatar/route.ts"),
   read("src/lib/accounts/avatar-request-security.ts"),
   read("src/lib/accounts/avatar-service.ts"),
+  read("src/app/cuenta/AccountAvatarEditor.tsx"),
   read("src/app/cuenta/AccountDashboardClient.tsx"),
   read("src/components/layout/HeaderClient.tsx"),
   read("src/app/api/account/favorites/route.ts"),
@@ -159,9 +161,29 @@ requirePattern(
   "Eliminar el avatar debe acotarse por el user_id autenticado."
 );
 requirePattern(
+  avatarEditor,
+  /onAvatarChange\?\.\(true\)[\s\S]*onAvatarChange\?\.\(false\)/,
+  "El editor debe notificar alta y eliminación para actualizar la identidad visible de Mi DeUna."
+);
+requirePattern(
   accountDashboard,
   /AccountAvatarEditor/,
   "Mi DeUna → Perfil debe integrar el editor de avatar privado."
+);
+requirePattern(
+  accountDashboard,
+  /const\s+sidebarAvatarSrc\s*=\s*`\/api\/account\/avatar\?r=\$\{sidebarAvatarRevision\}`/,
+  "La identidad lateral de Mi DeUna debe leer el mismo avatar privado con revisión local."
+);
+requirePattern(
+  accountDashboard,
+  /AccountAvatarEditor[\s\S]*onAvatarChange=\{\(hasAvatar\)[\s\S]*setSidebarHasAvatar\(hasAvatar\)[\s\S]*setSidebarAvatarRevision/,
+  "Cambiar o quitar la foto debe actualizar inmediatamente el avatar lateral de Mi DeUna."
+);
+requirePattern(
+  accountDashboard,
+  /sidebarHasAvatar\s*!==\s*false[\s\S]*<Image[\s\S]*src=\{sidebarAvatarSrc\}/,
+  "La identidad lateral debe renderizar la foto privada y conservar el icono como fallback."
 );
 requirePattern(
   headerClient,
@@ -287,6 +309,16 @@ requirePattern(
   /\.favorite\s*\{[\s\S]*position:\s*absolute[\s\S]*top:\s*7px[\s\S]*right:\s*7px/,
   "La posición del favorito interactivo debe vivir sólo en su módulo overlay dedicado."
 );
+requirePattern(
+  accountDashboard,
+  /function\s+RecommendationCard[\s\S]*GameFavoriteButton[\s\S]*gameSlug=\{recommendation\.slug\}[\s\S]*gameTitle=\{recommendation\.title\}/,
+  "Mi DeUna → Descubrimientos debe reutilizar el favorito canónico y no un corazón decorativo."
+);
+forbidPattern(
+  accountDashboard,
+  /<span\s+className=\{styles\.recommendationHeart\}/,
+  "Descubrimientos no puede volver a meter un corazón decorativo dentro del enlace del juego."
+);
 
 for (const marker of [
   "publicFavoritePersistence: true",
@@ -310,5 +342,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  "Avatar y favoritos de cuenta: OK (avatar privado/saneado/cascade, Card sin corazón duplicado y favoritos unificados con E2E de persistencia)."
+  "Avatar y favoritos de cuenta: OK (avatar privado en Header/Mi DeUna, Card y Descubrimientos sin corazones decorativos, favoritos unificados con E2E de persistencia)."
 );
