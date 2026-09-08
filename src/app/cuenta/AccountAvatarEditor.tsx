@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import {
   Camera,
   LoaderCircle,
@@ -10,6 +11,10 @@ import {
   useRef,
   useState,
 } from "react";
+
+import {
+  ACCOUNT_AVATAR_CHANGED_EVENT,
+} from "@/lib/accounts/avatar-events";
 
 import styles from "./AccountAvatarEditor.module.css";
 
@@ -93,9 +98,6 @@ async function prepareAvatar(file: File) {
     bitmap.close();
   }
 }
-
-export const ACCOUNT_AVATAR_CHANGED_EVENT =
-  "deuna:account-avatar-changed";
 
 export default function AccountAvatarEditor({
   username,
@@ -203,10 +205,13 @@ export default function AccountAvatarEditor({
       <div className={styles.preview}>
         <UserRound size={34} aria-hidden="true" />
         {hasAvatar !== false && (
-          <img
+          <Image
             key={avatarSrc}
             src={avatarSrc}
             alt={`Foto de perfil de ${username}`}
+            width={88}
+            height={88}
+            unoptimized
             onLoad={() => setHasAvatar(true)}
             onError={() => setHasAvatar(false)}
           />
