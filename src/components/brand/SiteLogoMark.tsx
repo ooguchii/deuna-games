@@ -55,6 +55,7 @@ export default function SiteLogoMark({
       aria-hidden="true"
     >
       <Gamepad2
+        size={size}
         className={styles.fallback}
         strokeWidth={strokeWidth}
       />
