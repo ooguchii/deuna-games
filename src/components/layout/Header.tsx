@@ -26,7 +26,7 @@ export default async function Header() {
     readAccountSession(),
   ]);
   let notifications: AccountUpdateNotification[] | null = [];
-  let accountAvatarDigest: string | null = null;
+  let accountAvatarVersion: string | null = null;
 
   if (session) {
     const [resolvedNotifications, avatarMetadata] = await Promise.all([
@@ -42,7 +42,9 @@ export default async function Header() {
     ]);
 
     notifications = resolvedNotifications;
-    accountAvatarDigest = avatarMetadata?.digest ?? null;
+    accountAvatarVersion = avatarMetadata
+      ? avatarMetadata.updatedAt.getTime().toString(36)
+      : null;
   }
 
   return (
@@ -57,7 +59,7 @@ export default async function Header() {
           : null
       }
       accountNotifications={notifications}
-      accountAvatarDigest={accountAvatarDigest}
+      accountAvatarVersion={accountAvatarVersion}
     />
   );
 }
