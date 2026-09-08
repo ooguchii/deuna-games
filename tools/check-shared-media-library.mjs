@@ -39,7 +39,7 @@ const [
   source("src/lib/admin/published-game-video-references.ts"),
   source("src/app/api/admin/content/games/[slug]/media-upload/route.ts"),
   source("src/components/admin/GameMediaUploadForm.tsx"),
-  source("src/components/admin/GameMultimediaWorkspaceContextual.tsx"),
+  source("src/components/admin/GameMediaAssignmentsWorkspace.tsx"),
   source("src/components/admin/GameMultimediaUtilityRail.tsx"),
   source("src/components/admin/GameMultimediaEditor.tsx"),
   source("src/components/admin/GameMultimediaEditor.module.css"),
@@ -120,7 +120,7 @@ assert(
     !libraryRoute.includes("spawn(") &&
     !libraryRoute.includes("writeFile(") &&
     !libraryRoute.includes("unlink("),
-  "La ruta legacy de biblioteca debe ser exclusivamente de lectura/asignación, proteger publicación e historial y no conservar ningún camino destructivo."
+  "La ruta de biblioteca/asignación debe proteger publicación e historial y no conservar ningún camino destructivo."
 );
 
 assert(
@@ -131,7 +131,7 @@ assert(
     "delete gallery[resource]",
     "galleryImageSources(galleryMedia)"
   ),
-  "Quitar una captura de Galería debe retirar sólo su asignación y recorte, preservando el master y resincronizando la compatibilidad de imágenes."
+  "Quitar una captura de Galería debe retirar sólo su asignación y recorte, preservando el master."
 );
 
 assert(
@@ -189,52 +189,58 @@ assert(
       'name="kind" value="library"',
       "Preparar y guardar en biblioteca"
     ),
-  "Subir una imagen a biblioteca debe guardarla una vez sin asignarla automáticamente a un destino."
+  "Subir una imagen a biblioteca debe guardarla una vez sin asignarla automáticamente."
 );
 
 for (const label of [
-  "RESUMEN MULTIMEDIA",
-  "Asignación de destinos",
-  "Biblioteca multimedia compartida",
-  "IMÁGENES",
-  "VIDEOS",
-  "Portada del juego",
-  "Hero de inicio",
+  "ASIGNACIÓN DE DESTINOS",
+  "Card es la presentación principal del juego",
   "Card del juego",
+  "Portada inicial",
+  "Vista informativa",
+  "Hero de inicio",
   "Imagen + hover",
-  "Gestionar galería",
 ]) {
   assert(
     workspace.includes(label),
-    `El workspace multimedia debe conservar la jerarquía o acción: ${label}.`
+    `El workspace multimedia unificado debe conservar la jerarquía o acción: ${label}.`
   );
 }
 
 assert(
   has(
     workspace,
-    "AdminMediaLibraryPreview",
-    "libraryGroups",
-    'renderLibraryGroup("IMÁGENES", "image", images)',
-    'renderLibraryGroup("VIDEOS", "video", videos)',
-    "setPreviewResource(resource)",
-    "usageLabels(previewResource)",
-    "summary"
-  ),
-  "El workspace de asignación debe conservar previews y agrupación de recursos aunque la biblioteca administrativa principal viva en el rail profesional."
+    "ResourcePicker",
+    'target="cover-image"',
+    'target="card-image"',
+    'target="card-video"',
+    'target="hero-image"',
+    'target="hero-video"',
+    "expectedRevision",
+    "media-library"
+  ) &&
+    !workspace.includes("media-resource-delete") &&
+    !workspace.includes("Portada del juego"),
+  "El workspace unificado debe asignar masters reutilizables sin mezclar borrado destructivo ni revivir Portada como destino separado."
 );
 
 assert(
   has(
     utilityRail,
     "Biblioteca multimedia compartida",
+    "AdminMediaLibraryPreview",
+    'renderLibraryGroup("IMÁGENES", "image", filteredImages)',
+    'renderLibraryGroup("VIDEOS", "video", filteredVideos)',
+    "setPreviewResource(resource)",
     "media-resource-delete",
     'resource.hygiene?.status !== "unused"',
     "Protegido",
     "Historial",
-    "Por resolver ·"
+    "Por resolver ·",
+    "Card · 4:5 + 3:2",
+    "Hero · 3:1"
   ),
-  "La biblioteca visible debe administrar higiene y ofrecer borrado sólo para masters realmente huérfanos mediante la ruta dedicada."
+  "La biblioteca visible debe administrar previews, higiene y borrado sólo para masters realmente huérfanos, mostrando el contrato Card/Hero vigente."
 );
 
 assert(
@@ -276,13 +282,14 @@ assert(
       ".currentThumb",
       ".choiceThumb"
     ),
-  "El layout histórico puede conservar estilos de compatibilidad mientras la superficie visible use la biblioteca profesional."
+  "Los estilos compartidos de multimedia deben seguir disponibles para los editores canónicos que los reutilizan."
 );
 
 assert(
-  multimediaEditor.includes("GameMultimediaWorkspaceContextual") &&
+  multimediaEditor.includes("GameMediaAssignmentsWorkspace") &&
+    !multimediaEditor.includes("GameMultimediaWorkspaceContextual") &&
     !multimediaEditor.includes("Opciones avanzadas · rutas manuales"),
-  "El editor principal debe seguir usando el workspace contextual."
+  "El editor principal debe usar el workspace unificado y no reintroducir la implementación contextual eliminada."
 );
 
 assert(
@@ -321,5 +328,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  "Biblioteca multimedia compartida: OK (WebP/WebM seguros · ruta legacy assignment-only · borrado dedicado con historial protegido · preview grande · recortes independientes)."
+  "Biblioteca multimedia compartida: OK (WebP/WebM seguros · asignación unificada · borrado dedicado con historial protegido · preview grande · recortes independientes)."
 );
