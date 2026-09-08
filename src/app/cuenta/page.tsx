@@ -9,6 +9,7 @@ import {
   UserRound,
 } from "lucide-react";
 
+import SiteLogoMark from "@/components/brand/SiteLogoMark";
 import {
   cpuCatalog,
   gpuCatalog,
@@ -192,7 +193,7 @@ export default async function AccountPage({
       <div className={`${styles.shell} ${styles.hero}`}>
         <section className={styles.intro}>
           <span className={styles.eyebrow}>
-            <Sparkles size={16} aria-hidden="true" />
+            <SiteLogoMark size={16} />
             MI DEUNA
           </span>
           <h1>Tu DeUna cambia cuando sabe lo que eliges guardar.</h1>
