@@ -18,16 +18,16 @@ export default function UniversalGameCard({
   variant?: UniversalGameCardVariant;
 }) {
   return (
-    <div className={styles.wrapper}>
-      <UniversalGameCardBase
-        game={game}
-        variant={variant}
-      />
-      <GameFavoriteButton
-        gameSlug={game.slug}
-        gameTitle={game.title}
-        className={styles.favorite}
-      />
-    </div>
+    <UniversalGameCardBase
+      game={game}
+      variant={variant}
+      overlayAction={(
+        <GameFavoriteButton
+          gameSlug={game.slug}
+          gameTitle={game.title}
+          className={styles.favorite}
+        />
+      )}
+    />
   );
 }
