@@ -281,6 +281,7 @@ export default function SiteAppearanceWorkspace({
                 asset={logoAsset ?? null}
                 scale={logoScale}
                 color={logoColor}
+                colorMode={logoColorMode}
               />
               <strong>{shortName.trim() || name}</strong>
               <span className={styles.previewNavItem} />
@@ -310,7 +311,7 @@ export default function SiteAppearanceWorkspace({
               </span>
               <span>
                 Logo
-                <code>{logoColor}</code>
+                <code>{logoColorMode === "original" && logoAsset ? "Colores SVG" : logoColor}</code>
               </span>
             </div>
 
