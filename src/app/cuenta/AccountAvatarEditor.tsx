@@ -13,8 +13,8 @@ import {
 } from "react";
 
 import {
-  ACCOUNT_AVATAR_CHANGED_EVENT,
-} from "@/lib/accounts/avatar-events";
+  notifyAccountAvatarChanged,
+} from "@/lib/accounts/avatar-client-state";
 
 import styles from "./AccountAvatarEditor.module.css";
 
@@ -164,11 +164,9 @@ export default function AccountAvatarEditor({
   const [message, setMessage] = useState<string | null>(null);
   const avatarSrc = `/api/account/avatar?r=${revision}`;
 
-  function notifyAvatarChanged() {
+  function refreshAvatarState() {
     setRevision((current) => current + 1);
-    window.dispatchEvent(
-      new CustomEvent(ACCOUNT_AVATAR_CHANGED_EVENT)
-    );
+    notifyAccountAvatarChanged();
   }
 
   async function handleSelection(file: File | undefined) {
@@ -198,7 +196,7 @@ export default function AccountAvatarEditor({
 
       setHasAvatar(true);
       setMessage("Foto de perfil actualizada.");
-      notifyAvatarChanged();
+      refreshAvatarState();
     } catch (error) {
       const reason = error instanceof Error ? error.message : "servicio";
       setMessage(
@@ -242,7 +240,7 @@ export default function AccountAvatarEditor({
 
       setHasAvatar(false);
       setMessage("Foto de perfil eliminada.");
-      notifyAvatarChanged();
+      refreshAvatarState();
     } catch {
       setMessage("No se pudo eliminar la foto de perfil.");
     } finally {
