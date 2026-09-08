@@ -16,6 +16,10 @@ const MAX_RESPONSE_BYTES = 4 * 1024 * 1024;
 const traceText = "private-raster-exporter-trace";
 const originalFilename =
   "designer-private-camera-export-2026.png";
+const PNG_SIGNATURE = Buffer.from([
+  0x89, 0x50, 0x4e, 0x47,
+  0x0d, 0x0a, 0x1a, 0x0a,
+]);
 
 if (
   baseUrl.protocol !== "https:" ||
@@ -387,6 +391,94 @@ function sameSocialSnapshot(left, right) {
   );
 }
 
+function appIconRefFromHtml(html, size) {
+  const match = html.match(
+    new RegExp(`/app-icon/${size}\\?v=([a-z0-9-]+)`, "i")
+  );
+
+  if (!match) {
+    throw new Error(
+      `La metadata pública no expone app-icon ${size}px versionado.`
+    );
+  }
+
+  return `/app-icon/${size}?v=${match[1]}`;
+}
+
+function appIconRefFromManifest(manifest, size) {
+  const expected = `${size}x${size}`;
+  const entry = Array.isArray(manifest?.icons)
+    ? manifest.icons.find(
+        (icon) =>
+          icon?.sizes === expected &&
+          typeof icon?.src === "string" &&
+          icon.src.startsWith(`/app-icon/${size}?v=`)
+      )
+    : null;
+
+  if (!entry) {
+    throw new Error(
+      `El manifest no expone app-icon ${expected} versionado.`
+    );
+  }
+
+  return entry.src;
+}
+
+async function appIconSnapshot() {
+  const [home, manifestResponse] = await Promise.all([
+    request("/"),
+    request("/manifest.webmanifest"),
+  ]);
+
+  if (home.status !== 200 || manifestResponse.status !== 200) {
+    throw new Error(
+      `No se pudo capturar identidad de app-icons (${home.status}/${manifestResponse.status}).`
+    );
+  }
+
+  const manifest = JSON.parse(manifestResponse.body);
+
+  return {
+    32: appIconRefFromHtml(home.body, 32),
+    64: appIconRefFromHtml(home.body, 64),
+    180: appIconRefFromHtml(home.body, 180),
+    192: appIconRefFromManifest(manifest, 192),
+    512: appIconRefFromManifest(manifest, 512),
+  };
+}
+
+function sameAppIconSnapshot(left, right) {
+  return [32, 64, 180, 192, 512].every(
+    (size) => left[size] === right[size]
+  );
+}
+
+async function assertAppIcon(ref, size) {
+  const response = await request(ref);
+  const contentType = String(
+    response.headers["content-type"] ?? ""
+  ).toLowerCase();
+
+  if (
+    response.status !== 200 ||
+    !contentType.startsWith("image/png") ||
+    String(
+      response.headers["x-content-type-options"] ?? ""
+    ).toLowerCase() !== "nosniff" ||
+    response.content.length < 24 ||
+    !response.content
+      .subarray(0, PNG_SIGNATURE.length)
+      .equals(PNG_SIGNATURE) ||
+    response.content.readUInt32BE(16) !== size ||
+    response.content.readUInt32BE(20) !== size
+  ) {
+    throw new Error(
+      `El app-icon publicado de ${size}px no conserva PNG/MIME/dimensiones/nosniff.`
+    );
+  }
+}
+
 function crc32(buffer) {
   let crc = 0xffffffff;
 
@@ -475,6 +567,7 @@ const publishedIdentityBefore = publicLogoIdentity(
   publicBefore.body
 );
 const socialBefore = await socialSnapshot();
+const appIconsBefore = await appIconSnapshot();
 
 const loginBody = new URLSearchParams({
   username: adminUsername,
@@ -600,9 +693,26 @@ if (
 const pathDigest = publicPath.match(
   /\/([a-f0-9]{64})\.png$/
 )?.[1];
-const uploadedAsset = await request(publicPath);
+const anonymousDraftAsset = await request(publicPath);
+if (
+  anonymousDraftAsset.status !== 404 ||
+  !String(
+    anonymousDraftAsset.headers["cache-control"] ?? ""
+  ).includes("no-store")
+) {
+  throw new Error(
+    "Un logo recién subido pero no publicado quedó accesible de forma anónima."
+  );
+}
+
+const uploadedAsset = await request(publicPath, {
+  headers: { cookie },
+});
 const uploadedContentType = String(
   uploadedAsset.headers["content-type"] ?? ""
+).toLowerCase();
+const uploadedCacheControl = String(
+  uploadedAsset.headers["cache-control"] ?? ""
 ).toLowerCase();
 if (
   uploadedAsset.status !== 200 ||
@@ -610,13 +720,16 @@ if (
   String(
     uploadedAsset.headers["x-content-type-options"] ?? ""
   ).toLowerCase() !== "nosniff" ||
+  !uploadedCacheControl.includes("private") ||
+  !uploadedCacheControl.includes("no-store") ||
+  uploadedCacheControl.includes("immutable") ||
   uploadedAsset.content.includes(
     Buffer.from(traceText, "utf8")
   ) ||
   uploadedAsset.sha256 !== pathDigest
 ) {
   throw new Error(
-    "El PNG saneado no se sirve con MIME/hash correctos o conserva metadata identificable."
+    "El PNG saneado de borrador no se sirve sólo al Admin con MIME/hash/cache privados o conserva metadata identificable."
   );
 }
 
@@ -680,6 +793,13 @@ if (
   );
 }
 
+const anonymousSavedAsset = await request(publicPath);
+if (anonymousSavedAsset.status !== 404) {
+  throw new Error(
+    "Guardar el logo raster como borrador hizo público el asset antes de publicar."
+  );
+}
+
 const publicStillOld = await request("/");
 if (
   publicStillOld.status !== 200 ||
@@ -696,6 +816,12 @@ const socialStillOld = await socialSnapshot();
 if (!sameSocialSnapshot(socialStillOld, socialBefore)) {
   throw new Error(
     "Guardar el logo raster en borrador alteró OG/Twitter antes de publicar."
+  );
+}
+const appIconsStillOld = await appIconSnapshot();
+if (!sameAppIconSnapshot(appIconsStillOld, appIconsBefore)) {
+  throw new Error(
+    "Guardar el logo raster en borrador alteró favicon/Apple/PWA antes de publicar."
   );
 }
 
@@ -797,19 +923,33 @@ if (
   );
 }
 
+const appIconsPublished = await appIconSnapshot();
+if (sameAppIconSnapshot(appIconsPublished, appIconsBefore)) {
+  throw new Error(
+    "Publicar el logo raster no versionó favicon/Apple/PWA."
+  );
+}
+await assertAppIcon(appIconsPublished[32], 32);
+await assertAppIcon(appIconsPublished[192], 192);
+
 const publicAsset = await request(publicPath);
+const publicAssetCacheControl = String(
+  publicAsset.headers["cache-control"] ?? ""
+).toLowerCase();
 if (
   publicAsset.status !== 200 ||
   !String(
     publicAsset.headers["content-type"] ?? ""
   ).toLowerCase().startsWith("image/png") ||
+  !publicAssetCacheControl.includes("public") ||
+  !publicAssetCacheControl.includes("immutable") ||
   publicAsset.sha256 !== pathDigest ||
   publicAsset.content.includes(
     Buffer.from(traceText, "utf8")
   )
 ) {
   throw new Error(
-    "El asset raster publicado no conserva el contrato saneado, content-addressed y revalidado."
+    "El asset raster publicado no conserva el contrato saneado, content-addressed, público e inmutable."
   );
 }
 
@@ -898,6 +1038,35 @@ if (!sameSocialSnapshot(socialRestored, socialBefore)) {
     "Restaurar la publicación anterior no recuperó exactamente OG/Twitter tras el raster."
   );
 }
+const appIconsRestored = await appIconSnapshot();
+if (!sameAppIconSnapshot(appIconsRestored, appIconsBefore)) {
+  throw new Error(
+    "Restaurar la publicación anterior no recuperó exactamente favicon/Apple/PWA."
+  );
+}
+
+const anonymousRestoredAsset = await request(publicPath);
+if (anonymousRestoredAsset.status !== 404) {
+  throw new Error(
+    "Restaurar la identidad previa dejó públicamente accesible en origen el logo que ya no está publicado."
+  );
+}
+const adminRestoredAsset = await request(publicPath, {
+  headers: { cookie },
+});
+const adminRestoredCacheControl = String(
+  adminRestoredAsset.headers["cache-control"] ?? ""
+).toLowerCase();
+if (
+  adminRestoredAsset.status !== 200 ||
+  adminRestoredAsset.sha256 !== pathDigest ||
+  !adminRestoredCacheControl.includes("private") ||
+  !adminRestoredCacheControl.includes("no-store")
+) {
+  throw new Error(
+    "Tras restaurar, el borrador raster dejó de ser previsualizable de forma privada por el Admin."
+  );
+}
 
 const draftAfterRestore = await request(identityPath, {
   headers: { cookie },
@@ -923,5 +1092,5 @@ if (
 }
 
 console.log(
-  `Site logo raster publication lifecycle smoke: OK (revisión ${beforeRevision} -> ${savedRevision}; publicación ${publicationNumberBefore} -> ${publicationNumberAfterPublish} -> ${publicationNumberAfterRestore}; PNG metadata/nombre descartados, MIME por contenido, modo original forzado, OG/Twitter y frontera borrador/público preservados).`
+  `Site logo raster publication lifecycle smoke: OK (revisión ${beforeRevision} -> ${savedRevision}; publicación ${publicationNumberBefore} -> ${publicationNumberAfterPublish} -> ${publicationNumberAfterRestore}; PNG metadata/nombre descartados, asset draft privado, MIME por contenido, modo original forzado, favicon/PWA versionados, OG/Twitter y frontera borrador/público preservados).`
 );
