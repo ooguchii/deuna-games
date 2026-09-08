@@ -37,8 +37,8 @@ function expectedRasterFormat(mimeSubtype: string) {
 }
 
 function canonicalRasterMime(format: "png" | "jpg" | "webp") {
-  if (format === "jpg") return "image/jpeg";
-  return `image/${format}`;
+  if (format === "jpg") return "data:image/jpeg";
+  return `data:image/${format}`;
 }
 
 function stripCssComments(value: string) {
