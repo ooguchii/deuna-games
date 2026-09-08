@@ -217,11 +217,18 @@ assert(
     publicMediaRoute.includes("siteBrandRasterContentType") &&
     publicMediaRoute.includes("!isSvg && !isWebm && !isWebp && !isSiteLogoAsset") &&
     publicMediaRoute.includes("safe.digest !== expectedDigest") &&
+    publicMediaRoute.includes("getPublicSiteConfig") &&
+    publicMediaRoute.includes("resolveAdminSession") &&
+    publicMediaRoute.includes("readAdminSessionToken") &&
+    publicMediaRoute.includes("published.logoAsset === publicPath") &&
+    publicMediaRoute.includes("if (isSiteLogoAsset && !siteLogoAccess)") &&
+    publicMediaRoute.includes('siteLogoAccess === "admin"') &&
+    publicMediaRoute.includes('"private, no-store, max-age=0"') &&
     publicMediaRoute.includes("Content-Security-Policy") &&
     publicMediaRoute.includes("img-src data:") &&
     publicMediaRoute.includes("style-src 'unsafe-inline'") &&
     publicMediaRoute.includes("sandbox"),
-  "El namespace del logo debe servir SVG/raster revalidado y content-addressed sin ampliar PNG/JPEG/GIF al resto de multimedia."
+  "El namespace del logo debe servir sólo snapshots publicados de forma pública; los borradores requieren sesión Admin y cache privada, sin ampliar PNG/JPEG/GIF al resto de multimedia."
 );
 
 const globalSecurityHeadersIndex =
