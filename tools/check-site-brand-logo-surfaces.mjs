@@ -143,10 +143,13 @@ assert(
 assert(
   manifest.includes('from "@/lib/site/app-icon"') &&
     manifest.includes("siteAppIconVersion(config)") &&
+    manifest.includes("safeThemeBackground(config.themeColor)") &&
+    manifest.includes("background_color: themeColor") &&
+    manifest.includes("theme_color: themeColor") &&
     manifest.includes("/app-icon/192?v=") &&
     manifest.includes("/app-icon/512?v=") &&
     manifest.includes('purpose: "any"'),
-  "El manifest PWA debe publicar iconos 192/512 derivados de la identidad activa."
+  "El manifest PWA debe usar el tema público seguro y publicar iconos 192/512 derivados de la identidad activa."
 );
 
 let staticFaviconExists = true;
