@@ -7,6 +7,7 @@ import {
   safeThemeBackground,
 } from "@/lib/site/brand-foreground";
 import {
+  resolveSiteLogoColor,
   resolveSiteLogoColorMode,
   type SiteLogoConfig,
 } from "@/lib/site/logo";
@@ -18,6 +19,7 @@ import {
 } from "@/lib/site-logo-image";
 
 export const siteAppIconSizes = [
+  32,
   64,
   180,
   192,
@@ -43,11 +45,11 @@ export function siteAppIconVersion(
     identity.logoAsset,
     identity.logoColorMode
   );
-  const color = (
-    colorMode === "custom"
-      ? identity.logoCustomColor
-      : identity.brandColor
-  )?.replace(/^#/, "").toLowerCase() ?? "none";
+  const color = colorMode === "original"
+    ? "original"
+    : resolveSiteLogoColor(identity)
+      .replace(/^#/, "")
+      .toLowerCase();
   const scale = Math.round(identity.logoScale ?? 100);
 
   return `${assetDigest}-${colorMode}-${color}-${scale}`;
