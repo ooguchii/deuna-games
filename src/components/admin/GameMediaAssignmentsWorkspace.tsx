@@ -625,7 +625,7 @@ export default function GameMediaAssignmentsWorkspace({
               target="hero"
               mode={heroMode}
               disabled={stale}
-            />>
+            />
 
             <div className={styles.current}>
               {heroImageResource ? (
