@@ -41,6 +41,63 @@ function canonicalRasterMime(format: "png" | "jpg" | "webp") {
   return `image/${format}`;
 }
 
+function stripCssComments(value: string) {
+  return value.replace(/\/\*[\s\S]*?\*\//g, "");
+}
+
+/**
+ * Drops non-visual descriptive/exporter fields after the broad SVG parser has
+ * already established that the document is static and structurally safe.
+ * SiteLogoMark renders the asset as decorative background/mask, so these
+ * fields are not part of the accessibility contract and can otherwise carry
+ * author, exporter, prompt or filename traces without changing the picture.
+ */
+function stripNonVisualSiteBrandSvgMetadata(
+  input: Buffer
+) {
+  const source = input.toString("utf8");
+  const withoutDescriptiveElements = source
+    .replace(
+      /<\s*(title|desc)\b[^>]*>[\s\S]*?<\/\s*\1\s*>\s*/gi,
+      ""
+    )
+    .replace(
+      /<\s*(?:title|desc)\b[^>]*\/\s*>\s*/gi,
+      ""
+    );
+  const withoutNonVisualAttributes =
+    withoutDescriptiveElements.replace(
+      /\s+(?:data-[A-Za-z0-9_.:-]+|aria-[A-Za-z0-9_.:-]+|role|tabindex|focusable|title)\s*=\s*(["'])[^"']*\1/gi,
+      ""
+    );
+  const withoutInlineCssComments =
+    withoutNonVisualAttributes.replace(
+      /\bstyle\s*=\s*(["'])([^"']*)\1/gi,
+      (
+        _full,
+        quote: string,
+        value: string
+      ) =>
+        `style=${quote}${stripCssComments(value)}${quote}`
+    );
+  const withoutStyleBlockComments =
+    withoutInlineCssComments.replace(
+      /(<style\b[^>]*>)([\s\S]*?)(<\/style\s*>)/gi,
+      (
+        _full,
+        opening: string,
+        css: string,
+        closing: string
+      ) =>
+        `${opening}${stripCssComments(css)}${closing}`
+    );
+
+  return Buffer.from(
+    withoutStyleBlockComments,
+    "utf8"
+  );
+}
+
 /**
  * Rewrites embedded raster data URIs inside an already-safe brand SVG.
  *
@@ -137,8 +194,10 @@ export function sanitizePrivacySafeSiteBrandLogoSvg(
   const structurallySafe = sanitizeSiteBrandLogoSvg(input);
   if (!structurallySafe) return null;
 
+  const withoutNonVisualMetadata =
+    stripNonVisualSiteBrandSvgMetadata(structurallySafe);
   const sanitized = sanitizeSiteBrandLogoEmbeddedRasters(
-    structurallySafe
+    withoutNonVisualMetadata
   );
 
   if (!sanitized) return null;
@@ -153,6 +212,13 @@ export function inspectPrivacySafeSiteBrandLogoSvg(
 ): SafeTaxonomySvgInspection | null {
   const inspection = inspectSafeSiteBrandLogoSvg(input);
   if (!inspection) return null;
+
+  const withoutNonVisualMetadata =
+    stripNonVisualSiteBrandSvgMetadata(input);
+
+  if (!withoutNonVisualMetadata.equals(input)) {
+    return null;
+  }
 
   const normalized = sanitizeSiteBrandLogoEmbeddedRasters(input);
 
