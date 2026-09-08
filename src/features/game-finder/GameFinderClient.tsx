@@ -33,6 +33,11 @@ import {
   useState,
 } from "react";
 
+import ScreenReaderStatus from "@/components/ui/ScreenReaderStatus";
+import touchStyles from "@/components/ui/TouchTarget.module.css";
+import {
+  useFavoriteGame,
+} from "@/features/favorites/favorite-store";
 import type { Game } from "@/types/game";
 
 import {
@@ -70,7 +75,6 @@ import type {
 import styles from "./GameFinderClient.module.css";
 import overlayStyles from "./GameFinderOverlay.module.css";
 
-const FAVORITES_STORAGE_KEY = "deuna-games:finder-favorites:v2";
 const UNCONFIRMED_OS_OPTION = "Otro / no estoy seguro";
 
 const EMPTY_PROFILE: HardwareProfile = {
@@ -137,20 +141,6 @@ type GameFinderClientProps = {
 
 function nowIso() {
   return new Date().toISOString();
-}
-
-function readStoredFavorites() {
-  try {
-    const raw = window.localStorage.getItem(FAVORITES_STORAGE_KEY);
-    if (!raw) return new Set<string>();
-
-    const values = JSON.parse(raw) as unknown;
-    if (!Array.isArray(values)) return new Set<string>();
-
-    return new Set(values.filter((item): item is string => typeof item === "string"));
-  } catch {
-    return new Set<string>();
-  }
 }
 
 function profileToManualDraft(profile: HardwareProfile | null): ManualDraft {
@@ -308,22 +298,71 @@ function updateTilt(event: ReactPointerEvent<HTMLElement>) {
   node.style.setProperty("--image-y", `${((y - 0.5) * -6).toFixed(2)}px`);
 }
 
+function FinderFavoriteButton({
+  gameSlug,
+  gameTitle,
+  className,
+}: {
+  gameSlug: string;
+  gameTitle: string;
+  className: string;
+}) {
+  const {
+    favorite,
+    pending,
+    toggle,
+  } = useFavoriteGame(gameSlug);
+  const [status, setStatus] = useState("");
+
+  async function handleToggle() {
+    const nextFavorite = !favorite;
+    setStatus("");
+    const saved = await toggle();
+
+    setStatus(
+      saved
+        ? nextFavorite
+          ? `${gameTitle} añadido a favoritos.`
+          : `${gameTitle} quitado de favoritos.`
+        : `No se pudo actualizar el favorito de ${gameTitle}.`
+    );
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        className={`${className} ${touchStyles.minimum} ${favorite ? styles.favoriteButtonActive : ""}`}
+        aria-label={
+          favorite
+            ? `Quitar ${gameTitle} de favoritos`
+            : `Añadir ${gameTitle} a favoritos`
+        }
+        aria-pressed={favorite}
+        aria-busy={pending || undefined}
+        disabled={pending}
+        onClick={() => void handleToggle()}
+        data-game-favorite={gameSlug}
+      >
+        <Heart size={19} fill={favorite ? "currentColor" : "none"} />
+      </button>
+      <ScreenReaderStatus>{status}</ScreenReaderStatus>
+    </>
+  );
+}
+
 function GameResultCard({
   game,
   estimate,
   selected,
-  favorite,
   view,
   onSelect,
-  onFavorite,
 }: {
   game: Game;
   estimate: GameEstimate;
   selected: boolean;
-  favorite: boolean;
   view: ViewMode;
   onSelect: () => void;
-  onFavorite: () => void;
 }) {
   const tier = tierMeta[estimate.tier];
 
@@ -411,15 +450,11 @@ function GameResultCard({
         </div>
       </button>
 
-      <button
-        type="button"
-        className={`${styles.favoriteButton} ${favorite ? styles.favoriteButtonActive : ""}`}
-        aria-label={favorite ? `Quitar ${game.title} de favoritos` : `Añadir ${game.title} a favoritos`}
-        aria-pressed={favorite}
-        onClick={onFavorite}
-      >
-        <Heart size={19} fill={favorite ? "currentColor" : "none"} />
-      </button>
+      <FinderFavoriteButton
+        gameSlug={game.slug}
+        gameTitle={game.title}
+        className={styles.favoriteButton}
+      />
     </article>
   );
 }
@@ -465,8 +500,6 @@ export default function GameFinderClient({
     storedSelectionIsValid
       ? selectedGameState.slug
       : validFocusedSlug ?? games[0]?.slug ?? "";
-  const [favorites, setFavorites] = useState<Set<string>>(() => new Set());
-  const [favoritesHydrated, setFavoritesHydrated] = useState(false);
 
   const runDetection = useCallback(async (preferredProfile: HardwareProfile | null = null) => {
     setDetectionState("detecting");
@@ -491,8 +524,6 @@ export default function GameFinderClient({
   useEffect(() => {
     const timer = window.setTimeout(() => {
       const saved = readStoredHardwareProfile();
-      setFavorites(readStoredFavorites());
-      setFavoritesHydrated(true);
 
       if (saved) {
         setHardware(saved);
@@ -565,16 +596,6 @@ export default function GameFinderClient({
       // El sitio funciona aunque el usuario bloquee localStorage.
     }
   }, [hardware]);
-
-  useEffect(() => {
-    if (!favoritesHydrated) return;
-
-    try {
-      window.localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify([...favorites]));
-    } catch {
-      // Favoritos locales opcionales.
-    }
-  }, [favorites, favoritesHydrated]);
 
   useEffect(() => {
     if (!settingsOpen) return;
@@ -688,15 +709,6 @@ export default function GameFinderClient({
     setSelectedGameState({
       focusKey: validFocusedSlug,
       slug,
-    });
-  }
-
-  function toggleFavorite(slug: string) {
-    setFavorites((current) => {
-      const next = new Set(current);
-      if (next.has(slug)) next.delete(slug);
-      else next.add(slug);
-      return next;
     });
   }
 
@@ -1089,10 +1101,8 @@ export default function GameFinderClient({
                   game={game}
                   estimate={estimates.get(game.slug)!}
                   selected={selectedGame?.slug === game.slug}
-                  favorite={favorites.has(game.slug)}
                   view={view}
                   onSelect={() => setSelectedSlug(game.slug)}
-                  onFavorite={() => toggleFavorite(game.slug)}
                 />
               ))
             ) : (
@@ -1119,14 +1129,11 @@ export default function GameFinderClient({
                 )}
                 <div className={styles.detailShade} aria-hidden="true" />
 
-                <button
-                  type="button"
-                  className={`${styles.detailFavorite} ${favorites.has(selectedGame.slug) ? styles.favoriteButtonActive : ""}`}
-                  onClick={() => toggleFavorite(selectedGame.slug)}
-                  aria-label={favorites.has(selectedGame.slug) ? "Quitar de favoritos" : "Añadir a favoritos"}
-                >
-                  <Heart size={19} fill={favorites.has(selectedGame.slug) ? "currentColor" : "none"} />
-                </button>
+                <FinderFavoriteButton
+                  gameSlug={selectedGame.slug}
+                  gameTitle={selectedGame.title}
+                  className={styles.detailFavorite}
+                />
               </div>
 
               <div className={styles.detailBody}>

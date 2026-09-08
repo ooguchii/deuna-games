@@ -351,6 +351,42 @@ async function grantRuntimePrivileges(
       TO ${role};
 
     GRANT SELECT (
+        user_id,
+        digest,
+        image_webp,
+        width,
+        height,
+        updated_at
+      )
+      ON deuna_accounts.avatars
+      TO ${role};
+
+    GRANT INSERT (
+        user_id,
+        digest,
+        image_webp,
+        width,
+        height,
+        updated_at
+      )
+      ON deuna_accounts.avatars
+      TO ${role};
+
+    GRANT UPDATE (
+        digest,
+        image_webp,
+        width,
+        height,
+        updated_at
+      )
+      ON deuna_accounts.avatars
+      TO ${role};
+
+    GRANT DELETE
+      ON deuna_accounts.avatars
+      TO ${role};
+
+    GRANT SELECT (
         id,
         user_id,
         token_hash,

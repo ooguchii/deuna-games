@@ -1,0 +1,6 @@
+.favorite {
+  position: absolute;
+  z-index: 30;
+  top: 7px;
+  right: 7px;
+}

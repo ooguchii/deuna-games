@@ -21,7 +21,8 @@ const [
   libraryRoute,
   viewportEditor,
   cardResolver,
-  card,
+  cardWrapper,
+  cardBase,
   hoverPreview,
   framedVideo,
   framedLayout,
@@ -43,6 +44,7 @@ const [
   source("src/components/admin/GameVideoViewportEditor.tsx"),
   source("src/lib/media/game-card-preview.ts"),
   source("src/components/ui/UniversalGameCard.tsx"),
+  source("src/components/ui/UniversalGameCardBase.tsx"),
   source("src/components/ui/HoverPreviewMedia.tsx"),
   source("src/components/ui/FramedVideo.tsx"),
   source("src/lib/media/framed-media-layout.ts"),
@@ -232,7 +234,17 @@ assert(
 
 assert(
   has(
-    card,
+    cardWrapper,
+    "UniversalGameCardBase",
+    "GameFavoriteButton",
+    "variant={variant}"
+  ),
+  "UniversalGameCard debe seguir delegando el renderer multimedia canónico al base y limitarse a componer el control de favorito."
+);
+
+assert(
+  has(
+    cardBase,
     'resolveGameDestinationMediaMode(game, "card")',
     "const resolvedPreview = resolveGameCardPreview(game)",
     "const cardImage = game.cardImage ?? game.coverImage",
@@ -241,7 +253,7 @@ assert(
     'const hoverPreviewEnabled = cardMode === "hover-video"',
     "PREVIEW_DELAY_MS"
   ),
-  "UniversalGameCard debe consumir cardImage propio, reproducir Video continuo o hover según modo y mantener fallback sólo para contenido histórico."
+  "UniversalGameCardBase debe consumir cardImage propio, reproducir Video continuo o hover según modo y mantener fallback sólo para contenido histórico."
 );
 
 assert(
@@ -299,7 +311,8 @@ const activePreviewSources = [
   libraryRoute,
   viewportEditor,
   cardResolver,
-  card,
+  cardWrapper,
+  cardBase,
   importRoute,
   uploadRoute,
   layoutRoute,

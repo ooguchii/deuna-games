@@ -1,4 +1,7 @@
 import {
+  getAccountAvatarMetadata,
+} from "@/lib/accounts/avatar-service";
+import {
   getAccountGamePreferences,
 } from "@/lib/accounts/personalization-service";
 import {
@@ -23,20 +26,25 @@ export default async function Header() {
     readAccountSession(),
   ]);
   let notifications: AccountUpdateNotification[] | null = [];
+  let accountAvatarVersion: string | null = null;
 
   if (session) {
-    try {
-      const [preferences, updates] = await Promise.all([
+    const [resolvedNotifications, avatarMetadata] = await Promise.all([
+      Promise.all([
         getAccountGamePreferences(session.userId),
         getPublicResolvedUpdates(),
-      ]);
-      notifications = resolveAccountUpdateNotifications(
-        preferences,
-        updates
-      );
-    } catch {
-      notifications = null;
-    }
+      ])
+        .then(([preferences, updates]) =>
+          resolveAccountUpdateNotifications(preferences, updates)
+        )
+        .catch(() => null),
+      getAccountAvatarMetadata(session.userId).catch(() => null),
+    ]);
+
+    notifications = resolvedNotifications;
+    accountAvatarVersion = avatarMetadata
+      ? avatarMetadata.updatedAt.getTime().toString(36)
+      : null;
   }
 
   return (
@@ -51,6 +59,7 @@ export default async function Header() {
           : null
       }
       accountNotifications={notifications}
+      accountAvatarVersion={accountAvatarVersion}
     />
   );
 }

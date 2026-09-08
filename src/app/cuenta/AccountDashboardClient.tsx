@@ -46,6 +46,7 @@ import {
 } from "@/lib/accounts/dashboard-view";
 import type { GameImageViewport } from "@/types/game";
 
+import AccountAvatarEditor from "./AccountAvatarEditor";
 import {
   AccountRewardSummary,
   AccountRewardsView,
@@ -1162,6 +1163,8 @@ export default function AccountDashboardClient({
           </div>
           <strong>@{profile.username}</strong>
         </div>
+
+        <AccountAvatarEditor username={profile.username} />
 
         <form className={styles.profileForm} onSubmit={handleProfileSave}>
           <div className={styles.field}>
