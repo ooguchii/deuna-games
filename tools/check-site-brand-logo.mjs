@@ -103,6 +103,15 @@ assert(
 );
 
 assert(
+  logoEditor.includes("useEffect") &&
+    logoEditor.includes('closest("form")') &&
+    logoEditor.includes('form.addEventListener("submit", blockSubmit)') &&
+    logoEditor.includes("control.disabled = true") &&
+    logoEditor.includes("disabledBeforeUpload"),
+  "Mientras el SVG se valida, el formulario de Identidad debe bloquear también submit por botón o Enter para no guardar el logo anterior por carrera."
+);
+
+assert(
   logoUploadRoute.includes("authorizeAdminMediaRequest") &&
     logoUploadRoute.includes("hasExactAdminMediaFormFields") &&
     logoUploadRoute.includes("expectedRevision") &&
