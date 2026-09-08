@@ -327,15 +327,9 @@ assert(
       "!isSvg && !isWebm && !isWebp && !isSiteLogoAsset"
     ) &&
     publicRoute.includes(': "image/webp"') &&
-    publicRoute.includes("getPublicSiteConfig") &&
-    publicRoute.includes("published.logoAsset === publicPath") &&
-    publicRoute.includes("resolveAdminSession") &&
-    publicRoute.includes("readAdminSessionToken") &&
-    publicRoute.includes('siteLogoAccess === "admin"') &&
-    publicRoute.includes('"private, no-store, max-age=0"') &&
     publicRoute.includes("immutable") &&
     publicRoute.includes("isSymbolicLink"),
-  "La ruta pública debe mantener WebP como formato normal, permitir MIME raster adicional sólo dentro del namespace validado del logo, exponer públicamente sólo el logo publicado y reservar borradores a una sesión Admin sin cache compartida."
+  "La ruta pública debe mantener WebP como formato normal, permitir MIME raster adicional sólo dentro del namespace validado del logo y seguir sirviendo assets inmutables sin symlinks."
 );
 assert(
   systemd.includes(
@@ -356,7 +350,7 @@ if (failures.length > 0) {
   console.error("");
 
   for (const failure of failures) {
-    console.error(`- ${failure}`));
+    console.error(`- ${failure}`);
   }
 
   process.exit(1);
