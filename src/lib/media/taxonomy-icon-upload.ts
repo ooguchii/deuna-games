@@ -21,10 +21,12 @@ import {
   type SiteBrandRasterFormat,
 } from "./safe-site-logo-raster";
 import {
-  inspectSafeSiteBrandLogoSvg,
+  inspectPrivacySafeSiteBrandLogoSvg,
+  sanitizePrivacySafeSiteBrandLogoSvg,
+} from "./safe-site-logo-svg";
+import {
   inspectSafeTaxonomySvgIcon,
   sanitizeTaxonomySvgIcon,
-  sanitizeSiteBrandLogoSvg,
 } from "./safe-svg-icon";
 import {
   inspectSafeEditorialWebp,
@@ -100,7 +102,7 @@ function inspectStoredIcon(
 ) {
   if (format === "svg") {
     return slug === SITE_BRAND_LOGO_SLUG
-      ? inspectSafeSiteBrandLogoSvg(buffer)
+      ? inspectPrivacySafeSiteBrandLogoSvg(buffer)
       : inspectSafeTaxonomySvgIcon(buffer);
   }
 
@@ -254,9 +256,9 @@ export async function storeSiteBrandLogo(
     await file.arrayBuffer()
   );
 
-  const svgBuffer = sanitizeSiteBrandLogoSvg(input);
+  const svgBuffer = sanitizePrivacySafeSiteBrandLogoSvg(input);
   const svgInspection = svgBuffer
-    ? inspectSafeSiteBrandLogoSvg(svgBuffer)
+    ? inspectPrivacySafeSiteBrandLogoSvg(svgBuffer)
     : null;
 
   if (svgBuffer && svgInspection) {
