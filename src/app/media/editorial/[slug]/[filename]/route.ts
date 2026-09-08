@@ -11,6 +11,11 @@ import {
   resolveEditorialMediaDiskPath,
 } from "@/lib/media/editorial-media";
 import {
+  inspectSafeSiteBrandLogoRaster,
+  siteBrandRasterContentType,
+  type SiteBrandRasterFormat,
+} from "@/lib/media/safe-site-logo-raster";
+import {
   inspectSafeSiteBrandLogoSvg,
   inspectSafeTaxonomySvgIcon,
   MAX_TAXONOMY_SVG_ICON_BYTES,
@@ -210,6 +215,16 @@ async function readFileRange(
   }
 }
 
+function siteLogoRasterFormat(
+  filename: string
+): SiteBrandRasterFormat | null {
+  if (filename.endsWith(".png")) return "png";
+  if (filename.endsWith(".jpg")) return "jpg";
+  if (filename.endsWith(".webp")) return "webp";
+  if (filename.endsWith(".gif")) return "gif";
+  return null;
+}
+
 export async function GET(
   request: Request,
   context: {
@@ -222,16 +237,23 @@ export async function GET(
   const { slug, filename } = await context.params;
   const isSvg = filename.endsWith(".svg");
   const isWebm = filename.endsWith(".webm");
+  const isWebp = filename.endsWith(".webp");
   const isTaxonomyAsset = slug === TAXONOMY_ICON_SLUG;
   const isSiteLogoAsset = slug === SITE_BRAND_LOGO_SLUG;
-  const isSvgNamespace = isTaxonomyAsset || isSiteLogoAsset;
+  const isRestrictedImageNamespace =
+    isTaxonomyAsset || isSiteLogoAsset;
+  const logoRasterFormat = isSiteLogoAsset
+    ? siteLogoRasterFormat(filename)
+    : null;
 
   if (
     !isEditorialMediaSlug(slug) ||
     !isEditorialMediaFilename(filename) ||
-    (isSvg && !isSvgNamespace) ||
-    (isWebm && isSvgNamespace) ||
-    (isSiteLogoAsset && !isSvg)
+    (isSvg && !isRestrictedImageNamespace) ||
+    (isWebm && isRestrictedImageNamespace) ||
+    (!isSvg && !isWebm && !isWebp && !isSiteLogoAsset) ||
+    (isTaxonomyAsset && !isSvg && !isWebp) ||
+    (isSiteLogoAsset && !isSvg && !logoRasterFormat)
   ) {
     return notFoundResponse();
   }
@@ -339,13 +361,26 @@ export async function GET(
       ? isSiteLogoAsset
         ? inspectSafeSiteBrandLogoSvg(content)
         : inspectSafeTaxonomySvgIcon(content)
-      : inspectSafeEditorialWebp(content);
+      : isSiteLogoAsset && logoRasterFormat
+        ? inspectSafeSiteBrandLogoRaster(
+            content,
+            logoRasterFormat
+          )
+        : inspectSafeEditorialWebp(content);
+    const expectedDigest = filename.slice(
+      0,
+      filename.lastIndexOf(".")
+    );
 
     if (
       !safe ||
       (
+        isSiteLogoAsset &&
+        safe.digest !== expectedDigest
+      ) ||
+      (
         isSvg &&
-        safe.digest !== filename.slice(0, -".svg".length)
+        safe.digest !== expectedDigest
       )
     ) {
       return notFoundResponse();
@@ -362,7 +397,10 @@ export async function GET(
       : {
           ...sharedHeaders,
           "Content-Length": String(content.length),
-          "Content-Type": "image/webp",
+          "Content-Type":
+            isSiteLogoAsset && logoRasterFormat
+              ? siteBrandRasterContentType(logoRasterFormat)
+              : "image/webp",
         };
 
     return new Response(new Uint8Array(content), {
