@@ -3,10 +3,10 @@ import {
   MAX_TAXONOMY_SVG_ICON_BYTES,
   sanitizeSiteBrandLogoSvg,
   type SafeTaxonomySvgInspection,
-} from "./safe-svg-icon";
+} from "./safe-svg-icon.ts";
 import {
   sanitizeSiteBrandLogoRaster,
-} from "./safe-site-logo-raster";
+} from "./safe-site-logo-raster.ts";
 
 const embeddedRasterDataUriPattern =
   /\b(href|xlink:href)\s*=\s*(["'])data:image\/(png|jpe?g|webp);base64,([A-Za-z0-9+/=\s]+)\2/gi;
