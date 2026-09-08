@@ -28,6 +28,7 @@ const [
   logoReader,
   safeSvg,
   publicMediaRoute,
+  nextConfig,
   publicConfig,
   rootLayout,
   logoRenderer,
@@ -53,6 +54,7 @@ const [
   source("src/lib/media/site-brand-logo.ts"),
   source("src/lib/media/safe-svg-icon.ts"),
   source("src/app/media/editorial/[slug]/[filename]/route.ts"),
+  source("next.config.ts"),
   source("src/lib/site/public-site-config.ts"),
   source("src/app/layout.tsx"),
   source("src/components/brand/SiteLogoMark.tsx"),
@@ -174,6 +176,21 @@ assert(
     publicMediaRoute.includes('safe.digest !== filename.slice(0, -".svg".length)') &&
     publicMediaRoute.includes("Content-Security-Policy"),
   "El namespace del logo sólo debe servir SVG revalidado, content-addressed y aislado; no debe abrir SVG arbitrario en otras carpetas."
+);
+
+const globalSecurityHeadersIndex =
+  nextConfig.indexOf('source: "/(.*)"');
+const editorialMediaHeadersIndex =
+  nextConfig.indexOf('source: "/media/editorial/:path*"');
+
+assert(
+  nextConfig.includes("editorialMediaContentSecurityPolicy") &&
+    nextConfig.includes(
+      '"default-src \'none\'; style-src \'none\'; sandbox"'
+    ) &&
+    globalSecurityHeadersIndex >= 0 &&
+    editorialMediaHeadersIndex > globalSecurityHeadersIndex,
+  "La CSP aislada de multimedia editorial debe declararse después de la regla global para que Next no la reemplace por default-src self."
 );
 
 assert(
