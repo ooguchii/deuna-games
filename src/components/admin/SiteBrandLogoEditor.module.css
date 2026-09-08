@@ -7,7 +7,7 @@
   border-radius: 18px;
   background:
     radial-gradient(circle at 0 0, color-mix(in srgb, var(--brand) 9%, transparent), transparent 42%),
-    color-mix(in srgb, var(--surface-strong) 92%, transparent);
+    color-mix(in srgb, var(--surface-2) 92%, transparent);
 }
 
 .heading {
