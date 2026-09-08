@@ -9,6 +9,10 @@ import {
 import path from "node:path";
 
 import {
+  SITE_BRAND_LOGO_SLUG,
+} from "@/lib/site/logo";
+
+import {
   buildEditorialMediaPublicPath,
   getEditorialMediaRoot,
 } from "./editorial-media";
@@ -24,11 +28,23 @@ import {
 const TAXONOMY_ICON_SLUG = "taxonomy-icons";
 const MAX_TAXONOMY_WEBP_DIMENSION = 2_048;
 
+type IconStorageSlug =
+  | typeof TAXONOMY_ICON_SLUG
+  | typeof SITE_BRAND_LOGO_SLUG;
+
 export type TaxonomyIconUploadResult = {
   publicPath: string;
   digest: string;
   bytes: number;
   format: "svg" | "webp";
+  reused: boolean;
+};
+
+export type SiteBrandLogoUploadResult = {
+  publicPath: string;
+  digest: string;
+  bytes: number;
+  format: "svg";
   reused: boolean;
 };
 
@@ -78,6 +94,7 @@ function inspectStoredIcon(
 }
 
 async function writeHashedIcon(
+  slug: IconStorageSlug,
   format: "svg" | "webp",
   buffer: Buffer,
   digest: string
@@ -86,7 +103,7 @@ async function writeHashedIcon(
   const root = getEditorialMediaRoot();
   const iconDirectory = path.join(
     root,
-    TAXONOMY_ICON_SLUG
+    slug
   );
   const filePath = path.join(
     iconDirectory,
@@ -142,48 +159,77 @@ async function writeHashedIcon(
 
   return {
     publicPath: buildEditorialMediaPublicPath(
-      TAXONOMY_ICON_SLUG,
+      slug,
       filename
     ),
     reused,
   };
 }
 
+async function storeSafeSvgIcon(
+  file: File,
+  slug: IconStorageSlug
+): Promise<SiteBrandLogoUploadResult> {
+  if (file.type.toLowerCase() !== "image/svg+xml") {
+    throw new Error(
+      "El símbolo debe estar en formato SVG."
+    );
+  }
+
+  const input = Buffer.from(
+    await file.arrayBuffer()
+  );
+  const buffer = sanitizeTaxonomySvgIcon(input);
+  const inspection = buffer
+    ? inspectSafeTaxonomySvgIcon(buffer)
+    : null;
+
+  if (!buffer || !inspection) {
+    throw new Error(
+      "El SVG contiene estructura o atributos que no son seguros para un icono."
+    );
+  }
+
+  const stored = await writeHashedIcon(
+    slug,
+    "svg",
+    buffer,
+    inspection.digest
+  );
+
+  return {
+    ...stored,
+    digest: inspection.digest,
+    bytes: inspection.bytes,
+    format: "svg",
+  };
+}
+
+export function storeSiteBrandLogo(
+  file: File
+) {
+  return storeSafeSvgIcon(
+    file,
+    SITE_BRAND_LOGO_SLUG
+  );
+}
+
 export async function storeTaxonomyIcon(
   file: File
 ): Promise<TaxonomyIconUploadResult> {
   const type = file.type.toLowerCase();
-  const input = Buffer.from(
-    await file.arrayBuffer()
-  );
 
   if (type === "image/svg+xml") {
-    const buffer = sanitizeTaxonomySvgIcon(input);
-    const inspection = buffer
-      ? inspectSafeTaxonomySvgIcon(buffer)
-      : null;
-
-    if (!buffer || !inspection) {
-      throw new Error(
-        "El SVG contiene estructura o atributos que no son seguros para un icono."
-      );
-    }
-
-    const stored = await writeHashedIcon(
-      "svg",
-      buffer,
-      inspection.digest
+    return storeSafeSvgIcon(
+      file,
+      TAXONOMY_ICON_SLUG
     );
-
-    return {
-      ...stored,
-      digest: inspection.digest,
-      bytes: inspection.bytes,
-      format: "svg",
-    };
   }
 
   if (type === "image/webp") {
+    const input = Buffer.from(
+      await file.arrayBuffer()
+    );
     const buffer = sanitizeEditorialWebp(input);
     const inspection = buffer
       ? inspectSafeEditorialWebp(buffer)
@@ -202,6 +248,7 @@ export async function storeTaxonomyIcon(
     }
 
     const stored = await writeHashedIcon(
+      TAXONOMY_ICON_SLUG,
       "webp",
       buffer,
       inspection.digest
