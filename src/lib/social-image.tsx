@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element -- ImageResponse necesita un img nativo para renderizar el data URI SVG saneado server-side. */
 import "server-only";
 
 import { Gamepad2 } from "lucide-react";
