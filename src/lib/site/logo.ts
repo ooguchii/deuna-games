@@ -4,6 +4,7 @@ export const siteBrandLogoAssetPattern =
   /^\/media\/editorial\/site-brand-logo\/[a-f0-9]{64}\.svg$/;
 
 export const siteLogoColorModes = [
+  "original",
   "brand",
   "custom",
 ] as const;
