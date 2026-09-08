@@ -1,6 +1,8 @@
 import {
-  createSiteAppIcon,
   isSiteAppIconSize,
+} from "@/lib/site/app-icon";
+import {
+  createSiteAppIcon,
 } from "@/lib/site-app-icon";
 
 export const dynamic = "force-dynamic";
