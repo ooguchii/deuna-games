@@ -6,6 +6,7 @@ import "./preflight-v2.ts";
 export const preflightPrivacyContract = {
   removableAccountData: [
     "deuna_accounts.users",
+    "deuna_accounts.avatars",
     "deuna_accounts.recovery_codes",
     "deuna_accounts.game_preferences",
     "deuna_accounts.hardware_profiles",
