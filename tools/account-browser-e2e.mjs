@@ -708,11 +708,6 @@ try {
     `document.body.innerText.includes("Foto de perfil actualizada.")`,
     "Guardado del avatar privado"
   );
-  await waitFor(
-    cdp,
-    `Boolean(document.querySelector('button[aria-label^="Menú de Mi DeUna de "] span[style*="background-image"]'))`,
-    "Avatar reflejado en Header sin recarga"
-  );
   const storedAvatar = await cdp.evaluate(`
     (async () => {
       const response = await fetch("/api/account/avatar", {
@@ -737,8 +732,18 @@ try {
       `El avatar persistido no conserva el contrato WebP privado: ${JSON.stringify(storedAvatar)}.`
     );
   }
-  await screenshot(cdp, "04-avatar-activo");
+  await screenshot(cdp, "04-avatar-activo-cuenta");
 
+  await navigate(cdp, "/");
+  await waitFor(
+    cdp,
+    `Boolean(document.querySelector('button[aria-label^="Menú de Mi DeUna de "] span[style*="background-image"]'))`,
+    "Avatar privado visible en Header público"
+  );
+  await screenshot(cdp, "04-avatar-header-public");
+
+  await navigate(cdp, "/cuenta?vista=profile");
+  await waitFor(cdp, `Boolean(document.querySelector("#account-avatar-input"))`, "Regreso al editor de avatar privado");
   await setInput(cdp, "#dashboard-display-name", displayName);
   await setInput(
     cdp,
@@ -760,13 +765,22 @@ try {
   if (!profilePersisted) {
     throw new Error("El perfil privado no sobrevivió a una navegación completa.");
   }
+  await screenshot(cdp, "04-perfil-persistido");
+
+  await navigate(cdp, "/");
   await waitFor(
     cdp,
     `Boolean(document.querySelector('button[aria-label^="Menú de Mi DeUna de "] span[style*="background-image"]'))`,
-    "Avatar persistido en Header tras navegación completa"
+    "Avatar persistido en Header público tras navegación completa"
   );
-  await screenshot(cdp, "04-perfil-persistido");
+  await screenshot(cdp, "04-avatar-persistido-public");
 
+  await navigate(cdp, "/cuenta?vista=profile");
+  await waitFor(
+    cdp,
+    `Array.from(document.querySelectorAll("button")).some((entry) => entry.textContent?.trim() === "Quitar foto")`,
+    "Avatar privado disponible para eliminar"
+  );
   const removeAvatarClicked = await cdp.evaluate(`
     (() => {
       const button = Array.from(document.querySelectorAll("button")).find((entry) => entry.textContent?.trim() === "Quitar foto");
@@ -783,11 +797,6 @@ try {
     `document.body.innerText.includes("Foto de perfil eliminada.")`,
     "Eliminación del avatar privado"
   );
-  await waitFor(
-    cdp,
-    `!Boolean(document.querySelector('button[aria-label^="Menú de Mi DeUna de "] span[style*="background-image"]'))`,
-    "Fallback del Header restaurado al quitar avatar"
-  );
   const avatarStatusAfterDelete = await cdp.evaluate(`
     (async () => {
       const response = await fetch("/api/account/avatar", {
@@ -802,7 +811,14 @@ try {
       `Quitar avatar debe restaurar 204, recibió ${avatarStatusAfterDelete}.`
     );
   }
-  await screenshot(cdp, "04-avatar-eliminado");
+
+  await navigate(cdp, "/");
+  await waitFor(
+    cdp,
+    `Boolean(document.querySelector('button[aria-label^="Menú de Mi DeUna de "]')) && !Boolean(document.querySelector('button[aria-label^="Menú de Mi DeUna de "] span[style*="background-image"]'))`,
+    "Fallback del Header público restaurado tras eliminar avatar"
+  );
+  await screenshot(cdp, "04-avatar-eliminado-public");
 
   await navigate(cdp, `/juegos/${encodeURIComponent(game.value)}`);
   const publicAccountState = await cdp.evaluate(`
@@ -868,6 +884,7 @@ try {
       avatarEmptyStatus: 204,
       avatarLifecycle: true,
       avatarHeaderSync: true,
+      avatarHeaderPublicBoundary: true,
       publicAccountBoundary: true,
       deletion: true,
       reauthenticationAfterDeletion: false,
@@ -881,7 +898,7 @@ try {
   );
 
   console.log(
-    "Cuenta browser E2E: OK (login real, Mi PC, favoritos públicos, avatar privado/Header, Mis juegos, perfil, ficha pública y eliminación de la cuenta temporal en PostgreSQL)."
+    "Cuenta browser E2E: OK (login real, Mi PC, favoritos públicos, avatar privado/Header público, Mis juegos, perfil, ficha pública y eliminación de la cuenta temporal en PostgreSQL)."
   );
 } catch (error) {
   if (browserError.trim()) {
