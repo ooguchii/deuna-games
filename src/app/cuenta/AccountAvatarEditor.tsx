@@ -7,7 +7,6 @@ import {
   Trash2,
   UserRound,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
 import {
   useRef,
   useState,
@@ -154,7 +153,6 @@ export default function AccountAvatarEditor({
 }: {
   username: string;
 }) {
-  const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [revision, setRevision] = useState(0);
   const [hasAvatar, setHasAvatar] = useState<boolean | null>(null);
@@ -162,9 +160,8 @@ export default function AccountAvatarEditor({
   const [message, setMessage] = useState<string | null>(null);
   const avatarSrc = `/api/account/avatar?r=${revision}`;
 
-  function refreshAvatarState() {
+  function refreshAvatarPreview() {
     setRevision((current) => current + 1);
-    router.refresh();
   }
 
   async function handleSelection(file: File | undefined) {
@@ -194,7 +191,7 @@ export default function AccountAvatarEditor({
 
       setHasAvatar(true);
       setMessage("Foto de perfil actualizada.");
-      refreshAvatarState();
+      refreshAvatarPreview();
     } catch (error) {
       const reason = error instanceof Error ? error.message : "servicio";
       setMessage(
@@ -238,7 +235,7 @@ export default function AccountAvatarEditor({
 
       setHasAvatar(false);
       setMessage("Foto de perfil eliminada.");
-      refreshAvatarState();
+      refreshAvatarPreview();
     } catch {
       setMessage("No se pudo eliminar la foto de perfil.");
     } finally {
