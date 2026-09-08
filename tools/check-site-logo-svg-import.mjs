@@ -51,13 +51,19 @@ assert.match(styledOutput.toString(), /<style type="text\/css">/);
 assert.ok(recolorSafeSiteBrandLogoSvg(styledOutput, "#ff0847"), "Recoloring remains available for Marca/Personalizado modes");
 assert.ok(recolorSafeSiteBrandLogoSvg(recraftOutput, "#ff0847"), "Gradient SVGs can be recolored for social output");
 
+const hostileMetadataOutput = sanitize(
+  root('<metadata><script>alert(1)</script></metadata>' + drawing)
+);
+assert.ok(hostileMetadataOutput, "Discard metadata wholesale before storing the drawing");
+assert.doesNotMatch(hostileMetadataOutput.toString(), /metadata|script|alert/);
+assert.ok(inspectSafeSiteBrandLogoSvg(hostileMetadataOutput), "Metadata-stripped output remains safe and canonical");
+
 assert.equal(sanitizeTaxonomySvgIcon(Buffer.from(potraceExport)), null, "Taxonomy SVG policy stays intentionally strict");
 assert.ok(sanitize(root(drawing)));
 
 for (const source of [
   '<!DOCTYPE svg [<!ENTITY x "test">]>' + root(drawing),
   '<!DOCTYPE svg SYSTEM "file:///etc/passwd" [<!ENTITY x SYSTEM "file:///etc/passwd">]>' + root(drawing),
-  root('<metadata><script>alert(1)</script></metadata>' + drawing),
   root('<script>alert(1)</script>' + drawing),
   root('<foreignObject><div>html</div></foreignObject>' + drawing),
   root('<path onload="alert(1)" d="M0 0"/>'),
@@ -77,4 +83,4 @@ assert.equal(sanitizeSiteBrandLogoSvg(Buffer.alloc(256 * 1024 + 1)), null);
 assert.equal(sanitizeSiteBrandLogoSvg(Buffer.from([0xff])), null);
 assert.equal(sanitize('<svg xmlns="http://www.w3.org/2000/svg"><path d="M0 0"/></svg>'), null, "Require a scalable viewBox");
 
-console.log("Site logo SVG import: OK (Potrace/Recraft normalization, multicolor gradients, safe static CSS/data assets, stored validation, recoloring and active-content rejection).");
+console.log("Site logo SVG import: OK (Potrace/Recraft normalization, multicolor gradients, safe static CSS/data assets, metadata stripping, stored validation, recoloring and active-content rejection).");
