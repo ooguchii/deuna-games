@@ -33,6 +33,8 @@ import {
   useState,
 } from "react";
 
+import ScreenReaderStatus from "@/components/ui/ScreenReaderStatus";
+import touchStyles from "@/components/ui/TouchTarget.module.css";
 import {
   useFavoriteGame,
 } from "@/features/favorites/favorite-store";
@@ -310,23 +312,42 @@ function FinderFavoriteButton({
     pending,
     toggle,
   } = useFavoriteGame(gameSlug);
+  const [status, setStatus] = useState("");
+
+  async function handleToggle() {
+    const nextFavorite = !favorite;
+    setStatus("");
+    const saved = await toggle();
+
+    setStatus(
+      saved
+        ? nextFavorite
+          ? `${gameTitle} añadido a favoritos.`
+          : `${gameTitle} quitado de favoritos.`
+        : `No se pudo actualizar el favorito de ${gameTitle}.`
+    );
+  }
 
   return (
-    <button
-      type="button"
-      className={`${className} ${favorite ? styles.favoriteButtonActive : ""}`}
-      aria-label={
-        favorite
-          ? `Quitar ${gameTitle} de favoritos`
-          : `Añadir ${gameTitle} a favoritos`
-      }
-      aria-pressed={favorite}
-      aria-busy={pending || undefined}
-      disabled={pending}
-      onClick={() => void toggle()}
-    >
-      <Heart size={19} fill={favorite ? "currentColor" : "none"} />
-    </button>
+    <>
+      <button
+        type="button"
+        className={`${className} ${touchStyles.minimum} ${favorite ? styles.favoriteButtonActive : ""}`}
+        aria-label={
+          favorite
+            ? `Quitar ${gameTitle} de favoritos`
+            : `Añadir ${gameTitle} a favoritos`
+        }
+        aria-pressed={favorite}
+        aria-busy={pending || undefined}
+        disabled={pending}
+        onClick={() => void handleToggle()}
+        data-game-favorite={gameSlug}
+      >
+        <Heart size={19} fill={favorite ? "currentColor" : "none"} />
+      </button>
+      <ScreenReaderStatus>{status}</ScreenReaderStatus>
+    </>
   );
 }
 
