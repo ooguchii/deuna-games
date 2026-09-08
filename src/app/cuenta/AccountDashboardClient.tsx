@@ -205,7 +205,7 @@ const libraryLabels: Record<NonNullable<Preference["libraryState"]>, string> = {
   completed: "Terminado",
 };
 
-const memoryLabels: Record<NonNullable<HardwareSelection>["memoryMode"]>, string> = {
+const memoryLabels: Record<NonNullable<HardwareSelection>["memoryMode"], string> = {
   unknown: "No especificada",
   single: "Single channel",
   dual: "Dual channel",
