@@ -6,8 +6,8 @@ import {
 } from "react";
 
 import {
-  ACCOUNT_AVATAR_CHANGED_EVENT,
-} from "@/lib/accounts/avatar-events";
+  useAccountAvatarRevision,
+} from "@/lib/accounts/avatar-client-state";
 import type {
   AccountUpdateNotification,
 } from "@/lib/accounts/update-notifications";
@@ -29,29 +29,11 @@ type AvatarState = {
 };
 
 export default function HeaderClient(props: HeaderClientProps) {
-  const [revision, setRevision] = useState(0);
+  const revision = useAccountAvatarRevision();
   const [avatar, setAvatar] = useState<AvatarState | null>(null);
   const avatarKey = props.accountIdentity
     ? `${props.accountIdentity.username}:${revision}`
     : null;
-
-  useEffect(() => {
-    const handleAvatarChanged = () => {
-      setRevision((current) => current + 1);
-    };
-
-    window.addEventListener(
-      ACCOUNT_AVATAR_CHANGED_EVENT,
-      handleAvatarChanged
-    );
-
-    return () => {
-      window.removeEventListener(
-        ACCOUNT_AVATAR_CHANGED_EVENT,
-        handleAvatarChanged
-      );
-    };
-  }, []);
 
   useEffect(() => {
     if (!avatarKey) return;
