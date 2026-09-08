@@ -125,8 +125,9 @@ export default function SiteBrandLogoEditor({
       }
 
       setAsset(payload.publicPath);
+      setColorMode("original");
       setMessage(
-        "Logo validado. Guarda el borrador para incorporarlo a la identidad."
+        "Logo validado. Se conservarán los colores del SVG; guarda el borrador para incorporarlo a la identidad."
       );
     } catch {
       setMessage(
@@ -181,6 +182,7 @@ export default function SiteBrandLogoEditor({
                 strokeWidth={1.9}
                 asset={asset || null}
                 color={logoColor}
+                colorMode={colorMode}
               />
             </span>
             <div>
@@ -222,6 +224,7 @@ export default function SiteBrandLogoEditor({
                 disabled={uploading}
                 onClick={() => {
                   setAsset("");
+                  setColorMode("brand");
                   setMessage(
                     "Se restaurará el símbolo original cuando guardes el borrador."
                   );
@@ -255,7 +258,7 @@ export default function SiteBrandLogoEditor({
           </div>
 
           <p className={styles.fileHint}>
-            SVG monocromático, máximo 256 KB. Se rechazan scripts, enlaces, estilos, recursos externos y cualquier estructura no admitida.
+            SVG estático de hasta 256 KB. Se admiten degradados, defs, máscaras, filtros, texto, estilos inline seguros, referencias internas y PNG/JPEG/WebP embebidos. Se bloquean scripts, HTML embebido, animaciones y recursos o enlaces externos.
           </p>
         </div>
 
@@ -264,6 +267,29 @@ export default function SiteBrandLogoEditor({
             <Palette size={17} aria-hidden="true" />
             Color del logo
           </legend>
+
+          <div className={styles.modeOption}>
+            <span className={styles.radioTarget}>
+              <input
+                className={styles.radioInput}
+                id="site-logo-color-original"
+                type="radio"
+                name="logoColorMode"
+                value="original"
+                checked={colorMode === "original"}
+                disabled={!asset}
+                onChange={() => setColorMode("original")}
+              />
+              <span className={styles.radioMark} aria-hidden="true" />
+            </span>
+            <label htmlFor="site-logo-color-original">
+              <strong>Colores originales del SVG</strong>
+              <small>
+                Conserva degradados y colores tal como vienen en el archivo.
+              </small>
+            </label>
+            <i aria-hidden="true" />
+          </div>
 
           <div className={styles.modeOption}>
             <span className={styles.radioTarget}>
@@ -281,7 +307,7 @@ export default function SiteBrandLogoEditor({
             <label htmlFor="site-logo-color-brand">
               <strong>Seguir color de marca</strong>
               <small>
-                Recomendado. Si cambias la marca, el logo cambia con ella.
+                Si cambias la marca, el logo cambia con ella.
               </small>
             </label>
             <i style={{ background: brandColor }} aria-hidden="true" />
@@ -321,7 +347,7 @@ export default function SiteBrandLogoEditor({
           <div className={styles.securityNote}>
             <ShieldCheck size={17} aria-hidden="true" />
             <span>
-              El archivo se guarda como recurso editorial inmutable. Subirlo no publica ni modifica el sitio hasta guardar y publicar la identidad.
+              El SVG se sanea como recurso estático e inmutable. Subirlo no publica ni modifica el sitio hasta guardar y publicar la identidad.
             </span>
           </div>
         </fieldset>
