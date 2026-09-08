@@ -1,8 +1,8 @@
-/* eslint-disable @next/next/no-img-element -- ImageResponse necesita un img nativo para renderizar el data URI SVG saneado server-side. */
 import "server-only";
 
 import { Gamepad2 } from "lucide-react";
 import { ImageResponse } from "next/og";
+import { createElement } from "react";
 
 import {
   buildSiteBrandLogoDataUri,
@@ -119,26 +119,26 @@ export async function createSocialImage(
                 color: logoColor,
               }}
             >
-              {logoDataUri ? (
-                <img
-                  src={logoDataUri}
-                  alt=""
-                  width={36}
-                  height={36}
-                  style={{
+              {logoDataUri
+                ? createElement("img", {
+                    src: logoDataUri,
+                    alt: "",
                     width: 36,
                     height: 36,
-                    objectFit: "contain",
-                  }}
-                />
-              ) : (
-                <Gamepad2
-                  size={36}
-                  strokeWidth={2.1}
-                  color={logoColor}
-                  aria-hidden="true"
-                />
-              )}
+                    style: {
+                      width: 36,
+                      height: 36,
+                      objectFit: "contain",
+                    },
+                  })
+                : (
+                    <Gamepad2
+                      size={36}
+                      strokeWidth={2.1}
+                      color={logoColor}
+                      aria-hidden="true"
+                    />
+                  )}
             </div>
 
             <div style={{ display: "flex" }}>
