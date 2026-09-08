@@ -160,6 +160,36 @@ function singleInputValue(html, name) {
   return unique[0];
 }
 
+function checkedInputValue(html, name) {
+  const inputs = html.match(/<input\b[^>]*>/gi) ?? [];
+  const matches = [];
+
+  for (const input of inputs) {
+    const nameMatch = input.match(/\bname="([^"]*)"/i);
+    if (
+      !nameMatch ||
+      decodeHtml(nameMatch[1]) !== name ||
+      !/\schecked(?:\s|=|>)/i.test(input)
+    ) {
+      continue;
+    }
+    const valueMatch = input.match(/\bvalue="([^"]*)"/i);
+    if (!valueMatch) {
+      throw new Error(
+        `El input marcado ${name} no expone un value SSR.`
+      );
+    }
+    matches.push(decodeHtml(valueMatch[1]));
+  }
+
+  if (matches.length !== 1) {
+    throw new Error(
+      `${name} debe exponer exactamente un radio marcado (${matches.length} encontrados).`
+    );
+  }
+  return matches[0];
+}
+
 function textareaValue(html, name) {
   const pattern = new RegExp(
     `<textarea\\b[^>]*\\bname="${name}"[^>]*>([\\s\\S]*?)<\\/textarea>`,
@@ -438,7 +468,7 @@ if (savedRevision <= beforeRevision) {
 }
 if (
   singleInputValue(savedPage.body, "logoAsset") !== publicPath ||
-  singleInputValue(savedPage.body, "logoColorMode") !== "custom" ||
+  checkedInputValue(savedPage.body, "logoColorMode") !== "custom" ||
   singleInputValue(savedPage.body, "logoCustomColor").toLowerCase() !== testColor
 ) {
   throw new Error(
@@ -635,7 +665,7 @@ if (
   draftAfterRestore.status !== 200 ||
   positiveNumberInput(draftAfterRestore.body, "expectedRevision") !== savedRevision ||
   singleInputValue(draftAfterRestore.body, "logoAsset") !== publicPath ||
-  singleInputValue(draftAfterRestore.body, "logoColorMode") !== "custom"
+  checkedInputValue(draftAfterRestore.body, "logoColorMode") !== "custom"
 ) {
   throw new Error(
     "Restaurar una publicación histórica reescribió el borrador del logo."
