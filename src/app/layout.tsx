@@ -22,6 +22,9 @@ import {
 import {
   getPublicSiteConfig,
 } from "@/lib/site/public-site-config";
+import {
+  siteAppIconVersion,
+} from "@/lib/site-app-icon";
 
 import "./globals.css";
 import "@/theme/deuna-theme.css";
@@ -39,6 +42,7 @@ export async function generateMetadata(): Promise<Metadata> {
   ]);
   const homeTitle =
     `${config.name} | ${homeConfig.copy.hero.accessibleTitle}`;
+  const iconVersion = siteAppIconVersion(config);
 
   return {
     metadataBase: new URL(siteUrl),
@@ -51,6 +55,28 @@ export async function generateMetadata(): Promise<Metadata> {
     description: config.description,
 
     applicationName: config.name,
+
+    icons: {
+      icon: [
+        {
+          url: `/app-icon/32?v=${iconVersion}`,
+          type: "image/png",
+          sizes: "32x32",
+        },
+        {
+          url: `/app-icon/64?v=${iconVersion}`,
+          type: "image/png",
+          sizes: "64x64",
+        },
+      ],
+      apple: [
+        {
+          url: `/app-icon/180?v=${iconVersion}`,
+          type: "image/png",
+          sizes: "180x180",
+        },
+      ],
+    },
 
     openGraph: {
       type: "website",
