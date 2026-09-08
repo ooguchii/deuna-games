@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
     logo.size <= 0
   ) {
     return json(
-      { error: "Selecciona un SVG válido." },
+      { error: "Selecciona un archivo de logo válido." },
       400
     );
   }
@@ -109,13 +109,14 @@ export async function POST(request: NextRequest) {
     return json({
       publicPath: upload.publicPath,
       bytes: upload.bytes,
+      format: upload.format,
       reused: upload.reused,
     });
   } catch {
     return json(
       {
         error:
-          "No se pudo cargar el logo. Usa un SVG estático de hasta 256 KB con viewBox. Se admiten degradados, defs, máscaras, filtros, texto, estilos seguros, referencias internas e imágenes raster embebidas; no se admiten scripts, HTML, animaciones ni recursos externos.",
+          "No se pudo cargar el logo. Usa SVG estático de hasta 256 KB o PNG, JPEG, WebP o GIF estático de hasta 6 MB. El servidor valida el contenido real y elimina metadata, perfiles, comentarios y bloques auxiliares antes de guardar.",
       },
       400
     );
