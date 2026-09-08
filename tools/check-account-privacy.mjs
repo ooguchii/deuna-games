@@ -414,6 +414,7 @@ const deleteGrantMatches = [...migrate.matchAll(
 )].map((match) => match[1]);
 const expectedDeleteGrants = new Set([
   "deuna_accounts.users",
+  "deuna_accounts.avatars",
   "deuna_accounts.recovery_codes",
   "deuna_accounts.game_preferences",
   "deuna_accounts.hardware_profiles",
