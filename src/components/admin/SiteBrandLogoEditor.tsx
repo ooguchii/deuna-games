@@ -226,12 +226,12 @@ export default function SiteBrandLogoEditor({
                   setAsset("");
                   setColorMode("brand");
                   setMessage(
-                    "Se restaurará el símbolo original cuando guardes el borrador."
+                    "Se restaurará el símbolo de DeUna cuando guardes el borrador."
                   );
                 }}
               >
                 <RotateCcw size={16} aria-hidden="true" />
-                Usar original
+                Restaurar símbolo DeUna
               </button>
             )}
           </div>
@@ -277,7 +277,6 @@ export default function SiteBrandLogoEditor({
                 name="logoColorMode"
                 value="original"
                 checked={colorMode === "original"}
-                disabled={!asset}
                 onChange={() => setColorMode("original")}
               />
               <span className={styles.radioMark} aria-hidden="true" />
@@ -285,7 +284,7 @@ export default function SiteBrandLogoEditor({
             <label htmlFor="site-logo-color-original">
               <strong>Colores originales del SVG</strong>
               <small>
-                Conserva degradados y colores tal como vienen en el archivo.
+                En un SVG personalizado conserva degradados y colores tal como vienen en el archivo.
               </small>
             </label>
             <i aria-hidden="true" />
