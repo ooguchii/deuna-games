@@ -29,6 +29,10 @@ export const siteAppIconSizes = [
 export type SiteAppIconSize =
   (typeof siteAppIconSizes)[number];
 
+type SiteAppIconIdentity = SiteLogoConfig & {
+  themeColor?: string;
+};
+
 export function isSiteAppIconSize(
   value: number
 ): value is SiteAppIconSize {
@@ -36,7 +40,7 @@ export function isSiteAppIconSize(
 }
 
 export function siteAppIconVersion(
-  identity: SiteLogoConfig
+  identity: SiteAppIconIdentity
 ) {
   const assetDigest = identity.logoAsset?.match(
     /\/([a-f0-9]{64})\.(?:svg|png|jpg|webp|gif)$/
@@ -51,8 +55,11 @@ export function siteAppIconVersion(
       .replace(/^#/, "")
       .toLowerCase();
   const scale = Math.round(identity.logoScale ?? 100);
+  const background = safeThemeBackground(
+    identity.themeColor ?? "#05080d"
+  ).replace(/^#/, "").toLowerCase();
 
-  return `${assetDigest}-${colorMode}-${color}-${scale}`;
+  return `${assetDigest}-${colorMode}-${color}-${scale}-${background}`;
 }
 
 export async function createSiteAppIcon(
