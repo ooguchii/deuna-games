@@ -13,16 +13,16 @@ type HeaderClientProps = {
     displayName: string | null;
   } | null;
   accountNotifications: AccountUpdateNotification[] | null;
-  accountAvatarDigest: string | null;
+  accountAvatarVersion: string | null;
 };
 
 export default function HeaderClient({
-  accountAvatarDigest,
+  accountAvatarVersion,
   ...props
 }: HeaderClientProps) {
   const accountAvatarUrl =
-    props.accountIdentity && accountAvatarDigest
-      ? `/api/account/avatar?v=${encodeURIComponent(accountAvatarDigest)}`
+    props.accountIdentity && accountAvatarVersion
+      ? `/api/account/avatar?v=${encodeURIComponent(accountAvatarVersion)}`
       : null;
 
   return (
