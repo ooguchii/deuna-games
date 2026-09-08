@@ -238,13 +238,14 @@ export default function GameMediaAssignmentsWorkspace({
   const [state, setState] = useState<MultimediaLibraryState | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [editing, setEditing] = useState<EditState>(() => {
-    if (typeof window === "undefined") return null;
-    if (window.location.hash === "#cover-crop") return { target: "cover", kind: "image" };
-    if (window.location.hash === "#hero-crop") return { target: "hero", kind: "image" };
-    if (window.location.hash === "#card-crop") return { target: "card", kind: "image" };
-    return null;
-  });
+  const [editing, setEditing] = useState<EditState>(null);
+
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash === "#cover-crop") setEditing({ target: "cover", kind: "image" });
+    else if (hash === "#hero-crop") setEditing({ target: "hero", kind: "image" });
+    else if (hash === "#card-crop") setEditing({ target: "card", kind: "image" });
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -624,7 +625,7 @@ export default function GameMediaAssignmentsWorkspace({
               target="hero"
               mode={heroMode}
               disabled={stale}
-            />
+            />>
 
             <div className={styles.current}>
               {heroImageResource ? (
