@@ -90,6 +90,16 @@ requirePattern(
 );
 requirePattern(
   avatarRoute,
+  /status:\s*204[\s\S]*"Cache-Control":\s*"private, no-store, max-age=0"/,
+  "Una cuenta autenticada sin avatar debe responder 204 privado/no-store, no un error esperado."
+);
+forbidPattern(
+  avatarRoute,
+  /status:\s*404/,
+  "La ausencia opcional de avatar no debe volver a representarse como 404 y contaminar los smokes de red."
+);
+requirePattern(
+  avatarRoute,
   /"Cache-Control":\s*"private, no-store, max-age=0"/,
   "La lectura del avatar debe ser privada y no cacheable."
 );
