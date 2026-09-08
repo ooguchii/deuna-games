@@ -12,6 +12,7 @@ type FavoriteAuthority = "unknown" | "guest" | "account";
 
 const listeners = new Set<() => void>();
 const pendingSlugs = new Set<string>();
+const optimisticOverrides = new Map<string, boolean>();
 let favorites = new Set<string>();
 let authority: FavoriteAuthority = "unknown";
 let ready = false;
@@ -23,6 +24,17 @@ let externalListenersInstalled = false;
 function emit() {
   version += 1;
   for (const listener of listeners) listener();
+}
+
+function withOptimisticOverrides(source: Set<string>) {
+  const next = new Set(source);
+
+  for (const [gameSlug, favorite] of optimisticOverrides) {
+    if (favorite) next.add(gameSlug);
+    else next.delete(gameSlug);
+  }
+
+  return next;
 }
 
 function readGuestFavorites() {
@@ -70,7 +82,7 @@ function installExternalListeners() {
       return;
     }
 
-    favorites = readGuestFavorites();
+    favorites = withOptimisticOverrides(readGuestFavorites());
     errorMessage = null;
     ready = true;
     emit();
@@ -111,16 +123,16 @@ export async function refreshFavoriteStore() {
         ? "account"
         : "guest";
 
-      if (authority === "account" && Array.isArray(payload.favorites)) {
-        favorites = new Set(
-          payload.favorites.filter(
-            (value): value is string => typeof value === "string"
-          )
-        );
-      } else {
-        favorites = readGuestFavorites();
-      }
+      const authoritativeFavorites =
+        authority === "account" && Array.isArray(payload.favorites)
+          ? new Set(
+              payload.favorites.filter(
+                (value): value is string => typeof value === "string"
+              )
+            )
+          : readGuestFavorites();
 
+      favorites = withOptimisticOverrides(authoritativeFavorites);
       ready = true;
       errorMessage = null;
       emit();
@@ -165,23 +177,22 @@ export async function toggleFavoriteGame(gameSlug: string) {
 
     const wasFavorite = favorites.has(gameSlug);
     const nextFavorite = !wasFavorite;
-    const next = new Set(favorites);
-
-    if (nextFavorite) next.add(gameSlug);
-    else next.delete(gameSlug);
-
-    favorites = next;
+    optimisticOverrides.set(gameSlug, nextFavorite);
+    favorites = withOptimisticOverrides(favorites);
     errorMessage = null;
     emit();
 
     if (authority === "guest") {
       if (persistGuestFavorites()) {
+        optimisticOverrides.delete(gameSlug);
         return true;
       }
 
-      favorites = new Set(favorites);
-      if (wasFavorite) favorites.add(gameSlug);
-      else favorites.delete(gameSlug);
+      optimisticOverrides.delete(gameSlug);
+      const rollback = new Set(favorites);
+      if (wasFavorite) rollback.add(gameSlug);
+      else rollback.delete(gameSlug);
+      favorites = withOptimisticOverrides(rollback);
       errorMessage =
         "El navegador no permitió guardar el favorito local.";
       emit();
@@ -210,17 +221,13 @@ export async function toggleFavoriteGame(gameSlug: string) {
         throw new Error(payload?.error ?? "favorito");
       }
 
+      optimisticOverrides.delete(gameSlug);
       return true;
     } catch {
-      const rollback = new Set(favorites);
-      if (wasFavorite) rollback.add(gameSlug);
-      else rollback.delete(gameSlug);
-      favorites = rollback;
-      emit();
+      optimisticOverrides.delete(gameSlug);
 
-      // Reconciliamos con la fuente autoritativa. El mensaje se fija después
-      // para que un GET exitoso no oculte el fallo de la acción que el usuario
-      // acaba de intentar.
+      // Reconciliamos con la fuente autoritativa. Cualquier otra mutación que
+      // siga en vuelo se vuelve a superponer mediante optimisticOverrides.
       await refreshFavoriteStore();
       errorMessage =
         "No se pudo guardar el favorito. Inténtalo de nuevo.";
