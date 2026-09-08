@@ -21,6 +21,7 @@ const [
   cardResolver,
   cardWrapper,
   cardBase,
+  cardVideoBudget,
   cardPresentationCss,
   hoverPreview,
   videoMedia,
@@ -37,6 +38,7 @@ const [
   source("src/lib/media/game-card-preview.ts"),
   source("src/components/ui/UniversalGameCard.tsx"),
   source("src/components/ui/UniversalGameCardBase.tsx"),
+  source("src/lib/media/game-card-video-budget.ts"),
   source("src/components/ui/UniversalGameCardPresentation.module.css"),
   source("src/components/ui/HoverPreviewMedia.tsx"),
   source("src/lib/media/game-video-media.ts"),
@@ -176,10 +178,43 @@ assert(
     "REDUCED_MOTION_MEDIA",
     "FINE_HOVER_MEDIA",
     "posterRevealed",
-    "PREVIEW_DELAY_MS"
+    "PREVIEW_DELAY_MS",
+    "useSyncExternalStore",
+    "registerGameCardVideoCandidate",
+    "updateGameCardVideoVisibility",
+    "ownsDetailVideoBudget"
   ),
-  "UniversalGameCardBase debe soportar poster→detalle, detalle con video por fila, touch/fine-pointer y reduced motion."
+  "UniversalGameCardBase debe soportar poster→detalle, detalle con video por fila, touch/fine-pointer, reduced motion y presupuesto global de reproducción automática."
 );
+
+assert(
+  has(
+    cardVideoBudget,
+    "MIN_VISIBLE_RATIO = 0.15",
+    "const candidates = new Map<symbol, VideoCandidate>()",
+    "currentOwner",
+    "resolveOwner()",
+    "registerGameCardVideoCandidate",
+    "updateGameCardVideoVisibility",
+    "unregisterGameCardVideoCandidate",
+    "subscribeGameCardVideoBudget",
+    "isGameCardVideoBudgetOwner"
+  ),
+  "El presupuesto de video debe elegir un único dueño visible y liberar candidatos al salir/desmontarse."
+);
+
+for (const forbidden of [
+  "localStorage",
+  "sessionStorage",
+  "indexedDB",
+  "fetch(",
+  "navigator.sendBeacon",
+]) {
+  assert(
+    !cardVideoBudget.includes(forbidden),
+    `El presupuesto de reproducción debe ser efímero y no puede persistir ni reportar actividad: ${forbidden}.`
+  );
+}
 
 assert(
   has(
@@ -235,5 +270,5 @@ if (failures.length) {
 }
 
 console.log(
-  "Card presentation/video: OK (poster 4:5 → detalle 3:2 → WebM opcional por fila → fallback imagen → touch/reduced-motion seguros)."
+  "Card presentation/video: OK (poster 4:5 → detalle 3:2 → WebM opcional por fila → un autoplay visible → fallback imagen → touch/reduced-motion seguros)."
 );
