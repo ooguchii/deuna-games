@@ -63,9 +63,9 @@ export async function GET() {
 
     if (!avatar) {
       return new Response(null, {
-        status: 404,
+        status: 204,
         headers: {
-          "Cache-Control": "no-store",
+          "Cache-Control": "private, no-store, max-age=0",
           "X-Content-Type-Options": "nosniff",
         },
       });
