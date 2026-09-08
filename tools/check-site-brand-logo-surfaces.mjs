@@ -30,6 +30,7 @@ const [
   appIconRenderer,
   logoImageResolver,
   socialImage,
+  mediaRoute,
 ] = await Promise.all([
   source("src/app/cuenta/page.tsx"),
   source("src/app/cuenta/AccountDashboardClient.tsx"),
@@ -44,6 +45,7 @@ const [
   source("src/lib/site-app-icon.tsx"),
   source("src/lib/site-logo-image.ts"),
   source("src/lib/social-image.tsx"),
+  source("src/app/media/editorial/[slug]/[filename]/route.ts"),
 ]);
 
 assert(
@@ -152,6 +154,18 @@ assert(
   "El manifest PWA debe usar el tema público seguro y publicar iconos 192/512 derivados de la identidad activa."
 );
 
+assert(
+  mediaRoute.includes("resolveSiteLogoServingAccess") &&
+    mediaRoute.includes("getPublicSiteConfig") &&
+    mediaRoute.includes("published.logoAsset === publicPath") &&
+    mediaRoute.includes("resolveAdminSession") &&
+    mediaRoute.includes("readAdminSessionToken") &&
+    mediaRoute.includes('return session ? "admin" : null') &&
+    mediaRoute.includes('"private, no-store, max-age=0"') &&
+    mediaRoute.includes('"public, max-age=31536000, immutable"'),
+  "Un logo aún no publicado debe quedar fuera del serving anónimo y sólo poder previsualizarse con sesión Admin y cache privada."
+);
+
 let staticFaviconExists = true;
 try {
   await access(path.join(root, "src/app/favicon.ico"));
@@ -170,6 +184,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Superficies del logo global: OK (Header/Footer/404, Mi DeUna, Admin, metadata, PWA y social convergen en identidad publicada)."
+    "Superficies del logo global: OK (Header/Footer/404, Mi DeUna, Admin, metadata, PWA, social y serving draft/público convergen en identidad publicada)."
   );
 }
