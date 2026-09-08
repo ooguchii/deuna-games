@@ -3,7 +3,9 @@ import path from "node:path";
 
 const root = process.cwd();
 const read = (relative) => fs.readFileSync(path.join(root, relative), "utf8");
-const header = read("src/components/layout/HeaderClient.tsx");
+const headerWrapper = read("src/components/layout/HeaderClient.tsx");
+const headerBase = read("src/components/layout/HeaderClientBase.tsx");
+const header = `${headerWrapper}\n${headerBase}`;
 const headerServer = read("src/components/layout/Header.tsx");
 const destinations = read("src/lib/accounts/dashboard-view.ts");
 const accountCss = read("src/components/layout/HeaderAccountMenu.module.css");
