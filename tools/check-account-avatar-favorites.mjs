@@ -28,6 +28,10 @@ const [
   favoriteStore,
   finder,
   universalCard,
+  universalCardBase,
+  universalCardCss,
+  favoriteCardCss,
+  accountBrowserE2e,
 ] = await Promise.all([
   read("database/migrations/013_account_avatars.sql"),
   read("src/app/api/account/avatar/route.ts"),
@@ -40,6 +44,10 @@ const [
   read("src/features/favorites/favorite-store.ts"),
   read("src/features/game-finder/GameFinderClient.tsx"),
   read("src/components/ui/UniversalGameCard.tsx"),
+  read("src/components/ui/UniversalGameCardBase.tsx"),
+  read("src/components/ui/UniversalGameCard.module.css"),
+  read("src/components/ui/FavoriteUniversalGameCard.module.css"),
+  read("tools/account-browser-e2e.mjs"),
 ]);
 
 requirePattern(
@@ -253,18 +261,54 @@ forbidPattern(
   /FAVORITES_STORAGE_KEY|readStoredFavorites|setFavorites\(|favoritesHydrated/,
   "Por requisitos no puede mantener un segundo estado o persistencia paralela de favoritos."
 );
+
 requirePattern(
   universalCard,
-  /GameFavoriteButton/,
-  "Inicio y Juegos deben usar el control canónico de favorito."
+  /GameFavoriteButton[\s\S]*overlayAction=/,
+  "Inicio y Juegos deben insertar el control canónico de favorito en el slot overlay real de la Card."
 );
+requirePattern(
+  universalCardBase,
+  /overlayAction\?:\s*ReactNode[\s\S]*\{overlayAction\}/,
+  "El renderer base debe ofrecer una única acción overlay fuera del enlace navegable."
+);
+forbidPattern(
+  universalCardBase,
+  /\bHeart\b|styles\.favorite/,
+  "El renderer base no puede reintroducir un corazón decorativo paralelo al favorito interactivo."
+);
+forbidPattern(
+  universalCardCss,
+  /\.favorite\b/,
+  "El CSS histórico de UniversalGameCard no puede conservar reglas huérfanas del corazón decorativo."
+);
+requirePattern(
+  favoriteCardCss,
+  /\.favorite\s*\{[\s\S]*position:\s*absolute[\s\S]*top:\s*7px[\s\S]*right:\s*7px/,
+  "La posición del favorito interactivo debe vivir sólo en su módulo overlay dedicado."
+);
+
+for (const marker of [
+  "publicFavoritePersistence: true",
+  "favoritePreservesLibraryAndFollowing: true",
+  "favoriteTouchTargetMinimum: 44",
+  "avatarEmptyStatus: 204",
+  "avatarLifecycle: true",
+  "avatarHeaderSync: true",
+]) {
+  requirePattern(
+    accountBrowserE2e,
+    new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
+    `El E2E de Cuenta debe conservar la evidencia ${marker}.`
+  );
+}
 
 if (failures.length > 0) {
   console.error("\nAvatar y favoritos de cuenta: ERROR\n");
-  for (const failure of failures) console.error(`- ${failure}`);
+  for (const failure of failures) console.error(`- ${failure}`));
   process.exit(1);
 }
 
 console.log(
-  "Avatar y favoritos de cuenta: OK (avatar privado/saneado/cascade, permisos de propietario y favoritos unificados sin pisar biblioteca ni seguimiento)."
+  "Avatar y favoritos de cuenta: OK (avatar privado/saneado/cascade, Card sin corazón duplicado y favoritos unificados con E2E de persistencia)."
 );
