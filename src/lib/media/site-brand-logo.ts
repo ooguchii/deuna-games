@@ -15,10 +15,18 @@ import {
   resolveEditorialMediaDiskPath,
 } from "./editorial-media";
 import {
+  inspectSafeSiteBrandLogoRaster,
+  siteBrandRasterContentType,
+  type SiteBrandRasterFormat,
+} from "./safe-site-logo-raster";
+import {
   inspectSafeSiteBrandLogoSvg,
   MAX_TAXONOMY_SVG_ICON_BYTES,
   recolorSafeSiteBrandLogoSvg,
 } from "./safe-svg-icon";
+import {
+  MAX_EDITORIAL_IMAGE_BYTES,
+} from "./safe-webp";
 
 function isMissingFileError(error: unknown) {
   return (
@@ -27,6 +35,17 @@ function isMissingFileError(error: unknown) {
     "code" in error &&
     (error as { code?: unknown }).code === "ENOENT"
   );
+}
+
+function storedLogoFormat(filename: string) {
+  const match = filename.match(
+    /\.(svg|png|jpg|webp|gif)$/
+  );
+
+  return match?.[1] as
+    | "svg"
+    | SiteBrandRasterFormat
+    | undefined;
 }
 
 async function readStoredSiteBrandLogoUncached(
@@ -45,16 +64,22 @@ async function readStoredSiteBrandLogoUncached(
     return null;
   }
 
+  const format = storedLogoFormat(resolved.filename);
+  if (!format) return null;
+
   try {
     const stats = await lstat(
       /* turbopackIgnore: true */ resolved.filePath
     );
+    const maximumBytes = format === "svg"
+      ? MAX_TAXONOMY_SVG_ICON_BYTES
+      : MAX_EDITORIAL_IMAGE_BYTES;
 
     if (
       !stats.isFile() ||
       stats.isSymbolicLink() ||
       stats.size <= 0 ||
-      stats.size > MAX_TAXONOMY_SVG_ICON_BYTES
+      stats.size > maximumBytes
     ) {
       return null;
     }
@@ -62,10 +87,15 @@ async function readStoredSiteBrandLogoUncached(
     const content = await readFile(
       /* turbopackIgnore: true */ resolved.filePath
     );
-    const inspection = inspectSafeSiteBrandLogoSvg(content);
+    const inspection = format === "svg"
+      ? inspectSafeSiteBrandLogoSvg(content)
+      : inspectSafeSiteBrandLogoRaster(
+          content,
+          format
+        );
     const expectedDigest = resolved.filename.slice(
       0,
-      -".svg".length
+      -(format.length + 1)
     );
 
     if (
@@ -78,8 +108,17 @@ async function readStoredSiteBrandLogoUncached(
     return {
       publicPath,
       content,
+      format,
       digest: inspection.digest,
       bytes: inspection.bytes,
+      width:
+        format === "svg"
+          ? null
+          : inspection.width,
+      height:
+        format === "svg"
+          ? null
+          : inspection.height,
     };
   } catch (error) {
     if (isMissingFileError(error)) {
@@ -93,6 +132,40 @@ export const readStoredSiteBrandLogo = cache(
   readStoredSiteBrandLogoUncached
 );
 
+function rasterColorizedSvgDataUri(
+  stored: NonNullable<
+    Awaited<ReturnType<typeof readStoredSiteBrandLogoUncached>>
+  >,
+  color: string
+) {
+  if (
+    stored.format === "svg" ||
+    !stored.width ||
+    !stored.height ||
+    !/^#[0-9a-f]{6}$/i.test(color)
+  ) {
+    return null;
+  }
+
+  const contentType = siteBrandRasterContentType(
+    stored.format
+  );
+  const rasterDataUri =
+    `data:${contentType};base64,${stored.content.toString("base64")}`;
+  const svg = [
+    '<svg xmlns="http://www.w3.org/2000/svg"',
+    ` viewBox="0 0 ${stored.width} ${stored.height}">`,
+    '<defs><mask id="logo-mask" maskUnits="userSpaceOnUse"',
+    ` x="0" y="0" width="${stored.width}" height="${stored.height}" mask-type="alpha">`,
+    `<image href="${rasterDataUri}" width="${stored.width}" height="${stored.height}" preserveAspectRatio="xMidYMid meet"/>`,
+    '</mask></defs>',
+    `<rect width="${stored.width}" height="${stored.height}" fill="${color}" mask="url(#logo-mask)"/>`,
+    '</svg>',
+  ].join("");
+
+  return `data:image/svg+xml;base64,${Buffer.from(svg, "utf8").toString("base64")}`;
+}
+
 export async function buildSiteBrandLogoDataUri(
   publicPath: string,
   color?: string | null
@@ -101,14 +174,25 @@ export async function buildSiteBrandLogoDataUri(
 
   if (!stored) return null;
 
-  const rendered = color
-    ? recolorSafeSiteBrandLogoSvg(
-        stored.content,
-        color
-      )
-    : stored.content;
+  if (stored.format === "svg") {
+    const rendered = color
+      ? recolorSafeSiteBrandLogoSvg(
+          stored.content,
+          color
+        )
+      : stored.content;
 
-  if (!rendered) return null;
+    if (!rendered) return null;
 
-  return `data:image/svg+xml;base64,${rendered.toString("base64")}`;
+    return `data:image/svg+xml;base64,${rendered.toString("base64")}`;
+  }
+
+  if (color) {
+    return rasterColorizedSvgDataUri(
+      stored,
+      color
+    );
+  }
+
+  return `data:${siteBrandRasterContentType(stored.format)};base64,${stored.content.toString("base64")}`;
 }
