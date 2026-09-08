@@ -65,8 +65,12 @@ export default function HeaderClient(props: HeaderClientProps) {
       credentials: "same-origin",
     })
       .then(async (response) => {
-        if (!response.ok) return null;
-        return response.blob();
+        if (response.status === 204 || !response.ok) return null;
+
+        const blob = await response.blob();
+        return blob.size > 0 && blob.type === "image/webp"
+          ? blob
+          : null;
       })
       .then((blob) => {
         if (!active || !blob) return;
