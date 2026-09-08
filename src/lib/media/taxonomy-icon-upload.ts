@@ -40,7 +40,6 @@ type IconStorageSlug =
 
 type IconStorageFormat =
   | "svg"
-  | "webp"
   | SiteBrandRasterFormat;
 
 export type TaxonomyIconUploadResult = {
@@ -210,14 +209,10 @@ async function writeHashedIcon(
   };
 }
 
-async function storeSafeSvgIcon(
-  file: File,
-  slug: IconStorageSlug
-): Promise<SiteBrandLogoUploadResult> {
-  if (
-    slug !== SITE_BRAND_LOGO_SLUG &&
-    file.type.toLowerCase() !== "image/svg+xml"
-  ) {
+async function storeSafeTaxonomySvgIcon(
+  file: File
+): Promise<TaxonomyIconUploadResult> {
+  if (file.type.toLowerCase() !== "image/svg+xml") {
     throw new Error(
       "El símbolo debe estar en formato SVG."
     );
@@ -226,25 +221,19 @@ async function storeSafeSvgIcon(
   const input = Buffer.from(
     await file.arrayBuffer()
   );
-  const buffer = slug === SITE_BRAND_LOGO_SLUG
-    ? sanitizeSiteBrandLogoSvg(input)
-    : sanitizeTaxonomySvgIcon(input);
+  const buffer = sanitizeTaxonomySvgIcon(input);
   const inspection = buffer
-    ? slug === SITE_BRAND_LOGO_SLUG
-      ? inspectSafeSiteBrandLogoSvg(buffer)
-      : inspectSafeTaxonomySvgIcon(buffer)
+    ? inspectSafeTaxonomySvgIcon(buffer)
     : null;
 
   if (!buffer || !inspection) {
     throw new Error(
-      slug === SITE_BRAND_LOGO_SLUG
-        ? "El logo debe ser un SVG estático, seguro y escalable con viewBox."
-        : "El SVG contiene estructura o atributos que no son seguros para un icono."
+      "El SVG contiene estructura o atributos que no son seguros para un icono."
     );
   }
 
   const stored = await writeHashedIcon(
-    slug,
+    TAXONOMY_ICON_SLUG,
     "svg",
     buffer,
     inspection.digest
@@ -315,10 +304,7 @@ export async function storeTaxonomyIcon(
   const type = file.type.toLowerCase();
 
   if (type === "image/svg+xml") {
-    return storeSafeSvgIcon(
-      file,
-      TAXONOMY_ICON_SLUG
-    );
+    return storeSafeTaxonomySvgIcon(file);
   }
 
   if (type === "image/webp") {
