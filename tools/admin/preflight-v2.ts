@@ -195,6 +195,16 @@ allow("deuna_accounts", "users", "UPDATE", [
   "password_changed_at", "updated_at",
 ]);
 
+allow("deuna_accounts", "avatars", "SELECT", [
+  "user_id", "digest", "image_webp", "width", "height", "updated_at",
+]);
+allow("deuna_accounts", "avatars", "INSERT", [
+  "user_id", "digest", "image_webp", "width", "height", "updated_at",
+]);
+allow("deuna_accounts", "avatars", "UPDATE", [
+  "digest", "image_webp", "width", "height", "updated_at",
+]);
+
 allow("deuna_accounts", "sessions", "SELECT", [
   "id", "user_id", "token_hash", "expires_at", "revoked_at",
 ]);
@@ -265,6 +275,7 @@ allow("deuna_accounts", "reward_events", "INSERT", [
 
 const expectedDeletes = new Set([
   "deuna_accounts.users",
+  "deuna_accounts.avatars",
   "deuna_accounts.recovery_codes",
   "deuna_accounts.game_preferences",
   "deuna_accounts.hardware_profiles",
