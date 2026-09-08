@@ -117,6 +117,7 @@ export default async function RootLayout({
       lang={config.language}
       data-scroll-behavior="smooth"
       data-site-logo={logoAsset ? "custom" : "default"}
+      data-site-logo-color-mode={config.logoColorMode}
       style={{
         "--theme-bg": readableThemeBackground,
         "--theme-brand": config.brandColor,
