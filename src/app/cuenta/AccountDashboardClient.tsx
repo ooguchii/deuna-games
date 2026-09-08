@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -37,6 +38,7 @@ import HardwareConfigurationFields, { type ManualDraft } from "@/features/game-f
 import { findCpuById, findGpuById } from "@/features/game-finder/hardware-catalog";
 import { clearStoredHardwareProfile, storeExplicitHardwareProfile } from "@/features/game-finder/hardware-storage";
 import SiteBrand from "@/components/layout/SiteBrand";
+import GameFavoriteButton from "@/components/ui/GameFavoriteButton";
 import GameMedia from "@/components/ui/GameMedia";
 import {
   accountDashboardDestinations,
@@ -319,44 +321,61 @@ function RecommendationCard({
   const estimate = recommendation.performanceEstimate;
 
   return (
-    <Link
-      href={`/juegos/${recommendation.slug}`}
-      className={styles.recommendationCard}
-    >
-      <div className={styles.recommendationMedia}>
-        <GameMedia
-          src={recommendation.coverImage}
-          alt=""
-          sizes="(max-width: 720px) 90vw, 280px"
-          viewport={recommendation.imageViewport}
-          fallbackClassName={styles.mediaFallback}
-        />
-        <span className={styles.recommendationHeart} aria-hidden="true">
-          <Heart size={16} />
-        </span>
-      </div>
-      <div className={styles.recommendationBody}>
-        <strong>{recommendation.title}</strong>
-        <span>{recommendation.category}</span>
-        <div className={styles.recommendationMeta}>
-          <span>
-            {recommendation.rating
-              ? `★ ${recommendation.rating.toFixed(1)}/5`
-              : "Selección DeUna"}
-          </span>
-          {estimate && (
-            <b>
-              {estimate.minFps}–{estimate.maxFps} FPS estimados
-            </b>
-          )}
+    <article style={{ position: "relative", minWidth: 0 }}>
+      <Link
+        href={`/juegos/${recommendation.slug}`}
+        className={styles.recommendationCard}
+        style={{ display: "block", height: "100%" }}
+      >
+        <div className={styles.recommendationMedia}>
+          <GameMedia
+            src={recommendation.coverImage}
+            alt=""
+            sizes="(max-width: 720px) 90vw, 280px"
+            viewport={recommendation.imageViewport}
+            fallbackClassName={styles.mediaFallback}
+          />
         </div>
-        <small>
-          {estimate
-            ? `${performanceTierLabels[estimate.tier]} · confianza ${confidenceLabels[estimate.confidence]}`
-            : recommendation.reasons[0] ?? "Recomendado para ti"}
-        </small>
-      </div>
-    </Link>
+        <div className={styles.recommendationBody}>
+          <strong>{recommendation.title}</strong>
+          <span>{recommendation.category}</span>
+          <div className={styles.recommendationMeta}>
+            <span>
+              {recommendation.rating
+                ? `★ ${recommendation.rating.toFixed(1)}/5`
+                : "Selección DeUna"}
+            </span>
+            {estimate && (
+              <b>
+                {estimate.minFps}–{estimate.maxFps} FPS estimados
+              </b>
+            )}
+          </div>
+          <small>
+            {estimate
+              ? `${performanceTierLabels[estimate.tier]} · confianza ${confidenceLabels[estimate.confidence]}`
+              : recommendation.reasons[0] ?? "Recomendado para ti"}
+          </small>
+        </div>
+      </Link>
+      <GameFavoriteButton
+        gameSlug={recommendation.slug}
+        gameTitle={recommendation.title}
+        className={styles.recommendationHeart}
+        style={{
+          position: "absolute",
+          top: 5,
+          right: 5,
+          zIndex: 2,
+          width: 44,
+          height: 44,
+          border: 0,
+          borderRadius: "50%",
+          background: "transparent",
+          backdropFilter: "none",
+        }}
+      />
+    </article>
   );
 }
 
@@ -384,6 +403,8 @@ export default function AccountDashboardClient({
   const [hardwareMessage, setHardwareMessage] = useState<string | null>(null);
   const [addMessage, setAddMessage] = useState<string | null>(null);
   const [notificationPending, setNotificationPending] = useState(false);
+  const [sidebarAvatarRevision, setSidebarAvatarRevision] = useState(0);
+  const [sidebarHasAvatar, setSidebarHasAvatar] = useState<boolean | null>(null);
 
   function openView(nextView: AccountDashboardView) {
     if (nextView === view) return;
@@ -437,6 +458,7 @@ export default function AccountDashboardClient({
     (preference) => preference.favorite
   ).length;
   const displayName = profile.displayName?.trim() || profile.username;
+  const sidebarAvatarSrc = `/api/account/avatar?r=${sidebarAvatarRevision}`;
 
   const navItems = accountDashboardDestinations.map((destination) => ({
     id: destination.id,
@@ -1164,7 +1186,13 @@ export default function AccountDashboardClient({
           <strong>@{profile.username}</strong>
         </div>
 
-        <AccountAvatarEditor username={profile.username} />
+        <AccountAvatarEditor
+          username={profile.username}
+          onAvatarChange={(hasAvatar) => {
+            setSidebarHasAvatar(hasAvatar);
+            setSidebarAvatarRevision((current) => current + 1);
+          }}
+        />
 
         <form className={styles.profileForm} onSubmit={handleProfileSave}>
           <div className={styles.field}>
@@ -1351,7 +1379,28 @@ export default function AccountDashboardClient({
 
           <div className={styles.sidebarUser}>
             <div className={styles.userIdentity}>
-              <span><CircleUserRound size={25} /></span>
+              <span style={{ position: "relative", overflow: "hidden" }}>
+                <CircleUserRound size={25} aria-hidden="true" />
+                {sidebarHasAvatar !== false && (
+                  <Image
+                    key={sidebarAvatarSrc}
+                    src={sidebarAvatarSrc}
+                    alt=""
+                    width={42}
+                    height={42}
+                    unoptimized
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                    }}
+                    onLoad={() => setSidebarHasAvatar(true)}
+                    onError={() => setSidebarHasAvatar(false)}
+                  />
+                )}
+              </span>
               <div>
                 <strong>{profile.username}</strong>
                 <small>Nivel {rewards.level.level} · {rewards.level.rank}</small>
