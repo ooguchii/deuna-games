@@ -11,6 +11,7 @@ import {
   useFavoriteGame,
 } from "@/features/favorites/favorite-store";
 
+import ScreenReaderStatus from "./ScreenReaderStatus";
 import styles from "./GameFavoriteButton.module.css";
 
 export default function GameFavoriteButton({
@@ -67,13 +68,7 @@ export default function GameFavoriteButton({
           />
         </span>
       </button>
-      <span
-        className={styles.status}
-        role="status"
-        aria-live="polite"
-      >
-        {status}
-      </span>
+      <ScreenReaderStatus>{status}</ScreenReaderStatus>
     </>
   );
 }
