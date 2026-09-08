@@ -12,6 +12,9 @@ import {
 import {
   siteConfig as sourceSiteConfig,
 } from "@/lib/site";
+import type {
+  SiteLogoColorMode,
+} from "@/lib/site/logo";
 
 type PublishedSiteConfigRow = {
   published_payload: unknown;
@@ -19,10 +22,15 @@ type PublishedSiteConfigRow = {
 
 export type PublicSiteConfig = Omit<
   EditorialSiteConfig,
-  "footerTagline" | "brandColor"
+  | "footerTagline"
+  | "brandColor"
+  | "logoColorMode"
+  | "logoCustomColor"
 > & {
   footerTagline: string;
   brandColor: string;
+  logoColorMode: SiteLogoColorMode;
+  logoCustomColor: string;
 };
 
 function sourceFallback(): PublicSiteConfig {
