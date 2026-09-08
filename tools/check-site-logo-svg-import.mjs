@@ -7,9 +7,12 @@ import {
 import {
   inspectPrivacySafeSiteBrandLogoSvg,
   sanitizePrivacySafeSiteBrandLogoSvg,
+  sanitizeSiteBrandLogoEmbeddedRasters,
 } from "../src/lib/media/safe-site-logo-svg.ts";
 import {
+  inspectSafeSiteBrandLogoSvg,
   recolorSafeSiteBrandLogoSvg,
+  sanitizeSiteBrandLogoSvg,
   sanitizeTaxonomySvgIcon,
 } from "../src/lib/media/safe-svg-icon.ts";
 
@@ -40,7 +43,8 @@ assert.deepEqual(
   "Keep the supported raster contract explicit"
 );
 
-const trace = Buffer.from("private-exporter-trace", "utf8");
+const traceText = "private-exporter-trace";
+const trace = Buffer.from(traceText, "utf8");
 const pngBase = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
   "base64"
@@ -52,6 +56,26 @@ const pngWithMetadata = Buffer.concat([
   pngBase.subarray(pngIendStart),
   trace,
 ]);
+
+const pngOutput = sanitizeSiteBrandLogoRaster(pngWithMetadata);
+assert.ok(
+  pngOutput && pngOutput.inspection.format === "png",
+  "Accept a valid PNG by content signature before nesting it in SVG"
+);
+assert.equal(
+  pngOutput.buffer.includes(trace),
+  false,
+  "Strip PNG text metadata and bytes appended after IEND"
+);
+assert.ok(
+  inspectSafeSiteBrandLogoRaster(pngOutput.buffer, "png"),
+  "Stored PNG passes the strict reader"
+);
+assert.equal(
+  inspectSafeSiteBrandLogoRaster(pngWithMetadata, "png"),
+  null,
+  "Reject unsanitized PNG metadata at read time"
+);
 
 const drawing = '<g transform="translate(0,24) scale(1,-1)" fill="#000000" stroke="none"><path d="M2 2h20v20H2z"/></g>';
 const root = (body) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">${body}</svg>`;
@@ -73,48 +97,143 @@ const styledExport = root(`
 <path class="paint" style="stroke-width:2;opacity:.9" d="M2 2h20v20H2z"/>
 <image href="data:image/png;base64,${pngWithMetadata.toString("base64")}" x="1" y="1" width="1" height="1"/>
 `);
+const hiddenTraceExport = root(`
+<title>${traceText}</title>
+<desc>${traceText}</desc>
+<style type="text/css">/* ${traceText} */ .paint{fill:#03F7F9}</style>
+<path class="paint" data-exporter="${traceText}" aria-label="${traceText}" role="img" title="${traceText}" style="/* ${traceText} */ opacity:.9" d="M2 2h20v20H2z"/>
+`);
 
 const sanitizeSvg = (source) =>
   sanitizePrivacySafeSiteBrandLogoSvg(Buffer.from(source));
 
 const potraceOutput = sanitizeSvg(potraceExport);
 assert.ok(potraceOutput, "Accept a Potrace export");
-assert.ok(inspectPrivacySafeSiteBrandLogoSvg(potraceOutput), "Stored Potrace output passes the privacy-safe reader");
-assert.ok(potraceOutput.toString().includes(drawing), "Preserve Potrace paths, transforms and paint");
+assert.ok(
+  inspectPrivacySafeSiteBrandLogoSvg(potraceOutput),
+  "Stored Potrace output passes the privacy-safe reader"
+);
+assert.ok(
+  potraceOutput.toString().includes(drawing),
+  "Preserve Potrace paths, transforms and paint"
+);
 assert.doesNotMatch(potraceOutput.toString(), /DOCTYPE|metadata|version=/);
-assert.deepEqual(sanitizeSvg(potraceOutput.toString()), potraceOutput, "Potrace normalization is idempotent");
+assert.deepEqual(
+  sanitizeSvg(potraceOutput.toString()),
+  potraceOutput,
+  "Potrace normalization is idempotent"
+);
 
 const recraftOutput = sanitizeSvg(recraftLikeExport);
 assert.ok(recraftOutput, "Accept a Recraft-style multicolor SVG export");
-assert.ok(inspectPrivacySafeSiteBrandLogoSvg(recraftOutput), "Stored Recraft-style output passes the privacy-safe reader");
+assert.ok(
+  inspectPrivacySafeSiteBrandLogoSvg(recraftOutput),
+  "Stored Recraft-style output passes the privacy-safe reader"
+);
 assert.doesNotMatch(recraftOutput.toString(), /metadata|c2pa:manifest/);
 assert.match(recraftOutput.toString(), /<defs><linearGradient/);
 assert.match(recraftOutput.toString(), /fill="url\(#gradient_0\)"/);
 assert.match(recraftOutput.toString(), /xmlns:xlink=/);
-assert.deepEqual(sanitizeSvg(recraftOutput.toString()), recraftOutput, "Recraft-style normalization is idempotent");
+assert.deepEqual(
+  sanitizeSvg(recraftOutput.toString()),
+  recraftOutput,
+  "Recraft-style normalization is idempotent"
+);
 
+const styledStructural = sanitizeSiteBrandLogoSvg(
+  Buffer.from(styledExport)
+);
+assert.ok(
+  styledStructural,
+  "Broad SVG structural sanitizer accepts safe CSS and an embedded raster data URI"
+);
+const styledNestedRaster = sanitizeSiteBrandLogoEmbeddedRasters(
+  styledStructural
+);
+assert.ok(
+  styledNestedRaster,
+  "Embedded raster privacy layer accepts and rewrites the metadata-bearing PNG"
+);
+assert.ok(
+  inspectSafeSiteBrandLogoSvg(styledNestedRaster),
+  "SVG stays structurally canonical after nested raster rewriting"
+);
 const styledOutput = sanitizeSvg(styledExport);
-assert.ok(styledOutput, "Accept safe inline CSS, internal paint references and embedded raster data");
+assert.ok(
+  styledOutput,
+  "Full privacy-safe SVG pipeline accepts safe CSS, internal paint references and embedded raster data"
+);
 assert.match(styledOutput.toString(), /<style type="text\/css">/);
-assert.ok(recolorSafeSiteBrandLogoSvg(styledOutput, "#ff0847"), "SVG recoloring remains available for Marca/Personalizado modes");
-assert.ok(recolorSafeSiteBrandLogoSvg(recraftOutput, "#ff0847"), "Gradient SVGs can be recolored for social output");
+assert.ok(
+  recolorSafeSiteBrandLogoSvg(styledOutput, "#ff0847"),
+  "SVG recoloring remains available for Marca/Personalizado modes"
+);
+assert.ok(
+  recolorSafeSiteBrandLogoSvg(recraftOutput, "#ff0847"),
+  "Gradient SVGs can be recolored for social output"
+);
 const embeddedMatch = styledOutput.toString().match(
   /href="data:image\/png;base64,([A-Za-z0-9+/=]+)"/
 );
-assert.ok(embeddedMatch?.[1], "Keep the sanitized embedded PNG as a canonical data URI");
+assert.ok(
+  embeddedMatch?.[1],
+  "Keep the sanitized embedded PNG as a canonical data URI"
+);
 const embeddedPng = Buffer.from(embeddedMatch[1], "base64");
-assert.equal(embeddedPng.includes(trace), false, "Strip metadata from raster files nested inside a safe SVG");
-assert.ok(inspectSafeSiteBrandLogoRaster(embeddedPng, "png"), "Nested PNG must pass the same strict raster reader as a top-level logo");
-assert.ok(inspectPrivacySafeSiteBrandLogoSvg(styledOutput), "SVG with sanitized nested raster is canonical at read time");
+assert.equal(
+  embeddedPng.includes(trace),
+  false,
+  "Strip metadata from raster files nested inside a safe SVG"
+);
+assert.ok(
+  inspectSafeSiteBrandLogoRaster(embeddedPng, "png"),
+  "Nested PNG must pass the same strict raster reader as a top-level logo"
+);
+assert.ok(
+  inspectPrivacySafeSiteBrandLogoSvg(styledOutput),
+  "SVG with sanitized nested raster is canonical at read time"
+);
+
+const hiddenTraceOutput = sanitizeSvg(hiddenTraceExport);
+assert.ok(
+  hiddenTraceOutput,
+  "Accept safe SVGs after dropping non-visual descriptive/exporter fields"
+);
+assert.equal(
+  hiddenTraceOutput.toString().includes(traceText),
+  false,
+  "Strip title/desc, data/ARIA/title attributes and CSS comments that can carry exporter traces"
+);
+assert.doesNotMatch(
+  hiddenTraceOutput.toString(),
+  /<title|<desc|data-exporter|aria-label|role=|title=/i
+);
+assert.ok(
+  inspectPrivacySafeSiteBrandLogoSvg(hiddenTraceOutput),
+  "SVG without hidden non-visual metadata is canonical at read time"
+);
 
 const hostileMetadataOutput = sanitizeSvg(
   root('<metadata><script>alert(1)</script></metadata>' + drawing)
 );
-assert.ok(hostileMetadataOutput, "Discard metadata wholesale before storing the drawing");
-assert.doesNotMatch(hostileMetadataOutput.toString(), /metadata|script|alert/);
-assert.ok(inspectPrivacySafeSiteBrandLogoSvg(hostileMetadataOutput), "Metadata-stripped output remains safe and canonical");
+assert.ok(
+  hostileMetadataOutput,
+  "Discard metadata wholesale before storing the drawing"
+);
+assert.doesNotMatch(
+  hostileMetadataOutput.toString(),
+  /metadata|script|alert/
+);
+assert.ok(
+  inspectPrivacySafeSiteBrandLogoSvg(hostileMetadataOutput),
+  "Metadata-stripped output remains safe and canonical"
+);
 
-assert.equal(sanitizeTaxonomySvgIcon(Buffer.from(potraceExport)), null, "Taxonomy SVG policy stays intentionally strict");
+assert.equal(
+  sanitizeTaxonomySvgIcon(Buffer.from(potraceExport)),
+  null,
+  "Taxonomy SVG policy stays intentionally strict"
+);
 assert.ok(sanitizeSvg(root(drawing)));
 
 for (const source of [
@@ -132,18 +251,26 @@ for (const source of [
   root('<image href="https://example.com/image.png"/>'),
   potraceExport.replace('svg10.dtd"', 'svg10.dtd" [<!ENTITY x "test">]'),
 ]) {
-  assert.equal(sanitizeSvg(source), null, "Reject executable, active, external or entity-driven SVG content");
+  assert.equal(
+    sanitizeSvg(source),
+    null,
+    "Reject executable, active, external or entity-driven SVG content"
+  );
 }
 
-assert.equal(sanitizePrivacySafeSiteBrandLogoSvg(Buffer.alloc(256 * 1024 + 1)), null);
-assert.equal(sanitizePrivacySafeSiteBrandLogoSvg(Buffer.from([0xff])), null);
-assert.equal(sanitizeSvg('<svg xmlns="http://www.w3.org/2000/svg"><path d="M0 0"/></svg>'), null, "Require a scalable viewBox");
-
-const pngOutput = sanitizeSiteBrandLogoRaster(pngWithMetadata);
-assert.ok(pngOutput && pngOutput.inspection.format === "png", "Accept a valid PNG by content signature");
-assert.equal(pngOutput.buffer.includes(trace), false, "Strip PNG text metadata and bytes appended after IEND");
-assert.ok(inspectSafeSiteBrandLogoRaster(pngOutput.buffer, "png"), "Stored PNG passes the strict reader");
-assert.equal(inspectSafeSiteBrandLogoRaster(pngWithMetadata, "png"), null, "Reject unsanitized PNG metadata at read time");
+assert.equal(
+  sanitizePrivacySafeSiteBrandLogoSvg(Buffer.alloc(256 * 1024 + 1)),
+  null
+);
+assert.equal(
+  sanitizePrivacySafeSiteBrandLogoSvg(Buffer.from([0xff])),
+  null
+);
+assert.equal(
+  sanitizeSvg('<svg xmlns="http://www.w3.org/2000/svg"><path d="M0 0"/></svg>'),
+  null,
+  "Require a scalable viewBox"
+);
 
 const jpegBase = Buffer.from(
   "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////2wBDAf//////////////////////////////////////////////////////////////////////////////////////wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAf/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIQAxAAAAF//8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABBQJ//8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAgBAwEBPwF//8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAgBAgEBPwF//8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQAGPwJ//8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPyF//9oADAMBAAIAAwAAABD/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oACAEDAQE/EH//xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oACAECAQE/EH//xAAUEAEAAAAAAAAAAAAAAAAAAAAA/9oACAEBAAE/EH//2Q==",
@@ -161,10 +288,24 @@ const jpegWithMetadata = Buffer.concat([
   trace,
 ]);
 const jpegOutput = sanitizeSiteBrandLogoRaster(jpegWithMetadata);
-assert.ok(jpegOutput && jpegOutput.inspection.format === "jpg", "Accept JPEG regardless of browser filename/MIME spelling");
-assert.equal(jpegOutput.buffer.includes(trace), false, "Strip JPEG APP/COM metadata and bytes appended after EOI");
-assert.ok(inspectSafeSiteBrandLogoRaster(jpegOutput.buffer, "jpg"), "Stored JPEG passes the strict reader");
-assert.equal(inspectSafeSiteBrandLogoRaster(jpegWithMetadata, "jpg"), null, "Reject unsanitized JPEG metadata at read time");
+assert.ok(
+  jpegOutput && jpegOutput.inspection.format === "jpg",
+  "Accept JPEG regardless of browser filename/MIME spelling"
+);
+assert.equal(
+  jpegOutput.buffer.includes(trace),
+  false,
+  "Strip JPEG APP/COM metadata and bytes appended after EOI"
+);
+assert.ok(
+  inspectSafeSiteBrandLogoRaster(jpegOutput.buffer, "jpg"),
+  "Stored JPEG passes the strict reader"
+);
+assert.equal(
+  inspectSafeSiteBrandLogoRaster(jpegWithMetadata, "jpg"),
+  null,
+  "Reject unsanitized JPEG metadata at read time"
+);
 
 const gifBase = Buffer.from(
   "R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==",
@@ -184,10 +325,24 @@ const gifWithMetadata = Buffer.concat([
   trace,
 ]);
 const gifOutput = sanitizeSiteBrandLogoRaster(gifWithMetadata);
-assert.ok(gifOutput && gifOutput.inspection.format === "gif", "Accept a static GIF");
-assert.equal(gifOutput.buffer.includes(trace), false, "Strip GIF comment/application metadata and trailing bytes");
-assert.ok(inspectSafeSiteBrandLogoRaster(gifOutput.buffer, "gif"), "Stored GIF passes the strict reader");
-assert.equal(inspectSafeSiteBrandLogoRaster(gifWithMetadata, "gif"), null, "Reject unsanitized GIF metadata at read time");
+assert.ok(
+  gifOutput && gifOutput.inspection.format === "gif",
+  "Accept a static GIF"
+);
+assert.equal(
+  gifOutput.buffer.includes(trace),
+  false,
+  "Strip GIF comment/application metadata and trailing bytes"
+);
+assert.ok(
+  inspectSafeSiteBrandLogoRaster(gifOutput.buffer, "gif"),
+  "Stored GIF passes the strict reader"
+);
+assert.equal(
+  inspectSafeSiteBrandLogoRaster(gifWithMetadata, "gif"),
+  null,
+  "Reject unsanitized GIF metadata at read time"
+);
 
 const gifImageBlock = gifBase.subarray(gifImageStart, gifTrailer);
 const animatedGif = Buffer.concat([
@@ -196,7 +351,17 @@ const animatedGif = Buffer.concat([
   gifImageBlock,
   Buffer.from([0x3b]),
 ]);
-assert.equal(sanitizeSiteBrandLogoRaster(animatedGif), null, "Reject animated/multi-frame GIF instead of persisting hidden frames");
-assert.equal(sanitizeSiteBrandLogoRaster(Buffer.from("not-an-image")), null, "Reject unknown binary formats by content");
+assert.equal(
+  sanitizeSiteBrandLogoRaster(animatedGif),
+  null,
+  "Reject animated/multi-frame GIF instead of persisting hidden frames"
+);
+assert.equal(
+  sanitizeSiteBrandLogoRaster(Buffer.from("not-an-image")),
+  null,
+  "Reject unknown binary formats by content"
+);
 
-console.log("Site logo import: OK (Potrace/Recraft SVG plus PNG/JPEG/WebP/GIF, nested raster metadata stripping, stored revalidation, static-only raster policy, SVG recoloring and active-content rejection).");
+console.log(
+  "Site logo import: OK (Potrace/Recraft SVG plus PNG/JPEG/WebP/GIF, nested raster and hidden SVG metadata stripping, stored revalidation, static-only raster policy, SVG recoloring and active-content rejection)."
+);
