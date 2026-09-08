@@ -5,6 +5,13 @@ import {
 } from "node:fs/promises";
 
 import {
+  isAdminEnabled,
+} from "@/lib/admin/database-config";
+import {
+  readAdminSessionToken,
+  resolveAdminSession,
+} from "@/lib/admin/session";
+import {
   buildEditorialMediaPublicPath,
   isEditorialMediaFilename,
   isEditorialMediaSlug,
@@ -33,6 +40,9 @@ import {
 import {
   SITE_BRAND_LOGO_SLUG,
 } from "@/lib/site/logo";
+import {
+  getPublicSiteConfig,
+} from "@/lib/site/public-site-config";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -47,6 +57,10 @@ type ValidatedWebmIdentity = {
   ino: number;
 };
 
+type SiteLogoServingAccess =
+  | "public"
+  | "admin";
+
 const validatedWebmCache = new Map<
   string,
   ValidatedWebmIdentity
@@ -60,6 +74,26 @@ function notFoundResponse() {
       "X-Content-Type-Options": "nosniff",
     },
   });
+}
+
+async function resolveSiteLogoServingAccess(
+  publicPath: string
+): Promise<SiteLogoServingAccess | null> {
+  const published = await getPublicSiteConfig();
+
+  if (published.logoAsset === publicPath) {
+    return "public";
+  }
+
+  if (!isAdminEnabled()) {
+    return null;
+  }
+
+  const session = await resolveAdminSession(
+    await readAdminSessionToken()
+  );
+
+  return session ? "admin" : null;
 }
 
 function requestedRange(
@@ -265,6 +299,14 @@ export async function GET(
       slug,
       filename
     );
+    const siteLogoAccess = isSiteLogoAsset
+      ? await resolveSiteLogoServingAccess(publicPath)
+      : "public";
+
+    if (isSiteLogoAsset && !siteLogoAccess) {
+      return notFoundResponse();
+    }
+
     const resolved = resolveEditorialMediaDiskPath(publicPath);
 
     if (!resolved) {
@@ -289,9 +331,13 @@ export async function GET(
 
     const sharedHeaders = {
       "Cache-Control":
-        "public, max-age=31536000, immutable",
+        siteLogoAccess === "admin"
+          ? "private, no-store, max-age=0"
+          : "public, max-age=31536000, immutable",
       "X-Content-Type-Options": "nosniff",
-      ETag: `"${filename}"`,
+      ...(siteLogoAccess === "admin"
+        ? {}
+        : { ETag: `"${filename}"` }),
     };
 
     if (isWebm) {
