@@ -1,11 +1,11 @@
 import type { MetadataRoute } from "next";
 
 import {
+  siteAppIconVersion,
+} from "@/lib/site/app-icon";
+import {
   getPublicSiteConfig,
 } from "@/lib/site/public-site-config";
-import {
-  siteAppIconVersion,
-} from "@/lib/site-app-icon";
 
 export const dynamic = "force-dynamic";
 
