@@ -86,11 +86,12 @@ assert(
   formSchema.includes("logoAsset: z.string().trim().max(400)") &&
     formSchema.includes("logoAsset: logoAsset || undefined") &&
     formSchema.includes("logoColorMode: z.enum(siteLogoColorModes)") &&
+    configRoute.includes("hasExactAdminFormFields") &&
     configRoute.includes('"logoAsset"') &&
     configRoute.includes('"logoColorMode"') &&
     configRoute.includes('"logoCustomColor"') &&
     configRoute.includes("readStoredSiteBrandLogo(input.logoAsset)"),
-  "El formulario real debe transportar los tres campos y el servidor debe rechazar assets inexistentes o corruptos aunque el path tenga forma válida."
+  "El formulario real debe transportar exactamente los tres campos del logo y el servidor debe rechazar assets inexistentes o corruptos aunque el path tenga forma válida."
 );
 
 assert(
@@ -102,6 +103,18 @@ assert(
     logoEditor.includes('name="logoColorMode"') &&
     logoEditor.includes('name="logoCustomColor"'),
   "Configuración → Identidad debe editar el logo dentro del mismo guardado editorial y Apariencia debe recibir su estado canónico."
+);
+
+const canonicalLogoModeFields =
+  logoEditor.match(/name="logoColorMode"/g) ?? [];
+
+assert(
+  canonicalLogoModeFields.length === 2 &&
+    logoEditor.includes('type="radio"') &&
+    logoEditor.includes('value="brand"') &&
+    logoEditor.includes('value="custom"') &&
+    !logoEditor.includes('name="logo-color-mode-ui"'),
+  "El modo de color debe serializarse mediante un único grupo radio canónico logoColorMode; no puede agregar campos UI que rompan el formulario exacto del servidor."
 );
 
 assert(
