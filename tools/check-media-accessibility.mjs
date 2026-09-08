@@ -26,7 +26,7 @@ const files = Object.fromEntries(
       workspace: "src/lib/admin/game-media-workspace.ts",
       accessibility: "src/lib/media/game-media-accessibility.ts",
       cover: "src/components/ui/GameCoverMedia.tsx",
-      card: "src/components/ui/UniversalGameCard.tsx",
+      card: "src/components/ui/UniversalGameCardBase.tsx",
       publicPage: "src/app/juegos/[slug]/page.tsx",
       publicationChanges: "src/lib/admin/game-publication-changes.ts",
       readiness: "src/lib/admin/game-publication-readiness.ts",
