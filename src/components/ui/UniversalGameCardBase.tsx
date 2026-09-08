@@ -5,7 +5,6 @@ import Link from "next/link";
 import {
   CalendarDays,
   ChevronRight,
-  Heart,
   Monitor,
   Star,
 } from "lucide-react";
@@ -13,6 +12,7 @@ import {
 import type {
   CSSProperties,
   PointerEvent as ReactPointerEvent,
+  ReactNode,
 } from "react";
 import {
   useEffect,
@@ -41,6 +41,7 @@ export type UniversalGameCardVariant =
 type UniversalGameCardProps = {
   game: Game;
   variant?: UniversalGameCardVariant;
+  overlayAction?: ReactNode;
 };
 
 type PendingTilt = {
@@ -210,6 +211,7 @@ function LowSpecDetails({ game }: { game: Game }) {
 export default function UniversalGameCard({
   game,
   variant = "standard",
+  overlayAction,
 }: UniversalGameCardProps) {
   const previewTimer = useRef<
     ReturnType<typeof setTimeout> | null
@@ -418,13 +420,6 @@ export default function UniversalGameCard({
             </span>
           )}
 
-          <span
-            className={styles.favorite}
-            aria-hidden="true"
-          >
-            <Heart size={21} />
-          </span>
-
           <Monitor
             size={18}
             className={styles.platform}
@@ -473,6 +468,8 @@ export default function UniversalGameCard({
           )}
         </div>
       </Link>
+
+      {overlayAction}
     </article>
   );
 }
