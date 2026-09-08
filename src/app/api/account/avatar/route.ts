@@ -135,10 +135,7 @@ export async function POST(request: NextRequest) {
       height: inspection.height,
     });
 
-    return json({
-      ok: true,
-      digest: inspection.digest,
-    });
+    return json({ ok: true });
   } catch {
     return json({ ok: false, error: "servicio" }, 503);
   }
