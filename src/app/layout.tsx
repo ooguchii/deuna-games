@@ -6,12 +6,18 @@ import {
   getPublicHomeConfig,
 } from "@/lib/home/public-home-config";
 import {
+  readStoredSiteBrandLogo,
+} from "@/lib/media/site-brand-logo";
+import {
   siteUrl,
 } from "@/lib/site";
 import {
   brandForeground,
   safeThemeBackground,
 } from "@/lib/site/brand-foreground";
+import {
+  resolveSiteLogoColor,
+} from "@/lib/site/logo";
 import {
   getPublicSiteConfig,
 } from "@/lib/site/public-site-config";
@@ -93,16 +99,33 @@ export default async function RootLayout({
   const config = await getPublicSiteConfig();
   const readableBrandText = brandForeground(config.brandColor);
   const readableThemeBackground = safeThemeBackground(config.themeColor);
+  const logoColor = resolveSiteLogoColor(config);
+  let logoAsset: string | null = null;
+
+  if (config.logoAsset) {
+    try {
+      logoAsset = (await readStoredSiteBrandLogo(config.logoAsset))
+        ? config.logoAsset
+        : null;
+    } catch {
+      logoAsset = null;
+    }
+  }
 
   return (
     <html
       lang={config.language}
       data-scroll-behavior="smooth"
+      data-site-logo={logoAsset ? "custom" : "default"}
       style={{
         "--theme-bg": readableThemeBackground,
         "--theme-brand": config.brandColor,
         "--theme-on-brand": readableBrandText,
         "--text-on-brand": readableBrandText,
+        "--site-logo-color": logoColor,
+        "--site-logo-image": logoAsset
+          ? `url("${logoAsset}")`
+          : "none",
       } as CSSProperties}
     >
       <body>

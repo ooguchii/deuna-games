@@ -3,6 +3,9 @@ import { z } from "zod";
 import {
   HOME_PRESENTATION_MAX_JSON_CHARS,
 } from "@/lib/home/editorial-limits";
+import {
+  siteLogoColorModes,
+} from "@/lib/site/logo";
 
 import {
   editorialHomeConfigSchema,
@@ -47,16 +50,40 @@ function addIssues(
   });
 }
 
-const siteFields = editorialSiteConfigSchema.extend({
+const siteFields = editorialSiteConfigSchema.safeExtend({
   footerTagline: z.string().trim().min(1).max(180),
   brandColor: z.string().regex(/^#[0-9a-f]{6}$/i),
+  logoAsset: z.string().trim().max(400),
+  logoColorMode: z.enum(siteLogoColorModes),
+  logoCustomColor: z.string().regex(/^#[0-9a-f]{6}$/i),
 });
 
 export const frontendSiteConfigFormSchema = z
   .object({
     expectedRevision: expectedRevisionSchema,
   })
-  .merge(siteFields);
+  .merge(siteFields)
+  .transform((value, context) => {
+    const {
+      expectedRevision,
+      logoAsset,
+      ...config
+    } = value;
+    const parsed = editorialSiteConfigSchema.safeParse({
+      ...config,
+      logoAsset: logoAsset || undefined,
+    });
+
+    if (!parsed.success) {
+      addIssues(context, parsed.error.issues);
+      return z.NEVER;
+    }
+
+    return {
+      expectedRevision,
+      ...parsed.data,
+    };
+  });
 
 const homeCopySchema = editorialHomeConfigSchema.shape.copy.unwrap();
 const editableHomeCopySchema = homeCopySchema

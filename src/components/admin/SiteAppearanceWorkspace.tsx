@@ -10,6 +10,7 @@ import {
   Palette,
 } from "lucide-react";
 
+import SiteLogoMark from "@/components/brand/SiteLogoMark";
 import {
   brandForeground,
   safeThemeBackground,
@@ -18,6 +19,10 @@ import type {
   SiteBackgroundAsset,
   SiteBackgroundMap,
 } from "@/lib/site/backgrounds";
+import {
+  resolveSiteLogoColor,
+  type SiteLogoColorMode,
+} from "@/lib/site/logo";
 
 import adminStyles from "../../app/admin/admin.module.css";
 import SiteBackgroundManager from "./SiteBackgroundManager";
@@ -37,6 +42,9 @@ type SiteAppearanceWorkspaceProps = {
   language: "es";
   themeColor: string;
   brandColor: string;
+  logoAsset?: string;
+  logoColorMode: SiteLogoColorMode;
+  logoCustomColor: string;
   customAssets?: SiteBackgroundAsset[];
   pageBackgrounds?: SiteBackgroundMap;
 };
@@ -71,6 +79,9 @@ export default function SiteAppearanceWorkspace({
   language,
   themeColor: initialThemeColor,
   brandColor: initialBrandColor,
+  logoAsset,
+  logoColorMode,
+  logoCustomColor,
   customAssets = [],
   pageBackgrounds = {},
 }: SiteAppearanceWorkspaceProps) {
@@ -88,6 +99,14 @@ export default function SiteAppearanceWorkspace({
   const onBrand = useMemo(
     () => brandForeground(brandColor),
     [brandColor]
+  );
+  const logoColor = useMemo(
+    () => resolveSiteLogoColor({
+      brandColor,
+      logoColorMode,
+      logoCustomColor,
+    }),
+    [brandColor, logoColorMode, logoCustomColor]
   );
   const themeWasAdapted =
     safeBackground.toLowerCase() !== themeColor.toLowerCase();
@@ -178,6 +197,21 @@ export default function SiteAppearanceWorkspace({
               name="language"
               value={language}
             />
+            <input
+              type="hidden"
+              name="logoAsset"
+              value={logoAsset ?? ""}
+            />
+            <input
+              type="hidden"
+              name="logoColorMode"
+              value={logoColorMode}
+            />
+            <input
+              type="hidden"
+              name="logoCustomColor"
+              value={logoCustomColor}
+            />
 
             <div className={`${styles.colorFields} ${adminStyles.fieldWide}`}>
               <label className={styles.colorField}>
@@ -204,7 +238,7 @@ export default function SiteAppearanceWorkspace({
                 <span className={styles.colorText}>
                   <strong>Color de marca</strong>
                   <small>
-                    Logo, botones, enlaces, estados activos y acentos.
+                    Botones, enlaces, estados activos y acentos; el logo lo sigue cuando está en modo Marca.
                   </small>
                   <code>{brandColor}</code>
                 </span>
@@ -235,6 +269,11 @@ export default function SiteAppearanceWorkspace({
             aria-label="Vista previa de la paleta"
           >
             <div className={styles.previewTopbar}>
+              <SiteLogoMark
+                size={18}
+                asset={logoAsset ?? null}
+                color={logoColor}
+              />
               <strong>{shortName.trim() || name}</strong>
               <span />
               <span />
@@ -260,6 +299,10 @@ export default function SiteAppearanceWorkspace({
               <span>
                 Marca
                 <code>{brandColor}</code>
+              </span>
+              <span>
+                Logo
+                <code>{logoColor}</code>
               </span>
             </div>
 

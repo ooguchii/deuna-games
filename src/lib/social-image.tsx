@@ -1,6 +1,17 @@
-import { ImageResponse } from "next/og";
+import "server-only";
 
-import SiteLogoMark from "@/components/brand/SiteLogoMark";
+import { Buffer } from "node:buffer";
+
+import { ImageResponse } from "next/og";
+import { createElement } from "react";
+
+import {
+  buildSiteBrandLogoDataUri,
+} from "@/lib/media/site-brand-logo";
+import {
+  resolveSiteLogoColor,
+  type SiteLogoConfig,
+} from "@/lib/site/logo";
 
 export const socialImageAlt =
   "Imagen social del sitio de juegos para PC";
@@ -12,17 +23,49 @@ export const socialImageSize = {
 
 export const socialImageContentType = "image/png";
 
-type SocialImageIdentity = {
+type SocialImageIdentity = SiteLogoConfig & {
   name: string;
   description: string;
   themeColor: string;
-  brandColor: string;
   headline: string;
 };
 
-export function createSocialImage(
+function defaultLogoDataUri(color: string) {
+  const safeColor = /^#[0-9a-f]{6}$/i.test(color)
+    ? color
+    : "#ff0847";
+  const svg = [
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"',
+    ` stroke="${safeColor}" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">`,
+    '<line x1="6" x2="10" y1="11" y2="11"/>',
+    '<line x1="8" x2="8" y1="9" y2="13"/>',
+    '<line x1="15" x2="15.01" y1="12" y2="12"/>',
+    '<line x1="18" x2="18.01" y1="10" y2="10"/>',
+    '<path d="M17.32 5H6.68a4 4 0 0 0-3.978 3.59c-.006.052-.01.101-.017.152C2.604 9.416 2 14.456 2 16a3 3 0 0 0 3 3c1 0 1.5-.5 2-1l1.414-1.414A2 2 0 0 1 9.828 16h4.344a2 2 0 0 1 1.414.586L17 18c.5.5 1 1 2 1a3 3 0 0 0 3-3c0-1.545-.604-6.584-.685-7.258-.007-.05-.011-.1-.017-.151A4 4 0 0 0 17.32 5z"/>',
+    "</svg>",
+  ].join("");
+
+  return `data:image/svg+xml;base64,${Buffer.from(svg, "utf8").toString("base64")}`;
+}
+
+export async function createSocialImage(
   identity: SocialImageIdentity
 ) {
+  const logoColor = resolveSiteLogoColor(identity);
+  let logoDataUri = defaultLogoDataUri(logoColor);
+
+  if (identity.logoAsset) {
+    try {
+      logoDataUri =
+        (await buildSiteBrandLogoDataUri(
+          identity.logoAsset,
+          logoColor
+        )) ?? logoDataUri;
+    } catch {
+      // El fallback local ya está listo y no depende del asset editorial.
+    }
+  }
+
   return new ImageResponse(
     (
       <div
@@ -93,10 +136,20 @@ export function createSocialImage(
                 borderRadius: 18,
                 border: `1px solid ${identity.brandColor}`,
                 background: `${identity.brandColor}14`,
-                color: identity.brandColor,
+                color: logoColor,
               }}
             >
-              <SiteLogoMark size={36} strokeWidth={2.1} />
+              {createElement("img", {
+                src: logoDataUri,
+                alt: "",
+                width: 36,
+                height: 36,
+                style: {
+                  width: 36,
+                  height: 36,
+                  objectFit: "contain",
+                },
+              })}
             </div>
 
             <div style={{ display: "flex" }}>

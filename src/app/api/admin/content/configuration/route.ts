@@ -15,6 +15,9 @@ import {
 import {
   hasExactAdminFormFields,
 } from "@/lib/admin/request-security";
+import {
+  readStoredSiteBrandLogo,
+} from "@/lib/media/site-brand-logo";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -28,6 +31,9 @@ const fields = [
   "themeColor",
   "brandColor",
   "footerTagline",
+  "logoAsset",
+  "logoColorMode",
+  "logoCustomColor",
 ] as const;
 
 export async function POST(request: NextRequest) {
@@ -83,6 +89,17 @@ export async function POST(request: NextRequest) {
     }
 
     const { expectedRevision, ...input } = parsed.data;
+
+    if (
+      input.logoAsset &&
+      !(await readStoredSiteBrandLogo(input.logoAsset))
+    ) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        redirectPath("datos")
+      );
+    }
+
     const result = await saveSiteConfigDraft(
       expectedRevision,
       authorized.session.userId,

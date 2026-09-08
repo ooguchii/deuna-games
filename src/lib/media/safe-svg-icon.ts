@@ -222,6 +222,52 @@ function normalizedSvgText(input: Buffer) {
   return source;
 }
 
+function safeNormalizedSvgSource(input: Buffer) {
+  const source = normalizedSvgText(input);
+
+  if (!source) return null;
+
+  const sanitized = Buffer.from(`${source}\n`, "utf8");
+  return sanitized.equals(input) ? source : null;
+}
+
+function hasScalableViewBox(source: string) {
+  const root = source.match(/^<svg\b([^<>]*)>/i);
+  if (!root) return false;
+
+  const match = root[1]?.match(
+    /\bviewbox\s*=\s*(?:"([^"]+)"|'([^']+)')/i
+  );
+  const value = match?.[1] ?? match?.[2];
+  if (!value) return false;
+
+  const numbers = value
+    .trim()
+    .split(/[\s,]+/)
+    .filter(Boolean)
+    .map(Number);
+
+  return (
+    numbers.length === 4 &&
+    numbers.every(Number.isFinite) &&
+    numbers[2]! > 0 &&
+    numbers[3]! > 0
+  );
+}
+
+function transparentPaint(value: string) {
+  const normalized = value.trim().toLowerCase();
+
+  return (
+    normalized === "none" ||
+    normalized === "transparent" ||
+    /^#[0-9a-f]{3}0$/i.test(normalized) ||
+    /^#[0-9a-f]{6}00$/i.test(normalized) ||
+    /^(?:rgba|hsla)\([\s\S]*,\s*0(?:\.0+)?%?\s*\)$/i.test(normalized) ||
+    /^(?:rgb|hsl)\([\s\S]*\/\s*0(?:\.0+)?%?\s*\)$/i.test(normalized)
+  );
+}
+
 export function sanitizeTaxonomySvgIcon(
   input: Buffer
 ): Buffer | null {
@@ -235,12 +281,24 @@ export function sanitizeTaxonomySvgIcon(
 export function inspectSafeTaxonomySvgIcon(
   input: Buffer
 ): SafeTaxonomySvgInspection | null {
-  const sanitized = sanitizeTaxonomySvgIcon(input);
+  const source = safeNormalizedSvgSource(input);
 
-  if (
-    !sanitized ||
-    !sanitized.equals(input)
-  ) {
+  if (!source) return null;
+
+  return {
+    digest: createHash("sha256")
+      .update(input)
+      .digest("hex"),
+    bytes: input.length,
+  };
+}
+
+export function inspectSafeSiteBrandLogoSvg(
+  input: Buffer
+): SafeTaxonomySvgInspection | null {
+  const source = safeNormalizedSvgSource(input);
+
+  if (!source || !hasScalableViewBox(source)) {
     return null;
   }
 
@@ -250,4 +308,41 @@ export function inspectSafeTaxonomySvgIcon(
       .digest("hex"),
     bytes: input.length,
   };
+}
+
+export function recolorSafeSiteBrandLogoSvg(
+  input: Buffer,
+  color: string
+): Buffer | null {
+  if (!/^#[0-9a-f]{6}$/i.test(color)) {
+    return null;
+  }
+
+  const source = safeNormalizedSvgSource(input);
+  if (!source || !hasScalableViewBox(source)) {
+    return null;
+  }
+
+  let recolored = source.replace(
+    /\b(fill|stroke)\s*=\s*(["'])([^"']*)\2/gi,
+    (attribute, name: string, quote: string, value: string) =>
+      transparentPaint(value)
+        ? attribute
+        : `${name}=${quote}${color}${quote}`
+  );
+  const root = recolored.match(/^<svg\b([^<>]*)>/i);
+
+  if (!root) return null;
+
+  if (!/\bfill\s*=/i.test(root[1] ?? "")) {
+    recolored = recolored.replace(
+      /^<svg\b([^<>]*)>/i,
+      `<svg$1 fill="${color}">`
+    );
+  }
+
+  const output = Buffer.from(`${recolored}\n`, "utf8");
+  return inspectSafeSiteBrandLogoSvg(output)
+    ? output
+    : null;
 }

@@ -1,0 +1,48 @@
+.root {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: var(--site-logo-size);
+  height: var(--site-logo-size);
+  flex: 0 0 auto;
+  color: var(--site-logo-color, currentColor);
+}
+
+.fallback {
+  width: 100%;
+  height: 100%;
+  color: var(--site-logo-color, currentColor);
+}
+
+.custom {
+  display: none;
+  width: 100%;
+  height: 100%;
+  background: var(--site-logo-color, currentColor);
+  -webkit-mask-image: var(--site-logo-image);
+  mask-image: var(--site-logo-image);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+
+:global(html[data-site-logo="custom"]) .root:not([data-logo-override]) .fallback,
+.root[data-logo-override="custom"] .fallback {
+  display: none;
+}
+
+:global(html[data-site-logo="custom"]) .root:not([data-logo-override]) .custom,
+.root[data-logo-override="custom"] .custom {
+  display: block;
+}
+
+.root[data-logo-override="default"] .custom {
+  display: none;
+}
+
+.root[data-logo-override="default"] .fallback {
+  display: block;
+}

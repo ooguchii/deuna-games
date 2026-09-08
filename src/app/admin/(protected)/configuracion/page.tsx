@@ -7,6 +7,7 @@ import PublicationPanel from "@/components/admin/PublicationPanel";
 import SiteAppearanceWorkspace, {
   type AppearancePanel,
 } from "@/components/admin/SiteAppearanceWorkspace";
+import SiteBrandLogoEditor from "@/components/admin/SiteBrandLogoEditor";
 import SiteIdentityPreview from "@/components/admin/SiteIdentityPreview";
 import { getEditorialItem } from "@/lib/admin/content-service";
 import { getSiteConfigPublicationState } from "@/lib/admin/publication-service";
@@ -88,7 +89,7 @@ function pageHeading(section: ConfigurationSection) {
       return {
         title: "Identidad de marca",
         description:
-          "Administra nombre, descripción y presentación institucional. Todo se guarda primero como borrador.",
+          "Administra nombre, descripción, logo y presentación institucional. Todo se guarda primero como borrador.",
       };
   }
 }
@@ -125,6 +126,11 @@ export default async function AdminConfigurationPage({
       item.payload.footerTagline ?? sourceSiteConfig.footerTagline,
     brandColor:
       item.payload.brandColor ?? sourceSiteConfig.brandColor,
+    logoAsset: item.payload.logoAsset,
+    logoColorMode:
+      item.payload.logoColorMode ?? sourceSiteConfig.logoColorMode,
+    logoCustomColor:
+      item.payload.logoCustomColor ?? sourceSiteConfig.logoCustomColor,
   };
   const status = publicationState?.hasUnpublishedChanges
     ? "Cambios sin publicar"
@@ -150,7 +156,7 @@ export default async function AdminConfigurationPage({
               <span>DATOS GENERALES</span>
               <h2>Nombre y presentación</h2>
               <p>
-                Estos datos se guardan como borrador hasta que decidas publicarlos.
+                Estos datos y el símbolo de marca se guardan juntos como borrador hasta que decidas publicarlos.
               </p>
             </div>
 
@@ -228,6 +234,15 @@ export default async function AdminConfigurationPage({
                   La interfaz pública actual está disponible en español.
                 </small>
               </label>
+
+              <SiteBrandLogoEditor
+                revision={item.revision}
+                initialAsset={config.logoAsset}
+                brandColor={config.brandColor}
+                initialColorMode={config.logoColorMode}
+                initialCustomColor={config.logoCustomColor}
+              />
+
               <div className={styles.formActions}>
                 <p>
                   Guardar no publica. La identidad activa permanece intacta hasta pulsar Publicar.
@@ -252,6 +267,9 @@ export default async function AdminConfigurationPage({
           language={config.language}
           themeColor={config.themeColor}
           brandColor={config.brandColor}
+          logoAsset={config.logoAsset}
+          logoColorMode={config.logoColorMode}
+          logoCustomColor={config.logoCustomColor}
           customAssets={config.backgroundLibrary ?? []}
           pageBackgrounds={config.pageBackgrounds ?? {}}
         />

@@ -11,6 +11,7 @@ import {
   resolveEditorialMediaDiskPath,
 } from "@/lib/media/editorial-media";
 import {
+  inspectSafeSiteBrandLogoSvg,
   inspectSafeTaxonomySvgIcon,
   MAX_TAXONOMY_SVG_ICON_BYTES,
 } from "@/lib/media/safe-svg-icon";
@@ -22,10 +23,14 @@ import {
   inspectSafeEditorialWebp,
   MAX_EDITORIAL_IMAGE_BYTES,
 } from "@/lib/media/safe-webp";
+import {
+  SITE_BRAND_LOGO_SLUG,
+} from "@/lib/site/logo";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+const TAXONOMY_ICON_SLUG = "taxonomy-icons";
 const MAX_VALIDATED_WEBM_CACHE_ENTRIES = 96;
 
 type ValidatedWebmIdentity = {
@@ -217,12 +222,16 @@ export async function GET(
   const { slug, filename } = await context.params;
   const isSvg = filename.endsWith(".svg");
   const isWebm = filename.endsWith(".webm");
+  const isTaxonomyAsset = slug === TAXONOMY_ICON_SLUG;
+  const isSiteLogoAsset = slug === SITE_BRAND_LOGO_SLUG;
+  const isSvgNamespace = isTaxonomyAsset || isSiteLogoAsset;
 
   if (
     !isEditorialMediaSlug(slug) ||
     !isEditorialMediaFilename(filename) ||
-    (isSvg && slug !== "taxonomy-icons") ||
-    (isWebm && slug === "taxonomy-icons")
+    (isSvg && !isSvgNamespace) ||
+    (isWebm && isSvgNamespace) ||
+    (isSiteLogoAsset && !isSvg)
   ) {
     return notFoundResponse();
   }
@@ -327,10 +336,18 @@ export async function GET(
 
     const content = await readFile(resolved.filePath);
     const safe = isSvg
-      ? inspectSafeTaxonomySvgIcon(content)
+      ? isSiteLogoAsset
+        ? inspectSafeSiteBrandLogoSvg(content)
+        : inspectSafeTaxonomySvgIcon(content)
       : inspectSafeEditorialWebp(content);
 
-    if (!safe) {
+    if (
+      !safe ||
+      (
+        isSvg &&
+        safe.digest !== filename.slice(0, -".svg".length)
+      )
+    ) {
       return notFoundResponse();
     }
 
