@@ -17,6 +17,7 @@ import {
 } from "@/lib/site/brand-foreground";
 import {
   resolveSiteLogoColor,
+  resolveSiteLogoColorMode,
 } from "@/lib/site/logo";
 import {
   getPublicSiteConfig,
@@ -112,12 +113,17 @@ export default async function RootLayout({
     }
   }
 
+  const logoColorMode = resolveSiteLogoColorMode(
+    logoAsset,
+    config.logoColorMode
+  );
+
   return (
     <html
       lang={config.language}
       data-scroll-behavior="smooth"
       data-site-logo={logoAsset ? "custom" : "default"}
-      data-site-logo-color-mode={config.logoColorMode}
+      data-site-logo-color-mode={logoColorMode}
       style={{
         "--theme-bg": readableThemeBackground,
         "--theme-brand": config.brandColor,
