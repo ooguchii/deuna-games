@@ -150,8 +150,10 @@ async function prepareAvatar(file: File) {
 
 export default function AccountAvatarEditor({
   username,
+  onAvatarChange,
 }: {
   username: string;
+  onAvatarChange?: (hasAvatar: boolean) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [revision, setRevision] = useState(0);
@@ -192,6 +194,7 @@ export default function AccountAvatarEditor({
       setHasAvatar(true);
       setMessage("Foto de perfil actualizada.");
       refreshAvatarPreview();
+      onAvatarChange?.(true);
     } catch (error) {
       const reason = error instanceof Error ? error.message : "servicio";
       setMessage(
@@ -236,6 +239,7 @@ export default function AccountAvatarEditor({
       setHasAvatar(false);
       setMessage("Foto de perfil eliminada.");
       refreshAvatarPreview();
+      onAvatarChange?.(false);
     } catch {
       setMessage("No se pudo eliminar la foto de perfil.");
     } finally {
