@@ -33,6 +33,7 @@ import type {
 } from "@/lib/accounts/update-notifications";
 
 import accountStyles from "./HeaderAccountMenu.module.css";
+import avatarStyles from "./HeaderClientAvatar.module.css";
 import HeaderNavigation from "./HeaderNavigation";
 import styles from "./Header.module.css";
 import notificationStyles from "./HeaderNotifications.module.css";
@@ -45,6 +46,7 @@ type HeaderClientProps = {
     displayName: string | null;
   } | null;
   accountNotifications: AccountUpdateNotification[] | null;
+  accountAvatarUrl: string | null;
 };
 
 type HeaderPopover = "notifications" | "account" | null;
@@ -77,10 +79,41 @@ function displayCount(count: number) {
   return count > 99 ? "99+" : String(count);
 }
 
+function AccountAvatarVisual({
+  accountAvatarUrl,
+  fallback: Fallback,
+  size,
+}: {
+  accountAvatarUrl: string | null;
+  fallback: LucideIcon;
+  size: number;
+}) {
+  if (accountAvatarUrl) {
+    return (
+      <span
+        className={avatarStyles.image}
+        style={{
+          backgroundImage: `url("${accountAvatarUrl}")`,
+        }}
+        aria-hidden="true"
+      />
+    );
+  }
+
+  return (
+    <Fallback
+      size={size}
+      strokeWidth={1.8}
+      aria-hidden="true"
+    />
+  );
+}
+
 export default function HeaderClient({
   siteName,
   accountIdentity,
   accountNotifications,
+  accountAvatarUrl,
 }: HeaderClientProps) {
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -575,10 +608,10 @@ export default function HeaderClient({
                         togglePopover("account");
                       }}
                     >
-                      <UserRound
+                      <AccountAvatarVisual
+                        accountAvatarUrl={accountAvatarUrl}
+                        fallback={UserRound}
                         size={21}
-                        strokeWidth={1.8}
-                        aria-hidden="true"
                       />
                     </button>
 
@@ -592,7 +625,11 @@ export default function HeaderClient({
                       >
                         <div className={accountStyles.identity}>
                           <span className={accountStyles.avatar} aria-hidden="true">
-                            <CircleUserRound size={24} />
+                            <AccountAvatarVisual
+                              accountAvatarUrl={accountAvatarUrl}
+                              fallback={CircleUserRound}
+                              size={24}
+                            />
                           </span>
                           <div className={accountStyles.identityCopy}>
                             <strong>{displayName}</strong>
@@ -724,7 +761,11 @@ export default function HeaderClient({
             >
               <div className={accountStyles.mobileIdentity}>
                 <span className={accountStyles.avatar} aria-hidden="true">
-                  <CircleUserRound size={22} />
+                  <AccountAvatarVisual
+                    accountAvatarUrl={accountAvatarUrl}
+                    fallback={CircleUserRound}
+                    size={22}
+                  />
                 </span>
                 <div className={accountStyles.identityCopy}>
                   <strong>{displayName}</strong>
