@@ -106,6 +106,9 @@ function stripNonVisualSiteBrandSvgMetadata(
  * top-level raster logos: content detection, static-only validation and
  * metadata removal. Otherwise EXIF/XMP/ICC/comments could survive inside an
  * otherwise sanitized SVG.
+ *
+ * The returned SVG is reserialized through the canonical structural sanitizer
+ * so callers cannot accidentally persist a valid-but-noncanonical transform.
  */
 export function sanitizeSiteBrandLogoEmbeddedRasters(
   input: Buffer
@@ -183,9 +186,11 @@ export function sanitizeSiteBrandLogoEmbeddedRasters(
 
   const output = Buffer.from(normalized, "utf8");
 
-  return output.length <= MAX_TAXONOMY_SVG_ICON_BYTES
-    ? output
-    : null;
+  if (output.length > MAX_TAXONOMY_SVG_ICON_BYTES) {
+    return null;
+  }
+
+  return sanitizeSiteBrandLogoSvg(output);
 }
 
 export function sanitizePrivacySafeSiteBrandLogoSvg(
@@ -203,24 +208,17 @@ export function sanitizePrivacySafeSiteBrandLogoSvg(
 
   if (!nestedRastersSanitized) return null;
 
-  // Re-run the canonical structural serializer after privacy transforms.
-  // Rewriting a nested data URI changes attribute bytes; storage/readers must
-  // only ever see the canonical representation produced by the SVG contract.
-  const canonical = sanitizeSiteBrandLogoSvg(
+  const privacyStable = stripNonVisualSiteBrandSvgMetadata(
     nestedRastersSanitized
   );
-
-  if (!canonical) return null;
-
-  const privacyStable = stripNonVisualSiteBrandSvgMetadata(
-    canonical
-  );
-  if (!privacyStable.equals(canonical)) {
+  if (!privacyStable.equals(nestedRastersSanitized)) {
     return null;
   }
 
-  return inspectSafeSiteBrandLogoSvg(canonical)
-    ? canonical
+  return inspectSafeSiteBrandLogoSvg(
+    nestedRastersSanitized
+  )
+    ? nestedRastersSanitized
     : null;
 }
 
