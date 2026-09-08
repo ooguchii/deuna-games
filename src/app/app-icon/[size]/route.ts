@@ -34,7 +34,7 @@ export async function GET(
   const response = await createSiteAppIcon(size);
   response.headers.set(
     "Cache-Control",
-    "public, max-age=0, s-maxage=31536000, immutable"
+    "public, max-age=0, must-revalidate"
   );
   response.headers.set("X-Content-Type-Options", "nosniff");
 
