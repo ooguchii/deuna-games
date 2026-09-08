@@ -6,6 +6,7 @@ import CardCarousel from "@/components/ui/CardCarousel";
 import touchStyles from "@/components/ui/TouchTarget.module.css";
 import UniversalGameCard from "@/components/ui/UniversalGameCard";
 import type { HomeCopy } from "@/data/home-config";
+import type { GameCardPresentationMode } from "@/lib/media/game-card-presentation";
 import type { Game } from "@/types/game";
 
 import styles from "./RecentlyAdded.module.css";
@@ -13,9 +14,11 @@ import styles from "./RecentlyAdded.module.css";
 export default function RecentlyAdded({
   games,
   copy,
+  presentation,
 }: {
   games: Game[];
   copy: HomeCopy["recent"];
+  presentation: GameCardPresentationMode;
 }) {
   return (
     <section className={styles.section}>
@@ -39,6 +42,7 @@ export default function RecentlyAdded({
             key={game.slug}
             game={game}
             variant="recent"
+            presentation={presentation}
           />
         ))}
       </CardCarousel>
