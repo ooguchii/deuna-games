@@ -27,6 +27,13 @@ const acceptedTypes = new Set([
   "image/webp",
 ]);
 
+type AvatarImageSource = {
+  source: CanvasImageSource;
+  width: number;
+  height: number;
+  cleanup: () => void;
+};
+
 async function canvasToWebp(
   canvas: HTMLCanvasElement,
   quality: number
@@ -34,6 +41,54 @@ async function canvasToWebp(
   return new Promise<Blob | null>((resolve) => {
     canvas.toBlob(resolve, "image/webp", quality);
   });
+}
+
+async function loadAvatarImage(
+  file: File
+): Promise<AvatarImageSource> {
+  if (typeof createImageBitmap === "function") {
+    try {
+      const bitmap = await createImageBitmap(file, {
+        imageOrientation: "from-image",
+      });
+
+      return {
+        source: bitmap,
+        width: bitmap.width,
+        height: bitmap.height,
+        cleanup: () => bitmap.close(),
+      };
+    } catch {
+      // Algunos navegadores soportan el archivo pero no todas las opciones de
+      // createImageBitmap. El fallback de <img> mantiene la carga accesible.
+    }
+  }
+
+  const objectUrl = URL.createObjectURL(file);
+  const image = document.createElement("img");
+  image.decoding = "async";
+
+  try {
+    await new Promise<void>((resolve, reject) => {
+      image.onload = () => resolve();
+      image.onerror = () => reject(new Error("imagen"));
+      image.src = objectUrl;
+    });
+
+    if (image.decode) {
+      await image.decode().catch(() => {});
+    }
+
+    return {
+      source: image,
+      width: image.naturalWidth,
+      height: image.naturalHeight,
+      cleanup: () => URL.revokeObjectURL(objectUrl),
+    };
+  } catch (error) {
+    URL.revokeObjectURL(objectUrl);
+    throw error;
+  }
 }
 
 async function prepareAvatar(file: File) {
@@ -45,19 +100,17 @@ async function prepareAvatar(file: File) {
     throw new Error("formato");
   }
 
-  const bitmap = await createImageBitmap(file, {
-    imageOrientation: "from-image",
-  });
+  const image = await loadAvatarImage(file);
 
   try {
-    const sourceSize = Math.min(bitmap.width, bitmap.height);
+    const sourceSize = Math.min(image.width, image.height);
 
     if (sourceSize <= 0) {
       throw new Error("imagen");
     }
 
-    const sourceX = Math.floor((bitmap.width - sourceSize) / 2);
-    const sourceY = Math.floor((bitmap.height - sourceSize) / 2);
+    const sourceX = Math.floor((image.width - sourceSize) / 2);
+    const sourceY = Math.floor((image.height - sourceSize) / 2);
     const canvas = document.createElement("canvas");
     canvas.width = OUTPUT_SIZE;
     canvas.height = OUTPUT_SIZE;
@@ -70,7 +123,7 @@ async function prepareAvatar(file: File) {
     }
 
     context.drawImage(
-      bitmap,
+      image.source,
       sourceX,
       sourceY,
       sourceSize,
@@ -95,7 +148,7 @@ async function prepareAvatar(file: File) {
 
     throw new Error("peso");
   } finally {
-    bitmap.close();
+    image.cleanup();
   }
 }
 
@@ -230,16 +283,18 @@ export default function AccountAvatarEditor({
             id="account-avatar-input"
             className={styles.input}
             type="file"
+            tabIndex={-1}
             accept="image/jpeg,image/png,image/webp"
             disabled={pending}
             onChange={(event) =>
               void handleSelection(event.target.files?.[0])
             }
           />
-          <label
-            htmlFor="account-avatar-input"
+          <button
+            type="button"
             className={styles.action}
-            aria-disabled={pending || undefined}
+            disabled={pending}
+            onClick={() => inputRef.current?.click()}
           >
             {pending ? (
               <LoaderCircle size={17} aria-hidden="true" />
@@ -247,7 +302,7 @@ export default function AccountAvatarEditor({
               <Camera size={17} aria-hidden="true" />
             )}
             {hasAvatar ? "Cambiar foto" : "Elegir foto"}
-          </label>
+          </button>
 
           {hasAvatar && (
             <button
