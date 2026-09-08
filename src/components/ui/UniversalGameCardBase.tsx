@@ -19,6 +19,7 @@ import {
   useEffect,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
 
 import GameMedia from "@/components/ui/GameMedia";
@@ -27,6 +28,13 @@ import {
   DEFAULT_GLOBAL_GAME_CARD_PRESENTATION,
   type GameCardPresentationMode,
 } from "@/lib/media/game-card-presentation";
+import {
+  isGameCardVideoBudgetOwner,
+  registerGameCardVideoCandidate,
+  subscribeGameCardVideoBudget,
+  unregisterGameCardVideoCandidate,
+  updateGameCardVideoVisibility,
+} from "@/lib/media/game-card-video-budget";
 import {
   resolveGameCardPreview,
 } from "@/lib/media/game-card-preview";
@@ -196,9 +204,9 @@ export default function UniversalGameCardBase({
   const cardRect = useRef<DOMRect | null>(null);
   const pointerEffectsEnabled = useRef(false);
   const articleRef = useRef<HTMLElement>(null);
+  const videoBudgetId = useRef<symbol>(Symbol(game.slug));
   const [previewActive, setPreviewActive] = useState(false);
   const [posterRevealed, setPosterRevealed] = useState(false);
-  const [inViewport, setInViewport] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
 
   const mediaBadge = getMediaBadge(game, variant);
@@ -216,12 +224,18 @@ export default function UniversalGameCardBase({
   const cardMode = resolveGameDestinationMediaMode(game, "card");
   const modePreview = resolveGameCardPreview(game);
   const explicitCardVideo = resolveGameCardVideo(game);
+  const explicitCardVideoSrc = explicitCardVideo?.src;
   const cardImage = game.cardImage ?? game.coverImage;
   const cardViewport = game.imageMedia?.card ?? game.imageMedia?.cover;
   const posterImage = game.coverImage ?? cardImage;
   const posterViewport = game.imageMedia?.cover ?? cardViewport;
   const posterAlt = game.mediaAccessibility?.cover ?? game.mediaAccessibility?.card ?? game.imageAlt;
   const detailAlt = game.mediaAccessibility?.card ?? game.imageAlt;
+  const ownsDetailVideoBudget = useSyncExternalStore(
+    subscribeGameCardVideoBudget,
+    () => isGameCardVideoBudgetOwner(videoBudgetId.current),
+    () => false
+  );
 
   useEffect(() => {
     const media = window.matchMedia(REDUCED_MOTION_MEDIA);
@@ -233,18 +247,35 @@ export default function UniversalGameCardBase({
 
   useEffect(() => {
     const node = articleRef.current;
-    if (!node || presentation !== "detail-video") {
-      setInViewport(false);
+    const budgetId = videoBudgetId.current;
+
+    if (
+      !node ||
+      presentation !== "detail-video" ||
+      !explicitCardVideoSrc ||
+      reducedMotion
+    ) {
+      unregisterGameCardVideoCandidate(budgetId);
       return;
     }
 
+    registerGameCardVideoCandidate(budgetId);
     const observer = new IntersectionObserver(
-      ([entry]) => setInViewport(Boolean(entry?.isIntersecting)),
-      { rootMargin: "120px 0px", threshold: 0.15 }
+      ([entry]) => {
+        updateGameCardVideoVisibility(
+          budgetId,
+          entry?.isIntersecting ? entry.intersectionRatio : 0
+        );
+      },
+      { threshold: [0, 0.15, 0.5, 0.85, 1] }
     );
     observer.observe(node);
-    return () => observer.disconnect();
-  }, [presentation]);
+
+    return () => {
+      observer.disconnect();
+      unregisterGameCardVideoCandidate(budgetId);
+    };
+  }, [explicitCardVideoSrc, presentation, reducedMotion]);
 
   function cancelTiltFrame() {
     if (tiltFrame.current !== null) {
@@ -362,7 +393,7 @@ export default function UniversalGameCardBase({
     detailVideo &&
     !reducedMotion &&
     (presentation === "detail-video"
-      ? inViewport
+      ? ownsDetailVideoBudget
       : presentation === "poster" && posterRevealed && previewActive)
   );
 
