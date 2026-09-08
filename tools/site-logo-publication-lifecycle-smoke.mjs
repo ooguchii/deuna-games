@@ -1,3 +1,6 @@
+import {
+  createHash,
+} from "node:crypto";
 import https from "node:https";
 import process from "node:process";
 
@@ -69,10 +72,15 @@ function request(pathname, options = {}) {
           chunks.push(chunk);
         });
         response.on("end", () => {
+          const content = Buffer.concat(chunks);
           resolve({
             status: response.statusCode ?? 0,
             headers: response.headers,
-            body: Buffer.concat(chunks).toString("utf8"),
+            body: content.toString("utf8"),
+            bytes: content.length,
+            sha256: createHash("sha256")
+              .update(content)
+              .digest("hex"),
           });
         });
       }
@@ -300,6 +308,44 @@ function sameIdentity(left, right) {
   );
 }
 
+async function socialSnapshot() {
+  const [openGraph, twitter] = await Promise.all([
+    request("/opengraph-image"),
+    request("/twitter-image"),
+  ]);
+  const entries = [
+    ["Open Graph", openGraph],
+    ["Twitter", twitter],
+  ];
+
+  for (const [label, response] of entries) {
+    const contentType = String(
+      response.headers["content-type"] ?? ""
+    ).toLowerCase();
+    if (
+      response.status !== 200 ||
+      !contentType.startsWith("image/png") ||
+      response.bytes < 1_024
+    ) {
+      throw new Error(
+        `${label} no generó un PNG social válido durante el lifecycle del logo.`
+      );
+    }
+  }
+
+  return {
+    openGraph: openGraph.sha256,
+    twitter: twitter.sha256,
+  };
+}
+
+function sameSocialSnapshot(left, right) {
+  return (
+    left.openGraph === right.openGraph &&
+    left.twitter === right.twitter
+  );
+}
+
 function multipartLogo(revision) {
   const boundary =
     `----deuna-site-logo-${Date.now().toString(36)}-${process.pid}`;
@@ -333,6 +379,7 @@ if (publicBefore.status !== 200) {
   );
 }
 const publishedIdentityBefore = publicLogoIdentity(publicBefore.body);
+const socialBefore = await socialSnapshot();
 
 const loginBody = new URLSearchParams({
   username: adminUsername,
@@ -492,6 +539,12 @@ if (
     "Guardar el logo en borrador alteró la identidad pública antes de publicar."
   );
 }
+const socialStillOld = await socialSnapshot();
+if (!sameSocialSnapshot(socialStillOld, socialBefore)) {
+  throw new Error(
+    "Guardar el logo en borrador alteró OG/Twitter antes de publicar."
+  );
+}
 
 const publicationBefore = await request(publicationPath, {
   headers: { cookie },
@@ -573,6 +626,15 @@ if (
 ) {
   throw new Error(
     `La identidad pública no aplicó el snapshot del logo (${JSON.stringify(publishedIdentity)}).`
+  );
+}
+const socialPublished = await socialSnapshot();
+if (
+  socialPublished.openGraph === socialBefore.openGraph ||
+  socialPublished.twitter === socialBefore.twitter
+) {
+  throw new Error(
+    "Publicar el logo personalizado no modificó las imágenes OG/Twitter."
   );
 }
 
@@ -657,6 +719,12 @@ if (
     "Restaurar la publicación anterior no recuperó exactamente el logo público previo."
   );
 }
+const socialRestored = await socialSnapshot();
+if (!sameSocialSnapshot(socialRestored, socialBefore)) {
+  throw new Error(
+    "Restaurar la publicación anterior no recuperó exactamente OG/Twitter."
+  );
+}
 
 const draftAfterRestore = await request(identityPath, {
   headers: { cookie },
@@ -673,5 +741,5 @@ if (
 }
 
 console.log(
-  `Site logo publication lifecycle smoke: OK (revisión ${beforeRevision} -> ${savedRevision}; publicación ${publicationNumberBefore} -> ${publicationNumberAfterPublish} -> ${publicationNumberAfterRestore}; asset SVG seguro y separación borrador/público preservada).`
+  `Site logo publication lifecycle smoke: OK (revisión ${beforeRevision} -> ${savedRevision}; publicación ${publicationNumberBefore} -> ${publicationNumberAfterPublish} -> ${publicationNumberAfterRestore}; SVG + OG/Twitter seguros y separación borrador/público preservada).`
 );
