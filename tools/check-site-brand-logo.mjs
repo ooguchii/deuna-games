@@ -43,6 +43,7 @@ const [
   adminShell,
   identityPreview,
   appearanceWorkspace,
+  siteLogoImage,
   socialImage,
 ] = await Promise.all([
   source("src/lib/site.ts"),
@@ -72,6 +73,7 @@ const [
   source("src/components/admin/AdminShell.tsx"),
   source("src/components/admin/SiteIdentityPreview.tsx"),
   source("src/components/admin/SiteAppearanceWorkspace.tsx"),
+  source("src/lib/site-logo-image.ts"),
   source("src/lib/social-image.tsx"),
 ]);
 
@@ -268,7 +270,7 @@ assert(
     footer.includes("<SiteLogoMark") &&
     accountDashboard.includes("<SiteBrand") &&
     adminShell.includes("<SiteLogoMark"),
-  "Header, Footer, Mi DeUna y Admin deben converger en SiteBrand/SiteLogoMark."
+  "Header, Footer, Mi DeUna autenticado y Admin protegido deben converger en SiteBrand/SiteLogoMark."
 );
 
 assert(
@@ -283,7 +285,6 @@ assert(
 );
 
 const socialImageBindsDataUri =
-  socialImage.includes("buildSiteBrandLogoDataUri") &&
   socialImage.includes("logoDataUri") &&
   (
     socialImage.includes("src={logoDataUri}") ||
@@ -291,13 +292,14 @@ const socialImageBindsDataUri =
   );
 
 assert(
-  socialImage.includes("resolveSiteLogoColor(identity)") &&
-    socialImage.includes("resolveSiteLogoColorMode") &&
-    socialImage.includes("effectiveLogoColorMode") &&
-    socialImage.includes('effectiveLogoColorMode === "original"') &&
+  siteLogoImage.includes("buildSiteBrandLogoDataUri") &&
+    siteLogoImage.includes("resolveSiteLogoColor(identity)") &&
+    siteLogoImage.includes("resolveSiteLogoColorMode") &&
+    siteLogoImage.includes('colorMode === "original" ? null : color') &&
+    socialImage.includes("resolveSiteLogoImage") &&
     socialImageBindsDataUri &&
     !socialImage.includes("SiteLogoMark"),
-  "Open Graph/Twitter deben usar el mismo asset publicado y respetar el modo efectivo, incluido raster original."
+  "Open Graph/Twitter deben reutilizar el resolver server-side del asset publicado y respetar raster original."
 );
 
 if (failures.length > 0) {
