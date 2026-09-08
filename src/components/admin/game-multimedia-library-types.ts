@@ -53,6 +53,7 @@ export type MultimediaLibraryResource =
   | MultimediaResourceVideo;
 
 export type MultimediaRequirements = {
+  /* `cover` es la clave compatible del poster 4:5 de Card. */
   cover: {
     assigned: boolean;
     cropReady: boolean;
@@ -63,8 +64,9 @@ export type MultimediaRequirements = {
     assigned: boolean;
     cropReady: boolean;
     mode: GameDestinationMediaMode;
-    aspect: "16:9";
+    aspect: "3:1";
   };
+  /* `card` representa la capa informativa 3:2. */
   card: {
     assigned: boolean;
     cropReady: boolean;
