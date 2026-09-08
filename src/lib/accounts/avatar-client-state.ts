@@ -4,16 +4,34 @@ import {
   useSyncExternalStore,
 } from "react";
 
-let revision = 0;
-const listeners = new Set<() => void>();
+const ACCOUNT_AVATAR_CHANGED_EVENT =
+  "deuna:account-avatar-changed";
 
-function subscribe(listener: () => void) {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
+type AvatarWindow = Window & {
+  __deunaAccountAvatarRevision?: number;
+};
+
+function readClientRevision() {
+  if (typeof window === "undefined") return 0;
+
+  const value = (window as AvatarWindow).__deunaAccountAvatarRevision;
+  return Number.isSafeInteger(value) && (value ?? 0) >= 0
+    ? value ?? 0
+    : 0;
 }
 
-function getRevision() {
-  return revision;
+function subscribe(listener: () => void) {
+  window.addEventListener(
+    ACCOUNT_AVATAR_CHANGED_EVENT,
+    listener
+  );
+
+  return () => {
+    window.removeEventListener(
+      ACCOUNT_AVATAR_CHANGED_EVENT,
+      listener
+    );
+  };
 }
 
 function getServerRevision() {
@@ -21,14 +39,17 @@ function getServerRevision() {
 }
 
 export function notifyAccountAvatarChanged() {
-  revision += 1;
-  for (const listener of listeners) listener();
+  const target = window as AvatarWindow;
+  target.__deunaAccountAvatarRevision = readClientRevision() + 1;
+  window.dispatchEvent(
+    new CustomEvent(ACCOUNT_AVATAR_CHANGED_EVENT)
+  );
 }
 
 export function useAccountAvatarRevision() {
   return useSyncExternalStore(
     subscribe,
-    getRevision,
+    readClientRevision,
     getServerRevision
   );
 }
