@@ -26,8 +26,8 @@ requireMatch(
   "El Header invitado debe mostrar una acción explícita para iniciar sesión."
 );
 requireMatch(
-  !/accountIdentity \?[^]*:\s*\([^]*href="\/cuenta\?vista=alerts"/.test(header),
-  "El estado invitado no debe representar una campana de cuenta como si hubiera sesión."
+  !/Notificaciones \(próximamente\)|Notificaciones próximamente/.test(header),
+  "El Header no debe volver a estados decorativos de notificaciones."
 );
 requireMatch(
   /type HeaderPopover = "notifications" \| "account" \| null/.test(header) && /activePopover/.test(header),
