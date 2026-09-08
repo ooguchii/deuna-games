@@ -16,7 +16,9 @@ import {
   type SiteBrandRasterFormat,
 } from "@/lib/media/safe-site-logo-raster";
 import {
-  inspectSafeSiteBrandLogoSvg,
+  inspectPrivacySafeSiteBrandLogoSvg,
+} from "@/lib/media/safe-site-logo-svg";
+import {
   inspectSafeTaxonomySvgIcon,
   MAX_TAXONOMY_SVG_ICON_BYTES,
 } from "@/lib/media/safe-svg-icon";
@@ -359,7 +361,7 @@ export async function GET(
     const content = await readFile(resolved.filePath);
     const safe = isSvg
       ? isSiteLogoAsset
-        ? inspectSafeSiteBrandLogoSvg(content)
+        ? inspectPrivacySafeSiteBrandLogoSvg(content)
         : inspectSafeTaxonomySvgIcon(content)
       : isSiteLogoAsset && logoRasterFormat
         ? inspectSafeSiteBrandLogoRaster(
