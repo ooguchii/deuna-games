@@ -296,16 +296,16 @@ for (const marker of [
   "avatarLifecycle: true",
   "avatarHeaderSync: true",
 ]) {
-  requirePattern(
-    accountBrowserE2e,
-    new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
-    `El E2E de Cuenta debe conservar la evidencia ${marker}.`
-  );
+  if (!accountBrowserE2e.includes(marker)) {
+    failures.push(
+      `El E2E de Cuenta debe conservar la evidencia ${marker}.`
+    );
+  }
 }
 
 if (failures.length > 0) {
   console.error("\nAvatar y favoritos de cuenta: ERROR\n");
-  for (const failure of failures) console.error(`- ${failure}`));
+  for (const failure of failures) console.error(`- ${failure}`);
   process.exit(1);
 }
 
