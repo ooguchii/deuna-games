@@ -89,8 +89,15 @@ assert(
   !multimediaPage.includes("GamePreviewClipUploadForm") &&
     !multimediaPage.includes("mediaAction") &&
     !multimediaEditor.includes("mediaAction") &&
-    has(multimediaEditor, "GameVideoLibraryEditor", "GameMediaAssignmentsWorkspace", "GameGalleryMediaManager", "GameMultimediaUtilityRail"),
-  "La pantalla multimedia no debe conservar el wrapper temporal ni el plumbing manual antiguo y debe montar sólo las superficies activas."
+    has(
+      multimediaEditor,
+      "GameMediaAssignmentsWorkspace",
+      "GameGalleryMediaManager",
+      "GameMultimediaUtilityRail"
+    ) &&
+    utilityRail.includes("GameVideoLibraryEditor") &&
+    !multimediaEditor.includes("GameMultimediaWorkspaceContextual"),
+  "La pantalla multimedia no debe conservar el wrapper temporal ni el plumbing manual antiguo; la creación de masters de video debe vivir en la Biblioteca activa."
 );
 
 assert(
@@ -134,7 +141,7 @@ try {
     path.join(root, "src/components/admin/GamePreviewClipUploadForm.tsx")
   );
   failures.push(
-    "GamePreviewClipUploadForm.tsx volvió a aparecer aunque el editor ya usa GameVideoLibraryEditor directamente."
+    "GamePreviewClipUploadForm.tsx volvió a aparecer aunque la Biblioteca ya usa GameVideoLibraryEditor directamente."
   );
 } catch {}
 
