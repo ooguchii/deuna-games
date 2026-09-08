@@ -1,0 +1,12 @@
+.wrapper {
+  position: relative;
+  min-width: 0;
+  height: 100%;
+}
+
+.favorite {
+  position: absolute;
+  z-index: 30;
+  top: 7px;
+  right: 7px;
+}
