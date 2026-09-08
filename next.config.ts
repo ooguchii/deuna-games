@@ -44,7 +44,7 @@ const contentSecurityPolicy = [
 ].join("; ");
 
 const editorialMediaContentSecurityPolicy =
-  "default-src 'none'; style-src 'none'; sandbox";
+  "default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox";
 
 const securityHeaders = [
   { key: "Content-Security-Policy", value: contentSecurityPolicy },
