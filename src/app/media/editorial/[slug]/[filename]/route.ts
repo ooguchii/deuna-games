@@ -11,6 +11,7 @@ import {
   resolveEditorialMediaDiskPath,
 } from "@/lib/media/editorial-media";
 import {
+  inspectSafeSiteBrandLogoSvg,
   inspectSafeTaxonomySvgIcon,
   MAX_TAXONOMY_SVG_ICON_BYTES,
 } from "@/lib/media/safe-svg-icon";
@@ -335,10 +336,18 @@ export async function GET(
 
     const content = await readFile(resolved.filePath);
     const safe = isSvg
-      ? inspectSafeTaxonomySvgIcon(content)
+      ? isSiteLogoAsset
+        ? inspectSafeSiteBrandLogoSvg(content)
+        : inspectSafeTaxonomySvgIcon(content)
       : inspectSafeEditorialWebp(content);
 
-    if (!safe) {
+    if (
+      !safe ||
+      (
+        isSvg &&
+        safe.digest !== filename.slice(0, -".svg".length)
+      )
+    ) {
       return notFoundResponse();
     }
 

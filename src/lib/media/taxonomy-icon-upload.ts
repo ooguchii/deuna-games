@@ -16,6 +16,7 @@ import {
   resolveEditorialMediaDiskPath,
 } from "./editorial-media";
 import {
+  inspectSafeSiteBrandLogoSvg,
   inspectSafeTaxonomySvgIcon,
   sanitizeTaxonomySvgIcon,
 } from "./safe-svg-icon";
@@ -83,11 +84,14 @@ function isAlreadyExistsError(error: unknown) {
 }
 
 function inspectStoredIcon(
+  slug: IconStorageSlug,
   format: "svg" | "webp",
   buffer: Buffer
 ) {
   if (format === "svg") {
-    return inspectSafeTaxonomySvgIcon(buffer);
+    return slug === SITE_BRAND_LOGO_SLUG
+      ? inspectSafeSiteBrandLogoSvg(buffer)
+      : inspectSafeTaxonomySvgIcon(buffer);
   }
 
   const inspection = inspectSafeEditorialWebp(buffer);
@@ -163,6 +167,7 @@ async function writeHashedIcon(
       /* turbopackIgnore: true */ filePath
     );
     const inspection = inspectStoredIcon(
+      slug,
       format,
       existing
     );
@@ -200,12 +205,16 @@ async function storeSafeSvgIcon(
   );
   const buffer = sanitizeTaxonomySvgIcon(input);
   const inspection = buffer
-    ? inspectSafeTaxonomySvgIcon(buffer)
+    ? slug === SITE_BRAND_LOGO_SLUG
+      ? inspectSafeSiteBrandLogoSvg(buffer)
+      : inspectSafeTaxonomySvgIcon(buffer)
     : null;
 
   if (!buffer || !inspection) {
     throw new Error(
-      "El SVG contiene estructura o atributos que no son seguros para un icono."
+      slug === SITE_BRAND_LOGO_SLUG
+        ? "El logo debe ser un SVG seguro y escalable con viewBox."
+        : "El SVG contiene estructura o atributos que no son seguros para un icono."
     );
   }
 

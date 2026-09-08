@@ -1,6 +1,11 @@
+import "server-only";
+
+import { Gamepad2 } from "lucide-react";
 import { ImageResponse } from "next/og";
 
-import SiteLogoMark from "@/components/brand/SiteLogoMark";
+import {
+  buildSiteBrandLogoDataUri,
+} from "@/lib/media/site-brand-logo";
 import {
   resolveSiteLogoColor,
   type SiteLogoConfig,
@@ -23,10 +28,22 @@ type SocialImageIdentity = SiteLogoConfig & {
   headline: string;
 };
 
-export function createSocialImage(
+export async function createSocialImage(
   identity: SocialImageIdentity
 ) {
   const logoColor = resolveSiteLogoColor(identity);
+  let logoDataUri: string | null = null;
+
+  if (identity.logoAsset) {
+    try {
+      logoDataUri = await buildSiteBrandLogoDataUri(
+        identity.logoAsset,
+        logoColor
+      );
+    } catch {
+      logoDataUri = null;
+    }
+  }
 
   return new ImageResponse(
     (
@@ -101,12 +118,26 @@ export function createSocialImage(
                 color: logoColor,
               }}
             >
-              <SiteLogoMark
-                size={36}
-                strokeWidth={2.1}
-                asset={identity.logoAsset ?? null}
-                color={logoColor}
-              />
+              {logoDataUri ? (
+                <img
+                  src={logoDataUri}
+                  alt=""
+                  width={36}
+                  height={36}
+                  style={{
+                    width: 36,
+                    height: 36,
+                    objectFit: "contain",
+                  }}
+                />
+              ) : (
+                <Gamepad2
+                  size={36}
+                  strokeWidth={2.1}
+                  color={logoColor}
+                  aria-hidden="true"
+                />
+              )}
             </div>
 
             <div style={{ display: "flex" }}>

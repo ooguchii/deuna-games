@@ -24,6 +24,8 @@ const [
   logoEditor,
   logoUploadRoute,
   logoStorage,
+  logoReader,
+  safeSvg,
   publicMediaRoute,
   publicConfig,
   rootLayout,
@@ -46,6 +48,8 @@ const [
   source("src/components/admin/SiteBrandLogoEditor.tsx"),
   source("src/app/api/admin/content/configuration/logo-upload/route.ts"),
   source("src/lib/media/taxonomy-icon-upload.ts"),
+  source("src/lib/media/site-brand-logo.ts"),
+  source("src/lib/media/safe-svg-icon.ts"),
   source("src/app/media/editorial/[slug]/[filename]/route.ts"),
   source("src/lib/site/public-site-config.ts"),
   source("src/app/layout.tsx"),
@@ -82,8 +86,9 @@ assert(
     formSchema.includes("logoColorMode: z.enum(siteLogoColorModes)") &&
     configRoute.includes('"logoAsset"') &&
     configRoute.includes('"logoColorMode"') &&
-    configRoute.includes('"logoCustomColor"'),
-  "El formulario real y su allowlist exacta deben transportar los tres campos del logo sin aceptar campos paralelos."
+    configRoute.includes('"logoCustomColor"') &&
+    configRoute.includes("readStoredSiteBrandLogo(input.logoAsset)"),
+  "El formulario real debe transportar los tres campos y el servidor debe rechazar assets inexistentes o corruptos aunque el path tenga forma válida."
 );
 
 assert(
@@ -109,17 +114,29 @@ assert(
 assert(
   logoStorage.includes("SITE_BRAND_LOGO_SLUG") &&
     logoStorage.includes("sanitizeTaxonomySvgIcon") &&
+    logoStorage.includes("inspectSafeSiteBrandLogoSvg") &&
     logoStorage.includes('flag: "wx"') &&
-    logoStorage.includes("storeSiteBrandLogo"),
-  "El logo debe guardarse saneado, por hash e inmutable dentro del almacén editorial persistente."
+    logoStorage.includes("storeSiteBrandLogo") &&
+    safeSvg.includes("hasScalableViewBox") &&
+    safeSvg.includes("inspectSafeSiteBrandLogoSvg"),
+  "El logo debe guardarse saneado, escalable con viewBox, por hash e inmutable dentro del almacén editorial persistente."
+);
+
+assert(
+  logoReader.includes("resolveEditorialMediaDiskPath") &&
+    logoReader.includes("inspectSafeSiteBrandLogoSvg") &&
+    logoReader.includes("inspection.digest !== expectedDigest") &&
+    logoReader.includes("recolorSafeSiteBrandLogoSvg"),
+  "La lectura del logo debe revalidar archivo, symlink, límites, seguridad y correspondencia contenido↔hash antes de usarlo."
 );
 
 assert(
   publicMediaRoute.includes("const isSiteLogoAsset = slug === SITE_BRAND_LOGO_SLUG") &&
     publicMediaRoute.includes("(isSiteLogoAsset && !isSvg)") &&
-    publicMediaRoute.includes("inspectSafeTaxonomySvgIcon") &&
+    publicMediaRoute.includes("inspectSafeSiteBrandLogoSvg") &&
+    publicMediaRoute.includes('safe.digest !== filename.slice(0, -".svg".length)') &&
     publicMediaRoute.includes("Content-Security-Policy"),
-  "El namespace del logo sólo debe servir SVG revalidado y aislado; no debe abrir SVG arbitrario en otras carpetas."
+  "El namespace del logo sólo debe servir SVG revalidado, content-addressed y aislado; no debe abrir SVG arbitrario en otras carpetas."
 );
 
 assert(
@@ -127,10 +144,11 @@ assert(
     publicConfig.includes("logoCustomColor: string") &&
     publicConfig.includes("...sourceFallback()") &&
     rootLayout.includes("resolveSiteLogoColor(config)") &&
+    rootLayout.includes("readStoredSiteBrandLogo(config.logoAsset)") &&
     rootLayout.includes('data-site-logo={logoAsset ? "custom" : "default"}') &&
     rootLayout.includes('"--site-logo-color"') &&
     rootLayout.includes('"--site-logo-image"'),
-  "La web pública debe resolver exclusivamente el snapshot publicado y exponer una única identidad de logo al árbol completo."
+  "La web pública debe leer sólo el snapshot publicado y caer al símbolo original si el asset publicado falta o deja de ser válido."
 );
 
 assert(
@@ -138,7 +156,7 @@ assert(
     logoRenderer.includes("data-logo-override") &&
     logoStyles.includes("mask-image") &&
     logoStyles.includes(':global(html[data-site-logo="custom"])'),
-  "SiteLogoMark debe ser el renderer canónico, validar overrides y recolorear el SVG sin duplicar renderers por superficie."
+  "SiteLogoMark debe ser el renderer canónico web, validar overrides y recolorear el SVG sin duplicar lógica por superficie."
 );
 
 assert(
@@ -162,8 +180,10 @@ assert(
 
 assert(
   socialImage.includes("resolveSiteLogoColor(identity)") &&
-    socialImage.includes("asset={identity.logoAsset ?? null}"),
-  "Open Graph/Twitter deben recibir explícitamente el logo publicado y no depender de variables CSS del layout HTML."
+    socialImage.includes("buildSiteBrandLogoDataUri") &&
+    socialImage.includes("<img") &&
+    !socialImage.includes("SiteLogoMark"),
+  "Open Graph/Twitter deben renderizar el mismo asset publicado como data URI server-side y no depender del CSS Module/mask-image de la web."
 );
 
 if (failures.length > 0) {
@@ -172,6 +192,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Logo global de marca: OK (contrato editorial, upload seguro, publicación, renderer único y superficies compartidas)."
+    "Logo global de marca: OK (contrato editorial, upload seguro, publicación, renderer único web y salida social segura)."
   );
 }

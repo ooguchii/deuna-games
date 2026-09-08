@@ -6,6 +6,9 @@ import {
   getPublicHomeConfig,
 } from "@/lib/home/public-home-config";
 import {
+  readStoredSiteBrandLogo,
+} from "@/lib/media/site-brand-logo";
+import {
   siteUrl,
 } from "@/lib/site";
 import {
@@ -97,7 +100,17 @@ export default async function RootLayout({
   const readableBrandText = brandForeground(config.brandColor);
   const readableThemeBackground = safeThemeBackground(config.themeColor);
   const logoColor = resolveSiteLogoColor(config);
-  const logoAsset = config.logoAsset ?? null;
+  let logoAsset: string | null = null;
+
+  if (config.logoAsset) {
+    try {
+      logoAsset = (await readStoredSiteBrandLogo(config.logoAsset))
+        ? config.logoAsset
+        : null;
+    } catch {
+      logoAsset = null;
+    }
+  }
 
   return (
     <html
