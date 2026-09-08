@@ -365,6 +365,50 @@ async function screenshot(cdp, name) {
   );
 }
 
+async function uploadAvatarFixture(cdp) {
+  const selected = await cdp.evaluate(`
+    (async () => {
+      const input = document.querySelector("#account-avatar-input");
+      if (!(input instanceof HTMLInputElement)) return false;
+
+      const canvas = document.createElement("canvas");
+      canvas.width = 128;
+      canvas.height = 96;
+      const context = canvas.getContext("2d", { alpha: false });
+      if (!context) return false;
+
+      context.fillStyle = "#101820";
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.fillStyle = "#f5b942";
+      context.fillRect(12, 12, 54, 72);
+      context.fillStyle = "#7b61ff";
+      context.fillRect(70, 20, 46, 58);
+
+      const blob = await new Promise((resolve) =>
+        canvas.toBlob(resolve, "image/png")
+      );
+      if (!(blob instanceof Blob) || blob.size <= 0) return false;
+
+      const transfer = new DataTransfer();
+      transfer.items.add(new File([blob], "avatar-fixture.png", {
+        type: "image/png",
+      }));
+      const setter = Object.getOwnPropertyDescriptor(
+        HTMLInputElement.prototype,
+        "files"
+      )?.set;
+      if (!setter) return false;
+      setter.call(input, transfer.files);
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+      return true;
+    })()
+  `);
+
+  if (!selected) {
+    throw new Error("No se pudo cargar el fixture efímero de avatar.");
+  }
+}
+
 const suffix = `${Date.now().toString(36)}${process.pid.toString(36)}`.slice(-14);
 const username = `visual_${suffix}`.slice(0, 40);
 const password = `Qa!${randomBytes(18).toString("base64url")}9`;
@@ -544,7 +588,157 @@ try {
   });
   await screenshot(cdp, "03-mis-juegos");
 
-  await openAccountView(cdp, "Perfil privado", "profile", "Perfil privado");
+  const publicFavoriteSelector = `[data-game-favorite="${game.value}"]`;
+  await navigate(cdp, "/requisitos");
+  await waitFor(
+    cdp,
+    `Array.from(document.querySelectorAll(${JSON.stringify(publicFavoriteSelector)})).some((button) => button.getAttribute("aria-pressed") === "true")`,
+    "Favorito autenticado visible en Por requisitos"
+  );
+  const favoriteTarget = await cdp.evaluate(`
+    (() => {
+      const button = document.querySelector(${JSON.stringify(publicFavoriteSelector)});
+      if (!(button instanceof HTMLButtonElement)) return null;
+      const rect = button.getBoundingClientRect();
+      return { width: rect.width, height: rect.height };
+    })()
+  `);
+  if (
+    !favoriteTarget ||
+    favoriteTarget.width < 44 ||
+    favoriteTarget.height < 44
+  ) {
+    throw new Error(
+      `El favorito de Por requisitos no conserva 44px efectivos: ${JSON.stringify(favoriteTarget)}.`
+    );
+  }
+  const unfavoriteClicked = await cdp.evaluate(`
+    (() => {
+      const button = document.querySelector(${JSON.stringify(publicFavoriteSelector)});
+      if (!(button instanceof HTMLButtonElement)) return false;
+      button.click();
+      return true;
+    })()
+  `);
+  if (!unfavoriteClicked) {
+    throw new Error("No se pudo quitar el favorito desde Por requisitos.");
+  }
+  await waitFor(
+    cdp,
+    `Array.from(document.querySelectorAll(${JSON.stringify(publicFavoriteSelector)})).every((button) => button.getAttribute("aria-pressed") === "false")`,
+    "Favorito compartido desactivado en todas las copias"
+  );
+  await navigate(cdp, "/requisitos");
+  await waitFor(
+    cdp,
+    `Array.from(document.querySelectorAll(${JSON.stringify(publicFavoriteSelector)})).every((button) => button.getAttribute("aria-pressed") === "false")`,
+    "Favorito desactivado persistido tras recarga"
+  );
+
+  await navigate(cdp, "/cuenta?vista=games");
+  const preservedPreference = await waitFor(
+    cdp,
+    `(() => {
+      const link = Array.from(document.querySelectorAll('a[href^="/juegos/"]')).find((entry) => entry.getAttribute("href") === ${JSON.stringify(`/juegos/${game.value}`)});
+      const row = link?.closest("article");
+      if (!row) return false;
+      const state = row.querySelector('select[aria-label^="Estado de "]');
+      const favoriteButton = Array.from(row.querySelectorAll("button")).find((button) => button.getAttribute("aria-label") === "Agregar favorito");
+      const followButton = Array.from(row.querySelectorAll("button")).find((button) => button.getAttribute("aria-label") === "Dejar de seguir actualizaciones");
+      return state?.value === "playing" &&
+        favoriteButton?.getAttribute("aria-pressed") === "false" &&
+        followButton?.getAttribute("aria-pressed") === "true";
+    })()`,
+    "Biblioteca y seguimiento preservados al quitar favorito"
+  );
+  if (!preservedPreference) {
+    throw new Error("Quitar favorito alteró biblioteca o seguimiento.");
+  }
+
+  await navigate(cdp, "/requisitos");
+  await waitFor(
+    cdp,
+    `Array.from(document.querySelectorAll(${JSON.stringify(publicFavoriteSelector)})).some((button) => button.getAttribute("aria-pressed") === "false")`,
+    "Favorito disponible para reactivar"
+  );
+  const refavoriteClicked = await cdp.evaluate(`
+    (() => {
+      const button = document.querySelector(${JSON.stringify(publicFavoriteSelector)});
+      if (!(button instanceof HTMLButtonElement)) return false;
+      button.click();
+      return true;
+    })()
+  `);
+  if (!refavoriteClicked) {
+    throw new Error("No se pudo reactivar el favorito desde Por requisitos.");
+  }
+  await waitFor(
+    cdp,
+    `Array.from(document.querySelectorAll(${JSON.stringify(publicFavoriteSelector)})).every((button) => button.getAttribute("aria-pressed") === "true")`,
+    "Favorito compartido reactivado"
+  );
+  await navigate(cdp, "/requisitos");
+  await waitFor(
+    cdp,
+    `Array.from(document.querySelectorAll(${JSON.stringify(publicFavoriteSelector)})).every((button) => button.getAttribute("aria-pressed") === "true")`,
+    "Favorito reactivado persistido tras recarga"
+  );
+  await screenshot(cdp, "03-favorito-requisitos");
+
+  await navigate(cdp, "/cuenta?vista=profile");
+  await waitFor(cdp, `Boolean(document.querySelector("#account-avatar-input"))`, "Editor de avatar privado");
+  const emptyAvatarStatus = await cdp.evaluate(`
+    (async () => {
+      const response = await fetch("/api/account/avatar", {
+        cache: "no-store",
+        credentials: "same-origin",
+      });
+      return response.status;
+    })()
+  `);
+  if (emptyAvatarStatus !== 204) {
+    throw new Error(
+      `Una cuenta sin avatar debe responder 204, recibió ${emptyAvatarStatus}.`
+    );
+  }
+
+  await uploadAvatarFixture(cdp);
+  await waitFor(
+    cdp,
+    `document.body.innerText.includes("Foto de perfil actualizada.")`,
+    "Guardado del avatar privado"
+  );
+  await waitFor(
+    cdp,
+    `Boolean(document.querySelector('button[aria-label^="Menú de Mi DeUna de "] span[style*="background-image"]'))`,
+    "Avatar reflejado en Header sin recarga"
+  );
+  const storedAvatar = await cdp.evaluate(`
+    (async () => {
+      const response = await fetch("/api/account/avatar", {
+        cache: "no-store",
+        credentials: "same-origin",
+      });
+      const blob = await response.blob();
+      return {
+        status: response.status,
+        type: response.headers.get("content-type"),
+        size: blob.size,
+      };
+    })()
+  `);
+  if (
+    storedAvatar?.status !== 200 ||
+    storedAvatar.type !== "image/webp" ||
+    storedAvatar.size <= 20 ||
+    storedAvatar.size > 512 * 1024
+  ) {
+    throw new Error(
+      `El avatar persistido no conserva el contrato WebP privado: ${JSON.stringify(storedAvatar)}.`
+    );
+  }
+  await screenshot(cdp, "04-avatar-activo");
+
   await setInput(cdp, "#dashboard-display-name", displayName);
   await setInput(
     cdp,
@@ -566,7 +760,49 @@ try {
   if (!profilePersisted) {
     throw new Error("El perfil privado no sobrevivió a una navegación completa.");
   }
+  await waitFor(
+    cdp,
+    `Boolean(document.querySelector('button[aria-label^="Menú de Mi DeUna de "] span[style*="background-image"]'))`,
+    "Avatar persistido en Header tras navegación completa"
+  );
   await screenshot(cdp, "04-perfil-persistido");
+
+  const removeAvatarClicked = await cdp.evaluate(`
+    (() => {
+      const button = Array.from(document.querySelectorAll("button")).find((entry) => entry.textContent?.trim() === "Quitar foto");
+      if (!(button instanceof HTMLButtonElement)) return false;
+      button.click();
+      return true;
+    })()
+  `);
+  if (!removeAvatarClicked) {
+    throw new Error("No se pudo iniciar la eliminación del avatar.");
+  }
+  await waitFor(
+    cdp,
+    `document.body.innerText.includes("Foto de perfil eliminada.")`,
+    "Eliminación del avatar privado"
+  );
+  await waitFor(
+    cdp,
+    `!Boolean(document.querySelector('button[aria-label^="Menú de Mi DeUna de "] span[style*="background-image"]'))`,
+    "Fallback del Header restaurado al quitar avatar"
+  );
+  const avatarStatusAfterDelete = await cdp.evaluate(`
+    (async () => {
+      const response = await fetch("/api/account/avatar", {
+        cache: "no-store",
+        credentials: "same-origin",
+      });
+      return response.status;
+    })()
+  `);
+  if (avatarStatusAfterDelete !== 204) {
+    throw new Error(
+      `Quitar avatar debe restaurar 204, recibió ${avatarStatusAfterDelete}.`
+    );
+  }
+  await screenshot(cdp, "04-avatar-eliminado");
 
   await navigate(cdp, `/juegos/${encodeURIComponent(game.value)}`);
   const publicAccountState = await cdp.evaluate(`
@@ -625,7 +861,13 @@ try {
       bidirectionalHardwarePersistence: true,
       hardwareResponsiveViewports: [1440, 1024, 390],
       gamePreferencePersistence: true,
+      publicFavoritePersistence: true,
+      favoritePreservesLibraryAndFollowing: true,
+      favoriteTouchTargetMinimum: 44,
       profilePersistence: true,
+      avatarEmptyStatus: 204,
+      avatarLifecycle: true,
+      avatarHeaderSync: true,
       publicAccountBoundary: true,
       deletion: true,
       reauthenticationAfterDeletion: false,
@@ -639,7 +881,7 @@ try {
   );
 
   console.log(
-    "Cuenta browser E2E: OK (login real, Mi PC, Mis juegos, perfil, ficha pública y eliminación de la cuenta temporal en PostgreSQL)."
+    "Cuenta browser E2E: OK (login real, Mi PC, favoritos públicos, avatar privado/Header, Mis juegos, perfil, ficha pública y eliminación de la cuenta temporal en PostgreSQL)."
   );
 } catch (error) {
   if (browserError.trim()) {
