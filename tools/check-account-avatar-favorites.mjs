@@ -173,13 +173,18 @@ requirePattern(
 );
 requirePattern(
   favoriteService,
-  /UPDATE\s+deuna_accounts\.game_preferences[\s\S]*SET\s+favorite\s*=\s*false/i,
-  "Desactivar favorito debe modificar sólo la señal favorite antes de decidir si limpia la fila."
+  /SELECT[\s\S]*library_state[\s\S]*follow_updates[\s\S]*FOR\s+UPDATE/i,
+  "Quitar favorito debe bloquear la preferencia antes de decidir UPDATE o DELETE."
 );
 requirePattern(
   favoriteService,
-  /library_state\s+IS\s+NULL[\s\S]*follow_updates\s*=\s*false/i,
-  "La limpieza de una preferencia sin favorito debe preservar biblioteca y seguimiento."
+  /UPDATE\s+deuna_accounts\.game_preferences[\s\S]*SET\s+favorite\s*=\s*false/i,
+  "Desactivar favorito debe modificar solamente la señal favorite cuando la fila conserva otros datos útiles."
+);
+requirePattern(
+  favoriteService,
+  /DELETE\s+FROM\s+deuna_accounts\.game_preferences[\s\S]*library_state\s+IS\s+NULL[\s\S]*follow_updates\s*=\s*false/i,
+  "La limpieza de una preferencia sin favorito debe ocurrir sólo si biblioteca y seguimiento están vacíos."
 );
 forbidPattern(
   favoriteService,
@@ -217,6 +222,21 @@ requirePattern(
   finder,
   /useFavoriteGame/,
   "Por requisitos debe consumir el mismo store de favoritos que las tarjetas públicas."
+);
+requirePattern(
+  finder,
+  /TouchTarget\.module\.css[\s\S]*touchStyles\.minimum/,
+  "Los favoritos interactivos de Por requisitos deben conservar el piso táctil público de 44 px."
+);
+requirePattern(
+  finder,
+  /ScreenReaderStatus[\s\S]*No se pudo actualizar el favorito/,
+  "Por requisitos debe anunciar éxito o fallo de la escritura de favoritos a tecnologías de asistencia."
+);
+requirePattern(
+  finder,
+  /data-game-favorite=\{gameSlug\}/,
+  "El favorito de Por requisitos debe exponer un selector estable para smoke E2E."
 );
 forbidPattern(
   finder,
