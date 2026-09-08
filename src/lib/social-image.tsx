@@ -10,6 +10,7 @@ import {
 } from "@/lib/media/site-brand-logo";
 import {
   resolveSiteLogoColor,
+  resolveSiteLogoColorMode,
   type SiteLogoConfig,
 } from "@/lib/site/logo";
 
@@ -52,6 +53,10 @@ export async function createSocialImage(
   identity: SocialImageIdentity
 ) {
   const logoColor = resolveSiteLogoColor(identity);
+  const effectiveLogoColorMode = resolveSiteLogoColorMode(
+    identity.logoAsset,
+    identity.logoColorMode
+  );
   let logoDataUri = defaultLogoDataUri(logoColor);
 
   if (identity.logoAsset) {
@@ -59,7 +64,7 @@ export async function createSocialImage(
       logoDataUri =
         (await buildSiteBrandLogoDataUri(
           identity.logoAsset,
-          identity.logoColorMode === "original"
+          effectiveLogoColorMode === "original"
             ? null
             : logoColor
         )) ?? logoDataUri;
