@@ -202,39 +202,8 @@
 
 
 /* ==================================================
-   FAVORITO + PLATAFORMA — UNA SOLA REGLA
+   PLATAFORMA
 ================================================== */
-
-.favorite {
-  position: absolute;
-
-  z-index: 5;
-
-  top: 11px;
-  right: 11px;
-
-  width: 36px;
-  height: 36px;
-
-  display: grid;
-  place-items: center;
-
-  color: #ffffff;
-
-  border: 0;
-  border-radius: 50%;
-
-  background:
-    rgba(4, 7, 11, 0.58);
-
-  backdrop-filter:
-    blur(8px);
-
-  transition:
-    color 150ms ease,
-    background 150ms ease,
-    transform 150ms ease;
-}
 
 .platform {
   position: absolute;
@@ -562,23 +531,6 @@
   }
 
   .card:hover
-  .favorite {
-    color:
-      var(--brand);
-
-    background:
-      rgba(
-        5,
-        8,
-        13,
-        0.88
-      );
-
-    transform:
-      scale(1.05);
-  }
-
-  .card:hover
   .titleRow > svg {
     color:
       var(--brand);
@@ -640,14 +592,6 @@
     font-size: var(--font-base);
   }
 
-  .favorite {
-    top: 9px;
-    right: 9px;
-
-    width: 34px;
-    height: 34px;
-  }
-
   .mediaBadge {
     top: 9px;
     left: 9px;
@@ -690,7 +634,6 @@
   .card,
   .card::after,
   .media > img,
-  .favorite,
   .titleRow > svg {
     transition: none;
   }
