@@ -22,6 +22,7 @@ const [
   configPage,
   configRoute,
   logoEditor,
+  logoEditorStyles,
   logoUploadRoute,
   logoStorage,
   logoReader,
@@ -46,6 +47,7 @@ const [
   source("src/app/admin/(protected)/configuracion/page.tsx"),
   source("src/app/api/admin/content/configuration/route.ts"),
   source("src/components/admin/SiteBrandLogoEditor.tsx"),
+  source("src/components/admin/SiteBrandLogoEditor.module.css"),
   source("src/app/api/admin/content/configuration/logo-upload/route.ts"),
   source("src/lib/media/taxonomy-icon-upload.ts"),
   source("src/lib/media/site-brand-logo.ts"),
@@ -116,9 +118,11 @@ assert(
     logoEditor.includes('aria-label="Archivo SVG del logo"') &&
     logoEditor.includes("styles.radioTarget") &&
     logoEditor.includes("styles.radioInput") &&
-    logoStyles.includes(".editor .fileInput") &&
-    logoStyles.includes(".radioTarget") &&
-    logoStyles.includes(".radioTarget > .radioInput"),
+    logoEditorStyles.includes(".editor .fileInput") &&
+    logoEditorStyles.includes(".radioTarget") &&
+    logoEditorStyles.includes(".radioTarget > .radioInput") &&
+    logoEditorStyles.includes("width: 44px") &&
+    logoEditorStyles.includes("height: 44px"),
   "El selector de archivo no debe participar del layout ni del árbol interactivo visible y los modos de color deben conservar targets reales de 44 px."
 );
 
