@@ -278,6 +278,29 @@ export function sanitizeTaxonomySvgIcon(
     : null;
 }
 
+// Exporter-only decorations are removed before the strict drawing validator.
+// Never resolve a DTD, expand entities, or retain metadata in the stored asset.
+export function sanitizeSiteBrandLogoSvg(input: Buffer): Buffer | null {
+  if (!input.length || input.length > MAX_TAXONOMY_SVG_ICON_BYTES) {
+    return null;
+  }
+  const decoded = decodeUtf8(input);
+  if (!decoded) return null;
+
+  const source = decoded
+    .replace(/^\uFEFF/, "")
+    .trim()
+    .replace(/^<\?xml\s+[^?]*\?>\s*/, "")
+    .replace(
+      /^<!DOCTYPE svg PUBLIC\s+"-\/\/W3C\/\/DTD SVG 20010904\/\/EN"\s+"http:\/\/www\.w3\.org\/TR\/2001\/REC-SVG-20010904\/DTD\/svg10\.dtd"\s*>\s*/,
+      ""
+    )
+    .replace(/<metadata\s*>[^<&]*<\/metadata\s*>/g, "")
+    .replace(/^(<svg\b[^<>]*?)\s+version\s*=\s*(["'])1\.[01]\2/, "$1");
+
+  return sanitizeTaxonomySvgIcon(Buffer.from(source, "utf8"));
+}
+
 export function inspectSafeTaxonomySvgIcon(
   input: Buffer
 ): SafeTaxonomySvgInspection | null {

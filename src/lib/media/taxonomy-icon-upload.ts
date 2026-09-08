@@ -19,6 +19,7 @@ import {
   inspectSafeSiteBrandLogoSvg,
   inspectSafeTaxonomySvgIcon,
   sanitizeTaxonomySvgIcon,
+  sanitizeSiteBrandLogoSvg,
 } from "./safe-svg-icon";
 import {
   inspectSafeEditorialWebp,
@@ -203,7 +204,9 @@ async function storeSafeSvgIcon(
   const input = Buffer.from(
     await file.arrayBuffer()
   );
-  const buffer = sanitizeTaxonomySvgIcon(input);
+  const buffer = slug === SITE_BRAND_LOGO_SLUG
+    ? sanitizeSiteBrandLogoSvg(input)
+    : sanitizeTaxonomySvgIcon(input);
   const inspection = buffer
     ? slug === SITE_BRAND_LOGO_SLUG
       ? inspectSafeSiteBrandLogoSvg(buffer)
