@@ -112,12 +112,16 @@ assert(
 assert(
   publicMediaRoute.includes('const TAXONOMY_ICON_SLUG = "taxonomy-icons"') &&
     publicMediaRoute.includes("const isTaxonomyAsset = slug === TAXONOMY_ICON_SLUG") &&
-    publicMediaRoute.includes("const isSvgNamespace = isTaxonomyAsset || isSiteLogoAsset") &&
-    publicMediaRoute.includes("(isSvg && !isSvgNamespace)") &&
+    publicMediaRoute.includes("const isSiteLogoAsset = slug === SITE_BRAND_LOGO_SLUG") &&
+    publicMediaRoute.includes("const isRestrictedImageNamespace") &&
+    publicMediaRoute.includes("isTaxonomyAsset || isSiteLogoAsset") &&
+    publicMediaRoute.includes("(isSvg && !isRestrictedImageNamespace)") &&
+    publicMediaRoute.includes("(isWebm && isRestrictedImageNamespace)") &&
+    publicMediaRoute.includes("(isTaxonomyAsset && !isSvg && !isWebp)") &&
     publicMediaRoute.includes("inspectSafeTaxonomySvgIcon") &&
     publicMediaRoute.includes("Content-Security-Policy") &&
     publicMediaRoute.includes('"Content-Type": "image/svg+xml; charset=utf-8"'),
-  "Los SVG deben servirse sólo desde namespaces explícitos y seguros; taxonomía debe conservar revalidación y aislamiento por CSP."
+  "Los SVG deben servirse sólo desde namespaces explícitos y seguros; taxonomía debe seguir limitada a SVG/WebP, revalidada y aislada por CSP aunque el logo admita raster adicionales."
 );
 
 assert(
