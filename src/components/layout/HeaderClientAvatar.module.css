@@ -1,0 +1,19 @@
+.scope {
+  display: contents;
+}
+
+.scope :global(button[aria-controls="header-account-menu"]),
+.scope :global(#header-account-menu > div:first-child > span:first-child),
+.scope :global(#mobile-navigation section[aria-label="Mi DeUna"] > div:first-child > span:first-child) {
+  overflow: hidden;
+  background-image: var(--account-avatar-image);
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+
+.scope :global(button[aria-controls="header-account-menu"] > svg),
+.scope :global(#header-account-menu > div:first-child > span:first-child > svg),
+.scope :global(#mobile-navigation section[aria-label="Mi DeUna"] > div:first-child > span:first-child > svg) {
+  opacity: var(--account-avatar-icon-opacity, 1);
+}
