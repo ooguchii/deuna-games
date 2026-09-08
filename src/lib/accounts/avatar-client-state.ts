@@ -15,9 +15,15 @@ function readClientRevision() {
   if (typeof window === "undefined") return 0;
 
   const value = (window as AvatarWindow).__deunaAccountAvatarRevision;
-  return Number.isSafeInteger(value) && (value ?? 0) >= 0
-    ? value ?? 0
-    : 0;
+  if (
+    typeof value !== "number" ||
+    !Number.isSafeInteger(value) ||
+    value < 0
+  ) {
+    return 0;
+  }
+
+  return value;
 }
 
 function subscribe(listener: () => void) {
