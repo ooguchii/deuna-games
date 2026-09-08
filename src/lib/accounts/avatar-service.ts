@@ -12,6 +12,10 @@ type AccountAvatarRow = {
   updated_at: Date;
 };
 
+type AccountAvatarMetadataRow = {
+  digest: string;
+};
+
 export type AccountAvatar = {
   digest: string;
   imageWebp: Buffer;
@@ -19,6 +23,27 @@ export type AccountAvatar = {
   height: number;
   updatedAt: Date;
 };
+
+export type AccountAvatarMetadata = {
+  digest: string;
+};
+
+export async function getAccountAvatarMetadata(
+  userId: string
+): Promise<AccountAvatarMetadata | null> {
+  const result = await accountQuery<AccountAvatarMetadataRow>(
+    `SELECT digest
+     FROM deuna_accounts.avatars
+     WHERE user_id = $1
+     LIMIT 1`,
+    [userId]
+  );
+  const row = result.rows[0];
+
+  return row
+    ? { digest: row.digest }
+    : null;
+}
 
 export async function getAccountAvatar(
   userId: string
