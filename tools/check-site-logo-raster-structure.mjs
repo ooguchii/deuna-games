@@ -189,31 +189,31 @@ for (const [name, candidate] of [
     }),
   ],
   [
-    "SOS length/Ns mismatch",
+    "scan-header length/Ns mismatch",
     mutated(baselineJpeg, (buffer) => {
       buffer[baselineSos + 4] = 2;
     }),
   ],
   [
-    "SOS unknown component selector",
+    "scan-header unknown component selector",
     mutated(baselineJpeg, (buffer) => {
       buffer[baselineSos + 5] = 99;
     }),
   ],
   [
-    "SOS duplicate component selector",
+    "scan-header duplicate component selector",
     mutated(baselineJpeg, (buffer) => {
       buffer[baselineSos + 7] = buffer[baselineSos + 5];
     }),
   ],
   [
-    "baseline SOS table selector outside 0..1",
+    "baseline scan table selector outside 0..1",
     mutated(baselineJpeg, (buffer) => {
       buffer[baselineSos + 6] = 0x20;
     }),
   ],
   [
-    "baseline SOS spectral selection",
+    "baseline scan spectral selection",
     mutated(baselineJpeg, (buffer) => {
       buffer[baselineSos + 11] = 1;
     }),
@@ -325,5 +325,5 @@ assert.equal(
 );
 
 console.log(
-  "Site logo raster structure: OK (PNG palette/tRNS, JPEG SOF/SOS baseline+progressive and GIF color-table/control invariants)."
+  "Site logo raster structure: OK (PNG palette/tRNS, JPEG SOF/scan-header baseline+progressive and GIF color-table/control invariants)."
 );
