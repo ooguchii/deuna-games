@@ -1,5 +1,4 @@
 import {
-  LockKeyhole,
   ShieldCheck,
 } from "lucide-react";
 import { headers } from "next/headers";
@@ -8,6 +7,7 @@ import {
   redirect,
 } from "next/navigation";
 
+import SiteLogoMark from "@/components/brand/SiteLogoMark";
 import {
   getAdminOrigin,
   isAdminEnabled,
@@ -80,7 +80,7 @@ export default async function AdminLoginPage({
         </div>
 
         <span className={`${styles.loginIcon} ${loginStyles.brandIcon}`}>
-          <LockKeyhole size={30} aria-hidden="true" />
+          <SiteLogoMark size={30} />
         </span>
 
         <h1 id="admin-login-title">
