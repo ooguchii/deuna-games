@@ -4,7 +4,8 @@ import {
   withAccountTransaction,
 } from "./database";
 
-type UpdatedPreferenceRow = {
+type ExistingPreferenceRow = {
+  favorite: boolean;
   library_state: "want_to_play" | "playing" | "completed" | null;
   follow_updates: boolean;
 };
@@ -38,37 +39,50 @@ export async function setAccountGameFavorite(
       return;
     }
 
-    const updated = await client.query<UpdatedPreferenceRow>(
+    // Quitar favorito sólo opera sobre una fila existente. La bloqueamos antes
+    // de decidir entre UPDATE y DELETE para no intentar crear el estado vacío
+    // que PostgreSQL rechaza mediante game_preferences_meaningful_check.
+    const existing = await client.query<ExistingPreferenceRow>(
+      `SELECT
+         favorite,
+         library_state,
+         follow_updates
+       FROM deuna_accounts.game_preferences
+       WHERE user_id = $1
+         AND game_slug = $2
+       FOR UPDATE`,
+      [userId, gameSlug]
+    );
+    const current = existing.rows[0];
+
+    if (!current) return;
+
+    if (
+      current.library_state === null &&
+      !current.follow_updates
+    ) {
+      // Si favorite era la última señal útil, la representación válida es que
+      // no exista fila. Repetimos la condición en SQL para blindar biblioteca
+      // y seguimiento ante cambios futuros del servicio.
+      await client.query(
+        `DELETE FROM deuna_accounts.game_preferences
+         WHERE user_id = $1
+           AND game_slug = $2
+           AND library_state IS NULL
+           AND follow_updates = false`,
+        [userId, gameSlug]
+      );
+      return;
+    }
+
+    if (!current.favorite) return;
+
+    await client.query(
       `UPDATE deuna_accounts.game_preferences
        SET favorite = false,
            updated_at = now()
        WHERE user_id = $1
-         AND game_slug = $2
-       RETURNING
-         library_state,
-         follow_updates`,
-      [userId, gameSlug]
-    );
-    const current = updated.rows[0];
-
-    if (
-      !current ||
-      current.library_state !== null ||
-      current.follow_updates
-    ) {
-      return;
-    }
-
-    // Sólo retiramos la fila si el favorito era su última señal útil. La
-    // condición se repite en SQL para que un cambio futuro del contrato no
-    // pueda borrar biblioteca o seguimiento por accidente.
-    await client.query(
-      `DELETE FROM deuna_accounts.game_preferences
-       WHERE user_id = $1
-         AND game_slug = $2
-         AND favorite = false
-         AND library_state IS NULL
-         AND follow_updates = false`,
+         AND game_slug = $2`,
       [userId, gameSlug]
     );
   });
