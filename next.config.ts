@@ -43,6 +43,9 @@ const contentSecurityPolicy = [
   "frame-ancestors 'none'",
 ].join("; ");
 
+const editorialMediaContentSecurityPolicy =
+  "default-src 'none'; style-src 'none'; sandbox";
+
 const securityHeaders = [
   { key: "Content-Security-Policy", value: contentSecurityPolicy },
   { key: "Referrer-Policy", value: "no-referrer" },
@@ -75,6 +78,15 @@ const nextConfig: NextConfig = {
       { source: "/admin/:path*", headers: [...privateAdminHeaders] },
       { source: "/api/admin/:path*", headers: [...privateAdminHeaders] },
       { source: "/(.*)", headers: [...securityHeaders] },
+      {
+        source: "/media/editorial/:path*",
+        headers: [
+          {
+            key: "Content-Security-Policy",
+            value: editorialMediaContentSecurityPolicy,
+          },
+        ],
+      },
     ];
   },
 };
