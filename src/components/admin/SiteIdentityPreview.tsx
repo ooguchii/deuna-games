@@ -141,7 +141,7 @@ export default function SiteIdentityPreview({
             <dd title={customAssetUsesOriginalColors ? originalColorDescription : effectiveLogoColorMode === "brand" ? "El logo seguirá cualquier cambio futuro del color de marca." : "El logo conserva un color independiente."}>
               <i style={{ background: customAssetUsesOriginalColors ? "transparent" : logoColor }} />
               <code>
-                {logoAsset ? "Personalizado" : "Original"} · {customAssetUsesOriginalColors ? (isRasterLogo ? "Raster sin recolor" : "Colores SVG") : effectiveLogoColorMode === "brand" ? "Marca" : logoColor}
+                {logoAsset ? "Personalizado" : "Original"} · {customAssetUsesOriginalColors ? (isRasterLogo ? "Colores raster · sin recolor" : "Colores SVG") : effectiveLogoColorMode === "brand" ? "Marca" : logoColor}
               </code>
             </dd>
           </div>
