@@ -4,6 +4,7 @@ import {
   Heart,
 } from "lucide-react";
 import {
+  type CSSProperties,
   useState,
 } from "react";
 
@@ -18,10 +19,12 @@ export default function GameFavoriteButton({
   gameSlug,
   gameTitle,
   className,
+  style,
 }: {
   gameSlug: string;
   gameTitle: string;
   className?: string;
+  style?: CSSProperties;
 }) {
   const {
     favorite,
@@ -50,6 +53,7 @@ export default function GameFavoriteButton({
       <button
         type="button"
         className={`${styles.button} ${favorite ? styles.active : ""} ${className ?? ""}`}
+        style={style}
         aria-label={
           favorite
             ? `Quitar ${gameTitle} de favoritos`
