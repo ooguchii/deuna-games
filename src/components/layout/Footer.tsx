@@ -21,9 +21,7 @@ export default async function Footer() {
             className={styles.brand}
             aria-label={`${config.name} - Inicio`}
           >
-            <div className={styles.logo}>
-              <SiteLogoMark size={25} />
-            </div>
+            <SiteLogoMark size={25} />
 
             <strong>{config.name}</strong>
           </Link>

@@ -13,6 +13,7 @@ export type SiteLogoColorMode =
 
 export type SiteLogoConfig = {
   logoAsset?: string;
+  logoScale?: number;
   logoColorMode?: SiteLogoColorMode;
   logoCustomColor?: string;
   brandColor: string;

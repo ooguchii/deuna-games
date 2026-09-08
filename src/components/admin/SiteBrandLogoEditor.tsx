@@ -24,6 +24,7 @@ import styles from "./SiteBrandLogoEditor.module.css";
 type SiteBrandLogoEditorProps = {
   revision: number;
   initialAsset?: string;
+  initialScale: number;
   brandColor: string;
   initialColorMode: SiteLogoColorMode;
   initialCustomColor: string;
@@ -37,12 +38,14 @@ type UploadPayload = {
 export default function SiteBrandLogoEditor({
   revision,
   initialAsset,
+  initialScale,
   brandColor,
   initialColorMode,
   initialCustomColor,
 }: SiteBrandLogoEditorProps) {
   const editorRef = useRef<HTMLElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [scale, setScale] = useState(initialScale);
   const [asset, setAsset] = useState(initialAsset ?? "");
   const [colorMode, setColorMode] =
     useState<SiteLogoColorMode>(initialColorMode);
@@ -174,6 +177,7 @@ export default function SiteBrandLogoEditor({
             <span className={styles.logoTile}>
               <SiteLogoMark
                 size={58}
+                scale={scale}
                 strokeWidth={1.9}
                 asset={asset || null}
                 color={logoColor}
@@ -227,6 +231,27 @@ export default function SiteBrandLogoEditor({
                 Usar original
               </button>
             )}
+          </div>
+
+          <label className={styles.sizeControl} htmlFor="site-logo-scale">
+            <span>Tamaño del logo: {scale}%</span>
+            <input
+              id="site-logo-scale"
+              name="logoScale"
+              type="range"
+              min={50}
+              max={200}
+              step={1}
+              value={scale}
+              aria-valuetext={`${scale}%`}
+              onChange={(event) => setScale(Number(event.target.value))}
+            />
+            <small>De 50% a 200%. Se aplica en toda la plataforma al guardar y publicar.</small>
+          </label>
+          <div className={styles.logoActions}>
+            <button type="button" className={styles.secondaryButton} onClick={() => setScale(100)}>
+              Restablecer tamaño
+            </button>
           </div>
 
           <p className={styles.fileHint}>

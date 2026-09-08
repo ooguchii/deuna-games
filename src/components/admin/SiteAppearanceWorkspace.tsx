@@ -43,6 +43,7 @@ type SiteAppearanceWorkspaceProps = {
   themeColor: string;
   brandColor: string;
   logoAsset?: string;
+  logoScale?: number;
   logoColorMode: SiteLogoColorMode;
   logoCustomColor: string;
   customAssets?: SiteBackgroundAsset[];
@@ -80,6 +81,7 @@ export default function SiteAppearanceWorkspace({
   themeColor: initialThemeColor,
   brandColor: initialBrandColor,
   logoAsset,
+  logoScale = 100,
   logoColorMode,
   logoCustomColor,
   customAssets = [],
@@ -209,6 +211,11 @@ export default function SiteAppearanceWorkspace({
             />
             <input
               type="hidden"
+              name="logoScale"
+              value={logoScale}
+            />
+            <input
+              type="hidden"
               name="logoCustomColor"
               value={logoCustomColor}
             />
@@ -272,12 +279,13 @@ export default function SiteAppearanceWorkspace({
               <SiteLogoMark
                 size={18}
                 asset={logoAsset ?? null}
+                scale={logoScale}
                 color={logoColor}
               />
               <strong>{shortName.trim() || name}</strong>
-              <span />
-              <span />
-              <span />
+              <span className={styles.previewNavItem} />
+              <span className={styles.previewNavItem} />
+              <span className={styles.previewNavItem} />
             </div>
 
             <div className={styles.previewBody}>

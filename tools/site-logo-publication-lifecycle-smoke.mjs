@@ -420,6 +420,7 @@ const beforeRevision = positiveNumberInput(
   "expectedRevision"
 );
 const currentFields = {
+  logoScale: singleInputValue(identityPage.body, "logoScale"),
   name: singleInputValue(identityPage.body, "name"),
   shortName: singleInputValue(identityPage.body, "shortName"),
   description: textareaValue(identityPage.body, "description"),

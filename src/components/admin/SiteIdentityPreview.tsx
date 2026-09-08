@@ -21,6 +21,7 @@ type SiteIdentityPreviewProps = {
   themeColor: string;
   brandColor: string;
   logoAsset?: string;
+  logoScale?: number;
   logoColorMode: SiteLogoColorMode;
   logoCustomColor: string;
 };
@@ -33,6 +34,7 @@ export default function SiteIdentityPreview({
   themeColor,
   brandColor,
   logoAsset,
+  logoScale = 100,
   logoColorMode,
   logoCustomColor,
 }: SiteIdentityPreviewProps) {
@@ -67,6 +69,7 @@ export default function SiteIdentityPreview({
                 <SiteLogoMark
                   size={18}
                   asset={logoAsset ?? null}
+                  scale={logoScale}
                   color={logoColor}
                 />
               </span>
@@ -86,6 +89,7 @@ export default function SiteIdentityPreview({
                 <SiteLogoMark
                   size={16}
                   asset={logoAsset ?? null}
+                  scale={logoScale}
                   color={logoColor}
                 />
               </span>

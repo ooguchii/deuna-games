@@ -123,6 +123,7 @@ export default async function RootLayout({
         "--theme-on-brand": readableBrandText,
         "--text-on-brand": readableBrandText,
         "--site-logo-color": logoColor,
+        "--site-logo-scale": (config.logoScale ?? 100) / 100,
         "--site-logo-image": logoAsset
           ? `url("${logoAsset}")`
           : "none",

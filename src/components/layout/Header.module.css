@@ -27,7 +27,6 @@
     rgba(0, 0, 0, 0.16);
 }
 
-
 /* ==================================================
    CONTENEDOR
 ================================================== */
@@ -55,7 +54,6 @@
   gap: 28px;
 }
 
-
 /* ==================================================
    MARCA
 ================================================== */
@@ -68,82 +66,6 @@
   gap: 11px;
 
   min-width: max-content;
-}
-
-.brandIcon {
-  position: relative;
-
-  width: 44px;
-  height: var(--control-md);
-
-  display: grid;
-
-  place-items: center;
-
-  color: var(--brand);
-
-  border:
-    1px solid
-    color-mix(in srgb, var(--brand) 34%, transparent);
-
-  border-radius: var(--radius-medium);
-
-  background:
-    radial-gradient(
-      circle at 25% 20%,
-      color-mix(in srgb, var(--brand) 20%, transparent),
-      transparent 60%
-    ),
-    linear-gradient(
-      145deg,
-      #11151d,
-      #080b10
-    );
-
-  box-shadow:
-    inset 0 0 18px
-      color-mix(in srgb, var(--brand) 4%, transparent),
-    0 8px 22px
-      color-mix(in srgb, var(--brand) 7%, transparent);
-
-  transition:
-    transform 180ms ease,
-    border-color 180ms ease,
-    box-shadow 180ms ease;
-}
-
-.brandIcon::after {
-  content: "";
-
-  position: absolute;
-
-  inset: 6px;
-
-  border-radius: var(--radius-small);
-
-  background:
-    radial-gradient(
-      circle,
-      color-mix(in srgb, var(--brand) 8%, transparent),
-      transparent 70%
-    );
-
-  pointer-events: none;
-}
-
-.brand:hover
-.brandIcon {
-  transform:
-    translateY(-1px);
-
-  border-color:
-    color-mix(in srgb, var(--brand) 62%, transparent);
-
-  box-shadow:
-    inset 0 0 20px
-      color-mix(in srgb, var(--brand) 6%, transparent),
-    0 10px 25px
-      color-mix(in srgb, var(--brand) 11%, transparent);
 }
 
 .brandName {
@@ -165,7 +87,6 @@
 
   font-weight: 800;
 }
-
 
 /* ==================================================
    NAVEGACIÓN DESKTOP
@@ -280,7 +201,6 @@
     );
 }
 
-
 /* ==================================================
    ACCIONES
 ================================================== */
@@ -296,7 +216,6 @@
 
   min-width: 0;
 }
-
 
 /* ==================================================
    BUSCADOR
@@ -379,7 +298,6 @@
   color: #596574;
 }
 
-
 /* ==================================================
    ¿QUÉ PUEDO JUGAR?
 ================================================== */
@@ -443,7 +361,6 @@
       color-mix(in srgb, var(--brand) 24%, transparent);
 }
 
-
 /* ==================================================
    NOTIFICACIONES
 ================================================== */
@@ -506,7 +423,6 @@
       color-mix(in srgb, var(--brand) 70%, transparent);
 }
 
-
 /* ==================================================
    PERFIL
 ================================================== */
@@ -562,7 +478,6 @@
       rgba(0, 0, 0, 0.25);
 }
 
-
 /* ==================================================
    BOTÓN MENÚ
 ================================================== */
@@ -591,7 +506,6 @@
   cursor: pointer;
 }
 
-
 /* ==================================================
    PANEL MÓVIL
 ================================================== */
@@ -608,7 +522,6 @@
 
   margin: 0 auto;
 }
-
 
 /* ==================================================
    BÚSQUEDA MÓVIL
@@ -653,7 +566,6 @@
 
   font-size: var(--font-xs);
 }
-
 
 /* ==================================================
    NAVEGACIÓN MÓVIL
@@ -709,7 +621,6 @@
     color-mix(in srgb, var(--brand) 4.5%, transparent);
 }
 
-
 /* ==================================================
    CTA MÓVIL
 ================================================== */
@@ -743,7 +654,6 @@
   font-weight: 750;
 }
 
-
 /* ==================================================
    RESPONSIVE
 ================================================== */
@@ -773,7 +683,6 @@
   }
 }
 
-
 @media (
   max-width: 1160px
 ) {
@@ -795,7 +704,6 @@
     display: grid;
   }
 }
-
 
 @media (
   max-width: 820px
@@ -836,17 +744,11 @@
   }
 }
 
-
 @media (
   max-width: 540px
 ) {
   .brandName {
     font-size: var(--font-lg);
-  }
-
-  .brandIcon {
-    width: 40px;
-    height: 40px;
   }
 
   .notificationButton {
@@ -858,7 +760,6 @@
   }
 }
 
-
 @media (
   max-width: 390px
 ) {
@@ -867,7 +768,6 @@
   }
 }
 
-
 /* ==================================================
    REDUCIR MOVIMIENTO
 ================================================== */
@@ -875,7 +775,6 @@
 @media (
   prefers-reduced-motion: reduce
 ) {
-  .brandIcon,
   .navItem,
   .navItem::before,
   .navItem svg,
@@ -891,7 +790,6 @@
    El panel siempre está renderizado y React aplica
    clases de estado explícitas para abrir/cerrar y animar.
 ================================================== */
-
 
 .menuButton {
   user-select: none;
@@ -978,7 +876,6 @@
 
   outline-offset: 3px;
 }
-
 
 /* ==================================================
    PANEL — SIEMPRE RENDERIZADO
@@ -1110,7 +1007,6 @@
   display: flex;
 }
 
-
 /* ==================================================
    ENTRADA REPETIBLE DE CONTENIDO
 ================================================== */
@@ -1194,7 +1090,6 @@
   transition-delay: 200ms;
 }
 
-
 /* ==================================================
    LINKS / ESTADO ACTIVO
 ================================================== */
@@ -1274,7 +1169,6 @@
     scale(0.985);
 }
 
-
 /* ==================================================
    BUSCADOR / CTA
 ================================================== */
@@ -1351,7 +1245,6 @@
       translateX(440%);
   }
 }
-
 
 /* ==================================================
    RESPONSIVE
@@ -1487,28 +1380,6 @@
   pointer-events: none;
 }
 
-.brandIcon {
-  background:
-    radial-gradient(
-      circle at 28% 22%,
-      color-mix(in srgb, var(--brand) 24%, transparent),
-      transparent 58%
-    ),
-    linear-gradient(
-      145deg,
-      #121821,
-      #070a10
-    );
-
-  box-shadow:
-    inset 0 1px 0
-      rgba(255, 255, 255, 0.035),
-    inset 0 0 20px
-      color-mix(in srgb, var(--brand) 3.5%, transparent),
-    0 9px 25px
-      color-mix(in srgb, var(--brand) 7.5%, transparent);
-}
-
 .search {
   background:
     linear-gradient(
@@ -1574,7 +1445,3 @@
 /* THEME V2 — HEADER */
 .header { background: var(--gradient-header); border-bottom-color: var(--border); box-shadow: 0 14px 44px rgba(0, 0, 0, 0.14); }
 .gameFinder { background: var(--gradient-cta); box-shadow: var(--shadow-brand); }
-.brandIcon {
-  background: linear-gradient(145deg, color-mix(in srgb, var(--brand) 14%, transparent), color-mix(in srgb, var(--accent-violet) 8%, transparent));
-  box-shadow: inset 0 0 18px color-mix(in srgb, var(--brand) 6%, transparent), 0 10px 28px color-mix(in srgb, var(--accent-violet) 8%, transparent);
-}

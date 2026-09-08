@@ -9,6 +9,7 @@ import styles from "./SiteLogoMark.module.css";
 
 type SiteLogoMarkProps = {
   size?: number;
+  scale?: number;
   strokeWidth?: number;
   className?: string;
   asset?: string | null;
@@ -24,6 +25,7 @@ type SiteLogoMarkProps = {
  */
 export default function SiteLogoMark({
   size = 26,
+  scale,
   strokeWidth = 2,
   className,
   asset,
@@ -35,6 +37,7 @@ export default function SiteLogoMark({
     : null;
   const style = {
     "--site-logo-size": `${size}px`,
+    ...(scale !== undefined ? { "--site-logo-scale": scale / 100 } : {}),
     ...(color ? { "--site-logo-color": color } : {}),
     ...(safeAsset
       ? { "--site-logo-image": `url("${safeAsset}")` }

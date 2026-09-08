@@ -2,8 +2,8 @@
   position: relative;
   display: inline-grid;
   place-items: center;
-  width: var(--site-logo-size);
-  height: var(--site-logo-size);
+  width: calc(var(--site-logo-size) * var(--site-logo-scale, 1));
+  height: calc(var(--site-logo-size) * var(--site-logo-scale, 1));
   flex: 0 0 auto;
   color: var(--site-logo-color, currentColor);
 }

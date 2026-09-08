@@ -35,12 +35,10 @@ export default function SiteBrand({
       className={`${styles.brand} ${touchStyles.minimum}${className ? ` ${className}` : ""}`}
       aria-label={`${siteName} - Inicio`}
     >
-      <span className={styles.brandIcon}>
-        <SiteLogoMark
-          size={26}
-          strokeWidth={2}
-        />
-      </span>
+      <SiteLogoMark
+        size={26}
+        strokeWidth={2}
+      />
 
       <span className={styles.brandName}>
         <BrandName value={siteName} />

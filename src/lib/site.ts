@@ -6,6 +6,7 @@ export const siteConfig = {
   language: "es",
   themeColor: "#05060b",
   brandColor: "#ff0847",
+  logoScale: 100,
   logoColorMode: "brand",
   logoCustomColor: "#ff0847",
   footerTagline: "Hecho para encontrar tu próximo juego.",

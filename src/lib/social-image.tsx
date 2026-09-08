@@ -128,25 +128,22 @@ export async function createSocialImage(
           >
             <div
               style={{
-                width: 66,
-                height: 66,
+                width: 36 * (identity.logoScale ?? 100) / 100,
+                height: 36 * (identity.logoScale ?? 100) / 100,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                borderRadius: 18,
-                border: `1px solid ${identity.brandColor}`,
-                background: `${identity.brandColor}14`,
                 color: logoColor,
               }}
             >
               {createElement("img", {
                 src: logoDataUri,
                 alt: "",
-                width: 36,
-                height: 36,
+                width: 36 * (identity.logoScale ?? 100) / 100,
+                height: 36 * (identity.logoScale ?? 100) / 100,
                 style: {
-                  width: 36,
-                  height: 36,
+                  width: 36 * (identity.logoScale ?? 100) / 100,
+                  height: 36 * (identity.logoScale ?? 100) / 100,
                   objectFit: "contain",
                 },
               })}

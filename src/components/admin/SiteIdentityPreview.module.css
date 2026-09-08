@@ -77,18 +77,9 @@
 }
 
 .previewLogo {
-  width: 32px;
-  height: 32px;
   display: grid;
   place-items: center;
   flex: 0 0 auto;
-  color: var(--preview-on-brand);
-  border: 1px solid color-mix(in srgb, var(--preview-brand) 78%, #ffffff);
-  border-radius: 8px;
-  background: var(--preview-brand);
-  box-shadow:
-    0 7px 16px color-mix(in srgb, var(--preview-brand) 20%, transparent),
-    inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 
 .previewLogo svg {
