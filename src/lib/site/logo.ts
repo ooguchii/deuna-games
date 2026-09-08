@@ -1,7 +1,7 @@
 export const SITE_BRAND_LOGO_SLUG = "site-brand-logo";
 
 export const siteBrandLogoAssetPattern =
-  /^\/media\/editorial\/site-brand-logo\/[a-f0-9]{64}\.svg$/;
+  /^\/media\/editorial\/site-brand-logo\/[a-f0-9]{64}\.(?:svg|png|jpg|webp|gif)$/;
 
 export const siteLogoColorModes = [
   "original",
