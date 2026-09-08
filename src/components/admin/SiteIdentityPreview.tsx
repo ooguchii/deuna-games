@@ -60,6 +60,9 @@ export default function SiteIdentityPreview({
     Boolean(logoAsset) && effectiveLogoColorMode === "original";
   const isRasterLogo =
     Boolean(logoAsset) && !siteBrandLogoSupportsRecolor(logoAsset);
+  const originalColorDescription = isRasterLogo
+    ? "El raster saneado se muestra sin recolor; sus perfiles ICC se eliminan por privacidad."
+    : "El SVG saneado mantiene sus pinturas sin aplicar el color de marca.";
 
   return (
     <div className={styles.stack}>
@@ -135,16 +138,16 @@ export default function SiteIdentityPreview({
           </div>
           <div>
             <dt>Logo</dt>
-            <dd title={customAssetUsesOriginalColors ? "El logo conserva sus colores originales." : effectiveLogoColorMode === "brand" ? "El logo seguirá cualquier cambio futuro del color de marca." : "El logo conserva un color independiente."}>
+            <dd title={customAssetUsesOriginalColors ? originalColorDescription : effectiveLogoColorMode === "brand" ? "El logo seguirá cualquier cambio futuro del color de marca." : "El logo conserva un color independiente."}>
               <i style={{ background: customAssetUsesOriginalColors ? "transparent" : logoColor }} />
               <code>
-                {logoAsset ? "Personalizado" : "Original"} · {customAssetUsesOriginalColors ? (isRasterLogo ? "Colores raster" : "Colores SVG") : effectiveLogoColorMode === "brand" ? "Marca" : logoColor}
+                {logoAsset ? "Personalizado" : "Original"} · {customAssetUsesOriginalColors ? (isRasterLogo ? "Raster sin recolor" : "Colores SVG") : effectiveLogoColorMode === "brand" ? "Marca" : logoColor}
               </code>
             </dd>
           </div>
         </dl>
         <p className={styles.appearanceHint}>
-          La marca adapta automáticamente el texto de los botones. Los SVG pueden conservar sus colores o recolorearse; PNG, JPEG, WebP y GIF conservan siempre sus colores saneados.
+          La marca adapta automáticamente el texto de los botones. Los SVG pueden mantener sus pinturas o recolorearse; PNG, JPEG, WebP y GIF se muestran sin recolor y se sirven después de eliminar metadata y perfiles incrustados.
         </p>
         <div className={styles.activeState}>
           <CheckCircle2 size={15} aria-hidden="true" />
