@@ -186,7 +186,6 @@
   padding: 11px 12px;
   border: 1px solid color-mix(in srgb, var(--text-soft) 13%, transparent);
   border-radius: 11px;
-  cursor: pointer;
 }
 
 .modeOption:has(input[type="radio"]:checked) {
@@ -198,12 +197,14 @@
   width: 18px;
   height: 18px;
   accent-color: var(--brand);
+  cursor: pointer;
 }
 
-.modeOption > span {
+.modeOption > label {
+  min-width: 0;
   display: grid;
   gap: 3px;
-  min-width: 0;
+  cursor: pointer;
 }
 
 .modeOption strong {
