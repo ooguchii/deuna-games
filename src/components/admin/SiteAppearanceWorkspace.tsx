@@ -21,6 +21,8 @@ import type {
 } from "@/lib/site/backgrounds";
 import {
   resolveSiteLogoColor,
+  resolveSiteLogoColorMode,
+  siteBrandLogoSupportsRecolor,
   type SiteLogoColorMode,
 } from "@/lib/site/logo";
 
@@ -93,6 +95,12 @@ export default function SiteAppearanceWorkspace({
     useState(initialThemeColor);
   const [brandColor, setBrandColor] =
     useState(initialBrandColor);
+  const effectiveLogoColorMode = resolveSiteLogoColorMode(
+    logoAsset,
+    logoColorMode
+  );
+  const isRasterLogo =
+    Boolean(logoAsset) && !siteBrandLogoSupportsRecolor(logoAsset);
 
   const safeBackground = useMemo(
     () => safeThemeBackground(themeColor),
@@ -105,10 +113,10 @@ export default function SiteAppearanceWorkspace({
   const logoColor = useMemo(
     () => resolveSiteLogoColor({
       brandColor,
-      logoColorMode,
+      logoColorMode: effectiveLogoColorMode,
       logoCustomColor,
     }),
-    [brandColor, logoColorMode, logoCustomColor]
+    [brandColor, effectiveLogoColorMode, logoCustomColor]
   );
   const themeWasAdapted =
     safeBackground.toLowerCase() !== themeColor.toLowerCase();
@@ -207,7 +215,7 @@ export default function SiteAppearanceWorkspace({
             <input
               type="hidden"
               name="logoColorMode"
-              value={logoColorMode}
+              value={effectiveLogoColorMode}
             />
             <input
               type="hidden"
@@ -281,7 +289,7 @@ export default function SiteAppearanceWorkspace({
                 asset={logoAsset ?? null}
                 scale={logoScale}
                 color={logoColor}
-                colorMode={logoColorMode}
+                colorMode={effectiveLogoColorMode}
               />
               <strong>{shortName.trim() || name}</strong>
               <span className={styles.previewNavItem} />
@@ -311,7 +319,13 @@ export default function SiteAppearanceWorkspace({
               </span>
               <span>
                 Logo
-                <code>{logoColorMode === "original" && logoAsset ? "Colores SVG" : logoColor}</code>
+                <code>
+                  {effectiveLogoColorMode === "original" && logoAsset
+                    ? isRasterLogo
+                      ? "Colores raster"
+                      : "Colores SVG"
+                    : logoColor}
+                </code>
               </span>
             </div>
 
