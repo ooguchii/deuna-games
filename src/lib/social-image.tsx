@@ -59,7 +59,9 @@ export async function createSocialImage(
       logoDataUri =
         (await buildSiteBrandLogoDataUri(
           identity.logoAsset,
-          logoColor
+          identity.logoColorMode === "original"
+            ? null
+            : logoColor
         )) ?? logoDataUri;
     } catch {
       // El fallback local ya está listo y no depende del asset editorial.
