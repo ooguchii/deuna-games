@@ -88,7 +88,7 @@
   background: rgba(255, 255, 255, 0.018);
 }
 
-.action:hover:not(:disabled),
+.action:hover:not([aria-disabled="true"]),
 .remove:hover:not(:disabled) {
   border-color: color-mix(in srgb, var(--brand) 48%, transparent);
 }
@@ -99,7 +99,7 @@
   outline-offset: 2px;
 }
 
-.action:disabled,
+.action[aria-disabled="true"],
 .remove:disabled {
   cursor: wait;
   opacity: 0.62;
