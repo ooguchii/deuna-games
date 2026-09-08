@@ -13,6 +13,13 @@ const paths = {
   accessCss: path.join(accountDir, "account.module.css"),
   page: path.join(accountDir, "page.tsx"),
   header: path.join(root, "src", "components", "layout", "HeaderClient.tsx"),
+  headerBase: path.join(
+    root,
+    "src",
+    "components",
+    "layout",
+    "HeaderClientBase.tsx"
+  ),
   headerServer: path.join(root, "src", "components", "layout", "Header.tsx"),
   headerNotificationsCss: path.join(
     root,
@@ -138,6 +145,8 @@ const access = read(paths.access);
 const accessCss = read(paths.accessCss);
 const page = read(paths.page);
 const header = read(paths.header);
+const headerBase = read(paths.headerBase);
+const headerClient = `${header}\n${headerBase}`;
 const headerServer = read(paths.headerServer);
 const headerNotificationsCss = read(paths.headerNotificationsCss);
 const headerAccountCss = read(paths.headerAccountCss);
@@ -162,7 +171,7 @@ if (/Header\.module\.css/.test(dashboard)) {
 if (!/AccountRewardsPanel/.test(dashboard)) {
   errors.push("AccountDashboardClient debe integrar Rewards mediante su componente dedicado.");
 }
-if (!/SiteBrand/.test(dashboard) || !/SiteBrand/.test(header)) {
+if (!/SiteBrand/.test(dashboard) || !/SiteBrand/.test(headerClient)) {
   errors.push("Header y dashboard deben compartir SiteBrand como única marca visual.");
 }
 if (!/Header\.module\.css/.test(siteBrand)) {
@@ -180,16 +189,16 @@ if (!/AccountDashboardClient/.test(page)) {
 if (/recommendationRail|overflow-x\s*:\s*auto[^}]*recommend/i.test(dashboardCss)) {
   errors.push("El resumen de recomendaciones no debe depender de un carril horizontal con scrollbar.");
 }
-if (/Notificaciones \(próximamente\)|Notificaciones próximamente/.test(header)) {
+if (/Notificaciones \(próximamente\)|Notificaciones próximamente/.test(headerClient)) {
   errors.push("La campana del Header volvió a quedar deshabilitada o marcada como próximamente.");
 }
-if (!/accountIdentity/.test(header) || !/accountNotifications/.test(header)) {
+if (!/accountIdentity/.test(headerClient) || !/accountNotifications/.test(headerClient)) {
   errors.push("HeaderClient debe recibir identidad y estado real de avisos de la cuenta.");
 }
-if (!/dismissedNotificationFeed/.test(header)) {
+if (!/dismissedNotificationFeed/.test(headerClient)) {
   errors.push("HeaderClient debe derivar los avisos del feed server-side y limitar su estado local al snapshot marcado visto.");
 }
-if (!/\/cuenta\?vista=alerts/.test(header)) {
+if (!/\/cuenta\?vista=alerts/.test(headerClient)) {
   errors.push("La campana del Header debe enlazar con la vista canónica de Avisos en Mi DeUna.");
 }
 if (!/resolveAccountUpdateNotifications/.test(page)) {
@@ -212,16 +221,16 @@ if (
 ) {
   errors.push("El resolver de avisos debe respetar seguimiento, visto y el límite más reciente de ambos.");
 }
-if (!/HeaderNotifications\.module\.css/.test(header)) {
+if (!/HeaderNotifications\.module\.css/.test(headerClient)) {
   errors.push("La UI de avisos del Header debe mantener su módulo visual dedicado.");
 }
-if (!/HeaderAccountMenu\.module\.css/.test(header)) {
+if (!/HeaderAccountMenu\.module\.css/.test(headerClient)) {
   errors.push("La UI de cuenta del Header debe mantener su módulo visual dedicado.");
 }
 if (!/accountDashboardDestinations/.test(dashboardView)) {
   errors.push("Las vistas de Mi DeUna deben exponer metadata canónica para accesos rápidos.");
 }
-if (!/accountDashboardDestinations/.test(header) || !/accountDashboardDestinations/.test(dashboard)) {
+if (!/accountDashboardDestinations/.test(headerClient) || !/accountDashboardDestinations/.test(dashboard)) {
   errors.push("Header y sidebar de Mi DeUna deben consumir la misma metadata canónica de destinos.");
 }
 
