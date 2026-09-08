@@ -110,11 +110,14 @@ assert(
 );
 
 assert(
-  publicMediaRoute.includes('slug !== "taxonomy-icons"') &&
+  publicMediaRoute.includes('const TAXONOMY_ICON_SLUG = "taxonomy-icons"') &&
+    publicMediaRoute.includes("const isTaxonomyAsset = slug === TAXONOMY_ICON_SLUG") &&
+    publicMediaRoute.includes("const isSvgNamespace = isTaxonomyAsset || isSiteLogoAsset") &&
+    publicMediaRoute.includes("(isSvg && !isSvgNamespace)") &&
     publicMediaRoute.includes("inspectSafeTaxonomySvgIcon") &&
     publicMediaRoute.includes("Content-Security-Policy") &&
     publicMediaRoute.includes('"Content-Type": "image/svg+xml; charset=utf-8"'),
-  "Los SVG sólo deben servirse en el namespace de iconos, revalidarse y quedar aislados por CSP."
+  "Los SVG deben servirse sólo desde namespaces explícitos y seguros; taxonomía debe conservar revalidación y aislamiento por CSP."
 );
 
 assert(
