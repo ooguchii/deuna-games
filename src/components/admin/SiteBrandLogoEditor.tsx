@@ -151,11 +151,6 @@ export default function SiteBrandLogoEditor({
       />
       <input
         type="hidden"
-        name="logoColorMode"
-        value={colorMode}
-      />
-      <input
-        type="hidden"
         name="logoCustomColor"
         value={customColor}
       />
@@ -251,7 +246,8 @@ export default function SiteBrandLogoEditor({
                 className={styles.radioInput}
                 id="site-logo-color-brand"
                 type="radio"
-                name="logo-color-mode-ui"
+                name="logoColorMode"
+                value="brand"
                 checked={colorMode === "brand"}
                 onChange={() => setColorMode("brand")}
               />
@@ -272,7 +268,8 @@ export default function SiteBrandLogoEditor({
                 className={styles.radioInput}
                 id="site-logo-color-custom"
                 type="radio"
-                name="logo-color-mode-ui"
+                name="logoColorMode"
+                value="custom"
                 checked={colorMode === "custom"}
                 onChange={() => setColorMode("custom")}
               />
