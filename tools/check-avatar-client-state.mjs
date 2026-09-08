@@ -13,66 +13,74 @@ const assert = (condition, message) => {
   if (!condition) failures.push(message);
 };
 
-const [clientState, headerClient, avatarEditor] = await Promise.all([
-  source("src/lib/accounts/avatar-client-state.ts"),
+const [
+  avatarService,
+  headerServer,
+  headerClient,
+  avatarEditor,
+] = await Promise.all([
+  source("src/lib/accounts/avatar-service.ts"),
+  source("src/components/layout/Header.tsx"),
   source("src/components/layout/HeaderClient.tsx"),
   source("src/app/cuenta/AccountAvatarEditor.tsx"),
 ]);
 
 assert(
-  clientState.includes("useSyncExternalStore") &&
-    clientState.includes("notifyAccountAvatarChanged") &&
-    clientState.includes("useAccountAvatarRevision") &&
-    clientState.includes("__deunaAccountAvatarRevision") &&
-    clientState.includes("window.addEventListener") &&
-    clientState.includes("window.dispatchEvent"),
-  "La sincronización de avatar debe conservar un snapshot global en memoria y una suscripción observable entre entradas cliente."
+  /getAccountAvatarMetadata[\s\S]*SELECT digest[\s\S]*FROM deuna_accounts\.avatars[\s\S]*WHERE user_id = \$1/.test(avatarService),
+  "El Header debe poder consultar sólo la versión del avatar sin cargar el bytea."
 );
 
 assert(
-  !/\blet\s+revision\s*=/.test(clientState) &&
-    !/localStorage|sessionStorage|indexedDB/i.test(clientState),
-  "La revisión del avatar no puede depender de un singleton de módulo ni persistirse en storage."
+  headerServer.includes("getAccountAvatarMetadata") &&
+    headerServer.includes("accountAvatarDigest") &&
+    headerServer.includes("getAccountAvatarMetadata(session.userId).catch(() => null)"),
+  "El Header server debe resolver la versión del avatar desde la sesión y degradar a fallback si esa lectura falla."
 );
 
 assert(
-  headerClient.includes("useAccountAvatarRevision") &&
-    headerClient.includes("/api/account/avatar") &&
-    !headerClient.includes("ACCOUNT_AVATAR_CHANGED_EVENT"),
-  "El Header debe consumir sólo el contrato compartido de revisión y releer el avatar privado."
+  headerClient.includes("accountAvatarDigest") &&
+    headerClient.includes("/api/account/avatar?v=") &&
+    !headerClient.includes("fetch(") &&
+    !headerClient.includes("URL.createObjectURL") &&
+    !headerClient.includes("useAccountAvatarRevision"),
+  "El Header cliente debe renderizar la URL privada versionada, sin descargar/copiar el avatar a un object URL paralelo."
 );
 
 assert(
-  avatarEditor.includes("notifyAccountAvatarChanged") &&
-    !avatarEditor.includes("dispatchEvent") &&
-    !avatarEditor.includes("CustomEvent") &&
-    !avatarEditor.includes("ACCOUNT_AVATAR_CHANGED_EVENT"),
-  "El editor debe invalidar el contrato compartido después de guardar o eliminar el avatar."
-);
-
-assert(
-  /setMessage\("Foto de perfil actualizada\."\)[\s\S]*refreshAvatarState\(\)/.test(avatarEditor) &&
+  avatarEditor.includes("useRouter") &&
+    avatarEditor.includes("router.refresh()") &&
+    /setMessage\("Foto de perfil actualizada\."\)[\s\S]*refreshAvatarState\(\)/.test(avatarEditor) &&
     /setMessage\("Foto de perfil eliminada\."\)[\s\S]*refreshAvatarState\(\)/.test(avatarEditor),
-  "Alta y eliminación deben invalidar el avatar sólo después de confirmar la mutación del servidor."
+  "Alta y eliminación deben refrescar Server Components sólo después de confirmar la mutación del avatar."
 );
 
-let legacyEventFileExists = true;
-try {
-  await access(path.join(root, "src/lib/accounts/avatar-events.ts"));
-} catch {
-  legacyEventFileExists = false;
-}
 assert(
-  !legacyEventFileExists,
-  "No debe sobrevivir un segundo contrato de eventos para sincronizar el avatar."
+  !/notifyAccountAvatarChanged|dispatchEvent|CustomEvent|localStorage|sessionStorage|indexedDB/.test(avatarEditor + headerClient),
+  "La sincronización del avatar no debe depender de eventos ni persistencia cliente paralela."
 );
+
+for (const legacyPath of [
+  "src/lib/accounts/avatar-events.ts",
+  "src/lib/accounts/avatar-client-state.ts",
+]) {
+  let exists = true;
+  try {
+    await access(path.join(root, legacyPath));
+  } catch {
+    exists = false;
+  }
+  assert(
+    !exists,
+    `No debe sobrevivir el contrato cliente obsoleto ${legacyPath}.`
+  );
+}
 
 if (failures.length > 0) {
-  console.error("\nSincronización cliente de avatar: ERROR\n");
+  console.error("\nSincronización de avatar con Header: ERROR\n");
   for (const failure of failures) console.error(`- ${failure}`);
   process.exit(1);
 }
 
 console.log(
-  "Sincronización cliente de avatar: OK (snapshot global en memoria, evento entre chunks y sin storage persistente)."
+  "Sincronización de avatar con Header: OK (metadata server-side, refresh RSC y URL privada versionada; sin stores/eventos paralelos)."
 );
