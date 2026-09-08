@@ -112,6 +112,17 @@ assert(
 );
 
 assert(
+  logoEditor.includes("hidden") &&
+    logoEditor.includes('aria-label="Archivo SVG del logo"') &&
+    logoEditor.includes("styles.radioTarget") &&
+    logoEditor.includes("styles.radioInput") &&
+    logoStyles.includes(".editor .fileInput") &&
+    logoStyles.includes(".radioTarget") &&
+    logoStyles.includes(".radioTarget > .radioInput"),
+  "El selector de archivo no debe participar del layout ni del árbol interactivo visible y los modos de color deben conservar targets reales de 44 px."
+);
+
+assert(
   logoUploadRoute.includes("authorizeAdminMediaRequest") &&
     logoUploadRoute.includes("hasExactAdminMediaFormFields") &&
     logoUploadRoute.includes("expectedRevision") &&

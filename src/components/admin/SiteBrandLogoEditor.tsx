@@ -198,9 +198,9 @@ export default function SiteBrandLogoEditor({
             ref={inputRef}
             className={styles.fileInput}
             type="file"
+            hidden
             accept=".svg,image/svg+xml"
-            tabIndex={-1}
-            aria-hidden="true"
+            aria-label="Archivo SVG del logo"
             onChange={(event) => {
               const file = event.currentTarget.files?.[0];
               if (file) void uploadLogo(file);
@@ -246,13 +246,17 @@ export default function SiteBrandLogoEditor({
           </legend>
 
           <div className={styles.modeOption}>
-            <input
-              id="site-logo-color-brand"
-              type="radio"
-              name="logo-color-mode-ui"
-              checked={colorMode === "brand"}
-              onChange={() => setColorMode("brand")}
-            />
+            <span className={styles.radioTarget}>
+              <input
+                className={styles.radioInput}
+                id="site-logo-color-brand"
+                type="radio"
+                name="logo-color-mode-ui"
+                checked={colorMode === "brand"}
+                onChange={() => setColorMode("brand")}
+              />
+              <span className={styles.radioMark} aria-hidden="true" />
+            </span>
             <label htmlFor="site-logo-color-brand">
               <strong>Seguir color de marca</strong>
               <small>
@@ -263,13 +267,17 @@ export default function SiteBrandLogoEditor({
           </div>
 
           <div className={styles.modeOption}>
-            <input
-              id="site-logo-color-custom"
-              type="radio"
-              name="logo-color-mode-ui"
-              checked={colorMode === "custom"}
-              onChange={() => setColorMode("custom")}
-            />
+            <span className={styles.radioTarget}>
+              <input
+                className={styles.radioInput}
+                id="site-logo-color-custom"
+                type="radio"
+                name="logo-color-mode-ui"
+                checked={colorMode === "custom"}
+                onChange={() => setColorMode("custom")}
+              />
+              <span className={styles.radioMark} aria-hidden="true" />
+            </span>
             <label htmlFor="site-logo-color-custom">
               <strong>Color personalizado</strong>
               <small>
