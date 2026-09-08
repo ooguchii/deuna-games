@@ -7,14 +7,11 @@ import {
   Trash2,
   UserRound,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import {
   useRef,
   useState,
 } from "react";
-
-import {
-  notifyAccountAvatarChanged,
-} from "@/lib/accounts/avatar-client-state";
 
 import styles from "./AccountAvatarEditor.module.css";
 
@@ -157,6 +154,7 @@ export default function AccountAvatarEditor({
 }: {
   username: string;
 }) {
+  const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [revision, setRevision] = useState(0);
   const [hasAvatar, setHasAvatar] = useState<boolean | null>(null);
@@ -166,7 +164,7 @@ export default function AccountAvatarEditor({
 
   function refreshAvatarState() {
     setRevision((current) => current + 1);
-    notifyAccountAvatarChanged();
+    router.refresh();
   }
 
   async function handleSelection(file: File | undefined) {
