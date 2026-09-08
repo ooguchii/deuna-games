@@ -13,7 +13,7 @@ type AccountAvatarRow = {
 };
 
 type AccountAvatarMetadataRow = {
-  digest: string;
+  updated_at: Date;
 };
 
 export type AccountAvatar = {
@@ -25,14 +25,14 @@ export type AccountAvatar = {
 };
 
 export type AccountAvatarMetadata = {
-  digest: string;
+  updatedAt: Date;
 };
 
 export async function getAccountAvatarMetadata(
   userId: string
 ): Promise<AccountAvatarMetadata | null> {
   const result = await accountQuery<AccountAvatarMetadataRow>(
-    `SELECT digest
+    `SELECT updated_at
      FROM deuna_accounts.avatars
      WHERE user_id = $1
      LIMIT 1`,
@@ -41,7 +41,7 @@ export async function getAccountAvatarMetadata(
   const row = result.rows[0];
 
   return row
-    ? { digest: row.digest }
+    ? { updatedAt: row.updated_at }
     : null;
 }
 
