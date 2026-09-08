@@ -12,6 +12,9 @@ import {
   siteUrl,
 } from "@/lib/site";
 import {
+  siteAppIconVersion,
+} from "@/lib/site/app-icon";
+import {
   brandForeground,
   safeThemeBackground,
 } from "@/lib/site/brand-foreground";
@@ -22,9 +25,6 @@ import {
 import {
   getPublicSiteConfig,
 } from "@/lib/site/public-site-config";
-import {
-  siteAppIconVersion,
-} from "@/lib/site-app-icon";
 
 import "./globals.css";
 import "@/theme/deuna-theme.css";
