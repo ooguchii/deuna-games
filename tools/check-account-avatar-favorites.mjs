@@ -27,6 +27,7 @@ const [
   favoriteRoute,
   favoriteService,
   favoriteStore,
+  favoriteButton,
   finder,
   universalCard,
   universalCardBase,
@@ -44,6 +45,7 @@ const [
   read("src/app/api/account/favorites/route.ts"),
   read("src/lib/accounts/favorite-service.ts"),
   read("src/features/favorites/favorite-store.ts"),
+  read("src/components/ui/GameFavoriteButton.tsx"),
   read("src/features/game-finder/GameFinderClient.tsx"),
   read("src/components/ui/UniversalGameCard.tsx"),
   read("src/components/ui/UniversalGameCardBase.tsx"),
@@ -257,6 +259,11 @@ forbidPattern(
   /lastRefreshAt|Date\.now\(\)\s*-\s*lastRefreshAt/,
   "Favoritos no puede conservar una ventana de sesión obsoleta entre login y logout."
 );
+requirePattern(
+  favoriteButton,
+  /if\s*\(saved\)[\s\S]*onFavoriteChange\?\.\(nextFavorite\)/,
+  "El botón canónico sólo debe notificar al contenedor después de persistir correctamente el favorito."
+);
 
 requirePattern(
   finder,
@@ -313,6 +320,11 @@ requirePattern(
   accountDashboard,
   /function\s+RecommendationCard[\s\S]*GameFavoriteButton[\s\S]*gameSlug=\{recommendation\.slug\}[\s\S]*gameTitle=\{recommendation\.title\}/,
   "Mi DeUna → Descubrimientos debe reutilizar el favorito canónico y no un corazón decorativo."
+);
+requirePattern(
+  accountDashboard,
+  /onFavoriteChange=\{\(\)\s*=>\s*router\.refresh\(\)\}/,
+  "Mi DeUna debe refrescar su snapshot server-side después de persistir un favorito desde Descubrimientos."
 );
 forbidPattern(
   accountDashboard,
