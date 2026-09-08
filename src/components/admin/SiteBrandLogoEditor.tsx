@@ -16,6 +16,8 @@ import {
 import SiteLogoMark from "@/components/brand/SiteLogoMark";
 import {
   resolveSiteLogoColor,
+  resolveSiteLogoColorMode,
+  siteBrandLogoSupportsRecolor,
   type SiteLogoColorMode,
 } from "@/lib/site/logo";
 
@@ -49,14 +51,26 @@ export default function SiteBrandLogoEditor({
   const [scale, setScale] = useState(initialScale);
   const [asset, setAsset] = useState(initialAsset ?? "");
   const [colorMode, setColorMode] =
-    useState<SiteLogoColorMode>(initialColorMode);
+    useState<SiteLogoColorMode>(() =>
+      resolveSiteLogoColorMode(
+        initialAsset,
+        initialColorMode
+      )
+    );
   const [customColor, setCustomColor] =
     useState(initialCustomColor);
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const supportsRecolor = siteBrandLogoSupportsRecolor(
+    asset || null
+  );
+  const effectiveColorMode = resolveSiteLogoColorMode(
+    asset || null,
+    colorMode
+  );
   const logoColor = resolveSiteLogoColor({
     brandColor,
-    logoColorMode: colorMode,
+    logoColorMode: effectiveColorMode,
     logoCustomColor: customColor,
   });
 
@@ -128,7 +142,9 @@ export default function SiteBrandLogoEditor({
       setAsset(payload.publicPath);
       setColorMode("original");
       setMessage(
-        "Logo validado y saneado. Se eliminó metadata del archivo y no se conserva su nombre original; guarda el borrador para incorporarlo a la identidad."
+        payload.format === "svg"
+          ? "Logo SVG validado y saneado. Se eliminó metadata del archivo y no se conserva su nombre original; guarda el borrador para incorporarlo a la identidad."
+          : "Logo raster validado y saneado. Se eliminó metadata del archivo y no se conserva su nombre original; los raster mantienen sus colores originales. Guarda el borrador para incorporarlo a la identidad."
       );
     } catch {
       setMessage(
@@ -183,7 +199,7 @@ export default function SiteBrandLogoEditor({
                 strokeWidth={1.9}
                 asset={asset || null}
                 color={logoColor}
-                colorMode={colorMode}
+                colorMode={effectiveColorMode}
               />
             </span>
             <div>
@@ -277,7 +293,7 @@ export default function SiteBrandLogoEditor({
                 type="radio"
                 name="logoColorMode"
                 value="original"
-                checked={colorMode === "original"}
+                checked={effectiveColorMode === "original"}
                 onChange={() => setColorMode("original")}
               />
               <span className={styles.radioMark} aria-hidden="true" />
@@ -299,7 +315,8 @@ export default function SiteBrandLogoEditor({
                 type="radio"
                 name="logoColorMode"
                 value="brand"
-                checked={colorMode === "brand"}
+                checked={effectiveColorMode === "brand"}
+                disabled={!supportsRecolor}
                 onChange={() => setColorMode("brand")}
               />
               <span className={styles.radioMark} aria-hidden="true" />
@@ -307,7 +324,9 @@ export default function SiteBrandLogoEditor({
             <label htmlFor="site-logo-color-brand">
               <strong>Seguir color de marca</strong>
               <small>
-                Si cambias la marca, el logo cambia con ella.
+                {supportsRecolor
+                  ? "Si cambias la marca, el logo cambia con ella."
+                  : "Disponible para el símbolo original y logos SVG; los raster conservan sus colores originales."}
               </small>
             </label>
             <i style={{ background: brandColor }} aria-hidden="true" />
@@ -321,7 +340,8 @@ export default function SiteBrandLogoEditor({
                 type="radio"
                 name="logoColorMode"
                 value="custom"
-                checked={colorMode === "custom"}
+                checked={effectiveColorMode === "custom"}
+                disabled={!supportsRecolor}
                 onChange={() => setColorMode("custom")}
               />
               <span className={styles.radioMark} aria-hidden="true" />
@@ -329,14 +349,16 @@ export default function SiteBrandLogoEditor({
             <label htmlFor="site-logo-color-custom">
               <strong>Color personalizado</strong>
               <small>
-                Mantiene el logo independiente del color principal del sitio.
+                {supportsRecolor
+                  ? "Mantiene el logo independiente del color principal del sitio."
+                  : "Disponible sólo para el símbolo original y logos SVG."}
               </small>
             </label>
             <input
               className={styles.colorInput}
               type="color"
               value={customColor}
-              disabled={colorMode !== "custom"}
+              disabled={effectiveColorMode !== "custom" || !supportsRecolor}
               aria-label="Color personalizado del logo"
               onChange={(event) =>
                 setCustomColor(event.target.value)
