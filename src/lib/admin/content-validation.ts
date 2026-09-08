@@ -1,10 +1,10 @@
 import { z } from "zod";
 
-import { homeSectionIds } from "@/data/home-config";
+import { homeSectionIds } from "../../data/home-config.ts";
 import {
   GAME_CARD_PRESENTATION_MODES,
   isHomeGameCardSectionId,
-} from "@/lib/media/game-card-presentation";
+} from "../media/game-card-presentation.ts";
 
 import {
   editorialHomeConfigSchema as coreEditorialHomeConfigSchema,
