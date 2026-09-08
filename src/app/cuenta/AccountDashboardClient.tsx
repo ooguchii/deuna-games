@@ -315,8 +315,10 @@ function DashboardGameRow({
 
 function RecommendationCard({
   recommendation,
+  onFavoriteChange,
 }: {
   recommendation: Recommendation;
+  onFavoriteChange: () => void;
 }) {
   const estimate = recommendation.performanceEstimate;
 
@@ -362,6 +364,7 @@ function RecommendationCard({
         gameSlug={recommendation.slug}
         gameTitle={recommendation.title}
         className={styles.recommendationHeart}
+        onFavoriteChange={onFavoriteChange}
         style={{
           position: "absolute",
           top: 5,
@@ -875,6 +878,7 @@ export default function AccountDashboardClient({
                 <RecommendationCard
                   key={recommendation.slug}
                   recommendation={recommendation}
+                  onFavoriteChange={() => router.refresh()}
                 />
               ))
             ) : (
@@ -1165,6 +1169,7 @@ export default function AccountDashboardClient({
             <RecommendationCard
               key={recommendation.slug}
               recommendation={recommendation}
+              onFavoriteChange={() => router.refresh()}
             />
           ))}
         </div>
