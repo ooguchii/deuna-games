@@ -20,7 +20,9 @@ import {
   type SiteBrandRasterFormat,
 } from "./safe-site-logo-raster";
 import {
-  inspectSafeSiteBrandLogoSvg,
+  inspectPrivacySafeSiteBrandLogoSvg,
+} from "./safe-site-logo-svg";
+import {
   MAX_TAXONOMY_SVG_ICON_BYTES,
   recolorSafeSiteBrandLogoSvg,
 } from "./safe-svg-icon";
@@ -87,15 +89,36 @@ async function readStoredSiteBrandLogoUncached(
     const content = await readFile(
       /* turbopackIgnore: true */ resolved.filePath
     );
-    const inspection = format === "svg"
-      ? inspectSafeSiteBrandLogoSvg(content)
-      : inspectSafeSiteBrandLogoRaster(
-          content,
-          format
-        );
     const expectedDigest = resolved.filename.slice(
       0,
       -(format.length + 1)
+    );
+
+    if (format === "svg") {
+      const inspection =
+        inspectPrivacySafeSiteBrandLogoSvg(content);
+
+      if (
+        !inspection ||
+        inspection.digest !== expectedDigest
+      ) {
+        return null;
+      }
+
+      return {
+        publicPath,
+        content,
+        format: "svg" as const,
+        digest: inspection.digest,
+        bytes: inspection.bytes,
+        width: null,
+        height: null,
+      };
+    }
+
+    const inspection = inspectSafeSiteBrandLogoRaster(
+      content,
+      format
     );
 
     if (
@@ -111,14 +134,8 @@ async function readStoredSiteBrandLogoUncached(
       format,
       digest: inspection.digest,
       bytes: inspection.bytes,
-      width:
-        format === "svg"
-          ? null
-          : inspection.width,
-      height:
-        format === "svg"
-          ? null
-          : inspection.height,
+      width: inspection.width,
+      height: inspection.height,
     };
   } catch (error) {
     if (isMissingFileError(error)) {
@@ -133,17 +150,15 @@ export const readStoredSiteBrandLogo = cache(
 );
 
 function rasterColorizedSvgDataUri(
-  stored: NonNullable<
-    Awaited<ReturnType<typeof readStoredSiteBrandLogoUncached>>
+  stored: Extract<
+    NonNullable<
+      Awaited<ReturnType<typeof readStoredSiteBrandLogoUncached>>
+    >,
+    { format: SiteBrandRasterFormat }
   >,
   color: string
 ) {
-  if (
-    stored.format === "svg" ||
-    !stored.width ||
-    !stored.height ||
-    !/^#[0-9a-f]{6}$/i.test(color)
-  ) {
+  if (!/^#[0-9a-f]{6}$/i.test(color)) {
     return null;
   }
 
