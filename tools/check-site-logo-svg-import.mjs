@@ -1,5 +1,10 @@
 import assert from "node:assert/strict";
 import {
+  inspectSafeSiteBrandLogoRaster,
+  sanitizeSiteBrandLogoRaster,
+  SITE_BRAND_RASTER_FORMATS,
+} from "../src/lib/media/safe-site-logo-raster.ts";
+import {
   inspectSafeSiteBrandLogoSvg,
   recolorSafeSiteBrandLogoSvg,
   sanitizeSiteBrandLogoSvg,
@@ -83,4 +88,104 @@ assert.equal(sanitizeSiteBrandLogoSvg(Buffer.alloc(256 * 1024 + 1)), null);
 assert.equal(sanitizeSiteBrandLogoSvg(Buffer.from([0xff])), null);
 assert.equal(sanitize('<svg xmlns="http://www.w3.org/2000/svg"><path d="M0 0"/></svg>'), null, "Require a scalable viewBox");
 
-console.log("Site logo SVG import: OK (Potrace/Recraft normalization, multicolor gradients, safe static CSS/data assets, metadata stripping, stored validation, recoloring and active-content rejection).");
+function crc32(buffer) {
+  let crc = 0xffffffff;
+  for (const byte of buffer) {
+    crc ^= byte;
+    for (let bit = 0; bit < 8; bit += 1) {
+      crc = (crc >>> 1) ^ (0xedb88320 & -(crc & 1));
+    }
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function pngChunk(type, data) {
+  const typeBuffer = Buffer.from(type, "ascii");
+  const header = Buffer.alloc(8);
+  header.writeUInt32BE(data.length, 0);
+  typeBuffer.copy(header, 4);
+  const footer = Buffer.alloc(4);
+  footer.writeUInt32BE(crc32(Buffer.concat([typeBuffer, data])), 0);
+  return Buffer.concat([header, data, footer]);
+}
+
+assert.deepEqual(
+  SITE_BRAND_RASTER_FORMATS,
+  ["png", "jpg", "webp", "gif"],
+  "Keep the supported raster contract explicit"
+);
+
+const trace = Buffer.from("private-exporter-trace", "utf8");
+
+const pngBase = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+  "base64"
+);
+const pngIendStart = pngBase.indexOf(Buffer.from("IEND", "ascii")) - 4;
+const pngWithMetadata = Buffer.concat([
+  pngBase.subarray(0, pngIendStart),
+  pngChunk("tEXt", Buffer.concat([Buffer.from("Software\0"), trace])),
+  pngBase.subarray(pngIendStart),
+  trace,
+]);
+const pngOutput = sanitizeSiteBrandLogoRaster(pngWithMetadata);
+assert.ok(pngOutput && pngOutput.inspection.format === "png", "Accept a valid PNG by content signature");
+assert.equal(pngOutput.buffer.includes(trace), false, "Strip PNG text metadata and bytes appended after IEND");
+assert.ok(inspectSafeSiteBrandLogoRaster(pngOutput.buffer, "png"), "Stored PNG passes the strict reader");
+assert.equal(inspectSafeSiteBrandLogoRaster(pngWithMetadata, "png"), null, "Reject unsanitized PNG metadata at read time");
+
+const jpegBase = Buffer.from(
+  "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////2wBDAf//////////////////////////////////////////////////////////////////////////////////////wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAf/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIQAxAAAAF//8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABBQJ//8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAgBAwEBPwF//8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAgBAgEBPwF//8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQAGPwJ//8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPyF//9oADAMBAAIAAwAAABD/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oACAEDAQE/EH//xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oACAECAQE/EH//xAAUEAEAAAAAAAAAAAAAAAAAAAAA/9oACAEBAAE/EH//2Q==",
+  "base64"
+);
+const jpegComment = Buffer.alloc(4 + trace.length);
+jpegComment[0] = 0xff;
+jpegComment[1] = 0xfe;
+jpegComment.writeUInt16BE(trace.length + 2, 2);
+trace.copy(jpegComment, 4);
+const jpegWithMetadata = Buffer.concat([
+  jpegBase.subarray(0, 2),
+  jpegComment,
+  jpegBase.subarray(2),
+  trace,
+]);
+const jpegOutput = sanitizeSiteBrandLogoRaster(jpegWithMetadata);
+assert.ok(jpegOutput && jpegOutput.inspection.format === "jpg", "Accept JPEG regardless of browser filename/MIME spelling");
+assert.equal(jpegOutput.buffer.includes(trace), false, "Strip JPEG APP/COM metadata and bytes appended after EOI");
+assert.ok(inspectSafeSiteBrandLogoRaster(jpegOutput.buffer, "jpg"), "Stored JPEG passes the strict reader");
+assert.equal(inspectSafeSiteBrandLogoRaster(jpegWithMetadata, "jpg"), null, "Reject unsanitized JPEG metadata at read time");
+
+const gifBase = Buffer.from(
+  "R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==",
+  "base64"
+);
+const gifImageStart = gifBase.indexOf(0x2c);
+const gifTrailer = gifBase.lastIndexOf(0x3b);
+const gifComment = Buffer.concat([
+  Buffer.from([0x21, 0xfe, trace.length]),
+  trace,
+  Buffer.from([0x00]),
+]);
+const gifWithMetadata = Buffer.concat([
+  gifBase.subarray(0, gifImageStart),
+  gifComment,
+  gifBase.subarray(gifImageStart, gifTrailer + 1),
+  trace,
+]);
+const gifOutput = sanitizeSiteBrandLogoRaster(gifWithMetadata);
+assert.ok(gifOutput && gifOutput.inspection.format === "gif", "Accept a static GIF");
+assert.equal(gifOutput.buffer.includes(trace), false, "Strip GIF comment/application metadata and trailing bytes");
+assert.ok(inspectSafeSiteBrandLogoRaster(gifOutput.buffer, "gif"), "Stored GIF passes the strict reader");
+assert.equal(inspectSafeSiteBrandLogoRaster(gifWithMetadata, "gif"), null, "Reject unsanitized GIF metadata at read time");
+
+const gifImageBlock = gifBase.subarray(gifImageStart, gifTrailer);
+const animatedGif = Buffer.concat([
+  gifBase.subarray(0, gifImageStart),
+  gifImageBlock,
+  gifImageBlock,
+  Buffer.from([0x3b]),
+]);
+assert.equal(sanitizeSiteBrandLogoRaster(animatedGif), null, "Reject animated/multi-frame GIF instead of persisting hidden frames");
+assert.equal(sanitizeSiteBrandLogoRaster(Buffer.from("not-an-image")), null, "Reject unknown binary formats by content");
+
+console.log("Site logo import: OK (SVG Potrace/Recraft plus PNG/JPEG/WebP/GIF contract, metadata stripping, stored revalidation, static-only raster policy, recoloring and active-content rejection).");
