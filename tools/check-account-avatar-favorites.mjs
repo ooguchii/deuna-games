@@ -120,13 +120,26 @@ requirePattern(
   "El formulario del avatar debe aceptar exactamente un único campo image."
 );
 
-for (const operation of ["SELECT", "INSERT", "UPDATE", "DELETE"]) {
-  requirePattern(
-    avatarService,
-    new RegExp(`${operation}[\\s\\S]*deuna_accounts\\.avatars[\\s\\S]*user_id\\s*=\\s*\\$1`, "i"),
-    `El servicio de avatar debe acotar ${operation} por el user_id autenticado.`
-  );
-}
+requirePattern(
+  avatarService,
+  /SELECT[\s\S]*FROM\s+deuna_accounts\.avatars[\s\S]*WHERE\s+user_id\s*=\s*\$1/i,
+  "La lectura del avatar debe acotarse por el user_id autenticado."
+);
+requirePattern(
+  avatarService,
+  /INSERT\s+INTO\s+deuna_accounts\.avatars[\s\S]*user_id[\s\S]*VALUES\s*\(\$1,/i,
+  "La escritura del avatar debe usar el user_id autenticado como identidad de fila."
+);
+requirePattern(
+  avatarService,
+  /ON\s+CONFLICT\s*\(user_id\)[\s\S]*DO\s+UPDATE\s+SET/i,
+  "Actualizar un avatar debe conservar user_id como identidad inmutable del upsert."
+);
+requirePattern(
+  avatarService,
+  /DELETE\s+FROM\s+deuna_accounts\.avatars[\s\S]*WHERE\s+user_id\s*=\s*\$1/i,
+  "Eliminar el avatar debe acotarse por el user_id autenticado."
+);
 requirePattern(
   accountDashboard,
   /AccountAvatarEditor/,
