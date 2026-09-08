@@ -641,7 +641,7 @@ export default function AccountDashboardClient({
         return;
       }
 
-      router.replace("/");
+      router.replace("/cuenta?modo=entrar&estado=eliminada");
       router.refresh();
     } catch {
       setDeleteMessage("No se pudo conectar con el servicio de cuentas.");
@@ -733,9 +733,7 @@ export default function AccountDashboardClient({
           <section className={styles.dashboardCard}>
             <div className={styles.cardHeading}>
               <div><MonitorCog size={19} /><h2>Mi PC</h2></div>
-              <button type="button" onClick={() => openView("pc")}>
-                {hardware ? "Editar" : "Configurar"}
-              </button>
+              <button type="button" onClick={() => openView("pc")}>{hardware ? "Editar" : "Configurar"}</button>
             </div>
             {hardware ? (
               <>
@@ -754,9 +752,7 @@ export default function AccountDashboardClient({
                   {hardwareCoveragePercent !== null && (
                     <div
                       className={styles.performanceGauge}
-                      style={{
-                        "--gauge": `${hardwareCoveragePercent * 3.6}deg`,
-                      } as CSSProperties}
+                      style={{ "--gauge": `${hardwareCoveragePercent * 3.6}deg` } as CSSProperties}
                       aria-label={`${hardwareCoveragePercent}% del catálogo tiene estimación FPS disponible`}
                     >
                       <span>{hardwareCoveragePercent}%</span>
@@ -768,9 +764,7 @@ export default function AccountDashboardClient({
               <div className={styles.pcEmpty}>
                 <Cpu size={30} />
                 <strong>Configura tu PC una sola vez</strong>
-                <span>
-                  DeUna reutilizará esos componentes en el motor de FPS y en tus recomendaciones.
-                </span>
+                <span>DeUna reutilizará esos componentes en el motor de FPS y en tus recomendaciones.</span>
               </div>
             )}
             <button
@@ -790,11 +784,7 @@ export default function AccountDashboardClient({
             <div className={styles.alertPreviewList}>
               {overviewAlerts.length > 0 ? (
                 overviewAlerts.map((notification) => (
-                  <Link
-                    key={notification.id}
-                    href={`/juegos/${notification.gameSlug}#versions`}
-                    className={styles.alertPreview}
-                  >
+                  <Link key={notification.id} href={`/juegos/${notification.gameSlug}#versions`} className={styles.alertPreview}>
                     <div className={styles.alertCover}>
                       <GameMedia
                         src={notification.gameCoverImage}
@@ -816,13 +806,7 @@ export default function AccountDashboardClient({
                 <p className={styles.emptyCompact}>No hay avisos nuevos.</p>
               )}
             </div>
-            <button
-              type="button"
-              className={styles.cardFooterButton}
-              onClick={() => openView("alerts")}
-            >
-              Ir a avisos
-            </button>
+            <button type="button" className={styles.cardFooterButton} onClick={() => openView("alerts")}>Ir a avisos</button>
           </section>
         </div>
 
@@ -841,9 +825,7 @@ export default function AccountDashboardClient({
                 />
               ))
             ) : (
-              <p className={styles.emptyCompact}>
-                Guarda juegos o configura tu PC para activar recomendaciones personales.
-              </p>
+              <p className={styles.emptyCompact}>Guarda juegos o configura tu PC para activar recomendaciones personales.</p>
             )}
           </div>
         </section>
@@ -868,9 +850,7 @@ export default function AccountDashboardClient({
             Juego
             <select name="gameSlug" defaultValue="" required>
               <option value="" disabled>Elige un juego</option>
-              {games.map((game) => (
-                <option key={game.slug} value={game.slug}>{game.title}</option>
-              ))}
+              {games.map((game) => <option key={game.slug} value={game.slug}>{game.title}</option>)}
             </select>
           </label>
           <label>
@@ -890,23 +870,14 @@ export default function AccountDashboardClient({
             <input name="followUpdates" type="checkbox" />
             <Bell size={16} /> Seguir
           </label>
-          <button
-            type="submit"
-            className={styles.accentButton}
-            disabled={pending}
-          >
-            Agregar
-          </button>
+          <button type="submit" className={styles.accentButton} disabled={pending}>Agregar</button>
           {addMessage && <span className={styles.inlineStatus}>{addMessage}</span>}
         </form>
 
         <div className={styles.libraryScroller}>
           {saved.map(({ game, preference }) => (
             <article key={game.slug} className={styles.libraryRow}>
-              <Link
-                href={`/juegos/${game.slug}`}
-                className={styles.libraryIdentity}
-              >
+              <Link href={`/juegos/${game.slug}`} className={styles.libraryIdentity}>
                 <div className={styles.libraryCover}>
                   <GameMedia
                     src={game.coverImage}
@@ -944,43 +915,28 @@ export default function AccountDashboardClient({
                 type="button"
                 className={styles.iconToggle}
                 aria-pressed={preference.favorite}
-                aria-label={
-                  preference.favorite
-                    ? "Quitar favorito"
-                    : "Agregar favorito"
-                }
+                aria-label={preference.favorite ? "Quitar favorito" : "Agregar favorito"}
                 disabled={pending}
-                onClick={() =>
-                  void savePreference(game.slug, {
-                    favorite: !preference.favorite,
-                    libraryState: preference.libraryState ?? "none",
-                    followUpdates: preference.followUpdates,
-                  })
-                }
+                onClick={() => void savePreference(game.slug, {
+                  favorite: !preference.favorite,
+                  libraryState: preference.libraryState ?? "none",
+                  followUpdates: preference.followUpdates,
+                })}
               >
-                <Heart
-                  size={18}
-                  fill={preference.favorite ? "currentColor" : "none"}
-                />
+                <Heart size={18} fill={preference.favorite ? "currentColor" : "none"} />
               </button>
 
               <button
                 type="button"
                 className={styles.iconToggle}
                 aria-pressed={preference.followUpdates}
-                aria-label={
-                  preference.followUpdates
-                    ? "Dejar de seguir actualizaciones"
-                    : "Seguir actualizaciones"
-                }
+                aria-label={preference.followUpdates ? "Dejar de seguir actualizaciones" : "Seguir actualizaciones"}
                 disabled={pending}
-                onClick={() =>
-                  void savePreference(game.slug, {
-                    favorite: preference.favorite,
-                    libraryState: preference.libraryState ?? "none",
-                    followUpdates: !preference.followUpdates,
-                  })
-                }
+                onClick={() => void savePreference(game.slug, {
+                  favorite: preference.favorite,
+                  libraryState: preference.libraryState ?? "none",
+                  followUpdates: !preference.followUpdates,
+                })}
               >
                 <Bell size={18} />
               </button>
@@ -989,13 +945,11 @@ export default function AccountDashboardClient({
                 type="button"
                 className={styles.removeButton}
                 disabled={pending}
-                onClick={() =>
-                  void savePreference(game.slug, {
-                    favorite: false,
-                    libraryState: "none",
-                    followUpdates: false,
-                  })
-                }
+                onClick={() => void savePreference(game.slug, {
+                  favorite: false,
+                  libraryState: "none",
+                  followUpdates: false,
+                })}
               >
                 <Trash2 size={16} /> Quitar
               </button>
@@ -1013,9 +967,7 @@ export default function AccountDashboardClient({
           <div>
             <span>RENDIMIENTO</span>
             <h1>Mi PC</h1>
-            <p>
-              Configúrala una vez y DeUna reutiliza esos datos explícitos en FPS y recomendaciones.
-            </p>
+            <p>Configúrala una vez y DeUna reutiliza esos datos explícitos en FPS y recomendaciones.</p>
           </div>
           {hardware && <strong>{hardwareEstimateCount} estimables</strong>}
         </div>
@@ -1034,12 +986,8 @@ export default function AccountDashboardClient({
             <MonitorCog size={30} />
             <span>Cobertura de estimaciones</span>
             <strong>{hardwareEstimateCount} de {games.length} juegos</strong>
-            {hardwareCoveragePercent !== null && (
-              <b>{hardwareCoveragePercent}% del catálogo</b>
-            )}
-            <small>
-              Este porcentaje mide cobertura de calibración, no compatibilidad. Los FPS se muestran por juego como rangos estimados y con nivel de confianza.
-            </small>
+            {hardwareCoveragePercent !== null && <b>{hardwareCoveragePercent}% del catálogo</b>}
+            <small>Este porcentaje mide cobertura de calibración, no compatibilidad. Los FPS se muestran por juego como rangos estimados y con nivel de confianza.</small>
           </div>
         </div>
       </section>
@@ -1053,9 +1001,7 @@ export default function AccountDashboardClient({
           <div>
             <span>SEGUIMIENTO</span>
             <h1>Avisos de tus juegos</h1>
-            <p>
-              Sólo aparecen cambios publicados después de que decidiste seguir cada juego.
-            </p>
+            <p>Sólo aparecen cambios publicados después de que decidiste seguir cada juego.</p>
           </div>
           <strong>{notifications.length} nuevos</strong>
         </div>
@@ -1064,11 +1010,7 @@ export default function AccountDashboardClient({
           <>
             <div className={styles.alertsGrid}>
               {notifications.map((notification) => (
-                <Link
-                  key={notification.id}
-                  href={`/juegos/${notification.gameSlug}#versions`}
-                  className={styles.alertCard}
-                >
+                <Link key={notification.id} href={`/juegos/${notification.gameSlug}#versions`} className={styles.alertCard}>
                   <div className={styles.alertLargeCover}>
                     <GameMedia
                       src={notification.gameCoverImage}
@@ -1087,16 +1029,8 @@ export default function AccountDashboardClient({
                 </Link>
               ))}
             </div>
-            <button
-              type="button"
-              className={styles.ghostButton}
-              disabled={notificationPending}
-              onClick={markNotificationsSeen}
-            >
-              <Check size={17} />
-              {notificationPending
-                ? "Actualizando..."
-                : "Marcar todos como vistos"}
+            <button type="button" className={styles.ghostButton} disabled={notificationPending} onClick={markNotificationsSeen}>
+              <Check size={17} /> {notificationPending ? "Actualizando..." : "Marcar todos como vistos"}
             </button>
           </>
         ) : (
@@ -1117,9 +1051,7 @@ export default function AccountDashboardClient({
           <div>
             <span>PARA TI</span>
             <h1>Descubrimientos</h1>
-            <p>
-              Ordenados por tus elecciones explícitas y por el rendimiento estimado de Mi PC cuando está configurada.
-            </p>
+            <p>Ordenados por tus elecciones explícitas y por el rendimiento estimado de Mi PC cuando está configurada.</p>
           </div>
           <strong>{recommendations.length} sugerencias</strong>
         </div>
@@ -1143,9 +1075,7 @@ export default function AccountDashboardClient({
           <div>
             <span>TU CUENTA</span>
             <h1>Perfil privado</h1>
-            <p>
-              Tu usuario es la única identidad obligatoria. Todo lo demás sigue siendo opcional.
-            </p>
+            <p>Tu usuario es la única identidad obligatoria. Todo lo demás sigue siendo opcional.</p>
           </div>
           <strong>@{profile.username}</strong>
         </div>
@@ -1160,9 +1090,7 @@ export default function AccountDashboardClient({
 
         <form className={styles.profileForm} onSubmit={handleProfileSave}>
           <div className={styles.field}>
-            <label htmlFor="dashboard-display-name">
-              Nombre visible <span className={styles.optional}>Opcional</span>
-            </label>
+            <label htmlFor="dashboard-display-name">Nombre visible <span className={styles.optional}>Opcional</span></label>
             <input
               id="dashboard-display-name"
               name="displayName"
@@ -1173,9 +1101,7 @@ export default function AccountDashboardClient({
           </div>
 
           <div className={styles.field}>
-            <label htmlFor="dashboard-email">
-              Correo <span className={styles.optional}>Opcional</span>
-            </label>
+            <label htmlFor="dashboard-email">Correo <span className={styles.optional}>Opcional</span></label>
             <input
               id="dashboard-email"
               name="email"
@@ -1184,15 +1110,11 @@ export default function AccountDashboardClient({
               maxLength={254}
               autoComplete="email"
             />
-            <p className={styles.hint}>
-              Se cifra antes de guardarlo. Déjalo vacío para eliminarlo.
-            </p>
+            <p className={styles.hint}>Se cifra antes de guardarlo. Déjalo vacío para eliminarlo.</p>
           </div>
 
           <div className={styles.field}>
-            <label htmlFor="dashboard-bio">
-              Bio <span className={styles.optional}>Opcional</span>
-            </label>
+            <label htmlFor="dashboard-bio">Bio <span className={styles.optional}>Opcional</span></label>
             <textarea
               id="dashboard-bio"
               name="bio"
@@ -1201,21 +1123,11 @@ export default function AccountDashboardClient({
             />
           </div>
 
-          {profileMessage && (
-            <p className={styles.message} role="status">{profileMessage}</p>
-          )}
+          {profileMessage && <p className={styles.message} role="status">{profileMessage}</p>}
 
-          <button
-            type="submit"
-            className={styles.primaryButton}
-            disabled={pending}
-          >
+          <button type="submit" className={styles.primaryButton} disabled={pending}>
             <Save size={17} />
-            {profileSaved
-              ? "Guardado"
-              : pending
-                ? "Procesando..."
-                : "Guardar cambios"}
+            {profileSaved ? "Guardado" : pending ? "Procesando..." : "Guardar cambios"}
           </button>
         </form>
       </section>
@@ -1238,9 +1150,7 @@ export default function AccountDashboardClient({
           <section className={styles.privacyPanel}>
             <ShieldCheck size={28} aria-hidden="true" />
             <h2>Privacidad por defecto</h2>
-            <p>
-              La cuenta funciona sin convertir tus datos personales o tu navegación en requisito.
-            </p>
+            <p>La cuenta funciona sin convertir tus datos personales o tu navegación en requisito.</p>
             <ul>
               <li><ShieldCheck size={16} /> Sin IP ni historial de navegación asociado a tu cuenta.</li>
               <li><ShieldCheck size={16} /> Sin teléfono, nombre legal, domicilio o ubicación.</li>
@@ -1254,16 +1164,12 @@ export default function AccountDashboardClient({
             <div className={styles.deleteHeader}>
               <div>
                 <h2>Eliminar mi cuenta</h2>
-                <p>
-                  La eliminación es permanente. Se borran perfil, correo cifrado, sesiones, códigos de recuperación, Mis juegos, Mi PC y todo tu progreso de Rewards.
-                </p>
+                <p>La eliminación es permanente. Se borran perfil, correo cifrado, sesiones, códigos de recuperación, Mis juegos, Mi PC y todo tu progreso de Rewards.</p>
               </div>
             </div>
             <form className={styles.deleteForm} onSubmit={handleDelete}>
               <div className={styles.field}>
-                <label htmlFor="dashboard-delete-password">
-                  Confirma con tu contraseña actual
-                </label>
+                <label htmlFor="dashboard-delete-password">Confirma con tu contraseña actual</label>
                 <input
                   id="dashboard-delete-password"
                   name="password"
@@ -1273,16 +1179,9 @@ export default function AccountDashboardClient({
                   disabled={pending}
                 />
               </div>
-              {deleteMessage && (
-                <p className={styles.message} role="status">{deleteMessage}</p>
-              )}
-              <button
-                type="submit"
-                className={styles.dangerButton}
-                disabled={pending}
-              >
-                <Trash2 size={17} />
-                {pending ? "Eliminando..." : "Eliminar definitivamente"}
+              {deleteMessage && <p className={styles.message} role="status">{deleteMessage}</p>}
+              <button type="submit" className={styles.dangerButton} disabled={pending}>
+                <Trash2 size={17} /> {pending ? "Eliminando..." : "Eliminar definitivamente"}
               </button>
             </form>
           </section>
@@ -1333,9 +1232,7 @@ export default function AccountDashboardClient({
                 >
                   <Icon size={19} aria-hidden="true" />
                   <span>{item.label}</span>
-                  {item.badge !== undefined && item.badge > 0 && (
-                    <b>{item.badge}</b>
-                  )}
+                  {item.badge !== undefined && item.badge > 0 && <b>{item.badge}</b>}
                 </button>
               );
             })}
@@ -1353,13 +1250,7 @@ export default function AccountDashboardClient({
                     width={42}
                     height={42}
                     unoptimized
-                    style={{
-                      position: "absolute",
-                      inset: 0,
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                    }}
+                    style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
                     onLoad={() => setSidebarHasAvatar(true)}
                     onError={() => setSidebarHasAvatar(false)}
                   />
@@ -1374,19 +1265,13 @@ export default function AccountDashboardClient({
               <span>{rewards.xpTotal} XP</span>
               <span>{rewards.creditsBalance} créditos</span>
             </div>
-            <button
-              type="button"
-              onClick={handleLogout}
-              disabled={pending}
-            >
+            <button type="button" onClick={handleLogout} disabled={pending}>
               <LogOut size={18} /> Cerrar sesión
             </button>
           </div>
         </aside>
 
-        <div className={styles.dashboardMain}>
-          {content}
-        </div>
+        <div className={styles.dashboardMain}>{content}</div>
       </div>
     </main>
   );
