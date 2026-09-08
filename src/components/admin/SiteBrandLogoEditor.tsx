@@ -32,6 +32,7 @@ type SiteBrandLogoEditorProps = {
 
 type UploadPayload = {
   publicPath?: string;
+  format?: "svg" | "png" | "jpg" | "webp" | "gif";
   error?: string;
 };
 
@@ -127,7 +128,7 @@ export default function SiteBrandLogoEditor({
       setAsset(payload.publicPath);
       setColorMode("original");
       setMessage(
-        "Logo validado. Se conservarán los colores del SVG; guarda el borrador para incorporarlo a la identidad."
+        "Logo validado y saneado. Se eliminó metadata del archivo y no se conserva su nombre original; guarda el borrador para incorporarlo a la identidad."
       );
     } catch {
       setMessage(
@@ -200,8 +201,8 @@ export default function SiteBrandLogoEditor({
             className={styles.fileInput}
             type="file"
             hidden
-            accept=".svg,image/svg+xml"
-            aria-label="Archivo SVG del logo"
+            accept=".svg,.png,.jpg,.jpeg,.webp,.gif,image/svg+xml,image/png,image/jpeg,image/webp,image/gif"
+            aria-label="Archivo de imagen del logo"
             onChange={(event) => {
               const file = event.currentTarget.files?.[0];
               if (file) void uploadLogo(file);
@@ -215,7 +216,7 @@ export default function SiteBrandLogoEditor({
               onClick={() => inputRef.current?.click()}
             >
               <ImagePlus size={17} aria-hidden="true" />
-              {uploading ? "Validando…" : asset ? "Cambiar SVG" : "Subir SVG"}
+              {uploading ? "Validando…" : asset ? "Cambiar logo" : "Subir logo"}
             </button>
             {asset && (
               <button
@@ -258,7 +259,7 @@ export default function SiteBrandLogoEditor({
           </div>
 
           <p className={styles.fileHint}>
-            SVG estático de hasta 256 KB. Se admiten degradados, defs, máscaras, filtros, texto, estilos inline seguros, referencias internas y PNG/JPEG/WebP embebidos. Se bloquean scripts, HTML embebido, animaciones y recursos o enlaces externos.
+            SVG estático de hasta 256 KB o PNG, JPEG, WebP y GIF estático de hasta 6 MB. El formato se detecta por contenido, no por extensión. Antes de guardar se eliminan metadata, perfiles ICC, EXIF/XMP, comentarios y bloques auxiliares; no se persiste el nombre original del archivo.
           </p>
         </div>
 
@@ -282,9 +283,9 @@ export default function SiteBrandLogoEditor({
               <span className={styles.radioMark} aria-hidden="true" />
             </span>
             <label htmlFor="site-logo-color-original">
-              <strong>Colores originales del SVG</strong>
+              <strong>Colores originales del archivo</strong>
               <small>
-                En un SVG personalizado conserva degradados y colores tal como vienen en el archivo.
+                Conserva los colores del SVG o de la imagen raster saneada tal como se ven en el archivo.
               </small>
             </label>
             <i aria-hidden="true" />
@@ -346,7 +347,7 @@ export default function SiteBrandLogoEditor({
           <div className={styles.securityNote}>
             <ShieldCheck size={17} aria-hidden="true" />
             <span>
-              El SVG se sanea como recurso estático e inmutable. Subirlo no publica ni modifica el sitio hasta guardar y publicar la identidad.
+              El archivo se sanea como recurso estático e inmutable y se vuelve a validar cada vez que se lee o sirve. Subirlo no publica ni modifica el sitio hasta guardar y publicar la identidad.
             </span>
           </div>
         </fieldset>
