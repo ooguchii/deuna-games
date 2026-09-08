@@ -20,7 +20,9 @@ const [
   importRoute,
   multimediaPage,
   multimediaEditor,
-  workspace,
+  assignmentsWorkspace,
+  galleryManager,
+  utilityRail,
 ] = await Promise.all([
   source("src/lib/media/preview-video-policy.ts"),
   source("src/lib/media/editorial-video.ts"),
@@ -29,7 +31,9 @@ const [
   source("src/app/api/admin/content/games/[slug]/preview-import/route.ts"),
   source("src/app/admin/(protected)/juegos/[slug]/page.tsx"),
   source("src/components/admin/GameMultimediaEditor.tsx"),
-  source("src/components/admin/GameMultimediaWorkspaceContextual.tsx"),
+  source("src/components/admin/GameMediaAssignmentsWorkspace.tsx"),
+  source("src/components/admin/GameGalleryMediaManager.tsx"),
+  source("src/components/admin/GameMultimediaUtilityRail.tsx"),
 ]);
 
 assert(
@@ -85,32 +89,44 @@ assert(
   !multimediaPage.includes("GamePreviewClipUploadForm") &&
     !multimediaPage.includes("mediaAction") &&
     !multimediaEditor.includes("mediaAction") &&
-    has(multimediaEditor, "GameVideoLibraryEditor", "GameMultimediaWorkspaceContextual"),
-  "La pantalla multimedia no debe conservar el wrapper temporal ni el plumbing del formulario manual antiguo."
+    has(multimediaEditor, "GameVideoLibraryEditor", "GameMediaAssignmentsWorkspace", "GameGalleryMediaManager", "GameMultimediaUtilityRail"),
+  "La pantalla multimedia no debe conservar el wrapper temporal ni el plumbing manual antiguo y debe montar sólo las superficies activas."
 );
 
-const galleryStart = workspace.indexOf("function renderGalleryAssignedItems");
-const galleryEnd = workspace.indexOf("\n  function destinationActions", galleryStart);
-const galleryRenderer = galleryStart >= 0 && galleryEnd > galleryStart
-  ? workspace.slice(galleryStart, galleryEnd)
-  : "";
-const libraryRendererStart = workspace.indexOf("function renderLibraryGroup");
-const libraryRendererEnd = workspace.indexOf("\n  const galleryPendingLabel", libraryRendererStart);
-const libraryRenderer = libraryRendererStart >= 0 && libraryRendererEnd > libraryRendererStart
-  ? workspace.slice(libraryRendererStart, libraryRendererEnd)
-  : "";
+assert(
+  has(
+    assignmentsWorkspace,
+    "Card es la presentación principal del juego",
+    'target="cover-image"',
+    'target="card-image"',
+    'target="card-video"',
+    'target="hero-image"',
+    'target="hero-video"'
+  ) &&
+    !assignmentsWorkspace.includes("media-resource-delete") &&
+    !assignmentsWorkspace.includes("DeleteResourceForm"),
+  "La asignación principal debe limitarse a seleccionar/recortar masters y nunca incorporar borrado destructivo."
+);
 
 assert(
-  galleryRenderer.includes('value="gallery-remove"') &&
-    galleryRenderer.includes("Editar") &&
-    galleryRenderer.includes("Quitar") &&
-    !galleryRenderer.includes("DeleteResourceForm") &&
-    !galleryRenderer.includes('value="image-delete"') &&
-    !galleryRenderer.includes('value="video-delete"') &&
-    workspace.includes("function DeleteResourceForm") &&
-    libraryRenderer.includes("<DeleteResourceForm") &&
-    libraryRenderer.includes("usages={labels}"),
-  "Galería debe ofrecer Editar/Quitar sin eliminación destructiva; la Biblioteca conserva su × segura para imágenes y videos."
+  has(
+    galleryManager,
+    '"gallery-remove"',
+    "Editar recorte",
+    "Quitar",
+    "gallery-media"
+  ) &&
+    !galleryManager.includes("media-resource-delete") &&
+    !galleryManager.includes("deleteEditorialMediaResource") &&
+    has(
+      utilityRail,
+      "media-resource-delete",
+      'resource.hygiene?.status !== "unused"',
+      "Protegido",
+      "Historial",
+      "deleteForm(resource)"
+    ),
+  "Galería debe ofrecer Editar/Quitar sin eliminación destructiva; la Biblioteca conserva el borrado seguro sólo para masters realmente huérfanos."
 );
 
 try {
@@ -129,5 +145,5 @@ if (failures.length) {
 }
 
 console.log(
-  "Multimedia v2 hardening: OK (1080p50 default · 60 FPS máximo · sin FPS inventados · master único · Galería no destructiva · Biblioteca con borrado seguro · wrapper temporal eliminado)."
+  "Multimedia v2 hardening: OK (1080p50 default · 60 FPS máximo · sin FPS inventados · master único · Galería no destructiva · Biblioteca con borrado seguro · workspace legado eliminado)."
 );
