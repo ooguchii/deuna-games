@@ -39,6 +39,7 @@ import { clearStoredHardwareProfile, storeExplicitHardwareProfile } from "@/feat
 import SiteBrand from "@/components/layout/SiteBrand";
 import GameMedia from "@/components/ui/GameMedia";
 import {
+  accountDashboardDestinations,
   accountDashboardViewHref,
   resolveAccountDashboardView,
   type AccountDashboardView,
@@ -220,6 +221,17 @@ const confidenceLabels: Record<PerformanceEstimate["confidence"], string> = {
   high: "alta",
   medium: "media",
   low: "baja",
+};
+
+const dashboardNavIcons: Record<AccountDashboardView, typeof Gamepad2> = {
+  overview: Gamepad2,
+  rewards: Gift,
+  games: LibraryBig,
+  pc: MonitorCog,
+  alerts: Bell,
+  discover: Compass,
+  profile: UserRound,
+  settings: Settings,
 };
 
 async function postForm(
@@ -425,26 +437,17 @@ export default function AccountDashboardClient({
   ).length;
   const displayName = profile.displayName?.trim() || profile.username;
 
-  const navItems: Array<{
-    id: AccountDashboardView;
-    label: string;
-    icon: typeof Gamepad2;
-    badge?: number;
-  }> = [
-    { id: "overview", label: "Mi DeUna", icon: Gamepad2 },
-    {
-      id: "rewards",
-      label: "Recompensas",
-      icon: Gift,
-      badge: rewards.daily.available ? 1 : undefined,
-    },
-    { id: "games", label: "Mis juegos", icon: LibraryBig },
-    { id: "pc", label: "Mi PC", icon: MonitorCog },
-    { id: "alerts", label: "Avisos", icon: Bell, badge: notifications.length },
-    { id: "discover", label: "Descubrimientos", icon: Compass },
-    { id: "profile", label: "Perfil privado", icon: UserRound },
-    { id: "settings", label: "Configuración", icon: Settings },
-  ];
+  const navItems = accountDashboardDestinations.map((destination) => ({
+    id: destination.id,
+    label: destination.label,
+    icon: dashboardNavIcons[destination.id],
+    badge:
+      destination.id === "rewards"
+        ? rewards.daily.available ? 1 : undefined
+        : destination.id === "alerts"
+          ? notifications.length
+          : undefined,
+  }));
 
   async function savePreference(
     gameSlug: string,
