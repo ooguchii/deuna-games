@@ -149,38 +149,6 @@ export const readStoredSiteBrandLogo = cache(
   readStoredSiteBrandLogoUncached
 );
 
-function rasterColorizedSvgDataUri(
-  stored: Extract<
-    NonNullable<
-      Awaited<ReturnType<typeof readStoredSiteBrandLogoUncached>>
-    >,
-    { format: SiteBrandRasterFormat }
-  >,
-  color: string
-) {
-  if (!/^#[0-9a-f]{6}$/i.test(color)) {
-    return null;
-  }
-
-  const contentType = siteBrandRasterContentType(
-    stored.format
-  );
-  const rasterDataUri =
-    `data:${contentType};base64,${stored.content.toString("base64")}`;
-  const svg = [
-    '<svg xmlns="http://www.w3.org/2000/svg"',
-    ` viewBox="0 0 ${stored.width} ${stored.height}">`,
-    '<defs><mask id="logo-mask" maskUnits="userSpaceOnUse"',
-    ` x="0" y="0" width="${stored.width}" height="${stored.height}" mask-type="alpha">`,
-    `<image href="${rasterDataUri}" width="${stored.width}" height="${stored.height}" preserveAspectRatio="xMidYMid meet"/>`,
-    '</mask></defs>',
-    `<rect width="${stored.width}" height="${stored.height}" fill="${color}" mask="url(#logo-mask)"/>`,
-    '</svg>',
-  ].join("");
-
-  return `data:image/svg+xml;base64,${Buffer.from(svg, "utf8").toString("base64")}`;
-}
-
 export async function buildSiteBrandLogoDataUri(
   publicPath: string,
   color?: string | null
@@ -202,12 +170,9 @@ export async function buildSiteBrandLogoDataUri(
     return `data:image/svg+xml;base64,${rendered.toString("base64")}`;
   }
 
-  if (color) {
-    return rasterColorizedSvgDataUri(
-      stored,
-      color
-    );
-  }
-
+  // Los raster conservan sus colores originales. Recolorearlos con una
+  // máscara alpha puede convertir logos opacos en un rectángulo sólido y no
+  // existe un decoder de píxeles en este contrato para distinguir fondo de
+  // figura de forma segura.
   return `data:${siteBrandRasterContentType(stored.format)};base64,${stored.content.toString("base64")}`;
 }
