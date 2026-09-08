@@ -37,6 +37,7 @@ import {
 import type { Game } from "@/types/game";
 
 import styles from "./UniversalGameCard.module.css";
+import presentationStyles from "./UniversalGameCardPresentation.module.css";
 import tiltStyles from "./UniversalGameCardTilt.module.css";
 
 export type UniversalGameCardVariant =
@@ -209,10 +210,8 @@ export default function UniversalGameCardBase({
     `variant${variant[0].toUpperCase()}${variant.slice(1)}`
   ];
   const presentationClass = presentation === "poster"
-    ? styles.presentationPoster
-    : presentation === "detail-video"
-      ? styles.presentationDetailVideo
-      : styles.presentationDetailImage;
+    ? presentationStyles.presentationPoster
+    : "";
 
   const cardMode = resolveGameDestinationMediaMode(game, "card");
   const modePreview = resolveGameCardPreview(game);
@@ -368,8 +367,8 @@ export default function UniversalGameCardBase({
   );
 
   const detailSurface = (
-    <div className={styles.detailSurface}>
-      <div className={`${styles.media} ${tiltStyles.tiltMedia}`}>
+    <div className={presentationStyles.detailSurface}>
+      <div className={`${styles.media} ${presentationStyles.detailMedia} ${tiltStyles.tiltMedia}`}>
         <HoverPreviewMedia
           imageSrc={cardImage}
           imageAlt={presentation === "poster" ? "" : detailAlt}
@@ -398,7 +397,7 @@ export default function UniversalGameCardBase({
         <Monitor size={18} className={styles.platform} aria-hidden="true" />
       </div>
 
-      <div className={styles.content}>
+      <div className={`${styles.content} ${presentationStyles.detailContent}`}>
         <div className={styles.titleRow}>
           <h3>{game.title}</h3>
 
@@ -434,6 +433,7 @@ export default function UniversalGameCardBase({
       ref={articleRef}
       className={`${styles.card} ${tiltStyles.tiltCard} ${variantClass} ${presentationClass}`}
       data-card-presentation={presentation}
+      data-card-variant={variant}
       data-poster-revealed={posterRevealed ? "true" : "false"}
       onPointerEnter={startCard}
       onPointerMove={scheduleTilt}
@@ -454,12 +454,12 @@ export default function UniversalGameCardBase({
     >
       <Link
         href={`/juegos/${game.slug}`}
-        className={`${styles.link} ${tiltStyles.tiltClip}`}
+        className={`${styles.link} ${tiltStyles.tiltClip} ${presentation === "poster" ? presentationStyles.posterLink : ""}`}
         aria-label={`Ver ${game.title}`}
       >
         {presentation === "poster" ? (
           <>
-            <div className={styles.posterSurface}>
+            <div className={presentationStyles.posterSurface}>
               <GameMedia
                 src={posterImage}
                 alt={posterAlt}
@@ -467,17 +467,17 @@ export default function UniversalGameCardBase({
                 sizes="(max-width: 560px) 82vw, (max-width: 900px) 48vw, (max-width: 1250px) 30vw, 20vw"
                 fallbackClassName={fallbackClass ? styles[fallbackClass] : undefined}
               />
-              <div className={styles.posterShade} aria-hidden="true" />
+              <div className={presentationStyles.posterShade} aria-hidden="true" />
               {mediaBadge && (
-                <span className={`${styles.mediaBadge} ${styles.posterBadge} ${mediaBadge.tone === "brand" ? styles.mediaBadgeBrand : ""}`}>
+                <span className={`${styles.mediaBadge} ${presentationStyles.posterBadge} ${mediaBadge.tone === "brand" ? styles.mediaBadgeBrand : ""}`}>
                   {mediaBadge.label}
                 </span>
               )}
-              <span className={styles.posterHint} aria-hidden="true">
+              <span className={presentationStyles.posterHint} aria-hidden="true">
                 Ver información
               </span>
             </div>
-            <div className={styles.posterDetailLayer} aria-hidden={!posterRevealed ? "true" : undefined}>
+            <div className={presentationStyles.posterDetailLayer}>
               {detailSurface}
             </div>
           </>
