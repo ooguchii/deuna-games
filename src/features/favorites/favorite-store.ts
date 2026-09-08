@@ -16,8 +16,7 @@ let ready = false;
 let version = 0;
 let errorMessage: string | null = null;
 let refreshPromise: Promise<void> | null = null;
-let lastRefreshAt = 0;
-let storageListenerInstalled = false;
+let externalListenersInstalled = false;
 
 function emit() {
   version += 1;
@@ -55,9 +54,9 @@ function persistGuestFavorites() {
   }
 }
 
-function installStorageListener() {
-  if (storageListenerInstalled) return;
-  storageListenerInstalled = true;
+function installExternalListeners() {
+  if (externalListenersInstalled) return;
+  externalListenersInstalled = true;
 
   window.addEventListener("storage", (event) => {
     if (
@@ -73,23 +72,19 @@ function installStorageListener() {
     ready = true;
     emit();
   });
+
+  window.addEventListener("focus", () => {
+    void refreshFavoriteStore();
+  });
 }
 
-export async function refreshFavoriteStore(force = false) {
+export async function refreshFavoriteStore() {
   if (typeof window === "undefined") return;
 
-  installStorageListener();
+  installExternalListeners();
 
   if (refreshPromise) {
     await refreshPromise;
-    return;
-  }
-
-  if (
-    !force &&
-    ready &&
-    Date.now() - lastRefreshAt < 1_000
-  ) {
     return;
   }
 
@@ -124,7 +119,6 @@ export async function refreshFavoriteStore(force = false) {
 
       ready = true;
       errorMessage = null;
-      lastRefreshAt = Date.now();
       emit();
     } catch {
       if (!ready) {
@@ -148,6 +142,9 @@ export async function toggleFavoriteGame(gameSlug: string) {
     return;
   }
 
+  // Confirmamos la autoridad de sesión antes de cada escritura. Así un login
+  // o logout ocurrido sin recarga completa no puede mandar el clic al destino
+  // anterior (cuenta vs. almacenamiento local de invitado).
   await refreshFavoriteStore();
 
   const wasFavorite = favorites.has(gameSlug);
@@ -197,8 +194,11 @@ export async function toggleFavoriteGame(gameSlug: string) {
     favorites = rollback;
     errorMessage =
       "No se pudo guardar el favorito. Inténtalo de nuevo.";
+    emit();
 
-    await refreshFavoriteStore(true);
+    // Reconciliamos con la fuente autoritativa después del rollback. Si este
+    // GET también falla, conservamos el estado revertido y el mensaje de error.
+    await refreshFavoriteStore();
   } finally {
     pendingSlugs.delete(gameSlug);
     emit();
