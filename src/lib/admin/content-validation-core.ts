@@ -1,6 +1,10 @@
 import { z } from "zod";
 
 import { homeHeroPresentationInputSchema } from "../home/hero-schema.ts";
+import {
+  siteBrandLogoAssetPattern,
+  siteLogoColorModes,
+} from "../site/logo.ts";
 
 import type { Game } from "@/types/game";
 import type {
@@ -705,6 +709,16 @@ export const editorialSiteConfigSchema = z
     language: z.literal("es"),
     themeColor: z.string().regex(/^#[0-9a-f]{6}$/i),
     brandColor: z.string().regex(/^#[0-9a-f]{6}$/i).optional(),
+    logoAsset: z
+      .string()
+      .max(400)
+      .regex(siteBrandLogoAssetPattern)
+      .optional(),
+    logoColorMode: z.enum(siteLogoColorModes).optional(),
+    logoCustomColor: z
+      .string()
+      .regex(/^#[0-9a-f]{6}$/i)
+      .optional(),
     footerTagline: z.string().trim().min(1).max(180).optional(),
     backgroundLibrary: z
       .array(pageBackgroundAssetSchema)
@@ -714,7 +728,20 @@ export const editorialSiteConfigSchema = z
     heroImageEffect: z.boolean().optional(),
     heroImageTuning: heroImageTuningSchema.optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((config, context) => {
+    if (
+      config.logoColorMode === "custom" &&
+      !config.logoCustomColor
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["logoCustomColor"],
+        message:
+          "El logo con color personalizado requiere un color válido.",
+      });
+    }
+  });
 
 export const editorialHomeConfigSchema = z
   .object({
