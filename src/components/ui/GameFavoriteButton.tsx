@@ -20,11 +20,13 @@ export default function GameFavoriteButton({
   gameTitle,
   className,
   style,
+  onFavoriteChange,
 }: {
   gameSlug: string;
   gameTitle: string;
   className?: string;
   style?: CSSProperties;
+  onFavoriteChange?: (favorite: boolean) => void;
 }) {
   const {
     favorite,
@@ -38,6 +40,10 @@ export default function GameFavoriteButton({
     setStatus("");
 
     const saved = await toggle();
+
+    if (saved) {
+      onFavoriteChange?.(nextFavorite);
+    }
 
     setStatus(
       saved
