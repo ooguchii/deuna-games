@@ -199,6 +199,26 @@ async function assertStatus(pathname, expectedStatus) {
   return response;
 }
 
+async function assertPngImage(pathname) {
+  const response = await assertStatus(pathname, 200);
+  const contentType =
+    response.headers.get("content-type")?.toLowerCase() ?? "";
+
+  if (!contentType.startsWith("image/png")) {
+    fail(
+      `${pathname}: se esperaba image/png y respondió ${contentType || "sin Content-Type"}.`
+    );
+  }
+
+  const bytes = (await response.arrayBuffer()).byteLength;
+
+  if (bytes < 1_024) {
+    fail(
+      `${pathname}: la imagen social generada es sospechosamente pequeña (${bytes} bytes).`
+    );
+  }
+}
+
 await access(serverPath).catch(() => {
   fail(
     "No existe .next/standalone/server.js. Ejecuta npm run build antes del smoke test."
@@ -285,6 +305,9 @@ try {
   if (!permissionsPolicy.includes("geolocation=()")) {
     fail("Home: Permissions-Policy debe bloquear geolocalización.");
   }
+
+  await assertPngImage("/opengraph-image");
+  await assertPngImage("/twitter-image");
 
   const disabledAdmin = await assertStatus(
     "/admin",
@@ -419,7 +442,7 @@ try {
   }
 
   console.log(
-    "Smoke: OK (runtime, privacidad pública, admin cerrado, canonicals, noindex, descarga fallback, 404, sitemap y headers verificados)."
+    "Smoke: OK (runtime, privacidad pública, metadata social, admin cerrado, canonicals, noindex, descarga fallback, 404, sitemap y headers verificados)."
   );
 } catch (error) {
   if (serverOutput.trim()) {
