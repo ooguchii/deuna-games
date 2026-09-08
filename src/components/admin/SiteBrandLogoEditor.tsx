@@ -7,6 +7,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import {
+  type CSSProperties,
   useRef,
   useState,
 } from "react";
@@ -104,6 +105,7 @@ export default function SiteBrandLogoEditor({
     <section
       className={styles.editor}
       aria-labelledby="site-logo-editor-title"
+      aria-busy={uploading}
     >
       <input
         type="hidden"
@@ -135,7 +137,7 @@ export default function SiteBrandLogoEditor({
         <div className={styles.visualColumn}>
           <div
             className={styles.logoStage}
-            style={{ "--logo-preview-color": logoColor } as React.CSSProperties}
+            style={{ "--logo-preview-color": logoColor } as CSSProperties}
           >
             <span className={styles.logoTile}>
               <SiteLogoMark
@@ -159,7 +161,7 @@ export default function SiteBrandLogoEditor({
             ref={inputRef}
             className={styles.fileInput}
             type="file"
-            accept="image/svg+xml,.svg"
+            accept=".svg,image/svg+xml"
             tabIndex={-1}
             aria-hidden="true"
             onChange={(event) => {
@@ -196,7 +198,7 @@ export default function SiteBrandLogoEditor({
           </div>
 
           <p className={styles.fileHint}>
-            SVG monocromático, máximo 256 KB. Se elimina metadata y se rechazan scripts, enlaces, estilos, recursos externos y estructura insegura.
+            SVG monocromático, máximo 256 KB. Se rechazan scripts, enlaces, estilos, recursos externos y cualquier estructura no admitida.
           </p>
         </div>
 
@@ -206,35 +208,37 @@ export default function SiteBrandLogoEditor({
             Color del logo
           </legend>
 
-          <label className={styles.modeOption}>
+          <div className={styles.modeOption}>
             <input
+              id="site-logo-color-brand"
               type="radio"
               name="logo-color-mode-ui"
               checked={colorMode === "brand"}
               onChange={() => setColorMode("brand")}
             />
-            <span>
+            <label htmlFor="site-logo-color-brand">
               <strong>Seguir color de marca</strong>
               <small>
                 Recomendado. Si cambias la marca, el logo cambia con ella.
               </small>
-            </span>
+            </label>
             <i style={{ background: brandColor }} aria-hidden="true" />
-          </label>
+          </div>
 
-          <label className={styles.modeOption}>
+          <div className={styles.modeOption}>
             <input
+              id="site-logo-color-custom"
               type="radio"
               name="logo-color-mode-ui"
               checked={colorMode === "custom"}
               onChange={() => setColorMode("custom")}
             />
-            <span>
+            <label htmlFor="site-logo-color-custom">
               <strong>Color personalizado</strong>
               <small>
                 Mantiene el logo independiente del color principal del sitio.
               </small>
-            </span>
+            </label>
             <input
               className={styles.colorInput}
               type="color"
@@ -245,7 +249,7 @@ export default function SiteBrandLogoEditor({
                 setCustomColor(event.target.value)
               }
             />
-          </label>
+          </div>
 
           <div className={styles.securityNote}>
             <ShieldCheck size={17} aria-hidden="true" />
