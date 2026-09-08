@@ -14,14 +14,35 @@ const embeddedRasterDataUriPattern =
 const anyEmbeddedRasterDataUriPattern =
   /data:image\/(?:png|jpe?g|webp);base64,/gi;
 
-function isCanonicalBase64(value: string) {
-  return (
-    value.length > 0 &&
-    value.length % 4 === 0 &&
-    /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(
-      value
-    )
-  );
+function decodeCanonicalBase64(value: string) {
+  if (
+    value.length === 0 ||
+    !/^[A-Za-z0-9+/]+={0,2}$/.test(value)
+  ) {
+    return null;
+  }
+
+  const unpadded = value.replace(/=+$/, "");
+
+  if (unpadded.length % 4 === 1) {
+    return null;
+  }
+
+  const decoded = Buffer.from(unpadded, "base64");
+  if (decoded.length === 0) return null;
+
+  const canonical = decoded.toString("base64");
+
+  if (
+    canonical.replace(/=+$/, "") !== unpadded
+  ) {
+    return null;
+  }
+
+  return {
+    decoded,
+    canonical,
+  };
 }
 
 function expectedRasterFormat(mimeSubtype: string) {
@@ -67,18 +88,26 @@ function stripNonVisualSiteBrandSvgMetadata(
     );
   const withoutNonVisualAttributes =
     withoutDescriptiveElements.replace(
-      /\s+(?:data-[A-Za-z0-9_.:-]+|aria-[A-Za-z0-9_.:-]+|role|tabindex|focusable|title)\s*=\s*(["'])[^"']*\1/gi,
+      /\s+(?:data-[A-Za-z0-9_.:-]+|aria-[A-Za-z0-9_.:-]+|role|tabindex|focusable|title)\s*=\s*(?:"[^"]*"|'[^']*')/gi,
       ""
     );
   const withoutInlineCssComments =
     withoutNonVisualAttributes.replace(
-      /\bstyle\s*=\s*(["'])([^"']*)\1/gi,
+      /\bstyle\s*=\s*(?:"([^"]*)"|'([^']*)')/gi,
       (
         _full,
-        quote: string,
-        value: string
-      ) =>
-        `style=${quote}${stripCssComments(value)}${quote}`
+        doubleQuotedValue: string | undefined,
+        singleQuotedValue: string | undefined
+      ) => {
+        const usesDoubleQuotes =
+          doubleQuotedValue !== undefined;
+        const quote = usesDoubleQuotes ? '"' : "'";
+        const value = usesDoubleQuotes
+          ? doubleQuotedValue
+          : singleQuotedValue ?? "";
+
+        return `style=${quote}${stripCssComments(value)}${quote}`;
+      }
     );
   const withoutStyleBlockComments =
     withoutInlineCssComments.replace(
@@ -135,29 +164,18 @@ export function sanitizeSiteBrandLogoEmbeddedRasters(
     ) => {
       const compactBase64 = base64.replace(/\s+/g, "");
       const expectedFormat = expectedRasterFormat(mimeSubtype);
-
-      if (
-        !expectedFormat ||
-        !isCanonicalBase64(compactBase64)
-      ) {
-        invalid = true;
-        return _full;
-      }
-
-      const decoded = Buffer.from(
-        compactBase64,
-        "base64"
+      const decodedPayload = decodeCanonicalBase64(
+        compactBase64
       );
 
-      if (
-        decoded.length === 0 ||
-        decoded.toString("base64") !== compactBase64
-      ) {
+      if (!expectedFormat || !decodedPayload) {
         invalid = true;
         return _full;
       }
 
-      const sanitized = sanitizeSiteBrandLogoRaster(decoded);
+      const sanitized = sanitizeSiteBrandLogoRaster(
+        decodedPayload.decoded
+      );
 
       if (
         !sanitized ||
