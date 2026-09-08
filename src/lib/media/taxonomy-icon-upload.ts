@@ -6,7 +6,6 @@ import {
   readFile,
   writeFile,
 } from "node:fs/promises";
-import path from "node:path";
 
 import {
   SITE_BRAND_LOGO_SLUG,
@@ -14,7 +13,7 @@ import {
 
 import {
   buildEditorialMediaPublicPath,
-  getEditorialMediaRoot,
+  resolveEditorialMediaDiskPath,
 } from "./editorial-media";
 import {
   inspectSafeTaxonomySvgIcon,
@@ -52,12 +51,17 @@ async function assertWritableDirectory(
   directory: string,
   mode: number
 ) {
-  await mkdir(directory, {
-    recursive: true,
-    mode,
-  });
+  await mkdir(
+    /* turbopackIgnore: true */ directory,
+    {
+      recursive: true,
+      mode,
+    }
+  );
 
-  const stats = await lstat(directory);
+  const stats = await lstat(
+    /* turbopackIgnore: true */ directory
+  );
 
   if (
     !stats.isDirectory() ||
@@ -100,15 +104,25 @@ async function writeHashedIcon(
   digest: string
 ) {
   const filename = `${digest}.${format}`;
-  const root = getEditorialMediaRoot();
-  const iconDirectory = path.join(
-    root,
-    slug
-  );
-  const filePath = path.join(
-    iconDirectory,
+  const publicPath = buildEditorialMediaPublicPath(
+    slug,
     filename
   );
+  const resolved = resolveEditorialMediaDiskPath(
+    publicPath
+  );
+
+  if (!resolved) {
+    throw new Error(
+      "No se pudo resolver una ruta segura para el icono editorial."
+    );
+  }
+
+  const {
+    root,
+    gameDirectory: iconDirectory,
+    filePath,
+  } = resolved;
 
   await assertWritableDirectory(root, 0o750);
   await assertWritableDirectory(
@@ -119,16 +133,22 @@ async function writeHashedIcon(
   let reused = false;
 
   try {
-    await writeFile(filePath, buffer, {
-      flag: "wx",
-      mode: 0o640,
-    });
+    await writeFile(
+      /* turbopackIgnore: true */ filePath,
+      buffer,
+      {
+        flag: "wx",
+        mode: 0o640,
+      }
+    );
   } catch (error) {
     if (!isAlreadyExistsError(error)) {
       throw error;
     }
 
-    const stats = await lstat(filePath);
+    const stats = await lstat(
+      /* turbopackIgnore: true */ filePath
+    );
 
     if (
       !stats.isFile() ||
@@ -139,7 +159,9 @@ async function writeHashedIcon(
       );
     }
 
-    const existing = await readFile(filePath);
+    const existing = await readFile(
+      /* turbopackIgnore: true */ filePath
+    );
     const inspection = inspectStoredIcon(
       format,
       existing
@@ -158,10 +180,7 @@ async function writeHashedIcon(
   }
 
   return {
-    publicPath: buildEditorialMediaPublicPath(
-      slug,
-      filename
-    ),
+    publicPath,
     reused,
   };
 }
