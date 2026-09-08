@@ -24,7 +24,8 @@ const [
   publicBackgroundCss,
   publicLayout,
   multimediaEditor,
-  multimediaWorkspace,
+  assignmentsWorkspace,
+  utilityRail,
 ] = await Promise.all([
   source("src/types/game.ts"),
   source("src/lib/admin/content-validation.ts"),
@@ -39,7 +40,8 @@ const [
   source("src/components/games/GameDetailBackground.module.css"),
   source("src/app/juegos/[slug]/layout.tsx"),
   source("src/components/admin/GameMultimediaEditor.tsx"),
-  source("src/components/admin/GameMultimediaWorkspaceContextual.tsx"),
+  source("src/components/admin/GameMediaAssignmentsWorkspace.tsx"),
+  source("src/components/admin/GameMultimediaUtilityRail.tsx"),
 ]);
 
 assert(
@@ -233,25 +235,29 @@ assert(
 );
 
 assert(
-  multimediaEditor.includes("GameMultimediaWorkspaceContextual") &&
+  multimediaEditor.includes("GameMediaAssignmentsWorkspace") &&
+    !multimediaEditor.includes("GameMultimediaWorkspaceContextual") &&
     !multimediaEditor.includes("GameBackgroundMediaEditor") &&
     has(
-      multimediaWorkspace,
+      assignmentsWorkspace,
       'import GameBackgroundMediaEditor from "@/components/admin/GameBackgroundMediaEditor"',
       'import GameDetailMediaEditor from "@/components/admin/GameDetailMediaEditor"',
-      "backgroundImage: string | null",
-      "backgroundMode: GameDestinationMediaMode | null",
-      "backgroundVideo: GameBackgroundVideo | null",
-      "const backgroundReady = backgroundMode === null || cropReady(",
-      "mandatoryRequirementsReady && backgroundReady",
-      'labels.push(backgroundMode === "hover-video" ? "Fondo base" : "Fondo")',
-      'labels.push(backgroundMode === "hover-video" ? "Fondo hover" : "Fondo")',
+      "Hero, Contenedor, Fondo y Galería mantienen destinos propios.",
+      "assignments.backgroundMode",
+      "assignments.backgroundImage",
+      "assignments.imageMedia?.background ?? null",
+      "assignments.backgroundVideo",
       "<GameBackgroundMediaEditor",
-      "<GameDetailMediaEditor",
-      "<span>F</span><h3>Galería del juego</h3>",
-      "Fondo · adaptable"
+      "<GameDetailMediaEditor"
+    ) &&
+    has(
+      utilityRail,
+      "requirements.background.active",
+      "requirements.background.cropReady",
+      "Fondo",
+      "adaptable"
     ),
-  "Multimedia debe ordenar Portada → Hero → Card → Fondo → Contenedor → Galería en un único workspace y alinear gate/Biblioteca con el estado real de Fondo."
+  "Multimedia debe integrar Fondo y Contenedor dentro de la asignación activa, mantener Galería separada y reflejar el estado opcional de Fondo en el rail compartido."
 );
 
 if (failures.length) {
@@ -261,5 +267,5 @@ if (failures.length) {
 }
 
 console.log(
-  "Game background media: OK (Fondo integrado en destinos, biblioteca no destructiva, override opcional, bytes compartidos y recorte adaptable)."
+  "Game background media: OK (Fondo integrado en destinos activos, biblioteca no destructiva, override opcional, bytes compartidos y recorte adaptable)."
 );
