@@ -144,7 +144,7 @@ export default function SiteBrandLogoEditor({
       setMessage(
         payload.format === "svg"
           ? "Logo SVG validado y saneado. Se eliminó metadata del archivo y no se conserva su nombre original; guarda el borrador para incorporarlo a la identidad."
-          : "Logo raster validado y saneado. Se eliminó metadata del archivo y no se conserva su nombre original; los raster mantienen sus colores originales. Guarda el borrador para incorporarlo a la identidad."
+          : "Logo raster validado y saneado. Se eliminó metadata, perfiles incrustados y el nombre original; el raster se muestra sin recolor. Guarda el borrador para incorporarlo a la identidad."
       );
     } catch {
       setMessage(
@@ -299,9 +299,11 @@ export default function SiteBrandLogoEditor({
               <span className={styles.radioMark} aria-hidden="true" />
             </span>
             <label htmlFor="site-logo-color-original">
-              <strong>Colores originales del archivo</strong>
+              <strong>Usar colores del archivo</strong>
               <small>
-                Conserva los colores del SVG o de la imagen raster saneada tal como se ven en el archivo.
+                {supportsRecolor
+                  ? "Mantiene las pinturas del SVG saneado sin aplicar el color de marca."
+                  : "Muestra el raster saneado sin recolor; los perfiles ICC se eliminan por privacidad."}
               </small>
             </label>
             <i aria-hidden="true" />
@@ -326,7 +328,7 @@ export default function SiteBrandLogoEditor({
               <small>
                 {supportsRecolor
                   ? "Si cambias la marca, el logo cambia con ella."
-                  : "Disponible para el símbolo original y logos SVG; los raster conservan sus colores originales."}
+                  : "Disponible para el símbolo original y logos SVG; los raster se muestran sin recolor."}
               </small>
             </label>
             <i style={{ background: brandColor }} aria-hidden="true" />
