@@ -14,10 +14,14 @@
   color: var(--site-logo-color, currentColor);
 }
 
-.custom {
+.customColorized,
+.customOriginal {
   display: none;
   width: 100%;
   height: 100%;
+}
+
+.customColorized {
   background: var(--site-logo-color, currentColor);
   -webkit-mask-image: var(--site-logo-image);
   mask-image: var(--site-logo-image);
@@ -29,17 +33,34 @@
   mask-size: contain;
 }
 
+.customOriginal {
+  background-image: var(--site-logo-image);
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+}
+
 :global(html[data-site-logo="custom"]) .root:not([data-logo-override]) .fallback,
 .root[data-logo-override="custom"] .fallback {
   display: none;
 }
 
-:global(html[data-site-logo="custom"]) .root:not([data-logo-override]) .custom,
-.root[data-logo-override="custom"] .custom {
+:global(html[data-site-logo="custom"]) .root:not([data-logo-override]) .customColorized,
+.root[data-logo-override="custom"]:not([data-logo-color-mode="original"]) .customColorized {
   display: block;
 }
 
-.root[data-logo-override="default"] .custom {
+:global(html[data-site-logo="custom"][data-site-logo-color-mode="original"]) .root:not([data-logo-override]) .customColorized {
+  display: none;
+}
+
+:global(html[data-site-logo="custom"][data-site-logo-color-mode="original"]) .root:not([data-logo-override]) .customOriginal,
+.root[data-logo-override="custom"][data-logo-color-mode="original"] .customOriginal {
+  display: block;
+}
+
+.root[data-logo-override="default"] .customColorized,
+.root[data-logo-override="default"] .customOriginal {
   display: none;
 }
 
