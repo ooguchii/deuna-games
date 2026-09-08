@@ -1,0 +1,647 @@
+import https from "node:https";
+import process from "node:process";
+
+const baseUrl = new URL(
+  process.env.DEUNA_VISUAL_BASE_URL ??
+    "https://127.0.0.1:3443"
+);
+const adminUsername =
+  process.env.DEUNA_VISUAL_ADMIN_USERNAME?.trim();
+const adminPassword =
+  process.env.DEUNA_VISUAL_ADMIN_PASSWORD;
+const MAX_RESPONSE_BYTES = 4 * 1024 * 1024;
+
+if (
+  baseUrl.protocol !== "https:" ||
+  !["127.0.0.1", "localhost", "::1"].includes(baseUrl.hostname)
+) {
+  throw new Error(
+    "El smoke del logo sólo puede ejecutarse contra el runtime HTTPS local aislado."
+  );
+}
+
+if (!adminUsername || !adminPassword) {
+  throw new Error(
+    "Faltan DEUNA_VISUAL_ADMIN_USERNAME/DEUNA_VISUAL_ADMIN_PASSWORD."
+  );
+}
+
+function request(pathname, options = {}) {
+  const url = new URL(pathname, baseUrl);
+  if (url.origin !== baseUrl.origin) {
+    throw new Error(
+      `El smoke rechazó un destino fuera del origen visual: ${url.origin}.`
+    );
+  }
+
+  const body = options.body ?? "";
+  const headers = { ...(options.headers ?? {}) };
+  const bodyBytes = Buffer.isBuffer(body)
+    ? body.length
+    : Buffer.byteLength(body, "utf8");
+
+  if (bodyBytes > 0) {
+    headers["content-length"] = String(bodyBytes);
+  }
+
+  return new Promise((resolve, reject) => {
+    const req = https.request(
+      url,
+      {
+        method: options.method ?? "GET",
+        headers,
+        rejectUnauthorized: false,
+      },
+      (response) => {
+        const chunks = [];
+        let size = 0;
+
+        response.on("data", (chunk) => {
+          size += chunk.length;
+          if (size > MAX_RESPONSE_BYTES) {
+            req.destroy(
+              new Error(
+                `La respuesta de ${url.pathname} superó ${MAX_RESPONSE_BYTES} bytes.`
+              )
+            );
+            return;
+          }
+          chunks.push(chunk);
+        });
+        response.on("end", () => {
+          resolve({
+            status: response.statusCode ?? 0,
+            headers: response.headers,
+            body: Buffer.concat(chunks).toString("utf8"),
+          });
+        });
+      }
+    );
+
+    req.on("error", reject);
+    if (bodyBytes > 0) req.write(body);
+    req.end();
+  });
+}
+
+function formHeaders(referer, cookie) {
+  return {
+    "content-type": "application/x-www-form-urlencoded;charset=UTF-8",
+    origin: baseUrl.origin,
+    referer: new URL(referer, baseUrl).href,
+    "sec-fetch-site": "same-origin",
+    ...(cookie ? { cookie } : {}),
+  };
+}
+
+function sessionCookie(setCookie) {
+  const values = Array.isArray(setCookie)
+    ? setCookie
+    : setCookie
+      ? [setCookie]
+      : [];
+  const cookies = values
+    .map((value) => value.split(";", 1)[0]?.trim())
+    .filter(Boolean);
+
+  if (cookies.length === 0) {
+    throw new Error(
+      "El login del smoke no devolvió una cookie de sesión."
+    );
+  }
+  return cookies.join("; ");
+}
+
+function decodeHtml(value) {
+  return value
+    .replace(/&#x([0-9a-f]+);/gi, (_, code) =>
+      String.fromCodePoint(Number.parseInt(code, 16))
+    )
+    .replace(/&#([0-9]+);/g, (_, code) =>
+      String.fromCodePoint(Number.parseInt(code, 10))
+    )
+    .replaceAll("&quot;", '"')
+    .replaceAll("&apos;", "'")
+    .replaceAll("&lt;", "<")
+    .replaceAll("&gt;", ">")
+    .replaceAll("&amp;", "&");
+}
+
+function inputValues(html, name) {
+  const inputs = html.match(/<input\b[^>]*>/gi) ?? [];
+  const matches = [];
+
+  for (const input of inputs) {
+    const nameMatch = input.match(/\bname="([^"]*)"/i);
+    if (!nameMatch || decodeHtml(nameMatch[1]) !== name) continue;
+    const valueMatch = input.match(/\bvalue="([^"]*)"/i);
+    if (!valueMatch) {
+      throw new Error(
+        `El input ${name} existe pero no expone un value SSR.`
+      );
+    }
+    matches.push(decodeHtml(valueMatch[1]));
+  }
+
+  if (matches.length === 0) {
+    throw new Error(`No se encontró el input SSR ${name}.`);
+  }
+  return matches;
+}
+
+function singleInputValue(html, name) {
+  const values = inputValues(html, name);
+  const unique = [...new Set(values)];
+  if (unique.length !== 1) {
+    throw new Error(
+      `${name} no tiene un único valor coherente (${unique.length} variantes).`
+    );
+  }
+  return unique[0];
+}
+
+function textareaValue(html, name) {
+  const pattern = new RegExp(
+    `<textarea\\b[^>]*\\bname="${name}"[^>]*>([\\s\\S]*?)<\\/textarea>`,
+    "i"
+  );
+  const match = html.match(pattern);
+  if (!match) {
+    throw new Error(`No se encontró el textarea SSR ${name}.`);
+  }
+  return decodeHtml(match[1]);
+}
+
+function positiveNumberInput(html, name) {
+  const value = Number(singleInputValue(html, name));
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new Error(`${name} no es válido: ${value}.`);
+  }
+  return value;
+}
+
+function redirectLocation(response, label) {
+  if (response.status !== 303) {
+    throw new Error(
+      `${label} respondió ${response.status}; se esperaba 303.`
+    );
+  }
+  const location = response.headers.location;
+  if (!location) throw new Error(`${label} no devolvió Location.`);
+  const url = new URL(location, baseUrl);
+  if (url.origin !== baseUrl.origin) {
+    throw new Error(
+      `${label} intentó redirigir fuera del origen visual: ${url.origin}.`
+    );
+  }
+  return url;
+}
+
+function currentRestoreAction(html) {
+  const forms = html.match(/<form\b[\s\S]*?<\/form>/gi) ?? [];
+  const candidates = [];
+
+  for (const form of forms) {
+    const opening = form.match(/^<form\b[^>]*>/i)?.[0] ?? "";
+    const actionMatch = opening.match(/\baction="([^"]+)"/i);
+    if (!actionMatch) continue;
+
+    const action = decodeHtml(actionMatch[1]);
+    if (
+      !action.startsWith(
+        "/api/admin/content/configuration-publications/"
+      ) ||
+      !action.endsWith("/restore")
+    ) {
+      continue;
+    }
+
+    const buttonTags = form.match(/<button\b[^>]*>/gi) ?? [];
+    const disabled = buttonTags.some((button) =>
+      /\bdisabled(?:\s|=|>)/i.test(button)
+    );
+    if (disabled) candidates.push(action);
+  }
+
+  if (candidates.length !== 1) {
+    throw new Error(
+      `No se pudo identificar una única publicación actual de identidad (${candidates.length} candidatas).`
+    );
+  }
+  return candidates[0];
+}
+
+function publicLogoIdentity(html) {
+  const htmlTag = html.match(/<html\b[^>]*>/i)?.[0];
+  if (!htmlTag) {
+    throw new Error("La respuesta pública no contiene un elemento html verificable.");
+  }
+
+  const modeMatch = htmlTag.match(/\bdata-site-logo="([^"]+)"/i);
+  const styleMatch = htmlTag.match(/\bstyle="([^"]*)"/i);
+  if (!modeMatch || !styleMatch) {
+    throw new Error(
+      "La identidad pública no expone data-site-logo y variables CSS del logo."
+    );
+  }
+
+  const style = decodeHtml(styleMatch[1]);
+  const color = style.match(/--site-logo-color:([^;]+)/i)?.[1]?.trim();
+  const image = style.match(/--site-logo-image:([^;]+)/i)?.[1]?.trim();
+
+  if (!color || !image) {
+    throw new Error(
+      "La identidad pública no expone color e imagen del logo de forma verificable."
+    );
+  }
+
+  return {
+    mode: decodeHtml(modeMatch[1]),
+    color: color.toLowerCase(),
+    image,
+  };
+}
+
+function sameIdentity(left, right) {
+  return (
+    left.mode === right.mode &&
+    left.color === right.color &&
+    left.image === right.image
+  );
+}
+
+function multipartLogo(revision) {
+  const boundary =
+    `----deuna-site-logo-${Date.now().toString(36)}-${process.pid}`;
+  const svg = Buffer.from(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 5h18v14H3z"/><circle cx="9" cy="12" r="2" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="16" cy="10" r="1.5"/></svg>\n',
+    "utf8"
+  );
+  const before = Buffer.from(
+    `--${boundary}\r\nContent-Disposition: form-data; name="expectedRevision"\r\n\r\n${revision}\r\n` +
+      `--${boundary}\r\nContent-Disposition: form-data; name="logo"; filename="brand-logo.svg"\r\nContent-Type: image/svg+xml\r\n\r\n`,
+    "utf8"
+  );
+  const after = Buffer.from(
+    `\r\n--${boundary}--\r\n`,
+    "utf8"
+  );
+
+  return {
+    body: Buffer.concat([before, svg, after]),
+    contentType: `multipart/form-data; boundary=${boundary}`,
+  };
+}
+
+const identityPath = "/admin/configuracion?seccion=identidad";
+const publicationPath = "/admin/configuracion?seccion=publicacion";
+
+const publicBefore = await request("/");
+if (publicBefore.status !== 200) {
+  throw new Error(
+    `La Home pública respondió ${publicBefore.status} antes del ciclo del logo.`
+  );
+}
+const publishedIdentityBefore = publicLogoIdentity(publicBefore.body);
+
+const loginBody = new URLSearchParams({
+  username: adminUsername,
+  password: adminPassword,
+}).toString();
+const loginResponse = await request(
+  "/api/admin/auth/login",
+  {
+    method: "POST",
+    headers: formHeaders("/admin/login"),
+    body: loginBody,
+  }
+);
+const loginRedirect = redirectLocation(
+  loginResponse,
+  "El login HTTP del ciclo del logo"
+);
+if (loginRedirect.pathname !== "/admin") {
+  throw new Error(
+    `El login terminó en ${loginRedirect.pathname}, se esperaba /admin.`
+  );
+}
+const cookie = sessionCookie(
+  loginResponse.headers["set-cookie"]
+);
+
+const identityPage = await request(identityPath, {
+  headers: { cookie },
+});
+if (identityPage.status !== 200) {
+  throw new Error(
+    `Identidad respondió ${identityPage.status} antes del ciclo del logo.`
+  );
+}
+
+const beforeRevision = positiveNumberInput(
+  identityPage.body,
+  "expectedRevision"
+);
+const currentFields = {
+  name: singleInputValue(identityPage.body, "name"),
+  shortName: singleInputValue(identityPage.body, "shortName"),
+  description: textareaValue(identityPage.body, "description"),
+  language: "es",
+  themeColor: singleInputValue(identityPage.body, "themeColor"),
+  brandColor: singleInputValue(identityPage.body, "brandColor"),
+  footerTagline: singleInputValue(identityPage.body, "footerTagline"),
+};
+const currentCustomColor = singleInputValue(
+  identityPage.body,
+  "logoCustomColor"
+).toLowerCase();
+const testColor = currentCustomColor === "#12ab34"
+  ? "#34ab12"
+  : "#12ab34";
+
+const multipart = multipartLogo(beforeRevision);
+const uploadResponse = await request(
+  "/api/admin/content/configuration/logo-upload",
+  {
+    method: "POST",
+    headers: {
+      "content-type": multipart.contentType,
+      origin: baseUrl.origin,
+      referer: new URL(identityPath, baseUrl).href,
+      "sec-fetch-site": "same-origin",
+      cookie,
+    },
+    body: multipart.body,
+  }
+);
+if (uploadResponse.status !== 200) {
+  throw new Error(
+    `La carga segura del logo respondió ${uploadResponse.status}: ${uploadResponse.body.slice(0, 240)}`
+  );
+}
+const uploadPayload = JSON.parse(uploadResponse.body);
+const publicPath = typeof uploadPayload?.publicPath === "string"
+  ? uploadPayload.publicPath
+  : "";
+if (!/^\/media\/editorial\/site-brand-logo\/[a-f0-9]{64}\.svg$/.test(publicPath)) {
+  throw new Error(
+    `La carga no devolvió un asset de logo canónico: ${publicPath}.`
+  );
+}
+
+const saveBody = new URLSearchParams({
+  expectedRevision: String(beforeRevision),
+  ...currentFields,
+  logoAsset: publicPath,
+  logoColorMode: "custom",
+  logoCustomColor: testColor,
+}).toString();
+const saveResponse = await request(
+  "/api/admin/content/configuration?seccion=identidad",
+  {
+    method: "POST",
+    headers: formHeaders(identityPath, cookie),
+    body: saveBody,
+  }
+);
+const saveRedirect = redirectLocation(
+  saveResponse,
+  "El guardado del logo"
+);
+if (
+  saveRedirect.pathname !== "/admin/configuracion" ||
+  saveRedirect.searchParams.get("seccion") !== "identidad" ||
+  saveRedirect.searchParams.get("estado") !== "guardado"
+) {
+  throw new Error(
+    `El guardado del logo no terminó en estado=guardado: ${saveRedirect.href}.`
+  );
+}
+
+const savedPage = await request(
+  `${saveRedirect.pathname}${saveRedirect.search}`,
+  { headers: { cookie } }
+);
+if (savedPage.status !== 200) {
+  throw new Error(
+    `El borrador del logo no pudo releerse (${savedPage.status}).`
+  );
+}
+const savedRevision = positiveNumberInput(
+  savedPage.body,
+  "expectedRevision"
+);
+if (savedRevision <= beforeRevision) {
+  throw new Error(
+    `Guardar el logo no avanzó revisión (${beforeRevision} -> ${savedRevision}).`
+  );
+}
+if (
+  singleInputValue(savedPage.body, "logoAsset") !== publicPath ||
+  singleInputValue(savedPage.body, "logoColorMode") !== "custom" ||
+  singleInputValue(savedPage.body, "logoCustomColor").toLowerCase() !== testColor
+) {
+  throw new Error(
+    "El editor no rehidrató el mismo logo y color guardados en el borrador."
+  );
+}
+
+const publicStillOld = await request("/");
+if (publicStillOld.status !== 200) {
+  throw new Error(
+    `La Home pública respondió ${publicStillOld.status} tras guardar el borrador.`
+  );
+}
+if (
+  !sameIdentity(
+    publicLogoIdentity(publicStillOld.body),
+    publishedIdentityBefore
+  )
+) {
+  throw new Error(
+    "Guardar el logo en borrador alteró la identidad pública antes de publicar."
+  );
+}
+
+const publicationBefore = await request(publicationPath, {
+  headers: { cookie },
+});
+if (publicationBefore.status !== 200) {
+  throw new Error(
+    `Publicación respondió ${publicationBefore.status} antes de publicar el logo.`
+  );
+}
+const publishRevision = positiveNumberInput(
+  publicationBefore.body,
+  "expectedRevision"
+);
+if (publishRevision !== savedRevision) {
+  throw new Error(
+    `Publicación ve una revisión distinta del logo (${publishRevision} != ${savedRevision}).`
+  );
+}
+const publicationNumberBefore = positiveNumberInput(
+  publicationBefore.body,
+  "expectedPublicationNumber"
+);
+const previousRestoreAction = currentRestoreAction(
+  publicationBefore.body
+);
+
+const publishBody = new URLSearchParams({
+  expectedRevision: String(savedRevision),
+}).toString();
+const publishResponse = await request(
+  "/api/admin/content/configuration/publish",
+  {
+    method: "POST",
+    headers: formHeaders(publicationPath, cookie),
+    body: publishBody,
+  }
+);
+const publishRedirect = redirectLocation(
+  publishResponse,
+  "La publicación del logo"
+);
+if (
+  publishRedirect.pathname !== "/admin/configuracion" ||
+  publishRedirect.searchParams.get("seccion") !== "publicacion" ||
+  publishRedirect.searchParams.get("estado") !== "publicado"
+) {
+  throw new Error(
+    `Publicar el logo no terminó en estado=publicado: ${publishRedirect.href}.`
+  );
+}
+
+const publicationAfterPublish = await request(
+  `${publishRedirect.pathname}${publishRedirect.search}`,
+  { headers: { cookie } }
+);
+const publicationNumberAfterPublish = positiveNumberInput(
+  publicationAfterPublish.body,
+  "expectedPublicationNumber"
+);
+if (publicationNumberAfterPublish <= publicationNumberBefore) {
+  throw new Error(
+    `Publicar el logo no avanzó el número de publicación (${publicationNumberBefore} -> ${publicationNumberAfterPublish}).`
+  );
+}
+
+const publicPublished = await request("/");
+if (publicPublished.status !== 200) {
+  throw new Error(
+    `La Home pública respondió ${publicPublished.status} después de publicar el logo.`
+  );
+}
+const publishedIdentity = publicLogoIdentity(
+  publicPublished.body
+);
+if (
+  publishedIdentity.mode !== "custom" ||
+  publishedIdentity.color !== testColor ||
+  !publishedIdentity.image.includes(publicPath)
+) {
+  throw new Error(
+    `La identidad pública no aplicó el snapshot del logo (${JSON.stringify(publishedIdentity)}).`
+  );
+}
+
+const publicAsset = await request(publicPath);
+if (
+  publicAsset.status !== 200 ||
+  !String(publicAsset.headers["content-type"] ?? "").startsWith("image/svg+xml") ||
+  !String(publicAsset.headers["content-security-policy"] ?? "").includes("default-src 'none'")
+) {
+  throw new Error(
+    "El asset publicado del logo no se sirve como SVG revalidado y aislado por CSP."
+  );
+}
+
+const draftAfterPublish = await request(identityPath, {
+  headers: { cookie },
+});
+if (
+  draftAfterPublish.status !== 200 ||
+  positiveNumberInput(draftAfterPublish.body, "expectedRevision") !== savedRevision ||
+  singleInputValue(draftAfterPublish.body, "logoAsset") !== publicPath
+) {
+  throw new Error(
+    "Publicar el logo modificó inesperadamente el borrador."
+  );
+}
+
+const restoreBody = new URLSearchParams({
+  expectedPublicationNumber: String(
+    publicationNumberAfterPublish
+  ),
+}).toString();
+const restoreResponse = await request(
+  previousRestoreAction,
+  {
+    method: "POST",
+    headers: formHeaders(publicationPath, cookie),
+    body: restoreBody,
+  }
+);
+const restoreRedirect = redirectLocation(
+  restoreResponse,
+  "La restauración de la identidad anterior"
+);
+if (
+  restoreRedirect.pathname !== "/admin/configuracion" ||
+  restoreRedirect.searchParams.get("seccion") !== "publicacion" ||
+  restoreRedirect.searchParams.get("estado") !== "publicacion-restaurada"
+) {
+  throw new Error(
+    `Restaurar la identidad no terminó correctamente: ${restoreRedirect.href}.`
+  );
+}
+
+const publicationAfterRestore = await request(
+  `${restoreRedirect.pathname}${restoreRedirect.search}`,
+  { headers: { cookie } }
+);
+const publicationNumberAfterRestore = positiveNumberInput(
+  publicationAfterRestore.body,
+  "expectedPublicationNumber"
+);
+if (publicationNumberAfterRestore <= publicationNumberAfterPublish) {
+  throw new Error(
+    `Restaurar la identidad no creó una publicación nueva (${publicationNumberAfterPublish} -> ${publicationNumberAfterRestore}).`
+  );
+}
+
+const publicRestored = await request("/");
+if (publicRestored.status !== 200) {
+  throw new Error(
+    `La Home pública respondió ${publicRestored.status} después de restaurar la identidad.`
+  );
+}
+if (
+  !sameIdentity(
+    publicLogoIdentity(publicRestored.body),
+    publishedIdentityBefore
+  )
+) {
+  throw new Error(
+    "Restaurar la publicación anterior no recuperó exactamente el logo público previo."
+  );
+}
+
+const draftAfterRestore = await request(identityPath, {
+  headers: { cookie },
+});
+if (
+  draftAfterRestore.status !== 200 ||
+  positiveNumberInput(draftAfterRestore.body, "expectedRevision") !== savedRevision ||
+  singleInputValue(draftAfterRestore.body, "logoAsset") !== publicPath ||
+  singleInputValue(draftAfterRestore.body, "logoColorMode") !== "custom"
+) {
+  throw new Error(
+    "Restaurar una publicación histórica reescribió el borrador del logo."
+  );
+}
+
+console.log(
+  `Site logo publication lifecycle smoke: OK (revisión ${beforeRevision} -> ${savedRevision}; publicación ${publicationNumberBefore} -> ${publicationNumberAfterPublish} -> ${publicationNumberAfterRestore}; asset SVG seguro y separación borrador/público preservada).`
+);
