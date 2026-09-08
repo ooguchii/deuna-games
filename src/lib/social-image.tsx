@@ -1,6 +1,10 @@
 import { ImageResponse } from "next/og";
 
 import SiteLogoMark from "@/components/brand/SiteLogoMark";
+import {
+  resolveSiteLogoColor,
+  type SiteLogoConfig,
+} from "@/lib/site/logo";
 
 export const socialImageAlt =
   "Imagen social del sitio de juegos para PC";
@@ -12,17 +16,18 @@ export const socialImageSize = {
 
 export const socialImageContentType = "image/png";
 
-type SocialImageIdentity = {
+type SocialImageIdentity = SiteLogoConfig & {
   name: string;
   description: string;
   themeColor: string;
-  brandColor: string;
   headline: string;
 };
 
 export function createSocialImage(
   identity: SocialImageIdentity
 ) {
+  const logoColor = resolveSiteLogoColor(identity);
+
   return new ImageResponse(
     (
       <div
@@ -93,10 +98,15 @@ export function createSocialImage(
                 borderRadius: 18,
                 border: `1px solid ${identity.brandColor}`,
                 background: `${identity.brandColor}14`,
-                color: identity.brandColor,
+                color: logoColor,
               }}
             >
-              <SiteLogoMark size={36} strokeWidth={2.1} />
+              <SiteLogoMark
+                size={36}
+                strokeWidth={2.1}
+                asset={identity.logoAsset ?? null}
+                color={logoColor}
+              />
             </div>
 
             <div style={{ display: "flex" }}>
