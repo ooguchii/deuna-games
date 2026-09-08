@@ -202,10 +202,17 @@ assert(
   "Preview de Identidad y guardado de Apariencia deben conservar y mostrar el mismo logo del borrador."
 );
 
+const socialImageBindsDataUri =
+  socialImage.includes("buildSiteBrandLogoDataUri") &&
+  socialImage.includes("logoDataUri") &&
+  (
+    socialImage.includes("src={logoDataUri}") ||
+    socialImage.includes("src: logoDataUri")
+  );
+
 assert(
   socialImage.includes("resolveSiteLogoColor(identity)") &&
-    socialImage.includes("buildSiteBrandLogoDataUri") &&
-    socialImage.includes("<img") &&
+    socialImageBindsDataUri &&
     !socialImage.includes("SiteLogoMark"),
   "Open Graph/Twitter deben renderizar el mismo asset publicado como data URI server-side y no depender del CSS Module/mask-image de la web."
 );
