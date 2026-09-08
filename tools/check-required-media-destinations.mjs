@@ -73,7 +73,7 @@ assert(
     'target="card-video"',
     'aspect="4:5"',
     'aspect="3:2"',
-    "La Home decide por fila si usa Portada, Info + imagen o Info + video"
+    "image-only"
   ) &&
     !assignments.includes("<h3>Portada del juego</h3>") &&
     !assignments.includes('target="cover"\n                mode='),
