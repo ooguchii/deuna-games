@@ -6,6 +6,8 @@ export const siteConfig = {
   language: "es",
   themeColor: "#05060b",
   brandColor: "#ff0847",
+  logoColorMode: "brand",
+  logoCustomColor: "#ff0847",
   footerTagline: "Hecho para encontrar tu próximo juego.",
 } as const;
 
