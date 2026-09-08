@@ -202,11 +202,11 @@ export function evaluateGamePublicationReadiness(
       priority: "recommended",
     },
     {
-      id: "cover-crop",
-      label: `Portada · recorte ${REQUIRED_DESTINATION_ASPECTS.cover}`,
-      detail: "La Portada debe completar los recursos exigidos por su modo activo.",
+      id: "card-crop",
+      label: `Card · portada ${REQUIRED_DESTINATION_ASPECTS.cover} + detalle ${REQUIRED_DESTINATION_ASPECTS.card}`,
+      detail: "Card debe tener su portada inicial de imagen 4:5 y completar los recursos/recortes de su vista informativa 3:2. La Home decide cómo presentar esas capas por fila.",
       section: "multimedia",
-      complete: media.cover.cropReady,
+      complete: media.cover.cropReady && media.card.cropReady,
       priority: "essential",
     },
     {
@@ -215,14 +215,6 @@ export function evaluateGamePublicationReadiness(
       detail: "El Hero debe completar los recursos exigidos por su modo activo.",
       section: "multimedia",
       complete: media.hero.cropReady,
-      priority: "essential",
-    },
-    {
-      id: "card-crop",
-      label: `Card · recorte ${REQUIRED_DESTINATION_ASPECTS.card}`,
-      detail: "La Card debe completar los recursos y recortes exigidos por su modo activo.",
-      section: "multimedia",
-      complete: media.card.cropReady,
       priority: "essential",
     },
     {
@@ -245,7 +237,7 @@ export function evaluateGamePublicationReadiness(
     {
       id: "media-accessibility",
       label: "Accesibilidad multimedia contextual",
-      detail: "Portada, Card cuando muestra imagen y cada elemento interactivo de Galería tienen texto específico. Hero, Fondo y capas decorativas no bloquean este control.",
+      detail: "La Card (portada inicial y vista informativa cuando muestra imagen) y cada elemento interactivo de Galería deben tener texto contextual. Hero, Fondo y capas decorativas no bloquean este control.",
       section: "multimedia",
       complete: hasCompleteContextualMediaAccessibility(game),
       priority: "recommended",
