@@ -26,24 +26,26 @@ const [
 ]);
 
 assert(
-  /getAccountAvatarMetadata[\s\S]*SELECT digest[\s\S]*FROM deuna_accounts\.avatars[\s\S]*WHERE user_id = \$1/.test(avatarService),
-  "El Header debe poder consultar sólo la versión del avatar sin cargar el bytea."
+  /getAccountAvatarMetadata[\s\S]*SELECT updated_at[\s\S]*FROM deuna_accounts\.avatars[\s\S]*WHERE user_id = \$1/.test(avatarService),
+  "El Header debe consultar sólo la revisión temporal del avatar sin cargar el bytea ni exponer su digest."
 );
 
 assert(
   headerServer.includes("getAccountAvatarMetadata") &&
-    headerServer.includes("accountAvatarDigest") &&
+    headerServer.includes("accountAvatarVersion") &&
+    headerServer.includes("avatarMetadata.updatedAt.getTime().toString(36)") &&
     headerServer.includes("getAccountAvatarMetadata(session.userId).catch(() => null)"),
-  "El Header server debe resolver la versión del avatar desde la sesión y degradar a fallback si esa lectura falla."
+  "El Header server debe resolver una versión temporal desde la sesión y degradar a fallback si esa lectura falla."
 );
 
 assert(
-  headerClient.includes("accountAvatarDigest") &&
+  headerClient.includes("accountAvatarVersion") &&
     headerClient.includes("/api/account/avatar?v=") &&
     !headerClient.includes("fetch(") &&
     !headerClient.includes("URL.createObjectURL") &&
-    !headerClient.includes("useAccountAvatarRevision"),
-  "El Header cliente debe renderizar la URL privada versionada, sin descargar/copiar el avatar a un object URL paralelo."
+    !headerClient.includes("useAccountAvatarRevision") &&
+    !headerClient.includes("accountAvatarDigest"),
+  "El Header cliente debe renderizar la URL privada con revisión temporal, sin object URL ni digest de contenido."
 );
 
 assert(
