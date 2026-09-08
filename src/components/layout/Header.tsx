@@ -42,7 +42,14 @@ export default async function Header() {
   return (
     <HeaderClient
       siteName={config.name}
-      accountAuthenticated={Boolean(session)}
+      accountIdentity={
+        session
+          ? {
+              username: session.username,
+              displayName: session.displayName,
+            }
+          : null
+      }
       accountNotifications={notifications}
     />
   );

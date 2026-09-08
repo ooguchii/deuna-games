@@ -12,6 +12,55 @@ export const accountDashboardViews = [
 export type AccountDashboardView =
   (typeof accountDashboardViews)[number];
 
+export type AccountDashboardDestination = {
+  id: AccountDashboardView;
+  label: string;
+  description: string;
+};
+
+export const accountDashboardDestinations = [
+  {
+    id: "overview",
+    label: "Mi DeUna",
+    description: "Resumen de tu cuenta",
+  },
+  {
+    id: "rewards",
+    label: "Recompensas",
+    description: "Progreso, XP y créditos",
+  },
+  {
+    id: "games",
+    label: "Mis juegos",
+    description: "Biblioteca y seguimiento",
+  },
+  {
+    id: "pc",
+    label: "Mi PC",
+    description: "Hardware y rendimiento",
+  },
+  {
+    id: "alerts",
+    label: "Avisos",
+    description: "Novedades de juegos seguidos",
+  },
+  {
+    id: "discover",
+    label: "Descubrimientos",
+    description: "Sugerencias para ti",
+  },
+  {
+    id: "profile",
+    label: "Perfil privado",
+    description: "Nombre, correo y bio",
+  },
+  {
+    id: "settings",
+    label: "Configuración",
+    description: "Privacidad y cuenta",
+  },
+] as const satisfies readonly AccountDashboardDestination[];
+
 export function resolveAccountDashboardView(
   value: string | string[] | undefined
 ): AccountDashboardView {
