@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  type CSSProperties,
   useEffect,
   useState,
 } from "react";
@@ -14,7 +13,6 @@ import type {
 } from "@/lib/accounts/update-notifications";
 
 import HeaderClientBase from "./HeaderClientBase";
-import styles from "./HeaderClientAvatar.module.css";
 
 type HeaderClientProps = {
   siteName: string;
@@ -23,11 +21,6 @@ type HeaderClientProps = {
     displayName: string | null;
   } | null;
   accountNotifications: AccountUpdateNotification[] | null;
-};
-
-type AvatarStyle = CSSProperties & {
-  "--account-avatar-image"?: string;
-  "--account-avatar-icon-opacity"?: string;
 };
 
 type AvatarState = {
@@ -91,19 +84,14 @@ export default function HeaderClient(props: HeaderClientProps) {
     };
   }, [avatarKey, revision]);
 
-  const avatarUrl = avatar?.key === avatarKey
+  const accountAvatarUrl = avatar?.key === avatarKey
     ? avatar.url
     : null;
-  const avatarStyle: AvatarStyle = avatarUrl
-    ? {
-        "--account-avatar-image": `url("${avatarUrl}")`,
-        "--account-avatar-icon-opacity": "0",
-      }
-    : {};
 
   return (
-    <div className={styles.scope} style={avatarStyle}>
-      <HeaderClientBase {...props} />
-    </div>
+    <HeaderClientBase
+      {...props}
+      accountAvatarUrl={accountAvatarUrl}
+    />
   );
 }
