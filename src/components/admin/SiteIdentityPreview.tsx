@@ -6,6 +6,10 @@ import {
   brandForeground,
   safeThemeBackground,
 } from "@/lib/site/brand-foreground";
+import {
+  resolveSiteLogoColor,
+  type SiteLogoColorMode,
+} from "@/lib/site/logo";
 
 import styles from "./SiteIdentityPreview.module.css";
 
@@ -16,6 +20,9 @@ type SiteIdentityPreviewProps = {
   footerTagline: string;
   themeColor: string;
   brandColor: string;
+  logoAsset?: string;
+  logoColorMode: SiteLogoColorMode;
+  logoCustomColor: string;
 };
 
 export default function SiteIdentityPreview({
@@ -25,8 +32,16 @@ export default function SiteIdentityPreview({
   footerTagline,
   themeColor,
   brandColor,
+  logoAsset,
+  logoColorMode,
+  logoCustomColor,
 }: SiteIdentityPreviewProps) {
   const appliedThemeColor = safeThemeBackground(themeColor);
+  const logoColor = resolveSiteLogoColor({
+    brandColor,
+    logoColorMode,
+    logoCustomColor,
+  });
   const previewStyle = {
     "--preview-bg": appliedThemeColor,
     "--preview-brand": brandColor,
@@ -42,14 +57,18 @@ export default function SiteIdentityPreview({
         <div className={styles.panelHeading}>
           <span>VISTA PREVIA</span>
           <h2 id="identity-preview-title">Identidad del borrador</h2>
-          <p>Representación compacta de la marca que compartirán la cabecera, el pie público y el panel administrativo al publicar.</p>
+          <p>Representación compacta de la marca que compartirán la cabecera, el pie público, Mi DeUna y el panel administrativo al publicar.</p>
         </div>
 
         <div className={styles.preview} style={previewStyle}>
           <div className={styles.previewHeader}>
             <div className={styles.previewBrand} title={name}>
               <span className={styles.previewLogo} aria-hidden="true">
-                <SiteLogoMark size={18} />
+                <SiteLogoMark
+                  size={18}
+                  asset={logoAsset ?? null}
+                  color={logoColor}
+                />
               </span>
               <strong>{compactName}</strong>
             </div>
@@ -64,7 +83,11 @@ export default function SiteIdentityPreview({
             <small>{footerTagline}</small>
             <div className={styles.previewBrand} title={name}>
               <span className={styles.previewLogo} aria-hidden="true">
-                <SiteLogoMark size={16} />
+                <SiteLogoMark
+                  size={16}
+                  asset={logoAsset ?? null}
+                  color={logoColor}
+                />
               </span>
               <strong>{compactName}</strong>
             </div>
@@ -96,9 +119,18 @@ export default function SiteIdentityPreview({
               <code>{brandColor}</code>
             </dd>
           </div>
+          <div>
+            <dt>Logo</dt>
+            <dd title={logoColorMode === "brand" ? "El logo seguirá cualquier cambio futuro del color de marca." : "El logo conserva un color independiente."}>
+              <i style={{ background: logoColor }} />
+              <code>
+                {logoAsset ? "Personalizado" : "Original"} · {logoColorMode === "brand" ? "Marca" : logoColor}
+              </code>
+            </dd>
+          </div>
         </dl>
         <p className={styles.appearanceHint}>
-          La marca adapta automáticamente el texto de los botones; un fondo demasiado claro conserva su tono y se oscurece hasta mantener contraste seguro.
+          La marca adapta automáticamente el texto de los botones; el logo puede seguir el color principal o conservar un tono independiente.
         </p>
         <div className={styles.activeState}>
           <CheckCircle2 size={15} aria-hidden="true" />
