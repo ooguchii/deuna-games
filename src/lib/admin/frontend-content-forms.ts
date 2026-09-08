@@ -54,6 +54,7 @@ const siteFields = editorialSiteConfigSchema.safeExtend({
   footerTagline: z.string().trim().min(1).max(180),
   brandColor: z.string().regex(/^#[0-9a-f]{6}$/i),
   logoAsset: z.string().trim().max(400),
+  logoScale: z.coerce.number<number>().int().min(50).max(200).default(100),
   logoColorMode: z.enum(siteLogoColorModes),
   logoCustomColor: z.string().regex(/^#[0-9a-f]{6}$/i),
 });

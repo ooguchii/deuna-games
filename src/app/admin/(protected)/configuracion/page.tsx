@@ -127,6 +127,7 @@ export default async function AdminConfigurationPage({
     brandColor:
       item.payload.brandColor ?? sourceSiteConfig.brandColor,
     logoAsset: item.payload.logoAsset,
+    logoScale: item.payload.logoScale ?? 100,
     logoColorMode:
       item.payload.logoColorMode ?? sourceSiteConfig.logoColorMode,
     logoCustomColor:
@@ -238,6 +239,7 @@ export default async function AdminConfigurationPage({
               <SiteBrandLogoEditor
                 revision={item.revision}
                 initialAsset={config.logoAsset}
+                initialScale={config.logoScale}
                 brandColor={config.brandColor}
                 initialColorMode={config.logoColorMode}
                 initialCustomColor={config.logoCustomColor}
@@ -268,6 +270,7 @@ export default async function AdminConfigurationPage({
           themeColor={config.themeColor}
           brandColor={config.brandColor}
           logoAsset={config.logoAsset}
+          logoScale={config.logoScale}
           logoColorMode={config.logoColorMode}
           logoCustomColor={config.logoCustomColor}
           customAssets={config.backgroundLibrary ?? []}

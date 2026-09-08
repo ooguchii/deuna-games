@@ -264,14 +264,14 @@
   white-space: nowrap;
 }
 
-.previewTopbar span {
+.previewNavItem {
   width: 28px;
   height: 5px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.16);
 }
 
-.previewTopbar span:first-of-type {
+.previewTopbar strong + .previewNavItem {
   background: var(--appearance-preview-brand);
 }
 

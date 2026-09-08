@@ -3,7 +3,6 @@ import { CheckCircle2 } from "lucide-react";
 
 import SiteLogoMark from "@/components/brand/SiteLogoMark";
 import {
-  brandForeground,
   safeThemeBackground,
 } from "@/lib/site/brand-foreground";
 import {
@@ -21,6 +20,7 @@ type SiteIdentityPreviewProps = {
   themeColor: string;
   brandColor: string;
   logoAsset?: string;
+  logoScale?: number;
   logoColorMode: SiteLogoColorMode;
   logoCustomColor: string;
 };
@@ -33,6 +33,7 @@ export default function SiteIdentityPreview({
   themeColor,
   brandColor,
   logoAsset,
+  logoScale = 100,
   logoColorMode,
   logoCustomColor,
 }: SiteIdentityPreviewProps) {
@@ -45,11 +46,12 @@ export default function SiteIdentityPreview({
   const previewStyle = {
     "--preview-bg": appliedThemeColor,
     "--preview-brand": brandColor,
-    "--preview-on-brand": brandForeground(brandColor),
   } as CSSProperties;
   const compactName = shortName.trim() || name;
   const backgroundWasAdapted =
     appliedThemeColor.toLowerCase() !== themeColor.toLowerCase();
+  const keepsOriginalSvgColors =
+    Boolean(logoAsset) && logoColorMode === "original";
 
   return (
     <div className={styles.stack}>
@@ -67,7 +69,9 @@ export default function SiteIdentityPreview({
                 <SiteLogoMark
                   size={18}
                   asset={logoAsset ?? null}
+                  scale={logoScale}
                   color={logoColor}
+                  colorMode={logoColorMode}
                 />
               </span>
               <strong>{compactName}</strong>
@@ -86,7 +90,9 @@ export default function SiteIdentityPreview({
                 <SiteLogoMark
                   size={16}
                   asset={logoAsset ?? null}
+                  scale={logoScale}
                   color={logoColor}
+                  colorMode={logoColorMode}
                 />
               </span>
               <strong>{compactName}</strong>
@@ -121,16 +127,16 @@ export default function SiteIdentityPreview({
           </div>
           <div>
             <dt>Logo</dt>
-            <dd title={logoColorMode === "brand" ? "El logo seguirá cualquier cambio futuro del color de marca." : "El logo conserva un color independiente."}>
-              <i style={{ background: logoColor }} />
+            <dd title={keepsOriginalSvgColors ? "El logo conserva sus colores y degradados originales." : logoColorMode === "brand" ? "El logo seguirá cualquier cambio futuro del color de marca." : "El logo conserva un color independiente."}>
+              <i style={{ background: keepsOriginalSvgColors ? "transparent" : logoColor }} />
               <code>
-                {logoAsset ? "Personalizado" : "Original"} · {logoColorMode === "brand" ? "Marca" : logoColor}
+                {logoAsset ? "Personalizado" : "Original"} · {keepsOriginalSvgColors ? "Colores SVG" : logoColorMode === "brand" ? "Marca" : logoColor}
               </code>
             </dd>
           </div>
         </dl>
         <p className={styles.appearanceHint}>
-          La marca adapta automáticamente el texto de los botones; el logo puede seguir el color principal o conservar un tono independiente.
+          La marca adapta automáticamente el texto de los botones; el logo puede conservar sus colores SVG, seguir el color principal o usar un tono independiente.
         </p>
         <div className={styles.activeState}>
           <CheckCircle2 size={15} aria-hidden="true" />

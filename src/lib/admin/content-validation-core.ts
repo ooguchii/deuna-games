@@ -714,6 +714,7 @@ export const editorialSiteConfigSchema = z
       .max(400)
       .regex(siteBrandLogoAssetPattern)
       .optional(),
+    logoScale: z.number().int().min(50).max(200).optional(),
     logoColorMode: z.enum(siteLogoColorModes).optional(),
     logoCustomColor: z
       .string()

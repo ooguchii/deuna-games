@@ -357,7 +357,7 @@ export async function GET(
           "Content-Length": String(content.length),
           "Content-Type": "image/svg+xml; charset=utf-8",
           "Content-Security-Policy":
-            "default-src 'none'; style-src 'none'; sandbox",
+            "default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox",
         }
       : {
           ...sharedHeaders,

@@ -34,6 +34,7 @@ const fields = [
   "logoAsset",
   "logoColorMode",
   "logoCustomColor",
+  "logoScale",
 ] as const;
 
 export async function POST(request: NextRequest) {

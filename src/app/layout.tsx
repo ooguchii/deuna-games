@@ -117,12 +117,14 @@ export default async function RootLayout({
       lang={config.language}
       data-scroll-behavior="smooth"
       data-site-logo={logoAsset ? "custom" : "default"}
+      data-site-logo-color-mode={config.logoColorMode}
       style={{
         "--theme-bg": readableThemeBackground,
         "--theme-brand": config.brandColor,
         "--theme-on-brand": readableBrandText,
         "--text-on-brand": readableBrandText,
         "--site-logo-color": logoColor,
+        "--site-logo-scale": (config.logoScale ?? 100) / 100,
         "--site-logo-image": logoAsset
           ? `url("${logoAsset}")`
           : "none",

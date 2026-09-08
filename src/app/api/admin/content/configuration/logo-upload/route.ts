@@ -115,7 +115,7 @@ export async function POST(request: NextRequest) {
     return json(
       {
         error:
-          "El logo no pudo validarse. Usa un SVG simple, sin scripts, enlaces, estilos externos ni recursos embebidos.",
+          "No se pudo cargar el logo. Usa un SVG estático de hasta 256 KB con viewBox. Se admiten degradados, defs, máscaras, filtros, texto, estilos seguros, referencias internas e imágenes raster embebidas; no se admiten scripts, HTML, animaciones ni recursos externos.",
       },
       400
     );

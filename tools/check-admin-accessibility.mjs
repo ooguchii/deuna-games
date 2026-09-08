@@ -217,13 +217,13 @@ assert(
 assert(
   identityPreview.includes("shortName: string") &&
     identityPreview.includes("const compactName = shortName.trim() || name") &&
-    identityPreview.includes("brandForeground(brandColor)") &&
-    identityPreview.includes('"--preview-on-brand"') &&
     identityPreview.includes("{compactName}") &&
-    identityPreviewCss.includes("color: var(--preview-on-brand)") &&
-    identityPreviewCss.includes("background: var(--preview-brand)") &&
+    !identityPreview.includes('"--preview-on-brand"') &&
+    identityPreviewCss.includes(".previewBrand strong") &&
+    identityPreviewCss.includes("color: #f3f6f9") &&
+    identityPreviewCss.includes("background: color-mix(in srgb, var(--preview-brand) 10%, transparent)") &&
     identityPreviewCss.includes("box-shadow: inset 0 -2px 0 var(--preview-brand)"),
-  "La vista previa de identidad debe representar el Nombre corto y mantener contraste seguro para cualquier color de marca."
+  "La vista previa de identidad debe representar el Nombre corto, mantener texto legible sobre el fondo seguro y usar la marca sólo como acento cuando el logo no tiene marco."
 );
 
 assert(

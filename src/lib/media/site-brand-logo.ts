@@ -95,18 +95,20 @@ export const readStoredSiteBrandLogo = cache(
 
 export async function buildSiteBrandLogoDataUri(
   publicPath: string,
-  color: string
+  color?: string | null
 ) {
   const stored = await readStoredSiteBrandLogo(publicPath);
 
   if (!stored) return null;
 
-  const recolored = recolorSafeSiteBrandLogoSvg(
-    stored.content,
-    color
-  );
+  const rendered = color
+    ? recolorSafeSiteBrandLogoSvg(
+        stored.content,
+        color
+      )
+    : stored.content;
 
-  if (!recolored) return null;
+  if (!rendered) return null;
 
-  return `data:image/svg+xml;base64,${recolored.toString("base64")}`;
+  return `data:image/svg+xml;base64,${rendered.toString("base64")}`;
 }
