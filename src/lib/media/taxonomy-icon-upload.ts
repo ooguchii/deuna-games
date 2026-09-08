@@ -195,7 +195,10 @@ async function storeSafeSvgIcon(
   file: File,
   slug: IconStorageSlug
 ): Promise<SiteBrandLogoUploadResult> {
-  if (file.type.toLowerCase() !== "image/svg+xml") {
+  if (
+    slug !== SITE_BRAND_LOGO_SLUG &&
+    file.type.toLowerCase() !== "image/svg+xml"
+  ) {
     throw new Error(
       "El símbolo debe estar en formato SVG."
     );
@@ -216,7 +219,7 @@ async function storeSafeSvgIcon(
   if (!buffer || !inspection) {
     throw new Error(
       slug === SITE_BRAND_LOGO_SLUG
-        ? "El logo debe ser un SVG seguro y escalable con viewBox."
+        ? "El logo debe ser un SVG estático, seguro y escalable con viewBox."
         : "El SVG contiene estructura o atributos que no son seguros para un icono."
     );
   }
@@ -239,6 +242,8 @@ async function storeSafeSvgIcon(
 export function storeSiteBrandLogo(
   file: File
 ) {
+  // Para identidad, el contenido saneado es la autoridad. Algunos navegadores
+  // o sistemas entregan SVG válidos con MIME vacío, XML u octet-stream.
   return storeSafeSvgIcon(
     file,
     SITE_BRAND_LOGO_SLUG
