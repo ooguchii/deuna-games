@@ -50,7 +50,7 @@ function addIssues(
   });
 }
 
-const siteFields = editorialSiteConfigSchema.extend({
+const siteFields = editorialSiteConfigSchema.safeExtend({
   footerTagline: z.string().trim().min(1).max(180),
   brandColor: z.string().regex(/^#[0-9a-f]{6}$/i),
   logoAsset: z.string().trim().max(400),
