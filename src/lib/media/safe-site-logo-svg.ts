@@ -196,14 +196,31 @@ export function sanitizePrivacySafeSiteBrandLogoSvg(
 
   const withoutNonVisualMetadata =
     stripNonVisualSiteBrandSvgMetadata(structurallySafe);
-  const sanitized = sanitizeSiteBrandLogoEmbeddedRasters(
-    withoutNonVisualMetadata
+  const nestedRastersSanitized =
+    sanitizeSiteBrandLogoEmbeddedRasters(
+      withoutNonVisualMetadata
+    );
+
+  if (!nestedRastersSanitized) return null;
+
+  // Re-run the canonical structural serializer after privacy transforms.
+  // Rewriting a nested data URI changes attribute bytes; storage/readers must
+  // only ever see the canonical representation produced by the SVG contract.
+  const canonical = sanitizeSiteBrandLogoSvg(
+    nestedRastersSanitized
   );
 
-  if (!sanitized) return null;
+  if (!canonical) return null;
 
-  return inspectSafeSiteBrandLogoSvg(sanitized)
-    ? sanitized
+  const privacyStable = stripNonVisualSiteBrandSvgMetadata(
+    canonical
+  );
+  if (!privacyStable.equals(canonical)) {
+    return null;
+  }
+
+  return inspectSafeSiteBrandLogoSvg(canonical)
+    ? canonical
     : null;
 }
 
@@ -220,9 +237,13 @@ export function inspectPrivacySafeSiteBrandLogoSvg(
     return null;
   }
 
-  const normalized = sanitizeSiteBrandLogoEmbeddedRasters(input);
+  const normalizedRasters =
+    sanitizeSiteBrandLogoEmbeddedRasters(input);
 
-  if (!normalized || !normalized.equals(input)) {
+  if (
+    !normalizedRasters ||
+    !normalizedRasters.equals(input)
+  ) {
     return null;
   }
 
