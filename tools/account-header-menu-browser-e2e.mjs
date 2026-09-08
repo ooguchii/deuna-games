@@ -423,7 +423,9 @@ try {
   await submit(cdp, "#account-panel-login");
   await waitFor(
     cdp,
-    `location.pathname === "/cuenta" && Boolean(document.querySelector("h1"))`,
+    `location.pathname === "/cuenta" &&
+      Boolean(document.querySelector('nav[aria-label="Secciones de Mi DeUna"]')) &&
+      !document.querySelector("#account-panel-login")`,
     "Login de la cuenta efímera"
   );
 
