@@ -30,9 +30,17 @@ type AvatarStyle = CSSProperties & {
   "--account-avatar-icon-opacity"?: string;
 };
 
+type AvatarState = {
+  key: string;
+  url: string;
+};
+
 export default function HeaderClient(props: HeaderClientProps) {
   const [revision, setRevision] = useState(0);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatar, setAvatar] = useState<AvatarState | null>(null);
+  const avatarKey = props.accountIdentity
+    ? `${props.accountIdentity.username}:${revision}`
+    : null;
 
   useEffect(() => {
     const handleAvatarChanged = () => {
@@ -53,9 +61,7 @@ export default function HeaderClient(props: HeaderClientProps) {
   }, []);
 
   useEffect(() => {
-    setAvatarUrl(null);
-
-    if (!props.accountIdentity) return;
+    if (!avatarKey) return;
 
     let active = true;
     let objectUrl: string | null = null;
@@ -72,18 +78,22 @@ export default function HeaderClient(props: HeaderClientProps) {
       .then((blob) => {
         if (!active || !blob) return;
         objectUrl = URL.createObjectURL(blob);
-        setAvatarUrl(objectUrl);
+        setAvatar({
+          key: avatarKey,
+          url: objectUrl,
+        });
       })
-      .catch(() => {
-        if (active) setAvatarUrl(null);
-      });
+      .catch(() => {});
 
     return () => {
       active = false;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [props.accountIdentity, revision]);
+  }, [avatarKey, revision]);
 
+  const avatarUrl = avatar?.key === avatarKey
+    ? avatar.url
+    : null;
   const avatarStyle: AvatarStyle = avatarUrl
     ? {
         "--account-avatar-image": `url("${avatarUrl}")`,
