@@ -20,7 +20,9 @@ const [
   libraryRoute,
   imageLayoutRoute,
   videoLayoutRoute,
-  workspace,
+  multimediaEditor,
+  assignmentsWorkspace,
+  galleryManager,
   detailEditor,
   imageEditor,
   videoEditor,
@@ -37,7 +39,9 @@ const [
   source("src/app/api/admin/content/games/[slug]/media-library/route.ts"),
   source("src/app/api/admin/content/games/[slug]/image-layout/route.ts"),
   source("src/app/api/admin/content/games/[slug]/preview-layout/route.ts"),
-  source("src/components/admin/GameMultimediaWorkspaceContextual.tsx"),
+  source("src/components/admin/GameMultimediaEditor.tsx"),
+  source("src/components/admin/GameMediaAssignmentsWorkspace.tsx"),
+  source("src/components/admin/GameGalleryMediaManager.tsx"),
   source("src/components/admin/GameDetailMediaEditor.tsx"),
   source("src/components/admin/ImageViewportEditor.tsx"),
   source("src/components/admin/GameVideoViewportEditor.tsx"),
@@ -167,20 +171,27 @@ assert(
 );
 
 assert(
-  has(
-    workspace,
-    'import GameDetailMediaEditor from "@/components/admin/GameDetailMediaEditor"',
-    "detailImage: string | null",
-    "detailMode: GameDestinationMediaMode",
-    "detailVideo: GameDetailVideo | null",
-    "const detailCropReady = cropReady(",
-    "coverCropReady && heroCropReady && cardCropReady && detailCropReady && galleryReady",
-    'labels.push(detailMode === "hover-video" ? "Contenedor base" : "Contenedor")',
-    'labels.push(detailMode === "hover-video" ? "Contenedor hover" : "Contenedor")',
-    "<GameDetailMediaEditor",
-    "<span>F</span><h3>Galería del juego</h3>"
-  ),
-  "Workspace debe incluir Contenedor en resumen/gate/Biblioteca y conservar Galería como destino F."
+  multimediaEditor.includes("GameMediaAssignmentsWorkspace") &&
+    multimediaEditor.includes("GameGalleryMediaManager") &&
+    !multimediaEditor.includes("GameMultimediaWorkspaceContextual") &&
+    has(
+      assignmentsWorkspace,
+      'import GameDetailMediaEditor from "@/components/admin/GameDetailMediaEditor"',
+      "assignments.detailMode",
+      "assignments.detailImage",
+      "assignments.imageMedia?.detail ?? null",
+      "assignments.detailVideo",
+      "<GameDetailMediaEditor",
+      "Hero, Contenedor, Fondo y Galería mantienen destinos propios."
+    ) &&
+    has(
+      galleryManager,
+      "requirements.detail.cropReady",
+      "Contenedor adaptable",
+      "requirements.ready",
+      "No puedes avanzar todavía"
+    ),
+  "La superficie activa debe integrar Contenedor en asignaciones y mantener el gate global en Galería/readiness sin depender del workspace legado."
 );
 
 assert(
