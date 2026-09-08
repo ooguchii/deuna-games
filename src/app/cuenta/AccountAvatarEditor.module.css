@@ -3,6 +3,7 @@
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: 18px;
+  margin-top: 22px;
   padding: 16px;
   border: 1px solid color-mix(in srgb, var(--text-soft) 13%, transparent);
   border-radius: var(--radius-medium);
