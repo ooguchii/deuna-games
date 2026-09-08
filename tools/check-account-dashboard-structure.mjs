@@ -21,12 +21,26 @@ const paths = {
     "layout",
     "HeaderNotifications.module.css"
   ),
+  headerAccountCss: path.join(
+    root,
+    "src",
+    "components",
+    "layout",
+    "HeaderAccountMenu.module.css"
+  ),
   notificationResolver: path.join(
     root,
     "src",
     "lib",
     "accounts",
     "update-notifications.ts"
+  ),
+  dashboardView: path.join(
+    root,
+    "src",
+    "lib",
+    "accounts",
+    "dashboard-view.ts"
   ),
   siteBrand: path.join(root, "src", "components", "layout", "SiteBrand.tsx"),
 };
@@ -126,7 +140,9 @@ const page = read(paths.page);
 const header = read(paths.header);
 const headerServer = read(paths.headerServer);
 const headerNotificationsCss = read(paths.headerNotificationsCss);
+const headerAccountCss = read(paths.headerAccountCss);
 const notificationResolver = read(paths.notificationResolver);
+const dashboardView = read(paths.dashboardView);
 const siteBrand = read(paths.siteBrand);
 
 compareClasses("Dashboard de cuenta", dashboardCss, [dashboard]);
@@ -135,6 +151,7 @@ compareClasses("Acceso de cuenta", accessCss, [access, page]);
 checkCleanCss("Dashboard de cuenta", dashboardCss);
 checkCleanCss("Rewards de cuenta", rewardsCss);
 checkCleanCss("Avisos del Header", headerNotificationsCss);
+checkCleanCss("Menú de cuenta del Header", headerAccountCss);
 
 if (/account\.module\.css/.test(dashboard)) {
   errors.push("AccountDashboardClient no debe depender del CSS del acceso.");
@@ -166,8 +183,8 @@ if (/recommendationRail|overflow-x\s*:\s*auto[^}]*recommend/i.test(dashboardCss)
 if (/Notificaciones \(próximamente\)|Notificaciones próximamente/.test(header)) {
   errors.push("La campana del Header volvió a quedar deshabilitada o marcada como próximamente.");
 }
-if (!/accountAuthenticated/.test(header) || !/accountNotifications/.test(header)) {
-  errors.push("HeaderClient debe recibir el estado real de avisos de la cuenta.");
+if (!/accountIdentity/.test(header) || !/accountNotifications/.test(header)) {
+  errors.push("HeaderClient debe recibir identidad y estado real de avisos de la cuenta.");
 }
 if (!/dismissedNotificationFeed/.test(header)) {
   errors.push("HeaderClient debe derivar los avisos del feed server-side y limitar su estado local al snapshot marcado visto.");
@@ -198,6 +215,12 @@ if (
 if (!/HeaderNotifications\.module\.css/.test(header)) {
   errors.push("La UI de avisos del Header debe mantener su módulo visual dedicado.");
 }
+if (!/HeaderAccountMenu\.module\.css/.test(header)) {
+  errors.push("La UI de cuenta del Header debe mantener su módulo visual dedicado.");
+}
+if (!/accountDashboardDestinations/.test(dashboardView)) {
+  errors.push("Las vistas de Mi DeUna deben exponer metadata canónica para accesos rápidos.");
+}
 
 if (errors.length) {
   console.error("\nEstructura del dashboard de cuenta: ERROR\n");
@@ -207,5 +230,5 @@ if (errors.length) {
 }
 
 console.log(
-  `Dashboard de cuenta: OK (${cssClasses(dashboardCss).size} clases de dashboard, ${cssClasses(rewardsCss).size} de Rewards y ${cssClasses(accessCss).size} de acceso; Header y Mi DeUna comparten contrato de avisos y deep-links sin overlays, !important, microtexto ni CSS huérfano).`
+  `Dashboard de cuenta: OK (${cssClasses(dashboardCss).size} clases de dashboard, ${cssClasses(rewardsCss).size} de Rewards y ${cssClasses(accessCss).size} de acceso; Header y Mi DeUna comparten contratos de avisos, identidad y destinos sin overlays, !important, microtexto ni CSS huérfano).`
 );
