@@ -21,6 +21,8 @@ const [
   workspace,
   utilityRail,
   multimediaEditor,
+  backgroundEditor,
+  detailEditor,
   multimediaCss,
   contextualCss,
   mediaPreview,
@@ -42,6 +44,8 @@ const [
   source("src/components/admin/GameMediaAssignmentsWorkspace.tsx"),
   source("src/components/admin/GameMultimediaUtilityRail.tsx"),
   source("src/components/admin/GameMultimediaEditor.tsx"),
+  source("src/components/admin/GameBackgroundMediaEditor.tsx"),
+  source("src/components/admin/GameDetailMediaEditor.tsx"),
   source("src/components/admin/GameMultimediaEditor.module.css"),
   source("src/components/admin/GameMultimediaWorkspaceContextual.module.css"),
   source("src/components/admin/AdminMediaLibraryPreview.tsx"),
@@ -269,20 +273,50 @@ assert(
 
 assert(
   has(
-    contextualCss,
-    ".libraryGroups",
-    ".libraryPreviewButton",
-    ".deleteResourceButton",
-    "border-radius: 7px"
+    backgroundEditor,
+    'import assignmentStyles from "./GameMultimediaEditor.module.css"',
+    'import contextualStyles from "./GameMultimediaWorkspaceContextual.module.css"',
+    "assignmentStyles.assignmentCard",
+    "assignmentStyles.currentResource",
+    "contextualStyles.requirementReady"
   ) &&
     has(
+      detailEditor,
+      'import assignmentStyles from "./GameMultimediaEditor.module.css"',
+      'import contextualStyles from "./GameMultimediaWorkspaceContextual.module.css"',
+      "assignmentStyles.resourcePicker",
+      "assignmentStyles.resourceChoice",
+      "contextualStyles.pickerFooter",
+      "contextualStyles.requirementPending"
+    ) &&
+    has(
       multimediaCss,
-      ".summaryThumb",
-      ".summaryMediaSet",
+      ".assignmentCard",
+      ".currentResource",
+      ".modeSwitch",
+      ".assignmentActions",
+      ".resourcePicker",
+      ".selectResourceButton",
+      ".resourcePickerPanel",
+      ".resourceChoiceGrid",
+      ".resourceChoice",
       ".currentThumb",
-      ".choiceThumb"
-    ),
-  "Los estilos compartidos de multimedia deben seguir disponibles para los editores canónicos que los reutilizan."
+      ".choiceThumb",
+      ".editDestinationButton"
+    ) &&
+    has(
+      contextualCss,
+      ".pickerFooter",
+      ".pickerAddButton",
+      ".requirementReady",
+      ".requirementPending",
+      ".requirementActionComplete",
+      ".requirementActionMissing"
+    ) &&
+    !has(multimediaCss, ".summaryThumb", ".summaryMediaSet") &&
+    !contextualCss.includes(".libraryGroups") &&
+    !contextualCss.includes(".galleryManageGrid"),
+  "Los estilos compartidos de multimedia deben cubrir sólo el contrato activo de Fondo/Contenedor, sin revivir CSS del workspace retirado."
 );
 
 assert(
