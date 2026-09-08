@@ -16,6 +16,11 @@ import {
   resolveEditorialMediaDiskPath,
 } from "./editorial-media";
 import {
+  inspectSafeSiteBrandLogoRaster,
+  sanitizeSiteBrandLogoRaster,
+  type SiteBrandRasterFormat,
+} from "./safe-site-logo-raster";
+import {
   inspectSafeSiteBrandLogoSvg,
   inspectSafeTaxonomySvgIcon,
   sanitizeTaxonomySvgIcon,
@@ -33,6 +38,11 @@ type IconStorageSlug =
   | typeof TAXONOMY_ICON_SLUG
   | typeof SITE_BRAND_LOGO_SLUG;
 
+type IconStorageFormat =
+  | "svg"
+  | "webp"
+  | SiteBrandRasterFormat;
+
 export type TaxonomyIconUploadResult = {
   publicPath: string;
   digest: string;
@@ -45,7 +55,7 @@ export type SiteBrandLogoUploadResult = {
   publicPath: string;
   digest: string;
   bytes: number;
-  format: "svg";
+  format: "svg" | SiteBrandRasterFormat;
   reused: boolean;
 };
 
@@ -86,7 +96,7 @@ function isAlreadyExistsError(error: unknown) {
 
 function inspectStoredIcon(
   slug: IconStorageSlug,
-  format: "svg" | "webp",
+  format: IconStorageFormat,
   buffer: Buffer
 ) {
   if (format === "svg") {
@@ -94,6 +104,15 @@ function inspectStoredIcon(
       ? inspectSafeSiteBrandLogoSvg(buffer)
       : inspectSafeTaxonomySvgIcon(buffer);
   }
+
+  if (slug === SITE_BRAND_LOGO_SLUG) {
+    return inspectSafeSiteBrandLogoRaster(
+      buffer,
+      format
+    );
+  }
+
+  if (format !== "webp") return null;
 
   const inspection = inspectSafeEditorialWebp(buffer);
 
@@ -104,7 +123,7 @@ function inspectStoredIcon(
 
 async function writeHashedIcon(
   slug: IconStorageSlug,
-  format: "svg" | "webp",
+  format: IconStorageFormat,
   buffer: Buffer,
   digest: string
 ) {
@@ -239,15 +258,55 @@ async function storeSafeSvgIcon(
   };
 }
 
-export function storeSiteBrandLogo(
+export async function storeSiteBrandLogo(
   file: File
-) {
-  // Para identidad, el contenido saneado es la autoridad. Algunos navegadores
-  // o sistemas entregan SVG válidos con MIME vacío, XML u octet-stream.
-  return storeSafeSvgIcon(
-    file,
-    SITE_BRAND_LOGO_SLUG
+): Promise<SiteBrandLogoUploadResult> {
+  const input = Buffer.from(
+    await file.arrayBuffer()
   );
+
+  const svgBuffer = sanitizeSiteBrandLogoSvg(input);
+  const svgInspection = svgBuffer
+    ? inspectSafeSiteBrandLogoSvg(svgBuffer)
+    : null;
+
+  if (svgBuffer && svgInspection) {
+    const stored = await writeHashedIcon(
+      SITE_BRAND_LOGO_SLUG,
+      "svg",
+      svgBuffer,
+      svgInspection.digest
+    );
+
+    return {
+      ...stored,
+      digest: svgInspection.digest,
+      bytes: svgInspection.bytes,
+      format: "svg",
+    };
+  }
+
+  const raster = sanitizeSiteBrandLogoRaster(input);
+
+  if (!raster) {
+    throw new Error(
+      "El logo debe ser SVG, PNG, JPEG, WebP o GIF estático y seguro."
+    );
+  }
+
+  const stored = await writeHashedIcon(
+    SITE_BRAND_LOGO_SLUG,
+    raster.inspection.format,
+    raster.buffer,
+    raster.inspection.digest
+  );
+
+  return {
+    ...stored,
+    digest: raster.inspection.digest,
+    bytes: raster.inspection.bytes,
+    format: raster.inspection.format,
+  };
 }
 
 export async function storeTaxonomyIcon(
