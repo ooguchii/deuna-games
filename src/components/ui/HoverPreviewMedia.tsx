@@ -38,13 +38,14 @@ function PreviewVideo({
   viewport,
 }: PreviewVideoProps) {
   const [playbackAllowed, setPlaybackAllowed] = useState(false);
+  const [playing, setPlaying] = useState(false);
 
   useEffect(() => {
     const motionQuery = window.matchMedia(REDUCED_MOTION_QUERY);
     const syncPlaybackPolicy = () => {
-      setPlaybackAllowed(
-        !document.hidden && !motionQuery.matches
-      );
+      const allowed = !document.hidden && !motionQuery.matches;
+      setPlaybackAllowed(allowed);
+      if (!allowed) setPlaying(false);
     };
 
     syncPlaybackPolicy();
@@ -73,7 +74,7 @@ function PreviewVideo({
 
   return (
     <FramedVideo
-      className={styles.video}
+      className={`${styles.video} ${playing ? styles.videoReady : ""}`}
       src={src}
       viewport={viewport}
       muted
@@ -82,6 +83,10 @@ function PreviewVideo({
       controls={false}
       preload="none"
       tabIndex={-1}
+      onPlaying={() => setPlaying(true)}
+      onWaiting={() => setPlaying(false)}
+      onStalled={() => setPlaying(false)}
+      onError={() => setPlaying(false)}
     />
   );
 }
