@@ -19,16 +19,29 @@ const FIXTURE_FLAG = "DEUNA_CARD_VIDEO_VISUAL_FIXTURE";
 const FIXTURE_WEBM_BASE64 =
   "GkXfo59ChoEBQveBAULygQRC84EIQoKEd2VibUKHgQJChYECGFOAZwEAAAAAAAIwEU2bdLpNu4tTq4QVSalmU6yBoU27i1OrhBZUrmtTrIHWTbuMU6uEElTDZ1OsggEjTbuMU6uEHFO7a1OsggIa7AEAAAAAAABZAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAVSalmsCrXsYMPQkBNgIxMYXZmNjEuNy4xMDNXQYxMYXZmNjEuNy4xMDNEiYhAf0AAAAAAABZUrmvIrgEAAAAAAAA/14EBc8WI/QvhMWERGgmcgQAitZyDdW5kiIEAhoVWX1ZQOYOBASPjg4QdzWUA4JCwgUC6gSSagQJVsIRVuYEBElTDZ0B/c3OfY8CAZ8iZRaOHRU5DT0RFUkSHjExhdmY2MS43LjEwM3Nz2mPAi2PFiP0L4TFhERoJZ8ilRaOHRU5DT0RFUkSHmExhdmM2MS4xOS4xMDEgbGlidnB4LXZwOWfIoUWjiERVUkFUSU9ORIeTMDA6MDA6MDAuNTAwMDAwMDAwAB9DtnXt54EAo+iBAACAgkmDQgAD8AI2BjgkHBhCAAAgQABrQ///6UT+4KU3o8VSrdtJ/1U/RntlFLTcdJsyP6m92VMvCYN3//3Ceh0emoFV9EmWoW/eg7Wi7Hj2c8ZrczM2o/qbSj6QjAHsSPtzSmIhoBxTu2uRu4+zgQC3iveBAfGCAajwgQM=";
 
+function isStrictlyContainedBy(parent: string, candidate: string) {
+  const relative = path.relative(parent, candidate);
+
+  return (
+    relative !== "" &&
+    relative !== ".." &&
+    !relative.startsWith(`..${path.sep}`) &&
+    !path.isAbsolute(relative)
+  );
+}
+
 function assertVisualCiOnly() {
   if (
     process.env[FIXTURE_FLAG] !== "1" ||
     process.env.CI !== "true" ||
+    process.env.GITHUB_ACTIONS !== "true" ||
     process.env.DEUNA_VISUAL_OUTPUT_DIR === undefined ||
     process.env.DEUNA_VISUAL_ADMIN_USERNAME === undefined ||
-    process.env.DEUNA_EDITORIAL_MEDIA_ROOT === undefined
+    process.env.DEUNA_EDITORIAL_MEDIA_ROOT === undefined ||
+    process.env.RUNNER_TEMP === undefined
   ) {
     throw new Error(
-      `${FIXTURE_FLAG}=1 sólo puede usarse dentro del job visual aislado de CI.`
+      `${FIXTURE_FLAG}=1 sólo puede usarse dentro del job visual aislado de GitHub Actions.`
     );
   }
 
@@ -36,6 +49,14 @@ function assertVisualCiOnly() {
   if (host !== "127.0.0.1" && host !== "localhost" && host !== "::1") {
     throw new Error(
       "El fixture visual de Card video exige una PostgreSQL local/efímera."
+    );
+  }
+
+  const runnerTemp = path.resolve(process.env.RUNNER_TEMP);
+  const mediaRoot = path.resolve(process.env.DEUNA_EDITORIAL_MEDIA_ROOT);
+  if (!isStrictlyContainedBy(runnerTemp, mediaRoot)) {
+    throw new Error(
+      "El fixture visual de Card video exige que el storage editorial viva dentro de RUNNER_TEMP."
     );
   }
 }
