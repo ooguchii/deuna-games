@@ -25,7 +25,7 @@ export HOSTNAME=127.0.0.1
 export PORT=3000
 export DEUNA_CARD_VIDEO_VISUAL_FIXTURE=1
 
-node --conditions=react-server ./tools/card-video-visual-fixture.ts
+npm run visual:card-video-fixture
 
 kill "$DEUNA_VISUAL_APP_PID" 2>/dev/null || true
 for _ in $(seq 1 50); do
@@ -46,7 +46,7 @@ printf 'DEUNA_VISUAL_APP_PID=%s\n' "$app_pid" >> "$GITHUB_ENV"
 
 for _ in $(seq 1 90); do
   if curl --insecure --fail --silent --show-error "$DEUNA_VISUAL_BASE_URL/" > /dev/null; then
-    node ./tools/card-video-browser-smoke.mjs
+    npm run visual:card-video-browser
     exit 0
   fi
 
