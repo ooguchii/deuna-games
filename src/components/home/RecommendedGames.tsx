@@ -9,7 +9,6 @@ import CardCarousel from "@/components/ui/CardCarousel";
 import touchStyles from "@/components/ui/TouchTarget.module.css";
 import UniversalGameCard from "@/components/ui/UniversalGameCard";
 import type { HomeCopy } from "@/data/home-config";
-import type { GameCardPresentationMode } from "@/lib/media/game-card-presentation";
 import type { Game } from "@/types/game";
 
 import styles from "./RecommendedGames.module.css";
@@ -17,13 +16,11 @@ import styles from "./RecommendedGames.module.css";
 export default function RecommendedGames({
   games,
   copy,
-  presentation,
   personalized = false,
   reasons = {},
 }: {
   games: Game[];
   copy: HomeCopy["recommended"];
-  presentation: GameCardPresentationMode;
   personalized?: boolean;
   reasons?: Record<string, string[]>;
 }) {
@@ -74,7 +71,6 @@ export default function RecommendedGames({
             key={game.slug}
             game={game}
             variant="standard"
-            presentation={presentation}
           />
         ))}
       </CardCarousel>

@@ -318,18 +318,18 @@ requirePattern(
 );
 requirePattern(
   accountDashboard,
-  /import\s+UniversalGameCard\s+from\s+"@\/components\/ui\/UniversalGameCard"[\s\S]*function\s+RecommendationCard[\s\S]*<UniversalGameCard[\s\S]*game=\{recommendation\.game\}[\s\S]*onFavoriteChange=/,
-  "Mi DeUna → Recomendados/Descubrimientos debe reutilizar la Card universal, incluido su favorito canónico."
-);
-forbidPattern(
-  accountDashboard,
-  /import\s+GameFavoriteButton|className=\{styles\.recommendationHeart\}/,
-  "Mi DeUna no puede mantener un favorito o corazón paralelo fuera de UniversalGameCard."
+  /function\s+RecommendationCard[\s\S]*GameFavoriteButton[\s\S]*gameSlug=\{recommendation\.slug\}[\s\S]*gameTitle=\{recommendation\.title\}/,
+  "Mi DeUna → Descubrimientos debe reutilizar el favorito canónico y no un corazón decorativo."
 );
 requirePattern(
   accountDashboard,
-  /onFavoriteChange=\{\(\)\s*=>\s*onFavoriteChange\(\)\}/,
-  "Mi DeUna debe propagar el cambio de favorito desde la Card canónica para refrescar su snapshot server-side."
+  /onFavoriteChange=\{\(\)\s*=>\s*router\.refresh\(\)\}/,
+  "Mi DeUna debe refrescar su snapshot server-side después de persistir un favorito desde Descubrimientos."
+);
+forbidPattern(
+  accountDashboard,
+  /<span\s+className=\{styles\.recommendationHeart\}/,
+  "Descubrimientos no puede volver a meter un corazón decorativo dentro del enlace del juego."
 );
 
 for (const marker of [
@@ -354,5 +354,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  "Avatar y favoritos de cuenta: OK (avatar privado en Header/Mi DeUna, Cards universales sin corazones paralelos y favoritos unificados con E2E de persistencia)."
+  "Avatar y favoritos de cuenta: OK (avatar privado en Header/Mi DeUna, Card y Descubrimientos sin corazones decorativos, favoritos unificados con E2E de persistencia)."
 );

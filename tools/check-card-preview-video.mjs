@@ -13,36 +13,46 @@ const has = (text, ...needles) => needles.every((needle) => text.includes(needle
 const [
   policy,
   safeWebm,
+  providers,
   libraryEditor,
+  trimEditor,
   mediaViewportEditor,
-  assignments,
+  workspace,
   libraryRoute,
   viewportEditor,
   cardResolver,
   cardWrapper,
   cardBase,
-  cardVideoBudget,
-  cardPresentationCss,
   hoverPreview,
+  framedVideo,
+  framedLayout,
   videoMedia,
   validation,
+  importRoute,
+  uploadRoute,
+  layoutRoute,
   integrity,
 ] = await Promise.all([
   source("src/lib/media/preview-video-policy.ts"),
   source("src/lib/media/safe-webm.ts"),
+  source("src/lib/media/preview-providers.ts"),
   source("src/components/admin/GameVideoLibraryEditor.tsx"),
+  source("src/components/admin/VideoTrimEditor.tsx"),
   source("src/components/admin/MediaViewportEditor.tsx"),
-  source("src/components/admin/GameMediaAssignmentsWorkspace.tsx"),
+  source("src/components/admin/GameMultimediaWorkspaceContextual.tsx"),
   source("src/app/api/admin/content/games/[slug]/media-library/route.ts"),
   source("src/components/admin/GameVideoViewportEditor.tsx"),
   source("src/lib/media/game-card-preview.ts"),
   source("src/components/ui/UniversalGameCard.tsx"),
   source("src/components/ui/UniversalGameCardBase.tsx"),
-  source("src/lib/media/game-card-video-budget.ts"),
-  source("src/components/ui/UniversalGameCardPresentation.module.css"),
   source("src/components/ui/HoverPreviewMedia.tsx"),
+  source("src/components/ui/FramedVideo.tsx"),
+  source("src/lib/media/framed-media-layout.ts"),
   source("src/lib/media/game-video-media.ts"),
   source("src/lib/admin/content-validation.ts"),
+  source("src/app/api/admin/content/games/[slug]/preview-import/route.ts"),
+  source("src/app/api/admin/content/games/[slug]/preview-upload/route.ts"),
+  source("src/app/api/admin/content/games/[slug]/preview-layout/route.ts"),
   source("src/lib/admin/game-media-integrity.ts"),
 ]);
 
@@ -51,28 +61,68 @@ assert(
     policy,
     "MAX_PREVIEW_DURATION_SECONDS = 30",
     "MAX_PREVIEW_SOURCE_BYTES",
+    "DEFAULT_PREVIEW_QUALITY",
     "DEFAULT_PREVIEW_FPS",
     "MAX_PREVIEW_FPS",
     '"720p"',
     '"1080p"',
-    '"3:2"'
+    '"3:2"',
+    "MAX_PREVIEW_VIEWPORT_ZOOM"
   ),
-  "Video Card debe conservar límites de duración/tamaño/calidad y viewport 3:2."
+  "La política de video debe conservar límites de duración/tamaño, 720p/1080p, FPS acotados y viewport 3:2."
 );
 
 assert(
   has(safeWebm, "MAX_EDITORIAL_PREVIEW_BYTES", "inspectSafeEditorialWebm", "digest"),
-  "Los WebM editoriales deben seguir pasando por inspección segura y hash."
+  "Los masters WebM editoriales deben seguir pasando por validación segura y hash."
+);
+
+assert(
+  has(
+    providers,
+    "PREVIEW_PROVIDER_IDS",
+    "parsePreviewProviderUrl",
+    '"youtube"',
+    '"facebook"',
+    '"instagram"',
+    '"tiktok"',
+    '"vimeo"'
+  ),
+  "La importación externa debe conservar un catálogo explícito de proveedores y validación por URL."
 );
 
 assert(
   has(
     libraryEditor,
     '"X-Deuna-Preview-Target": "library"',
+    'target: "library"',
     "VideoTrimEditor",
-    "PREVIEW_FPS_OPTIONS"
+    "PREVIEW_FPS_OPTIONS",
+    '"X-Deuna-Preview-Fps"',
+    "DEFAULT_PREVIEW_FPS",
+    '"X-Deuna-Viewport-X": String(DEFAULT_PREVIEW_VIEWPORT.x)',
+    'viewportAspect: DEFAULT_PREVIEW_VIEWPORT.aspect'
   ),
-  "La biblioteca debe seguir creando masters reutilizables sin asignarlos implícitamente a una Card."
+  "La biblioteca debe crear un master reutilizable una sola vez, con fotograma completo y resolución/FPS explícitos, sin asignarlo automáticamente a Card."
+);
+
+assert(
+  has(
+    trimEditor,
+    "requestAnimationFrame",
+    "scheduleDrag",
+    "parsePreviewTrimWindow",
+    "Marcar IN aquí",
+    "Marcar OUT aquí",
+    "Resolución del master",
+    "fotograma completo",
+    "sólo define el tramo temporal"
+  ) &&
+    !trimEditor.includes("scheduleViewportDraft") &&
+    !trimEditor.includes("viewportMoveHandle") &&
+    !trimEditor.includes("resultCanvasRef") &&
+    !trimEditor.includes("resolvePreviewViewportCrop"),
+  "El editor de creación del master debe limitarse a IN/OUT y calidad; no puede mantener un segundo motor de encuadre espacial."
 );
 
 assert(
@@ -80,24 +130,33 @@ assert(
     mediaViewportEditor,
     'type MediaKind = "image" | "video"',
     "resolvePreviewViewportCrop",
+    "viewportFrame",
+    "viewportMoveHandle",
+    "scheduleViewportDraft",
+    "resultCanvasRef",
     "requiredAspect",
     "Resultado final"
   ),
-  "Imagen y video deben conservar un único motor espacial de encuadre."
+  "El encuadre espacial de imagen y video debe vivir en un único MediaViewportEditor."
 );
 
 assert(
   has(
-    assignments,
-    "Vista informativa",
+    workspace,
+    "MODE_OPTIONS",
+    '{ value: "image", label: "Imagen" }',
+    '{ value: "video", label: "Video" }',
+    '{ value: "hover-video", label: "Imagen + hover" }',
+    'const cardMode = state?.assignments.cardMode ?? "hover-video"',
+    "const cardImage = state?.assignments.cardImage ?? null",
     'target="card"',
-    'target="card-image"',
-    'target="card-video"',
-    "Imagen + hover",
-    "Video 3:2"
+    'destinationActions("card", cardMode',
+    "Recurso independiente",
+    "GameVideoViewportEditor"
   ) &&
-    !assignments.includes("Igualar al Hero"),
-  "La capa informativa de Card debe conservar imagen/video propios y no reintroducir el antiguo control Igualar al Hero."
+    !workspace.includes("Igualar al Hero") &&
+    !workspace.includes("card-match-hero"),
+  "Card debe tener imagen, modo y edición propios; no puede conservar el control Igualar al Hero."
 );
 
 assert(
@@ -106,21 +165,33 @@ assert(
     '"card-mode"',
     '"card-image"',
     '"card-video"',
+    'target.data === "card-video"',
     'source: "independent"',
+    "clip: videoResource.src",
     'requiredVideoViewport("card")',
-    "previewClip: videoResource.src"
-  ),
-  "Asignar video Card debe conservar un WebM interno independiente y viewport 3:2."
+    "previewClip: videoResource.src",
+    "mediaModeUpdate"
+  ) &&
+    !libraryRoute.includes("card-match-hero"),
+  "Asignar Card desde biblioteca debe crear una referencia independiente al WebM elegido, aunque el archivo físico coincida con Hero."
 );
 
 assert(
   has(
     viewportEditor,
+    "MediaViewportEditor",
+    'kind="video"',
     'type Target = "cover" | "hero" | "card" | "detail"',
+    "preview-layout",
     "REQUIRED_DESTINATION_ASPECTS[target]",
-    "MediaViewportEditor"
-  ),
-  "El editor de video debe seguir persistiendo sólo metadata del viewport por destino."
+    "Confirmar recorte"
+  ) &&
+    !viewportEditor.includes("VideoTrimEditor") &&
+    !viewportEditor.includes("preview-import") &&
+    !viewportEditor.includes("preview-upload") &&
+    !viewportEditor.includes("preview-remove") &&
+    !viewportEditor.includes("Usar imagen estática"),
+  "Editar Card video debe delegar el viewport 3:2 al motor común y persistir sólo metadata; el modo vive en Asignación de destinos."
 );
 
 assert(
@@ -130,9 +201,11 @@ assert(
     "resolveGameCardVideo",
     'card?.source === "hero"',
     'card?.source === "independent"',
-    "withGameVideoLayout"
+    'source: "independent"',
+    "withGameVideoLayout",
+    "withoutGameVideoTarget"
   ),
-  "El resolver debe mantener compatibilidad histórica con Card→Hero y nuevas Cards independientes."
+  "El resolver debe mantener compatibilidad histórica con Card→Hero, admitir el destino detail compartido y conservar nuevas Cards con referencia/viewport independientes."
 );
 
 assert(
@@ -141,10 +214,11 @@ assert(
     "const cardVideoSchema = z.union",
     'source: z.literal("hero")',
     'source: z.literal("independent")',
+    'playback: z.enum(["always", "hover"]).optional()',
     "cardImage",
     "mediaModes"
   ),
-  "Validación debe aceptar snapshots históricos y el contrato Card independiente actual."
+  "La validación debe aceptar snapshots antiguos y el nuevo contrato Card independiente con playback explícito."
 );
 
 assert(
@@ -152,9 +226,10 @@ assert(
     cardResolver,
     'resolveGameDestinationMediaMode(game, "card") === "image"',
     "resolveGameCardVideo",
-    'kind: "webm"'
+    'kind: "webm"',
+    "viewport: resolved.viewport"
   ),
-  "El resolver de preview debe seguir respetando el modo multimedia propio de Card."
+  "El resolver público de Card debe omitir video en modo Imagen y devolver sólo WebM interno con su viewport."
 );
 
 assert(
@@ -162,80 +237,62 @@ assert(
     cardWrapper,
     "UniversalGameCardBase",
     "GameFavoriteButton",
-    "presentation={presentation}"
+    "variant={variant}"
   ),
-  "UniversalGameCard debe delegar al renderer base sin perder favorito ni presentación."
+  "UniversalGameCard debe seguir delegando el renderer multimedia canónico al base y limitarse a componer el control de favorito."
 );
 
 assert(
   has(
     cardBase,
-    "DEFAULT_GLOBAL_GAME_CARD_PRESENTATION",
-    'presentation === "poster"',
-    'presentation === "detail-video"',
-    "resolveGameCardVideo(game)",
-    "IntersectionObserver",
-    "REDUCED_MOTION_MEDIA",
-    "FINE_HOVER_MEDIA",
-    "posterRevealed",
-    "PREVIEW_DELAY_MS",
-    "useSyncExternalStore",
-    "registerGameCardVideoCandidate",
-    "updateGameCardVideoVisibility",
-    "ownsDetailVideoBudget"
+    'resolveGameDestinationMediaMode(game, "card")',
+    "const resolvedPreview = resolveGameCardPreview(game)",
+    "const cardImage = game.cardImage ?? game.coverImage",
+    "const imageViewport = game.imageMedia?.card",
+    'const videoAlwaysActive = cardMode === "video"',
+    'const hoverPreviewEnabled = cardMode === "hover-video"',
+    "PREVIEW_DELAY_MS"
   ),
-  "UniversalGameCardBase debe soportar poster→detalle, detalle con video por fila, touch/fine-pointer, reduced motion y presupuesto global de reproducción automática."
+  "UniversalGameCardBase debe consumir cardImage propio, reproducir Video continuo o hover según modo y mantener fallback sólo para contenido histórico."
 );
 
 assert(
-  has(
-    cardVideoBudget,
-    "MIN_VISIBLE_RATIO = 0.15",
-    "const candidates = new Map<symbol, VideoCandidate>()",
-    "currentOwner",
-    "resolveOwner()",
-    "registerGameCardVideoCandidate",
-    "updateGameCardVideoVisibility",
-    "unregisterGameCardVideoCandidate",
-    "subscribeGameCardVideoBudget",
-    "isGameCardVideoBudgetOwner"
-  ),
-  "El presupuesto de video debe elegir un único dueño visible y liberar candidatos al salir/desmontarse."
+  has(hoverPreview, "FramedVideo", 'preload="none"', "active && previewClip") &&
+    has(framedVideo, "resolveFramedMediaLayout", "ResizeObserver") &&
+    has(framedLayout, "resolvePreviewViewportCrop", "frameWidth / crop.width", "frameHeight / crop.height"),
+  "El hover de Card debe cargar diferido y aplicar el recorte lógico sin crear una segunda variante física."
 );
 
-for (const forbidden of [
-  "localStorage",
-  "sessionStorage",
-  "indexedDB",
-  "fetch(",
-  "navigator.sendBeacon",
-]) {
+for (const route of [uploadRoute, importRoute]) {
   assert(
-    !cardVideoBudget.includes(forbidden),
-    `El presupuesto de reproducción debe ser efímero y no puede persistir ni reportar actividad: ${forbidden}.`
+    has(
+      route,
+      'GameVideoTarget | "library"',
+      'normalized === "cover"',
+      'normalized === "card"',
+      'normalized === "library"',
+      "storeEditorialPreviewVideoFromPath",
+      "withSavedGameVideoClip"
+    ),
+    "Las rutas de carga/importación deben aceptar Card, Portada y library con validación servidor."
   );
 }
 
 assert(
   has(
-    cardPresentationCss,
-    "aspect-ratio: 4 / 5",
-    "aspect-ratio: 3 / 2",
-    '.presentationPoster[data-poster-revealed="true"]',
-    "@media (hover: none), (pointer: coarse)",
-    "@media (prefers-reduced-motion: reduce)"
-  ),
-  "La Card poster debe mantener footprint estable, revelar el detalle sin layout shift y degradar correctamente en touch/reduced-motion."
-);
-
-assert(
-  has(
-    hoverPreview,
-    "FramedVideo",
-    'preload="none"',
-    "active && previewClip"
-  ),
-  "El WebM de Card debe continuar con carga diferida y sólo montar la capa cuando está activa."
+    layoutRoute,
+    'value === "cover"',
+    'value === "hero"',
+    'value === "card"',
+    'value === "detail"',
+    "withGameVideoLayout",
+    "hasExactAdminFormFields",
+    "REQUIRED_DESTINATION_ASPECTS[target]",
+    "GAME_DETAIL_VIEWPORT_ASPECT"
+  ) &&
+    !layoutRoute.includes("storeEditorialPreviewVideo") &&
+    !layoutRoute.includes("FFmpeg"),
+  "Guardar el layout de Card debe seguir siendo metadata-only y exigir 3:2 aunque el endpoint compartido también admita Contenedor adaptable."
 );
 
 assert(
@@ -245,16 +302,20 @@ assert(
     'game.videoMedia?.card?.source === "independent"',
     "game.videoMedia.card.clip"
   ),
-  "Integridad debe proteger la imagen y WebM Card referenciados."
+  "La integridad de publicación debe incluir la imagen Card y su WebM independiente."
 );
 
 const activePreviewSources = [
-  assignments,
+  libraryEditor,
+  workspace,
   libraryRoute,
   viewportEditor,
   cardResolver,
   cardWrapper,
   cardBase,
+  importRoute,
+  uploadRoute,
+  layoutRoute,
 ];
 for (const legacyIdentifier of ["youtubePreview", "directPreview", "previewMode"]) {
   assert(
@@ -264,11 +325,11 @@ for (const legacyIdentifier of ["youtubePreview", "directPreview", "previewMode"
 }
 
 if (failures.length) {
-  console.error("\nCard presentation/video: ERROR\n");
+  console.error("\nCard preview video: ERROR\n");
   failures.forEach((failure) => console.error(`- ${failure}`));
   process.exit(1);
 }
 
 console.log(
-  "Card presentation/video: OK (poster 4:5 → detalle 3:2 → WebM opcional por fila → un autoplay visible → fallback imagen → touch/reduced-motion seguros)."
+  "Card preview video: OK (master temporal sin crop duplicado → motor único imagen/video → Card independiente 3:2 → WebM reutilizable → carga pública diferida)."
 );

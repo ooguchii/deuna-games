@@ -180,13 +180,11 @@ export default function GameMultimediaUtilityRail({
     (hygiene?.reserved ?? 0) +
     (hygiene?.publishedOnly ?? 0) +
     (hygiene?.historical ?? 0);
-  const cardReady = Boolean(
-    requirements?.cover.cropReady && requirements.card.cropReady
-  );
   const mandatoryReadyCount = requirements
     ? [
-        cardReady,
+        requirements.cover.cropReady,
         requirements.hero.cropReady,
+        requirements.card.cropReady,
         requirements.detail.cropReady,
         requirements.gallery.cropReady,
       ].filter(Boolean).length
@@ -265,9 +263,19 @@ export default function GameMultimediaUtilityRail({
         }}
       >
         <input type="hidden" name="expectedRevision" value={currentRevision} />
-        <input type="hidden" name="target" value={resource.kind === "image" ? "image-delete" : "video-delete"} />
+        <input
+          type="hidden"
+          name="target"
+          value={resource.kind === "image" ? "image-delete" : "video-delete"}
+        />
         <input type="hidden" name="resource" value={resource.src} />
-        <button type="submit" className={shellStyles.libraryDeleteButton} disabled={stale} aria-label={`Eliminar ${multimediaShortName(resource.src)} de la biblioteca`} title="Eliminar master sin uso">
+        <button
+          type="submit"
+          className={shellStyles.libraryDeleteButton}
+          disabled={stale}
+          aria-label={`Eliminar ${multimediaShortName(resource.src)} de la biblioteca`}
+          title="Eliminar master sin uso"
+        >
           <Trash2 size={15} aria-hidden="true" />
         </button>
       </form>
@@ -291,10 +299,26 @@ export default function GameMultimediaUtilityRail({
         {group.length ? (
           <div className={shellStyles.libraryDialogGrid}>
             {group.map((resource) => (
-              <article key={`${resource.kind}:${resource.src}`} className={`${shellStyles.libraryResourceCard} ${railStyles.hygieneResource}`} data-hygiene={statusTone(resource)}>
+              <article
+                key={`${resource.kind}:${resource.src}`}
+                className={`${shellStyles.libraryResourceCard} ${railStyles.hygieneResource}`}
+                data-hygiene={statusTone(resource)}
+              >
                 <div className={shellStyles.libraryArtworkWrap}>
-                  <button type="button" className={shellStyles.libraryArtworkButton} onClick={() => setPreviewResource(resource)} aria-label={`Abrir vista grande de ${multimediaShortName(resource.src)}`}>
-                    <AdminMediaThumbnail kind={resource.kind} src={resource.src} mode="source" label={multimediaShortName(resource.src)} sizes="220px" playIndicator={resource.kind === "video"} />
+                  <button
+                    type="button"
+                    className={shellStyles.libraryArtworkButton}
+                    onClick={() => setPreviewResource(resource)}
+                    aria-label={`Abrir vista grande de ${multimediaShortName(resource.src)}`}
+                  >
+                    <AdminMediaThumbnail
+                      kind={resource.kind}
+                      src={resource.src}
+                      mode="source"
+                      label={multimediaShortName(resource.src)}
+                      sizes="220px"
+                      playIndicator={resource.kind === "video"}
+                    />
                   </button>
                   {deleteForm(resource)}
                 </div>
@@ -304,14 +328,18 @@ export default function GameMultimediaUtilityRail({
                 </div>
                 <div className={railStyles.libraryUsageRow}>
                   <span data-tone={statusTone(resource)}>{statusLabel(resource)}</span>
-                  {(resource.hygiene?.usage ?? []).map((usage) => <span key={usage}>{usage}</span>)}
+                  {(resource.hygiene?.usage ?? []).map((usage) => (
+                    <span key={usage}>{usage}</span>
+                  ))}
                 </div>
               </article>
             ))}
           </div>
         ) : (
           <div className={shellStyles.libraryEmptyGroup}>
-            {libraryFilter === "all" ? `No hay ${kind === "image" ? "imágenes" : "videos"} guardados todavía.` : "No hay recursos que coincidan con este filtro."}
+            {libraryFilter === "all"
+              ? `No hay ${kind === "image" ? "imágenes" : "videos"} guardados todavía.`
+              : "No hay recursos que coincidan con este filtro."}
           </div>
         )}
       </section>
@@ -324,7 +352,10 @@ export default function GameMultimediaUtilityRail({
         <div className={shellStyles.utilityHeading}>
           <div>
             <span className={shellStyles.utilityIcon}><FolderOpen size={17} aria-hidden="true" /></span>
-            <div><strong>Biblioteca multimedia</strong><small>Masters reutilizables</small></div>
+            <div>
+              <strong>Biblioteca multimedia</strong>
+              <small>Masters reutilizables</small>
+            </div>
           </div>
           <span className={shellStyles.libraryTotal}>{resources.length}</span>
         </div>
@@ -339,27 +370,61 @@ export default function GameMultimediaUtilityRail({
               <span><ImageIcon size={14} aria-hidden="true" />{images.length} imágenes</span>
               <span><Clapperboard size={14} aria-hidden="true" />{videos.length} videos</span>
             </div>
-            <div className={hygiene?.ready ? railStyles.libraryHygieneReady : railStyles.libraryHygieneWarning} role={hygiene?.ready ? "status" : "alert"}>
-              {hygiene?.ready ? <CheckCircle2 size={15} aria-hidden="true" /> : <TriangleAlert size={15} aria-hidden="true" />}
-              <span>{hygiene?.ready ? "Sin masters editoriales huérfanos" : `${hygiene?.blockingCount ?? 0} master${hygiene?.blockingCount === 1 ? "" : "s"} sin referencia por asignar o eliminar antes de publicar`}</span>
+
+            <div
+              className={hygiene?.ready ? railStyles.libraryHygieneReady : railStyles.libraryHygieneWarning}
+              role={hygiene?.ready ? "status" : "alert"}
+            >
+              {hygiene?.ready
+                ? <CheckCircle2 size={15} aria-hidden="true" />
+                : <TriangleAlert size={15} aria-hidden="true" />}
+              <span>
+                {hygiene?.ready
+                  ? "Sin masters editoriales huérfanos"
+                  : `${hygiene?.blockingCount ?? 0} master${hygiene?.blockingCount === 1 ? "" : "s"} sin referencia por asignar o eliminar antes de publicar`}
+              </span>
             </div>
+
             {previewResources.length ? (
               <div className={shellStyles.libraryMiniGrid}>
                 {previewResources.map((resource) => (
-                  <button key={`${resource.kind}:${resource.src}`} type="button" className={`${shellStyles.libraryMiniButton} ${railStyles.hygieneResource}`} data-hygiene={statusTone(resource)} onClick={() => setPreviewResource(resource)} title={`${multimediaShortName(resource.src)} · ${statusLabel(resource)}`}>
-                    <AdminMediaThumbnail kind={resource.kind} src={resource.src} mode="source" label={multimediaShortName(resource.src)} sizes="88px" playIndicator={resource.kind === "video"} />
+                  <button
+                    key={`${resource.kind}:${resource.src}`}
+                    type="button"
+                    className={`${shellStyles.libraryMiniButton} ${railStyles.hygieneResource}`}
+                    data-hygiene={statusTone(resource)}
+                    onClick={() => setPreviewResource(resource)}
+                    title={`${multimediaShortName(resource.src)} · ${statusLabel(resource)}`}
+                  >
+                    <AdminMediaThumbnail
+                      kind={resource.kind}
+                      src={resource.src}
+                      mode="source"
+                      label={multimediaShortName(resource.src)}
+                      sizes="88px"
+                      playIndicator={resource.kind === "video"}
+                    />
                   </button>
                 ))}
               </div>
             ) : (
-              <div className={shellStyles.utilityEmpty}><Images size={22} aria-hidden="true" /><span>La biblioteca todavía está vacía.</span></div>
+              <div className={shellStyles.utilityEmpty}>
+                <Images size={22} aria-hidden="true" />
+                <span>La biblioteca todavía está vacía.</span>
+              </div>
             )}
           </>
         )}
 
         <div className={shellStyles.utilityActions}>
-          <button type="button" data-multimedia-library-open className={shellStyles.brandAction} onClick={() => setLibraryOpen(true)} disabled={loading || Boolean(error)}><FolderOpen size={16} aria-hidden="true" />Abrir biblioteca</button>
-          <button type="button" className={shellStyles.secondaryAction} onClick={() => setAddKind("image")} disabled={stale}><Plus size={16} aria-hidden="true" />Agregar recurso</button>
+          <button type="button" className={shellStyles.brandAction} onClick={() => setLibraryOpen(true)} disabled={loading || Boolean(error)}>
+            <FolderOpen size={16} aria-hidden="true" />
+            Abrir biblioteca
+          </button>
+          <button type="button" className={shellStyles.secondaryAction} onClick={() => setAddKind("image")} disabled={stale}>
+            <Plus size={16} aria-hidden="true" />
+            Agregar recurso
+          </button>
         </div>
       </section>
 
@@ -367,30 +432,41 @@ export default function GameMultimediaUtilityRail({
         <div className={railStyles.statusCardHeading}>
           <div>
             <span className={shellStyles.utilityIcon}><CheckCircle2 size={17} aria-hidden="true" /></span>
-            <div><strong>Estado multimedia</strong><small>Obligatorios y Galería</small></div>
+            <div>
+              <strong>Estado multimedia</strong>
+              <small>Obligatorios y Galería</small>
+            </div>
           </div>
           <strong className={requirements?.ready ? railStyles.statusScoreReady : railStyles.statusScorePending}>
-            {requirements ? `${mandatoryReadyCount}/4` : "—"}
+            {requirements ? `${mandatoryReadyCount}/5` : "—"}
           </strong>
         </div>
 
         {requirements ? (
           <div className={railStyles.statusRows}>
-            <div data-ready={cardReady}>
+            <div data-ready={requirements.cover.cropReady}>
               {statusPreview([
-                { kind: "image", src: assignments?.coverImage },
-                { kind: assignments?.cardMode === "video" ? "video" : "image", src: assignments?.cardMode === "video" ? cardClip : assignments?.cardImage },
+                { kind: "image", src: assignments?.coverMode !== "video" ? assignments?.coverImage : null },
+                { kind: "video", src: assignments?.coverMode !== "image" ? assignments?.coverVideo?.clip : null },
               ])}
-              <span><strong>Card · 4:5 + 3:2</strong><small>Poster + {modeLabel(assignments?.cardMode)}</small></span>
-              {cardReady ? <CheckCircle2 size={15} /> : <TriangleAlert size={15} />}
+              <span><strong>Portada · 4:5</strong><small>{modeLabel(assignments?.coverMode)}</small></span>
+              {requirements.cover.cropReady ? <CheckCircle2 size={15} /> : <TriangleAlert size={15} />}
             </div>
             <div data-ready={requirements.hero.cropReady}>
               {statusPreview([
                 { kind: "image", src: assignments?.heroMode !== "video" ? assignments?.heroImage : null },
                 { kind: "video", src: assignments?.heroMode !== "image" ? assignments?.heroVideo?.clip : null },
               ])}
-              <span><strong>Hero · 3:1</strong><small>{modeLabel(assignments?.heroMode)}</small></span>
+              <span><strong>Hero · 16:9</strong><small>{modeLabel(assignments?.heroMode)}</small></span>
               {requirements.hero.cropReady ? <CheckCircle2 size={15} /> : <TriangleAlert size={15} />}
+            </div>
+            <div data-ready={requirements.card.cropReady}>
+              {statusPreview([
+                { kind: "image", src: assignments?.cardMode !== "video" ? assignments?.cardImage : null },
+                { kind: "video", src: assignments?.cardMode !== "image" ? cardClip : null },
+              ])}
+              <span><strong>Card · 3:2</strong><small>{modeLabel(assignments?.cardMode)}</small></span>
+              {requirements.card.cropReady ? <CheckCircle2 size={15} /> : <TriangleAlert size={15} />}
             </div>
             <div data-ready={requirements.detail.cropReady}>
               {statusPreview([
@@ -415,59 +491,106 @@ export default function GameMultimediaUtilityRail({
           <div className={shellStyles.utilityStatus}>Cargando estado…</div>
         )}
 
-        <button type="button" className={shellStyles.secondaryAction} onClick={() => setHelpOpen(true)}><Info size={16} aria-hidden="true" />Ver requisitos multimedia</button>
+        <button type="button" className={shellStyles.secondaryAction} onClick={() => setHelpOpen(true)}>
+          <Info size={16} aria-hidden="true" />
+          Ver requisitos multimedia
+        </button>
       </section>
 
-      {stale && <div className={shellStyles.utilityStale} role="alert">Esta página quedó detrás de la revisión multimedia actual. Recarga antes de editar.</div>}
+      {stale && (
+        <div className={shellStyles.utilityStale} role="alert">
+          Esta página quedó detrás de la revisión multimedia actual. Recarga antes de editar.
+        </div>
+      )}
 
       {libraryOpen && (
-        <ContextualMediaDialog eyebrow="BIBLIOTECA MULTIMEDIA" title="Biblioteca multimedia compartida" description="Administra masters reutilizables. Los recursos que sostienen borrador, publicación o historial se conservan protegidos." onClose={() => setLibraryOpen(false)}>
+        <ContextualMediaDialog
+          eyebrow="BIBLIOTECA MULTIMEDIA"
+          title="Biblioteca multimedia compartida"
+          description="Administra masters reutilizables. Los recursos que sostienen borrador, publicación o historial se conservan protegidos."
+          onClose={() => setLibraryOpen(false)}
+        >
           <div className={shellStyles.libraryDialogTopbar}>
-            <div><strong>{resources.length} recursos</strong><span>{images.length} imágenes · {videos.length} videos</span></div>
-            <button type="button" className={shellStyles.brandAction} onClick={() => setAddKind("image")} disabled={stale}><Upload size={16} aria-hidden="true" />Agregar nuevo recurso</button>
+            <div>
+              <strong>{resources.length} recursos</strong>
+              <span>{images.length} imágenes · {videos.length} videos</span>
+            </div>
+            <button type="button" className={shellStyles.brandAction} onClick={() => setAddKind("image")} disabled={stale}>
+              <Upload size={16} aria-hidden="true" />
+              Agregar nuevo recurso
+            </button>
           </div>
+
           <div className={railStyles.libraryFilters} role="group" aria-label="Filtrar biblioteca">
             <button type="button" data-active={libraryFilter === "all"} onClick={() => setLibraryFilter("all")}>Todos · {resources.length}</button>
             <button type="button" data-active={libraryFilter === "active"} onClick={() => setLibraryFilter("active")}>Referenciados · {protectedCount}</button>
             <button type="button" data-active={libraryFilter === "unused"} onClick={() => setLibraryFilter("unused")}>Por resolver · {hygiene?.blockingCount ?? 0}</button>
           </div>
+
           {!hygiene?.ready && (
             <div className={railStyles.libraryDialogWarning} role="alert">
               <TriangleAlert size={17} aria-hidden="true" />
-              <div><strong>La publicación quedará bloqueada mientras existan masters editoriales realmente huérfanos.</strong><span>Asígnalos a un destino o Galería, o elimínalos. Los masters necesarios para la publicación actual o un snapshot histórico restaurable permanecen protegidos.</span></div>
+              <div>
+                <strong>La publicación quedará bloqueada mientras existan masters editoriales realmente huérfanos.</strong>
+                <span>Asígnalos a un destino o Galería, o elimínalos. Los masters necesarios para la publicación actual o para un snapshot histórico restaurable se identifican como protegidos y no se tratan como basura.</span>
+              </div>
             </div>
           )}
-          <div className={shellStyles.libraryDialogGroups}>{renderLibraryGroup("IMÁGENES", "image", filteredImages)}{renderLibraryGroup("VIDEOS", "video", filteredVideos)}</div>
+
+          <div className={shellStyles.libraryDialogGroups}>
+            {renderLibraryGroup("IMÁGENES", "image", filteredImages)}
+            {renderLibraryGroup("VIDEOS", "video", filteredVideos)}
+          </div>
         </ContextualMediaDialog>
       )}
 
       {helpOpen && (
-        <ContextualMediaDialog eyebrow="AYUDA MULTIMEDIA" title="Reglas de los destinos" description="Consulta estas reglas cuando las necesites; el área principal queda reservada para el trabajo editorial." onClose={() => setHelpOpen(false)}>
+        <ContextualMediaDialog
+          eyebrow="AYUDA MULTIMEDIA"
+          title="Reglas de los destinos"
+          description="Consulta estas reglas cuando las necesites; el área principal queda reservada para el trabajo editorial."
+          onClose={() => setHelpOpen(false)}
+        >
           <div className={shellStyles.helpRules}>
-            <div><Clapperboard size={18} aria-hidden="true" /><p><strong>Card · portada 4:5 + detalle 3:2</strong><span>La portada es siempre imagen y también alimenta la ficha. El detalle 3:2 puede usar Imagen, Video o Imagen + hover; cada capa confirma su propio recorte.</span></p></div>
-            <div><MonitorPlay size={18} aria-hidden="true" /><p><strong>Hero · 3:1</strong><span>Destino panorámico independiente. Imagen, Video o Imagen + hover; hover exige ambos recursos y sus recortes.</span></p></div>
+            <div><MonitorPlay size={18} aria-hidden="true" /><p><strong>Portada · 4:5</strong><span>Imagen, Video o Imagen + hover. Cada capa activa confirma selección y encuadre.</span></p></div>
+            <div><MonitorPlay size={18} aria-hidden="true" /><p><strong>Hero · 16:9</strong><span>Imagen, Video o Imagen + hover. Hover exige ambos recursos y sus recortes.</span></p></div>
+            <div><Clapperboard size={18} aria-hidden="true" /><p><strong>Card · 3:2</strong><span>Su imagen y video pueden ser independientes y se validan por separado.</span></p></div>
             <div><Sparkles size={18} aria-hidden="true" /><p><strong>Fondo · adaptable</strong><span>Es opcional. Puede usar Imagen, Video o Imagen + hover, o volver al fondo global.</span></p></div>
             <div><MonitorPlay size={18} aria-hidden="true" /><p><strong>Contenedor · adaptable</strong><span>Es obligatorio e independiente del Hero; adapta foco y zoom al tamaño real de la ficha.</span></p></div>
             <div><Images size={18} aria-hidden="true" /><p><strong>Galería · mínimo 1 recurso</strong><span>Admite hasta 8 imágenes y videos combinados. Cada elemento confirma su propio recorte y conserva su orden editorial.</span></p></div>
-            <div><CheckCircle2 size={18} aria-hidden="true" /><p><strong>Higiene de masters</strong><span>Sólo un master editorial sin referencias de borrador, publicación actual ni historial restaurable es huérfano. Los demás permanecen protegidos.</span></p></div>
+            <div><CheckCircle2 size={18} aria-hidden="true" /><p><strong>Higiene de masters</strong><span>Sólo un master editorial sin ninguna referencia de borrador, publicación actual ni historial restaurable es un archivo huérfano. Los demás aparecen protegidos y no pueden eliminarse desde Biblioteca.</span></p></div>
           </div>
         </ContextualMediaDialog>
       )}
 
       {addKind && (
-        <ContextualMediaDialog eyebrow="BIBLIOTECA COMPARTIDA" title="Agregar nuevo recurso" description="Crea o importa el master una sola vez. Después asígnalo a un destino o a Galería antes de publicar." onClose={() => setAddKind(null)}>
+        <ContextualMediaDialog
+          eyebrow="BIBLIOTECA COMPARTIDA"
+          title="Agregar nuevo recurso"
+          description="Crea o importa el master una sola vez. Después asígnalo a un destino o a Galería antes de publicar."
+          onClose={() => setAddKind(null)}
+        >
           <div className={shellStyles.addTabs} role="group" aria-label="Tipo de recurso">
-            <button type="button" data-active={addKind === "image"} onClick={() => setAddKind("image")}><ImageIcon size={16} aria-hidden="true" /> Imagen</button>
-            <button type="button" data-active={addKind === "video"} onClick={() => setAddKind("video")}><Clapperboard size={16} aria-hidden="true" /> Video</button>
+            <button type="button" data-active={addKind === "image"} onClick={() => setAddKind("image")}>
+              <ImageIcon size={16} aria-hidden="true" /> Imagen
+            </button>
+            <button type="button" data-active={addKind === "video"} onClick={() => setAddKind("video")}>
+              <Clapperboard size={16} aria-hidden="true" /> Video
+            </button>
           </div>
           {addKind === "image" ? (
             <div className={shellStyles.addResourceBody}>
-              <p>El WebP queda guardado por hash. Si no lo asignas y ningún snapshot lo necesita, Biblioteca lo marcará como pendiente y Publicación no permitirá dejarlo huérfano.</p>
-              <GameMediaUploadForm slug={slug} revision={currentRevision} screenshotCount={screenshotCount} libraryOnly />
+              <p>El WebP queda guardado por hash. Si no lo asignas y ningún snapshot lo necesita, Biblioteca lo marcará como pendiente y Publicación no permitirá dejarlo como archivo huérfano.</p>
+              <GameMediaUploadForm
+                slug={slug}
+                revision={currentRevision}
+                screenshotCount={screenshotCount}
+                libraryOnly
+              />
             </div>
           ) : (
             <div className={shellStyles.addResourceBody}>
-              <p>El WebM editorial se crea como master reutilizable. Los recortes se guardan como metadata y el master debe quedar asignado antes de publicar si ningún snapshot existente lo protege.</p>
+              <p>El WebM editorial se crea como master reutilizable. Los recortes de cada destino se guardan después como metadata y el master debe quedar asignado antes de publicar si ningún snapshot existente lo protege.</p>
               <GameVideoLibraryEditor slug={slug} revision={currentRevision} />
             </div>
           )}
@@ -475,7 +598,14 @@ export default function GameMultimediaUtilityRail({
       )}
 
       {previewResource && (
-        <AdminMediaLibraryPreview kind={previewResource.kind} src={previewResource.src} name={multimediaShortName(previewResource.src)} details={resourceDetail(previewResource)} usage={previewResource.hygiene?.usage ?? []} onClose={() => setPreviewResource(null)} />
+        <AdminMediaLibraryPreview
+          kind={previewResource.kind}
+          src={previewResource.src}
+          name={multimediaShortName(previewResource.src)}
+          details={resourceDetail(previewResource)}
+          usage={previewResource.hygiene?.usage ?? []}
+          onClose={() => setPreviewResource(null)}
+        />
       )}
     </aside>
   );

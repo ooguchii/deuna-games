@@ -13,7 +13,6 @@ import CardCarousel from "@/components/ui/CardCarousel";
 import touchStyles from "@/components/ui/TouchTarget.module.css";
 import UniversalGameCard from "@/components/ui/UniversalGameCard";
 import type { HomeCopy } from "@/data/home-config";
-import type { GameCardPresentationMode } from "@/lib/media/game-card-presentation";
 import type { Game } from "@/types/game";
 
 import styles from "./GamesForYourPC.module.css";
@@ -40,13 +39,11 @@ const catalogOptions = [
 export default function GamesForYourPC({
   games,
   copy,
-  presentation,
   personalized = false,
   reasons = {},
 }: {
   games: Game[];
   copy: HomeCopy["lowSpec"];
-  presentation: GameCardPresentationMode;
   personalized?: boolean;
   reasons?: Record<string, string[]>;
 }) {
@@ -144,7 +141,6 @@ export default function GamesForYourPC({
             key={game.slug}
             game={game}
             variant="lowSpec"
-            presentation={presentation}
           />
         ))}
       </CardCarousel>

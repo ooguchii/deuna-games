@@ -15,7 +15,7 @@ const [
   contentValidation,
   gameVideoMedia,
   libraryRoute,
-  assignments,
+  workspace,
   mediaViewportEditor,
   heroSection,
 ] = await Promise.all([
@@ -23,7 +23,7 @@ const [
   source("src/lib/admin/content-validation.ts"),
   source("src/lib/media/game-video-media.ts"),
   source("src/app/api/admin/content/games/[slug]/media-library/route.ts"),
-  source("src/components/admin/GameMediaAssignmentsWorkspace.tsx"),
+  source("src/components/admin/GameMultimediaWorkspaceContextual.tsx"),
   source("src/components/admin/MediaViewportEditor.tsx"),
   source("src/components/home/HeroSection.tsx"),
 ]);
@@ -84,23 +84,22 @@ assert(
 
 assert(
   has(
-    assignments,
-    "const MODES",
+    workspace,
+    "MODE_OPTIONS",
     '{ value: "image", label: "Imagen" }',
     '{ value: "video", label: "Video" }',
     '{ value: "hover-video", label: "Imagen + hover" }',
     'target="hero"',
-    "const heroMode = assignments.heroMode",
-    "needsImage(heroMode)",
-    "needsVideo(heroMode)",
-    'target="hero-image"',
-    'target="hero-video"',
-    'aspect="3:1"',
-    "heroImageReady",
-    "heroVideoReady",
+    'const heroMode = state?.assignments.heroMode ?? "hover-video"',
+    'destinationActions("hero", heroMode',
+    "requirementActionClass",
+    "Falta seleccionar imagen",
+    "Falta seleccionar video",
+    "Falta recortar la imagen",
+    "Falta recortar el video",
     "GameVideoViewportEditor"
   ),
-  "El Admin debe ofrecer los tres modos del Hero y estados independientes de selección/recorte para imagen y video dentro de la asignación activa."
+  "El Admin debe ofrecer los tres modos del Hero y estados independientes de selección/recorte para imagen y video."
 );
 
 assert(
@@ -113,7 +112,7 @@ assert(
     "resolvePreviewViewportCrop"
   ) &&
     !mediaViewportEditor.includes("height: resultPreviewSize.height"),
-  "El resultado final de imagen debe conservar la relación calculada —incluidos 4:5/3:1/3:2 y Galería elegible— al adaptarse a paneles estrechos; el ancho responsive no puede deformar la altura del recorte."
+  "El resultado final de imagen debe conservar la relación calculada —incluidos 4:5/16:9/3:2 y Galería elegible— al adaptarse a paneles estrechos; el ancho responsive no puede deformar la altura del recorte."
 );
 
 assert(
