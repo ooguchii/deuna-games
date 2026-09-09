@@ -122,18 +122,19 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .tiltCard {
+  .tiltCard.tiltCard {
     transform: none;
     transition: none;
   }
 
-  .tiltCard::before,
-  .spotlight {
+  .tiltCard.tiltCard::before,
+  .tiltCard.tiltCard .spotlight {
     display: none;
   }
 
-  .tiltCard .tiltMedia img {
+  .tiltCard.tiltCard .tiltMedia img {
     transform: none;
+    filter: none;
     transition: none;
   }
 }
