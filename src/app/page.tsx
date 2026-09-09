@@ -28,10 +28,6 @@ import {
   getPublicHomeConfig,
 } from "@/lib/home/public-home-config";
 import {
-  DEFAULT_HOME_GAME_CARD_PRESENTATION,
-  isGameCardPresentationMode,
-} from "@/lib/media/game-card-presentation";
-import {
   absoluteUrl,
 } from "@/lib/site";
 import {
@@ -111,12 +107,6 @@ export default async function Home() {
   ) {
     if (!section.visible) return null;
 
-    const cardPresentation = isGameCardPresentationMode(
-      section.cardPresentation
-    )
-      ? section.cardPresentation
-      : DEFAULT_HOME_GAME_CARD_PRESENTATION;
-
     switch (section.id) {
       case "hero":
         return collections.heroGames.length > 0 ? (
@@ -133,7 +123,6 @@ export default async function Home() {
             key={section.id}
             games={collections.popularGames}
             copy={copy.popular}
-            presentation={cardPresentation}
           />
         ) : null;
 
@@ -160,7 +149,6 @@ export default async function Home() {
             key={section.id}
             games={collections.recentGames}
             copy={copy.recent}
-            presentation={cardPresentation}
           />
         ) : null;
 
@@ -179,7 +167,6 @@ export default async function Home() {
             key={section.id}
             games={collections.lowSpecGames}
             copy={copy.lowSpec}
-            presentation={cardPresentation}
             personalized={collections.pcPersonalized}
             reasons={collections.pcReasons}
           />
@@ -191,7 +178,6 @@ export default async function Home() {
             key={section.id}
             games={collections.recommendedGames}
             copy={copy.recommended}
-            presentation={cardPresentation}
             personalized={collections.recommendedPersonalized}
             reasons={collections.recommendationReasons}
           />

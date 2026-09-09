@@ -13,37 +13,47 @@ const has = (text, ...needles) => needles.every((needle) => text.includes(needle
 const [
   requirements,
   types,
-  assignments,
-  multimediaEditor,
+  imageViewportPolicy,
+  previewPolicy,
+  workspace,
+  detailEditor,
+  mediaViewportEditor,
+  imageEditor,
+  videoViewportEditor,
   imageLayoutRoute,
+  videoLayoutRoute,
   mediaLibraryRoute,
   contentValidation,
-  gameCover,
+  gameMedia,
+  gameMediaCss,
+  backgroundEditor,
+  backgroundViewportEditor,
   publicationReadiness,
   publicationWorkspace,
   publishRoute,
   restoreRoute,
-  cardPresentation,
-  homeConfig,
-  homeEditor,
-  homePage,
 ] = await Promise.all([
   source("src/lib/media/game-media-requirements.ts"),
   source("src/types/game.ts"),
-  source("src/components/admin/GameMediaAssignmentsWorkspace.tsx"),
-  source("src/components/admin/GameMultimediaEditor.tsx"),
+  source("src/lib/media/image-viewport.ts"),
+  source("src/lib/media/preview-video-policy.ts"),
+  source("src/components/admin/GameMultimediaWorkspaceContextual.tsx"),
+  source("src/components/admin/GameDetailMediaEditor.tsx"),
+  source("src/components/admin/MediaViewportEditor.tsx"),
+  source("src/components/admin/ImageViewportEditor.tsx"),
+  source("src/components/admin/GameVideoViewportEditor.tsx"),
   source("src/app/api/admin/content/games/[slug]/image-layout/route.ts"),
+  source("src/app/api/admin/content/games/[slug]/preview-layout/route.ts"),
   source("src/app/api/admin/content/games/[slug]/media-library/route.ts"),
   source("src/lib/admin/content-validation.ts"),
-  source("src/components/ui/GameCoverMedia.tsx"),
+  source("src/components/ui/GameMedia.tsx"),
+  source("src/components/ui/GameMedia.module.css"),
+  source("src/components/admin/GameBackgroundMediaEditor.tsx"),
+  source("src/components/admin/GameBackgroundViewportEditor.tsx"),
   source("src/lib/admin/game-publication-readiness.ts"),
   source("src/components/admin/GamePublicationWorkspace.tsx"),
   source("src/app/api/admin/content/games/[slug]/publish/route.ts"),
   source("src/app/api/admin/content/publications/[publicationId]/restore/route.ts"),
-  source("src/lib/media/game-card-presentation.ts"),
-  source("src/data/home-config.ts"),
-  source("src/components/admin/HomePresentationEditor.tsx"),
-  source("src/app/page.tsx"),
 ]);
 
 assert(
@@ -52,104 +62,243 @@ assert(
     'cover: "4:5"',
     'hero: "3:1"',
     'card: "3:2"',
-    'const coverMode = "image" as const',
-    "cover.cropReady &&",
-    "card.cropReady &&",
+    "LEGACY_DESTINATION_IMAGE_ASPECTS",
+    'hero: "16:9"',
+    "const effectiveAspect = viewport.aspect ?? legacyAspect",
+    "effectiveAspect === requiredAspect",
+    'GAME_DETAIL_VIEWPORT_ASPECT = "source"',
+    "detail.cropReady",
+    "background.cropReady",
     "galleryCropReady"
   ),
-  "El contrato central debe tratar cover como poster image-only 4:5 de Card, conservar Hero 3:1 y detalle Card 3:2, y exigir ambos layers."
+  "El contrato central debe exigir Portada 4:5, Hero 3:1 y Card 3:2, y detectar Hero 16:9 histórico como obsoleto."
 );
 
 assert(
   has(
-    assignments,
-    "Card es la presentación principal del juego",
-    "Card del juego",
-    "Portada inicial",
-    "Vista informativa",
-    'target="cover-image"',
-    'target="card"',
-    'target="card-image"',
-    'target="card-video"',
-    'aspect="4:5"',
-    'aspect="3:2"',
-    "image-only"
-  ) &&
-    !assignments.includes("<h3>Portada del juego</h3>") &&
-    !assignments.includes('target="cover"\n                mode='),
-  "Asignación de destinos debe exponer una sola Card con poster 4:5 image-only y detalle 3:2, sin revivir Portada como destino con modo propio."
-);
-
-assert(
-  multimediaEditor.includes("GameMediaAssignmentsWorkspace") &&
-    !multimediaEditor.includes("GameMultimediaWorkspaceContextual") &&
-    multimediaEditor.includes("GameGalleryMediaManager") &&
-    multimediaEditor.includes("GameMediaAccessibilityEditor"),
-  "El editor multimedia visible debe usar el workspace unificado sin perder Galería ni accesibilidad."
-);
-
-assert(
-  has(
-    imageLayoutRoute,
-    'const fixedImageTargets = ["cover", "hero", "card"] as const',
-    "REQUIRED_DESTINATION_ASPECTS[target.data]",
-    "viewport.aspect !== REQUIRED_DESTINATION_ASPECTS[target.data]",
-    "confirmed: true"
+    types,
+    "export type GameImageViewportAspect",
+    '| "3:1"',
+    "aspect?: GameImageViewportAspect",
+    "aspectRatio?: number",
+    "export type GameVideoViewportAspect",
+    "detail?: GameImageViewport",
+    "galleryMedia?: GameGalleryItem[]",
+    "confirmed?: true"
   ),
-  "La API de crop debe conservar las claves compatibles cover/hero/card y validar la relación exigida en servidor."
+  "El modelo debe persistir 3:1 y conservar metadata independiente de Contenedor y Galería."
 );
 
 assert(
   has(
-    mediaLibraryRoute,
-    '"cover-image"',
-    '"hero-mode"',
-    '"card-mode"',
-    '"card-image"',
-    '"card-video"',
-    "expectedRevision",
-    "hasExactAdminFormFields",
-    "authorizeAdminFormRequest"
+    imageViewportPolicy,
+    '"3:1"',
+    '"3:1": 3',
+    'DEFAULT_GALLERY_IMAGE_ASPECT = "16:9"',
+    '"free"',
+    "resolveGameImageCropAspectRatio"
   ),
-  "La biblioteca debe conservar autorización, revisión optimista y asignaciones de los dos layers internos de Card."
+  "La política de imagen debe conocer 3:1 sin romper el fallback histórico de Galería ni el modo Libre."
+);
+
+assert(
+  has(
+    previewPolicy,
+    '"3:1"',
+    '3:1 · Hero panorámico',
+    'Libre · arrastra bordes y esquinas',
+    "customAspectRatio?: number"
+  ),
+  "El motor de encuadre de video debe conocer Hero 3:1 y conservar Libre para los flujos compatibles."
 );
 
 assert(
   has(
     contentValidation,
     "imageViewportAspectSchema",
+    "fixedImageAspectSchema",
     '"3:1"',
-    '"3:2"',
-    '"4:5"',
-    "cardVideoSchema",
-    "mediaModesSchema"
+    "aspect: fixedImageAspectSchema.optional()",
+    "galleryMediaSchema",
+    "aspectRatio: z.number().min(0.1).max(10).optional()"
   ),
-  "La validación editorial debe seguir aceptando snapshots históricos y metadata de Card/Hero segura."
+  "La validación editorial debe aceptar 3:1 en destinos rígidos y seguir validando Galería mixta/Libre."
 );
 
 assert(
   has(
-    gameCover,
-    "game.coverImage ?? game.cardImage",
-    "game.imageMedia?.cover ?? game.imageMedia?.card",
-    'aspectRatio: "4 / 5"'
+    workspace,
+    "isImageCropConfirmed",
+    "isVideoCropConfirmed",
+    "LEGACY_DESTINATION_IMAGE_ASPECTS",
+    "Hero · 3:1",
+    "Recorte obligatorio · 3:1",
+    "COMPLETA LOS RECURSOS Y RECORTES · 3:1",
+    "frameAspect={3}",
+    "Contenedor · adaptable",
+    "Galería obligatoria · relación elegible",
+    "16:9, 3:1, 3:2, 1:1, 4:5, 9:16 o Libre",
+    "!isImageCropConfirmed(imageMedia?.gallery?.[src])",
+    'title="Recorte de la captura"'
   ) &&
-    !gameCover.includes("resolveGameCoverVideo") &&
-    !gameCover.includes("FramedVideo") &&
-    !gameCover.includes("onMouseEnter"),
-  "La portada de la ficha debe consumir el poster image-only de Card, sin un segundo contrato de video Cover."
+    !workspace.includes("Hero · 16:9") &&
+    !workspace.includes("Recorte 16:9 del Hero") &&
+    !workspace.includes("Recorte obligatorio · 16:9"),
+  "Multimedia debe mostrar y validar Hero 3:1 en todos sus estados sin mensajes 16:9 obsoletos."
 );
 
 assert(
-  publicationReadiness.includes('id: "card-crop"') &&
-    publicationReadiness.includes("complete: media.cover.cropReady && media.card.cropReady") &&
-    publicationReadiness.includes("Card · portada") &&
-    !publicationReadiness.includes('id: "cover-crop"'),
-  "Publicación debe presentar Card como un solo requisito compuesto, no Portada y Card como destinos separados."
+  has(
+    detailEditor,
+    "Contenedor de la ficha",
+    "Imagen + hover",
+    "Recorte adaptable ·",
+    "RECORTE ADAPTABLE CONFIRMADO",
+    'target="detail"',
+    "ImageViewportEditor",
+    "GameVideoViewportEditor"
+  ),
+  "Contenedor debe conservar sus tres modos y el recorte adaptable independiente."
 );
 
 assert(
-  publicationWorkspace.includes("!readiness.essentialsReady") &&
+  has(
+    mediaViewportEditor,
+    'type MediaKind = "image" | "video"',
+    "requiredAspect?",
+    "selectableAspects?",
+    "const RESIZE_HANDLES",
+    'const freeResizeEnabled = !aspectLocked && viewportDraft.aspect === "free"',
+    "startResize",
+    "finishResize",
+    "Relación del encuadre · obligatoria",
+    "Resultado final",
+    "GameMedia"
+  ),
+  "El editor espacial común debe conservar relaciones bloqueadas y edición Libre con resultado final exacto."
+);
+
+assert(
+  has(
+    imageEditor,
+    "MediaViewportEditor",
+    "VISTA REAL DEL DESTINO",
+    "destinationPreview",
+    '"3:1"',
+    "GALLERY_ASPECT_OPTIONS",
+    "viewportAspect",
+    "viewportAspectRatio",
+    "Confirmar recorte adaptable"
+  ) &&
+    !imageEditor.includes("storeEditorialWebp"),
+  "El editor de imagen debe mostrar la vista real grande del destino y persistir la relación fija confirmada."
+);
+
+assert(
+  has(
+    imageLayoutRoute,
+    'const fixedImageTargets = ["cover", "hero", "card"] as const',
+    'const legacyImageTargets = [...fixedImageTargets, "gallery"] as const',
+    "expectsFixedAspect",
+    "REQUIRED_DESTINATION_ASPECTS[target.data]",
+    "viewport.aspect !== REQUIRED_DESTINATION_ASPECTS[target.data]",
+    "confirmed: true",
+    "saveGameMediaDraft"
+  ) &&
+    !imageLayoutRoute.includes("storeEditorialWebp") &&
+    !imageLayoutRoute.includes("spawn("),
+  "La API de imagen debe guardar sólo metadata y rechazar una relación distinta de la exigida por el destino rígido."
+);
+
+assert(
+  has(
+    videoViewportEditor,
+    "GAME_DETAIL_VIEWPORT_ASPECT",
+    "REQUIRED_DESTINATION_ASPECTS[target]",
+    "MediaViewportEditor",
+    'kind="video"'
+  ) &&
+    has(
+      videoLayoutRoute,
+      "GAME_DETAIL_VIEWPORT_ASPECT",
+      "REQUIRED_DESTINATION_ASPECTS[target]",
+      "submittedAspect !== requiredAspect",
+      "withGameVideoLayout"
+    ),
+  "Video debe heredar Hero 3:1 del contrato central y rechazar relaciones incorrectas."
+);
+
+assert(
+  has(
+    mediaLibraryRoute,
+    '"detail-mode"',
+    '"detail-image"',
+    '"detail-video"',
+    '"gallery-image"',
+    '"gallery-remove"',
+    "DEFAULT_GAME_IMAGE_VIEWPORT",
+    "gallery:"
+  ),
+  "Biblioteca debe conservar asignaciones por referencia y metadata pendiente antes de editar recortes."
+);
+
+assert(
+  has(
+    backgroundEditor,
+    "Recorte adaptable ·",
+    "RECORTE ADAPTABLE CONFIRMADO",
+    "RECORTE ADAPTABLE NO CONFIRMADO",
+    "Usar fondo global"
+  ) &&
+    has(
+      backgroundViewportEditor,
+      "Confirmando el recorte adaptable",
+      "Confirmar recorte adaptable",
+      'requiredAspect="source"'
+    ),
+  "Fondo debe seguir siendo adaptable y opcional."
+);
+
+assert(
+  has(
+    gameMedia,
+    "resolveGameImageCropAspectRatio",
+    "hasEditorialAspect",
+    "data-game-image-crop"
+  ) &&
+    gameMediaCss.includes(':global(figure:has(> [data-game-image-crop]))'),
+  "El renderer público debe respetar la relación persistida de las imágenes editoriales."
+);
+
+for (const id of [
+  "cover-crop",
+  "hero-crop",
+  "card-crop",
+  "detail-container-media",
+  "gallery-minimum",
+]) {
+  assert(
+    publicationReadiness.includes(`id: "${id}"`),
+    `Publicación debe exigir ${id}.`
+  );
+}
+
+assert(
+  has(
+    publicationReadiness,
+    "REQUIRED_DESTINATION_ASPECTS",
+    'label: `Portada · recorte ${REQUIRED_DESTINATION_ASPECTS.cover}`',
+    'label: `Hero · recorte ${REQUIRED_DESTINATION_ASPECTS.hero}`',
+    'label: `Card · recorte ${REQUIRED_DESTINATION_ASPECTS.card}`'
+  ) &&
+    !publicationReadiness.includes('label: "Hero · recorte 16:9"'),
+  "El panel de publicación debe derivar Portada/Hero/Card del contrato central de relaciones y no repetir etiquetas obsoletas."
+);
+
+assert(
+  publicationReadiness.includes("complete: media.detail.cropReady") &&
+    publicationReadiness.includes("complete: media.gallery.cropReady") &&
+    publicationWorkspace.includes("!readiness.essentialsReady") &&
     has(
       publishRoute,
       "evaluateGamePublicationReadiness",
@@ -162,48 +311,17 @@ assert(
       "readiness.essentialsReady",
       "restauracion-incompleta"
     ),
-  "Publicar y restaurar deben seguir bloqueando snapshots que no cumplen el contrato multimedia esencial."
-);
-
-assert(
-  has(
-    cardPresentation,
-    '"poster"',
-    '"detail-image"',
-    '"detail-video"',
-    'DEFAULT_HOME_GAME_CARD_PRESENTATION',
-    '"popular"',
-    '"recent"',
-    '"lowSpec"',
-    '"recommended"'
-  ),
-  "La presentación de Card debe tener un contrato único y limitar la configuración por fila a colecciones de juegos."
-);
-
-assert(
-  homeConfig.includes("cardPresentation?: GameCardPresentationMode") &&
-    homeEditor.includes("GAME_CARD_PRESENTATION_MODES.map") &&
-    homeEditor.includes("Info + imagen") &&
-    homeEditor.includes("Info + video") &&
-    homePage.includes("section.cardPresentation") &&
-    homePage.includes("DEFAULT_HOME_GAME_CARD_PRESENTATION"),
-  "Home debe editar y consumir la presentación por fila dentro de su snapshot editorial publicado."
-);
-
-assert(
-  types.includes("coverImage?: string") &&
-    types.includes("cardImage?: string") &&
-    types.includes("cover?: GameImageViewport") &&
-    types.includes("card?: GameImageViewport"),
-  "Las claves históricas deben permanecer parseables durante la migración para no romper revisiones ni restauraciones."
+  "Publicación y restauración deben seguir bloqueando destinos multimedia esenciales incompletos."
 );
 
 if (failures.length) {
-  console.error("Destinos multimedia unificados: FAIL");
-  for (const failure of failures) console.error(`- ${failure}`);
+  console.error("Destinos multimedia: FAIL");
+  for (const failure of failures) {
+    console.error(`- ${failure}`);
+  }
   process.exit(1);
 }
 
 console.log(
-  "Destinos multimedia unificados: OK (Card poster 4:5 + detalle 3:2 · Hero 3:1 · Home por fila · compatibilidad histórica)."
+  "Destinos multimedia: OK (Portada 4:5 · Hero 3:1 · Card 3:2 · Fondo adaptable · Contenedor adaptable · Galería mixta/Libre)."
 );

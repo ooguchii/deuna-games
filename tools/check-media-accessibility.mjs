@@ -125,10 +125,8 @@ assert(
 );
 
 assert(
-  files.cover.includes("game.mediaAccessibility?.cover ??") &&
-    files.cover.includes("game.mediaAccessibility?.card ??") &&
-    files.cover.includes("game.imageAlt"),
-  "La portada pública debe preferir el texto contextual de su poster, aceptar Card como fallback de la presentación unificada y conservar imageAlt para snapshots históricos."
+  files.cover.includes("game.mediaAccessibility?.cover ?? game.imageAlt"),
+  "La Portada pública debe preferir el texto contextual y conservar el fallback histórico."
 );
 assert(
   files.card.includes("game.mediaAccessibility?.card ?? game.imageAlt"),
@@ -169,6 +167,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Accesibilidad multimedia contextual: OK (snapshot versionado, edición segura, fallbacks unificados/históricos, Galería por recurso y capas decorativas separadas)."
+    "Accesibilidad multimedia contextual: OK (snapshot versionado, edición segura, fallbacks históricos, Galería por recurso y capas decorativas separadas)."
   );
 }

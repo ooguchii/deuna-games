@@ -6,4 +6,3 @@ import "./check-age-rating.mjs";
 import "./check-media-accessibility.mjs";
 import "./check-distribution-integrity.mjs";
 import "./check-game-editor-audit-hardening.mjs";
-import "./check-game-preview-media-parity.mjs";

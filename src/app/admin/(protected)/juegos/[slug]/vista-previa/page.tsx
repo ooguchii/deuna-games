@@ -13,9 +13,6 @@ import {
 } from "lucide-react";
 import { notFound } from "next/navigation";
 
-import GameDetailContainerMedia from "@/components/games/GameDetailContainerMedia";
-import GameGalleryVideo from "@/components/games/GameGalleryVideo";
-import GameCoverMedia from "@/components/ui/GameCoverMedia";
 import GameMedia from "@/components/ui/GameMedia";
 import GamePerformanceEstimate from "@/features/game-finder/GamePerformanceEstimate";
 import {
@@ -30,24 +27,9 @@ import {
 import {
   resolveGameDownload,
 } from "@/lib/games/download";
-import {
-  getGameGalleryAccessibleFallback,
-} from "@/lib/media/game-media-accessibility";
-import {
-  galleryImageViewport,
-  resolvePublicGameGalleryItems,
-} from "@/lib/media/game-gallery-media";
-import {
-  resolveGameDestinationImage,
-  resolveGameDestinationMediaMode,
-} from "@/lib/media/game-video-media";
-import {
-  resolveGameImageCropAspectRatio,
-} from "@/lib/media/image-viewport";
 import type {
   GameDownloadSourceStatus,
   GameHardwareRequirements,
-  GameVideoViewport,
 } from "@/types/game";
 
 import styles from "./page.module.css";
@@ -133,14 +115,6 @@ function downloadHost(href: string) {
   }
 }
 
-function galleryVideoAspectRatio(viewport: GameVideoViewport) {
-  if (viewport.aspect === "3:2") return 3 / 2;
-  if (viewport.aspect === "1:1") return 1;
-  if (viewport.aspect === "4:5") return 4 / 5;
-  if (viewport.aspect === "9:16") return 9 / 16;
-  return 16 / 9;
-}
-
 export default async function AdminGamePreviewPage({
   params,
 }: PageProps) {
@@ -189,15 +163,12 @@ export default async function AdminGamePreviewPage({
       ...(game.tags ?? []),
     ])
   ).slice(0, 8);
-  const detailImage = resolveGameDestinationImage(game, "detail");
-  const detailImageViewport = game.imageMedia?.detail ??
-    (!game.detailImage
-      ? game.heroImage
-        ? game.imageMedia?.hero
-        : game.imageMedia?.cover
-      : undefined);
-  const detailMode = resolveGameDestinationMediaMode(game, "detail");
-  const gallery = resolvePublicGameGalleryItems(game);
+  const gallery = Array.from(
+    new Set([
+      ...(game.screenshots ?? []),
+      ...(game.heroImage ? [game.heroImage] : []),
+    ])
+  ).slice(0, 8);
   const sources = download?.sources ?? [];
   const publicationHref =
     `/admin/juegos/${encodeURIComponent(slug)}/publicacion`;
@@ -258,20 +229,28 @@ export default async function AdminGamePreviewPage({
 
       <section className={styles.hero}>
         <div className={styles.heroBackground} aria-hidden="true">
-          <GameDetailContainerMedia
-            mode={detailMode}
-            imageSrc={detailImage}
-            imageViewport={detailImageViewport}
-            video={game.videoMedia?.detail}
+          <GameMedia
+            src={game.heroImage ?? game.coverImage}
+            alt=""
+            sizes="100vw"
+            variant="hero"
+            viewport={
+              game.heroImage
+                ? game.imageMedia?.hero
+                : game.imageMedia?.cover
+            }
+            priority
           />
           <div className={styles.heroShade} />
         </div>
 
         <div className={styles.heroInner}>
           <div className={styles.cover}>
-            <GameCoverMedia
-              game={game}
+            <GameMedia
+              src={game.coverImage}
+              alt={game.mediaAccessibility?.cover ?? game.imageAlt}
               sizes="220px"
+              viewport={game.imageMedia?.cover}
             />
           </div>
 
@@ -466,45 +445,24 @@ export default async function AdminGamePreviewPage({
 
           {gallery.length > 0 ? (
             <div className={styles.gallery}>
-              {gallery.map((galleryItem, index) => {
-                const accessibleLabel = getGameGalleryAccessibleFallback(
-                  game,
-                  galleryItem,
-                  index
-                );
-
-                if (galleryItem.kind === "image") {
-                  const viewport = galleryImageViewport(game, galleryItem);
-                  return (
-                    <div
-                      key={`image:${galleryItem.src}`}
-                      className={styles.galleryItem}
-                      style={{
-                        aspectRatio: resolveGameImageCropAspectRatio(viewport),
-                      }}
-                    >
-                      <GameMedia
-                        src={galleryItem.src}
-                        alt={accessibleLabel}
-                        sizes="(max-width: 900px) 50vw, 240px"
-                        viewport={viewport}
-                      />
-                    </div>
-                  );
-                }
+              {gallery.map((image, index) => {
+                const contextualLabel = game.mediaAccessibility?.gallery?.find(
+                  (entry) => entry.kind === "image" && entry.src === image
+                )?.label;
 
                 return (
-                  <div
-                    key={`video:${galleryItem.src}`}
-                    className={styles.galleryItem}
-                    style={{
-                      aspectRatio: galleryVideoAspectRatio(galleryItem.viewport),
-                    }}
-                  >
-                    <GameGalleryVideo
-                      src={galleryItem.src}
-                      viewport={galleryItem.viewport}
-                      label={accessibleLabel}
+                  <div key={image} className={styles.galleryItem}>
+                    <GameMedia
+                      src={image}
+                      alt={contextualLabel ?? `Vista previa ${index + 1} de ${game.title}`}
+                      sizes="(max-width: 900px) 50vw, 240px"
+                      variant="hero"
+                      viewport={
+                        game.imageMedia?.gallery?.[image]
+                        ?? (image === game.heroImage
+                          ? game.imageMedia?.hero
+                          : undefined)
+                      }
                     />
                   </div>
                 );
