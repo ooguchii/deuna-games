@@ -1,0 +1,321 @@
+name: Restore Card 3D Patch
+
+on:
+  push:
+    branches: [fix/restore-universal-card-3d]
+    paths:
+      - .github/workflows/restore-card-3d-temp.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: fix/restore-universal-card-3d
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Apply focused patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: str, old: str, new: str) -> None:
+              target = Path(path)
+              text = target.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{path}: expected exactly one match, found {count}")
+              target.write_text(text.replace(old, new, 1))
+
+          base = "src/components/ui/UniversalGameCardBase.tsx"
+          replace_once(
+              base,
+              '''    const pointerIsFine =
+                event.pointerType !== "touch" &&
+                window.matchMedia(
+                  "(hover: hover) and (pointer: fine)"
+                ).matches;
+              const reducedMotion = window.matchMedia(
+                "(prefers-reduced-motion: reduce)"
+              ).matches;
+
+              pointerEffectsEnabled.current =
+                pointerIsFine && !reducedMotion;
+              if (!pointerEffectsEnabled.current) return;
+
+              cardRect.current =
+                event.currentTarget.getBoundingClientRect();''',
+              '''    const pointerSupportsEffects =
+                event.pointerType === "mouse" ||
+                event.pointerType === "pen";
+              const reducedMotion = window.matchMedia(
+                "(prefers-reduced-motion: reduce)"
+              ).matches;
+
+              pointerEffectsEnabled.current =
+                pointerSupportsEffects && !reducedMotion;
+              if (!pointerEffectsEnabled.current) {
+                event.currentTarget.removeAttribute("data-tilt-active");
+                return;
+              }
+
+              event.currentTarget.setAttribute(
+                "data-tilt-active",
+                "true"
+              );
+              cardRect.current =
+                event.currentTarget.getBoundingClientRect();'''
+          )
+          replace_once(
+              base,
+              '''    pointerEffectsEnabled.current = false;
+              resetTilt(event.currentTarget);
+              if (hoverPreviewEnabled) cancelPreview();''',
+              '''    pointerEffectsEnabled.current = false;
+              event.currentTarget.removeAttribute("data-tilt-active");
+              resetTilt(event.currentTarget);
+              if (hoverPreviewEnabled) cancelPreview();'''
+          )
+
+          Path("src/components/ui/UniversalGameCardTilt.module.css").write_text(r'''.tiltCard.tiltCard {
+            --tilt-x: 0deg;
+            --tilt-y: 0deg;
+            --pointer-x: 50%;
+            --pointer-y: 50%;
+            --image-x: 0px;
+            --image-y: 0px;
+
+            position: relative;
+
+            /*
+             * El borde sigue recortando la Card sin convertirla en un
+             * contenedor de scroll ni aplanar la escena tridimensional.
+             * La especificidad doble gana sobre el overflow base de .card.
+             */
+            overflow: clip;
+
+            transform:
+              perspective(900px)
+              rotateX(var(--tilt-x))
+              rotateY(var(--tilt-y))
+              translateZ(0);
+
+            transform-style: preserve-3d;
+
+            transition:
+              transform 150ms ease-out,
+              border-color 180ms ease,
+              box-shadow 220ms ease,
+              background 180ms ease;
+          }
+
+          .tiltCard::before {
+            content: "";
+
+            position: absolute;
+            inset: 0;
+            z-index: -1;
+
+            border-radius: inherit;
+
+            background:
+              radial-gradient(
+                320px circle at var(--pointer-x) var(--pointer-y),
+                color-mix(in srgb, var(--brand) 22%, transparent),
+                transparent 58%
+              );
+
+            opacity: 0;
+            filter: blur(8px);
+
+            transition: opacity 180ms ease;
+            pointer-events: none;
+          }
+
+          .tiltClip {
+            overflow: clip;
+            border-radius: inherit;
+            transform-style: preserve-3d;
+          }
+
+          .tiltMedia {
+            transform: translateZ(14px);
+            transform-style: preserve-3d;
+          }
+
+          .tiltCard .tiltMedia img {
+            transform:
+              translate3d(var(--image-x), var(--image-y), 0)
+              scale(1.015);
+
+            transition:
+              transform 210ms ease-out,
+              filter 220ms ease;
+          }
+
+          .spotlight {
+            position: absolute;
+            inset: 0;
+            z-index: 3;
+
+            background:
+              radial-gradient(
+                190px circle at var(--pointer-x) var(--pointer-y),
+                rgba(255, 255, 255, 0.17),
+                transparent 60%
+              );
+
+            opacity: 0;
+            mix-blend-mode: screen;
+
+            transition: opacity 180ms ease;
+            pointer-events: none;
+          }
+
+          .tiltCard[data-tilt-active="true"] {
+            z-index: 2;
+          }
+
+          .tiltCard[data-tilt-active="true"]::before {
+            opacity: 1;
+          }
+
+          .tiltCard[data-tilt-active="true"] .tiltMedia img {
+            transform:
+              translate3d(var(--image-x), var(--image-y), 0)
+              scale(1.075);
+
+            filter:
+              brightness(1.035)
+              saturate(1.07)
+              contrast(1.015);
+          }
+
+          .tiltCard[data-tilt-active="true"] .spotlight {
+            opacity: 0.64;
+          }
+
+          @media (any-hover: none) {
+            .tiltCard:not([data-tilt-active="true"]) {
+              transform: none;
+            }
+
+            .tiltCard:not([data-tilt-active="true"])::before,
+            .tiltCard:not([data-tilt-active="true"]) .spotlight {
+              display: none;
+            }
+
+            .tiltCard:not([data-tilt-active="true"]) .tiltMedia img {
+              transform: none;
+            }
+          }
+
+          @media (prefers-reduced-motion: reduce) {
+            .tiltCard {
+              transform: none;
+              transition: none;
+            }
+
+            .tiltCard::before,
+            .spotlight {
+              display: none;
+            }
+
+            .tiltCard .tiltMedia img {
+              transform: none;
+              transition: none;
+            }
+          }
+          ''')
+
+          check = "tools/check-card-preview-video.mjs"
+          replace_once(
+              check,
+              '''  cardBase,
+              hoverPreview,''',
+              '''  cardBase,
+              tiltCss,
+              hoverPreview,'''
+          )
+          replace_once(
+              check,
+              '''  source("src/components/ui/UniversalGameCardBase.tsx"),
+              source("src/components/ui/HoverPreviewMedia.tsx"),''',
+              '''  source("src/components/ui/UniversalGameCardBase.tsx"),
+              source("src/components/ui/UniversalGameCardTilt.module.css"),
+              source("src/components/ui/HoverPreviewMedia.tsx"),'''
+          )
+          marker = '''assert(
+            has(hoverPreview, "FramedVideo", 'preload="none"', "active && previewClip") &&'''
+          invariant = '''assert(
+            has(
+              cardBase,
+              'event.pointerType === "mouse"',
+              'event.pointerType === "pen"',
+              'setAttribute(\n      "data-tilt-active"',
+              'removeAttribute("data-tilt-active")',
+              '"(prefers-reduced-motion: reduce)"'
+            ) &&
+              !cardBase.includes('"(hover: hover) and (pointer: fine)"'),
+            "El tilt de Card debe confiar en el PointerEvent real para mouse/pen, nunca en el puntero primario del dispositivo, y respetar reduced-motion."
+          );
+
+          assert(
+            has(
+              tiltCss,
+              ".tiltCard.tiltCard",
+              "overflow: clip;",
+              "perspective(900px)",
+              "transform-style: preserve-3d;",
+              ".tiltClip",
+              'data-tilt-active="true"',
+              "translateZ(14px)",
+              "@media (prefers-reduced-motion: reduce)"
+            ) &&
+              !tiltCss.includes("overflow: hidden;"),
+            "La Card 3D debe recortar con overflow: clip sin aplanar la escena, conservar profundidad y desactivarse con reduced-motion."
+          );
+
+          ''' + marker
+          replace_once(check, marker, invariant)
+          PY
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Validate focused contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check
+          node ./tools/check-card-preview-video.mjs
+          npm run typecheck
+          npm run lint
+
+      - name: Commit patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "ooguchii"
+          git config user.email "fernandomembrilla69@gmail.com"
+          git add \
+            src/components/ui/UniversalGameCardBase.tsx \
+            src/components/ui/UniversalGameCardTilt.module.css \
+            tools/check-card-preview-video.mjs
+          git diff --cached --quiet && { echo "No product changes to commit"; exit 1; }
+          git commit -m "fix: restore universal game card 3D effects"
+          git push origin HEAD:fix/restore-universal-card-3d
