@@ -16,15 +16,19 @@ const outputRoot = path.resolve(
   process.env.DEUNA_VISUAL_OUTPUT_DIR ?? "artifacts/visual-smoke"
 );
 const fixturePath = path.join(outputRoot, "card-video-fixture.json");
-const screenshotPath = path.join(outputRoot, "card-video-active-desktop.png");
+const screenshotPath = path.join(
+  outputRoot,
+  "card-video-active-desktop.png"
+);
 
 function assertVisualCiOnly() {
   if (
     process.env.DEUNA_CARD_VIDEO_VISUAL_FIXTURE !== "1" ||
-    process.env.CI !== "true"
+    process.env.CI !== "true" ||
+    process.env.GITHUB_ACTIONS !== "true"
   ) {
     throw new Error(
-      "Card video browser smoke sólo puede ejecutarse con el fixture visual aislado de CI."
+      "Card video browser smoke sólo puede ejecutarse con el fixture visual aislado de GitHub Actions."
     );
   }
 }
@@ -54,35 +58,45 @@ function findChrome() {
 async function waitForDebugger(profileDir) {
   const activePortPath = path.join(profileDir, "DevToolsActivePort");
   const deadline = Date.now() + 15_000;
+  let lastError = null;
 
   while (Date.now() < deadline) {
     try {
       const raw = await readFile(activePortPath, "utf8");
       const port = Number.parseInt(raw.split(/\r?\n/, 1)[0] ?? "", 10);
+      if (!Number.isFinite(port)) {
+        throw new Error("Puerto DevTools inválido.");
+      }
+
       const response = await fetch(`http://127.0.0.1:${port}/json/list`);
       if (response.ok) {
         const targets = await response.json();
         const page = targets.find(
-          (target) => target.type === "page" && target.webSocketDebuggerUrl
+          (target) =>
+            target.type === "page" && target.webSocketDebuggerUrl
         );
         if (page) return page;
       }
-    } catch {
-      // Chrome todavía está iniciando.
+    } catch (error) {
+      lastError = error;
     }
     await delay(100);
   }
 
-  throw new Error("Chrome no expuso DevTools a tiempo.");
+  throw new Error(
+    `Chrome no expuso DevTools a tiempo.${
+      lastError instanceof Error ? ` ${lastError.message}` : ""
+    }`
+  );
 }
 
 function openWebSocket(url) {
   return new Promise((resolve, reject) => {
     const socket = new WebSocket(url);
-    const timeout = setTimeout(
-      () => reject(new Error("Timeout conectando con Chrome DevTools.")),
-      10_000
-    );
+    const timeout = setTimeout(() => {
+      reject(new Error("Timeout conectando con Chrome DevTools."));
+    }, 10_000);
+
     socket.addEventListener(
       "open",
       () => {
@@ -116,18 +130,21 @@ class CdpSession {
         if (!pending) return;
         this.pending.delete(message.id);
         if (message.error) {
-          pending.reject(new Error(`${pending.method}: ${message.error.message}`));
+          pending.reject(
+            new Error(`${pending.method}: ${message.error.message}`)
+          );
         } else {
           pending.resolve(message.result ?? {});
         }
         return;
       }
 
-      const listeners = message.method
-        ? this.listeners.get(message.method)
-        : null;
+      if (!message.method) return;
+      const listeners = this.listeners.get(message.method);
       if (!listeners) return;
-      for (const listener of [...listeners]) listener(message.params ?? {});
+      for (const listener of [...listeners]) {
+        listener(message.params ?? {});
+      }
     });
   }
 
@@ -170,6 +187,7 @@ class CdpSession {
       returnByValue: true,
       userGesture: true,
     });
+
     if (result.exceptionDetails) {
       throw new Error(
         result.exceptionDetails.exception?.description ??
@@ -177,6 +195,7 @@ class CdpSession {
           "Runtime.evaluate falló."
       );
     }
+
     return result.result?.value;
   }
 
@@ -213,7 +232,35 @@ async function waitFor(cdp, expression, description, timeoutMs = 15_000) {
     await delay(100);
   }
 
-  throw new Error(`${description}. Último estado: ${JSON.stringify(lastValue)}.`);
+  throw new Error(
+    `${description}. Último estado: ${JSON.stringify(lastValue)}.`
+  );
+}
+
+function playingVideoExpression(lookup) {
+  return `(() => {
+    const card = ${lookup};
+    const video = card?.querySelector("video");
+    if (!(video instanceof HTMLVideoElement)) return false;
+    if (
+      video.paused ||
+      video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA
+    ) {
+      return false;
+    }
+    return {
+      src: new URL(video.currentSrc || video.src, location.href).pathname,
+      autoplay: video.autoplay,
+      muted: video.muted,
+      loop: video.loop,
+      playsInline: video.playsInline,
+      readyState: video.readyState,
+      paused: video.paused,
+      currentTime: video.currentTime,
+      hidden: document.hidden,
+      reduced: matchMedia("(prefers-reduced-motion: reduce)").matches,
+    };
+  })()`;
 }
 
 async function main() {
@@ -248,12 +295,16 @@ async function main() {
   browser.stderr.setEncoding("utf8");
   browser.stderr.on("data", (chunk) => {
     browserError += chunk;
-    if (browserError.length > 20_000) browserError = browserError.slice(-20_000);
+    if (browserError.length > 20_000) {
+      browserError = browserError.slice(-20_000);
+    }
   });
 
   try {
     const target = await waitForDebugger(profileDir);
-    cdp = new CdpSession(await openWebSocket(target.webSocketDebuggerUrl));
+    cdp = new CdpSession(
+      await openWebSocket(target.webSocketDebuggerUrl)
+    );
     await Promise.all([
       cdp.send("Page.enable"),
       cdp.send("Runtime.enable"),
@@ -268,7 +319,9 @@ async function main() {
       screenHeight: 1000,
     });
     await cdp.send("Emulation.setEmulatedMedia", {
-      features: [{ name: "prefers-reduced-motion", value: "no-preference" }],
+      features: [
+        { name: "prefers-reduced-motion", value: "no-preference" },
+      ],
     });
 
     await navigate(cdp, `${baseUrl}/juegos`);
@@ -278,10 +331,16 @@ async function main() {
       cdp,
       `(() => {
         const card = ${lookup};
-        if (!(card instanceof HTMLElement) || document.readyState !== "complete") return false;
+        if (
+          !(card instanceof HTMLElement) ||
+          document.readyState !== "complete"
+        ) {
+          return false;
+        }
         card.scrollIntoView({ block: "center", inline: "nearest" });
         return Object.keys(card).some((key) =>
-          key.startsWith("__reactProps$") || key.startsWith("__reactFiber$")
+          key.startsWith("__reactProps$") ||
+          key.startsWith("__reactFiber$")
         );
       })()`,
       "No se hidrató la Card publicada del fixture"
@@ -289,41 +348,31 @@ async function main() {
     await delay(300);
 
     const asset = await cdp.evaluate(`
-      fetch(${JSON.stringify(fixture.clip)}, { cache: "no-store" }).then(async (response) => ({
-        ok: response.ok,
-        status: response.status,
-        contentType: response.headers.get("content-type"),
-        bytes: (await response.arrayBuffer()).byteLength,
-      }))
+      fetch(${JSON.stringify(fixture.clip)}, { cache: "no-store" })
+        .then(async (response) => ({
+          ok: response.ok,
+          status: response.status,
+          contentType: response.headers.get("content-type"),
+          bytes: (await response.arrayBuffer()).byteLength,
+        }))
     `);
     if (
       !asset?.ok ||
       asset.status !== 200 ||
-      asset.bytes < 100 ||
-      !String(asset.contentType ?? "").toLowerCase().includes("video/webm")
+      asset.bytes < 128 ||
+      !String(asset.contentType ?? "")
+        .toLowerCase()
+        .includes("video/webm")
     ) {
-      throw new Error(`El WebM aislado no se sirvió correctamente: ${JSON.stringify(asset)}.`);
+      throw new Error(
+        `El WebM aislado no se sirvió correctamente: ${JSON.stringify(asset)}.`
+      );
     }
 
     const visibleState = await waitFor(
       cdp,
-      `(() => {
-        const card = ${lookup};
-        const video = card?.querySelector("video");
-        if (!(video instanceof HTMLVideoElement)) return false;
-        return {
-          src: new URL(video.currentSrc || video.src, location.href).pathname,
-          autoplay: video.autoplay,
-          muted: video.muted,
-          loop: video.loop,
-          playsInline: video.playsInline,
-          readyState: video.readyState,
-          paused: video.paused,
-          hidden: document.hidden,
-          reduced: matchMedia("(prefers-reduced-motion: reduce)").matches,
-        };
-      })()`,
-      "La Card publicada no montó el video continuo"
+      playingVideoExpression(lookup),
+      "La Card publicada no llegó a reproducir el video continuo"
     );
     if (
       visibleState.src !== fixture.clip ||
@@ -331,6 +380,8 @@ async function main() {
       !visibleState.muted ||
       !visibleState.loop ||
       !visibleState.playsInline ||
+      visibleState.paused ||
+      visibleState.readyState < 2 ||
       visibleState.hidden ||
       visibleState.reduced
     ) {
@@ -343,10 +394,15 @@ async function main() {
       format: "png",
       fromSurface: true,
     });
-    await writeFile(screenshotPath, Buffer.from(capture.data, "base64"));
+    await writeFile(
+      screenshotPath,
+      Buffer.from(capture.data, "base64")
+    );
 
     await cdp.send("Emulation.setEmulatedMedia", {
-      features: [{ name: "prefers-reduced-motion", value: "reduce" }],
+      features: [
+        { name: "prefers-reduced-motion", value: "reduce" },
+      ],
     });
     await waitFor(
       cdp,
@@ -362,20 +418,25 @@ async function main() {
     );
 
     await cdp.send("Emulation.setEmulatedMedia", {
-      features: [{ name: "prefers-reduced-motion", value: "no-preference" }],
+      features: [
+        { name: "prefers-reduced-motion", value: "no-preference" },
+      ],
     });
-    await waitFor(
+    const resumedState = await waitFor(
       cdp,
-      `(() => {
-        const card = ${lookup};
-        return Boolean(
-          card &&
-          !matchMedia("(prefers-reduced-motion: reduce)").matches &&
-          card.querySelector("video")
-        );
-      })()`,
-      "Al restaurar movimiento no volvió a montarse el video de Card"
+      playingVideoExpression(lookup),
+      "Al restaurar movimiento el video de Card no volvió a reproducirse"
     );
+    if (
+      resumedState.src !== fixture.clip ||
+      resumedState.paused ||
+      resumedState.readyState < 2 ||
+      resumedState.reduced
+    ) {
+      throw new Error(
+        `El video no reanudó correctamente tras reduced-motion: ${JSON.stringify(resumedState)}.`
+      );
+    }
 
     await cdp.send("Page.setWebLifecycleState", { state: "frozen" });
     await delay(150);
@@ -399,8 +460,9 @@ async function main() {
 
     console.log(
       "Card video browser smoke: OK " +
-        `(slug=${fixture.slug}, bytes=${asset.bytes}, visible=video, ` +
-        "reduced-motion=sin video, hidden=sin video)."
+        `(slug=${fixture.slug}, bytes=${asset.bytes}, ` +
+        `readyState=${visibleState.readyState}, visible=reproduciendo, ` +
+        "reduced-motion=sin video, restored=reproduciendo, hidden=sin video)."
     );
   } catch (error) {
     if (browserError.trim()) {
