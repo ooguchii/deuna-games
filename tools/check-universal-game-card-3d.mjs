@@ -1,0 +1,52 @@
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+import process from "node:process";
+
+const root = process.cwd();
+const failures = [];
+const source = (relativePath) =>
+  readFile(path.join(root, relativePath), "utf8");
+
+function assert(condition, message) {
+  if (!condition) failures.push(message);
+}
+
+const [cardBase, tiltCss] = await Promise.all([
+  source("src/components/ui/UniversalGameCardBase.tsx"),
+  source("src/components/ui/UniversalGameCardTilt.module.css"),
+]);
+
+assert(
+  cardBase.includes('event.pointerType === "mouse"') &&
+    cardBase.includes('event.pointerType === "pen"') &&
+    cardBase.includes("setAttribute(") &&
+    cardBase.includes('"data-tilt-active"') &&
+    cardBase.includes('removeAttribute("data-tilt-active")') &&
+    cardBase.includes('"(prefers-reduced-motion: reduce)"') &&
+    !cardBase.includes('"(hover: hover) and (pointer: fine)"'),
+  "El tilt debe usar el PointerEvent real de mouse/pen, rechazar touch implícitamente y respetar reduced-motion."
+);
+
+assert(
+  tiltCss.includes(".tiltCard.tiltCard") &&
+    tiltCss.includes("overflow: clip;") &&
+    tiltCss.includes("perspective(900px)") &&
+    tiltCss.includes("transform-style: preserve-3d;") &&
+    tiltCss.includes(".tiltClip") &&
+    tiltCss.includes('data-tilt-active="true"') &&
+    tiltCss.includes("translateZ(14px)") &&
+    tiltCss.includes("@media (any-hover: none)") &&
+    tiltCss.includes("@media (prefers-reduced-motion: reduce)") &&
+    !tiltCss.includes("overflow: hidden;"),
+  "La Card debe recortar con overflow: clip sin aplanar la escena 3D y conservar fallbacks de touch/reduced-motion."
+);
+
+if (failures.length > 0) {
+  console.error("\nUniversal Game Card 3D: ERROR\n");
+  failures.forEach((failure) => console.error(`- ${failure}`));
+  process.exit(1);
+}
+
+console.log(
+  "Universal Game Card 3D: OK (pointer real -> tilt 3D preservado -> clip seguro -> touch/reduced-motion sin movimiento)."
+);

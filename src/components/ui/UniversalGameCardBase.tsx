@@ -264,19 +264,24 @@ export default function UniversalGameCard({
   function startCard(
     event: ReactPointerEvent<HTMLElement>
   ) {
-    const pointerIsFine =
-      event.pointerType !== "touch" &&
-      window.matchMedia(
-        "(hover: hover) and (pointer: fine)"
-      ).matches;
+    const pointerSupportsEffects =
+      event.pointerType === "mouse" ||
+      event.pointerType === "pen";
     const reducedMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)"
     ).matches;
 
     pointerEffectsEnabled.current =
-      pointerIsFine && !reducedMotion;
-    if (!pointerEffectsEnabled.current) return;
+      pointerSupportsEffects && !reducedMotion;
+    if (!pointerEffectsEnabled.current) {
+      event.currentTarget.removeAttribute("data-tilt-active");
+      return;
+    }
 
+    event.currentTarget.setAttribute(
+      "data-tilt-active",
+      "true"
+    );
     cardRect.current =
       event.currentTarget.getBoundingClientRect();
 
@@ -332,6 +337,7 @@ export default function UniversalGameCard({
     cancelTiltFrame();
     cardRect.current = null;
     pointerEffectsEnabled.current = false;
+    event.currentTarget.removeAttribute("data-tilt-active");
     resetTilt(event.currentTarget);
     if (hoverPreviewEnabled) cancelPreview();
   }
