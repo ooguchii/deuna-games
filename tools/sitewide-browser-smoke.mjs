@@ -336,11 +336,15 @@ async function auditPage(cdp, page, viewport) {
         const aria = element.getAttribute("aria-label")?.trim();
         if (aria) return true;
         const labelledBy = element.getAttribute("aria-labelledby")?.trim();
-        if (labelledBy && labelledBy.split(/\s+/).every((id) => document.getElementById(id))) {
+        if (labelledBy && labelledBy.split(/\\s+/).every((id) => document.getElementById(id))) {
           return true;
         }
         if ("labels" in element && element.labels?.length) return true;
 
+        // Chrome exposes native label relationships inconsistently for some
+        // range controls through this DevTools evaluation path. Recognize the
+        // two valid HTML labelling forms explicitly rather than weakening the
+        // accessible-name requirement or adding per-page exceptions.
         const wrappingLabel = element.closest("label");
         if (wrappingLabel && (wrappingLabel.textContent ?? "").trim()) {
           return true;
@@ -400,7 +404,7 @@ async function auditPage(cdp, page, viewport) {
           const rect = element.getBoundingClientRect();
           return {
             tag: element.tagName.toLowerCase(),
-            text: (element.textContent ?? "").trim().replace(/\s+/g, " ").slice(0, 100),
+            text: (element.textContent ?? "").trim().replace(/\\s+/g, " ").slice(0, 100),
             left: Math.round(rect.left),
             right: Math.round(rect.right),
             width: Math.round(rect.width),
@@ -445,7 +449,7 @@ async function auditPage(cdp, page, viewport) {
             .map((element) => ({
               tag: element.tagName.toLowerCase(),
               text: (element.getAttribute("aria-label") || element.textContent || "")
-                .trim().replace(/\s+/g, " ").slice(0, 100),
+                .trim().replace(/\\s+/g, " ").slice(0, 100),
               width: Number(element.__deunaEffectiveTarget.effectiveWidth.toFixed(2)),
               height: Number(element.__deunaEffectiveTarget.effectiveHeight.toFixed(2)),
             }))
