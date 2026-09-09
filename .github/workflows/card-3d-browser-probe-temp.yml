@@ -1,0 +1,254 @@
+name: Card 3D Browser Probe Patch
+
+on:
+  push:
+    branches: [fix/restore-universal-card-3d]
+    paths:
+      - .github/workflows/card-3d-browser-probe-temp.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: fix/restore-universal-card-3d
+
+      - name: Patch browser smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          from pathlib import Path
+
+          path = Path("tools/sitewide-browser-smoke.mjs")
+          text = path.read_text()
+
+          helper_anchor = "async function auditPage(cdp, page, viewport) {"
+          if text.count(helper_anchor) != 1:
+              raise SystemExit("sitewide helper anchor is ambiguous")
+
+          helper = r'''async function checkUniversalGameCard3d(cdp) {
+            await setViewport(cdp, browserViewports[0]);
+            const navigation = await navigate(cdp, `${baseUrl}/juegos`);
+            await settleApplication(cdp);
+            if (navigation.status !== 200) {
+              throw new Error(
+                `universal-card-3d: /juegos respondió ${navigation.status}.`
+              );
+            }
+
+            const initial = await cdp.evaluate(`
+              (() => {
+                const card = Array.from(document.querySelectorAll("article"))
+                  .find((element) =>
+                    element instanceof HTMLElement &&
+                    element.style.getPropertyValue("--tilt-x") !== "" &&
+                    element.querySelector('a[href^="/juegos/"]')
+                  );
+                if (!(card instanceof HTMLElement)) return null;
+                card.scrollIntoView({ block: "center", inline: "nearest" });
+                const rect = card.getBoundingClientRect();
+                return {
+                  left: rect.left,
+                  top: rect.top,
+                  width: rect.width,
+                  height: rect.height,
+                  offsetWidth: card.offsetWidth,
+                  offsetHeight: card.offsetHeight,
+                  tiltX: card.style.getPropertyValue("--tilt-x"),
+                  tiltY: card.style.getPropertyValue("--tilt-y"),
+                  active: card.getAttribute("data-tilt-active"),
+                };
+              })()
+            `);
+            if (!initial) {
+              throw new Error(
+                "universal-card-3d: no se encontró una UniversalGameCard renderizada en /juegos."
+              );
+            }
+
+            await delay(50);
+            const refreshedRect = await cdp.evaluate(`
+              (() => {
+                const card = Array.from(document.querySelectorAll("article"))
+                  .find((element) =>
+                    element instanceof HTMLElement &&
+                    element.style.getPropertyValue("--tilt-x") !== ""
+                  );
+                if (!(card instanceof HTMLElement)) return null;
+                const rect = card.getBoundingClientRect();
+                return {
+                  left: rect.left,
+                  top: rect.top,
+                  width: rect.width,
+                  height: rect.height,
+                  offsetWidth: card.offsetWidth,
+                  offsetHeight: card.offsetHeight,
+                };
+              })()
+            `);
+            if (!refreshedRect) {
+              throw new Error(
+                "universal-card-3d: la Card desapareció antes de probar el puntero."
+              );
+            }
+
+            await cdp.send("Input.dispatchMouseEvent", {
+              type: "mouseMoved",
+              x: 1,
+              y: 1,
+              buttons: 0,
+              pointerType: "mouse",
+            });
+            await cdp.send("Input.dispatchMouseEvent", {
+              type: "mouseMoved",
+              x: refreshedRect.left + refreshedRect.width * 0.78,
+              y: refreshedRect.top + refreshedRect.height * 0.28,
+              buttons: 0,
+              pointerType: "mouse",
+            });
+            await delay(120);
+
+            const active = await cdp.evaluate(`
+              (() => {
+                const card = Array.from(document.querySelectorAll("article"))
+                  .find((element) =>
+                    element instanceof HTMLElement &&
+                    element.style.getPropertyValue("--tilt-x") !== ""
+                  );
+                if (!(card instanceof HTMLElement)) return null;
+                return {
+                  active: card.getAttribute("data-tilt-active"),
+                  tiltX: card.style.getPropertyValue("--tilt-x"),
+                  tiltY: card.style.getPropertyValue("--tilt-y"),
+                  transform: getComputedStyle(card).transform,
+                  offsetWidth: card.offsetWidth,
+                  offsetHeight: card.offsetHeight,
+                };
+              })()
+            `);
+            if (!active) {
+              throw new Error(
+                "universal-card-3d: no se pudo leer el estado activo de la Card."
+              );
+            }
+
+            const tiltChanged =
+              active.tiltX !== "0deg" || active.tiltY !== "0deg";
+            if (active.active !== "true" ||
+                !tiltChanged ||
+                active.transform === "none") {
+              throw new Error(
+                `universal-card-3d: el mouse no activó tilt real ` +
+                `(active=${active.active}, x=${active.tiltX}, y=${active.tiltY}, ` +
+                `transform=${active.transform}).`
+              );
+            }
+            if (active.offsetWidth !== refreshedRect.offsetWidth ||
+                active.offsetHeight !== refreshedRect.offsetHeight) {
+              throw new Error(
+                `universal-card-3d: el tilt alteró el layout ` +
+                `(${refreshedRect.offsetWidth}x${refreshedRect.offsetHeight} -> ` +
+                `${active.offsetWidth}x${active.offsetHeight}).`
+              );
+            }
+
+            await cdp.send("Input.dispatchMouseEvent", {
+              type: "mouseMoved",
+              x: 1,
+              y: 1,
+              buttons: 0,
+              pointerType: "mouse",
+            });
+            await delay(120);
+
+            const reset = await cdp.evaluate(`
+              (() => {
+                const card = Array.from(document.querySelectorAll("article"))
+                  .find((element) =>
+                    element instanceof HTMLElement &&
+                    element.style.getPropertyValue("--tilt-x") !== ""
+                  );
+                if (!(card instanceof HTMLElement)) return null;
+                return {
+                  active: card.getAttribute("data-tilt-active"),
+                  tiltX: card.style.getPropertyValue("--tilt-x"),
+                  tiltY: card.style.getPropertyValue("--tilt-y"),
+                };
+              })()
+            `);
+            if (!reset ||
+                reset.active !== null ||
+                reset.tiltX !== "0deg" ||
+                reset.tiltY !== "0deg") {
+              throw new Error(
+                `universal-card-3d: la Card no volvió a reposo ` +
+                `(active=${reset?.active}, x=${reset?.tiltX}, y=${reset?.tiltY}).`
+              );
+            }
+
+            return {
+              id: "universal-card-3d",
+              ok: true,
+              tiltX: active.tiltX,
+              tiltY: active.tiltY,
+              layout: `${active.offsetWidth}x${active.offsetHeight}`,
+            };
+          }
+
+          '''
+          text = text.replace(helper_anchor, helper + helper_anchor, 1)
+
+          loop_anchor = '''    for (const page of publicVisualPages) {
+              for (const viewport of browserViewports) {
+                await capturePage(page, viewport, false);
+              }
+            }
+
+            await setViewport(cdp, browserViewports[0]);'''
+          if text.count(loop_anchor) != 1:
+              raise SystemExit("sitewide public-loop anchor is ambiguous")
+
+          replacement = '''    for (const page of publicVisualPages) {
+              for (const viewport of browserViewports) {
+                await capturePage(page, viewport, false);
+              }
+            }
+
+            currentContext = "universal-card-3d";
+            try {
+              sweeps.push(await checkUniversalGameCard3d(cdp));
+            } catch (error) {
+              failures.push(error instanceof Error ? error.message : String(error));
+            }
+
+            await setViewport(cdp, browserViewports[0]);'''
+          text = text.replace(loop_anchor, replacement, 1)
+          path.write_text(text)
+          PY
+
+      - name: Validate patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check
+          node --check tools/sitewide-browser-smoke.mjs
+          grep -q 'universal-card-3d' tools/sitewide-browser-smoke.mjs
+          grep -q 'Input.dispatchMouseEvent' tools/sitewide-browser-smoke.mjs
+
+      - name: Commit patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "ooguchii"
+          git config user.email "fernandomembrilla69@gmail.com"
+          git add tools/sitewide-browser-smoke.mjs
+          git diff --cached --quiet && { echo "No browser-probe change to commit"; exit 1; }
+          git commit -m "test: exercise universal card 3D with mouse"
+          git push origin HEAD:fix/restore-universal-card-3d
