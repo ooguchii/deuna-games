@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
+import "./universal-game-card-3d-browser-smoke.mjs";
 
 const outputDir = path.resolve(
   process.env.DEUNA_VISUAL_OUTPUT_DIR ??
