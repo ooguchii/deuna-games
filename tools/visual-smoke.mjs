@@ -1,6 +1,7 @@
 import {
   mkdtemp,
   mkdir,
+  readFile,
   rm,
   writeFile,
 } from "node:fs/promises";
@@ -118,12 +119,24 @@ function findChrome() {
   );
 }
 
-async function waitForDebugger(port) {
-  const deadline = Date.now() + 15_000;
+async function waitForDebugger(profileDir, browser) {
+  const activePortPath = path.join(profileDir, "DevToolsActivePort");
+  const deadline = Date.now() + 30_000;
   let lastError = null;
 
   while (Date.now() < deadline) {
+    if (browser.exitCode !== null) {
+      throw new Error(
+        `Chrome terminó antes de exponer DevTools (exit ${browser.exitCode}).`
+      );
+    }
+
     try {
+      const raw = await readFile(activePortPath, "utf8");
+      const port = Number.parseInt(raw.split(/\r?\n/, 1)[0] ?? "", 10);
+      if (!Number.isFinite(port) || port <= 0) {
+        throw new Error("Puerto DevTools inválido.");
+      }
       const response = await fetch(
         `http://127.0.0.1:${port}/json/list`
       );
@@ -654,7 +667,6 @@ async function main() {
     path.join(os.tmpdir(), "deuna-visual-chrome-")
   );
   const chrome = findChrome();
-  const debugPort = 9222;
   const browser = spawn(
     chrome,
     [
@@ -662,7 +674,7 @@ async function main() {
       "--disable-gpu",
       "--disable-dev-shm-usage",
       "--no-sandbox",
-      `--remote-debugging-port=${debugPort}`,
+      "--remote-debugging-port=0",
       "--remote-debugging-address=127.0.0.1",
       `--user-data-dir=${profileDir}`,
       "--window-size=1440,1000",
@@ -686,7 +698,7 @@ async function main() {
   let cdp = null;
 
   try {
-    const target = await waitForDebugger(debugPort);
+    const target = await waitForDebugger(profileDir, browser);
     const socket = await openWebSocket(
       target.webSocketDebuggerUrl
     );
