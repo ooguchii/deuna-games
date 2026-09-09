@@ -125,23 +125,18 @@ jobs:
 
           .tiltCard::before {
             content: "";
-
             position: absolute;
             inset: 0;
             z-index: -1;
-
             border-radius: inherit;
-
             background:
               radial-gradient(
                 320px circle at var(--pointer-x) var(--pointer-y),
                 color-mix(in srgb, var(--brand) 22%, transparent),
                 transparent 58%
               );
-
             opacity: 0;
             filter: blur(8px);
-
             transition: opacity 180ms ease;
             pointer-events: none;
           }
@@ -161,7 +156,6 @@ jobs:
             transform:
               translate3d(var(--image-x), var(--image-y), 0)
               scale(1.015);
-
             transition:
               transform 210ms ease-out,
               filter 220ms ease;
@@ -171,17 +165,14 @@ jobs:
             position: absolute;
             inset: 0;
             z-index: 3;
-
             background:
               radial-gradient(
                 190px circle at var(--pointer-x) var(--pointer-y),
                 rgba(255, 255, 255, 0.17),
                 transparent 60%
               );
-
             opacity: 0;
             mix-blend-mode: screen;
-
             transition: opacity 180ms ease;
             pointer-events: none;
           }
@@ -198,7 +189,6 @@ jobs:
             transform:
               translate3d(var(--image-x), var(--image-y), 0)
               scale(1.075);
-
             filter:
               brightness(1.035)
               saturate(1.07)
@@ -242,56 +232,68 @@ jobs:
           }
           ''')
 
-          check = "tools/check-card-preview-video.mjs"
-          replace_once(
-              check,
-              '''  cardBase,
-              hoverPreview,''',
-              '''  cardBase,
-              tiltCss,
-              hoverPreview,'''
-          )
-          replace_once(
-              check,
-              '''  source("src/components/ui/UniversalGameCardBase.tsx"),
-              source("src/components/ui/HoverPreviewMedia.tsx"),''',
-              '''  source("src/components/ui/UniversalGameCardBase.tsx"),
-              source("src/components/ui/UniversalGameCardTilt.module.css"),
-              source("src/components/ui/HoverPreviewMedia.tsx"),'''
-          )
-          marker = '''assert(
-            has(hoverPreview, "FramedVideo", 'preload="none"', "active && previewClip") &&'''
-          invariant = '''assert(
-            has(
-              cardBase,
-              'event.pointerType === "mouse"',
-              'event.pointerType === "pen"',
-              'setAttribute(\n      "data-tilt-active"',
-              'removeAttribute("data-tilt-active")',
-              '"(prefers-reduced-motion: reduce)"'
-            ) &&
+          check = Path("tools/check-card-preview-video.mjs")
+          check_text = check.read_text()
+          anchor = 'import process from "node:process";\n'
+          import_line = 'import "./check-universal-game-card-3d.mjs";\n'
+          if import_line not in check_text:
+              if check_text.count(anchor) != 1:
+                  raise SystemExit("check-card-preview-video: import anchor is ambiguous")
+              check.write_text(check_text.replace(anchor, anchor + import_line, 1))
+
+          Path("tools/check-universal-game-card-3d.mjs").write_text(r'''import { readFile } from "node:fs/promises";
+          import path from "node:path";
+          import process from "node:process";
+
+          const root = process.cwd();
+          const failures = [];
+          const source = (relativePath) =>
+            readFile(path.join(root, relativePath), "utf8");
+
+          function assert(condition, message) {
+            if (!condition) failures.push(message);
+          }
+
+          const [cardBase, tiltCss] = await Promise.all([
+            source("src/components/ui/UniversalGameCardBase.tsx"),
+            source("src/components/ui/UniversalGameCardTilt.module.css"),
+          ]);
+
+          assert(
+            cardBase.includes('event.pointerType === "mouse"') &&
+              cardBase.includes('event.pointerType === "pen"') &&
+              cardBase.includes("setAttribute(") &&
+              cardBase.includes('"data-tilt-active"') &&
+              cardBase.includes('removeAttribute("data-tilt-active")') &&
+              cardBase.includes('"(prefers-reduced-motion: reduce)"') &&
               !cardBase.includes('"(hover: hover) and (pointer: fine)"'),
-            "El tilt de Card debe confiar en el PointerEvent real para mouse/pen, nunca en el puntero primario del dispositivo, y respetar reduced-motion."
+            "El tilt debe usar el PointerEvent real de mouse/pen, rechazar touch implícitamente y respetar reduced-motion."
           );
 
           assert(
-            has(
-              tiltCss,
-              ".tiltCard.tiltCard",
-              "overflow: clip;",
-              "perspective(900px)",
-              "transform-style: preserve-3d;",
-              ".tiltClip",
-              'data-tilt-active="true"',
-              "translateZ(14px)",
-              "@media (prefers-reduced-motion: reduce)"
-            ) &&
+            tiltCss.includes(".tiltCard.tiltCard") &&
+              tiltCss.includes("overflow: clip;") &&
+              tiltCss.includes("perspective(900px)") &&
+              tiltCss.includes("transform-style: preserve-3d;") &&
+              tiltCss.includes(".tiltClip") &&
+              tiltCss.includes('data-tilt-active="true"') &&
+              tiltCss.includes("translateZ(14px)") &&
+              tiltCss.includes("@media (any-hover: none)") &&
+              tiltCss.includes("@media (prefers-reduced-motion: reduce)") &&
               !tiltCss.includes("overflow: hidden;"),
-            "La Card 3D debe recortar con overflow: clip sin aplanar la escena, conservar profundidad y desactivarse con reduced-motion."
+            "La Card debe recortar con overflow: clip sin aplanar la escena 3D y conservar fallbacks de touch/reduced-motion."
           );
 
-          ''' + marker
-          replace_once(check, marker, invariant)
+          if (failures.length > 0) {
+            console.error("\nUniversal Game Card 3D: ERROR\n");
+            failures.forEach((failure) => console.error(`- ${failure}`));
+            process.exit(1);
+          }
+
+          console.log(
+            "Universal Game Card 3D: OK (pointer real -> tilt 3D preservado -> clip seguro -> touch/reduced-motion sin movimiento)."
+          );
+          ''')
           PY
 
       - name: Install dependencies
@@ -315,7 +317,8 @@ jobs:
           git add \
             src/components/ui/UniversalGameCardBase.tsx \
             src/components/ui/UniversalGameCardTilt.module.css \
-            tools/check-card-preview-video.mjs
+            tools/check-card-preview-video.mjs \
+            tools/check-universal-game-card-3d.mjs
           git diff --cached --quiet && { echo "No product changes to commit"; exit 1; }
           git commit -m "fix: restore universal game card 3D effects"
           git push origin HEAD:fix/restore-universal-card-3d
