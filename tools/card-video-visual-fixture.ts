@@ -6,12 +6,16 @@ import { Client } from "pg";
 import {
   hashEditorialPayload,
   normalizeEditorialPayload,
-} from "../src/lib/admin/content-hash";
-import { parseEditorialPayload } from "../src/lib/admin/content-validation";
-import { getAdminDatabaseConfig } from "../src/lib/admin/database-config";
+} from "../src/lib/admin/content-hash.ts";
+import { parseEditorialPayload } from "../src/lib/admin/content-validation.ts";
+import { getAdminDatabaseConfig } from "../src/lib/admin/database-config.ts";
+import {
+  buildEditorialMediaPublicPath,
+  resolveEditorialMediaDiskPath,
+} from "../src/lib/media/editorial-media.ts";
+import { inspectSafeEditorialWebm } from "../src/lib/media/safe-webm.ts";
 
 const FIXTURE_FLAG = "DEUNA_CARD_VIDEO_VISUAL_FIXTURE";
-const FIXTURE_CLIP = "/__visual-fixtures/card-video.webm";
 const FIXTURE_WEBM_BASE64 =
   "GkXfo59ChoEBQveBAULygQRC84EIQoKEd2VibUKHgQJChYECGFOAZwEAAAAAAAIwEU2bdLpNu4tTq4QVSalmU6yBoU27i1OrhBZUrmtTrIHWTbuMU6uEElTDZ1OsggEjTbuMU6uEHFO7a1OsggIa7AEAAAAAAABZAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAVSalmsCrXsYMPQkBNgIxMYXZmNjEuNy4xMDNXQYxMYXZmNjEuNy4xMDNEiYhAf0AAAAAAABZUrmvIrgEAAAAAAAA/14EBc8WI/QvhMWERGgmcgQAitZyDdW5kiIEAhoVWX1ZQOYOBASPjg4QdzWUA4JCwgUC6gSSagQJVsIRVuYEBElTDZ0B/c3OfY8CAZ8iZRaOHRU5DT0RFUkSHjExhdmY2MS43LjEwM3Nz2mPAi2PFiP0L4TFhERoJZ8ilRaOHRU5DT0RFUkSHmExhdmM2MS4xOS4xMDEgbGlidnB4LXZwOWfIoUWjiERVUkFUSU9ORIeTMDA6MDA6MDAuNTAwMDAwMDAwAB9DtnXt54EAo+iBAACAgkmDQgAD8AI2BjgkHBhCAAAgQABrQ///6UT+4KU3o8VSrdtJ/1U/RntlFLTcdJsyP6m92VMvCYN3//3Ceh0emoFV9EmWoW/eg7Wi7Hj2c8ZrczM2o/qbSj6QjAHsSPtzSmIhoBxTu2uRu4+zgQC3iveBAfGCAajwgQM=";
 
@@ -20,7 +24,8 @@ function assertVisualCiOnly() {
     process.env[FIXTURE_FLAG] !== "1" ||
     process.env.CI !== "true" ||
     process.env.DEUNA_VISUAL_OUTPUT_DIR === undefined ||
-    process.env.DEUNA_VISUAL_ADMIN_USERNAME === undefined
+    process.env.DEUNA_VISUAL_ADMIN_USERNAME === undefined ||
+    process.env.DEUNA_EDITORIAL_MEDIA_ROOT === undefined
   ) {
     throw new Error(
       `${FIXTURE_FLAG}=1 sólo puede usarse dentro del job visual aislado de CI.`
@@ -35,17 +40,36 @@ function assertVisualCiOnly() {
   }
 }
 
-async function writeFixtureWebm() {
-  const destination = path.resolve(
-    ".next/standalone/public/__visual-fixtures/card-video.webm"
+async function writeFixtureWebm(slug: string) {
+  const content = Buffer.from(FIXTURE_WEBM_BASE64, "base64");
+  const inspection = inspectSafeEditorialWebm(content);
+
+  if (!inspection) {
+    throw new Error("El WebM mínimo del fixture no supera el inspector canónico.");
+  }
+
+  const publicPath = buildEditorialMediaPublicPath(
+    slug,
+    `${inspection.digest}.webm`
   );
-  await mkdir(path.dirname(destination), { recursive: true });
-  await writeFile(destination, Buffer.from(FIXTURE_WEBM_BASE64, "base64"));
+  const resolved = resolveEditorialMediaDiskPath(publicPath);
+
+  if (!resolved) {
+    throw new Error("No se pudo resolver el storage editorial del fixture WebM.");
+  }
+
+  await mkdir(resolved.gameDirectory, { recursive: true });
+  await writeFile(resolved.filePath, content);
+
+  return {
+    publicPath,
+    bytes: inspection.bytes,
+    digest: inspection.digest,
+  };
 }
 
 async function main() {
   assertVisualCiOnly();
-  await writeFixtureWebm();
 
   const client = new Client(getAdminDatabaseConfig("migration"));
   await client.connect();
@@ -84,7 +108,7 @@ async function main() {
        FROM deuna_admin.editorial_items
        WHERE item_type = 'game'
          AND public_visible = true
-         AND COALESCE(published_payload ->> 'cardImage', '') <> ''
+         AND COALESCE(published_payload ->> 'coverImage', '') <> ''
        ORDER BY item_key ASC
        LIMIT 1
        FOR UPDATE`
@@ -92,11 +116,12 @@ async function main() {
     const item = itemResult.rows[0];
     if (!item) {
       throw new Error(
-        "No hay un juego publicado con Card base para el fixture visual."
+        "No hay un juego publicado con imagen base para el fixture visual."
       );
     }
 
     const current = parseEditorialPayload("game", item.published_payload);
+    const fixtureMedia = await writeFixtureWebm(current.slug);
     const next = parseEditorialPayload("game", {
       ...current,
       mediaModes: {
@@ -107,7 +132,7 @@ async function main() {
         ...(current.videoMedia ?? {}),
         card: {
           source: "independent",
-          clip: FIXTURE_CLIP,
+          clip: fixtureMedia.publicPath,
           viewport: {
             x: 0.5,
             y: 0.5,
@@ -225,7 +250,9 @@ async function main() {
         {
           itemKey: item.item_key,
           slug: normalized.slug,
-          clip: FIXTURE_CLIP,
+          clip: fixtureMedia.publicPath,
+          mediaDigest: fixtureMedia.digest,
+          mediaBytes: fixtureMedia.bytes,
           revision: nextRevision,
           publicationNumber: nextPublication,
         },
@@ -236,7 +263,7 @@ async function main() {
     );
 
     console.log(
-      `Card video visual fixture: OK (${normalized.slug}, revision=${nextRevision}, publication=${nextPublication}).`
+      `Card video visual fixture: OK (${normalized.slug}, bytes=${fixtureMedia.bytes}, revision=${nextRevision}, publication=${nextPublication}).`
     );
   } catch (error) {
     await client.query("ROLLBACK").catch(() => {});
