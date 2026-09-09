@@ -20,6 +20,8 @@ const reducedMotionStart = tiltCss.indexOf(
 );
 const reducedMotionBlock =
   reducedMotionStart >= 0 ? tiltCss.slice(reducedMotionStart) : "";
+const pointerActivationCalls =
+  cardBase.match(/activatePointerEffects\(event\)/g)?.length ?? 0;
 
 assert(
   cardBase.includes('event.pointerType === "mouse"') &&
@@ -30,6 +32,14 @@ assert(
     cardBase.includes('"(prefers-reduced-motion: reduce)"') &&
     !cardBase.includes('"(hover: hover) and (pointer: fine)"'),
   "El tilt debe usar el PointerEvent real de mouse/pen, rechazar touch implícitamente y respetar reduced-motion."
+);
+
+assert(
+  pointerActivationCalls >= 2 &&
+    cardBase.includes("function startCard(") &&
+    cardBase.includes("function scheduleTilt(") &&
+    cardBase.includes("schedulePreview();"),
+  "Pointer enter y pointer move deben compartir la activación real del 3D, para que equipos híbridos no dependan de que pointerenter haya armado un latch previo."
 );
 
 assert(
@@ -60,5 +70,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  "Universal Game Card 3D: OK (pointer real -> tilt 3D preservado -> clip seguro -> touch/reduced-motion sin movimiento)."
+  "Universal Game Card 3D: OK (pointer real en enter/move -> tilt 3D preservado -> clip seguro -> touch/reduced-motion sin movimiento)."
 );
