@@ -57,6 +57,7 @@ async function waitForDebugger(profileDir) {
       if (!Number.isFinite(port)) {
         throw new Error("Puerto DevTools inválido.");
       }
+
       const response = await fetch(`http://127.0.0.1:${port}/json/list`);
       if (response.ok) {
         const targets = await response.json();
@@ -69,6 +70,7 @@ async function waitForDebugger(profileDir) {
     } catch (error) {
       lastError = error;
     }
+
     await delay(100);
   }
 
@@ -155,14 +157,13 @@ class CdpSession {
     };
   }
 
-  waitFor(method, predicate = () => true, timeoutMs = 15_000) {
+  waitFor(method, timeoutMs = 15_000) {
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         unsubscribe();
         reject(new Error(`Timeout esperando ${method}.`));
       }, timeoutMs);
       const unsubscribe = this.on(method, (params) => {
-        if (!predicate(params)) return;
         clearTimeout(timeout);
         unsubscribe();
         resolve(params);
@@ -177,6 +178,7 @@ class CdpSession {
       returnByValue: true,
       userGesture: true,
     });
+
     if (result.exceptionDetails) {
       throw new Error(
         result.exceptionDetails.exception?.description ??
@@ -184,6 +186,7 @@ class CdpSession {
           "Runtime.evaluate falló."
       );
     }
+
     return result.result?.value;
   }
 
@@ -193,7 +196,7 @@ class CdpSession {
 }
 
 async function navigate(cdp, url) {
-  const loaded = cdp.waitFor("Page.loadEventFired", () => true, 20_000);
+  const loaded = cdp.waitFor("Page.loadEventFired", 20_000);
   const navigation = await cdp.send("Page.navigate", { url });
   if (navigation.errorText) {
     throw new Error(`No se pudo navegar a ${url}: ${navigation.errorText}`);
@@ -201,27 +204,36 @@ async function navigate(cdp, url) {
   await loaded;
 }
 
-async function waitForUniversalCard(cdp) {
+const cardLookup = `
+  Array.from(document.querySelectorAll("article"))
+    .find((element) =>
+      element instanceof HTMLElement &&
+      element.style.getPropertyValue("--tilt-x") !== "" &&
+      element.querySelector('a[href^="/juegos/"]')
+    )
+`;
+
+async function waitForUniversalCardHydration(cdp) {
   const deadline = Date.now() + 15_000;
 
   while (Date.now() < deadline) {
     const state = await cdp.evaluate(`
       (() => {
-        const card = Array.from(document.querySelectorAll("article"))
-          .find((element) =>
-            element instanceof HTMLElement &&
-            element.style.getPropertyValue("--tilt-x") !== "" &&
-            element.querySelector('a[href^="/juegos/"]')
-          );
+        const card = ${cardLookup};
         if (!(card instanceof HTMLElement)) return null;
         card.scrollIntoView({ block: "center", inline: "nearest" });
-        return true;
+        const hydrated = Object.keys(card).some((key) =>
+          key.startsWith("__reactProps$") || key.startsWith("__reactFiber$")
+        );
+        return { hydrated, readyState: document.readyState };
       })()
     `);
-    if (state) {
-      await delay(120);
+
+    if (state?.hydrated && state.readyState === "complete") {
+      await delay(500);
       return;
     }
+
     await delay(100);
   }
 
@@ -233,12 +245,7 @@ async function waitForUniversalCard(cdp) {
 async function readCardState(cdp) {
   return cdp.evaluate(`
     (() => {
-      const card = Array.from(document.querySelectorAll("article"))
-        .find((element) =>
-          element instanceof HTMLElement &&
-          element.style.getPropertyValue("--tilt-x") !== "" &&
-          element.querySelector('a[href^="/juegos/"]')
-        );
+      const card = ${cardLookup};
       if (!(card instanceof HTMLElement)) return null;
       const rect = card.getBoundingClientRect();
       return {
@@ -251,12 +258,32 @@ async function readCardState(cdp) {
         active: card.getAttribute("data-tilt-active"),
         tiltX: card.style.getPropertyValue("--tilt-x"),
         tiltY: card.style.getPropertyValue("--tilt-y"),
-        pointerX: card.style.getPropertyValue("--pointer-x"),
-        pointerY: card.style.getPropertyValue("--pointer-y"),
         transform: getComputedStyle(card).transform,
       };
     })()
   `);
+}
+
+async function assertProbeInsideCard(cdp, x, y) {
+  const state = await cdp.evaluate(`
+    (() => {
+      const card = ${cardLookup};
+      if (!(card instanceof HTMLElement)) return null;
+      const target = document.elementFromPoint(${JSON.stringify(x)}, ${JSON.stringify(y)});
+      return {
+        insideCard: target instanceof Element && card.contains(target),
+        targetTag: target?.tagName ?? null,
+        targetClass: target instanceof Element ? target.className : null,
+        readyState: document.readyState,
+      };
+    })()
+  `);
+
+  if (!state?.insideCard) {
+    throw new Error(
+      `El punto CDP no cae dentro de la Card hidratada: ${JSON.stringify(state)}.`
+    );
+  }
 }
 
 async function moveMouse(cdp, x, y) {
@@ -337,7 +364,7 @@ async function main() {
     });
 
     await navigate(cdp, `${baseUrl}/juegos`);
-    await waitForUniversalCard(cdp);
+    await waitForUniversalCardHydration(cdp);
 
     await cdp.evaluate(`
       (() => {
@@ -355,13 +382,12 @@ async function main() {
     const mediaState = await cdp.evaluate(`({
       primaryFineHover: matchMedia("(hover: hover) and (pointer: fine)").matches,
       primaryCoarse: matchMedia("(pointer: coarse)").matches,
-      anyFineHover: matchMedia("(any-hover: hover) and (any-pointer: fine)").matches,
       reducedMotion: matchMedia("(prefers-reduced-motion: reduce)").matches,
     })`);
 
-    if (mediaState.primaryFineHover) {
+    if (mediaState.primaryFineHover || !mediaState.primaryCoarse) {
       throw new Error(
-        "La prueba no reprodujo el contrato híbrido: el puntero primario siguió anunciándose fine+hover."
+        "La prueba no reprodujo el contrato híbrido coarse/no-hover esperado."
       );
     }
 
@@ -370,12 +396,12 @@ async function main() {
       throw new Error("No se pudo leer el estado inicial de la Card.");
     }
 
+    const probeX = initial.left + initial.width * 0.78;
+    const probeY = initial.top + initial.height * 0.28;
+    await assertProbeInsideCard(cdp, probeX, probeY);
+
     await moveMouse(cdp, 1, 1);
-    await moveMouse(
-      cdp,
-      initial.left + initial.width * 0.78,
-      initial.top + initial.height * 0.28
-    );
+    await moveMouse(cdp, probeX, probeY);
     await delay(160);
 
     const active = await readCardState(cdp);
