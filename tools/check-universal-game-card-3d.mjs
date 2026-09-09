@@ -2,6 +2,8 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 
+import "./check-card-preview-runtime.mjs";
+
 const root = process.cwd();
 const failures = [];
 const source = (relativePath) =>
