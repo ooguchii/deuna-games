@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
+import "./check-card-preview-runtime.mjs";
 import "./check-universal-game-card-3d.mjs";
 
 const root = process.cwd();

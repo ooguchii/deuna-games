@@ -15,6 +15,8 @@ import type {
 
 import styles from "./HoverPreviewMedia.module.css";
 
+const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
+
 type HoverPreviewMediaProps = {
   imageSrc?: string;
   imageAlt: string;
@@ -35,30 +37,40 @@ function PreviewVideo({
   src,
   viewport,
 }: PreviewVideoProps) {
+  const [playbackAllowed, setPlaybackAllowed] = useState(false);
   const [playing, setPlaying] = useState(false);
-  const [documentVisible, setDocumentVisible] = useState(true);
 
   useEffect(() => {
-    const syncDocumentVisibility = () => {
-      setDocumentVisible(!document.hidden);
-      if (document.hidden) setPlaying(false);
+    const motionQuery = window.matchMedia(REDUCED_MOTION_QUERY);
+    const syncPlaybackPolicy = () => {
+      const allowed = !document.hidden && !motionQuery.matches;
+      setPlaybackAllowed(allowed);
+      if (!allowed) setPlaying(false);
     };
 
-    syncDocumentVisibility();
+    syncPlaybackPolicy();
     document.addEventListener(
       "visibilitychange",
-      syncDocumentVisibility
+      syncPlaybackPolicy
+    );
+    motionQuery.addEventListener(
+      "change",
+      syncPlaybackPolicy
     );
 
     return () => {
       document.removeEventListener(
         "visibilitychange",
-        syncDocumentVisibility
+        syncPlaybackPolicy
+      );
+      motionQuery.removeEventListener(
+        "change",
+        syncPlaybackPolicy
       );
     };
   }, []);
 
-  if (!documentVisible) return null;
+  if (!playbackAllowed) return null;
 
   return (
     <FramedVideo
