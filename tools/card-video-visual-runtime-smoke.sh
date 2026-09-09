@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [[ "${CI:-}" != "true" || -z "${GITHUB_ENV:-}" ]]; then
+if [[
+  "${CI:-}" != "true" ||
+  "${GITHUB_ACTIONS:-}" != "true" ||
+  -z "${GITHUB_ENV:-}"
+]]; then
   echo "Card video visual runtime smoke: omitido fuera de GitHub Actions."
   exit 0
 fi
