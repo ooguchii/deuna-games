@@ -336,15 +336,11 @@ async function auditPage(cdp, page, viewport) {
         const aria = element.getAttribute("aria-label")?.trim();
         if (aria) return true;
         const labelledBy = element.getAttribute("aria-labelledby")?.trim();
-        if (labelledBy && labelledBy.split(/\\s+/).every((id) => document.getElementById(id))) {
+        if (labelledBy && labelledBy.split(/\s+/).every((id) => document.getElementById(id))) {
           return true;
         }
         if ("labels" in element && element.labels?.length) return true;
 
-        // Chrome exposes native label relationships inconsistently for some
-        // range controls through this DevTools evaluation path. Recognize the
-        // two valid HTML labelling forms explicitly rather than weakening the
-        // accessible-name requirement or adding per-page exceptions.
         const wrappingLabel = element.closest("label");
         if (wrappingLabel && (wrappingLabel.textContent ?? "").trim()) {
           return true;
@@ -404,7 +400,7 @@ async function auditPage(cdp, page, viewport) {
           const rect = element.getBoundingClientRect();
           return {
             tag: element.tagName.toLowerCase(),
-            text: (element.textContent ?? "").trim().replace(/\\s+/g, " ").slice(0, 100),
+            text: (element.textContent ?? "").trim().replace(/\s+/g, " ").slice(0, 100),
             left: Math.round(rect.left),
             right: Math.round(rect.right),
             width: Math.round(rect.width),
@@ -449,7 +445,7 @@ async function auditPage(cdp, page, viewport) {
             .map((element) => ({
               tag: element.tagName.toLowerCase(),
               text: (element.getAttribute("aria-label") || element.textContent || "")
-                .trim().replace(/\\s+/g, " ").slice(0, 100),
+                .trim().replace(/\s+/g, " ").slice(0, 100),
               width: Number(element.__deunaEffectiveTarget.effectiveWidth.toFixed(2)),
               height: Number(element.__deunaEffectiveTarget.effectiveHeight.toFixed(2)),
             }))
@@ -815,11 +811,130 @@ async function main() {
       validateAudit(result, failures);
     }
 
+    async function checkPosterCardFocusInteraction() {
+      currentContext = "game-card-poster-focus";
+      await setViewport(cdp, browserViewports[0]);
+      const navigation = await navigate(cdp, `${baseUrl}/juegos`);
+      await settleApplication(cdp);
+
+      if (navigation.status !== 200) {
+        failures.push(`game-card-poster-focus: /juegos respondió ${navigation.status}.`);
+        sweeps.push({ id: "game-card-poster-focus", status: navigation.status, ok: false });
+        return;
+      }
+
+      const initial = await cdp.evaluate(`
+        (() => {
+          const card = document.querySelector('article[data-card-presentation="poster"]');
+          if (!(card instanceof HTMLElement)) return { found: false };
+          const link = card.querySelector('a[href^="/juegos/"]');
+          const rect = card.getBoundingClientRect();
+          return {
+            found: true,
+            linkFound: link instanceof HTMLAnchorElement,
+            revealed: card.dataset.posterRevealed ?? null,
+            width: rect.width,
+            height: rect.height,
+            nativeFineHover: matchMedia('(hover: hover) and (pointer: fine)').matches,
+            nativeHoverNone: matchMedia('(hover: none)').matches,
+          };
+        })()
+      `);
+
+      if (!initial.found || !initial.linkFound) {
+        failures.push("game-card-poster-focus: no se encontró una Card poster navegable en /juegos.");
+        sweeps.push({ id: "game-card-poster-focus", status: navigation.status, ok: false, ...initial });
+        return;
+      }
+
+      const focused = await cdp.evaluate(`
+        (async () => {
+          const card = document.querySelector('article[data-card-presentation="poster"]');
+          const link = card?.querySelector('a[href^="/juegos/"]');
+          if (!(card instanceof HTMLElement) || !(link instanceof HTMLAnchorElement)) {
+            return { found: false };
+          }
+          link.focus();
+          await new Promise((resolve) =>
+            requestAnimationFrame(() => requestAnimationFrame(resolve))
+          );
+          const rect = card.getBoundingClientRect();
+          return {
+            found: true,
+            revealed: card.dataset.posterRevealed ?? null,
+            activeLink: document.activeElement === link,
+            width: rect.width,
+            height: rect.height,
+          };
+        })()
+      `);
+
+      const blurred = await cdp.evaluate(`
+        (async () => {
+          const card = document.querySelector('article[data-card-presentation="poster"]');
+          const link = card?.querySelector('a[href^="/juegos/"]');
+          if (!(card instanceof HTMLElement) || !(link instanceof HTMLAnchorElement)) {
+            return { found: false };
+          }
+          link.blur();
+          await new Promise((resolve) =>
+            requestAnimationFrame(() => requestAnimationFrame(resolve))
+          );
+          const rect = card.getBoundingClientRect();
+          return {
+            found: true,
+            revealed: card.dataset.posterRevealed ?? null,
+            activeLink: document.activeElement === link,
+            width: rect.width,
+            height: rect.height,
+          };
+        })()
+      `);
+
+      const geometryStable = focused.found && blurred.found &&
+        Math.abs(initial.width - focused.width) <= 1 &&
+        Math.abs(initial.height - focused.height) <= 1 &&
+        Math.abs(initial.width - blurred.width) <= 1 &&
+        Math.abs(initial.height - blurred.height) <= 1;
+
+      if (initial.revealed !== "false") {
+        failures.push(`game-card-poster-focus: estado inicial ${JSON.stringify(initial.revealed)}; se esperaba false.`);
+      }
+      if (!focused.found || focused.revealed !== "true" || !focused.activeLink) {
+        failures.push(`game-card-poster-focus: focus no reveló el detalle correctamente: ${JSON.stringify(focused)}.`);
+      }
+      if (!blurred.found || blurred.revealed !== "false" || blurred.activeLink) {
+        failures.push(`game-card-poster-focus: blur no restauró el poster correctamente: ${JSON.stringify(blurred)}.`);
+      }
+      if (!geometryStable) {
+        failures.push(
+          `game-card-poster-focus: la Card cambió de geometría durante la transición: ${JSON.stringify({ initial, focused, blurred })}.`
+        );
+      }
+
+      sweeps.push({
+        id: "game-card-poster-focus",
+        status: navigation.status,
+        ok: initial.revealed === "false" &&
+          focused.found && focused.revealed === "true" && focused.activeLink &&
+          blurred.found && blurred.revealed === "false" && !blurred.activeLink &&
+          geometryStable,
+        nativeFineHover: initial.nativeFineHover,
+        nativeHoverNone: initial.nativeHoverNone,
+        initial: initial.revealed,
+        focused: focused.revealed,
+        blurred: blurred.revealed,
+        geometryStable,
+      });
+    }
+
     for (const page of publicVisualPages) {
       for (const viewport of browserViewports) {
         await capturePage(page, viewport, false);
       }
     }
+
+    await checkPosterCardFocusInteraction();
 
     await setViewport(cdp, browserViewports[0]);
     for (const slug of fixture.gameSlugs) {
@@ -916,7 +1031,7 @@ async function main() {
       process.exitCode = 1;
     } else {
       console.log(
-        `\nSite-wide browser smoke: OK (${results.length} capturas; ${fixture.gameSlugs.length} fichas públicas; ${fixture.gameSlugs.length} rutas de descarga; ${fixture.updateIds.length} updates históricos; ${redirectChecks.length} redirects).`
+        `\nSite-wide browser smoke: OK (${results.length} capturas; Card poster focus/blur estable; ${fixture.gameSlugs.length} fichas públicas; ${fixture.gameSlugs.length} rutas de descarga; ${fixture.updateIds.length} updates históricos; ${redirectChecks.length} redirects).`
       );
     }
   } catch (error) {
