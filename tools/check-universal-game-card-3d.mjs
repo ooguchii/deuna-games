@@ -15,6 +15,11 @@ const [cardBase, tiltCss] = await Promise.all([
   source("src/components/ui/UniversalGameCardBase.tsx"),
   source("src/components/ui/UniversalGameCardTilt.module.css"),
 ]);
+const reducedMotionStart = tiltCss.indexOf(
+  "@media (prefers-reduced-motion: reduce)"
+);
+const reducedMotionBlock =
+  reducedMotionStart >= 0 ? tiltCss.slice(reducedMotionStart) : "";
 
 assert(
   cardBase.includes('event.pointerType === "mouse"') &&
@@ -36,9 +41,16 @@ assert(
     tiltCss.includes('data-tilt-active="true"') &&
     tiltCss.includes("translateZ(14px)") &&
     tiltCss.includes("@media (any-hover: none)") &&
-    tiltCss.includes("@media (prefers-reduced-motion: reduce)") &&
     !tiltCss.includes("overflow: hidden;"),
-  "La Card debe recortar con overflow: clip sin aplanar la escena 3D y conservar fallbacks de touch/reduced-motion."
+  "La Card debe recortar con overflow: clip sin aplanar la escena 3D y conservar su profundidad."
+);
+
+assert(
+  reducedMotionBlock.includes(".tiltCard.tiltCard") &&
+    reducedMotionBlock.includes("transform: none;") &&
+    reducedMotionBlock.includes("transition: none;") &&
+    reducedMotionBlock.includes("filter: none;"),
+  "Reduced-motion debe tener especificidad suficiente para anular perspectiva, parallax y transiciones incluso si la Card estaba activa."
 );
 
 if (failures.length > 0) {
