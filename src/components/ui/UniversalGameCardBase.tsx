@@ -261,30 +261,7 @@ export default function UniversalGameCard({
     );
   }
 
-  function startCard(
-    event: ReactPointerEvent<HTMLElement>
-  ) {
-    const pointerSupportsEffects =
-      event.pointerType === "mouse" ||
-      event.pointerType === "pen";
-    const reducedMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)"
-    ).matches;
-
-    pointerEffectsEnabled.current =
-      pointerSupportsEffects && !reducedMotion;
-    if (!pointerEffectsEnabled.current) {
-      event.currentTarget.removeAttribute("data-tilt-active");
-      return;
-    }
-
-    event.currentTarget.setAttribute(
-      "data-tilt-active",
-      "true"
-    );
-    cardRect.current =
-      event.currentTarget.getBoundingClientRect();
-
+  function schedulePreview() {
     if (
       !hoverPreviewEnabled ||
       !resolvedPreview ||
@@ -300,13 +277,56 @@ export default function UniversalGameCard({
     }, PREVIEW_DELAY_MS);
   }
 
+  function activatePointerEffects(
+    event: ReactPointerEvent<HTMLElement>
+  ) {
+    const pointerSupportsEffects =
+      event.pointerType === "mouse" ||
+      event.pointerType === "pen";
+    const reducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)"
+    ).matches;
+
+    if (!pointerSupportsEffects || reducedMotion) {
+      if (pointerEffectsEnabled.current) {
+        cancelTiltFrame();
+        cardRect.current = null;
+        resetTilt(event.currentTarget);
+      }
+      pointerEffectsEnabled.current = false;
+      event.currentTarget.removeAttribute("data-tilt-active");
+      if (hoverPreviewEnabled) cancelPreview();
+      return false;
+    }
+
+    pointerEffectsEnabled.current = true;
+    event.currentTarget.setAttribute(
+      "data-tilt-active",
+      "true"
+    );
+    if (!cardRect.current) {
+      cardRect.current =
+        event.currentTarget.getBoundingClientRect();
+    }
+    return true;
+  }
+
+  function startCard(
+    event: ReactPointerEvent<HTMLElement>
+  ) {
+    if (!activatePointerEffects(event)) return;
+
+    cardRect.current =
+      event.currentTarget.getBoundingClientRect();
+    schedulePreview();
+  }
+
   function scheduleTilt(
     event: ReactPointerEvent<HTMLElement>
   ) {
-    if (!pointerEffectsEnabled.current) {
-      return;
-    }
+    if (!activatePointerEffects(event)) return;
 
+    schedulePreview();
     pendingTilt.current = {
       node: event.currentTarget,
       clientX: event.clientX,
