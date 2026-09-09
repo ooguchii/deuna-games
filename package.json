@@ -57,6 +57,8 @@
     "smoke": "node ./tools/smoke-test.mjs",
     "visual:https-proxy": "node ./tools/visual-https-proxy.mjs",
     "visual:card-3d": "node ./tools/universal-game-card-3d-browser-smoke.mjs",
+    "visual:card-video-fixture": "node --conditions=react-server ./tools/card-video-visual-fixture.ts",
+    "visual:card-video-browser": "node ./tools/card-video-browser-smoke.mjs",
     "visual:card-video-runtime": "bash ./tools/card-video-visual-runtime-smoke.sh",
     "visual:smoke": "node ./tools/check-browser-page-coverage.mjs && node ./tools/visual-smoke.mjs && node ./tools/sitewide-browser-smoke.mjs && node --conditions=react-server --import ./tools/register-ts-paths.mjs ./tools/account-browser-e2e.mjs && node --conditions=react-server --import ./tools/register-ts-paths.mjs ./tools/account-notifications-browser-e2e.mjs && node --conditions=react-server --import ./tools/register-ts-paths.mjs ./tools/account-header-menu-browser-e2e.mjs && node ./tools/check-public-touch-targets.mjs && node ./tools/home-large-save-smoke.mjs && node ./tools/home-draft-public-boundary-smoke.mjs && node ./tools/home-publication-lifecycle-smoke.mjs && node ./tools/game-publication-lifecycle-smoke.mjs && node ./tools/site-logo-publication-lifecycle-smoke.mjs && npm run visual:card-3d && node ./tools/check-visual-smoke-report.mjs && npm run visual:card-video-runtime",
     "check": "npm run lint && npm run typecheck && npm run check:architecture && npm run check:maintenance && npm run check:source && npm run check:encoding && npm run check:privacy && npm run check:admin-security && npm run check:admin-content && npm run check:data && npm run check:assets && npm run check:routes && npm run check:css-vars && npm run check:css-modules && npm run build && npm run smoke",
