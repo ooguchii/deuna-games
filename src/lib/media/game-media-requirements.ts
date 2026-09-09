@@ -16,6 +16,11 @@ import type {
   GameVideoViewportAspect,
 } from "@/types/game";
 
+/*
+ * `cover` se conserva como clave de compatibilidad de payload: desde el
+ * contrato nuevo representa la portada/poster de Card, no un destino visible
+ * independiente. Card mantiene además su capa informativa 3:2.
+ */
 export const REQUIRED_DESTINATION_ASPECTS = {
   cover: "4:5",
   hero: "3:1",
@@ -97,7 +102,12 @@ export function resolveGameBackgroundMediaMode(
 }
 
 export function evaluateGameMediaRequirements(game: Game) {
-  const coverMode = resolveGameDestinationMediaMode(game, "cover");
+  /*
+   * La portada de Card es deliberadamente image-only. videoMedia.cover y
+   * mediaModes.cover se siguen parseando para snapshots históricos pero ya no
+   * gobiernan preparación/publicación del contrato nuevo.
+   */
+  const coverMode = "image" as const;
   const heroMode = resolveGameDestinationMediaMode(game, "hero");
   const cardMode = resolveGameDestinationMediaMode(game, "card");
   const detailMode = resolveGameDestinationMediaMode(game, "detail");
@@ -107,8 +117,8 @@ export function evaluateGameMediaRequirements(game: Game) {
     coverMode,
     Boolean(game.coverImage),
     game.imageMedia?.cover,
-    Boolean(game.videoMedia?.cover?.clip),
-    game.videoMedia?.cover?.viewport,
+    false,
+    undefined,
     REQUIRED_DESTINATION_ASPECTS.cover,
     REQUIRED_DESTINATION_ASPECTS.cover,
     LEGACY_DESTINATION_IMAGE_ASPECTS.cover

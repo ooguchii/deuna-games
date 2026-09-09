@@ -1,6 +1,13 @@
 import { z } from "zod";
 
+import { homeSectionIds } from "../../data/home-config.ts";
 import {
+  GAME_CARD_PRESENTATION_MODES,
+  isHomeGameCardSectionId,
+} from "../media/game-card-presentation.ts";
+
+import {
+  editorialHomeConfigSchema as coreEditorialHomeConfigSchema,
   parseEditorialPayload as parseCoreEditorialPayload,
 } from "./content-validation-core.ts";
 import type {
@@ -9,6 +16,49 @@ import type {
 } from "./content-validation-core.ts";
 
 export * from "./content-validation-core.ts";
+
+const homeCardPresentationSchema = z.enum(GAME_CARD_PRESENTATION_MODES);
+const extendedHomeSectionSchema = z
+  .object({
+    id: z.enum(homeSectionIds),
+    visible: z.boolean(),
+    cardPresentation: homeCardPresentationSchema.optional(),
+  })
+  .strict()
+  .superRefine((section, context) => {
+    if (
+      section.cardPresentation !== undefined &&
+      !isHomeGameCardSectionId(section.id)
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["cardPresentation"],
+        message: "Sólo las filas de juegos pueden configurar la presentación de Card.",
+      });
+    }
+  });
+
+const extendedHomeSectionsSchema = z
+  .array(extendedHomeSectionSchema)
+  .max(homeSectionIds.length)
+  .superRefine((sections, context) => {
+    const seen = new Set<string>();
+    sections.forEach((section, index) => {
+      if (seen.has(section.id)) {
+        context.addIssue({
+          code: "custom",
+          path: [index, "id"],
+          message: "Una sección de portada no puede repetirse.",
+        });
+      }
+      seen.add(section.id);
+    });
+  });
+
+export const editorialHomeConfigSchema =
+  coreEditorialHomeConfigSchema.safeExtend({
+    sections: extendedHomeSectionsSchema.optional(),
+  });
 
 const bundledImagePattern =
   /^\/images\/[A-Za-z0-9/_.,@+() -]+\.(?:avif|gif|jpe?g|png|webp)$/i;
@@ -475,6 +525,10 @@ export function parseEditorialPayload<
   type: Type,
   payload: unknown
 ): EditorialPayloadByType[Type] {
+  if (type === "home_config") {
+    return editorialHomeConfigSchema.parse(payload) as EditorialPayloadByType[Type];
+  }
+
   if (type !== "game") {
     return parseCoreEditorialPayload(
       type,

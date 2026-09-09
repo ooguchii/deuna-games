@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowDown, ArrowUp } from "lucide-react";
+import { ArrowDown, ArrowUp, ImageIcon, Images, MonitorPlay } from "lucide-react";
 import {
   useEffect,
   useMemo,
@@ -13,6 +13,13 @@ import type {
   HomeSectionConfig,
   ResolvedHomeConfig,
 } from "@/data/home-config";
+import {
+  DEFAULT_HOME_GAME_CARD_PRESENTATION,
+  GAME_CARD_PRESENTATION_MODES,
+  isGameCardPresentationMode,
+  isHomeGameCardSectionId,
+  type GameCardPresentationMode,
+} from "@/lib/media/game-card-presentation";
 
 import styles from "./HomePresentationEditor.module.css";
 
@@ -34,6 +41,24 @@ const sectionLabels: Record<HomeSectionConfig["id"], string> = {
   trust: "Bloque de confianza",
 };
 
+const cardPresentationLabels: Record<
+  GameCardPresentationMode,
+  { label: string; description: string }
+> = {
+  poster: {
+    label: "Portada",
+    description: "Poster 4:5; en mouse/teclado revela la Card informativa. En táctil muestra el detalle directamente.",
+  },
+  "detail-image": {
+    label: "Info + imagen",
+    description: "Card informativa visible con su imagen 3:2.",
+  },
+  "detail-video": {
+    label: "Info + video",
+    description: "Card informativa con WebM 3:2 cuando existe; si falta, usa la imagen de Card.",
+  },
+};
+
 type EditableHomeCopy = Omit<HomeCopy, "hero"> & {
   hero: Pick<HomeCopy["hero"], "accessibleTitle">;
 };
@@ -42,6 +67,20 @@ type PresentationDraft = {
   sections: HomeSectionConfig[];
   copy: EditableHomeCopy;
 };
+
+function normalizedSection(section: HomeSectionConfig): HomeSectionConfig {
+  if (!isHomeGameCardSectionId(section.id)) {
+    return { id: section.id, visible: section.visible };
+  }
+
+  return {
+    id: section.id,
+    visible: section.visible,
+    cardPresentation: isGameCardPresentationMode(section.cardPresentation)
+      ? section.cardPresentation
+      : DEFAULT_HOME_GAME_CARD_PRESENTATION,
+  };
+}
 
 function editableCopyFromConfig(
   copy: HomeCopy
@@ -190,8 +229,22 @@ function parseRecoveryDraft(
       const id = item.id as HomeSectionConfig["id"];
       if (seenIds.has(id)) return null;
 
+      if (
+        item.cardPresentation !== undefined &&
+        (!isHomeGameCardSectionId(id) ||
+          !isGameCardPresentationMode(item.cardPresentation))
+      ) {
+        return null;
+      }
+
       seenIds.add(id);
-      sections.push({ id, visible: item.visible });
+      sections.push(normalizedSection({
+        id,
+        visible: item.visible,
+        ...(isGameCardPresentationMode(item.cardPresentation)
+          ? { cardPresentation: item.cardPresentation }
+          : {}),
+      }));
     }
 
     if (
@@ -211,6 +264,12 @@ function parseRecoveryDraft(
   }
 }
 
+function PresentationIcon({ mode }: { mode: GameCardPresentationMode }) {
+  if (mode === "poster") return <Images size={15} aria-hidden="true" />;
+  if (mode === "detail-video") return <MonitorPlay size={15} aria-hidden="true" />;
+  return <ImageIcon size={15} aria-hidden="true" />;
+}
+
 export default function HomePresentationEditor({
   config,
   revision,
@@ -219,7 +278,7 @@ export default function HomePresentationEditor({
   revision: number;
 }) {
   const baselineSections = useMemo(
-    () => config.sections.map((section) => ({ ...section })),
+    () => config.sections.map(normalizedSection),
     [config.sections]
   );
   const baselineCopy = useMemo(
@@ -323,6 +382,20 @@ export default function HomePresentationEditor({
       current.map((section) =>
         section.id === id
           ? { ...section, visible: !section.visible }
+          : section
+      )
+    );
+  }
+
+  function setCardPresentation(
+    id: HomeSectionConfig["id"],
+    mode: GameCardPresentationMode
+  ) {
+    if (!isHomeGameCardSectionId(id)) return;
+    setSections((current) =>
+      current.map((section) =>
+        section.id === id
+          ? { ...section, cardPresentation: mode }
           : section
       )
     );
@@ -440,7 +513,7 @@ export default function HomePresentationEditor({
         <div>
           <strong>Presentación pública de Inicio</strong>
           <p>
-            Ordena, muestra u oculta bloques y edita sus textos. El Hero tiene un editor propio para juegos y geometría; aquí también controlas el título SEO y accesible de la página.
+            Ordena, muestra u oculta bloques, elige cómo se presentan las filas de juegos y edita sus textos. Las filas pueden usar Portada, Info + imagen o Info + video sin cambiar los recursos del juego.
           </p>
         </div>
         <span data-dirty={dirty ? "true" : "false"}>
@@ -450,43 +523,76 @@ export default function HomePresentationEditor({
 
       <section className={styles.structurePanel} inert={recoveryRequiresDecision}>
         <p className={styles.structureIntro}>
-          El orden se reutiliza directamente al renderizar Inicio. Ocultar un bloque no borra su configuración ni sus juegos seleccionados.
+          El orden y la presentación se reutilizan directamente al renderizar Inicio. Ocultar un bloque no borra su configuración ni sus juegos seleccionados. Info + video cae de forma segura a la imagen 3:2 cuando un juego no tiene WebM Card publicado.
         </p>
         <div className={styles.sectionList}>
-          {sections.map((section, index) => (
-            <div key={section.id} className={styles.sectionRow}>
-              <div className={styles.sectionIdentity}>
-                <span className={styles.sectionOrder}>{index + 1}</span>
-                <strong>{sectionLabels[section.id]}</strong>
-              </div>
-              <div className={styles.orderButtons}>
+          {sections.map((section, index) => {
+            const gameRow = isHomeGameCardSectionId(section.id);
+            const activePresentation = gameRow
+              ? section.cardPresentation ?? DEFAULT_HOME_GAME_CARD_PRESENTATION
+              : null;
+
+            return (
+              <div key={section.id} className={styles.sectionRow} data-game-row={gameRow ? "true" : undefined}>
+                <div className={styles.sectionIdentity}>
+                  <span className={styles.sectionOrder}>{index + 1}</span>
+                  <div>
+                    <strong>{sectionLabels[section.id]}</strong>
+                    {activePresentation && (
+                      <small>{cardPresentationLabels[activePresentation].description}</small>
+                    )}
+                  </div>
+                </div>
+
+                {gameRow && activePresentation ? (
+                  <div className={styles.cardPresentation} role="group" aria-label={`Presentación de ${sectionLabels[section.id]}`}>
+                    {GAME_CARD_PRESENTATION_MODES.map((mode) => (
+                      <button
+                        key={mode}
+                        type="button"
+                        className={activePresentation === mode ? styles.cardPresentationActive : ""}
+                        aria-pressed={activePresentation === mode}
+                        title={cardPresentationLabels[mode].description}
+                        onClick={() => setCardPresentation(section.id, mode)}
+                      >
+                        <PresentationIcon mode={mode} />
+                        {cardPresentationLabels[mode].label}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <span className={styles.presentationNotApplicable}>Sin cards de juego</span>
+                )}
+
+                <div className={styles.orderButtons}>
+                  <button
+                    type="button"
+                    disabled={index === 0}
+                    aria-label={`Subir ${sectionLabels[section.id]}`}
+                    onClick={() => moveSection(index, -1)}
+                  >
+                    <ArrowUp size={15} aria-hidden="true" />
+                  </button>
+                  <button
+                    type="button"
+                    disabled={index === sections.length - 1}
+                    aria-label={`Bajar ${sectionLabels[section.id]}`}
+                    onClick={() => moveSection(index, 1)}
+                  >
+                    <ArrowDown size={15} aria-hidden="true" />
+                  </button>
+                </div>
                 <button
                   type="button"
-                  disabled={index === 0}
-                  aria-label={`Subir ${sectionLabels[section.id]}`}
-                  onClick={() => moveSection(index, -1)}
+                  className={styles.visibilityButton}
+                  data-visible={section.visible}
+                  onClick={() => toggleSection(section.id)}
                 >
-                  <ArrowUp size={15} aria-hidden="true" />
-                </button>
-                <button
-                  type="button"
-                  disabled={index === sections.length - 1}
-                  aria-label={`Bajar ${sectionLabels[section.id]}`}
-                  onClick={() => moveSection(index, 1)}
-                >
-                  <ArrowDown size={15} aria-hidden="true" />
+                  {section.visible ? "Visible" : "Oculto"}
                 </button>
               </div>
-              <button
-                type="button"
-                className={styles.visibilityButton}
-                data-visible={section.visible}
-                onClick={() => toggleSection(section.id)}
-              >
-                {section.visible ? "Visible" : "Oculto"}
-              </button>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
 
@@ -663,7 +769,7 @@ export default function HomePresentationEditor({
 
       <div className={styles.actions} inert={recoveryRequiresDecision}>
         <p>
-          Guardar sólo modifica el borrador de Portada. El orden, visibilidad y textos públicos no cambian hasta publicar.
+          Guardar sólo modifica el borrador de Portada. Orden, visibilidad, presentación de cards y textos públicos no cambian hasta publicar.
         </p>
         <button type="submit" disabled={!dirty}>
           {dirty ? "Guardar presentación" : "Presentación guardada"}

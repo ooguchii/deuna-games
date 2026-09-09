@@ -26,26 +26,17 @@ import {
   type MultimediaLibraryState,
   multimediaShortName,
 } from "@/components/admin/game-multimedia-library-types";
-import {
-  MAX_GAME_GALLERY_ITEMS,
-} from "@/lib/media/game-gallery-media";
+import { MAX_GAME_GALLERY_ITEMS } from "@/lib/media/game-gallery-media";
 import {
   gameImageCropAspectLabel,
   resolveGameImageCropAspectRatio,
 } from "@/lib/media/image-viewport";
-import type {
-  GameGalleryItem,
-  GameVideoViewport,
-} from "@/types/game";
+import type { GameGalleryItem, GameVideoViewport } from "@/types/game";
 
 import galleryStyles from "./GameGalleryMediaManager.module.css";
 import shellStyles from "./GameMultimediaShell.module.css";
 
-type Props = {
-  slug: string;
-  revision: number;
-};
-
+type Props = { slug: string; revision: number };
 type PickerKind = "image" | "video";
 
 const EMPTY_GALLERY: GameGalleryItem[] = [];
@@ -68,9 +59,10 @@ function missingRequirementMessage(
   requirements: NonNullable<MultimediaLibraryState["requirements"]>
 ) {
   const missing: string[] = [];
-  if (!requirements.cover.cropReady) missing.push("Portada 4:5");
-  if (!requirements.hero.cropReady) missing.push("Hero 16:9");
-  if (!requirements.card.cropReady) missing.push("Card 3:2");
+  if (!(requirements.cover.cropReady && requirements.card.cropReady)) {
+    missing.push("Card (portada 4:5 + detalle 3:2)");
+  }
+  if (!requirements.hero.cropReady) missing.push("Hero 3:1");
   if (!requirements.detail.cropReady) missing.push("Contenedor adaptable");
   if (requirements.background.active && !requirements.background.cropReady) {
     missing.push("Fondo adaptable");
@@ -107,26 +99,14 @@ export default function GameGalleryMediaManager({ slug, revision }: Props) {
         setError(null);
         const response = await fetch(
           `/api/admin/content/games/${encodeURIComponent(slug)}/media-workspace`,
-          {
-            credentials: "same-origin",
-            cache: "no-store",
-            signal: controller.signal,
-          }
+          { credentials: "same-origin", cache: "no-store", signal: controller.signal }
         );
-
-        if (!response.ok) {
-          throw new Error("No se pudo cargar el estado multimedia de Galería.");
-        }
-
+        if (!response.ok) throw new Error("No se pudo cargar el estado multimedia de Galería.");
         const payload = await response.json() as MultimediaLibraryState;
         if (!controller.signal.aborted) setWorkspace(payload);
       } catch (loadError) {
         if (controller.signal.aborted) return;
-        setError(
-          loadError instanceof Error
-            ? loadError.message
-            : "No se pudo cargar Galería."
-        );
+        setError(loadError instanceof Error ? loadError.message : "No se pudo cargar Galería.");
       } finally {
         if (!controller.signal.aborted) setLoading(false);
       }
@@ -148,8 +128,7 @@ export default function GameGalleryMediaManager({ slug, revision }: Props) {
   );
   const pickerResources = resources.filter(
     (resource): resource is MultimediaLibraryResource =>
-      resource.kind === pickerKind &&
-      !assignedKeys.has(`${resource.kind}:${resource.src}`)
+      resource.kind === pickerKind && !assignedKeys.has(`${resource.kind}:${resource.src}`)
   );
   const pendingCount = gallery.filter((item) =>
     item.kind === "image"
@@ -164,10 +143,7 @@ export default function GameGalleryMediaManager({ slug, revision }: Props) {
     direction?: "up" | "down"
   ) {
     return (
-      <form
-        action={`/api/admin/content/games/${encodeURIComponent(slug)}/gallery-media`}
-        method="post"
-      >
+      <form action={`/api/admin/content/games/${encodeURIComponent(slug)}/gallery-media`} method="post">
         <input type="hidden" name="expectedRevision" value={currentRevision} />
         <input type="hidden" name="target" value={operation} />
         <input type="hidden" name="kind" value={kind} />
@@ -176,37 +152,16 @@ export default function GameGalleryMediaManager({ slug, revision }: Props) {
         {operation === "gallery-add" ? (
           <button type="submit" className={shellStyles.galleryPickerChoice} disabled={stale}>
             <span className={shellStyles.galleryPickerThumb}>
-              <AdminMediaThumbnail
-                kind={kind}
-                src={resource}
-                mode="source"
-                label={`Recurso ${multimediaShortName(resource)}`}
-                sizes="88px"
-                playIndicator={kind === "video"}
-              />
+              <AdminMediaThumbnail kind={kind} src={resource} mode="source" label={`Recurso ${multimediaShortName(resource)}`} sizes="88px" playIndicator={kind === "video"} />
             </span>
-            <span>
-              <strong>{multimediaShortName(resource)}</strong>
-              <small>{kind === "image" ? "Imagen" : "Video WebM"}</small>
-            </span>
+            <span><strong>{multimediaShortName(resource)}</strong><small>{kind === "image" ? "Imagen" : "Video WebM"}</small></span>
             <Plus size={16} aria-hidden="true" />
           </button>
         ) : operation === "gallery-remove" ? (
-          <button type="submit" className={shellStyles.galleryDangerButton} disabled={stale}>
-            <Trash2 size={15} aria-hidden="true" />
-            Quitar
-          </button>
+          <button type="submit" className={shellStyles.galleryDangerButton} disabled={stale}><Trash2 size={15} aria-hidden="true" />Quitar</button>
         ) : (
-          <button
-            type="submit"
-            className={shellStyles.galleryIconButton}
-            disabled={stale}
-            aria-label={direction === "up" ? "Mover antes" : "Mover después"}
-            title={direction === "up" ? "Mover antes" : "Mover después"}
-          >
-            {direction === "up"
-              ? <ArrowUp size={15} aria-hidden="true" />
-              : <ArrowDown size={15} aria-hidden="true" />}
+          <button type="submit" className={shellStyles.galleryIconButton} disabled={stale} aria-label={direction === "up" ? "Mover antes" : "Mover después"} title={direction === "up" ? "Mover antes" : "Mover después"}>
+            {direction === "up" ? <ArrowUp size={15} aria-hidden="true" /> : <ArrowDown size={15} aria-hidden="true" />}
           </button>
         )}
       </form>
@@ -227,19 +182,8 @@ export default function GameGalleryMediaManager({ slug, revision }: Props) {
           <p>Imágenes y videos comparten un orden editorial. Cada elemento conserva su recorte sin duplicar ni modificar el master.</p>
         </div>
         <div className={galleryStyles.galleryHeadingActions}>
-          <div className={shellStyles.galleryCount} aria-label={`${gallery.length} de ${MAX_GAME_GALLERY_ITEMS} elementos`}>
-            <strong>{gallery.length}</strong>
-            <span>/ {MAX_GAME_GALLERY_ITEMS}</span>
-          </div>
-          <button
-            type="button"
-            className={shellStyles.brandAction}
-            disabled={stale || gallery.length >= MAX_GAME_GALLERY_ITEMS}
-            onClick={() => setPickerOpen(true)}
-          >
-            <Plus size={16} aria-hidden="true" />
-            Agregar a galería
-          </button>
+          <div className={shellStyles.galleryCount} aria-label={`${gallery.length} de ${MAX_GAME_GALLERY_ITEMS} elementos`}><strong>{gallery.length}</strong><span>/ {MAX_GAME_GALLERY_ITEMS}</span></div>
+          <button type="button" className={shellStyles.brandAction} disabled={stale || gallery.length >= MAX_GAME_GALLERY_ITEMS} onClick={() => setPickerOpen(true)}><Plus size={16} aria-hidden="true" />Agregar a galería</button>
         </div>
       </div>
 
@@ -249,12 +193,7 @@ export default function GameGalleryMediaManager({ slug, revision }: Props) {
         <div className={shellStyles.galleryMessage} role="alert">{error}</div>
       ) : (
         <>
-          {stale && (
-            <div className={shellStyles.galleryWarning} role="alert">
-              <TriangleAlert size={17} aria-hidden="true" />
-              <span>La revisión cambió desde que se abrió la página. Recarga antes de modificar Galería.</span>
-            </div>
-          )}
+          {stale && <div className={shellStyles.galleryWarning} role="alert"><TriangleAlert size={17} aria-hidden="true" /><span>La revisión cambió desde que se abrió la página. Recarga antes de modificar Galería.</span></div>}
 
           <div className={shellStyles.galleryStats}>
             <span><ImageIcon size={15} aria-hidden="true" />{requirements?.gallery.imageCount ?? 0} imágenes</span>
@@ -270,59 +209,27 @@ export default function GameGalleryMediaManager({ slug, revision }: Props) {
               <Images size={27} aria-hidden="true" />
               <strong>Agrega al menos un recurso</strong>
               <span>Puede ser una imagen o un video WebM de la biblioteca compartida.</span>
-              <button type="button" className={shellStyles.brandAction} onClick={() => setPickerOpen(true)} disabled={stale}>
-                <Plus size={16} aria-hidden="true" />
-                Elegir recurso
-              </button>
+              <button type="button" className={shellStyles.brandAction} onClick={() => setPickerOpen(true)} disabled={stale}><Plus size={16} aria-hidden="true" />Elegir recurso</button>
             </div>
           ) : (
             <div className={shellStyles.galleryList}>
               {gallery.map((item, index) => {
-                const imageViewport = item.kind === "image"
-                  ? imageMedia?.gallery?.[item.src]
-                  : undefined;
-                const confirmed = item.kind === "image"
-                  ? imageViewport?.confirmed === true
-                  : item.viewport.confirmed === true;
-                const cropLabel = item.kind === "image"
-                  ? gameImageCropAspectLabel(imageViewport)
-                  : videoCropLabel(item.viewport);
+                const imageViewport = item.kind === "image" ? imageMedia?.gallery?.[item.src] : undefined;
+                const confirmed = item.kind === "image" ? imageViewport?.confirmed === true : item.viewport.confirmed === true;
+                const cropLabel = item.kind === "image" ? gameImageCropAspectLabel(imageViewport) : videoCropLabel(item.viewport);
 
                 return (
-                  <article
-                    key={`${item.kind}:${item.src}`}
-                    className={`${shellStyles.galleryItem} ${confirmed ? shellStyles.galleryItemReady : shellStyles.galleryItemPending}`}
-                  >
+                  <article key={`${item.kind}:${item.src}`} className={`${shellStyles.galleryItem} ${confirmed ? shellStyles.galleryItemReady : shellStyles.galleryItemPending}`}>
                     <span className={shellStyles.galleryItemOrder}>{index + 1}</span>
                     <div className={shellStyles.galleryItemPreview}>
                       {item.kind === "image" ? (
-                        <AdminMediaThumbnail
-                          kind="image"
-                          src={item.src}
-                          viewport={imageViewport}
-                          mode="destination"
-                          frameAspect={resolveGameImageCropAspectRatio(imageViewport)}
-                          label={`Galería · ${multimediaShortName(item.src)}`}
-                          sizes="120px"
-                        />
+                        <AdminMediaThumbnail kind="image" src={item.src} viewport={imageViewport} mode="destination" frameAspect={resolveGameImageCropAspectRatio(imageViewport)} label={`Galería · ${multimediaShortName(item.src)}`} sizes="120px" />
                       ) : (
-                        <AdminMediaThumbnail
-                          kind="video"
-                          src={item.src}
-                          viewport={item.viewport}
-                          mode="destination"
-                          frameAspect={videoAspectRatio(item.viewport)}
-                          label={`Video de Galería · ${multimediaShortName(item.src)}`}
-                          sizes="120px"
-                          playIndicator
-                        />
+                        <AdminMediaThumbnail kind="video" src={item.src} viewport={item.viewport} mode="destination" frameAspect={videoAspectRatio(item.viewport)} label={`Video de Galería · ${multimediaShortName(item.src)}`} sizes="120px" playIndicator />
                       )}
                     </div>
                     <div className={shellStyles.galleryItemMeta}>
-                      <div className={shellStyles.galleryItemTitleRow}>
-                        <ResourceIcon kind={item.kind} />
-                        <strong title={item.src}>{multimediaShortName(item.src)}</strong>
-                      </div>
+                      <div className={shellStyles.galleryItemTitleRow}><ResourceIcon kind={item.kind} /><strong title={item.src}>{multimediaShortName(item.src)}</strong></div>
                       <small>{item.kind === "image" ? "Imagen" : "Video WebM"} · {cropLabel}</small>
                       <span className={confirmed ? shellStyles.galleryCropReady : shellStyles.galleryCropPending}>
                         {confirmed ? <CheckCircle2 size={14} aria-hidden="true" /> : <TriangleAlert size={14} aria-hidden="true" />}
@@ -330,24 +237,8 @@ export default function GameGalleryMediaManager({ slug, revision }: Props) {
                       </span>
                     </div>
                     <div className={shellStyles.galleryItemActions}>
-                      {gallery.length > 1 && (
-                        <div className={shellStyles.galleryOrderActions}>
-                          {index > 0 && assignmentForm("gallery-move", item.kind, item.src, "up")}
-                          {index < gallery.length - 1 && assignmentForm("gallery-move", item.kind, item.src, "down")}
-                        </div>
-                      )}
-                      <button
-                        type="button"
-                        className={shellStyles.galleryEditButton}
-                        disabled={stale}
-                        onClick={() => {
-                          if (item.kind === "image") setEditingImage(item.src);
-                          else setEditingVideo(item);
-                        }}
-                      >
-                        <Pencil size={15} aria-hidden="true" />
-                        {confirmed ? "Editar recorte" : "Confirmar recorte"}
-                      </button>
+                      {gallery.length > 1 && <div className={shellStyles.galleryOrderActions}>{index > 0 && assignmentForm("gallery-move", item.kind, item.src, "up")}{index < gallery.length - 1 && assignmentForm("gallery-move", item.kind, item.src, "down")}</div>}
+                      <button type="button" className={shellStyles.galleryEditButton} disabled={stale} onClick={() => { if (item.kind === "image") setEditingImage(item.src); else setEditingVideo(item); }}><Pencil size={15} aria-hidden="true" />{confirmed ? "Editar recorte" : "Confirmar recorte"}</button>
                       {assignmentForm("gallery-remove", item.kind, item.src)}
                     </div>
                   </article>
@@ -356,130 +247,46 @@ export default function GameGalleryMediaManager({ slug, revision }: Props) {
             </div>
           )}
 
-          {pendingCount > 0 && gallery.length > 0 && (
-            <div className={shellStyles.galleryPendingNotice}>
-              <TriangleAlert size={17} aria-hidden="true" />
-              <span>Hay {pendingCount} recorte{pendingCount === 1 ? "" : "s"} pendiente{pendingCount === 1 ? "" : "s"}. Usa “Confirmar recorte” en el recurso correspondiente.</span>
-            </div>
-          )}
+          {pendingCount > 0 && gallery.length > 0 && <div className={shellStyles.galleryPendingNotice}><TriangleAlert size={17} aria-hidden="true" /><span>Hay {pendingCount} recorte{pendingCount === 1 ? "" : "s"} pendiente{pendingCount === 1 ? "" : "s"}. Usa “Confirmar recorte” en el recurso correspondiente.</span></div>}
 
           {requirements && (
             <div className={shellStyles.continueGate}>
-              <div>
-                <strong>{requirements.ready ? "Multimedia completa" : "No puedes avanzar todavía"}</strong>
-                <span>{requirements.ready ? "Todos los destinos obligatorios y la Galería están listos." : missingRequirementMessage(requirements)}</span>
-              </div>
-              {requirements.ready ? (
-                <Link href={`/admin/juegos/${encodeURIComponent(slug)}?seccion=descargas`} className={shellStyles.continueButton}>
-                  Continuar a Descargas
-                </Link>
-              ) : (
-                <button type="button" className={shellStyles.continueButton} disabled>Continuar a Descargas</button>
-              )}
+              <div><strong>{requirements.ready ? "Multimedia completa" : "No puedes avanzar todavía"}</strong><span>{requirements.ready ? "Card, Hero, Contenedor y Galería están listos; cualquier Fondo activado también está completo." : missingRequirementMessage(requirements)}</span></div>
+              {requirements.ready ? <Link href={`/admin/juegos/${encodeURIComponent(slug)}?seccion=descargas`} className={shellStyles.continueButton}>Continuar a Descargas</Link> : <button type="button" className={shellStyles.continueButton} disabled>Continuar a Descargas</button>}
             </div>
           )}
         </>
       )}
 
       {pickerOpen && (
-        <ContextualMediaDialog
-          eyebrow="GALERÍA MULTIMEDIA"
-          title="Agregar a galería"
-          description={`Elige una imagen o video existente. Galería admite hasta ${MAX_GAME_GALLERY_ITEMS} elementos totales y conserva el orden editorial.`}
-          onClose={() => setPickerOpen(false)}
-        >
+        <ContextualMediaDialog eyebrow="GALERÍA MULTIMEDIA" title="Agregar a galería" description={`Elige una imagen o video existente. Galería admite hasta ${MAX_GAME_GALLERY_ITEMS} elementos totales y conserva el orden editorial.`} onClose={() => setPickerOpen(false)}>
           <div className={shellStyles.pickerTabs} role="group" aria-label="Tipo de recurso">
-            <button type="button" data-active={pickerKind === "image"} onClick={() => setPickerKind("image")}>
-              <ImageIcon size={16} aria-hidden="true" /> Imágenes
-            </button>
-            <button type="button" data-active={pickerKind === "video"} onClick={() => setPickerKind("video")}>
-              <Clapperboard size={16} aria-hidden="true" /> Videos
-            </button>
+            <button type="button" data-active={pickerKind === "image"} onClick={() => setPickerKind("image")}><ImageIcon size={16} aria-hidden="true" /> Imágenes</button>
+            <button type="button" data-active={pickerKind === "video"} onClick={() => setPickerKind("video")}><Clapperboard size={16} aria-hidden="true" /> Videos</button>
           </div>
-          {pickerResources.length ? (
-            <div className={shellStyles.galleryPickerGrid}>
-              {pickerResources.map((resource) => (
-                <div key={`${resource.kind}:${resource.src}`}>
-                  {assignmentForm("gallery-add", resource.kind, resource.src)}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className={shellStyles.galleryMessage}>
-              No hay {pickerKind === "image" ? "imágenes" : "videos"} disponibles sin asignar.
-            </div>
-          )}
+          {pickerResources.length ? <div className={shellStyles.galleryPickerGrid}>{pickerResources.map((resource) => <div key={`${resource.kind}:${resource.src}`}>{assignmentForm("gallery-add", resource.kind, resource.src)}</div>)}</div> : <div className={shellStyles.galleryMessage}>No hay {pickerKind === "image" ? "imágenes" : "videos"} disponibles sin asignar.</div>}
           <div className={galleryStyles.galleryPickerCreateActions}>
-            <button type="button" className={shellStyles.secondaryAction} onClick={() => openNewResource("image")} disabled={stale}>
-              <ImageIcon size={16} aria-hidden="true" />
-              Agregar imagen nueva
-            </button>
-            <button type="button" className={shellStyles.secondaryAction} onClick={() => openNewResource("video")} disabled={stale}>
-              <Clapperboard size={16} aria-hidden="true" />
-              Agregar video nuevo
-            </button>
+            <button type="button" className={shellStyles.secondaryAction} onClick={() => openNewResource("image")} disabled={stale}><ImageIcon size={16} aria-hidden="true" />Agregar imagen nueva</button>
+            <button type="button" className={shellStyles.secondaryAction} onClick={() => openNewResource("video")} disabled={stale}><Clapperboard size={16} aria-hidden="true" />Agregar video nuevo</button>
           </div>
         </ContextualMediaDialog>
       )}
 
       {addResourceKind && (
-        <ContextualMediaDialog
-          eyebrow="GALERÍA · NUEVO MASTER"
-          title={addResourceKind === "image" ? "Agregar imagen nueva" : "Agregar video nuevo"}
-          description="El recurso se guarda primero como master reutilizable. Después vuelve a Galería para asignarlo y confirmar su recorte."
-          onClose={() => setAddResourceKind(null)}
-        >
-          {addResourceKind === "image" ? (
-            <GameMediaUploadForm
-              slug={slug}
-              revision={currentRevision}
-              screenshotCount={requirements?.gallery.imageCount ?? 0}
-              libraryOnly
-            />
-          ) : (
-            <GameVideoLibraryEditor
-              slug={slug}
-              revision={currentRevision}
-            />
-          )}
+        <ContextualMediaDialog eyebrow="GALERÍA · NUEVO MASTER" title={addResourceKind === "image" ? "Agregar imagen nueva" : "Agregar video nuevo"} description="El recurso se guarda primero como master reutilizable. Después vuelve a Galería para asignarlo y confirmar su recorte." onClose={() => setAddResourceKind(null)}>
+          {addResourceKind === "image" ? <GameMediaUploadForm slug={slug} revision={currentRevision} screenshotCount={requirements?.gallery.imageCount ?? 0} libraryOnly /> : <GameVideoLibraryEditor slug={slug} revision={currentRevision} />}
         </ContextualMediaDialog>
       )}
 
       {editingImage && (
-        <ContextualMediaDialog
-          eyebrow="EDITAR GALERÍA"
-          title="Recorte de la imagen"
-          description="Elige 16:9, 3:2, 1:1, 4:5, 9:16 o Libre. El archivo original permanece intacto y reutilizable."
-          onClose={() => setEditingImage(null)}
-        >
-          <ImageViewportEditor
-            slug={slug}
-            revision={currentRevision}
-            target="gallery"
-            src={editingImage}
-            resource={editingImage}
-            label={`Galería · ${multimediaShortName(editingImage)}`}
-            initialViewport={imageMedia?.gallery?.[editingImage]}
-            onClose={() => setEditingImage(null)}
-          />
+        <ContextualMediaDialog eyebrow="EDITAR GALERÍA" title="Recorte de la imagen" description="Elige 16:9, 3:2, 1:1, 4:5, 9:16 o Libre. El archivo original permanece intacto y reutilizable." onClose={() => setEditingImage(null)}>
+          <ImageViewportEditor slug={slug} revision={currentRevision} target="gallery" src={editingImage} resource={editingImage} label={`Galería · ${multimediaShortName(editingImage)}`} initialViewport={imageMedia?.gallery?.[editingImage]} onClose={() => setEditingImage(null)} />
         </ContextualMediaDialog>
       )}
 
       {editingVideo && (
-        <ContextualMediaDialog
-          eyebrow="EDITAR GALERÍA"
-          title="Recorte del video"
-          description="Elige Original o una relación fija. El WebM master no se recodifica: sólo guardamos el encuadre de presentación."
-          onClose={() => setEditingVideo(null)}
-        >
-          <GameGalleryVideoViewportEditor
-            slug={slug}
-            revision={currentRevision}
-            clip={editingVideo.src}
-            label={`Galería · ${multimediaShortName(editingVideo.src)}`}
-            initialViewport={editingVideo.viewport}
-            onClose={() => setEditingVideo(null)}
-          />
+        <ContextualMediaDialog eyebrow="EDITAR GALERÍA" title="Recorte del video" description="Elige Original o una relación fija. El WebM master no se recodifica: sólo guardamos el encuadre de presentación." onClose={() => setEditingVideo(null)}>
+          <GameGalleryVideoViewportEditor slug={slug} revision={currentRevision} clip={editingVideo.src} label={`Galería · ${multimediaShortName(editingVideo.src)}`} initialViewport={editingVideo.viewport} onClose={() => setEditingVideo(null)} />
         </ContextualMediaDialog>
       )}
     </section>

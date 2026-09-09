@@ -2,6 +2,10 @@ import { z } from "zod";
 
 import { homeHeroPresentationInputSchema } from "../home/hero-schema.ts";
 import {
+  GAME_CARD_PRESENTATION_MODES,
+  HOME_GAME_CARD_SECTION_IDS,
+} from "../media/game-card-presentation.ts";
+import {
   siteBrandLogoAssetPattern,
   siteLogoColorModes,
 } from "../site/logo.ts";
@@ -457,6 +461,7 @@ const homeSectionSchema = z
   .object({
     id: z.enum(homeSectionIds),
     visible: z.boolean(),
+    cardPresentation: z.enum(GAME_CARD_PRESENTATION_MODES).optional(),
   })
   .strict();
 
@@ -475,6 +480,20 @@ const homeSectionsSchema = z
         });
       }
       seen.add(section.id);
+
+      if (
+        section.cardPresentation !== undefined &&
+        !HOME_GAME_CARD_SECTION_IDS.includes(
+          section.id as (typeof HOME_GAME_CARD_SECTION_IDS)[number]
+        )
+      ) {
+        context.addIssue({
+          code: "custom",
+          path: [index, "cardPresentation"],
+          message:
+            "La presentación de Card sólo puede configurarse en filas de juegos.",
+        });
+      }
     });
   });
 

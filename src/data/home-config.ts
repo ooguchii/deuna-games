@@ -1,3 +1,5 @@
+import type { GameCardPresentationMode } from "@/lib/media/game-card-presentation";
+
 export const homeSectionIds = [
   "hero",
   "popular",
@@ -16,6 +18,11 @@ export type HomeSectionId =
 export type HomeSectionConfig = {
   id: HomeSectionId;
   visible: boolean;
+  /*
+   * Sólo las filas de juegos usan esta preferencia. Ausente conserva el
+   * renderer histórico (detalle con imagen) para snapshots ya publicados.
+   */
+  cardPresentation?: GameCardPresentationMode;
 };
 
 export const homeCurationCollectionIds = [
@@ -302,6 +309,13 @@ const defaultHeroPresentation: HomeHeroPresentation = {
   },
 };
 
+function sourceCardPresentation(id: HomeSectionId): GameCardPresentationMode | undefined {
+  if (id === "popular") return "poster";
+  if (id === "recommended") return "detail-video";
+  if (id === "recent" || id === "lowSpec") return "detail-image";
+  return undefined;
+}
+
 export const sourceHomeConfig: ResolvedHomeConfig = {
   heroSlugs: [
     "dragon-ball-sparking-zero",
@@ -342,6 +356,9 @@ export const sourceHomeConfig: ResolvedHomeConfig = {
   sections: homeSectionIds.map((id) => ({
     id,
     visible: true,
+    ...(sourceCardPresentation(id)
+      ? { cardPresentation: sourceCardPresentation(id) }
+      : {}),
   })),
   copy: {
     hero: {
