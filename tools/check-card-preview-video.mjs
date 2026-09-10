@@ -38,6 +38,7 @@ const [
   history,
   serving,
   legacyCover,
+  gameTypes,
 ] = await Promise.all([
   source("src/lib/media/preview-video-policy.ts"),
   source("src/lib/media/safe-webm.ts"),
@@ -64,6 +65,7 @@ const [
   source("src/lib/admin/game-media-history.ts"),
   source("src/lib/media/editorial-media-serving.ts"),
   source("src/lib/media/legacy-game-cover-video.ts"),
+  source("src/types/game.ts"),
 ]);
 
 assert(
@@ -222,18 +224,34 @@ assert(
   has(
     videoMedia,
     'export type GameVideoTarget = "hero" | "card" | "detail"',
-    'cover: "image"',
+    'export type GameMediaDestinationTarget = "cover" | GameVideoTarget',
     'if (target === "cover") return "image"',
-    "resolveGameCoverVideo",
-    "return undefined",
     "resolveGameCardVideo",
     'card?.source === "hero"',
     'card?.source === "independent"',
     'source: "independent"',
     "withGameVideoLayout",
     "withoutGameVideoTarget"
-  ),
-  "El dominio debe forzar Portada=image y excluir cover de todos los targets activos de video."
+  ) &&
+    !videoMedia.includes("resolveGameCoverVideo") &&
+    !videoMedia.includes("media?.cover") &&
+    !videoMedia.includes('cover: "image"'),
+  "El dominio debe forzar Portada=image sin conservar un resolver, default ni target activo de video para Portada."
+);
+
+assert(
+  has(
+    gameTypes,
+    "export type GameMediaModes",
+    "export type GameVideoMedia",
+    "Portada es siempre imagen",
+    "Portada queda fuera del contrato activo",
+    "coverImage?: string"
+  ) &&
+    !gameTypes.includes("GameCoverVideo") &&
+    !gameTypes.includes("cover?: GameDestinationMediaMode") &&
+    !gameTypes.includes("cover?: GameCoverVideo"),
+  "El contrato TypeScript Game debe excluir por completo modo y video de Portada."
 );
 
 assert(
@@ -261,7 +279,7 @@ assert(
     "videoMedia.hero",
     "videoMedia.card"
   ),
-  "La validación debe aceptar cover-video histórico para leerlo, pero eliminarlo del modelo Game normalizado y fijar Portada=image."
+  "La validación debe aceptar cover-video histórico únicamente en lectura, eliminarlo de videoMedia activo y fijar la Portada actual en imagen."
 );
 
 for (const route of [uploadRoute, importRoute]) {
@@ -311,6 +329,18 @@ assert(
 
 assert(
   has(
+    integrity,
+    "game.cardImage",
+    'game.videoMedia?.card?.source === "independent"',
+    "game.videoMedia.card.clip",
+    "game.videoMedia?.background?.clip"
+  ) &&
+    !integrity.includes("game.videoMedia?.cover"),
+  "La integridad activa debe excluir video de Portada y seguir cubriendo Card/Hero/Contenedor/Fondo/Galería."
+);
+
+assert(
+  has(
     cardResolver,
     'resolveGameDestinationMediaMode(game, "card") === "image"',
     "resolveGameCardVideo",
@@ -351,15 +381,31 @@ assert(
   "El hover de Card debe cargar diferido y aplicar el recorte lógico sin crear una segunda variante física."
 );
 
-assert(
-  has(
-    integrity,
-    "game.cardImage",
-    'game.videoMedia?.card?.source === "independent"',
-    "game.videoMedia.card.clip"
-  ),
-  "La integridad de publicación debe seguir incluyendo la imagen Card y su WebM independiente."
-);
+const activeCoverBoundarySources = [
+  workspace,
+  libraryRoute,
+  viewportEditor,
+  importRoute,
+  uploadRoute,
+  layoutRoute,
+  videoMedia,
+  requirements,
+  integrity,
+  gameTypes,
+];
+for (const forbidden of [
+  "GameCoverVideo",
+  "resolveGameCoverVideo",
+  "videoMedia?.cover",
+  "videoMedia.cover",
+  '"cover-video"',
+  '"cover-mode"',
+]) {
+  assert(
+    activeCoverBoundarySources.every((text) => !text.includes(forbidden)),
+    `Portada image-only no debe reintroducir ${forbidden} en el dominio activo.`
+  );
+}
 
 const activePreviewSources = [
   libraryEditor,
@@ -387,5 +433,5 @@ if (failures.length) {
 }
 
 console.log(
-  "Card/Portada multimedia: OK (Portada sólo imagen 4:5; video/hover bloqueado en UI+API+dominio; Card/Hero video preservados; historial de Portada compatible)."
+  "Card/Portada multimedia: OK (Portada sólo imagen 4:5 en UI/API/tipos/dominio; video/hover sin targets activos; Card/Hero video preservados; historial de Portada aislado)."
 );
