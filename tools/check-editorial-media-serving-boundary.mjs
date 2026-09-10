@@ -20,6 +20,7 @@ const [
   route,
   publicationHistory,
   gameMediaHistory,
+  gameMediaIntegrity,
   lifecycleSmoke,
 ] = await Promise.all([
   source("package.json"),
@@ -27,6 +28,7 @@ const [
   source("src/app/media/editorial/[slug]/[filename]/route.ts"),
   source("src/lib/admin/publication-history.ts"),
   source("src/lib/admin/game-media-history.ts"),
+  source("src/lib/admin/game-media-integrity.ts"),
   source("tools/editorial-media-serving-lifecycle-smoke.mjs"),
 ]);
 
@@ -75,6 +77,18 @@ assert(
     "reusable?.references ?? []"
   ),
   "La ruta debe cachear sólo referencias positivas e incorporar únicamente publicaciones nuevas cuando avanza publication_number."
+);
+
+assert(
+  has(
+    gameMediaIntegrity,
+    "EDITORIAL_MEDIA_PUBLIC_PREFIX",
+    "listInvalidGameMediaOwnership",
+    "ownedPrefix",
+    "game.slug",
+    "invalidOwnership.length === 0"
+  ),
+  "Publicar/restaurar un juego debe rechazar multimedia editorial de otro namespace para que la autorización por slug nunca rompa una superficie pública."
 );
 
 assert(
@@ -166,5 +180,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  "Frontera de serving multimedia editorial: OK (historial público compartido; cache incremental; draft/biblioteca 404 anónimo + preview Admin privado; lifecycle con crop real)."
+  "Frontera de serving multimedia editorial: OK (historial público compartido; ownership por slug; cache incremental; draft/biblioteca 404 anónimo + preview Admin privado; lifecycle con crop real)."
 );
