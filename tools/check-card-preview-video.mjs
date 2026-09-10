@@ -296,13 +296,16 @@ assert(
   has(
     coverRenderer,
     "GameMedia",
-    "src={game.coverImage}",
+    "resolveGameCoverImage",
+    "const coverImage = resolveGameCoverImage(game)",
+    "src={coverImage}",
     "viewport={game.imageMedia?.cover}",
     'aspectRatio: "4 / 5"'
   ) &&
+    !coverRenderer.includes("src={game.coverImage}") &&
     !coverRenderer.includes("FramedVideo") &&
     !coverRenderer.includes("resolveGameCoverVideo"),
-  "El renderer específico de Portada debe seguir siendo sólo imagen 4:5."
+  "El renderer específico de Portada debe resolver shared/custom, conservar su recorte 4:5 y seguir siendo image-only."
 );
 
 assert(
