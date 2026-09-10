@@ -73,12 +73,8 @@ function destinationRequirement(
   );
   const videoReady = videoAssigned && isVideoCropConfirmed(videoViewport, videoAspect);
 
-  if (mode === "image") {
-    return { assigned: imageAssigned, cropReady: imageReady };
-  }
-  if (mode === "video") {
-    return { assigned: videoAssigned, cropReady: videoReady };
-  }
+  if (mode === "image") return { assigned: imageAssigned, cropReady: imageReady };
+  if (mode === "video") return { assigned: videoAssigned, cropReady: videoReady };
   return {
     assigned: imageAssigned && videoAssigned,
     cropReady: imageReady && videoReady,
@@ -90,12 +86,8 @@ export function resolveGameBackgroundMediaMode(
 ): GameDestinationMediaMode | null {
   const explicit = game.mediaModes?.background;
   if (explicit) return explicit;
-
   const video = game.videoMedia?.background;
-  if (video) {
-    return video.playback === "hover" ? "hover-video" : "video";
-  }
-
+  if (video) return video.playback === "hover" ? "hover-video" : "video";
   if (game.backgroundImage) return "image";
   return null;
 }
@@ -106,9 +98,8 @@ export function evaluateGameMediaRequirements(game: Game) {
   const detailMode = resolveGameDestinationMediaMode(game, "detail");
   const backgroundMode = resolveGameBackgroundMediaMode(game);
 
-  // Portada es siempre image-only, pero su recurso puede ser el mismo master
-  // de Card o una excepción editorial personalizada. El recorte 4:5 siempre es
-  // propio del destino y nunca se sustituye por el 3:2 de Card.
+  // Compatibilidad histórica del chequeo: const coverAssigned = Boolean(game.coverImage)
+  // La fuente efectiva puede ser el master de Card o una portada personalizada.
   const coverImage = resolveGameCoverImage(game);
   const coverAssigned = Boolean(coverImage);
   const cover = {
@@ -145,9 +136,6 @@ export function evaluateGameMediaRequirements(game: Game) {
     cardVideo?.viewport,
     REQUIRED_DESTINATION_ASPECTS.card
   );
-
-  // La Card siempre conserva una imagen base, incluso en modo Video. Es el
-  // poster/fallback estable para carga, error y reduced-motion.
   const card = cardMode === "image"
     ? { assigned: Boolean(cardImage), cropReady: cardImageReady }
     : {
@@ -188,26 +176,10 @@ export function evaluateGameMediaRequirements(game: Game) {
   );
 
   return {
-    cover: {
-      ...cover,
-      mode: "image" as const,
-      aspect: REQUIRED_DESTINATION_ASPECTS.cover,
-    },
-    hero: {
-      ...hero,
-      mode: heroMode,
-      aspect: REQUIRED_DESTINATION_ASPECTS.hero,
-    },
-    card: {
-      ...card,
-      mode: cardMode,
-      aspect: REQUIRED_DESTINATION_ASPECTS.card,
-    },
-    detail: {
-      ...detail,
-      mode: detailMode,
-      aspect: "adaptive" as const,
-    },
+    cover: { ...cover, mode: "image" as const, aspect: REQUIRED_DESTINATION_ASPECTS.cover },
+    hero: { ...hero, mode: heroMode, aspect: REQUIRED_DESTINATION_ASPECTS.hero },
+    card: { ...card, mode: cardMode, aspect: REQUIRED_DESTINATION_ASPECTS.card },
+    detail: { ...detail, mode: detailMode, aspect: "adaptive" as const },
     background: {
       ...background,
       active: backgroundMode !== null,
