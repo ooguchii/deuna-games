@@ -20,6 +20,7 @@ const [
   trimEditor,
   mediaViewportEditor,
   workspace,
+  utilityRail,
   libraryTypes,
   mediaWorkspace,
   libraryRoute,
@@ -52,6 +53,7 @@ const [
   source("src/components/admin/VideoTrimEditor.tsx"),
   source("src/components/admin/MediaViewportEditor.tsx"),
   source("src/components/admin/GameMultimediaWorkspaceContextual.tsx"),
+  source("src/components/admin/GameMultimediaUtilityRail.tsx"),
   source("src/components/admin/game-multimedia-library-types.ts"),
   source("src/lib/admin/game-media-workspace.ts"),
   source("src/app/api/admin/content/games/[slug]/media-library/route.ts"),
@@ -188,6 +190,20 @@ assert(
     !workspace.includes("Igualar al Hero") &&
     !workspace.includes("card-match-hero"),
   "Portada debe ser sólo imagen/4:5 mientras Card conserva su sistema multimedia independiente."
+);
+
+assert(
+  has(
+    utilityRail,
+    '{ kind: "image", src: assignments?.coverImage }',
+    "<strong>Portada · 4:5</strong><small>Imagen</small>",
+    "<strong>Hero · 3:1</strong>",
+    "Sólo imagen. Selecciona un recurso y confirma su único recorte 4:5."
+  ) &&
+    !utilityRail.includes("assignments?.coverMode") &&
+    !utilityRail.includes("assignments?.coverVideo") &&
+    !utilityRail.includes("Hero · 16:9"),
+  "El rail multimedia debe reflejar Portada image-only y el Hero 3:1 real."
 );
 
 assert(
@@ -454,6 +470,7 @@ assert(
 
 const activeCoverBoundarySources = [
   workspace,
+  utilityRail,
   libraryTypes,
   mediaWorkspace,
   libraryRoute,
@@ -509,5 +526,5 @@ if (failures.length) {
 }
 
 console.log(
-  "Card/Portada multimedia: OK (Portada sólo imagen 4:5 en UI/API/tipos/dominio/render público; video/hover sin targets activos; Card/Hero video preservados; historial de Portada aislado)."
+  "Card/Portada multimedia: OK (Portada sólo imagen 4:5 en UI/API/tipos/dominio/render público/rail; video/hover sin targets activos; Card/Hero video preservados; historial de Portada aislado)."
 );
