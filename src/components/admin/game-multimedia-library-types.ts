@@ -1,7 +1,6 @@
 import type {
   GameBackgroundVideo,
   GameCardVideo,
-  GameCoverVideo,
   GameDestinationMediaMode,
   GameDetailVideo,
   GameGalleryItem,
@@ -56,14 +55,14 @@ export type MultimediaRequirements = {
   cover: {
     assigned: boolean;
     cropReady: boolean;
-    mode: GameDestinationMediaMode;
+    mode: "image";
     aspect: "4:5";
   };
   hero: {
     assigned: boolean;
     cropReady: boolean;
     mode: GameDestinationMediaMode;
-    aspect: "16:9";
+    aspect: "3:1";
   };
   card: {
     assigned: boolean;
@@ -123,12 +122,10 @@ export type MultimediaLibraryState = {
     backgroundImage: string | null;
     screenshots: string[];
     imageMedia: GameImageMedia | null;
-    coverMode: GameDestinationMediaMode;
     heroMode: GameDestinationMediaMode;
     cardMode: GameDestinationMediaMode;
     detailMode: GameDestinationMediaMode;
     backgroundMode: GameDestinationMediaMode | null;
-    coverVideo: GameCoverVideo | null;
     heroVideo: GameHeroVideo | null;
     cardVideo: GameCardVideo | null;
     detailVideo: GameDetailVideo | null;
