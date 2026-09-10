@@ -8,7 +8,6 @@ import {
   Monitor,
   Star,
 } from "lucide-react";
-
 import type {
   CSSProperties,
   PointerEvent as ReactPointerEvent,
@@ -20,7 +19,11 @@ import {
   useState,
 } from "react";
 
+import GameMedia from "@/components/ui/GameMedia";
 import HoverPreviewMedia from "@/components/ui/HoverPreviewMedia";
+import {
+  resolveGameCardArtwork,
+} from "@/lib/media/game-card-artwork";
 import {
   resolveGameCardPreview,
 } from "@/lib/media/game-card-preview";
@@ -31,6 +34,7 @@ import type { Game } from "@/types/game";
 
 import styles from "./UniversalGameCard.module.css";
 import tiltStyles from "./UniversalGameCardTilt.module.css";
+import presentationStyles from "./UniversalGameCardPresentation.module.css";
 
 export type UniversalGameCardVariant =
   | "standard"
@@ -220,9 +224,9 @@ export default function UniversalGameCard({
   const pendingTilt = useRef<PendingTilt | null>(null);
   const cardRect = useRef<DOMRect | null>(null);
   const pointerEffectsEnabled = useRef(false);
-  const articleRef = useRef<HTMLElement>(null);
-  const [previewActive, setPreviewActive] =
-    useState(false);
+  const [pointerActive, setPointerActive] = useState(false);
+  const [focusActive, setFocusActive] = useState(false);
+  const [previewActive, setPreviewActive] = useState(false);
 
   const mediaBadge = getMediaBadge(game, variant);
   const fallbackClass =
@@ -236,10 +240,8 @@ export default function UniversalGameCard({
     ];
   const cardMode = resolveGameDestinationMediaMode(game, "card");
   const resolvedPreview = resolveGameCardPreview(game);
-  const cardImage = game.cardImage ?? game.coverImage;
-  const imageViewport = game.imageMedia?.card;
-  const videoAlwaysActive = cardMode === "video";
-  const hoverPreviewEnabled = cardMode === "hover-video";
+  const artwork = resolveGameCardArtwork(game);
+  const richActive = pointerActive || focusActive;
 
   function cancelTiltFrame() {
     if (tiltFrame.current !== null) {
@@ -247,34 +249,6 @@ export default function UniversalGameCard({
       tiltFrame.current = null;
     }
     pendingTilt.current = null;
-  }
-
-  function cancelPreview() {
-    if (previewTimer.current) {
-      clearTimeout(previewTimer.current);
-      previewTimer.current = null;
-    }
-
-    setPreviewActive(false);
-    articleRef.current?.style.removeProperty(
-      "--tilt-transition-duration"
-    );
-  }
-
-  function schedulePreview() {
-    if (
-      !hoverPreviewEnabled ||
-      !resolvedPreview ||
-      previewTimer.current ||
-      previewActive
-    ) {
-      return;
-    }
-
-    previewTimer.current = setTimeout(() => {
-      previewTimer.current = null;
-      setPreviewActive(true);
-    }, PREVIEW_DELAY_MS);
   }
 
   function activatePointerEffects(
@@ -295,11 +269,12 @@ export default function UniversalGameCard({
       }
       pointerEffectsEnabled.current = false;
       event.currentTarget.removeAttribute("data-tilt-active");
-      if (hoverPreviewEnabled) cancelPreview();
+      setPointerActive(false);
       return false;
     }
 
     pointerEffectsEnabled.current = true;
+    setPointerActive(true);
     event.currentTarget.setAttribute(
       "data-tilt-active",
       "true"
@@ -318,7 +293,6 @@ export default function UniversalGameCard({
 
     cardRect.current =
       event.currentTarget.getBoundingClientRect();
-    schedulePreview();
   }
 
   function scheduleTilt(
@@ -326,7 +300,6 @@ export default function UniversalGameCard({
   ) {
     if (!activatePointerEffects(event)) return;
 
-    schedulePreview();
     pendingTilt.current = {
       node: event.currentTarget,
       clientX: event.clientX,
@@ -357,10 +330,39 @@ export default function UniversalGameCard({
     cancelTiltFrame();
     cardRect.current = null;
     pointerEffectsEnabled.current = false;
+    setPointerActive(false);
     event.currentTarget.removeAttribute("data-tilt-active");
     resetTilt(event.currentTarget);
-    if (hoverPreviewEnabled) cancelPreview();
   }
+
+  useEffect(() => {
+    if (previewTimer.current) {
+      clearTimeout(previewTimer.current);
+      previewTimer.current = null;
+    }
+    setPreviewActive(false);
+
+    if (!richActive || !resolvedPreview?.src || cardMode === "image") {
+      return;
+    }
+
+    if (cardMode === "video") {
+      setPreviewActive(true);
+      return;
+    }
+
+    previewTimer.current = setTimeout(() => {
+      previewTimer.current = null;
+      setPreviewActive(true);
+    }, PREVIEW_DELAY_MS);
+
+    return () => {
+      if (previewTimer.current) {
+        clearTimeout(previewTimer.current);
+        previewTimer.current = null;
+      }
+    };
+  }, [cardMode, resolvedPreview?.src, richActive]);
 
   useEffect(() => {
     return () => {
@@ -375,12 +377,13 @@ export default function UniversalGameCard({
 
   return (
     <article
-      ref={articleRef}
-      className={`${styles.card} ${tiltStyles.tiltCard} ${variantClass}`}
+      className={`${styles.card} ${tiltStyles.tiltCard} ${presentationStyles.shell} ${variantClass}`}
       onPointerEnter={startCard}
       onPointerMove={scheduleTilt}
       onPointerLeave={stopCard}
       onPointerCancel={stopCard}
+      data-rich-active={richActive ? "true" : "false"}
+      data-game-card-shell="4:5"
       style={
         {
           "--tilt-x": "0deg",
@@ -394,104 +397,125 @@ export default function UniversalGameCard({
     >
       <Link
         href={`/juegos/${game.slug}`}
-        className={`${styles.link} ${tiltStyles.tiltClip}`}
+        className={`${styles.link} ${tiltStyles.tiltClip} ${presentationStyles.presentationLink}`}
         aria-label={`Ver ${game.title}`}
+        onFocus={() => setFocusActive(true)}
+        onBlur={() => setFocusActive(false)}
       >
         <div
-          className={`${styles.media} ${tiltStyles.tiltMedia}`}
-          style={{
-            width: "100%",
-            height: "auto",
-            aspectRatio: "3 / 2",
-          }}
+          className={presentationStyles.coverFace}
+          aria-hidden="true"
+          data-game-card-face="cover"
         >
-          <HoverPreviewMedia
-            imageSrc={cardMode === "video" ? undefined : cardImage}
-            imageAlt={game.mediaAccessibility?.card ?? game.imageAlt}
-            imageViewport={imageViewport}
-            previewClip={resolvedPreview?.src}
-            previewViewport={resolvedPreview?.viewport}
-            active={videoAlwaysActive || (hoverPreviewEnabled && previewActive)}
+          <GameMedia
+            src={artwork.coverImage}
+            alt=""
+            viewport={artwork.coverViewport}
             sizes="(max-width: 560px) 82vw, (max-width: 900px) 48vw, (max-width: 1250px) 30vw, 20vw"
             fallbackClassName={
               fallbackClass
                 ? styles[fallbackClass]
                 : undefined
             }
-          />
-
-          <div
-            className={styles.mediaOverlay}
-            aria-hidden="true"
-          />
-          <div
-            className={tiltStyles.spotlight}
-            aria-hidden="true"
-          />
-
-          {mediaBadge && (
-            <span
-              className={`${styles.mediaBadge} ${
-                mediaBadge.tone === "brand"
-                  ? styles.mediaBadgeBrand
-                  : ""
-              }`}
-              data-brand-badge={
-                mediaBadge.tone === "brand"
-                  ? "true"
-                  : undefined
-              }
-            >
-              {mediaBadge.label}
-            </span>
-          )}
-
-          <Monitor
-            size={18}
-            className={styles.platform}
-            aria-hidden="true"
+            className={presentationStyles.coverMedia}
           />
         </div>
 
-        <div className={styles.content}>
-          <div className={styles.titleRow}>
-            <h3>{game.title}</h3>
+        <div
+          className={presentationStyles.richFace}
+          data-game-card-face="rich"
+        >
+          <div
+            className={`${styles.media} ${tiltStyles.tiltMedia} ${presentationStyles.richMedia}`}
+          >
+            <HoverPreviewMedia
+              imageSrc={artwork.cardImage}
+              imageAlt={game.mediaAccessibility?.card ?? game.imageAlt}
+              imageViewport={artwork.cardViewport}
+              previewClip={resolvedPreview?.src}
+              previewViewport={resolvedPreview?.viewport}
+              active={previewActive}
+              sizes="(max-width: 560px) 82vw, (max-width: 900px) 48vw, (max-width: 1250px) 30vw, 20vw"
+              fallbackClassName={
+                fallbackClass
+                  ? styles[fallbackClass]
+                  : undefined
+              }
+            />
 
-            {isRecent && game.version && (
-              <span className={styles.version}>
-                {game.version}
+            <div
+              className={styles.mediaOverlay}
+              aria-hidden="true"
+            />
+            <div
+              className={tiltStyles.spotlight}
+              aria-hidden="true"
+            />
+
+            {mediaBadge && (
+              <span
+                className={`${styles.mediaBadge} ${
+                  mediaBadge.tone === "brand"
+                    ? styles.mediaBadgeBrand
+                    : ""
+                }`}
+                data-brand-badge={
+                  mediaBadge.tone === "brand"
+                    ? "true"
+                    : undefined
+                }
+              >
+                {mediaBadge.label}
               </span>
             )}
 
-            {isCatalog && (
-              <ChevronRight
-                size={17}
-                aria-hidden="true"
-              />
-            )}
+            <Monitor
+              size={18}
+              className={styles.platform}
+              aria-hidden="true"
+            />
           </div>
 
-          {isCatalog && (
-            <p className={styles.description}>
-              {game.description}
-            </p>
-          )}
+          <div className={`${styles.content} ${presentationStyles.richContent}`}>
+            <div className={styles.titleRow}>
+              <h3>{game.title}</h3>
 
-          {isLowSpec && (
-            <LowSpecDetails game={game} />
-          )}
+              {isRecent && game.version && (
+                <span className={styles.version}>
+                  {game.version}
+                </span>
+              )}
 
-          <Rating game={game} />
-
-          {isRecent && game.addedAt && (
-            <div className={styles.date}>
-              <CalendarDays
-                size={15}
-                aria-hidden="true"
-              />
-              <span>Añadido el {game.addedAt}</span>
+              {isCatalog && (
+                <ChevronRight
+                  size={17}
+                  aria-hidden="true"
+                />
+              )}
             </div>
-          )}
+
+            {isCatalog && (
+              <p className={styles.description}>
+                {game.description}
+              </p>
+            )}
+
+            {isLowSpec && (
+              <LowSpecDetails game={game} />
+            )}
+
+            <Rating game={game} />
+
+            {isRecent && game.addedAt && (
+              <div className={styles.date}>
+                <CalendarDays
+                  size={15}
+                  aria-hidden="true"
+                />
+                <span>Añadido el {game.addedAt}</span>
+              </div>
+            )}
+          </div>
         </div>
       </Link>
 
