@@ -529,11 +529,17 @@ export function parseEditorialPayload(
       ? "custom"
       : "card"
   );
+  // Una intención explícita/shared es autoridad: a nivel persistido Portada y
+  // Card deben apuntar al mismo master. Los snapshots legacy con dos rutas
+  // distintas se resolvieron como custom arriba y conservan ambas referencias.
+  const resolvedCoverImage = resolvedCoverArtworkSource === "card"
+    ? resolvedCardImage
+    : game.coverImage;
 
   // Compatibilidad del Contenedor: antes la ficha reutilizaba directamente el
   // Hero (o Portada). Capturamos esa misma referencia y encuadre como metadata
   // propia, sin copiar bytes, para que desde aquí cambie de forma independiente.
-  const resolvedDetailImage = detailImage ?? game.heroImage ?? game.coverImage;
+  const resolvedDetailImage = detailImage ?? game.heroImage ?? resolvedCoverImage;
   const legacyDetailMigration = detailImage === undefined && Boolean(resolvedDetailImage);
   const inheritedDetailViewport = game.heroImage && resolvedDetailImage === game.heroImage
     ? imageMedia?.hero
@@ -599,6 +605,7 @@ export function parseEditorialPayload(
   const normalizedGame: Game = {
     ...game,
     coverArtworkSource: resolvedCoverArtworkSource,
+    ...(resolvedCoverImage ? { coverImage: resolvedCoverImage } : {}),
     ...(resolvedCardImage ? { cardImage: resolvedCardImage } : {}),
     ...(resolvedDetailImage ? { detailImage: resolvedDetailImage } : {}),
     ...(backgroundImage ? { backgroundImage } : {}),
