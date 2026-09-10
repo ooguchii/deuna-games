@@ -149,6 +149,8 @@ export type GameDirectPreview = {
   endSeconds: number;
 };
 
+export type GameCoverArtworkSource = "card" | "custom";
+
 export type GameImageViewportAspect =
   | "16:9"
   | "3:1"
@@ -172,6 +174,12 @@ export type GameImageViewport = {
   aspect?: GameImageViewportAspect;
   /* Relación ancho/alto exacta cuando aspect="free". */
   aspectRatio?: number;
+  /*
+   * Recurso que estaba activo cuando se confirmó el recorte. Es opcional para
+   * poder leer snapshots históricos, pero los guardados nuevos lo escriben
+   * desde el servidor y permiten detectar crops obsoletos tras reemplazar media.
+   */
+  source?: string;
   /* Sólo true significa que el editor confirmó explícitamente este recorte. */
   confirmed?: true;
 };
@@ -322,6 +330,11 @@ export type Game = {
 
   /* Portada pública/editorial: siempre una imagen con viewport 4:5 propio. */
   coverImage?: string;
+  /*
+   * Intención editorial explícita. Ausente sólo existe en snapshots históricos
+   * y se resuelve por compatibilidad sin reescribirlos.
+   */
+  coverArtworkSource?: GameCoverArtworkSource;
   heroImage?: string;
   /* La Card tiene recurso base propio; nunca depende de cambios posteriores de Portada. */
   cardImage?: string;
