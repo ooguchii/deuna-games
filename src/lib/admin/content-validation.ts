@@ -72,6 +72,7 @@ const fixedImageViewportSchema = z
     y: z.number().min(0).max(1),
     zoom: z.number().min(1).max(3),
     aspect: fixedImageAspectSchema.optional(),
+    source: localImageSchema.optional(),
     confirmed: z.literal(true).optional(),
   })
   .strict();
@@ -359,6 +360,7 @@ function splitGameCompatibilityPayload(payload: unknown) {
     return {
       core: payload,
       cardImage: undefined,
+      coverImageSource: undefined,
       detailImage: undefined,
       backgroundImage: undefined,
       galleryMedia: undefined,
@@ -379,6 +381,9 @@ function splitGameCompatibilityPayload(payload: unknown) {
   const cardImage = clean.cardImage === undefined
     ? undefined
     : localImageSchema.parse(clean.cardImage);
+  const coverImageSource = clean.coverImageSource === undefined
+    ? undefined
+    : z.enum(["card", "custom"]).parse(clean.coverImageSource);
   const detailImage = clean.detailImage === undefined
     ? undefined
     : localImageSchema.parse(clean.detailImage);
@@ -414,6 +419,7 @@ function splitGameCompatibilityPayload(payload: unknown) {
     : distributionMetadataSchema.parse(clean.distributionMetadata);
 
   delete clean.cardImage;
+  delete clean.coverImageSource;
   delete clean.detailImage;
   delete clean.backgroundImage;
   delete clean.galleryMedia;
@@ -436,6 +442,7 @@ function splitGameCompatibilityPayload(payload: unknown) {
   return {
     core: clean,
     cardImage,
+    coverImageSource,
     detailImage,
     backgroundImage,
     galleryMedia,
@@ -494,6 +501,7 @@ export function parseEditorialPayload(
   const {
     core,
     cardImage,
+    coverImageSource,
     detailImage,
     backgroundImage,
     galleryMedia,
@@ -508,9 +516,8 @@ export function parseEditorialPayload(
   } = splitGameCompatibilityPayload(payload);
   const game = parseCoreEditorialPayload("game", core);
 
-  // Migración compatible: una publicación histórica sin cardImage conserva
-  // exactamente su aspecto actual, pero captura la portada de ese snapshot
-  // como recurso propio. Cambiar la Portada después ya no cambia la Card.
+  // Compatibilidad histórica: Card usaba Portada como fallback. El resolver de
+  // artwork distingue shared/custom sin reescribir snapshots antiguos.
   const resolvedCardImage = cardImage ?? game.coverImage;
 
   // Compatibilidad del Contenedor: antes la ficha reutilizaba directamente el
@@ -581,6 +588,7 @@ export function parseEditorialPayload(
   const normalizedGame: Game = {
     ...game,
     ...(resolvedCardImage ? { cardImage: resolvedCardImage } : {}),
+    ...(coverImageSource ? { coverImageSource } : {}),
     ...(resolvedDetailImage ? { detailImage: resolvedDetailImage } : {}),
     ...(backgroundImage ? { backgroundImage } : {}),
     ...(galleryMedia !== undefined ? { galleryMedia } : {}),
