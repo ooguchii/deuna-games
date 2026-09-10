@@ -21,6 +21,7 @@ type GameMediaProps = {
   variant?: GameMediaVariant;
   fallbackClassName?: string;
   viewport?: GameImageViewport;
+  className?: string;
   imageClassName?: string;
 };
 
@@ -32,6 +33,7 @@ export default function GameMedia({
   variant = "cover",
   fallbackClassName,
   viewport,
+  className,
   imageClassName,
 }: GameMediaProps) {
   if (src) {
@@ -57,7 +59,7 @@ export default function GameMedia({
 
     return (
       <span
-        className={styles.frame}
+        className={`${styles.frame} ${className ?? ""}`}
         style={frameStyle}
         data-game-image-crop={hasEditorialAspect ? viewport?.aspect : undefined}
       >
@@ -78,7 +80,7 @@ export default function GameMedia({
 
   return (
     <div
-      className={`${styles.fallback} ${fallbackClassName ?? ""}`}
+      className={`${styles.fallback} ${fallbackClassName ?? ""} ${className ?? ""}`}
       aria-hidden="true"
     />
   );
