@@ -1,0 +1,124 @@
+.shell {
+  position: relative;
+  aspect-ratio: 4 / 5;
+  min-height: 0;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.link {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.actionButton {
+  margin: 0;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.actionButton:disabled {
+  cursor: not-allowed;
+}
+
+.coverFace,
+.detailFace {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  transition: opacity 180ms ease, transform 220ms ease;
+}
+
+.coverFace {
+  z-index: 2;
+  opacity: 1;
+  transform: scale(1);
+  background: #0b1017;
+}
+
+.coverFace > img,
+.coverFace > span,
+.coverFace > div:first-child {
+  width: 100%;
+  height: 100%;
+}
+
+.coverShade {
+  position: absolute;
+  inset: auto 0 0;
+  height: 26%;
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent, rgba(4, 8, 13, 0.46));
+}
+
+.detailFace {
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  opacity: 0;
+  transform: scale(0.985);
+  background: var(--surface);
+  pointer-events: none;
+}
+
+.detailMedia {
+  position: relative;
+  flex: 0 0 auto;
+  width: 100%;
+  height: auto !important;
+  aspect-ratio: 3 / 2;
+  min-height: 0 !important;
+}
+
+.detailContent {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.shell[data-detail-visible="true"] .coverFace {
+  opacity: 0;
+  transform: scale(1.025);
+  pointer-events: none;
+}
+
+.shell[data-detail-visible="true"] .detailFace {
+  z-index: 3;
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+}
+
+@media (hover: none), (pointer: coarse) {
+  .coverFace {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .detailFace {
+    z-index: 3;
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .coverFace,
+  .detailFace {
+    transition: none;
+  }
+
+  .shell {
+    transform: none !important;
+  }
+}

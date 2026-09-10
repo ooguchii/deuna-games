@@ -318,7 +318,7 @@ requirePattern(
 );
 requirePattern(
   accountDashboard,
-  /function\s+RecommendationCard[\s\S]*GameFavoriteButton[\s\S]*gameSlug=\{recommendation\.slug\}[\s\S]*gameTitle=\{recommendation\.title\}/,
+  /function\s+RecommendationCard[\s\S]*const\s+\{\s*game\s*\}\s*=\s*recommendation[\s\S]*GameFavoriteButton[\s\S]*gameSlug=\{game\.slug\}[\s\S]*gameTitle=\{game\.title\}/,
   "Mi DeUna → Descubrimientos debe reutilizar el favorito canónico y no un corazón decorativo."
 );
 requirePattern(

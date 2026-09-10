@@ -132,9 +132,8 @@ export default async function AccountPage({
             slug: game.slug,
             title: game.title,
             category: game.category,
-            coverImage: game.cardImage ?? game.coverImage,
-            imageViewport:
-              game.imageMedia?.card ?? game.imageMedia?.cover,
+            coverImage: game.coverImage,
+            imageViewport: game.imageMedia?.cover,
             rating: game.rating,
           }))}
           preferences={personalization.preferences.map((preference) => ({
@@ -161,14 +160,7 @@ export default async function AccountPage({
           }))}
           notifications={notifications}
           recommendations={recommendations.map((entry) => ({
-            slug: entry.game.slug,
-            title: entry.game.title,
-            category: entry.game.category,
-            coverImage: entry.game.cardImage ?? entry.game.coverImage,
-            imageViewport:
-              entry.game.imageMedia?.card ??
-              entry.game.imageMedia?.cover,
-            rating: entry.game.rating,
+            game: entry.game,
             reasons: entry.reasons,
             performanceEstimate: entry.estimate?.canEstimate
               ? {

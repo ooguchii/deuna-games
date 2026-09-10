@@ -72,6 +72,7 @@ const fixedImageViewportSchema = z
     y: z.number().min(0).max(1),
     zoom: z.number().min(1).max(3),
     aspect: fixedImageAspectSchema.optional(),
+    source: localImageSchema.optional(),
     confirmed: z.literal(true).optional(),
   })
   .strict();
@@ -114,6 +115,8 @@ const imageMediaSchema = z
     gallery: galleryImageMediaSchema.optional(),
   })
   .strict();
+
+const coverArtworkSourceSchema = z.enum(["card", "custom"]);
 
 const mediaModeSchema = z.enum([
   "image",
@@ -358,6 +361,7 @@ function splitGameCompatibilityPayload(payload: unknown) {
   ) {
     return {
       core: payload,
+      coverArtworkSource: undefined,
       cardImage: undefined,
       detailImage: undefined,
       backgroundImage: undefined,
@@ -376,6 +380,9 @@ function splitGameCompatibilityPayload(payload: unknown) {
   const clean = {
     ...(payload as Record<string, unknown>),
   };
+  const coverArtworkSource = clean.coverArtworkSource === undefined
+    ? undefined
+    : coverArtworkSourceSchema.parse(clean.coverArtworkSource);
   const cardImage = clean.cardImage === undefined
     ? undefined
     : localImageSchema.parse(clean.cardImage);
@@ -413,6 +420,7 @@ function splitGameCompatibilityPayload(payload: unknown) {
     ? undefined
     : distributionMetadataSchema.parse(clean.distributionMetadata);
 
+  delete clean.coverArtworkSource;
   delete clean.cardImage;
   delete clean.detailImage;
   delete clean.backgroundImage;
@@ -435,6 +443,7 @@ function splitGameCompatibilityPayload(payload: unknown) {
 
   return {
     core: clean,
+    coverArtworkSource,
     cardImage,
     detailImage,
     backgroundImage,
@@ -493,6 +502,7 @@ export function parseEditorialPayload(
 
   const {
     core,
+    coverArtworkSource,
     cardImage,
     detailImage,
     backgroundImage,
@@ -512,11 +522,24 @@ export function parseEditorialPayload(
   // exactamente su aspecto actual, pero captura la portada de ese snapshot
   // como recurso propio. Cambiar la Portada después ya no cambia la Card.
   const resolvedCardImage = cardImage ?? game.coverImage;
+  const resolvedCoverArtworkSource = coverArtworkSource ?? (
+    game.coverImage &&
+    resolvedCardImage &&
+    game.coverImage !== resolvedCardImage
+      ? "custom"
+      : "card"
+  );
+  // Una intención explícita/shared es autoridad: a nivel persistido Portada y
+  // Card deben apuntar al mismo master. Los snapshots legacy con dos rutas
+  // distintas se resolvieron como custom arriba y conservan ambas referencias.
+  const resolvedCoverImage = resolvedCoverArtworkSource === "card"
+    ? resolvedCardImage
+    : game.coverImage;
 
   // Compatibilidad del Contenedor: antes la ficha reutilizaba directamente el
   // Hero (o Portada). Capturamos esa misma referencia y encuadre como metadata
   // propia, sin copiar bytes, para que desde aquí cambie de forma independiente.
-  const resolvedDetailImage = detailImage ?? game.heroImage ?? game.coverImage;
+  const resolvedDetailImage = detailImage ?? game.heroImage ?? resolvedCoverImage;
   const legacyDetailMigration = detailImage === undefined && Boolean(resolvedDetailImage);
   const inheritedDetailViewport = game.heroImage && resolvedDetailImage === game.heroImage
     ? imageMedia?.hero
@@ -528,6 +551,7 @@ export function parseEditorialPayload(
           x: inheritedDetailViewport?.x ?? 0.5,
           y: inheritedDetailViewport?.y ?? 0.5,
           zoom: inheritedDetailViewport?.zoom ?? 1,
+          ...(resolvedDetailImage ? { source: resolvedDetailImage } : {}),
           confirmed: true as const,
         },
       }
@@ -580,6 +604,8 @@ export function parseEditorialPayload(
 
   const normalizedGame: Game = {
     ...game,
+    coverArtworkSource: resolvedCoverArtworkSource,
+    ...(resolvedCoverImage ? { coverImage: resolvedCoverImage } : {}),
     ...(resolvedCardImage ? { cardImage: resolvedCardImage } : {}),
     ...(resolvedDetailImage ? { detailImage: resolvedDetailImage } : {}),
     ...(backgroundImage ? { backgroundImage } : {}),

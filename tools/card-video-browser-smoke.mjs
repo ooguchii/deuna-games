@@ -33,16 +33,8 @@ function assertVisualCiOnly() {
   }
 }
 
-function findChrome() {
-  const candidates = [
-    process.env.CHROME_BIN,
-    "google-chrome-stable",
-    "google-chrome",
-    "chromium",
-    "chromium-browser",
-  ].filter(Boolean);
-
-  for (const candidate of candidates) {
+function resolveExecutable(candidates, errorMessage) {
+  for (const candidate of candidates.filter(Boolean)) {
     const result = spawnSync(
       "sh",
       ["-lc", `command -v ${JSON.stringify(candidate)}`],
@@ -52,7 +44,27 @@ function findChrome() {
     if (result.status === 0 && resolved) return resolved;
   }
 
-  throw new Error("Card video browser smoke necesita Chrome/Chromium.");
+  throw new Error(errorMessage);
+}
+
+function findChrome() {
+  return resolveExecutable(
+    [
+      process.env.CHROME_BIN,
+      "google-chrome-stable",
+      "google-chrome",
+      "chromium",
+      "chromium-browser",
+    ],
+    "Card video browser smoke necesita Chrome/Chromium."
+  );
+}
+
+function findXvfbRun() {
+  return resolveExecutable(
+    ["xvfb-run"],
+    "Card video browser smoke necesita xvfb-run para reproducir un escritorio fine/hover real en CI."
+  );
 }
 
 async function waitForDebugger(profileDir) {
@@ -237,6 +249,69 @@ async function waitFor(cdp, expression, description, timeoutMs = 15_000) {
   );
 }
 
+function detailVisibilityExpression(lookup, visible) {
+  return `(() => {
+    const card = ${lookup};
+    return Boolean(
+      card instanceof HTMLElement &&
+      card.dataset.detailVisible === ${JSON.stringify(visible ? "true" : "false")}
+    );
+  })()`;
+}
+
+async function hoverCard(cdp, lookup) {
+  const point = await waitFor(
+    cdp,
+    `(() => {
+      const card = ${lookup};
+      if (!(card instanceof HTMLElement)) return false;
+      const rect = card.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) return false;
+      return {
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2,
+      };
+    })()`,
+    "No se pudo resolver el área interactiva de la Card"
+  );
+
+  await cdp.send("Input.dispatchMouseEvent", {
+    type: "mouseMoved",
+    x: point.x,
+    y: point.y,
+    buttons: 0,
+    pointerType: "mouse",
+  });
+  await waitFor(
+    cdp,
+    detailVisibilityExpression(lookup, true),
+    "El hover real no expandió la Card"
+  );
+}
+
+async function leaveCard(cdp, lookup) {
+  await cdp.send("Input.dispatchMouseEvent", {
+    type: "mouseMoved",
+    x: 1,
+    y: 1,
+    buttons: 0,
+    pointerType: "mouse",
+  });
+  await waitFor(
+    cdp,
+    detailVisibilityExpression(lookup, false),
+    "La Card no volvió a Portada al retirar el puntero"
+  );
+  await waitFor(
+    cdp,
+    `(() => {
+      const card = ${lookup};
+      return Boolean(card instanceof HTMLElement && !card.querySelector("video"));
+    })()`,
+    "La Card mantuvo el video montado fuera de interacción"
+  );
+}
+
 function playingVideoExpression(lookup) {
   return `(() => {
     const card = ${lookup};
@@ -274,13 +349,17 @@ async function main() {
     path.join(os.tmpdir(), "deuna-card-video-chrome-")
   );
   const browser = spawn(
-    findChrome(),
+    findXvfbRun(),
     [
-      "--headless=new",
+      "--auto-servernum",
+      "--server-args=-screen 0 1440x1000x24",
+      findChrome(),
       "--disable-gpu",
       "--disable-dev-shm-usage",
       "--no-sandbox",
       "--ignore-certificate-errors",
+      "--no-first-run",
+      "--ozone-platform=x11",
       "--remote-debugging-port=0",
       "--remote-debugging-address=127.0.0.1",
       `--user-data-dir=${profileDir}`,
@@ -347,6 +426,35 @@ async function main() {
     );
     await delay(300);
 
+    const mediaState = await cdp.evaluate(`({
+      fineHover: matchMedia("(hover: hover) and (pointer: fine)").matches,
+      coarse: matchMedia("(pointer: coarse)").matches,
+      reduced: matchMedia("(prefers-reduced-motion: reduce)").matches,
+    })`);
+    if (!mediaState?.fineHover || mediaState.coarse || mediaState.reduced) {
+      throw new Error(
+        `El smoke no reprodujo un escritorio fine/hover: ${JSON.stringify(mediaState)}.`
+      );
+    }
+
+    const restState = await cdp.evaluate(`(() => {
+      const card = ${lookup};
+      return {
+        found: card instanceof HTMLElement,
+        detailVisible: card?.dataset.detailVisible ?? null,
+        hasVideo: Boolean(card?.querySelector("video")),
+      };
+    })()`);
+    if (
+      !restState?.found ||
+      restState.detailVisible !== "false" ||
+      restState.hasVideo
+    ) {
+      throw new Error(
+        `La Card no respeta el estado de reposo Portada: ${JSON.stringify(restState)}.`
+      );
+    }
+
     const asset = await cdp.evaluate(`
       fetch(${JSON.stringify(fixture.clip)}, { cache: "no-store" })
         .then(async (response) => ({
@@ -369,10 +477,11 @@ async function main() {
       );
     }
 
+    await hoverCard(cdp, lookup);
     const visibleState = await waitFor(
       cdp,
       playingVideoExpression(lookup),
-      "La Card publicada no llegó a reproducir el video continuo"
+      "La Card expandida no llegó a reproducir el video continuo"
     );
     if (
       visibleState.src !== fixture.clip ||
@@ -397,6 +506,14 @@ async function main() {
     await writeFile(
       screenshotPath,
       Buffer.from(capture.data, "base64")
+    );
+
+    await leaveCard(cdp, lookup);
+    await hoverCard(cdp, lookup);
+    await waitFor(
+      cdp,
+      playingVideoExpression(lookup),
+      "La Card no reanudó el video al volver a entrar con el puntero"
     );
 
     await cdp.send("Emulation.setEmulatedMedia", {
@@ -438,18 +555,34 @@ async function main() {
       );
     }
 
-    await cdp.send("Page.setWebLifecycleState", { state: "frozen" });
-    await delay(150);
-    const hiddenState = await cdp.evaluate(`(() => {
-      const card = ${lookup};
-      return {
-        hidden: document.hidden,
-        visibilityState: document.visibilityState,
-        hasVideo: Boolean(card?.querySelector("video")),
-      };
-    })()`);
+    const backgroundTarget = await cdp.send("Target.createTarget", {
+      url: "about:blank",
+    });
+    if (!backgroundTarget.targetId) {
+      throw new Error("Chrome no creó la pestaña auxiliar para probar visibilitychange.");
+    }
+    await cdp.send("Target.activateTarget", {
+      targetId: backgroundTarget.targetId,
+    });
+    const hiddenState = await waitFor(
+      cdp,
+      `(() => {
+        const card = ${lookup};
+        if (!(card instanceof HTMLElement)) return false;
+        if (!document.hidden || document.visibilityState !== "hidden") {
+          return false;
+        }
+        if (card.querySelector("video")) return false;
+        return {
+          hidden: document.hidden,
+          visibilityState: document.visibilityState,
+          hasVideo: false,
+        };
+      })()`,
+      "La pestaña oculta no procesó visibilitychange o mantuvo el video de Card"
+    );
     if (
-      !hiddenState?.hidden ||
+      !hiddenState.hidden ||
       hiddenState.visibilityState !== "hidden" ||
       hiddenState.hasVideo
     ) {
@@ -461,7 +594,8 @@ async function main() {
     console.log(
       "Card video browser smoke: OK " +
         `(slug=${fixture.slug}, bytes=${asset.bytes}, ` +
-        `readyState=${visibleState.readyState}, visible=reproduciendo, ` +
+        `readyState=${visibleState.readyState}, rest=portada, ` +
+        `hover=reproduciendo, leave=sin video, ` +
         "reduced-motion=sin video, restored=reproduciendo, hidden=sin video)."
     );
   } catch (error) {

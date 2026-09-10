@@ -652,167 +652,9 @@
   grid-template-columns: 1fr;
 }
 
-.gameCard {
-  --tilt-x: 0deg;
-  --tilt-y: 0deg;
-  --pointer-x: 50%;
-  --pointer-y: 50%;
-  --image-x: 0px;
-  --image-y: 0px;
-
-  position: relative;
-  isolation: isolate;
-  min-width: 0;
-  overflow: visible;
-  border: 1px solid var(--finder-line);
-  border-radius: 11px;
-  background: color-mix(in srgb, var(--background) 7%, #05090e);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.16);
-  transform:
-    perspective(900px)
-    rotateX(var(--tilt-x))
-    rotateY(var(--tilt-y))
-    translateZ(0);
-  transform-style: preserve-3d;
-  transition:
-    transform 150ms ease-out,
-    border-color 180ms ease,
-    box-shadow 220ms ease;
-}
-
-.gameCard::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  border-radius: inherit;
-  background: radial-gradient(
-    280px circle at var(--pointer-x) var(--pointer-y),
-    color-mix(in srgb, var(--brand) 20%, transparent),
-    transparent 58%
-  );
-  opacity: 0;
-  filter: blur(6px);
-  transition: opacity 180ms ease;
-  pointer-events: none;
-}
-
-.gameCard:hover {
-  border-color: color-mix(in srgb, var(--brand) 40%, transparent);
-  box-shadow:
-    0 22px 46px rgba(0, 0, 0, 0.34),
-    0 0 0 1px color-mix(in srgb, var(--brand) 4%, transparent),
-    0 0 32px color-mix(in srgb, var(--brand) 6%, transparent);
-}
-
-.gameCard:hover::before {
-  opacity: 1;
-}
-
-.gameCardSelected {
-  border-color: color-mix(in srgb, var(--brand) 74%, transparent);
-  box-shadow:
-    0 18px 42px rgba(0, 0, 0, 0.3),
-    0 0 0 1px color-mix(in srgb, var(--brand) 8%, transparent);
-}
-
-.gameCardMain {
-  width: 100%;
-  display: block;
-  padding: 0;
-  color: inherit;
-  border: 0;
-  border-radius: inherit;
-  background: transparent;
-  cursor: pointer;
-  text-align: left;
-}
-
-.gameCardMedia {
-  position: relative;
-  height: 150px;
-  overflow: hidden;
-  border-radius: 10px 10px 0 0;
-  background: var(--surface-2);
-  transform: translateZ(14px);
-}
-
-.gameCardImage {
-  object-fit: cover;
-  object-position: center;
-  transform: translate3d(var(--image-x), var(--image-y), 0) scale(1.045);
-  transition:
-    transform 210ms ease-out,
-    filter 220ms ease;
-}
-
-.gameCard:hover .gameCardImage {
-  transform: translate3d(var(--image-x), var(--image-y), 0) scale(1.085);
-  filter: saturate(1.06) contrast(1.02);
-}
-
-.gameCardFallback {
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(
-      circle at 30% 20%,
-      color-mix(in srgb, var(--brand) 14%, transparent),
-      transparent 50%
-    ),
-    linear-gradient(135deg, var(--surface-3), var(--surface));
-}
-
-.gameCardShade {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, transparent 50%, rgba(4, 7, 11, 0.45) 100%);
-  pointer-events: none;
-}
-
-.gameCardSpotlight {
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(
-    170px circle at var(--pointer-x) var(--pointer-y),
-    rgba(255, 255, 255, 0.16),
-    transparent 60%
-  );
-  opacity: 0;
-  mix-blend-mode: screen;
-  transition: opacity 180ms ease;
-  pointer-events: none;
-}
-
-.gameCard:hover .gameCardSpotlight {
-  opacity: 0.62;
-}
-
-.gameCardContent {
-  position: relative;
-  z-index: 2;
+.finderCardSignals {
   display: grid;
   gap: 10px;
-  padding: 12px 12px 11px;
-  transform: translateZ(10px);
-}
-
-.gameTitleRow {
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.gameTitleRow h3 {
-  overflow: hidden;
-  color: var(--text);
-  font-size: 13px;
-  font-weight: 820;
-  line-height: 1.25;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .selectedMark {
@@ -906,20 +748,6 @@
   color: var(--brand-light) !important;
   border-color: color-mix(in srgb, var(--brand) 50%, transparent) !important;
   background: color-mix(in srgb, var(--brand) 12%, transparent) !important;
-}
-
-.gameCardList .gameCardMain {
-  display: grid;
-  grid-template-columns: 190px minmax(0, 1fr);
-}
-
-.gameCardList .gameCardMedia {
-  height: 122px;
-  border-radius: 10px 0 0 10px;
-}
-
-.gameCardList .gameCardContent {
-  align-content: center;
 }
 
 .emptyResults {
@@ -1213,10 +1041,6 @@
     grid-template-columns: 215px minmax(0, 1fr) 300px;
   }
 
-  .gameCardMedia {
-    height: 136px;
-  }
-
   .configGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1362,18 +1186,6 @@
     grid-template-columns: 1fr;
   }
 
-  .gameCardMedia {
-    height: 185px;
-  }
-
-  .gameCardList .gameCardMain {
-    grid-template-columns: 145px minmax(0, 1fr);
-  }
-
-  .gameCardList .gameCardMedia {
-    height: 130px;
-  }
-
   .detailPanel {
     grid-template-columns: 1fr;
   }
@@ -1427,19 +1239,6 @@
     grid-template-columns: 1fr;
   }
 
-  .gameCardMedia {
-    height: 165px;
-  }
-
-  .gameCardList .gameCardMain {
-    display: block;
-  }
-
-  .gameCardList .gameCardMedia {
-    height: 150px;
-    border-radius: 10px 10px 0 0;
-  }
-
   .detailMedia {
     min-height: 220px;
   }
@@ -1450,27 +1249,16 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .gameCard,
-  .gameCardImage,
   .favoriteButton,
   .tierFilter,
   .detailPrimaryLink {
     transition: none !important;
   }
 
-  .gameCard,
-  .gameCard:hover,
-  .gameCardImage,
-  .gameCard:hover .gameCardImage,
   .favoriteButton:hover,
   .tierFilter:hover,
   .detailPrimaryLink:hover {
     transform: none !important;
-  }
-
-  .gameCard::before,
-  .gameCardSpotlight {
-    display: none;
   }
 
   .configPickerTrigger > svg {

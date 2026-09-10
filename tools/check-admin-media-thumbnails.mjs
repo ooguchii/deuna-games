@@ -17,7 +17,9 @@ const [
   frameCache,
   framedLayout,
   framedVideo,
-  workspace,
+  assignmentsWorkspace,
+  galleryManager,
+  utilityRail,
   detailEditor,
   backgroundEditor,
 ] = await Promise.all([
@@ -27,7 +29,9 @@ const [
   source("src/lib/media/admin-video-frame-cache.ts"),
   source("src/lib/media/framed-media-layout.ts"),
   source("src/components/ui/FramedVideo.tsx"),
-  source("src/components/admin/GameMultimediaWorkspaceContextual.tsx"),
+  source("src/components/admin/GameMediaAssignmentsWorkspace.tsx"),
+  source("src/components/admin/GameGalleryMediaManager.tsx"),
+  source("src/components/admin/GameMultimediaUtilityRail.tsx"),
   source("src/components/admin/GameDetailMediaEditor.tsx"),
   source("src/components/admin/GameBackgroundMediaEditor.tsx"),
 ]);
@@ -126,35 +130,52 @@ assert(
 
 assert(
   has(
-    workspace,
+    assignmentsWorkspace,
     'import AdminMediaThumbnail from "@/components/admin/AdminMediaThumbnail"',
-    "DestinationThumbnailSet",
     'mode="source"',
     'mode="destination"',
-    "imageMedia?.cover",
-    "imageMedia?.hero",
-    "imageMedia?.card",
-    "imageMedia?.gallery?.[src]",
-    "resolveGameImageCropAspectRatio(galleryViewport)",
-    "activeCardVideoViewport",
-    "summaryMediaSet",
-    "summaryThumb"
+    "assignments.imageMedia?.cover",
+    "assignments.imageMedia?.hero",
+    "assignments.imageMedia?.card",
+    "resolvedCardViewport",
+    'frameAspect={3}',
+    'frameAspect={3 / 2}'
   ) &&
-    !workspace.includes("No se reproduce hasta abrir un editor.") &&
-    !workspace.includes('badge="FUENTE"') &&
-    !workspace.includes('badge={adaptive'),
-  "Workspace debe mostrar fuentes limpias, recortes reales y miniaturas visuales también en el resumen obligatorio."
+    has(
+      galleryManager,
+      'import AdminMediaThumbnail from "@/components/admin/AdminMediaThumbnail"',
+      'mode="source"',
+      'mode="destination"',
+      "imageMedia?.gallery?.[item.src]",
+      "resolveGameImageCropAspectRatio(imageViewport)",
+      "viewport={item.viewport}"
+    ) &&
+    has(
+      utilityRail,
+      "function statusPreview(",
+      "statusPreview([",
+      "statusThumb",
+      "requirements.cover.cropReady",
+      "requirements.hero.cropReady",
+      "requirements.card.cropReady",
+      "requirements.detail.cropReady",
+      "requirements.gallery.cropReady"
+    ),
+  "Asignaciones, Galería y resumen lateral deben compartir AdminMediaThumbnail para fuentes, recortes reales y estado visual de destinos."
 );
 
 assert(
   has(
-    workspace,
-    'mode === "hover-video"',
+    assignmentsWorkspace,
+    "function needsImage(",
+    "function needsVideo(",
+    "needsImage(heroMode)",
+    "needsVideo(heroMode)",
+    "needsVideo(cardMode)",
     'kind="image"',
-    'kind="video"',
-    "showImage && showVideo"
+    'kind="video"'
   ),
-  "Imagen + hover debe enseñar por separado imagen y frame de video sin taparlos con etiquetas internas."
+  "Imagen + hover debe conservar previews independientes de imagen y video en los destinos que soportan ambas capas."
 );
 
 for (const [name, editor] of [

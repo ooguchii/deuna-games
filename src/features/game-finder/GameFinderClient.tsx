@@ -23,9 +23,7 @@ import {
 
 import {
   type ChangeEvent,
-  type CSSProperties,
   type KeyboardEvent as ReactKeyboardEvent,
-  type PointerEvent as ReactPointerEvent,
   useCallback,
   useEffect,
   useMemo,
@@ -35,6 +33,7 @@ import {
 
 import ScreenReaderStatus from "@/components/ui/ScreenReaderStatus";
 import touchStyles from "@/components/ui/TouchTarget.module.css";
+import UniversalGameCardBase from "@/components/ui/UniversalGameCardBase";
 import {
   useFavoriteGame,
 } from "@/features/favorites/favorite-store";
@@ -269,35 +268,6 @@ function detectionSource(
   return "Sin lectura automática";
 }
 
-function stopTilt(event: ReactPointerEvent<HTMLElement>) {
-  const node = event.currentTarget;
-  node.style.setProperty("--tilt-x", "0deg");
-  node.style.setProperty("--tilt-y", "0deg");
-  node.style.setProperty("--pointer-x", "50%");
-  node.style.setProperty("--pointer-y", "50%");
-  node.style.setProperty("--image-x", "0px");
-  node.style.setProperty("--image-y", "0px");
-}
-
-function updateTilt(event: ReactPointerEvent<HTMLElement>) {
-  if (event.pointerType === "touch") return;
-
-  const node = event.currentTarget;
-  const rect = node.getBoundingClientRect();
-  const x = Math.min(Math.max((event.clientX - rect.left) / rect.width, 0), 1);
-  const y = Math.min(Math.max((event.clientY - rect.top) / rect.height, 0), 1);
-
-  const rotateY = (x - 0.5) * 8;
-  const rotateX = (0.5 - y) * 7;
-
-  node.style.setProperty("--tilt-x", `${rotateX.toFixed(2)}deg`);
-  node.style.setProperty("--tilt-y", `${rotateY.toFixed(2)}deg`);
-  node.style.setProperty("--pointer-x", `${(x * 100).toFixed(1)}%`);
-  node.style.setProperty("--pointer-y", `${(y * 100).toFixed(1)}%`);
-  node.style.setProperty("--image-x", `${((x - 0.5) * -8).toFixed(2)}px`);
-  node.style.setProperty("--image-y", `${((y - 0.5) * -6).toFixed(2)}px`);
-}
-
 function FinderFavoriteButton({
   gameSlug,
   gameTitle,
@@ -355,69 +325,32 @@ function GameResultCard({
   game,
   estimate,
   selected,
-  view,
   onSelect,
 }: {
   game: Game;
   estimate: GameEstimate;
   selected: boolean;
-  view: ViewMode;
   onSelect: () => void;
 }) {
   const tier = tierMeta[estimate.tier];
 
   return (
-    <article
-      className={`${styles.gameCard} ${selected ? styles.gameCardSelected : ""} ${
-        view === "list" ? styles.gameCardList : ""
-      }`}
-      onPointerMove={updateTilt}
-      onPointerLeave={stopTilt}
-      style={
-        {
-          "--tilt-x": "0deg",
-          "--tilt-y": "0deg",
-          "--pointer-x": "50%",
-          "--pointer-y": "50%",
-          "--image-x": "0px",
-          "--image-y": "0px",
-        } as CSSProperties
-      }
-    >
-      <button
-        type="button"
-        className={styles.gameCardMain}
-        onClick={onSelect}
-        aria-pressed={selected}
-        aria-label={`Seleccionar ${game.title}`}
-      >
-        <div className={styles.gameCardMedia}>
-          {game.coverImage ? (
-            <Image
-              src={game.coverImage}
-              alt={game.imageAlt}
-              fill
-              sizes={view === "list" ? "180px" : "(max-width: 760px) 100vw, 420px"}
-              className={styles.gameCardImage}
-            />
-          ) : (
-            <div className={styles.gameCardFallback} aria-hidden="true" />
+    <UniversalGameCardBase
+      game={game}
+      primaryAction={{
+        kind: "button",
+        ariaLabel: `Seleccionar ${game.title}`,
+        pressed: selected,
+        onClick: onSelect,
+      }}
+      supplementalContent={(
+        <div className={styles.finderCardSignals}>
+          {selected && (
+            <span className={styles.selectedMark}>
+              <Check size={13} aria-hidden="true" />
+              Seleccionado
+            </span>
           )}
-
-          <div className={styles.gameCardShade} aria-hidden="true" />
-          <div className={styles.gameCardSpotlight} aria-hidden="true" />
-        </div>
-
-        <div className={styles.gameCardContent}>
-          <div className={styles.gameTitleRow}>
-            <h3>{game.title}</h3>
-            {selected && (
-              <span className={styles.selectedMark}>
-                <Check size={13} aria-hidden="true" />
-                Seleccionado
-              </span>
-            )}
-          </div>
 
           {estimate.canEstimate ? (
             <div className={`${styles.performanceBar} ${tier.className}`}>
@@ -448,14 +381,15 @@ function GameResultCard({
             </span>
           </div>
         </div>
-      </button>
-
-      <FinderFavoriteButton
-        gameSlug={game.slug}
-        gameTitle={game.title}
-        className={styles.favoriteButton}
-      />
-    </article>
+      )}
+      overlayAction={(
+        <FinderFavoriteButton
+          gameSlug={game.slug}
+          gameTitle={game.title}
+          className={styles.favoriteButton}
+        />
+      )}
+    />
   );
 }
 
@@ -1101,7 +1035,6 @@ export default function GameFinderClient({
                   game={game}
                   estimate={estimates.get(game.slug)!}
                   selected={selectedGame?.slug === game.slug}
-                  view={view}
                   onSelect={() => setSelectedSlug(game.slug)}
                 />
               ))

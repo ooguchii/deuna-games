@@ -3,6 +3,10 @@ import {
   resolveGameGalleryItems,
 } from "./game-gallery-media";
 import {
+  resolveGameCardBaseImage,
+  resolveGameCoverImage,
+} from "./game-card-presentation";
+import {
   resolveGameDestinationImage,
   resolveGameDestinationMediaMode,
 } from "./game-video-media";
@@ -36,9 +40,17 @@ export type RequiredMediaDestination = keyof typeof REQUIRED_DESTINATION_ASPECTS
 export function isImageCropConfirmed(
   viewport: GameImageViewport | undefined,
   requiredAspect?: GameImageViewportAspect,
-  legacyAspect?: GameImageViewportAspect
+  legacyAspect?: GameImageViewportAspect,
+  expectedSource?: string
 ) {
   if (viewport?.confirmed !== true) return false;
+  if (
+    expectedSource &&
+    viewport.source !== undefined &&
+    viewport.source !== expectedSource
+  ) {
+    return false;
+  }
   if (!requiredAspect) return true;
   const effectiveAspect = viewport.aspect ?? legacyAspect;
   return effectiveAspect === requiredAspect;
@@ -60,21 +72,19 @@ function destinationRequirement(
   videoViewport: GameVideoViewport | undefined,
   videoAspect: GameVideoViewportAspect,
   imageAspect?: GameImageViewportAspect,
-  legacyImageAspect?: GameImageViewportAspect
+  legacyImageAspect?: GameImageViewportAspect,
+  imageSource?: string
 ) {
   const imageReady = imageAssigned && isImageCropConfirmed(
     imageViewport,
     imageAspect,
-    legacyImageAspect
+    legacyImageAspect,
+    imageSource
   );
   const videoReady = videoAssigned && isVideoCropConfirmed(videoViewport, videoAspect);
 
-  if (mode === "image") {
-    return { assigned: imageAssigned, cropReady: imageReady };
-  }
-  if (mode === "video") {
-    return { assigned: videoAssigned, cropReady: videoReady };
-  }
+  if (mode === "image") return { assigned: imageAssigned, cropReady: imageReady };
+  if (mode === "video") return { assigned: videoAssigned, cropReady: videoReady };
   return {
     assigned: imageAssigned && videoAssigned,
     cropReady: imageReady && videoReady,
@@ -86,12 +96,8 @@ export function resolveGameBackgroundMediaMode(
 ): GameDestinationMediaMode | null {
   const explicit = game.mediaModes?.background;
   if (explicit) return explicit;
-
   const video = game.videoMedia?.background;
-  if (video) {
-    return video.playback === "hover" ? "hover-video" : "video";
-  }
-
+  if (video) return video.playback === "hover" ? "hover-video" : "video";
   if (game.backgroundImage) return "image";
   return null;
 }
@@ -102,15 +108,15 @@ export function evaluateGameMediaRequirements(game: Game) {
   const detailMode = resolveGameDestinationMediaMode(game, "detail");
   const backgroundMode = resolveGameBackgroundMediaMode(game);
 
-  // Portada es siempre una imagen. Los campos históricos de modo y video de
-  // Portada no participan de readiness ni pueden sustituir este recorte 4:5.
-  const coverAssigned = Boolean(game.coverImage);
+  const coverImage = resolveGameCoverImage(game);
+  const coverAssigned = Boolean(coverImage);
   const cover = {
     assigned: coverAssigned,
     cropReady: coverAssigned && isImageCropConfirmed(
       game.imageMedia?.cover,
       REQUIRED_DESTINATION_ASPECTS.cover,
-      LEGACY_DESTINATION_IMAGE_ASPECTS.cover
+      LEGACY_DESTINATION_IMAGE_ASPECTS.cover,
+      coverImage
     ),
   };
 
@@ -122,23 +128,31 @@ export function evaluateGameMediaRequirements(game: Game) {
     game.videoMedia?.hero?.viewport,
     REQUIRED_DESTINATION_ASPECTS.hero,
     REQUIRED_DESTINATION_ASPECTS.hero,
-    LEGACY_DESTINATION_IMAGE_ASPECTS.hero
+    LEGACY_DESTINATION_IMAGE_ASPECTS.hero,
+    game.heroImage
   );
 
   const cardVideo = game.videoMedia?.card;
   const cardClipAssigned = cardVideo?.source === "hero"
     ? Boolean(game.videoMedia?.hero?.clip)
     : Boolean(cardVideo?.clip);
-  const card = destinationRequirement(
-    cardMode,
-    Boolean(game.cardImage),
+  const cardImage = resolveGameCardBaseImage(game);
+  const cardImageReady = Boolean(cardImage) && isImageCropConfirmed(
     game.imageMedia?.card,
-    cardClipAssigned,
-    cardVideo?.viewport,
     REQUIRED_DESTINATION_ASPECTS.card,
-    REQUIRED_DESTINATION_ASPECTS.card,
-    LEGACY_DESTINATION_IMAGE_ASPECTS.card
+    LEGACY_DESTINATION_IMAGE_ASPECTS.card,
+    cardImage
   );
+  const cardVideoReady = cardClipAssigned && isVideoCropConfirmed(
+    cardVideo?.viewport,
+    REQUIRED_DESTINATION_ASPECTS.card
+  );
+  const card = cardMode === "image"
+    ? { assigned: Boolean(cardImage), cropReady: cardImageReady }
+    : {
+        assigned: Boolean(cardImage) && cardClipAssigned,
+        cropReady: cardImageReady && cardVideoReady,
+      };
 
   const detailImage = resolveGameDestinationImage(game, "detail");
   const legacyDetailViewport = !game.detailImage
@@ -152,7 +166,10 @@ export function evaluateGameMediaRequirements(game: Game) {
     game.imageMedia?.detail ?? legacyDetailViewport,
     Boolean(game.videoMedia?.detail?.clip),
     game.videoMedia?.detail?.viewport,
-    GAME_DETAIL_VIEWPORT_ASPECT
+    GAME_DETAIL_VIEWPORT_ASPECT,
+    undefined,
+    undefined,
+    detailImage
   );
 
   const background = backgroundMode
@@ -162,7 +179,10 @@ export function evaluateGameMediaRequirements(game: Game) {
         game.imageMedia?.background,
         Boolean(game.videoMedia?.background?.clip),
         game.videoMedia?.background?.viewport,
-        GAME_BACKGROUND_VIEWPORT_ASPECT
+        GAME_BACKGROUND_VIEWPORT_ASPECT,
+        undefined,
+        undefined,
+        game.backgroundImage
       )
     : { assigned: true, cropReady: true };
 
@@ -173,26 +193,10 @@ export function evaluateGameMediaRequirements(game: Game) {
   );
 
   return {
-    cover: {
-      ...cover,
-      mode: "image" as const,
-      aspect: REQUIRED_DESTINATION_ASPECTS.cover,
-    },
-    hero: {
-      ...hero,
-      mode: heroMode,
-      aspect: REQUIRED_DESTINATION_ASPECTS.hero,
-    },
-    card: {
-      ...card,
-      mode: cardMode,
-      aspect: REQUIRED_DESTINATION_ASPECTS.card,
-    },
-    detail: {
-      ...detail,
-      mode: detailMode,
-      aspect: "adaptive" as const,
-    },
+    cover: { ...cover, mode: "image" as const, aspect: REQUIRED_DESTINATION_ASPECTS.cover },
+    hero: { ...hero, mode: heroMode, aspect: REQUIRED_DESTINATION_ASPECTS.hero },
+    card: { ...card, mode: cardMode, aspect: REQUIRED_DESTINATION_ASPECTS.card },
+    detail: { ...detail, mode: detailMode, aspect: "adaptive" as const },
     background: {
       ...background,
       active: backgroundMode !== null,
