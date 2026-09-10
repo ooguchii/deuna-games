@@ -11,6 +11,9 @@ import {
   adminQuery,
 } from "../src/lib/admin/database.ts";
 import {
+  evaluateGamePublicationReadiness,
+} from "../src/lib/admin/game-publication-readiness.ts";
+import {
   resolveGameDestinationMediaMode,
 } from "../src/lib/media/game-video-media.ts";
 
@@ -314,8 +317,9 @@ const fixtureResult = await adminQuery(
      publication_number
    FROM deuna_admin.editorial_items
    WHERE item_type = 'game'
-     AND public_visible = true
-   ORDER BY item_key ASC`
+     AND public_visible = false
+     AND item_key LIKE 'visual-lifecycle-%'
+   ORDER BY updated_at DESC`
 );
 const fixture = fixtureResult.rows.find((row) => {
   try {
@@ -323,11 +327,16 @@ const fixture = fixtureResult.rows.find((row) => {
       "game",
       row.draft_payload
     );
+    const readiness =
+      evaluateGamePublicationReadiness(game);
 
-    return resolveGameDestinationMediaMode(
-      game,
-      "cover"
-    ) === "image";
+    return (
+      resolveGameDestinationMediaMode(
+        game,
+        "cover"
+      ) === "image" &&
+      readiness.essentialsReady
+    );
   } catch {
     return false;
   }
@@ -335,7 +344,7 @@ const fixture = fixtureResult.rows.find((row) => {
 
 if (!fixture) {
   throw new Error(
-    "El smoke necesita al menos un juego publicado con Portada en modo imagen."
+    "El smoke necesita el juego sintético oculto y listo para publicar creado por game-publication-lifecycle-smoke."
   );
 }
 
@@ -344,6 +353,15 @@ const initialGame = parseEditorialPayload(
   "game",
   fixture.draft_payload
 );
+const initialReadiness =
+  evaluateGamePublicationReadiness(initialGame);
+
+if (!initialReadiness.essentialsReady) {
+  throw new Error(
+    "El fixture sintético dejó de cumplir la preparación editorial esencial antes del smoke multimedia."
+  );
+}
+
 const previousPublicationResult = await adminQuery(
   `SELECT id::text
    FROM deuna_admin.editorial_publications
@@ -528,6 +546,24 @@ if (
   );
 }
 
+const croppedReadiness =
+  evaluateGamePublicationReadiness(croppedGame);
+
+if (!croppedReadiness.essentialsReady) {
+  const missingEssentials = croppedReadiness.items
+    .filter(
+      (item) =>
+        item.priority === "essential" &&
+        !item.complete
+    )
+    .map((item) => item.id)
+    .join(", ");
+
+  throw new Error(
+    `El draft del smoke dejó de estar listo para publicar después del crop: ${missingEssentials || "sin detalle"}.`
+  );
+}
+
 assertAnonymousPrivate(
   await request(publicPath),
   "El GET anónimo después de confirmar el crop privado"
@@ -630,10 +666,56 @@ assertPublicImmutable(
   digest
 );
 
+const hideBody = new URLSearchParams({
+  expectedPublicationNumber: String(
+    restored.publication_number
+  ),
+}).toString();
+const hideResponse = await request(
+  `/api/admin/content/games/${encodeURIComponent(slug)}/hide`,
+  {
+    method: "POST",
+    headers: formHeaders(
+      `/admin/juegos/${encodeURIComponent(slug)}/publicacion`,
+      cookie
+    ),
+    body: hideBody,
+  }
+);
+expectRedirect(
+  hideResponse,
+  "La limpieza final del fixture multimedia",
+  "oculto"
+);
+
+const cleanupResult = await adminQuery(
+  `SELECT public_visible, publication_number
+   FROM deuna_admin.editorial_items
+   WHERE id = $1`,
+  [fixture.id]
+);
+const cleanup = cleanupResult.rows[0];
+
+if (
+  !cleanup ||
+  cleanup.public_visible !== false ||
+  cleanup.publication_number !== restored.publication_number
+) {
+  throw new Error(
+    "El smoke no restauró el estado oculto del fixture sintético al finalizar."
+  );
+}
+
+assertPublicImmutable(
+  await request(publicPath),
+  "El GET del asset históricamente publicado con el juego nuevamente oculto",
+  digest
+);
+
 console.log(
   "Editorial media serving lifecycle smoke: OK " +
     `(slug=${slug}, bytes=${image.length}, ` +
     "upload=anon404/admin-private, draft=anon404/admin-private, " +
     "crop=confirmed-private, published=public-immutable, " +
-    "restored=historical-public)."
+    "restored=historical-public, cleanup=hidden)."
 );
