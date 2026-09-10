@@ -3,6 +3,10 @@ import {
   parsePreviewViewport,
   type PreviewViewport,
 } from "./preview-video-policy";
+import {
+  resolveGameCardBaseImage,
+  resolveGameCoverImage,
+} from "./game-card-artwork";
 
 import type {
   Game,
@@ -71,10 +75,10 @@ export function resolveGameDestinationImage(
   game: Game,
   target: GameMediaDestinationTarget
 ) {
-  if (target === "cover") return game.coverImage;
+  if (target === "cover") return resolveGameCoverImage(game);
   if (target === "hero") return game.heroImage;
-  if (target === "card") return game.cardImage ?? game.coverImage;
-  return game.detailImage ?? game.heroImage ?? game.coverImage;
+  if (target === "card") return resolveGameCardBaseImage(game);
+  return game.detailImage ?? game.heroImage ?? resolveGameCoverImage(game);
 }
 
 export function resolveGameDestinationMediaMode(
