@@ -172,6 +172,12 @@ export type GameImageViewport = {
   aspect?: GameImageViewportAspect;
   /* Relación ancho/alto exacta cuando aspect="free". */
   aspectRatio?: number;
+  /*
+   * Recurso al que pertenecía el encuadre al confirmarlo. Ausente conserva
+   * compatibilidad con snapshots históricos; los guardados nuevos lo fijan
+   * server-side para impedir que sobreviva un crop de otra imagen.
+   */
+  source?: string;
   /* Sólo true significa que el editor confirmó explícitamente este recorte. */
   confirmed?: true;
 };
@@ -254,6 +260,8 @@ export type GameMediaModes = {
   background?: GameDestinationMediaMode;
 };
 
+export type GameCoverImageSource = "card" | "custom";
+
 export type GameVideoPlayback = "always" | "hover";
 export type GameHeroVideoPlayback = GameVideoPlayback;
 
@@ -320,10 +328,15 @@ export type Game = {
   developer?: string;
   publisher?: string;
 
-  /* Portada pública/editorial: siempre una imagen con viewport 4:5 propio. */
+  /*
+   * Portada pública/editorial: siempre imagen 4:5. En revisiones nuevas la
+   * intención shared/custom vive en coverImageSource; coverImage se mantiene
+   * también como valor materializado para compatibilidad con readers antiguos.
+   */
   coverImage?: string;
+  coverImageSource?: GameCoverImageSource;
   heroImage?: string;
-  /* La Card tiene recurso base propio; nunca depende de cambios posteriores de Portada. */
+  /* Imagen base estática obligatoria de Card; video nunca la reemplaza. */
   cardImage?: string;
   /* Fondo multimedia del contenedor principal de la ficha; independiente del Hero. */
   detailImage?: string;
