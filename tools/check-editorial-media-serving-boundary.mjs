@@ -80,8 +80,8 @@ assert(
     "readAdminSessionToken()",
     "resolveAdminSession",
     'return "public"',
-    'return (await hasAdminMediaAccess())',
-    ': "admin"',
+    "return (await hasAdminMediaAccess())",
+    '? "admin"',
     ": null"
   ),
   "Un asset no publicado sólo puede degradar a preview Admin autenticado; el tráfico anónimo debe fallar cerrado."
@@ -101,11 +101,19 @@ assert(
   "La ruta física debe aplicar 404 anónimo, no-store privado y cache inmutable únicamente a referencias publicadas."
 );
 
+const physicalCheck = route.indexOf(
+  "const stats = await lstat(resolved.filePath)"
+);
+const accessDecision = route.indexOf(
+  "const servingAccess ="
+);
+const cacheHeaders = route.indexOf(
+  "const sharedHeaders ="
+);
 assert(
-  route.indexOf("await lstat(resolved.filePath)") <
-    route.indexOf("resolveEditorialMediaServingAccess") &&
-    route.indexOf("resolveEditorialMediaServingAccess") <
-      route.indexOf("const sharedHeaders"),
+  physicalCheck >= 0 &&
+    accessDecision > physicalCheck &&
+    cacheHeaders > accessDecision,
   "La ruta debe descartar paths inexistentes antes de consultar publicación y decidir acceso antes de construir headers cacheables."
 );
 
