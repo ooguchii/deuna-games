@@ -190,11 +190,23 @@ async function loadEverPublishedReferences(
       `SELECT payload
        FROM deuna_admin.editorial_publications
        WHERE item_id = $1
+         AND (
+           action <> 'bootstrap'
+           OR actor_user_id IS NULL
+         )
        ORDER BY publication_number ASC`,
       [item.id]
     );
   const references = new Set<string>();
 
+  /*
+   * Los bootstraps de importación/migración tienen actor NULL y representan
+   * el snapshot público inicial. En cambio createGameDraft/createUpdateDraft
+   * generan un bootstrap administrativo con actor_user_id y public_visible
+   * false sólo para conservar la numeración/historia interna. Ese registro
+   * nunca debe convertir un recurso de borrador en públicamente servible.
+   * Las publicaciones/restauraciones explícitas sí cuentan siempre.
+   */
   for (const publication of publicationResult.rows) {
     for (const reference of publicationReferences(
       owner,
