@@ -555,18 +555,34 @@ async function main() {
       );
     }
 
-    await cdp.send("Page.setWebLifecycleState", { state: "frozen" });
-    await delay(150);
-    const hiddenState = await cdp.evaluate(`(() => {
-      const card = ${lookup};
-      return {
-        hidden: document.hidden,
-        visibilityState: document.visibilityState,
-        hasVideo: Boolean(card?.querySelector("video")),
-      };
-    })()`);
+    const backgroundTarget = await cdp.send("Target.createTarget", {
+      url: "about:blank",
+    });
+    if (!backgroundTarget.targetId) {
+      throw new Error("Chrome no creó la pestaña auxiliar para probar visibilitychange.");
+    }
+    await cdp.send("Target.activateTarget", {
+      targetId: backgroundTarget.targetId,
+    });
+    const hiddenState = await waitFor(
+      cdp,
+      `(() => {
+        const card = ${lookup};
+        if (!(card instanceof HTMLElement)) return false;
+        if (!document.hidden || document.visibilityState !== "hidden") {
+          return false;
+        }
+        if (card.querySelector("video")) return false;
+        return {
+          hidden: document.hidden,
+          visibilityState: document.visibilityState,
+          hasVideo: false,
+        };
+      })()`,
+      "La pestaña oculta no procesó visibilitychange o mantuvo el video de Card"
+    );
     if (
-      !hiddenState?.hidden ||
+      !hiddenState.hidden ||
       hiddenState.visibilityState !== "hidden" ||
       hiddenState.hasVideo
     ) {
