@@ -121,6 +121,7 @@ const mediaModeSchema = z.enum([
 
 const mediaModesSchema = z
   .object({
+    // Compatibilidad de lectura para snapshots anteriores al contrato image-only.
     cover: mediaModeSchema.optional(),
     hero: mediaModeSchema.optional(),
     card: mediaModeSchema.optional(),
@@ -170,6 +171,7 @@ const cardVideoSchema = z.union([
 
 const videoMediaSchema = z
   .object({
+    // Sólo se acepta para poder interpretar historial. Se elimina al normalizar.
     cover: destinationVideoSchema.optional(),
     hero: destinationVideoSchema.optional(),
     card: cardVideoSchema.optional(),
@@ -529,33 +531,41 @@ export function parseEditorialPayload<
     game.screenshots
   );
 
+  // `cover` se admite arriba sólo para poder validar snapshots antiguos. Desde
+  // aquí el contrato actual ya no expone esa capa ni su modo a ningún consumidor.
+  const activeVideoMedia = videoMedia
+    ? {
+        ...(videoMedia.hero ? { hero: videoMedia.hero } : {}),
+        ...(videoMedia.card ? { card: videoMedia.card } : {}),
+        ...(videoMedia.detail ? { detail: videoMedia.detail } : {}),
+        ...(videoMedia.background ? { background: videoMedia.background } : {}),
+      }
+    : undefined;
+  const hasActiveVideoMedia = Boolean(
+    activeVideoMedia && Object.keys(activeVideoMedia).length > 0
+  );
   const backgroundMode = inferredOptionalMode(
     mediaModes?.background,
-    videoMedia?.background,
+    activeVideoMedia?.background,
     backgroundImage
   );
   const resolvedMediaModes = {
-    cover: inferredMode(
-      mediaModes?.cover,
-      videoMedia?.cover,
-      game.coverImage,
-      "video"
-    ),
+    cover: "image" as const,
     hero: inferredMode(
       mediaModes?.hero,
-      videoMedia?.hero,
+      activeVideoMedia?.hero,
       game.heroImage,
       "hover-video"
     ),
     card: inferredMode(
       mediaModes?.card,
-      videoMedia?.card,
+      activeVideoMedia?.card,
       resolvedCardImage,
       "hover-video"
     ),
     detail: inferredMode(
       mediaModes?.detail,
-      videoMedia?.detail,
+      activeVideoMedia?.detail,
       resolvedDetailImage,
       "image"
     ),
@@ -571,7 +581,7 @@ export function parseEditorialPayload<
     ...(resolvedImageMedia ? { imageMedia: resolvedImageMedia } : {}),
     ...(resolvedMediaAccessibility ? { mediaAccessibility: resolvedMediaAccessibility } : {}),
     mediaModes: resolvedMediaModes,
-    ...(videoMedia ? { videoMedia } : {}),
+    ...(hasActiveVideoMedia ? { videoMedia: activeVideoMedia } : {}),
     ...(ageRating ? { ageRating } : {}),
     ...(compatibilityMetadata ? { compatibilityMetadata } : {}),
     ...(performanceMetadata ? { performanceMetadata } : {}),
