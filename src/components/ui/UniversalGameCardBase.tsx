@@ -34,11 +34,26 @@ export type UniversalGameCardVariant =
   | "lowSpec"
   | "catalog";
 
+export type UniversalGameCardPrimaryAction =
+  | {
+      kind?: "link";
+      href?: string;
+      ariaLabel?: string;
+    }
+  | {
+      kind: "button";
+      ariaLabel: string;
+      onClick: () => void;
+      pressed?: boolean;
+      disabled?: boolean;
+    };
+
 export type UniversalGameCardProps = {
   game: Game;
   variant?: UniversalGameCardVariant;
   overlayAction?: ReactNode;
   supplementalContent?: ReactNode;
+  primaryAction?: UniversalGameCardPrimaryAction;
 };
 
 type PendingTilt = {
@@ -136,6 +151,7 @@ export default function UniversalGameCardBase({
   variant = "standard",
   overlayAction,
   supplementalContent,
+  primaryAction,
 }: UniversalGameCardProps) {
   const previewTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const tiltFrame = useRef<number | null>(null);
@@ -292,6 +308,83 @@ export default function UniversalGameCardBase({
   const videoActive = Boolean(
     detailVisible && previewActive && !reducedMotion && preview && cardMode !== "image"
   );
+  const primaryClassName = `${styles.link} ${presentationStyles.link} ${tiltStyles.tiltClip}`;
+  const cardContent = (
+    <>
+      <div className={presentationStyles.coverFace} aria-hidden={detailPresented ? "true" : undefined}>
+        <GameMedia
+          src={presentation.cover.image}
+          alt={detailPresented ? "" : presentation.cover.alt}
+          viewport={presentation.cover.viewport}
+          sizes="(max-width: 560px) 82vw, (max-width: 900px) 48vw, (max-width: 1250px) 30vw, 20vw"
+          fallbackClassName={fallbackClass ? styles[fallbackClass] : undefined}
+        />
+        <div className={presentationStyles.coverShade} aria-hidden="true" />
+      </div>
+
+      <div className={presentationStyles.detailFace} aria-hidden={!detailPresented ? "true" : undefined}>
+        <div className={`${styles.media} ${presentationStyles.detailMedia} ${tiltStyles.tiltMedia}`}>
+          <HoverPreviewMedia
+            imageSrc={presentation.card.image}
+            imageAlt={detailPresented ? presentation.card.alt : ""}
+            imageViewport={presentation.card.viewport}
+            previewClip={preview?.src}
+            previewViewport={preview?.viewport}
+            active={videoActive}
+            sizes="(max-width: 560px) 82vw, (max-width: 900px) 48vw, (max-width: 1250px) 30vw, 20vw"
+            fallbackClassName={fallbackClass ? styles[fallbackClass] : undefined}
+          />
+          <div className={styles.mediaOverlay} aria-hidden="true" />
+          <div className={tiltStyles.spotlight} aria-hidden="true" />
+          {mediaBadge && (
+            <span className={`${styles.mediaBadge} ${mediaBadge.tone === "brand" ? styles.mediaBadgeBrand : ""}`}>
+              {mediaBadge.label}
+            </span>
+          )}
+          <Monitor size={18} className={styles.platform} aria-hidden="true" />
+        </div>
+
+        <div className={`${styles.content} ${presentationStyles.detailContent}`}>
+          <div className={styles.titleRow}>
+            <h3>{game.title}</h3>
+            {isRecent && game.version && <span className={styles.version}>{game.version}</span>}
+            {isCatalog && <ChevronRight size={17} aria-hidden="true" />}
+          </div>
+          {isCatalog && <p className={styles.description}>{game.description}</p>}
+          {isLowSpec && <LowSpecDetails game={game} />}
+          <Rating game={game} />
+          {isRecent && game.addedAt && (
+            <div className={styles.date}>
+              <CalendarDays size={15} aria-hidden="true" />
+              <span>Añadido el {game.addedAt}</span>
+            </div>
+          )}
+          {supplementalContent}
+        </div>
+      </div>
+    </>
+  );
+
+  const primaryControl = primaryAction?.kind === "button" ? (
+    <button
+      type="button"
+      className={`${primaryClassName} ${presentationStyles.actionButton}`}
+      aria-label={primaryAction.ariaLabel}
+      aria-pressed={primaryAction.pressed}
+      disabled={primaryAction.disabled}
+      onClick={primaryAction.onClick}
+    >
+      {cardContent}
+    </button>
+  ) : (
+    <Link
+      href={primaryAction?.href ?? `/juegos/${game.slug}`}
+      className={primaryClassName}
+      aria-label={primaryAction?.ariaLabel ?? `Ver ${game.title}`}
+    >
+      {cardContent}
+    </Link>
+  );
 
   return (
     <article
@@ -315,63 +408,7 @@ export default function UniversalGameCardBase({
         "--image-y": "0px",
       } as CSSProperties}
     >
-      <Link
-        href={`/juegos/${game.slug}`}
-        className={`${styles.link} ${presentationStyles.link} ${tiltStyles.tiltClip}`}
-        aria-label={`Ver ${game.title}`}
-      >
-        <div className={presentationStyles.coverFace} aria-hidden={detailPresented ? "true" : undefined}>
-          <GameMedia
-            src={presentation.cover.image}
-            alt={detailPresented ? "" : presentation.cover.alt}
-            viewport={presentation.cover.viewport}
-            sizes="(max-width: 560px) 82vw, (max-width: 900px) 48vw, (max-width: 1250px) 30vw, 20vw"
-            fallbackClassName={fallbackClass ? styles[fallbackClass] : undefined}
-          />
-          <div className={presentationStyles.coverShade} aria-hidden="true" />
-        </div>
-
-        <div className={presentationStyles.detailFace} aria-hidden={!detailPresented ? "true" : undefined}>
-          <div className={`${styles.media} ${presentationStyles.detailMedia} ${tiltStyles.tiltMedia}`}>
-            <HoverPreviewMedia
-              imageSrc={presentation.card.image}
-              imageAlt={detailPresented ? presentation.card.alt : ""}
-              imageViewport={presentation.card.viewport}
-              previewClip={preview?.src}
-              previewViewport={preview?.viewport}
-              active={videoActive}
-              sizes="(max-width: 560px) 82vw, (max-width: 900px) 48vw, (max-width: 1250px) 30vw, 20vw"
-              fallbackClassName={fallbackClass ? styles[fallbackClass] : undefined}
-            />
-            <div className={styles.mediaOverlay} aria-hidden="true" />
-            <div className={tiltStyles.spotlight} aria-hidden="true" />
-            {mediaBadge && (
-              <span className={`${styles.mediaBadge} ${mediaBadge.tone === "brand" ? styles.mediaBadgeBrand : ""}`}>
-                {mediaBadge.label}
-              </span>
-            )}
-            <Monitor size={18} className={styles.platform} aria-hidden="true" />
-          </div>
-
-          <div className={`${styles.content} ${presentationStyles.detailContent}`}>
-            <div className={styles.titleRow}>
-              <h3>{game.title}</h3>
-              {isRecent && game.version && <span className={styles.version}>{game.version}</span>}
-              {isCatalog && <ChevronRight size={17} aria-hidden="true" />}
-            </div>
-            {isCatalog && <p className={styles.description}>{game.description}</p>}
-            {isLowSpec && <LowSpecDetails game={game} />}
-            <Rating game={game} />
-            {isRecent && game.addedAt && (
-              <div className={styles.date}>
-                <CalendarDays size={15} aria-hidden="true" />
-                <span>Añadido el {game.addedAt}</span>
-              </div>
-            )}
-            {supplementalContent}
-          </div>
-        </div>
-      </Link>
+      {primaryControl}
       {overlayAction}
     </article>
   );
