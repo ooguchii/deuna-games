@@ -13,21 +13,23 @@ import type {
   GameVideoViewport,
 } from "@/types/game";
 
-export type GameVideoTarget = "cover" | "hero" | "card" | "detail";
+/** Destinos que siguen admitiendo video editorial activo. */
+export type GameVideoTarget = "hero" | "card" | "detail";
+export type GameMediaDestinationTarget = "cover" | GameVideoTarget;
 export type GameCardVideoSource = "hero" | "independent";
 
 export type ResolvedGameVideo = {
   src: string;
   viewport: GameVideoViewport;
-  source: GameCardVideoSource | "cover" | "hero" | "detail" | "legacy";
+  source: GameCardVideoSource | "hero" | "detail" | "legacy";
 };
 
 export const DEFAULT_GAME_MEDIA_MODES = {
-  cover: "video",
+  cover: "image",
   hero: "hover-video",
   card: "hover-video",
   detail: "image",
-} as const satisfies Record<GameVideoTarget, GameDestinationMediaMode>;
+} as const satisfies Record<GameMediaDestinationTarget, GameDestinationMediaMode>;
 
 function defaultViewport(): GameVideoViewport {
   return { ...DEFAULT_PREVIEW_VIEWPORT };
@@ -69,7 +71,7 @@ export function normalizeGameVideoViewport(
 
 export function resolveGameDestinationImage(
   game: Game,
-  target: GameVideoTarget
+  target: GameMediaDestinationTarget
 ) {
   if (target === "cover") return game.coverImage;
   if (target === "hero") return game.heroImage;
@@ -79,18 +81,21 @@ export function resolveGameDestinationImage(
 
 export function resolveGameDestinationMediaMode(
   game: Game,
-  target: GameVideoTarget
+  target: GameMediaDestinationTarget
 ): GameDestinationMediaMode {
+  // Portada es un contrato image-only. mediaModes.cover y videoMedia.cover se
+  // aceptan únicamente al leer snapshots históricos; nunca vuelven a activar
+  // video en el runtime/editor actual.
+  if (target === "cover") return "image";
+
   const explicit = game.mediaModes?.[target];
   if (explicit) return explicit;
 
-  const video = target === "cover"
-    ? game.videoMedia?.cover
-    : target === "hero"
-      ? game.videoMedia?.hero
-      : target === "card"
-        ? game.videoMedia?.card
-        : game.videoMedia?.detail;
+  const video = target === "hero"
+    ? game.videoMedia?.hero
+    : target === "card"
+      ? game.videoMedia?.card
+      : game.videoMedia?.detail;
   if (video) {
     return video.playback === "hover" ? "hover-video" : "video";
   }
@@ -107,17 +112,15 @@ export function resolveGameHeroVideoPlayback(
     : "always";
 }
 
+/**
+ * Compatibilidad binaria para consumidores antiguos. Portada dejó de admitir
+ * video: incluso un snapshot histórico con videoMedia.cover debe renderizar su
+ * imagen estática con el runtime actual.
+ */
 export function resolveGameCoverVideo(
-  game: Game
-): ResolvedGameVideo | undefined {
-  const cover = game.videoMedia?.cover;
-  if (!cover?.clip) return undefined;
-
-  return {
-    src: cover.clip,
-    viewport: normalizeGameVideoViewport(cover.viewport),
-    source: "cover",
-  };
+  _game: Game
+): undefined {
+  return undefined;
 }
 
 export function resolveGameHeroVideo(
@@ -188,24 +191,6 @@ export function withSavedGameVideoClip(
 ): Pick<Game, "videoMedia" | "previewClip" | "mediaModes"> {
   const normalizedViewport = normalizeGameVideoViewport(viewport);
   const current = game.videoMedia;
-
-  if (target === "cover") {
-    return {
-      videoMedia: {
-        ...current,
-        cover: {
-          clip,
-          viewport: normalizedViewport,
-          playback: "always",
-        },
-      },
-      mediaModes: {
-        ...game.mediaModes,
-        cover: "video",
-      },
-      previewClip: game.previewClip,
-    };
-  }
 
   if (target === "hero") {
     let card = current?.card;
@@ -288,17 +273,6 @@ export function withGameVideoLayout(
   };
   const current = game.videoMedia;
 
-  if (target === "cover") {
-    if (!current?.cover) return null;
-    return {
-      ...current,
-      cover: {
-        ...current.cover,
-        viewport: normalizedViewport,
-      },
-    };
-  }
-
   if (target === "hero") {
     if (!current?.hero) return null;
     return {
@@ -355,16 +329,6 @@ export function withoutGameVideoTarget(
   target: GameVideoTarget
 ): Pick<Game, "videoMedia" | "previewClip"> {
   const current = game.videoMedia;
-
-  if (target === "cover") {
-    const videoMedia = current
-      ? { ...current, cover: undefined }
-      : undefined;
-    return {
-      videoMedia: hasVideoMedia(videoMedia) ? videoMedia : undefined,
-      previewClip: game.previewClip,
-    };
-  }
 
   if (target === "detail") {
     const videoMedia = current
