@@ -20,6 +20,10 @@ const screenshotPath = path.join(
   outputRoot,
   "card-video-active-desktop.png"
 );
+const DESKTOP_MEDIA_FEATURES = [
+  { name: "hover", value: "hover" },
+  { name: "pointer", value: "fine" },
+];
 
 function assertVisualCiOnly() {
   if (
@@ -383,6 +387,7 @@ async function main() {
     });
     await cdp.send("Emulation.setEmulatedMedia", {
       features: [
+        ...DESKTOP_MEDIA_FEATURES,
         { name: "prefers-reduced-motion", value: "no-preference" },
       ],
     });
@@ -409,6 +414,17 @@ async function main() {
       "No se hidrató la Card publicada del fixture"
     );
     await delay(300);
+
+    const mediaState = await cdp.evaluate(`({
+      fineHover: matchMedia("(hover: hover) and (pointer: fine)").matches,
+      coarse: matchMedia("(pointer: coarse)").matches,
+      reduced: matchMedia("(prefers-reduced-motion: reduce)").matches,
+    })`);
+    if (!mediaState?.fineHover || mediaState.coarse || mediaState.reduced) {
+      throw new Error(
+        `El smoke no reprodujo un escritorio fine/hover: ${JSON.stringify(mediaState)}.`
+      );
+    }
 
     const restState = await cdp.evaluate(`(() => {
       const card = ${lookup};
@@ -491,6 +507,7 @@ async function main() {
 
     await cdp.send("Emulation.setEmulatedMedia", {
       features: [
+        ...DESKTOP_MEDIA_FEATURES,
         { name: "prefers-reduced-motion", value: "reduce" },
       ],
     });
@@ -509,6 +526,7 @@ async function main() {
 
     await cdp.send("Emulation.setEmulatedMedia", {
       features: [
+        ...DESKTOP_MEDIA_FEATURES,
         { name: "prefers-reduced-motion", value: "no-preference" },
       ],
     });
