@@ -20,10 +20,6 @@ const screenshotPath = path.join(
   outputRoot,
   "card-video-active-desktop.png"
 );
-const DESKTOP_MEDIA_FEATURES = [
-  { name: "hover", value: "hover" },
-  { name: "pointer", value: "fine" },
-];
 
 function assertVisualCiOnly() {
   if (
@@ -37,16 +33,8 @@ function assertVisualCiOnly() {
   }
 }
 
-function findChrome() {
-  const candidates = [
-    process.env.CHROME_BIN,
-    "google-chrome-stable",
-    "google-chrome",
-    "chromium",
-    "chromium-browser",
-  ].filter(Boolean);
-
-  for (const candidate of candidates) {
+function resolveExecutable(candidates, errorMessage) {
+  for (const candidate of candidates.filter(Boolean)) {
     const result = spawnSync(
       "sh",
       ["-lc", `command -v ${JSON.stringify(candidate)}`],
@@ -56,7 +44,27 @@ function findChrome() {
     if (result.status === 0 && resolved) return resolved;
   }
 
-  throw new Error("Card video browser smoke necesita Chrome/Chromium.");
+  throw new Error(errorMessage);
+}
+
+function findChrome() {
+  return resolveExecutable(
+    [
+      process.env.CHROME_BIN,
+      "google-chrome-stable",
+      "google-chrome",
+      "chromium",
+      "chromium-browser",
+    ],
+    "Card video browser smoke necesita Chrome/Chromium."
+  );
+}
+
+function findXvfbRun() {
+  return resolveExecutable(
+    ["xvfb-run"],
+    "Card video browser smoke necesita xvfb-run para reproducir un escritorio fine/hover real en CI."
+  );
 }
 
 async function waitForDebugger(profileDir) {
@@ -341,13 +349,17 @@ async function main() {
     path.join(os.tmpdir(), "deuna-card-video-chrome-")
   );
   const browser = spawn(
-    findChrome(),
+    findXvfbRun(),
     [
-      "--headless=new",
+      "--auto-servernum",
+      "--server-args=-screen 0 1440x1000x24",
+      findChrome(),
       "--disable-gpu",
       "--disable-dev-shm-usage",
       "--no-sandbox",
       "--ignore-certificate-errors",
+      "--no-first-run",
+      "--ozone-platform=x11",
       "--remote-debugging-port=0",
       "--remote-debugging-address=127.0.0.1",
       `--user-data-dir=${profileDir}`,
@@ -387,7 +399,6 @@ async function main() {
     });
     await cdp.send("Emulation.setEmulatedMedia", {
       features: [
-        ...DESKTOP_MEDIA_FEATURES,
         { name: "prefers-reduced-motion", value: "no-preference" },
       ],
     });
@@ -507,7 +518,6 @@ async function main() {
 
     await cdp.send("Emulation.setEmulatedMedia", {
       features: [
-        ...DESKTOP_MEDIA_FEATURES,
         { name: "prefers-reduced-motion", value: "reduce" },
       ],
     });
@@ -526,7 +536,6 @@ async function main() {
 
     await cdp.send("Emulation.setEmulatedMedia", {
       features: [
-        ...DESKTOP_MEDIA_FEATURES,
         { name: "prefers-reduced-motion", value: "no-preference" },
       ],
     });
