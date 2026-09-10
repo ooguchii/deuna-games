@@ -18,11 +18,13 @@ const [
   packageJson,
   serving,
   route,
+  createService,
   lifecycleSmoke,
 ] = await Promise.all([
   source("package.json"),
   source("src/lib/media/editorial-media-serving.ts"),
   source("src/app/media/editorial/[slug]/[filename]/route.ts"),
+  source("src/lib/admin/content-create-service.ts"),
   source("tools/editorial-media-serving-lifecycle-smoke.mjs"),
 ]);
 
@@ -53,6 +55,22 @@ assert(
     "item.publication_number"
   ),
   "La ruta debe reutilizar sólo referencias positivas ya publicadas y refrescar la historia cuando cambia publication_number."
+);
+
+assert(
+  has(
+    createService,
+    "public_visible",
+    "false",
+    "'bootstrap'",
+    "actor_user_id"
+  ) &&
+    has(
+      serving,
+      "action <> 'bootstrap'",
+      "OR actor_user_id IS NULL"
+    ),
+  "Los bootstraps administrativos de contenido nuevo oculto no deben contarse como exposición pública; sólo bootstraps fuente/migración sin actor y publicaciones explícitas."
 );
 
 assert(
@@ -127,5 +145,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  "Frontera de serving multimedia editorial: OK (historial publicado público/inmutable; draft y biblioteca 404 anónimo + preview Admin privado)."
+  "Frontera de serving multimedia editorial: OK (historial público real inmutable; bootstrap oculto excluido; draft/biblioteca 404 anónimo + preview Admin privado)."
 );
