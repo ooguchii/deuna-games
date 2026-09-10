@@ -10,6 +10,9 @@ import {
 import {
   adminQuery,
 } from "../src/lib/admin/database.ts";
+import {
+  resolveGameDestinationMediaMode,
+} from "../src/lib/media/game-video-media.ts";
 
 const baseUrl = new URL(
   process.env.DEUNA_VISUAL_BASE_URL ??
@@ -50,6 +53,7 @@ if (!adminUsername || !adminPassword) {
 
 function request(pathname, options = {}) {
   const url = new URL(pathname, baseUrl);
+
   if (url.origin !== baseUrl.origin) {
     throw new Error(
       `El smoke rechazó un destino fuera del origen visual: ${url.origin}.`
@@ -80,6 +84,7 @@ function request(pathname, options = {}) {
 
         response.on("data", (chunk) => {
           size += chunk.length;
+
           if (size > MAX_RESPONSE_BYTES) {
             req.destroy(
               new Error(
@@ -88,10 +93,12 @@ function request(pathname, options = {}) {
             );
             return;
           }
+
           chunks.push(chunk);
         });
         response.on("end", () => {
           const content = Buffer.concat(chunks);
+
           resolve({
             status: response.statusCode ?? 0,
             headers: response.headers,
@@ -142,10 +149,40 @@ function sessionCookie(setCookie) {
   return cookies.join("; ");
 }
 
-function expectRedirect(response, label) {
-  if (response.status !== 303) {
+function redirectState(response) {
+  const location = String(
+    response.headers.location ?? ""
+  );
+
+  if (!location) return null;
+
+  try {
+    return new URL(location, baseUrl).searchParams.get(
+      "estado"
+    );
+  } catch {
+    return null;
+  }
+}
+
+function expectRedirect(
+  response,
+  label,
+  expectedState = null
+) {
+  const location = String(
+    response.headers.location ?? ""
+  );
+  const state = redirectState(response);
+
+  if (
+    response.status !== 303 ||
+    (expectedState !== null && state !== expectedState)
+  ) {
     throw new Error(
-      `${label} respondió ${response.status}; se esperaba 303. ${response.body.slice(0, 240)}`
+      `${label} respondió status=${response.status}, location=${location}, estado=${String(state)}; ` +
+        `se esperaba 303${expectedState ? ` con estado=${expectedState}` : ""}. ` +
+        response.body.slice(0, 240)
     );
   }
 }
@@ -165,6 +202,7 @@ function chunk(type, payload) {
   const header = Buffer.alloc(8);
   header.write(type, 0, "ascii");
   header.writeUInt32LE(payload.length, 4);
+
   return Buffer.concat([
     header,
     payload,
@@ -277,14 +315,27 @@ const fixtureResult = await adminQuery(
    FROM deuna_admin.editorial_items
    WHERE item_type = 'game'
      AND public_visible = true
-   ORDER BY item_key ASC
-   LIMIT 1`
+   ORDER BY item_key ASC`
 );
-const fixture = fixtureResult.rows[0];
+const fixture = fixtureResult.rows.find((row) => {
+  try {
+    const game = parseEditorialPayload(
+      "game",
+      row.draft_payload
+    );
+
+    return resolveGameDestinationMediaMode(
+      game,
+      "cover"
+    ) === "image";
+  } catch {
+    return false;
+  }
+});
 
 if (!fixture) {
   throw new Error(
-    "El smoke necesita al menos un juego publicado en PostgreSQL efímera."
+    "El smoke necesita al menos un juego publicado con Portada en modo imagen."
   );
 }
 
@@ -322,7 +373,10 @@ const loginResponse = await request(
     body: loginBody,
   }
 );
-expectRedirect(loginResponse, "El login del smoke multimedia");
+expectRedirect(
+  loginResponse,
+  "El login del smoke multimedia"
+);
 const cookie = sessionCookie(
   loginResponse.headers["set-cookie"]
 );
@@ -355,19 +409,18 @@ const uploadResponse = await request(
 );
 expectRedirect(
   uploadResponse,
-  "La carga aislada a biblioteca"
+  "La carga aislada a biblioteca",
+  "recurso-subido"
 );
 
-const anonymousAfterUpload = await request(publicPath);
 assertAnonymousPrivate(
-  anonymousAfterUpload,
+  await request(publicPath),
   "El GET anónimo después del upload"
 );
-const adminAfterUpload = await request(publicPath, {
-  headers: { cookie },
-});
 assertPrivatePreview(
-  adminAfterUpload,
+  await request(publicPath, {
+    headers: { cookie },
+  }),
   "El GET Admin después del upload"
 );
 
@@ -388,7 +441,8 @@ const saveResponse = await request(
 );
 expectRedirect(
   saveResponse,
-  "El guardado del asset en borrador"
+  "El guardado del asset en borrador",
+  "guardado"
 );
 
 const savedResult = await adminQuery(
@@ -406,10 +460,11 @@ if (
   !saved ||
   saved.revision !== fixture.revision + 1 ||
   saved.publication_number !== fixture.publication_number ||
-  savedGame?.coverImage !== publicPath
+  savedGame?.coverImage !== publicPath ||
+  savedGame.imageMedia?.cover
 ) {
   throw new Error(
-    "Guardar el asset no produjo exactamente una nueva revisión de borrador sin publicar."
+    "Guardar el asset no produjo exactamente una nueva revisión privada ni invalidó el crop anterior."
   );
 }
 
@@ -418,12 +473,74 @@ assertAnonymousPrivate(
   "El GET anónimo con asset sólo en borrador"
 );
 assertPrivatePreview(
-  await request(publicPath, { headers: { cookie } }),
+  await request(publicPath, {
+    headers: { cookie },
+  }),
   "El GET Admin con asset sólo en borrador"
 );
 
-const publishBody = new URLSearchParams({
+const cropBody = new URLSearchParams({
   expectedRevision: String(saved.revision),
+  target: "cover",
+  viewportX: "0.5",
+  viewportY: "0.5",
+  viewportZoom: "1",
+  viewportAspect: "4:5",
+}).toString();
+const cropResponse = await request(
+  `/api/admin/content/games/${encodeURIComponent(slug)}/image-layout`,
+  {
+    method: "POST",
+    headers: formHeaders(editorPath, cookie),
+    body: cropBody,
+  }
+);
+expectRedirect(
+  cropResponse,
+  "La confirmación del recorte de Portada",
+  "imagen-encuadre-guardado"
+);
+
+const croppedResult = await adminQuery(
+  `SELECT draft_payload, revision, publication_number
+   FROM deuna_admin.editorial_items
+   WHERE id = $1`,
+  [fixture.id]
+);
+const cropped = croppedResult.rows[0];
+const croppedGame = cropped
+  ? parseEditorialPayload(
+      "game",
+      cropped.draft_payload
+    )
+  : null;
+
+if (
+  !cropped ||
+  cropped.revision !== saved.revision + 1 ||
+  cropped.publication_number !== fixture.publication_number ||
+  croppedGame?.coverImage !== publicPath ||
+  croppedGame.imageMedia?.cover?.confirmed !== true ||
+  croppedGame.imageMedia.cover.aspect !== "4:5"
+) {
+  throw new Error(
+    "Confirmar el crop no dejó el nuevo recurso listo para la publicación sin alterar el snapshot público."
+  );
+}
+
+assertAnonymousPrivate(
+  await request(publicPath),
+  "El GET anónimo después de confirmar el crop privado"
+);
+assertPrivatePreview(
+  await request(publicPath, {
+    headers: { cookie },
+  }),
+  "El GET Admin después de confirmar el crop privado"
+);
+
+const publishBody = new URLSearchParams({
+  expectedRevision: String(cropped.revision),
 }).toString();
 const publishResponse = await request(
   `/api/admin/content/games/${encodeURIComponent(slug)}/publish`,
@@ -438,7 +555,8 @@ const publishResponse = await request(
 );
 expectRedirect(
   publishResponse,
-  "La publicación del asset"
+  "La publicación del asset",
+  "publicado"
 );
 
 const publishedResult = await adminQuery(
@@ -478,7 +596,8 @@ const restoreResponse = await request(
 );
 expectRedirect(
   restoreResponse,
-  "La restauración de la publicación previa"
+  "La restauración de la publicación previa",
+  "publicacion-restaurada"
 );
 
 const restoredResult = await adminQuery(
@@ -515,5 +634,6 @@ console.log(
   "Editorial media serving lifecycle smoke: OK " +
     `(slug=${slug}, bytes=${image.length}, ` +
     "upload=anon404/admin-private, draft=anon404/admin-private, " +
-    "published=public-immutable, restored=historical-public)."
+    "crop=confirmed-private, published=public-immutable, " +
+    "restored=historical-public)."
 );
