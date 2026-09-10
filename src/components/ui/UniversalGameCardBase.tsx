@@ -21,13 +21,12 @@ import {
 
 import GameMedia from "@/components/ui/GameMedia";
 import HoverPreviewMedia from "@/components/ui/HoverPreviewMedia";
-import {
-  resolveGameCardPresentation,
-} from "@/lib/media/game-card-presentation";
+import { resolveGameCardPresentation } from "@/lib/media/game-card-presentation";
 import type { Game } from "@/types/game";
 
 import styles from "./UniversalGameCard.module.css";
 import presentationStyles from "./UniversalGameCardPresentation.module.css";
+import tiltStyles from "./UniversalGameCardTilt.module.css";
 
 export type UniversalGameCardVariant =
   | "standard"
@@ -49,7 +48,6 @@ type PendingTilt = {
 };
 
 const PREVIEW_DELAY_MS = 1000;
-const FINE_HOVER_MEDIA = "(hover: hover) and (pointer: fine)";
 const REDUCED_MOTION_MEDIA = "(prefers-reduced-motion: reduce)";
 
 const fallbackClassBySlug: Record<string, string> = {
@@ -77,16 +75,9 @@ const fallbackClassBySlug: Record<string, string> = {
   "stardew-valley": "stardew",
 };
 
-function getMediaBadge(
-  game: Game,
-  variant: UniversalGameCardVariant
-) {
-  if (variant === "recent") {
-    return { label: "NUEVO", tone: "brand" as const };
-  }
-  if (variant === "catalog") {
-    return { label: game.category, tone: "brand" as const };
-  }
+function getMediaBadge(game: Game, variant: UniversalGameCardVariant) {
+  if (variant === "recent") return { label: "NUEVO", tone: "brand" as const };
+  if (variant === "catalog") return { label: game.category, tone: "brand" as const };
   return null;
 }
 
@@ -99,12 +90,7 @@ function resetTilt(node: HTMLElement) {
   node.style.setProperty("--image-y", "0px");
 }
 
-function applyTilt(
-  node: HTMLElement,
-  clientX: number,
-  clientY: number,
-  rect: DOMRect
-) {
+function applyTilt(node: HTMLElement, clientX: number, clientY: number, rect: DOMRect) {
   const x = Math.min(Math.max((clientX - rect.left) / rect.width, 0), 1);
   const y = Math.min(Math.max((clientY - rect.top) / rect.height, 0), 1);
   node.style.setProperty("--tilt-x", `${((0.5 - y) * 7).toFixed(2)}deg`);
@@ -155,6 +141,7 @@ export default function UniversalGameCardBase({
   const pendingTilt = useRef<PendingTilt | null>(null);
   const cardRect = useRef<DOMRect | null>(null);
   const pointerEffectsEnabled = useRef(false);
+  const articleRef = useRef<HTMLElement>(null);
   const [detailVisible, setDetailVisible] = useState(false);
   const [previewActive, setPreviewActive] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
@@ -167,9 +154,7 @@ export default function UniversalGameCardBase({
   const isCatalog = variant === "catalog";
   const isRecent = variant === "recent";
   const isLowSpec = variant === "lowSpec";
-  const variantClass = styles[
-    `variant${variant[0].toUpperCase()}${variant.slice(1)}`
-  ];
+  const variantClass = styles[`variant${variant[0].toUpperCase()}${variant.slice(1)}`];
 
   useEffect(() => {
     const media = window.matchMedia(REDUCED_MOTION_MEDIA);
@@ -179,7 +164,15 @@ export default function UniversalGameCardBase({
     return () => media.removeEventListener("change", sync);
   }, []);
 
-  function clearPreview() {
+  function cancelTiltFrame() {
+    if (tiltFrame.current !== null) {
+      cancelAnimationFrame(tiltFrame.current);
+      tiltFrame.current = null;
+    }
+    pendingTilt.current = null;
+  }
+
+  function cancelPreview() {
     if (previewTimer.current) {
       clearTimeout(previewTimer.current);
       previewTimer.current = null;
@@ -187,82 +180,97 @@ export default function UniversalGameCardBase({
     setPreviewActive(false);
   }
 
-  function revealDetail(immediateVideo: boolean) {
-    setDetailVisible(true);
-    if (!preview || reducedMotion || cardMode === "image") return;
-
-    if (cardMode === "video" || immediateVideo) {
+  function schedulePreview() {
+    if (!preview || reducedMotion || cardMode === "image" || previewTimer.current || previewActive) {
+      return;
+    }
+    if (cardMode === "video") {
       setPreviewActive(true);
       return;
     }
-
-    if (!previewTimer.current) {
-      previewTimer.current = setTimeout(() => {
-        previewTimer.current = null;
-        setPreviewActive(true);
-      }, PREVIEW_DELAY_MS);
-    }
+    previewTimer.current = setTimeout(() => {
+      previewTimer.current = null;
+      setPreviewActive(true);
+    }, PREVIEW_DELAY_MS);
   }
 
-  function hideDetail() {
-    setDetailVisible(false);
-    clearPreview();
+  function activatePointerEffects(event: ReactPointerEvent<HTMLElement>) {
+    const pointerSupportsEffects =
+      event.pointerType === "mouse" || event.pointerType === "pen";
+    const motionReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    if (!pointerSupportsEffects || motionReduced) {
+      if (pointerEffectsEnabled.current) {
+        cancelTiltFrame();
+        cardRect.current = null;
+        resetTilt(event.currentTarget);
+      }
+      pointerEffectsEnabled.current = false;
+      event.currentTarget.removeAttribute("data-tilt-active");
+      return false;
+    }
+
+    pointerEffectsEnabled.current = true;
+    event.currentTarget.setAttribute("data-tilt-active", "true");
+    if (!cardRect.current) cardRect.current = event.currentTarget.getBoundingClientRect();
+    return true;
   }
 
   function startCard(event: ReactPointerEvent<HTMLElement>) {
-    const finePointer =
-      event.pointerType !== "touch" &&
-      window.matchMedia(FINE_HOVER_MEDIA).matches;
-
-    pointerEffectsEnabled.current = finePointer && !reducedMotion;
-    if (pointerEffectsEnabled.current) {
-      cardRect.current = event.currentTarget.getBoundingClientRect();
+    const pointerSupportsReveal =
+      event.pointerType === "mouse" || event.pointerType === "pen";
+    if (pointerSupportsReveal) {
+      setDetailVisible(true);
+      schedulePreview();
     }
-    if (finePointer) revealDetail(false);
+    if (!activatePointerEffects(event)) return;
+    cardRect.current = event.currentTarget.getBoundingClientRect();
   }
 
   function scheduleTilt(event: ReactPointerEvent<HTMLElement>) {
-    if (!pointerEffectsEnabled.current) return;
+    const pointerSupportsReveal =
+      event.pointerType === "mouse" || event.pointerType === "pen";
+    if (pointerSupportsReveal && !detailVisible) {
+      setDetailVisible(true);
+      schedulePreview();
+    }
+    if (!activatePointerEffects(event)) return;
+    schedulePreview();
     pendingTilt.current = {
       node: event.currentTarget,
       clientX: event.clientX,
       clientY: event.clientY,
     };
     if (tiltFrame.current !== null) return;
-
     tiltFrame.current = requestAnimationFrame(() => {
       tiltFrame.current = null;
       const pending = pendingTilt.current;
       const rect = cardRect.current;
       pendingTilt.current = null;
-      if (pending && rect) {
-        applyTilt(pending.node, pending.clientX, pending.clientY, rect);
-      }
+      if (pending && rect) applyTilt(pending.node, pending.clientX, pending.clientY, rect);
     });
   }
 
   function stopCard(event: ReactPointerEvent<HTMLElement>) {
-    if (tiltFrame.current !== null) cancelAnimationFrame(tiltFrame.current);
-    tiltFrame.current = null;
-    pendingTilt.current = null;
+    cancelTiltFrame();
     cardRect.current = null;
     pointerEffectsEnabled.current = false;
+    event.currentTarget.removeAttribute("data-tilt-active");
     resetTilt(event.currentTarget);
-    hideDetail();
+    setDetailVisible(false);
+    cancelPreview();
   }
 
   function focusCard() {
-    revealDetail(true);
+    setDetailVisible(true);
+    if (preview && !reducedMotion && cardMode === "video") setPreviewActive(true);
+    else schedulePreview();
   }
 
   function blurCard(event: ReactFocusEvent<HTMLElement>) {
-    if (
-      event.relatedTarget instanceof Node &&
-      event.currentTarget.contains(event.relatedTarget)
-    ) {
-      return;
-    }
-    hideDetail();
+    if (event.relatedTarget instanceof Node && event.currentTarget.contains(event.relatedTarget)) return;
+    setDetailVisible(false);
+    cancelPreview();
   }
 
   useEffect(() => () => {
@@ -271,16 +279,13 @@ export default function UniversalGameCardBase({
   }, []);
 
   const videoActive = Boolean(
-    detailVisible &&
-    previewActive &&
-    !reducedMotion &&
-    preview &&
-    cardMode !== "image"
+    detailVisible && previewActive && !reducedMotion && preview && cardMode !== "image"
   );
 
   return (
     <article
-      className={`${styles.card} ${presentationStyles.shell} ${variantClass}`}
+      ref={articleRef}
+      className={`${styles.card} ${presentationStyles.shell} ${tiltStyles.tiltCard} ${variantClass}`}
       data-card-variant={variant}
       data-detail-visible={detailVisible ? "true" : "false"}
       data-cover-source={presentation.cover.source}
@@ -301,7 +306,7 @@ export default function UniversalGameCardBase({
     >
       <Link
         href={`/juegos/${game.slug}`}
-        className={`${styles.link} ${presentationStyles.link}`}
+        className={`${styles.link} ${presentationStyles.link} ${tiltStyles.tiltClip}`}
         aria-label={`Ver ${game.title}`}
       >
         <div className={presentationStyles.coverFace} aria-hidden={detailVisible ? "true" : undefined}>
@@ -316,7 +321,7 @@ export default function UniversalGameCardBase({
         </div>
 
         <div className={presentationStyles.detailFace} aria-hidden={!detailVisible ? "true" : undefined}>
-          <div className={`${styles.media} ${presentationStyles.detailMedia}`}>
+          <div className={`${styles.media} ${presentationStyles.detailMedia} ${tiltStyles.tiltMedia}`}>
             <HoverPreviewMedia
               imageSrc={presentation.card.image}
               imageAlt={detailVisible ? presentation.card.alt : ""}
@@ -328,6 +333,7 @@ export default function UniversalGameCardBase({
               fallbackClassName={fallbackClass ? styles[fallbackClass] : undefined}
             />
             <div className={styles.mediaOverlay} aria-hidden="true" />
+            <div className={tiltStyles.spotlight} aria-hidden="true" />
             {mediaBadge && (
               <span className={`${styles.mediaBadge} ${mediaBadge.tone === "brand" ? styles.mediaBadgeBrand : ""}`}>
                 {mediaBadge.label}
@@ -342,11 +348,9 @@ export default function UniversalGameCardBase({
               {isRecent && game.version && <span className={styles.version}>{game.version}</span>}
               {isCatalog && <ChevronRight size={17} aria-hidden="true" />}
             </div>
-
             {isCatalog && <p className={styles.description}>{game.description}</p>}
             {isLowSpec && <LowSpecDetails game={game} />}
             <Rating game={game} />
-
             {isRecent && game.addedAt && (
               <div className={styles.date}>
                 <CalendarDays size={15} aria-hidden="true" />
