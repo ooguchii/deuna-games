@@ -41,10 +41,6 @@ function parseSource(value: string | null): GameCardVideoSource | null {
   return value === "hero" || value === "independent" ? value : null;
 }
 
-function activeVideoMedia(videoMedia: Awaited<ReturnType<typeof getEditorialItem<"game">>> extends infer Item ? never : never) {
-  return videoMedia;
-}
-
 export async function GET(
   _request: NextRequest,
   context: { params: Promise<{ slug: string }> }
