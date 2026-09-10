@@ -2,8 +2,13 @@
 from __future__ import annotations
 
 import importlib.util
+import shutil
 import sys
 from pathlib import Path
+
+# Este wrapper importa el aplicador base. Evitamos que Python escriba .pyc dentro
+# del propio checkout antes de que el verificador compruebe si Git está limpio.
+sys.dont_write_bytecode = True
 
 HERE = Path(__file__).resolve().parent
 BASE_SCRIPT = HERE / "apply_deuna_post_audit.py"
@@ -121,6 +126,10 @@ def install_overrides(base):
 
 
 def main() -> None:
+    # Versiones anteriores del wrapper podían dejar este cache antes de abortar.
+    # Es artefacto generado por Python, no código del usuario ni del producto.
+    shutil.rmtree(HERE / "__pycache__", ignore_errors=True)
+
     base = load_base()
     install_overrides(base)
     base.main()
