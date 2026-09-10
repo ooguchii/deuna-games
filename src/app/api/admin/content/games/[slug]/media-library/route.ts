@@ -33,6 +33,10 @@ import {
   reconcileEditorialMediaDeletions,
 } from "@/lib/media/editorial-media-library";
 import {
+  resolveGameCardBaseImage,
+  resolveGameCoverImageSource,
+} from "@/lib/media/game-card-artwork";
+import {
   MAX_GAME_GALLERY_ITEMS,
   galleryImageSources,
   resolveGameGalleryItems,
@@ -53,6 +57,7 @@ import {
 } from "@/lib/media/game-video-media";
 import type {
   Game,
+  GameCoverImageSource,
   GameDestinationMediaMode,
   GameImageMedia,
   GameVideoViewport,
@@ -62,6 +67,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 const assignmentTargetSchema = z.enum([
+  "cover-source",
   "cover-image",
   "hero-mode",
   "hero-image",
@@ -81,6 +87,8 @@ const mediaModeSchema = z.enum([
   "video",
   "hover-video",
 ]);
+
+const coverSourceSchema = z.enum(["card", "custom"]);
 
 const fields = [
   "expectedRevision",
@@ -148,6 +156,7 @@ type MediaDraftUpdate = Parameters<typeof saveGameMediaDraft>[3] &
       Game,
       | "backgroundImage"
       | "cardImage"
+      | "coverImageSource"
       | "detailImage"
       | "galleryMedia"
       | "mediaModes"
@@ -210,6 +219,12 @@ function mediaModeUpdate(
   };
 }
 
+function withoutCoverCrop(game: Game) {
+  const imageMedia: GameImageMedia = { ...game.imageMedia };
+  delete imageMedia.cover;
+  return imageMedia;
+}
+
 export async function GET(
   _request: NextRequest,
   context: { params: Promise<{ slug: string }> }
@@ -239,8 +254,9 @@ export async function GET(
       requirements: evaluateGameMediaRequirements(item.payload),
       assignments: {
         coverImage: item.payload.coverImage ?? null,
+        coverImageSource: resolveGameCoverImageSource(item.payload),
         heroImage: item.payload.heroImage ?? null,
-        cardImage: item.payload.cardImage ?? null,
+        cardImage: resolveGameCardBaseImage(item.payload) ?? null,
         detailImage: item.payload.detailImage ?? null,
         backgroundImage: item.payload.backgroundImage ?? null,
         screenshots: item.payload.screenshots ?? [],
@@ -349,19 +365,73 @@ export async function POST(
     update = mediaModeUpdate(current, destination, mode.data);
   }
 
+  if (target.data === "cover-source") {
+    const source = coverSourceSchema.safeParse(resource);
+    if (!source.success) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        redirectPath(slug, "solicitud")
+      );
+    }
+
+    const currentSource = resolveGameCoverImageSource(current);
+    const cardImage = resolveGameCardBaseImage(current);
+
+    if (source.data === "card") {
+      if (!cardImage) {
+        return adminRedirect(
+          authorized.adminOrigin,
+          redirectPath(slug, "recurso-invalido")
+        );
+      }
+
+      const imageMedia = currentSource === "card" && current.coverImage === cardImage
+        ? current.imageMedia
+        : withoutCoverCrop(current);
+      update = mediaUpdate(
+        {
+          coverImageSource: "card",
+          coverImage: cardImage,
+        },
+        imageMedia
+      );
+    } else {
+      const keepExistingCustom = currentSource === "custom" &&
+        Boolean(current.coverImage) &&
+        current.coverImage !== cardImage;
+      update = mediaUpdate(
+        {
+          coverImageSource: "custom",
+          coverImage: keepExistingCustom ? current.coverImage : undefined,
+        },
+        keepExistingCustom ? current.imageMedia : withoutCoverCrop(current)
+      );
+    }
+  }
+
   if (target.data === "cover-image") {
-    if (!imageResource) {
+    if (
+      !imageResource ||
+      imageResource.src === resolveGameCardBaseImage(current)
+    ) {
       return adminRedirect(
         authorized.adminOrigin,
         redirectPath(slug, "recurso-invalido")
       );
     }
+    const changed = current.coverImage !== imageResource.src ||
+      resolveGameCoverImageSource(current) !== "custom";
     update = mediaUpdate(
-      { coverImage: imageResource.src },
       {
-        ...current.imageMedia,
-        cover: { ...DEFAULT_GAME_IMAGE_VIEWPORT },
-      }
+        coverImageSource: "custom",
+        coverImage: imageResource.src,
+      },
+      changed
+        ? {
+            ...current.imageMedia,
+            cover: { ...DEFAULT_GAME_IMAGE_VIEWPORT },
+          }
+        : current.imageMedia
     );
   }
 
@@ -374,10 +444,12 @@ export async function POST(
     }
     update = mediaUpdate(
       { heroImage: imageResource.src },
-      {
-        ...current.imageMedia,
-        hero: { ...DEFAULT_GAME_IMAGE_VIEWPORT },
-      }
+      current.heroImage === imageResource.src
+        ? current.imageMedia
+        : {
+            ...current.imageMedia,
+            hero: { ...DEFAULT_GAME_IMAGE_VIEWPORT },
+          }
     );
   }
 
@@ -388,12 +460,29 @@ export async function POST(
         redirectPath(slug, "recurso-invalido")
       );
     }
+
+    const currentCardImage = resolveGameCardBaseImage(current);
+    const sharedCover = resolveGameCoverImageSource(current) === "card";
+    const changed = currentCardImage !== imageResource.src;
     update = mediaUpdate(
-      { cardImage: imageResource.src },
       {
-        ...current.imageMedia,
-        card: { ...DEFAULT_GAME_IMAGE_VIEWPORT },
-      }
+        cardImage: imageResource.src,
+        ...(sharedCover
+          ? {
+              coverImageSource: "card" as GameCoverImageSource,
+              coverImage: imageResource.src,
+            }
+          : {}),
+      },
+      changed
+        ? {
+            ...current.imageMedia,
+            card: { ...DEFAULT_GAME_IMAGE_VIEWPORT },
+            ...(sharedCover
+              ? { cover: { ...DEFAULT_GAME_IMAGE_VIEWPORT } }
+              : {}),
+          }
+        : current.imageMedia
     );
   }
 
@@ -406,10 +495,12 @@ export async function POST(
     }
     update = mediaUpdate(
       { detailImage: imageResource.src },
-      {
-        ...current.imageMedia,
-        detail: { ...DEFAULT_GAME_IMAGE_VIEWPORT },
-      }
+      current.detailImage === imageResource.src
+        ? current.imageMedia
+        : {
+            ...current.imageMedia,
+            detail: { ...DEFAULT_GAME_IMAGE_VIEWPORT },
+          }
     );
   }
 
@@ -485,7 +576,7 @@ export async function POST(
 
     const currentGallery = resolveGameGalleryItems(current);
     const alreadyAssigned = currentGallery.some(
-      (item) => item.kind === "image" && item.src === imageResource.src
+      (galleryItem) => galleryItem.kind === "image" && galleryItem.src === imageResource.src
     );
     if (!alreadyAssigned && currentGallery.length >= MAX_GAME_GALLERY_ITEMS) {
       return adminRedirect(
@@ -517,7 +608,7 @@ export async function POST(
   if (target.data === "gallery-remove") {
     const currentGallery = resolveGameGalleryItems(current);
     if (!currentGallery.some(
-      (item) => item.kind === "image" && item.src === resource
+      (galleryItem) => galleryItem.kind === "image" && galleryItem.src === resource
     )) {
       return adminRedirect(
         authorized.adminOrigin,
