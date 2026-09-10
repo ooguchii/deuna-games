@@ -133,13 +133,22 @@ assert(
       "assertAnonymousPrivate",
       "assertPrivatePreview",
       "assertPublicImmutable",
+      "redirectState",
+      "expectedState",
       "/media-upload",
       "/media",
+      "/image-layout",
+      'target: "cover"',
+      'viewportAspect: "4:5"',
+      '"imagen-encuadre-guardado"',
       "/publish",
+      '"publicado"',
       "/restore",
+      '"publicacion-restaurada"',
+      "crop=confirmed-private",
       "historical-public"
     ),
-  "El smoke debe cubrir upload aislado, borrador, preview Admin, publicación y restauración histórica sobre la ruta real."
+  "El smoke debe cubrir upload aislado, borrador, crop confirmado, preview Admin, publicación y restauración histórica, validando además el estado semántico de cada redirect crítico."
 );
 
 assert(
@@ -157,5 +166,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  "Frontera de serving multimedia editorial: OK (historial público compartido; cache incremental; draft/biblioteca 404 anónimo + preview Admin privado)."
+  "Frontera de serving multimedia editorial: OK (historial público compartido; cache incremental; draft/biblioteca 404 anónimo + preview Admin privado; lifecycle con crop real)."
 );
