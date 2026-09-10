@@ -11,6 +11,10 @@ import {
   resolveEditorialMediaDiskPath,
 } from "@/lib/media/editorial-media";
 import {
+  resolveEditorialMediaServingAccess,
+  TAXONOMY_ICON_MEDIA_SLUG,
+} from "@/lib/media/editorial-media-serving";
+import {
   inspectSafeSiteBrandLogoSvg,
   inspectSafeTaxonomySvgIcon,
   MAX_TAXONOMY_SVG_ICON_BYTES,
@@ -30,7 +34,6 @@ import {
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const TAXONOMY_ICON_SLUG = "taxonomy-icons";
 const MAX_VALIDATED_WEBM_CACHE_ENTRIES = 96;
 
 type ValidatedWebmIdentity = {
@@ -222,7 +225,8 @@ export async function GET(
   const { slug, filename } = await context.params;
   const isSvg = filename.endsWith(".svg");
   const isWebm = filename.endsWith(".webm");
-  const isTaxonomyAsset = slug === TAXONOMY_ICON_SLUG;
+  const isTaxonomyAsset =
+    slug === TAXONOMY_ICON_MEDIA_SLUG;
   const isSiteLogoAsset = slug === SITE_BRAND_LOGO_SLUG;
   const isSvgNamespace = isTaxonomyAsset || isSiteLogoAsset;
 
@@ -263,11 +267,25 @@ export async function GET(
       return notFoundResponse();
     }
 
+    const servingAccess =
+      await resolveEditorialMediaServingAccess(
+        slug,
+        publicPath
+      );
+
+    if (!servingAccess) {
+      return notFoundResponse();
+    }
+
     const sharedHeaders = {
       "Cache-Control":
-        "public, max-age=31536000, immutable",
+        servingAccess === "admin"
+          ? "private, no-store, max-age=0"
+          : "public, max-age=31536000, immutable",
       "X-Content-Type-Options": "nosniff",
-      ETag: `"${filename}"`,
+      ...(servingAccess === "public"
+        ? { ETag: `"${filename}"` }
+        : {}),
     };
 
     if (isWebm) {
