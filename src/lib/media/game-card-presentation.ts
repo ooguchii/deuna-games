@@ -1,22 +1,23 @@
 import { resolveGameCardPreview } from "./game-card-preview";
 import { resolveGameDestinationMediaMode } from "./game-video-media";
 
-import type { Game } from "@/types/game";
+import type {
+  Game,
+  GameImageViewport,
+} from "@/types/game";
 
 export type GameCoverArtworkSource = "card" | "custom";
 
 export type GameCardPresentation = {
   cover: {
     image?: string;
-    viewport: Game["imageMedia"] extends infer _Media
-      ? NonNullable<Game["imageMedia"]>["cover"]
-      : never;
+    viewport?: GameImageViewport;
     alt: string;
     source: GameCoverArtworkSource;
   };
   card: {
     image?: string;
-    viewport: NonNullable<Game["imageMedia"]>["card"] | undefined;
+    viewport?: GameImageViewport;
     alt: string;
     mode: ReturnType<typeof resolveGameDestinationMediaMode>;
     preview: ReturnType<typeof resolveGameCardPreview>;
@@ -24,24 +25,21 @@ export type GameCardPresentation = {
 };
 
 /**
- * Resolves the current editorial intent without rewriting historical snapshots.
+ * Resolves the active artwork contract without rewriting historical snapshots.
  *
- * Existing payloads do not carry a dedicated source flag. A distinct coverImage
- * therefore means an intentionally custom cover, while a missing/equal Card
- * image means both destinations share one master. New Admin writes preserve
- * that invariant explicitly by keeping both refs equal for the shared case.
+ * Legacy payloads do not carry a dedicated source flag, so a distinct
+ * coverImage is interpreted as an intentionally custom cover. New Admin writes
+ * preserve the shared choice by keeping coverImage and cardImage on the same
+ * resource while each destination retains its own crop.
  */
 export function resolveGameCoverArtworkSource(
   game: Game
 ): GameCoverArtworkSource {
-  if (
-    game.cardImage &&
+  return game.cardImage &&
     game.coverImage &&
     game.cardImage !== game.coverImage
-  ) {
-    return "custom";
-  }
-  return "card";
+    ? "custom"
+    : "card";
 }
 
 export function resolveGameCardBaseImage(game: Game) {
@@ -50,31 +48,26 @@ export function resolveGameCardBaseImage(game: Game) {
 
 export function resolveGameCoverImage(game: Game) {
   const source = resolveGameCoverArtworkSource(game);
-  const cardImage = resolveGameCardBaseImage(game);
-
-  if (source === "custom") return game.coverImage;
-  return cardImage ?? game.coverImage;
+  return source === "custom"
+    ? game.coverImage
+    : resolveGameCardBaseImage(game) ?? game.coverImage;
 }
 
 export function resolveGameCardPresentation(
   game: Game
 ): GameCardPresentation {
-  const source = resolveGameCoverArtworkSource(game);
-  const cardImage = resolveGameCardBaseImage(game);
-  const coverImage = resolveGameCoverImage(game);
-
   return {
     cover: {
-      image: coverImage,
+      image: resolveGameCoverImage(game),
       viewport: game.imageMedia?.cover,
       alt:
         game.mediaAccessibility?.cover ??
         game.mediaAccessibility?.card ??
         game.imageAlt,
-      source,
+      source: resolveGameCoverArtworkSource(game),
     },
     card: {
-      image: cardImage,
+      image: resolveGameCardBaseImage(game),
       viewport: game.imageMedia?.card,
       alt: game.mediaAccessibility?.card ?? game.imageAlt,
       mode: resolveGameDestinationMediaMode(game, "card"),
