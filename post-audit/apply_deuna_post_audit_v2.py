@@ -35,8 +35,26 @@ def indent_block(text: str, spaces: int) -> str:
 
 
 def resolve_replacement(current: str, replacement, replacement_index: int):
+    # La coincidencia exacta siempre gana. Esto evita que un patrón de una sola
+    # línea embebido en JSON parezca coincidir también con variantes que sólo
+    # agregan un espacio tomado del contexto anterior.
+    exact_count = current.count(replacement.old)
+    if exact_count == 1:
+        return replacement.old, replacement.new
+    if exact_count > 1:
+        raise ValueError(
+            f"reemplazo #{replacement_index}: el patrón exacto aparece {exact_count} veces"
+        )
+
+    # Sólo los bloques multilínea necesitan tolerancia de sangría. Un patrón de
+    # una sola línea debe coincidir exactamente o abortar.
+    if "\n" not in replacement.old:
+        raise ValueError(
+            f"reemplazo #{replacement_index}: el patrón exacto no aparece"
+        )
+
     candidates = []
-    for spaces in range(0, 25):
+    for spaces in range(1, 25):
         old = indent_block(replacement.old, spaces)
         count = current.count(old)
         if count == 1:
@@ -56,6 +74,37 @@ def resolve_replacement(current: str, replacement, replacement_index: int):
 
     _, old, new = candidates[0]
     return old, new
+
+
+def install_actual_checkout_overrides(base) -> None:
+    # #21 del paquete base asumía que reconcileGameImageMedia estaba importado
+    # en una sola línea. En master@218e0244 el import real está formateado como
+    # bloque multilínea; reemplazamos exclusivamente ese descriptor para que el
+    # handoff siga siendo exacto y no haga matching difuso.
+    index = 20
+    original = base.REPLACEMENTS[index]
+    expected_path = "src/app/api/admin/content/games/[slug]/media/route.ts"
+    if original.path != expected_path:
+        raise SystemExit(
+            "ERROR: cambió el orden interno del paquete post-audit; no puedo aplicar el override seguro #21."
+        )
+
+    base.REPLACEMENTS[index] = base.Replacement(
+        expected_path,
+        base.d(r'''
+        import {
+          reconcileGameImageMedia,
+        } from "@/lib/media/game-image-media";
+        '''),
+        base.d(r'''
+        import {
+          resolveGameCardBaseImage,
+        } from "@/lib/media/game-card-presentation";
+        import {
+          reconcileGameImageMedia,
+        } from "@/lib/media/game-image-media";
+        '''),
+    )
 
 
 def install_overrides(base):
@@ -131,6 +180,7 @@ def main() -> None:
     shutil.rmtree(HERE / "__pycache__", ignore_errors=True)
 
     base = load_base()
+    install_actual_checkout_overrides(base)
     install_overrides(base)
     base.main()
 
