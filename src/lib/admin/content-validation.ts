@@ -8,6 +8,8 @@ import type {
   EditorialPayloadByType,
 } from "./content-validation-core.ts";
 
+import type { Game } from "@/types/game";
+
 export * from "./content-validation-core.ts";
 
 const bundledImagePattern =
@@ -476,7 +478,12 @@ export function parseEditorialPayload<
 >(
   type: Type,
   payload: unknown
-): EditorialPayloadByType[Type] {
+): EditorialPayloadByType[Type];
+
+export function parseEditorialPayload(
+  type: EditorialItemType,
+  payload: unknown
+): EditorialPayloadByType[EditorialItemType] {
   if (type !== "game") {
     return parseCoreEditorialPayload(
       type,
@@ -531,8 +538,8 @@ export function parseEditorialPayload<
     game.screenshots
   );
 
-  // `cover` se admite arriba sólo para poder validar snapshots antiguos. Desde
-  // aquí el contrato actual ya no expone esa capa ni su modo a ningún consumidor.
+  // `cover` se admite en los schemas privados sólo para validar snapshots
+  // antiguos. Desde aquí desaparecen su modo y su capa de video.
   const activeVideoMedia = videoMedia
     ? {
         ...(videoMedia.hero ? { hero: videoMedia.hero } : {}),
@@ -550,7 +557,6 @@ export function parseEditorialPayload<
     backgroundImage
   );
   const resolvedMediaModes = {
-    cover: "image" as const,
     hero: inferredMode(
       mediaModes?.hero,
       activeVideoMedia?.hero,
@@ -572,7 +578,7 @@ export function parseEditorialPayload<
     ...(backgroundMode ? { background: backgroundMode } : {}),
   };
 
-  return {
+  const normalizedGame: Game = {
     ...game,
     ...(resolvedCardImage ? { cardImage: resolvedCardImage } : {}),
     ...(resolvedDetailImage ? { detailImage: resolvedDetailImage } : {}),
@@ -586,5 +592,7 @@ export function parseEditorialPayload<
     ...(compatibilityMetadata ? { compatibilityMetadata } : {}),
     ...(performanceMetadata ? { performanceMetadata } : {}),
     ...(distributionMetadata ? { distributionMetadata } : {}),
-  } as EditorialPayloadByType[Type];
+  };
+
+  return normalizedGame;
 }
