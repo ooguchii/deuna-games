@@ -81,7 +81,7 @@ function PreviewVideo({
       loop
       autoPlay
       controls={false}
-      preload="none"
+      preload="metadata"
       tabIndex={-1}
       onPlaying={() => setPlaying(true)}
       onWaiting={() => setPlaying(false)}
