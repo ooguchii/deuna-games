@@ -387,13 +387,16 @@ assert(
     'cover: destinationVideoSchema.optional()',
     "coverArtworkSourceSchema",
     "resolvedCoverArtworkSource",
+    'resolvedCoverArtworkSource === "card"',
+    "resolvedCoverImage",
     "coverArtworkSource: resolvedCoverArtworkSource",
+    "coverImage: resolvedCoverImage",
     "activeVideoMedia",
     "videoMedia.hero",
     "videoMedia.card",
     "const normalizedGame: Game"
   ),
-  "La validación debe aceptar historial legado, normalizar shared/custom y eliminar video activo de Portada."
+  "La validación debe aceptar historial legado, normalizar shared/custom, sincronizar Portada compartida con Card y eliminar video activo de Portada."
 );
 
 for (const route of [uploadRoute, importRoute]) {
