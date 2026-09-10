@@ -20,8 +20,11 @@ const [
   trimEditor,
   mediaViewportEditor,
   workspace,
+  libraryTypes,
+  mediaWorkspace,
   libraryRoute,
   viewportEditor,
+  coverRenderer,
   cardResolver,
   cardWrapper,
   cardBase,
@@ -30,11 +33,13 @@ const [
   framedLayout,
   videoMedia,
   requirements,
+  publicationReadiness,
   validation,
   importRoute,
   uploadRoute,
   layoutRoute,
   integrity,
+  hygiene,
   history,
   serving,
   legacyCover,
@@ -47,8 +52,11 @@ const [
   source("src/components/admin/VideoTrimEditor.tsx"),
   source("src/components/admin/MediaViewportEditor.tsx"),
   source("src/components/admin/GameMultimediaWorkspaceContextual.tsx"),
+  source("src/components/admin/game-multimedia-library-types.ts"),
+  source("src/lib/admin/game-media-workspace.ts"),
   source("src/app/api/admin/content/games/[slug]/media-library/route.ts"),
   source("src/components/admin/GameVideoViewportEditor.tsx"),
+  source("src/components/ui/GameCoverMedia.tsx"),
   source("src/lib/media/game-card-preview.ts"),
   source("src/components/ui/UniversalGameCard.tsx"),
   source("src/components/ui/UniversalGameCardBase.tsx"),
@@ -57,11 +65,13 @@ const [
   source("src/lib/media/framed-media-layout.ts"),
   source("src/lib/media/game-video-media.ts"),
   source("src/lib/media/game-media-requirements.ts"),
+  source("src/lib/admin/game-publication-readiness.ts"),
   source("src/lib/admin/content-validation.ts"),
   source("src/app/api/admin/content/games/[slug]/preview-import/route.ts"),
   source("src/app/api/admin/content/games/[slug]/preview-upload/route.ts"),
   source("src/app/api/admin/content/games/[slug]/preview-layout/route.ts"),
   source("src/lib/admin/game-media-integrity.ts"),
+  source("src/lib/admin/game-media-hygiene.ts"),
   source("src/lib/admin/game-media-history.ts"),
   source("src/lib/media/editorial-media-serving.ts"),
   source("src/lib/media/legacy-game-cover-video.ts"),
@@ -164,6 +174,8 @@ assert(
     'target="cover-image"',
     'onClick={() => openDestination("cover", "image")}',
     "Sólo imagen. Selecciona un recurso y confirma un único recorte 4:5.",
+    "Portada usa sólo imagen con recorte 4:5.",
+    "Portada requiere una imagen y su recorte 4:5.",
     'const cardMode = state?.assignments.cardMode ?? "hover-video"',
     'target="card"',
     'destinationActions("card", cardMode',
@@ -176,6 +188,34 @@ assert(
     !workspace.includes("Igualar al Hero") &&
     !workspace.includes("card-match-hero"),
   "Portada debe ser sólo imagen/4:5 mientras Card conserva su sistema multimedia independiente."
+);
+
+assert(
+  has(
+    libraryTypes,
+    'mode: "image"',
+    'aspect: "4:5"',
+    'aspect: "3:1"',
+    "heroVideo: GameHeroVideo | null"
+  ) &&
+    !libraryTypes.includes("GameCoverVideo") &&
+    !libraryTypes.includes("coverMode:") &&
+    !libraryTypes.includes("coverVideo:"),
+  "El estado compartido del workspace debe tipar Portada como image-only y conservar Hero 3:1."
+);
+
+assert(
+  has(
+    mediaWorkspace,
+    "coverImage: game.coverImage ?? null",
+    'heroMode: resolveGameDestinationMediaMode(game, "hero")',
+    "heroVideo: game.videoMedia?.hero ?? null"
+  ) &&
+    !mediaWorkspace.includes('resolveGameDestinationMediaMode(game, "cover")') &&
+    !mediaWorkspace.includes("coverMode:") &&
+    !mediaWorkspace.includes("coverVideo:") &&
+    !mediaWorkspace.includes("game.videoMedia?.cover"),
+  "El snapshot multimedia del Admin no debe volver a transportar modo/video de Portada."
 );
 
 assert(
@@ -218,6 +258,21 @@ assert(
     !viewportEditor.includes("preview-remove") &&
     !viewportEditor.includes("Usar imagen estática"),
   "El editor de viewport de video no puede volver a admitir Portada."
+);
+
+assert(
+  has(
+    coverRenderer,
+    "GameMedia",
+    "src={game.coverImage}",
+    "viewport={game.imageMedia?.cover}",
+    'aspectRatio: "4 / 5"'
+  ) &&
+    !coverRenderer.includes("FramedVideo") &&
+    !coverRenderer.includes("resolveGameCoverVideo") &&
+    !coverRenderer.includes("resolveGameDestinationMediaMode") &&
+    !coverRenderer.includes("hover-video"),
+  "El renderer público de Portada debe pintar únicamente coverImage con su viewport 4:5."
 );
 
 assert(
@@ -268,18 +323,26 @@ assert(
 );
 
 assert(
+  publicationReadiness.includes("La Portada requiere una imagen y su recorte 4:5 confirmado.") &&
+    !publicationReadiness.includes("La Portada debe completar los recursos exigidos por su modo activo."),
+  "La revisión de publicación debe describir el mismo contrato image-only que valida el servidor."
+);
+
+assert(
   has(
     validation,
     "const cardVideoSchema = z.union",
     'source: z.literal("hero")',
     'source: z.literal("independent")',
     'cover: destinationVideoSchema.optional()',
-    'cover: "image" as const',
     "activeVideoMedia",
     "videoMedia.hero",
-    "videoMedia.card"
-  ),
-  "La validación debe aceptar cover-video histórico únicamente en lectura, eliminarlo de videoMedia activo y fijar la Portada actual en imagen."
+    "videoMedia.card",
+    "const normalizedGame: Game",
+    "return normalizedGame"
+  ) &&
+    !validation.includes('cover: "image" as const'),
+  "La validación debe aceptar cover-video sólo como entrada histórica y eliminar modo/video de Portada del Game normalizado."
 );
 
 for (const route of [uploadRoute, importRoute]) {
@@ -340,6 +403,14 @@ assert(
 );
 
 assert(
+  hygiene.includes('pushUnique(labels, "Portada")') &&
+    !hygiene.includes("coverMode") &&
+    !hygiene.includes("coverClip") &&
+    !hygiene.includes("videoMedia?.cover"),
+  "La higiene debe clasificar coverImage como Portada activa sin ninguna rama de video/hover."
+);
+
+assert(
   has(
     cardResolver,
     'resolveGameDestinationMediaMode(game, "card") === "image"',
@@ -383,14 +454,19 @@ assert(
 
 const activeCoverBoundarySources = [
   workspace,
+  libraryTypes,
+  mediaWorkspace,
   libraryRoute,
   viewportEditor,
+  coverRenderer,
   importRoute,
   uploadRoute,
   layoutRoute,
   videoMedia,
   requirements,
+  publicationReadiness,
   integrity,
+  hygiene,
   gameTypes,
 ];
 for (const forbidden of [
@@ -433,5 +509,5 @@ if (failures.length) {
 }
 
 console.log(
-  "Card/Portada multimedia: OK (Portada sólo imagen 4:5 en UI/API/tipos/dominio; video/hover sin targets activos; Card/Hero video preservados; historial de Portada aislado)."
+  "Card/Portada multimedia: OK (Portada sólo imagen 4:5 en UI/API/tipos/dominio/render público; video/hover sin targets activos; Card/Hero video preservados; historial de Portada aislado)."
 );
