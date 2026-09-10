@@ -156,9 +156,10 @@ assert(
 assert(
   has(
     imageLayoutRoute,
-    '"detail"',
     'target === "detail"',
-    "Boolean(game.detailImage)",
+    "return game.detailImage",
+    "const savedViewport = confirmedViewport(viewport, source)",
+    "[target.data]: savedViewport",
     "saveGameMediaDraft"
   ) &&
     has(
@@ -166,9 +167,10 @@ assert(
       'target === "detail"',
       "GAME_DETAIL_VIEWPORT_ASPECT",
       'source !== "independent"',
-      "withGameVideoLayout"
+      "withGameVideoLayout",
+      "saveGameMediaDraft"
     ),
-  "Imagen y video de Contenedor deben persistir X/Y/zoom mediante los endpoints compartidos."
+  "Imagen y video de Contenedor deben persistir X/Y/zoom ligados al master seleccionado mediante los endpoints compartidos."
 );
 
 assert(
