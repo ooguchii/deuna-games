@@ -58,15 +58,14 @@ function activeUsageLabels(
   src: string
 ) {
   const labels: string[] = [];
-  const coverMode = resolveGameDestinationMediaMode(game, "cover");
   const heroMode = resolveGameDestinationMediaMode(game, "hero");
   const cardMode = resolveGameDestinationMediaMode(game, "card");
   const detailMode = resolveGameDestinationMediaMode(game, "detail");
   const backgroundMode = resolveGameBackgroundMediaMode(game);
 
   if (kind === "image") {
-    if (coverMode !== "video" && game.coverImage === src) {
-      pushUnique(labels, coverMode === "hover-video" ? "Portada base" : "Portada");
+    if (game.coverImage === src) {
+      pushUnique(labels, "Portada");
     }
     if (heroMode !== "video" && game.heroImage === src) {
       pushUnique(labels, heroMode === "hover-video" ? "Hero base" : "Hero");
@@ -98,7 +97,6 @@ function activeUsageLabels(
       );
     }
   } else {
-    const coverClip = game.videoMedia?.cover?.clip;
     const heroClip = game.videoMedia?.hero?.clip;
     const cardVideo = game.videoMedia?.card;
     const cardClip = cardVideo?.source === "hero"
@@ -107,9 +105,6 @@ function activeUsageLabels(
     const detailClip = game.videoMedia?.detail?.clip;
     const backgroundClip = game.videoMedia?.background?.clip;
 
-    if (coverMode !== "image" && coverClip === src) {
-      pushUnique(labels, coverMode === "hover-video" ? "Portada hover" : "Portada");
-    }
     if (heroMode !== "image" && heroClip === src) {
       pushUnique(labels, heroMode === "hover-video" ? "Hero hover" : "Hero");
     }
