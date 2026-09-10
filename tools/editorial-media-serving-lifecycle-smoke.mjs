@@ -444,13 +444,11 @@ assertPrivatePreview(
 
 const saveBody = new URLSearchParams({
   expectedRevision: String(fixture.revision),
-  coverImage: publicPath,
-  heroImage: initialGame.heroImage ?? "",
-  screenshotsText:
-    initialGame.screenshots?.join("\n") ?? "",
+  target: "cover-image",
+  resource: publicPath,
 }).toString();
 const saveResponse = await request(
-  `/api/admin/content/games/${encodeURIComponent(slug)}/media`,
+  `/api/admin/content/games/${encodeURIComponent(slug)}/media-library`,
   {
     method: "POST",
     headers: formHeaders(editorPath, cookie),
@@ -459,8 +457,8 @@ const saveResponse = await request(
 );
 expectRedirect(
   saveResponse,
-  "El guardado del asset en borrador",
-  "guardado"
+  "La asignación del asset como Portada personalizada",
+  "recurso-asignado"
 );
 
 const savedResult = await adminQuery(
@@ -478,11 +476,13 @@ if (
   !saved ||
   saved.revision !== fixture.revision + 1 ||
   saved.publication_number !== fixture.publication_number ||
-  savedGame?.coverImage !== publicPath ||
-  savedGame.imageMedia?.cover
+  savedGame?.coverArtworkSource !== "custom" ||
+  savedGame.coverImage !== publicPath ||
+  savedGame.imageMedia?.cover?.source !== publicPath ||
+  savedGame.imageMedia.cover.confirmed === true
 ) {
   throw new Error(
-    "Guardar el asset no produjo exactamente una nueva revisión privada ni invalidó el crop anterior."
+    "Asignar el asset no produjo exactamente una nueva revisión privada con Portada custom y crop pendiente ligado a su source."
   );
 }
 
@@ -537,12 +537,14 @@ if (
   !cropped ||
   cropped.revision !== saved.revision + 1 ||
   cropped.publication_number !== fixture.publication_number ||
-  croppedGame?.coverImage !== publicPath ||
+  croppedGame?.coverArtworkSource !== "custom" ||
+  croppedGame.coverImage !== publicPath ||
   croppedGame.imageMedia?.cover?.confirmed !== true ||
+  croppedGame.imageMedia.cover.source !== publicPath ||
   croppedGame.imageMedia.cover.aspect !== "4:5"
 ) {
   throw new Error(
-    "Confirmar el crop no dejó el nuevo recurso listo para la publicación sin alterar el snapshot público."
+    "Confirmar el crop no dejó el nuevo recurso custom listo para la publicación sin alterar el snapshot público."
   );
 }
 
@@ -715,7 +717,7 @@ assertPublicImmutable(
 console.log(
   "Editorial media serving lifecycle smoke: OK " +
     `(slug=${slug}, bytes=${image.length}, ` +
-    "upload=anon404/admin-private, draft=anon404/admin-private, " +
+    "upload=anon404/admin-private, draft=custom-pending-private, " +
     "crop=confirmed-private, published=public-immutable, " +
     "restored=historical-public, cleanup=hidden)."
 );
