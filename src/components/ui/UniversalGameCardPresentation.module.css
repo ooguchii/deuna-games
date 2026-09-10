@@ -14,6 +14,21 @@
   min-height: 0;
 }
 
+.actionButton {
+  margin: 0;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.actionButton:disabled {
+  cursor: not-allowed;
+}
+
 .coverFace,
 .detailFace {
   position: absolute;
