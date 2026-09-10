@@ -40,9 +40,17 @@ export type RequiredMediaDestination = keyof typeof REQUIRED_DESTINATION_ASPECTS
 export function isImageCropConfirmed(
   viewport: GameImageViewport | undefined,
   requiredAspect?: GameImageViewportAspect,
-  legacyAspect?: GameImageViewportAspect
+  legacyAspect?: GameImageViewportAspect,
+  expectedSource?: string
 ) {
   if (viewport?.confirmed !== true) return false;
+  if (
+    expectedSource &&
+    viewport.source !== undefined &&
+    viewport.source !== expectedSource
+  ) {
+    return false;
+  }
   if (!requiredAspect) return true;
   const effectiveAspect = viewport.aspect ?? legacyAspect;
   return effectiveAspect === requiredAspect;
@@ -64,12 +72,14 @@ function destinationRequirement(
   videoViewport: GameVideoViewport | undefined,
   videoAspect: GameVideoViewportAspect,
   imageAspect?: GameImageViewportAspect,
-  legacyImageAspect?: GameImageViewportAspect
+  legacyImageAspect?: GameImageViewportAspect,
+  imageSource?: string
 ) {
   const imageReady = imageAssigned && isImageCropConfirmed(
     imageViewport,
     imageAspect,
-    legacyImageAspect
+    legacyImageAspect,
+    imageSource
   );
   const videoReady = videoAssigned && isVideoCropConfirmed(videoViewport, videoAspect);
 
@@ -98,8 +108,6 @@ export function evaluateGameMediaRequirements(game: Game) {
   const detailMode = resolveGameDestinationMediaMode(game, "detail");
   const backgroundMode = resolveGameBackgroundMediaMode(game);
 
-  // Compatibilidad histórica del chequeo: const coverAssigned = Boolean(game.coverImage)
-  // La fuente efectiva puede ser el master de Card o una portada personalizada.
   const coverImage = resolveGameCoverImage(game);
   const coverAssigned = Boolean(coverImage);
   const cover = {
@@ -107,7 +115,8 @@ export function evaluateGameMediaRequirements(game: Game) {
     cropReady: coverAssigned && isImageCropConfirmed(
       game.imageMedia?.cover,
       REQUIRED_DESTINATION_ASPECTS.cover,
-      LEGACY_DESTINATION_IMAGE_ASPECTS.cover
+      LEGACY_DESTINATION_IMAGE_ASPECTS.cover,
+      coverImage
     ),
   };
 
@@ -119,7 +128,8 @@ export function evaluateGameMediaRequirements(game: Game) {
     game.videoMedia?.hero?.viewport,
     REQUIRED_DESTINATION_ASPECTS.hero,
     REQUIRED_DESTINATION_ASPECTS.hero,
-    LEGACY_DESTINATION_IMAGE_ASPECTS.hero
+    LEGACY_DESTINATION_IMAGE_ASPECTS.hero,
+    game.heroImage
   );
 
   const cardVideo = game.videoMedia?.card;
@@ -130,7 +140,8 @@ export function evaluateGameMediaRequirements(game: Game) {
   const cardImageReady = Boolean(cardImage) && isImageCropConfirmed(
     game.imageMedia?.card,
     REQUIRED_DESTINATION_ASPECTS.card,
-    LEGACY_DESTINATION_IMAGE_ASPECTS.card
+    LEGACY_DESTINATION_IMAGE_ASPECTS.card,
+    cardImage
   );
   const cardVideoReady = cardClipAssigned && isVideoCropConfirmed(
     cardVideo?.viewport,
@@ -155,7 +166,10 @@ export function evaluateGameMediaRequirements(game: Game) {
     game.imageMedia?.detail ?? legacyDetailViewport,
     Boolean(game.videoMedia?.detail?.clip),
     game.videoMedia?.detail?.viewport,
-    GAME_DETAIL_VIEWPORT_ASPECT
+    GAME_DETAIL_VIEWPORT_ASPECT,
+    undefined,
+    undefined,
+    detailImage
   );
 
   const background = backgroundMode
@@ -165,7 +179,10 @@ export function evaluateGameMediaRequirements(game: Game) {
         game.imageMedia?.background,
         Boolean(game.videoMedia?.background?.clip),
         game.videoMedia?.background?.viewport,
-        GAME_BACKGROUND_VIEWPORT_ASPECT
+        GAME_BACKGROUND_VIEWPORT_ASPECT,
+        undefined,
+        undefined,
+        game.backgroundImage
       )
     : { assigned: true, cropReady: true };
 
