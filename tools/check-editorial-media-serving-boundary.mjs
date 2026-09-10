@@ -21,6 +21,8 @@ const [
   publicationHistory,
   gameMediaHistory,
   gameMediaIntegrity,
+  publishRoute,
+  restoreRoute,
   lifecycleSmoke,
 ] = await Promise.all([
   source("package.json"),
@@ -29,6 +31,8 @@ const [
   source("src/lib/admin/publication-history.ts"),
   source("src/lib/admin/game-media-history.ts"),
   source("src/lib/admin/game-media-integrity.ts"),
+  source("src/app/api/admin/content/games/[slug]/publish/route.ts"),
+  source("src/app/api/admin/content/publications/[publicationId]/restore/route.ts"),
   source("tools/editorial-media-serving-lifecycle-smoke.mjs"),
 ]);
 
@@ -87,8 +91,10 @@ assert(
     "ownedPrefix",
     "game.slug",
     "invalidOwnership.length === 0"
-  ),
-  "Publicar/restaurar un juego debe rechazar multimedia editorial de otro namespace para que la autorización por slug nunca rompa una superficie pública."
+  ) &&
+    publishRoute.includes("inspectGameMediaIntegrity") &&
+    restoreRoute.includes("inspectGameMediaIntegrity"),
+  "Publicar y restaurar un juego deben conservar el guard común que rechaza multimedia editorial de otro namespace."
 );
 
 assert(
