@@ -3,10 +3,9 @@ import { resolveGameDestinationMediaMode } from "./game-video-media";
 
 import type {
   Game,
+  GameCoverArtworkSource,
   GameImageViewport,
 } from "@/types/game";
-
-export type GameCoverArtworkSource = "card" | "custom";
 
 export type GameCardPresentation = {
   cover: {
@@ -27,14 +26,15 @@ export type GameCardPresentation = {
 /**
  * Resolves the active artwork contract without rewriting historical snapshots.
  *
- * Legacy payloads do not carry a dedicated source flag, so a distinct
- * coverImage is interpreted as an intentionally custom cover. New Admin writes
- * preserve the shared choice by keeping coverImage and cardImage on the same
- * resource while each destination retains its own crop.
+ * New revisions persist the editor's explicit shared/custom choice. Legacy
+ * snapshots do not carry that field, so only those infer intent from whether
+ * Card and Portada point at distinct resources.
  */
 export function resolveGameCoverArtworkSource(
   game: Game
 ): GameCoverArtworkSource {
+  if (game.coverArtworkSource) return game.coverArtworkSource;
+
   return game.cardImage &&
     game.coverImage &&
     game.cardImage !== game.coverImage
