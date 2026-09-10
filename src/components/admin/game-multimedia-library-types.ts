@@ -1,6 +1,7 @@
 import type {
   GameBackgroundVideo,
   GameCardVideo,
+  GameCoverArtworkSource,
   GameDestinationMediaMode,
   GameDetailVideo,
   GameGalleryItem,
@@ -115,6 +116,7 @@ export type MultimediaLibraryState = {
   requirements?: MultimediaRequirements;
   hygiene?: MultimediaHygieneSummary;
   assignments: {
+    coverArtworkSource: GameCoverArtworkSource;
     coverImage: string | null;
     heroImage: string | null;
     cardImage: string | null;
