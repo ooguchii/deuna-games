@@ -30,8 +30,7 @@ const fields = [
 ] as const;
 
 function parseTarget(value: string | null): GameVideoTarget | null {
-  return value === "cover" ||
-    value === "hero" ||
+  return value === "hero" ||
     value === "card" ||
     value === "detail"
     ? value
@@ -40,6 +39,10 @@ function parseTarget(value: string | null): GameVideoTarget | null {
 
 function parseSource(value: string | null): GameCardVideoSource | null {
   return value === "hero" || value === "independent" ? value : null;
+}
+
+function activeVideoMedia(videoMedia: Awaited<ReturnType<typeof getEditorialItem<"game">>> extends infer Item ? never : never) {
+  return videoMedia;
 }
 
 export async function GET(
@@ -60,10 +63,19 @@ export async function GET(
     );
   }
 
+  const videoMedia = item.payload.videoMedia
+    ? {
+        hero: item.payload.videoMedia.hero,
+        card: item.payload.videoMedia.card,
+        detail: item.payload.videoMedia.detail,
+        background: item.payload.videoMedia.background,
+      }
+    : null;
+
   return NextResponse.json(
     {
       revision: item.revision,
-      videoMedia: item.payload.videoMedia ?? null,
+      videoMedia,
       legacyPreviewClip: item.payload.previewClip ?? null,
     },
     {
@@ -124,7 +136,7 @@ export async function POST(
 
   if (
     (target === "hero" && source !== "hero") ||
-    ((target === "cover" || target === "detail") && source !== "independent")
+    (target === "detail" && source !== "independent")
   ) {
     return adminRedirect(
       authorized.adminOrigin,
