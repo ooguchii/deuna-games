@@ -3,6 +3,11 @@ import {
   resolveGameGalleryItems,
 } from "./game-gallery-media";
 import {
+  isCustomCoverDistinctFromCard,
+  resolveGameCardArtwork,
+  viewportMatchesImageSource,
+} from "./game-card-artwork";
+import {
   resolveGameDestinationImage,
   resolveGameDestinationMediaMode,
 } from "./game-video-media";
@@ -36,9 +41,13 @@ export type RequiredMediaDestination = keyof typeof REQUIRED_DESTINATION_ASPECTS
 export function isImageCropConfirmed(
   viewport: GameImageViewport | undefined,
   requiredAspect?: GameImageViewportAspect,
-  legacyAspect?: GameImageViewportAspect
+  legacyAspect?: GameImageViewportAspect,
+  imageSource?: string
 ) {
   if (viewport?.confirmed !== true) return false;
+  if (imageSource && !viewportMatchesImageSource(viewport, imageSource)) {
+    return false;
+  }
   if (!requiredAspect) return true;
   const effectiveAspect = viewport.aspect ?? legacyAspect;
   return effectiveAspect === requiredAspect;
@@ -60,12 +69,14 @@ function destinationRequirement(
   videoViewport: GameVideoViewport | undefined,
   videoAspect: GameVideoViewportAspect,
   imageAspect?: GameImageViewportAspect,
-  legacyImageAspect?: GameImageViewportAspect
+  legacyImageAspect?: GameImageViewportAspect,
+  imageSource?: string
 ) {
   const imageReady = imageAssigned && isImageCropConfirmed(
     imageViewport,
     imageAspect,
-    legacyImageAspect
+    legacyImageAspect,
+    imageSource
   );
   const videoReady = videoAssigned && isVideoCropConfirmed(videoViewport, videoAspect);
 
@@ -75,6 +86,37 @@ function destinationRequirement(
   if (mode === "video") {
     return { assigned: videoAssigned, cropReady: videoReady };
   }
+  return {
+    assigned: imageAssigned && videoAssigned,
+    cropReady: imageReady && videoReady,
+  };
+}
+
+function cardRequirement(
+  mode: "image" | "video" | "hover-video",
+  imageAssigned: boolean,
+  imageViewport: GameImageViewport | undefined,
+  imageSource: string | undefined,
+  videoAssigned: boolean,
+  videoViewport: GameVideoViewport | undefined
+) {
+  const imageReady = imageAssigned && isImageCropConfirmed(
+    imageViewport,
+    REQUIRED_DESTINATION_ASPECTS.card,
+    LEGACY_DESTINATION_IMAGE_ASPECTS.card,
+    imageSource
+  );
+  const videoReady = videoAssigned && isVideoCropConfirmed(
+    videoViewport,
+    REQUIRED_DESTINATION_ASPECTS.card
+  );
+
+  if (mode === "image") {
+    return { assigned: imageAssigned, cropReady: imageReady };
+  }
+
+  // Video enriches a Card but never replaces its static base. The image is the
+  // poster/fallback and is what touch/reduced-motion can render safely.
   return {
     assigned: imageAssigned && videoAssigned,
     cropReady: imageReady && videoReady,
@@ -101,16 +143,20 @@ export function evaluateGameMediaRequirements(game: Game) {
   const cardMode = resolveGameDestinationMediaMode(game, "card");
   const detailMode = resolveGameDestinationMediaMode(game, "detail");
   const backgroundMode = resolveGameBackgroundMediaMode(game);
+  const artwork = resolveGameCardArtwork(game);
 
-  // Portada es siempre una imagen. Los campos históricos de modo y video de
-  // Portada no participan de readiness ni pueden sustituir este recorte 4:5.
-  const coverAssigned = Boolean(game.coverImage);
+  // Portada sigue siendo image-only. En modo shared resuelve la imagen base de
+  // Card; en custom exige un recurso realmente distinto para que la excepción
+  // tenga intención editorial inequívoca.
+  const coverAssigned = Boolean(artwork.coverImage) &&
+    isCustomCoverDistinctFromCard(game);
   const cover = {
     assigned: coverAssigned,
     cropReady: coverAssigned && isImageCropConfirmed(
-      game.imageMedia?.cover,
+      artwork.coverViewport,
       REQUIRED_DESTINATION_ASPECTS.cover,
-      LEGACY_DESTINATION_IMAGE_ASPECTS.cover
+      LEGACY_DESTINATION_IMAGE_ASPECTS.cover,
+      artwork.coverImage
     ),
   };
 
@@ -122,22 +168,21 @@ export function evaluateGameMediaRequirements(game: Game) {
     game.videoMedia?.hero?.viewport,
     REQUIRED_DESTINATION_ASPECTS.hero,
     REQUIRED_DESTINATION_ASPECTS.hero,
-    LEGACY_DESTINATION_IMAGE_ASPECTS.hero
+    LEGACY_DESTINATION_IMAGE_ASPECTS.hero,
+    game.heroImage
   );
 
   const cardVideo = game.videoMedia?.card;
   const cardClipAssigned = cardVideo?.source === "hero"
     ? Boolean(game.videoMedia?.hero?.clip)
     : Boolean(cardVideo?.clip);
-  const card = destinationRequirement(
+  const card = cardRequirement(
     cardMode,
-    Boolean(game.cardImage),
-    game.imageMedia?.card,
+    Boolean(artwork.cardImage),
+    artwork.cardViewport,
+    artwork.cardImage,
     cardClipAssigned,
-    cardVideo?.viewport,
-    REQUIRED_DESTINATION_ASPECTS.card,
-    REQUIRED_DESTINATION_ASPECTS.card,
-    LEGACY_DESTINATION_IMAGE_ASPECTS.card
+    cardVideo?.viewport
   );
 
   const detailImage = resolveGameDestinationImage(game, "detail");
@@ -152,7 +197,10 @@ export function evaluateGameMediaRequirements(game: Game) {
     game.imageMedia?.detail ?? legacyDetailViewport,
     Boolean(game.videoMedia?.detail?.clip),
     game.videoMedia?.detail?.viewport,
-    GAME_DETAIL_VIEWPORT_ASPECT
+    GAME_DETAIL_VIEWPORT_ASPECT,
+    undefined,
+    undefined,
+    detailImage
   );
 
   const background = backgroundMode
@@ -162,7 +210,10 @@ export function evaluateGameMediaRequirements(game: Game) {
         game.imageMedia?.background,
         Boolean(game.videoMedia?.background?.clip),
         game.videoMedia?.background?.viewport,
-        GAME_BACKGROUND_VIEWPORT_ASPECT
+        GAME_BACKGROUND_VIEWPORT_ASPECT,
+        undefined,
+        undefined,
+        game.backgroundImage
       )
     : { assigned: true, cropReady: true };
 
@@ -175,6 +226,7 @@ export function evaluateGameMediaRequirements(game: Game) {
   return {
     cover: {
       ...cover,
+      source: artwork.coverImageSource,
       mode: "image" as const,
       aspect: REQUIRED_DESTINATION_ASPECTS.cover,
     },
