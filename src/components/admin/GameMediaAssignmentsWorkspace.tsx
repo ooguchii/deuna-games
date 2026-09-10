@@ -29,6 +29,7 @@ import {
 } from "@/lib/media/game-media-requirements";
 import type {
   GameCardVideo,
+  GameCoverArtworkSource,
   GameDestinationMediaMode,
   GameVideoViewport,
 } from "@/types/game";
@@ -40,6 +41,11 @@ const MODES: Array<{ value: GameDestinationMediaMode; label: string }> = [
   { value: "image", label: "Imagen" },
   { value: "video", label: "Video" },
   { value: "hover-video", label: "Imagen + hover" },
+];
+
+const COVER_SOURCES: Array<{ value: GameCoverArtworkSource; label: string }> = [
+  { value: "card", label: "Misma imagen que Card" },
+  { value: "custom", label: "Imagen diferente" },
 ];
 
 type Props = { slug: string; revision: number };
@@ -200,6 +206,42 @@ function ModeSwitch({
   );
 }
 
+function CoverSourceSwitch({
+  slug,
+  revision,
+  source,
+  disabled,
+}: {
+  slug: string;
+  revision: number;
+  source: GameCoverArtworkSource;
+  disabled: boolean;
+}) {
+  return (
+    <form
+      method="post"
+      action={`/api/admin/content/games/${encodeURIComponent(slug)}/media-library`}
+      className={styles.modeSwitch}
+      aria-label="Fuente de imagen de Portada"
+    >
+      <input type="hidden" name="expectedRevision" value={revision} />
+      <input type="hidden" name="target" value="cover-source" />
+      {COVER_SOURCES.map((option) => (
+        <button
+          key={option.value}
+          type="submit"
+          name="resource"
+          value={option.value}
+          disabled={disabled}
+          aria-pressed={source === option.value}
+        >
+          {option.label}
+        </button>
+      ))}
+    </form>
+  );
+}
+
 function CropButton({
   ready,
   assigned,
@@ -281,6 +323,7 @@ export default function GameMediaAssignmentsWorkspace({ slug, revision }: Props)
   if (loading) return <div className={styles.status} role="status">Cargando asignación de destinos…</div>;
   if (error || !assignments) return <div className={styles.status} role="alert">{error ?? "No se pudo leer la asignación multimedia."}</div>;
 
+  const posterSource = assignments.coverArtworkSource;
   const posterImage = assignments.coverImage;
   const posterViewport = assignments.imageMedia?.cover;
   const posterResource = imageResources.find((resource) => resource.src === posterImage) ?? null;
@@ -288,7 +331,8 @@ export default function GameMediaAssignmentsWorkspace({ slug, revision }: Props)
     posterImage && isImageCropConfirmed(
       posterViewport,
       REQUIRED_DESTINATION_ASPECTS.cover,
-      LEGACY_DESTINATION_IMAGE_ASPECTS.cover
+      LEGACY_DESTINATION_IMAGE_ASPECTS.cover,
+      posterImage
     )
   );
 
@@ -300,7 +344,8 @@ export default function GameMediaAssignmentsWorkspace({ slug, revision }: Props)
     cardImage && isImageCropConfirmed(
       cardImageViewport,
       REQUIRED_DESTINATION_ASPECTS.card,
-      LEGACY_DESTINATION_IMAGE_ASPECTS.card
+      LEGACY_DESTINATION_IMAGE_ASPECTS.card,
+      cardImage
     )
   );
   const resolvedCardClip = cardVideoClip(
@@ -313,7 +358,7 @@ export default function GameMediaAssignmentsWorkspace({ slug, revision }: Props)
   const cardVideoReady = Boolean(
     resolvedCardClip && isVideoCropConfirmed(resolvedCardViewport, REQUIRED_DESTINATION_ASPECTS.card)
   );
-  const cardDetailReady = (!needsImage(cardMode) || cardImageReady) && (!needsVideo(cardMode) || cardVideoReady);
+  const cardDetailReady = cardImageReady && (!needsVideo(cardMode) || cardVideoReady);
   const wholeCardReady = posterReady && cardDetailReady;
 
   const heroMode = assignments.heroMode;
@@ -324,7 +369,8 @@ export default function GameMediaAssignmentsWorkspace({ slug, revision }: Props)
     heroImage && isImageCropConfirmed(
       heroViewport,
       REQUIRED_DESTINATION_ASPECTS.hero,
-      LEGACY_DESTINATION_IMAGE_ASPECTS.hero
+      LEGACY_DESTINATION_IMAGE_ASPECTS.hero,
+      heroImage
     )
   );
   const heroVideo = assignments.heroVideo;
@@ -353,7 +399,7 @@ export default function GameMediaAssignmentsWorkspace({ slug, revision }: Props)
         <div>
           <span>ASIGNACIÓN DE DESTINOS</span>
           <h2>Card es la presentación principal del juego</h2>
-          <p>Card concentra la portada inicial 4:5 y la vista informativa 3:2. Hero, Contenedor, Fondo y Galería mantienen destinos propios.</p>
+          <p>Card conserva siempre una imagen base 3:2. Portada usa esa misma imagen por defecto con crop 4:5 independiente, o puede elegir un recurso propio.</p>
         </div>
         <span className={styles.revision}>REVISIÓN {currentRevision}</span>
       </section>
@@ -364,9 +410,9 @@ export default function GameMediaAssignmentsWorkspace({ slug, revision }: Props)
         <article className={styles.cardDestination} aria-labelledby="card-destination-heading">
           <header className={styles.destinationHeader}>
             <div><b>A</b><h3 id="card-destination-heading">Card del juego</h3></div>
-            <small>Portada 4:5 + detalle 3:2</small>
+            <small>Portada 4:5 + media base 3:2</small>
           </header>
-          <p className={styles.cardIntro}>La portada es el primer estado visual y la portada de la ficha. La capa 3:2 contiene la presentación informativa que puede usar imagen o video.</p>
+          <p className={styles.cardIntro}>La Portada es el estado inicial 4:5. La cara informativa usa siempre una imagen base 3:2 como fallback estable y puede sumar video según el modo elegido.</p>
 
           <div className={styles.cardLayers}>
             <section className={styles.layer} id="cover-crop" aria-labelledby="card-poster-heading">
@@ -374,39 +420,43 @@ export default function GameMediaAssignmentsWorkspace({ slug, revision }: Props)
                 <div><strong id="card-poster-heading">Portada inicial</strong><span>Imagen limpia para poster y ficha.</span></div>
                 <span className={styles.aspect}>4:5</span>
               </div>
+              <CoverSourceSwitch slug={slug} revision={currentRevision} source={posterSource} disabled={stale} />
               <div className={styles.current}>
                 {posterResource ? <AdminMediaThumbnail kind="image" src={posterResource.src} viewport={posterViewport} mode="destination" frameAspect={4 / 5} label="Card · portada inicial" sizes="96px" className={`${styles.thumb} ${styles.thumbPoster}`} /> : <ImageIcon size={28} aria-hidden="true" />}
-                <div className={styles.currentMeta}><span>Imagen de portada</span><strong>{posterImage ? multimediaShortName(posterImage) : "Sin imagen asignada"}</strong><small>Este layer es image-only para evitar carga multimedia innecesaria.</small></div>
+                <div className={styles.currentMeta}>
+                  <span>{posterSource === "card" ? "Imagen compartida con Card" : "Imagen propia de Portada"}</span>
+                  <strong>{posterImage ? multimediaShortName(posterImage) : "Sin imagen asignada"}</strong>
+                  <small>{posterSource === "card" ? "Comparte el master, no el recorte: Portada conserva su crop 4:5 propio." : "La Portada usa un master independiente de la imagen base 3:2 de Card."}</small>
+                </div>
               </div>
               <div className={styles.actions}>
-                <ResourcePicker slug={slug} revision={currentRevision} target="cover-image" kind="image" resources={imageResources} selected={posterImage} disabled={stale} label="Imagen de portada" />
+                {posterSource === "custom" && <ResourcePicker slug={slug} revision={currentRevision} target="cover-image" kind="image" resources={imageResources} selected={posterImage} disabled={stale} label="Imagen de portada" />}
                 <CropButton ready={posterReady} assigned={Boolean(posterImage)} aspect="4:5" kind="image" disabled={stale} onClick={() => setEditing({ target: "cover", kind: "image" })} />
               </div>
-              <RequirementLine ready={posterReady} text={posterReady ? "PORTADA DE CARD LISTA · 4:5" : "FALTA COMPLETAR LA PORTADA 4:5"} />
+              <RequirementLine ready={posterReady} text={posterReady ? "PORTADA LISTA · 4:5" : "FALTA COMPLETAR LA PORTADA 4:5"} />
             </section>
 
             <section className={styles.layer} id="card-crop" aria-labelledby="card-detail-heading">
               <div className={styles.layerHeader}>
-                <div><strong id="card-detail-heading">Vista informativa</strong><span>Media 3:2 + información del juego.</span></div>
+                <div><strong id="card-detail-heading">Vista informativa</strong><span>Imagen base 3:2 obligatoria + video opcional según modo.</span></div>
                 <span className={styles.aspect}>3:2</span>
               </div>
               <ModeSwitch slug={slug} revision={currentRevision} target="card" mode={cardMode} disabled={stale} />
               <div className={styles.current}>
                 {cardImageResource
-                  ? <AdminMediaThumbnail kind="image" src={cardImageResource.src} viewport={cardImageViewport} mode="destination" frameAspect={3 / 2} label="Card · detalle 3:2" sizes="96px" className={`${styles.thumb} ${styles.thumbDetail}`} />
-                  : cardVideoResource
-                    ? <AdminMediaThumbnail kind="video" src={cardVideoResource.src} viewport={resolvedCardViewport} mode="destination" frameAspect={3 / 2} label="Card · video 3:2" sizes="96px" playIndicator className={`${styles.thumb} ${styles.thumbDetail}`} />
-                    : <MonitorPlay size={28} aria-hidden="true" />}
-                <div className={styles.currentMeta}><span>Modo de detalle</span><strong>{modeLabel(cardMode)}</strong><small>{cardMode === "video" ? resolvedCardClip ? multimediaShortName(resolvedCardClip) : "Video pendiente" : cardImage ? multimediaShortName(cardImage) : "Imagen pendiente"}</small></div>
+                  ? <AdminMediaThumbnail kind="image" src={cardImageResource.src} viewport={cardImageViewport} mode="destination" frameAspect={3 / 2} label="Card · imagen base 3:2" sizes="96px" className={`${styles.thumb} ${styles.thumbDetail}`} />
+                  : <MonitorPlay size={28} aria-hidden="true" />}
+                <div className={styles.currentMeta}><span>Modo de Card</span><strong>{modeLabel(cardMode)}</strong><small>{cardImage ? `${multimediaShortName(cardImage)} · fallback estable` : "Imagen base pendiente"}</small></div>
               </div>
               <div className={styles.actions}>
-                {needsImage(cardMode) && <><ResourcePicker slug={slug} revision={currentRevision} target="card-image" kind="image" resources={imageResources} selected={cardImage} disabled={stale} label="Imagen 3:2" /><CropButton ready={cardImageReady} assigned={Boolean(cardImage)} aspect="3:2" kind="image" disabled={stale} onClick={() => setEditing({ target: "card", kind: "image" })} /></>}
+                <ResourcePicker slug={slug} revision={currentRevision} target="card-image" kind="image" resources={imageResources} selected={cardImage} disabled={stale} label="Imagen base 3:2" />
+                <CropButton ready={cardImageReady} assigned={Boolean(cardImage)} aspect="3:2" kind="image" disabled={stale} onClick={() => setEditing({ target: "card", kind: "image" })} />
                 {needsVideo(cardMode) && <><ResourcePicker slug={slug} revision={currentRevision} target="card-video" kind="video" resources={videoResources} selected={resolvedCardClip} disabled={stale} label="Video 3:2" /><CropButton ready={cardVideoReady} assigned={Boolean(resolvedCardClip)} aspect="3:2" kind="video" disabled={stale} onClick={() => setEditing({ target: "card", kind: "video" })} /></>}
               </div>
-              <RequirementLine ready={cardDetailReady} text={cardDetailReady ? "DETALLE DE CARD LISTO · 3:2" : "FALTA COMPLETAR EL DETALLE 3:2"} />
+              <RequirementLine ready={cardDetailReady} text={cardDetailReady ? "CARD MEDIA LISTA · 3:2" : "FALTA COMPLETAR LA MEDIA 3:2"} />
             </section>
           </div>
-          <div className={styles.destinationBody}><RequirementLine ready={wholeCardReady} text={wholeCardReady ? "CARD COMPLETA · PORTADA + DETALLE" : "CARD INCOMPLETA · REVISA SUS DOS CAPAS"} /></div>
+          <div className={styles.destinationBody}><RequirementLine ready={wholeCardReady} text={wholeCardReady ? "CARD COMPLETA · PORTADA + MEDIA" : "CARD INCOMPLETA · REVISA SUS DOS CAPAS"} /></div>
         </article>
 
         <article className={styles.destination} aria-labelledby="hero-destination-heading">
@@ -433,16 +483,16 @@ export default function GameMediaAssignmentsWorkspace({ slug, revision }: Props)
         <GameDetailMediaEditor slug={slug} revision={currentRevision} endpoint={`/api/admin/content/games/${encodeURIComponent(slug)}/media-library`} resources={resources} assignment={{ mode: assignments.detailMode, image: assignments.detailImage, imageViewport: assignments.imageMedia?.detail ?? null, video: assignments.detailVideo }} stale={stale} onAddResource={() => document.querySelector<HTMLElement>("[data-multimedia-library-open]")?.click()} />
       </div>
 
-      <div className={styles.hint}><strong>Biblioteca compartida:</strong> los masters se crean una sola vez y se reutilizan por referencia. Ningún recurso se publica automáticamente desde esta vista.</div>
+      <div className={styles.hint}><strong>Biblioteca compartida:</strong> los masters se crean una sola vez y se reutilizan por referencia. Card y Portada pueden compartir bytes con crops independientes. Ningún recurso se publica automáticamente desde esta vista.</div>
 
       {editing?.kind === "image" && editImage && (
-        <ContextualMediaDialog eyebrow={editing.target === "cover" ? "CARD · PORTADA" : editing.target === "card" ? "CARD · DETALLE" : "HERO"} title={editing.target === "cover" ? "Recorte 4:5 de la portada de Card" : editing.target === "card" ? "Recorte 3:2 de la vista informativa" : "Recorte 3:1 del Hero"} description="Se guarda únicamente el encuadre editorial. El archivo físico permanece intacto y reutilizable." onClose={() => setEditing(null)}>
-          <ImageViewportEditor slug={slug} revision={currentRevision} target={editing.target} src={editImage} label={editing.target === "cover" ? "Card · portada 4:5" : editing.target === "card" ? "Card · detalle 3:2" : "Hero · 3:1"} initialViewport={editImageViewport} onClose={() => setEditing(null)} />
+        <ContextualMediaDialog eyebrow={editing.target === "cover" ? "CARD · PORTADA" : editing.target === "card" ? "CARD · MEDIA" : "HERO"} title={editing.target === "cover" ? "Recorte 4:5 de la Portada" : editing.target === "card" ? "Recorte 3:2 de la imagen base" : "Recorte 3:1 del Hero"} description="Se guarda únicamente el encuadre editorial. El archivo físico permanece intacto y reutilizable." onClose={() => setEditing(null)}>
+          <ImageViewportEditor slug={slug} revision={currentRevision} target={editing.target} src={editImage} label={editing.target === "cover" ? "Portada · 4:5" : editing.target === "card" ? "Card · imagen base 3:2" : "Hero · 3:1"} initialViewport={editImageViewport} onClose={() => setEditing(null)} />
         </ContextualMediaDialog>
       )}
 
       {editing?.kind === "video" && editVideo && editVideoViewport && editing.target !== "cover" && (
-        <ContextualMediaDialog eyebrow={editing.target === "card" ? "CARD · DETALLE" : "HERO"} title={editing.target === "card" ? "Recorte 3:2 del video de Card" : "Recorte 3:1 del video Hero"} description="El WebM se reutiliza por referencia; este editor sólo confirma el encuadre del destino." onClose={() => setEditing(null)}>
+        <ContextualMediaDialog eyebrow={editing.target === "card" ? "CARD · VIDEO" : "HERO"} title={editing.target === "card" ? "Recorte 3:2 del video de Card" : "Recorte 3:1 del video Hero"} description="El WebM se reutiliza por referencia; este editor sólo confirma el encuadre del destino." onClose={() => setEditing(null)}>
           <GameVideoViewportEditor slug={slug} revision={currentRevision} target={editing.target} source={editing.target === "hero" ? "hero" : assignments.cardVideo?.source ?? "independent"} clip={editVideo} label={editing.target === "card" ? "Card · video 3:2" : "Hero · video 3:1"} initialViewport={editVideoViewport} onClose={() => setEditing(null)} />
         </ContextualMediaDialog>
       )}
