@@ -237,6 +237,69 @@ async function waitFor(cdp, expression, description, timeoutMs = 15_000) {
   );
 }
 
+function detailVisibilityExpression(lookup, visible) {
+  return `(() => {
+    const card = ${lookup};
+    return Boolean(
+      card instanceof HTMLElement &&
+      card.dataset.detailVisible === ${JSON.stringify(visible ? "true" : "false")}
+    );
+  })()`;
+}
+
+async function hoverCard(cdp, lookup) {
+  const point = await waitFor(
+    cdp,
+    `(() => {
+      const card = ${lookup};
+      if (!(card instanceof HTMLElement)) return false;
+      const rect = card.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) return false;
+      return {
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2,
+      };
+    })()`,
+    "No se pudo resolver el área interactiva de la Card"
+  );
+
+  await cdp.send("Input.dispatchMouseEvent", {
+    type: "mouseMoved",
+    x: point.x,
+    y: point.y,
+    buttons: 0,
+    pointerType: "mouse",
+  });
+  await waitFor(
+    cdp,
+    detailVisibilityExpression(lookup, true),
+    "El hover real no expandió la Card"
+  );
+}
+
+async function leaveCard(cdp, lookup) {
+  await cdp.send("Input.dispatchMouseEvent", {
+    type: "mouseMoved",
+    x: 1,
+    y: 1,
+    buttons: 0,
+    pointerType: "mouse",
+  });
+  await waitFor(
+    cdp,
+    detailVisibilityExpression(lookup, false),
+    "La Card no volvió a Portada al retirar el puntero"
+  );
+  await waitFor(
+    cdp,
+    `(() => {
+      const card = ${lookup};
+      return Boolean(card instanceof HTMLElement && !card.querySelector("video"));
+    })()`,
+    "La Card mantuvo el video montado fuera de interacción"
+  );
+}
+
 function playingVideoExpression(lookup) {
   return `(() => {
     const card = ${lookup};
@@ -347,6 +410,24 @@ async function main() {
     );
     await delay(300);
 
+    const restState = await cdp.evaluate(`(() => {
+      const card = ${lookup};
+      return {
+        found: card instanceof HTMLElement,
+        detailVisible: card?.dataset.detailVisible ?? null,
+        hasVideo: Boolean(card?.querySelector("video")),
+      };
+    })()`);
+    if (
+      !restState?.found ||
+      restState.detailVisible !== "false" ||
+      restState.hasVideo
+    ) {
+      throw new Error(
+        `La Card no respeta el estado de reposo Portada: ${JSON.stringify(restState)}.`
+      );
+    }
+
     const asset = await cdp.evaluate(`
       fetch(${JSON.stringify(fixture.clip)}, { cache: "no-store" })
         .then(async (response) => ({
@@ -369,10 +450,11 @@ async function main() {
       );
     }
 
+    await hoverCard(cdp, lookup);
     const visibleState = await waitFor(
       cdp,
       playingVideoExpression(lookup),
-      "La Card publicada no llegó a reproducir el video continuo"
+      "La Card expandida no llegó a reproducir el video continuo"
     );
     if (
       visibleState.src !== fixture.clip ||
@@ -397,6 +479,14 @@ async function main() {
     await writeFile(
       screenshotPath,
       Buffer.from(capture.data, "base64")
+    );
+
+    await leaveCard(cdp, lookup);
+    await hoverCard(cdp, lookup);
+    await waitFor(
+      cdp,
+      playingVideoExpression(lookup),
+      "La Card no reanudó el video al volver a entrar con el puntero"
     );
 
     await cdp.send("Emulation.setEmulatedMedia", {
@@ -461,7 +551,8 @@ async function main() {
     console.log(
       "Card video browser smoke: OK " +
         `(slug=${fixture.slug}, bytes=${asset.bytes}, ` +
-        `readyState=${visibleState.readyState}, visible=reproduciendo, ` +
+        `readyState=${visibleState.readyState}, rest=portada, ` +
+        `hover=reproduciendo, leave=sin video, ` +
         "reduced-motion=sin video, restored=reproduciendo, hidden=sin video)."
     );
   } catch (error) {
