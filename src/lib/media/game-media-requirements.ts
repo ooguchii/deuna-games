@@ -3,6 +3,10 @@ import {
   resolveGameGalleryItems,
 } from "./game-gallery-media";
 import {
+  resolveGameCardBaseImage,
+  resolveGameCoverImage,
+} from "./game-card-presentation";
+import {
   resolveGameDestinationImage,
   resolveGameDestinationMediaMode,
 } from "./game-video-media";
@@ -102,9 +106,11 @@ export function evaluateGameMediaRequirements(game: Game) {
   const detailMode = resolveGameDestinationMediaMode(game, "detail");
   const backgroundMode = resolveGameBackgroundMediaMode(game);
 
-  // Portada es siempre una imagen. Los campos históricos de modo y video de
-  // Portada no participan de readiness ni pueden sustituir este recorte 4:5.
-  const coverAssigned = Boolean(game.coverImage);
+  // Portada es siempre image-only, pero su recurso puede ser el mismo master
+  // de Card o una excepción editorial personalizada. El recorte 4:5 siempre es
+  // propio del destino y nunca se sustituye por el 3:2 de Card.
+  const coverImage = resolveGameCoverImage(game);
+  const coverAssigned = Boolean(coverImage);
   const cover = {
     assigned: coverAssigned,
     cropReady: coverAssigned && isImageCropConfirmed(
@@ -129,16 +135,25 @@ export function evaluateGameMediaRequirements(game: Game) {
   const cardClipAssigned = cardVideo?.source === "hero"
     ? Boolean(game.videoMedia?.hero?.clip)
     : Boolean(cardVideo?.clip);
-  const card = destinationRequirement(
-    cardMode,
-    Boolean(game.cardImage),
+  const cardImage = resolveGameCardBaseImage(game);
+  const cardImageReady = Boolean(cardImage) && isImageCropConfirmed(
     game.imageMedia?.card,
-    cardClipAssigned,
-    cardVideo?.viewport,
-    REQUIRED_DESTINATION_ASPECTS.card,
     REQUIRED_DESTINATION_ASPECTS.card,
     LEGACY_DESTINATION_IMAGE_ASPECTS.card
   );
+  const cardVideoReady = cardClipAssigned && isVideoCropConfirmed(
+    cardVideo?.viewport,
+    REQUIRED_DESTINATION_ASPECTS.card
+  );
+
+  // La Card siempre conserva una imagen base, incluso en modo Video. Es el
+  // poster/fallback estable para carga, error y reduced-motion.
+  const card = cardMode === "image"
+    ? { assigned: Boolean(cardImage), cropReady: cardImageReady }
+    : {
+        assigned: Boolean(cardImage) && cardClipAssigned,
+        cropReady: cardImageReady && cardVideoReady,
+      };
 
   const detailImage = resolveGameDestinationImage(game, "detail");
   const legacyDetailViewport = !game.detailImage
