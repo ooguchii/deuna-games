@@ -20,7 +20,9 @@ const [
   libraryRoute,
   imageLayoutRoute,
   videoLayoutRoute,
-  workspace,
+  assignmentsWorkspace,
+  utilityRail,
+  galleryManager,
   detailEditor,
   imageEditor,
   videoEditor,
@@ -37,7 +39,9 @@ const [
   source("src/app/api/admin/content/games/[slug]/media-library/route.ts"),
   source("src/app/api/admin/content/games/[slug]/image-layout/route.ts"),
   source("src/app/api/admin/content/games/[slug]/preview-layout/route.ts"),
-  source("src/components/admin/GameMultimediaWorkspaceContextual.tsx"),
+  source("src/components/admin/GameMediaAssignmentsWorkspace.tsx"),
+  source("src/components/admin/GameMultimediaUtilityRail.tsx"),
+  source("src/components/admin/GameGalleryMediaManager.tsx"),
   source("src/components/admin/GameDetailMediaEditor.tsx"),
   source("src/components/admin/ImageViewportEditor.tsx"),
   source("src/components/admin/GameVideoViewportEditor.tsx"),
@@ -169,19 +173,28 @@ assert(
 
 assert(
   has(
-    workspace,
+    assignmentsWorkspace,
     'import GameDetailMediaEditor from "@/components/admin/GameDetailMediaEditor"',
-    "detailImage: string | null",
-    "detailMode: GameDestinationMediaMode",
-    "detailVideo: GameDetailVideo | null",
-    "const detailCropReady = cropReady(",
-    "coverCropReady && heroCropReady && cardCropReady && detailCropReady && galleryReady",
-    'labels.push(detailMode === "hover-video" ? "Contenedor base" : "Contenedor")',
-    'labels.push(detailMode === "hover-video" ? "Contenedor hover" : "Contenedor")',
-    "<GameDetailMediaEditor",
-    "<span>F</span><h3>Galería del juego</h3>"
-  ),
-  "Workspace debe incluir Contenedor en resumen/gate/Biblioteca y conservar Galería como destino F."
+    "assignments.detailMode",
+    "assignments.detailImage",
+    "assignments.imageMedia?.detail",
+    "assignments.detailVideo",
+    "<GameDetailMediaEditor"
+  ) &&
+    has(
+      utilityRail,
+      "requirements.detail.cropReady",
+      "assignments?.detailMode",
+      "assignments?.detailImage",
+      "assignments?.detailVideo?.clip",
+      "<strong>Contenedor</strong>"
+    ) &&
+    has(
+      galleryManager,
+      "if (!requirements.detail.cropReady)",
+      'missing.push("Contenedor adaptable")'
+    ),
+  "Asignaciones debe integrar Contenedor y tanto el resumen como el gate de continuidad deben usar su estado real."
 );
 
 assert(

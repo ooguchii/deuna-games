@@ -24,7 +24,9 @@ const [
   publicBackgroundCss,
   publicLayout,
   multimediaEditor,
-  multimediaWorkspace,
+  assignmentsWorkspace,
+  galleryManager,
+  utilityRail,
 ] = await Promise.all([
   source("src/types/game.ts"),
   source("src/lib/admin/content-validation.ts"),
@@ -39,7 +41,9 @@ const [
   source("src/components/games/GameDetailBackground.module.css"),
   source("src/app/juegos/[slug]/layout.tsx"),
   source("src/components/admin/GameMultimediaEditor.tsx"),
-  source("src/components/admin/GameMultimediaWorkspaceContextual.tsx"),
+  source("src/components/admin/GameMediaAssignmentsWorkspace.tsx"),
+  source("src/components/admin/GameGalleryMediaManager.tsx"),
+  source("src/components/admin/GameMultimediaUtilityRail.tsx"),
 ]);
 
 assert(
@@ -233,25 +237,45 @@ assert(
 );
 
 assert(
-  multimediaEditor.includes("GameMultimediaWorkspaceContextual") &&
-    !multimediaEditor.includes("GameBackgroundMediaEditor") &&
+  has(
+    multimediaEditor,
+    "GameMediaAssignmentsWorkspace",
+    "GameGalleryMediaManager",
+    "GameMediaAccessibilityEditor",
+    "GameMultimediaUtilityRail"
+  ) &&
+    !multimediaEditor.includes("GameMultimediaWorkspaceContextual") &&
+    !multimediaEditor.includes("GameBackgroundMediaEditor"),
+  "Multimedia debe delegar destinos, Galería, accesibilidad y Biblioteca a los componentes canónicos de la arquitectura dividida."
+);
+
+assert(
+  has(
+    assignmentsWorkspace,
+    'import GameBackgroundMediaEditor from "@/components/admin/GameBackgroundMediaEditor"',
+    'import GameDetailMediaEditor from "@/components/admin/GameDetailMediaEditor"',
+    "assignments.backgroundMode",
+    "assignments.backgroundImage",
+    "assignments.imageMedia?.background",
+    "assignments.backgroundVideo",
+    "<GameBackgroundMediaEditor",
+    "<GameDetailMediaEditor"
+  ) &&
     has(
-      multimediaWorkspace,
-      'import GameBackgroundMediaEditor from "@/components/admin/GameBackgroundMediaEditor"',
-      'import GameDetailMediaEditor from "@/components/admin/GameDetailMediaEditor"',
-      "backgroundImage: string | null",
-      "backgroundMode: GameDestinationMediaMode | null",
-      "backgroundVideo: GameBackgroundVideo | null",
-      "const backgroundReady = backgroundMode === null || cropReady(",
-      "mandatoryRequirementsReady && backgroundReady",
-      'labels.push(backgroundMode === "hover-video" ? "Fondo base" : "Fondo")',
-      'labels.push(backgroundMode === "hover-video" ? "Fondo hover" : "Fondo")',
-      "<GameBackgroundMediaEditor",
-      "<GameDetailMediaEditor",
-      "<span>F</span><h3>Galería del juego</h3>",
-      "Fondo · adaptable"
+      galleryManager,
+      "requirements.background.active",
+      "requirements.background.cropReady",
+      'missing.push("Fondo adaptable")'
+    ) &&
+    has(
+      utilityRail,
+      "requirements.background.active",
+      "requirements.background.cropReady",
+      "assignments?.backgroundMode",
+      "<strong>Fondo</strong>",
+      '"Global · opcional"'
     ),
-  "Multimedia debe ordenar Portada → Hero → Card → Fondo → Contenedor → Galería en un único workspace y alinear gate/Biblioteca con el estado real de Fondo."
+  "Asignaciones debe integrar Fondo antes de Galería y los gates/resúmenes deben tratarlo como opcional salvo cuando está activo."
 );
 
 if (failures.length) {
