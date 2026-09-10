@@ -160,6 +160,7 @@ export default async function AccountPage({
           }))}
           notifications={notifications}
           recommendations={recommendations.map((entry) => ({
+            game: entry.game,
             slug: entry.game.slug,
             title: entry.game.title,
             category: entry.game.category,
