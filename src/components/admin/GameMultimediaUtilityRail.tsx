@@ -461,7 +461,7 @@ export default function GameMultimediaUtilityRail({
             </div>
             <div data-ready={requirements.card.cropReady}>
               {statusPreview([
-                { kind: "image", src: assignments?.cardMode !== "video" ? assignments?.cardImage : null },
+                { kind: "image", src: assignments?.cardImage },
                 { kind: "video", src: assignments?.cardMode !== "image" ? cardClip : null },
               ])}
               <span><strong>Card · 3:2</strong><small>{modeLabel(assignments?.cardMode)}</small></span>
@@ -553,7 +553,7 @@ export default function GameMultimediaUtilityRail({
           <div className={shellStyles.helpRules}>
             <div><ImageIcon size={18} aria-hidden="true" /><p><strong>Portada · 4:5</strong><span>Sólo imagen. Selecciona un recurso y confirma su único recorte 4:5.</span></p></div>
             <div><MonitorPlay size={18} aria-hidden="true" /><p><strong>Hero · 3:1</strong><span>Imagen, Video o Imagen + hover. Hover exige ambos recursos y sus recortes.</span></p></div>
-            <div><Clapperboard size={18} aria-hidden="true" /><p><strong>Card · 3:2</strong><span>Su imagen y video pueden ser independientes y se validan por separado.</span></p></div>
+            <div><Clapperboard size={18} aria-hidden="true" /><p><strong>Card · 3:2</strong><span>La imagen base 3:2 es obligatoria en todos los modos. Video e Imagen + hover agregan un WebM con recorte 3:2 propio.</span></p></div>
             <div><Sparkles size={18} aria-hidden="true" /><p><strong>Fondo · adaptable</strong><span>Es opcional. Puede usar Imagen, Video o Imagen + hover, o volver al fondo global.</span></p></div>
             <div><MonitorPlay size={18} aria-hidden="true" /><p><strong>Contenedor · adaptable</strong><span>Es obligatorio e independiente del Hero; adapta foco y zoom al tamaño real de la ficha.</span></p></div>
             <div><Images size={18} aria-hidden="true" /><p><strong>Galería · mínimo 1 recurso</strong><span>Admite hasta 8 imágenes y videos combinados. Cada elemento confirma su propio recorte y conserva su orden editorial.</span></p></div>

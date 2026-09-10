@@ -354,7 +354,6 @@ export default function GameMediaAssignmentsWorkspace({ slug, revision }: Props)
     assignments.legacyPreviewClip
   );
   const resolvedCardViewport = cardVideoViewport(assignments.cardVideo);
-  const cardVideoResource = videoResources.find((resource) => resource.src === resolvedCardClip) ?? null;
   const cardVideoReady = Boolean(
     resolvedCardClip && isVideoCropConfirmed(resolvedCardViewport, REQUIRED_DESTINATION_ASPECTS.card)
   );
