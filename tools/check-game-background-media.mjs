@@ -119,6 +119,8 @@ assert(
     "mergeEditorialMediaResources",
     "backgroundImage: match.src",
     "DEFAULT_GAME_IMAGE_VIEWPORT",
+    "source: match.src",
+    "source: current.backgroundImage",
     "aspect: GAME_BACKGROUND_VIEWPORT_ASPECT",
     "confirmed: true",
     "clearBackgroundUpdate",
@@ -138,12 +140,8 @@ assert(
     "backgroundImage: item.payload.backgroundImage ?? null",
     "backgroundMode: resolveGameBackgroundMediaMode(item.payload)",
     "backgroundVideo: item.payload.videoMedia?.background ?? null",
-    "type MediaDraftUpdate = Parameters<typeof saveGameMediaDraft>[3]",
-    '| "backgroundImage"',
-    '| "cardImage"',
-    '| "detailImage"',
-    '| "galleryMedia"',
-    '| "mediaModes"',
+    "type MediaDraftUpdate = GameMediaDraftInput",
+    "type GameMediaDraftInput",
     "protectedReferencesForGame",
     "getHistoricalGameMediaReferences"
   ) &&
@@ -176,7 +174,8 @@ assert(
     "assignmentStyles.assignmentActions",
     "revision: number",
     "resources: LibraryResource[]",
-    "assignment: BackgroundAssignment"
+    "assignment: BackgroundAssignment",
+    "isImageCropConfirmed"
   ) &&
     !admin.includes("Falta ajustar el foco de la imagen") &&
     !admin.includes("Foco adaptable de imagen confirmado") &&

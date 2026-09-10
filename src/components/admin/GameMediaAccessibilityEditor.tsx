@@ -206,9 +206,7 @@ export default function GameMediaAccessibilityEditor({
   const assignments = workspace.assignments;
   const hasCover = Boolean(assignments.coverImage);
   const hasHero = Boolean(assignments.heroImage);
-  const hasCard = Boolean(
-    assignments.cardMode !== "video" && assignments.cardImage
-  );
+    const hasCard = Boolean(assignments.cardImage);
   const hasDetail = Boolean(
     assignments.detailMode !== "video" && assignments.detailImage
   );
@@ -287,7 +285,7 @@ export default function GameMediaAccessibilityEditor({
               placeholder="Descripción breve para la tarjeta del juego"
             />
             <small>
-              Úsalo para describir la imagen de descubrimiento cuando aporte información distinta a la Portada.
+              Describe la imagen base 3:2 de la Card. También se usa como fallback cuando el modo activo incluye video o el visitante reduce el movimiento.
             </small>
           </label>
         )}

@@ -9,6 +9,7 @@ import { expectedRevisionSchema } from "@/lib/admin/content-forms";
 import {
   getEditorialItem,
   saveGameMediaDraft,
+  type GameMediaDraftInput,
 } from "@/lib/admin/content-service";
 import {
   getHistoricalGameMediaReferences,
@@ -158,18 +159,7 @@ async function resourcesForGame(
   return mergeEditorialMediaResources(editorial, bundled);
 }
 
-type MediaDraftUpdate = Parameters<typeof saveGameMediaDraft>[3] &
-  Partial<
-    Pick<
-      Game,
-      | "backgroundImage"
-      | "cardImage"
-      | "coverArtworkSource"
-      | "detailImage"
-      | "galleryMedia"
-      | "mediaModes"
-    >
-  >;
+type MediaDraftUpdate = GameMediaDraftInput;
 
 function mediaUpdate(
   update: MediaDraftUpdate,

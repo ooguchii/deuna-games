@@ -23,6 +23,9 @@ import {
   hasExactAdminFormFields,
 } from "@/lib/admin/request-security";
 import {
+  resolveGameCardBaseImage,
+} from "@/lib/media/game-card-presentation";
+import {
   reconcileGameImageMedia,
 } from "@/lib/media/game-image-media";
 
@@ -101,6 +104,9 @@ export async function POST(
       );
     }
 
+    const cardImage = resolveGameCardBaseImage(item.payload);
+    const coverArtworkSource =
+      input.coverImage === cardImage ? "card" : "custom";
     const assignments = {
       coverImage: input.coverImage,
       heroImage: input.heroImage,
@@ -131,6 +137,7 @@ export async function POST(
       authorized.session.userId,
       {
         ...assignments,
+        coverArtworkSource,
         imageMedia: reconcileGameImageMedia(
           item.payload,
           assignments

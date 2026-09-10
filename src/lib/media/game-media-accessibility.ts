@@ -1,6 +1,10 @@
 import {
-  resolveGameDestinationMediaMode,
-} from "@/lib/media/game-video-media";
+  resolveGameCardBaseImage,
+  resolveGameCoverImage,
+} from "@/lib/media/game-card-presentation";
+import {
+  resolveGameGalleryItems,
+} from "@/lib/media/game-gallery-media";
 import type {
   Game,
   GameGalleryItem,
@@ -30,18 +34,11 @@ export function getGameGalleryAccessibleFallback(
 }
 
 export function hasCompleteContextualMediaAccessibility(game: Game) {
-  const gallery = game.galleryMedia?.length
-    ? game.galleryMedia
-    : (game.screenshots ?? []).map((src) => ({
-        kind: "image" as const,
-        src,
-      }));
+  const gallery = resolveGameGalleryItems(game);
   const labels = game.mediaAccessibility;
-  const coverReady = !game.coverImage || Boolean(labels?.cover?.trim());
-  const cardMode = resolveGameDestinationMediaMode(game, "card");
-  const cardImage = cardMode === "video"
-    ? undefined
-    : game.cardImage ?? game.coverImage;
+  const coverImage = resolveGameCoverImage(game);
+  const cardImage = resolveGameCardBaseImage(game);
+  const coverReady = !coverImage || Boolean(labels?.cover?.trim());
   const cardReady = !cardImage || Boolean(labels?.card?.trim());
   const galleryReady = gallery.every(
     (item) => Boolean(getGameGalleryAccessibilityLabel(game, item)?.trim())

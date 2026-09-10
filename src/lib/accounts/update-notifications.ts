@@ -1,6 +1,7 @@
 import type {
   AccountGamePreference,
 } from "@/lib/accounts/personalization-types";
+import { resolveGameCardBaseImage } from "@/lib/media/game-card-presentation";
 import type { GameImageViewport } from "@/types/game";
 import type { ResolvedGameUpdate } from "@/types/update";
 
@@ -55,8 +56,7 @@ export function resolveAccountUpdateNotifications(
       id: update.id,
       gameSlug: update.gameSlug,
       gameTitle: update.game.title,
-      gameCoverImage:
-        update.game.cardImage ?? update.game.coverImage,
+            gameCoverImage: resolveGameCardBaseImage(update.game),
       gameImageViewport:
         update.game.imageMedia?.card ?? update.game.imageMedia?.cover,
       version: update.version,

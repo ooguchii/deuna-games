@@ -1,7 +1,10 @@
 "use client";
 
 import GameMedia from "@/components/ui/GameMedia";
-import { resolveGameCoverImage } from "@/lib/media/game-card-presentation";
+import {
+  resolveGameCoverAlt,
+  resolveGameCoverImage,
+} from "@/lib/media/game-card-presentation";
 import type { Game } from "@/types/game";
 
 type Props = {
@@ -34,7 +37,7 @@ export default function GameCoverMedia({ game, sizes }: Props) {
       >
         <GameMedia
           src={coverImage}
-          alt={game.mediaAccessibility?.cover ?? game.imageAlt}
+          alt={resolveGameCoverAlt(game)}
           sizes={sizes}
           viewport={game.imageMedia?.cover}
         />

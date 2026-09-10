@@ -107,9 +107,10 @@ assert(
     files.editor.includes('name="accessibilityJson"') &&
     files.editor.includes("workspace.revision !== revision") &&
     files.editor.includes("maxLength={240}") &&
+    files.editor.includes("const hasCard = Boolean(assignments.cardImage)") &&
     files.editor.includes("GameEditorFormActions") &&
     files.multimediaEditor.includes("GameMediaAccessibilityEditor"),
-  "Multimedia debe integrar un editor accesible sobre el workspace y revisión actuales."
+  "Multimedia debe integrar un editor accesible y mantener el alt de la imagen base de Card incluso cuando su modo activo sea Video."
 );
 
 assert(
@@ -121,19 +122,26 @@ assert(
   files.accessibility.includes("getGameGalleryAccessibilityLabel") &&
     files.accessibility.includes("getGameGalleryAccessibleFallback") &&
     files.accessibility.includes("hasCompleteContextualMediaAccessibility") &&
-    files.accessibility.includes('resolveGameDestinationMediaMode(game, "card")'),
-  "La resolución pública y el readiness deben compartir una sola lógica de accesibilidad contextual."
+    files.accessibility.includes("resolveGameCoverImage") &&
+    files.accessibility.includes("resolveGameCardBaseImage") &&
+    !files.accessibility.includes('resolveGameDestinationMediaMode(game, "card")'),
+  "La resolución pública y el readiness deben exigir textos contextuales sobre los recursos efectivos, incluida la imagen base de Card en modo Video."
 );
 
 assert(
-  files.cover.includes("game.mediaAccessibility?.cover ?? game.imageAlt"),
-  "La Portada pública debe preferir el texto contextual y conservar el fallback histórico."
+  files.cover.includes("resolveGameCoverAlt") &&
+    files.cover.includes("alt={resolveGameCoverAlt(game)}"),
+  "La Portada pública debe preferir exclusivamente su texto contextual y conservar el fallback histórico general."
 );
 assert(
-  files.cardPresentation.includes("game.mediaAccessibility?.card ?? game.imageAlt") &&
+  files.cardPresentation.includes("resolveGameCoverAlt") &&
+    files.cardPresentation.includes("resolveGameCardAlt") &&
+    files.cardPresentation.includes("alt: resolveGameCoverAlt(game)") &&
+    files.cardPresentation.includes("alt: resolveGameCardAlt(game)") &&
+    !files.cardPresentation.includes("game.mediaAccessibility?.cover ??\\n        game.mediaAccessibility?.card") &&
     files.card.includes("resolveGameCardPresentation") &&
     files.card.includes("presentation.card.alt"),
-  "La Card pública debe resolver el texto contextual en la presentación canónica y el renderer debe consumirlo sin lógica paralela."
+  "Card y Portada deben resolver textos alternativos independientes desde una única presentación canónica."
 );
 assert(
   files.publicPage.includes("getGameGalleryAccessibleFallback") &&
@@ -141,6 +149,8 @@ assert(
     files.publicPage.includes("alt={accessibleLabel}") &&
     files.publicPage.includes("label={accessibleLabel}") &&
     files.publicPage.includes("game.mediaAccessibility?.hero ?? game.imageAlt") &&
+    files.publicPage.includes("resolveGameCoverImage") &&
+    files.publicPage.includes("resolveGameCoverAlt") &&
     files.publicPage.includes("getPublicGameBySlug") &&
     !files.publicPage.includes("draft_payload"),
   "La ficha pública debe usar sólo el snapshot publicado para Hero social y etiquetas de Galería."
@@ -154,8 +164,9 @@ assert(
 assert(
   files.readiness.includes("hasCompleteContextualMediaAccessibility") &&
     files.readiness.includes('id: "media-accessibility"') &&
+    files.readiness.includes("Portada, la imagen base de Card") &&
     files.readiness.includes('priority: "recommended"'),
-  "El checklist debe recomendar accesibilidad contextual sin bloquear publicaciones históricas."
+  "El checklist debe recomendar accesibilidad contextual de Portada/Card base sin bloquear publicaciones históricas."
 );
 
 assert(

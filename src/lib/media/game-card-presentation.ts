@@ -53,6 +53,14 @@ export function resolveGameCoverImage(game: Game) {
     : resolveGameCardBaseImage(game) ?? game.coverImage;
 }
 
+export function resolveGameCoverAlt(game: Game) {
+  return game.mediaAccessibility?.cover ?? game.imageAlt;
+}
+
+export function resolveGameCardAlt(game: Game) {
+  return game.mediaAccessibility?.card ?? game.imageAlt;
+}
+
 export function resolveGameCardPresentation(
   game: Game
 ): GameCardPresentation {
@@ -60,16 +68,13 @@ export function resolveGameCardPresentation(
     cover: {
       image: resolveGameCoverImage(game),
       viewport: game.imageMedia?.cover,
-      alt:
-        game.mediaAccessibility?.cover ??
-        game.mediaAccessibility?.card ??
-        game.imageAlt,
+      alt: resolveGameCoverAlt(game),
       source: resolveGameCoverArtworkSource(game),
     },
     card: {
       image: resolveGameCardBaseImage(game),
       viewport: game.imageMedia?.card,
-      alt: game.mediaAccessibility?.card ?? game.imageAlt,
+      alt: resolveGameCardAlt(game),
       mode: resolveGameDestinationMediaMode(game, "card"),
       preview: resolveGameCardPreview(game),
     },

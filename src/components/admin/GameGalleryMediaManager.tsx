@@ -27,6 +27,7 @@ import {
   multimediaShortName,
 } from "@/components/admin/game-multimedia-library-types";
 import {
+  isGameGalleryItemConfirmed,
   MAX_GAME_GALLERY_ITEMS,
 } from "@/lib/media/game-gallery-media";
 import {
@@ -151,10 +152,12 @@ export default function GameGalleryMediaManager({ slug, revision }: Props) {
       resource.kind === pickerKind &&
       !assignedKeys.has(`${resource.kind}:${resource.src}`)
   );
-  const pendingCount = gallery.filter((item) =>
-    item.kind === "image"
-      ? imageMedia?.gallery?.[item.src]?.confirmed !== true
-      : item.viewport.confirmed !== true
+  const pendingCount = gallery.filter(
+    (item) =>
+      !isGameGalleryItemConfirmed(
+        { imageMedia: imageMedia ?? undefined },
+        item
+      )
   ).length;
 
   function assignmentForm(
@@ -281,9 +284,10 @@ export default function GameGalleryMediaManager({ slug, revision }: Props) {
                 const imageViewport = item.kind === "image"
                   ? imageMedia?.gallery?.[item.src]
                   : undefined;
-                const confirmed = item.kind === "image"
-                  ? imageViewport?.confirmed === true
-                  : item.viewport.confirmed === true;
+                const confirmed = isGameGalleryItemConfirmed(
+                  { imageMedia: imageMedia ?? undefined },
+                  item
+                );
                 const cropLabel = item.kind === "image"
                   ? gameImageCropAspectLabel(imageViewport)
                   : videoCropLabel(item.viewport);

@@ -35,6 +35,10 @@ import ScreenReaderStatus from "@/components/ui/ScreenReaderStatus";
 import touchStyles from "@/components/ui/TouchTarget.module.css";
 import UniversalGameCardBase from "@/components/ui/UniversalGameCardBase";
 import {
+  resolveGameCoverAlt,
+  resolveGameCoverImage,
+} from "@/lib/media/game-card-presentation";
+import {
   useFavoriteGame,
 } from "@/features/favorites/favorite-store";
 import type { Game } from "@/types/game";
@@ -318,6 +322,21 @@ function FinderFavoriteButton({
       </button>
       <ScreenReaderStatus>{status}</ScreenReaderStatus>
     </>
+  );
+}
+
+function FinderDetailCover({ game }: { game: Game }) {
+  const image = resolveGameCoverImage(game);
+  if (!image) return null;
+
+  return (
+    <Image
+      src={image}
+      alt={resolveGameCoverAlt(game)}
+      fill
+      sizes="330px"
+      className={styles.detailImage}
+    />
   );
 }
 
@@ -1051,15 +1070,7 @@ export default function GameFinderClient({
           {selectedGame && (
             <aside className={styles.detailPanel} aria-label={`Detalle de ${selectedGame.title}`}>
               <div className={styles.detailMedia}>
-                {selectedGame.coverImage && (
-                  <Image
-                    src={selectedGame.coverImage}
-                    alt={selectedGame.imageAlt}
-                    fill
-                    sizes="330px"
-                    className={styles.detailImage}
-                  />
-                )}
+                                <FinderDetailCover game={selectedGame} />
                 <div className={styles.detailShade} aria-hidden="true" />
 
                 <FinderFavoriteButton

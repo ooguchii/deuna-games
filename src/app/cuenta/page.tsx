@@ -38,6 +38,9 @@ import {
   getPublicGames,
 } from "@/lib/games/public-catalog";
 import {
+  resolveGameCoverImage,
+} from "@/lib/media/game-card-presentation";
+import {
   hasRecommendationSignals,
   rankGamesForSavedHardware,
   rankPersonalizedRecommendations,
@@ -132,7 +135,7 @@ export default async function AccountPage({
             slug: game.slug,
             title: game.title,
             category: game.category,
-            coverImage: game.coverImage,
+            coverImage: resolveGameCoverImage(game),
             imageViewport: game.imageMedia?.cover,
             rating: game.rating,
           }))}

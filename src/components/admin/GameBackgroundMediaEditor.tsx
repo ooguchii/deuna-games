@@ -11,6 +11,7 @@ import { useState } from "react";
 
 import AdminMediaThumbnail from "@/components/admin/AdminMediaThumbnail";
 import ContextualMediaDialog from "@/components/admin/ContextualMediaDialog";
+import { isImageCropConfirmed } from "@/lib/media/game-media-requirements";
 import GameBackgroundViewportEditor from "@/components/admin/GameBackgroundViewportEditor";
 import type {
   GameBackgroundVideo,
@@ -208,7 +209,12 @@ export default function GameBackgroundMediaEditor({
   const endpoint = `/api/admin/content/games/${encodeURIComponent(slug)}/background-media`;
   const mode = assignment.mode;
   const imageSelected = Boolean(assignment.image);
-  const imageCropReady = assignment.imageViewport?.confirmed === true;
+const imageCropReady = imageSelected && isImageCropConfirmed(
+  assignment.imageViewport ?? undefined,
+  undefined,
+  undefined,
+  assignment.image ?? undefined
+);
   const videoSelected = Boolean(assignment.video?.clip);
   const videoCropReady = assignment.video?.viewport.confirmed === true &&
     assignment.video?.viewport.aspect === "source";

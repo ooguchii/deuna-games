@@ -87,7 +87,9 @@ export function isGameGalleryItemConfirmed(
   item: GameGalleryItem
 ) {
   if (item.kind === "image") {
-    return game.imageMedia?.gallery?.[item.src]?.confirmed === true;
+    const viewport = game.imageMedia?.gallery?.[item.src];
+    return viewport?.confirmed === true &&
+      (viewport.source === undefined || viewport.source === item.src);
   }
   return item.viewport.confirmed === true;
 }

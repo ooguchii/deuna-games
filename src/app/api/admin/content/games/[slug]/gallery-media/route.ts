@@ -9,6 +9,7 @@ import { expectedRevisionSchema } from "@/lib/admin/content-forms";
 import {
   getEditorialItem,
   saveGameMediaDraft,
+  type GameMediaDraftInput,
 } from "@/lib/admin/content-service";
 import { listGameImageReferences } from "@/lib/admin/game-media-integrity";
 import { hasExactAdminFormFields } from "@/lib/admin/request-security";
@@ -82,8 +83,7 @@ function galleryUpdate(
     galleryMedia: items,
     screenshots: syncedScreenshots(items),
     ...(imageMedia ? { imageMedia } : {}),
-  } as Parameters<typeof saveGameMediaDraft>[3] &
-    Partial<Pick<Game, "galleryMedia">>;
+  } satisfies GameMediaDraftInput;
 }
 
 function sameGalleryOrder(

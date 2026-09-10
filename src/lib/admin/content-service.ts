@@ -149,13 +149,20 @@ export type GameRequirementsDraftInput = {
 export type GameMediaDraftInput = Pick<
   Game,
   | "coverImage"
+  | "coverArtworkSource"
   | "heroImage"
+  | "cardImage"
+  | "detailImage"
+  | "backgroundImage"
   | "screenshots"
+  | "galleryMedia"
   | "imageMedia"
+  | "mediaModes"
   | "videoMedia"
   | "previewMode"
   | "previewClip"
   | "youtubePreview"
+  | "directPreview"
 >;
 
 export type UpdateDraftInput = Pick<

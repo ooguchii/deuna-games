@@ -8,6 +8,7 @@ import { expectedRevisionSchema } from "@/lib/admin/content-forms";
 import {
   getEditorialItem,
   saveGameMediaDraft,
+  type GameMediaDraftInput,
 } from "@/lib/admin/content-service";
 import {
   listGameImageReferences,
@@ -63,8 +64,7 @@ const layoutFields = [
   "viewportZoom",
 ] as const;
 
-type MediaDraftUpdate = Parameters<typeof saveGameMediaDraft>[3] &
-  Partial<Pick<Game, "backgroundImage" | "mediaModes">>;
+type MediaDraftUpdate = GameMediaDraftInput;
 
 function jsonError(message: string, status = 400) {
   return NextResponse.json(
@@ -216,7 +216,10 @@ export async function POST(
         backgroundImage: match.src,
         imageMedia: {
           ...current.imageMedia,
-          background: { ...DEFAULT_GAME_IMAGE_VIEWPORT },
+          background: {
+            ...DEFAULT_GAME_IMAGE_VIEWPORT,
+            source: match.src,
+          },
         },
         mediaModes: {
           ...current.mediaModes,
@@ -258,6 +261,7 @@ export async function POST(
         ...current.imageMedia,
         background: {
           ...viewport,
+          source: current.backgroundImage,
           confirmed: true,
         },
       },

@@ -41,6 +41,10 @@ import {
   getPublicGames,
 } from "@/lib/games/public-catalog";
 import {
+  resolveGameCoverAlt,
+  resolveGameCoverImage,
+} from "@/lib/media/game-card-presentation";
+import {
   getGameGalleryAccessibleFallback,
 } from "@/lib/media/game-media-accessibility";
 import {
@@ -163,10 +167,11 @@ export async function generateMetadata({
 
   const title = game.title;
   const description = game.description;
-  const image = game.heroImage ?? game.coverImage;
+  const resolvedCoverImage = resolveGameCoverImage(game);
+  const image = game.heroImage ?? resolvedCoverImage;
   const imageAlt = game.heroImage
     ? game.mediaAccessibility?.hero ?? game.imageAlt
-    : game.mediaAccessibility?.cover ?? game.imageAlt;
+    : resolveGameCoverAlt(game);
 
   return {
     title,
@@ -314,14 +319,15 @@ export default async function GameDetailPage({
     ],
   };
 
+  const resolvedCoverImage = resolveGameCoverImage(game);
   const gameJsonLd = {
     "@context": "https://schema.org",
     "@type": "VideoGame",
     name: game.title,
     description: game.description,
     url: absoluteUrl(`/juegos/${game.slug}`),
-    image: game.coverImage
-      ? absoluteUrl(game.coverImage)
+    image: resolvedCoverImage
+      ? absoluteUrl(resolvedCoverImage)
       : undefined,
     genre: genres,
     gamePlatform: platforms.length ? platforms : undefined,

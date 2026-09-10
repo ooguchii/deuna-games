@@ -12,6 +12,7 @@ import AdminMediaThumbnail from "@/components/admin/AdminMediaThumbnail";
 import ContextualMediaDialog from "@/components/admin/ContextualMediaDialog";
 import GameVideoViewportEditor from "@/components/admin/GameVideoViewportEditor";
 import ImageViewportEditor from "@/components/admin/ImageViewportEditor";
+import { isImageCropConfirmed } from "@/lib/media/game-media-requirements";
 import type {
   GameDestinationMediaMode,
   GameDetailVideo,
@@ -264,7 +265,12 @@ export default function GameDetailMediaEditor({
   const [editing, setEditing] = useState<"image" | "video" | null>(null);
   const imageSelected = Boolean(assignment.image);
   const videoSelected = Boolean(assignment.video?.clip);
-  const imageCropReady = assignment.imageViewport?.confirmed === true;
+const imageCropReady = imageSelected && isImageCropConfirmed(
+  assignment.imageViewport ?? undefined,
+  undefined,
+  undefined,
+  assignment.image ?? undefined
+);
   const videoCropReady = assignment.video?.viewport.confirmed === true &&
     assignment.video.viewport.aspect === "source";
   const needsImage = assignment.mode === "image" || assignment.mode === "hover-video";
