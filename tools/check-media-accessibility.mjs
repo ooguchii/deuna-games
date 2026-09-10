@@ -26,6 +26,7 @@ const files = Object.fromEntries(
       workspace: "src/lib/admin/game-media-workspace.ts",
       accessibility: "src/lib/media/game-media-accessibility.ts",
       cover: "src/components/ui/GameCoverMedia.tsx",
+      cardPresentation: "src/lib/media/game-card-presentation.ts",
       card: "src/components/ui/UniversalGameCardBase.tsx",
       publicPage: "src/app/juegos/[slug]/page.tsx",
       publicationChanges: "src/lib/admin/game-publication-changes.ts",
@@ -129,8 +130,10 @@ assert(
   "La Portada pública debe preferir el texto contextual y conservar el fallback histórico."
 );
 assert(
-  files.card.includes("game.mediaAccessibility?.card ?? game.imageAlt"),
-  "La Card pública debe preferir el texto contextual y conservar el fallback histórico."
+  files.cardPresentation.includes("game.mediaAccessibility?.card ?? game.imageAlt") &&
+    files.card.includes("resolveGameCardPresentation") &&
+    files.card.includes("presentation.card.alt"),
+  "La Card pública debe resolver el texto contextual en la presentación canónica y el renderer debe consumirlo sin lógica paralela."
 );
 assert(
   files.publicPage.includes("getGameGalleryAccessibleFallback") &&
