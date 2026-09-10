@@ -33,6 +33,11 @@ import {
   reconcileEditorialMediaDeletions,
 } from "@/lib/media/editorial-media-library";
 import {
+  resolveGameCardBaseImage,
+  resolveGameCoverArtworkSource,
+  resolveGameCoverImage,
+} from "@/lib/media/game-card-presentation";
+import {
   MAX_GAME_GALLERY_ITEMS,
   galleryImageSources,
   resolveGameGalleryItems,
@@ -53,8 +58,10 @@ import {
 } from "@/lib/media/game-video-media";
 import type {
   Game,
+  GameCoverArtworkSource,
   GameDestinationMediaMode,
   GameImageMedia,
+  GameImageViewport,
   GameVideoViewport,
 } from "@/types/game";
 
@@ -62,6 +69,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 const assignmentTargetSchema = z.enum([
+  "cover-source",
   "cover-image",
   "hero-mode",
   "hero-image",
@@ -76,6 +84,7 @@ const assignmentTargetSchema = z.enum([
   "gallery-remove",
 ]);
 
+const coverSourceSchema = z.enum(["card", "custom"]);
 const mediaModeSchema = z.enum([
   "image",
   "video",
@@ -102,6 +111,13 @@ function requiredVideoViewport(
     aspect: target === "detail"
       ? GAME_DETAIL_VIEWPORT_ASPECT
       : REQUIRED_DESTINATION_ASPECTS[target],
+  };
+}
+
+function pendingImageViewport(source: string): GameImageViewport {
+  return {
+    ...DEFAULT_GAME_IMAGE_VIEWPORT,
+    source,
   };
 }
 
@@ -148,6 +164,7 @@ type MediaDraftUpdate = Parameters<typeof saveGameMediaDraft>[3] &
       Game,
       | "backgroundImage"
       | "cardImage"
+      | "coverArtworkSource"
       | "detailImage"
       | "galleryMedia"
       | "mediaModes"
@@ -210,6 +227,50 @@ function mediaModeUpdate(
   };
 }
 
+function coverSourceUpdate(
+  game: Game,
+  source: GameCoverArtworkSource
+): MediaDraftUpdate | null {
+  const currentSource = resolveGameCoverArtworkSource(game);
+  const cardImage = resolveGameCardBaseImage(game);
+
+  if (source === "card") {
+    if (!cardImage) return null;
+
+    const canPreserveCrop =
+      currentSource === "card" &&
+      resolveGameCoverImage(game) === cardImage;
+
+    return mediaUpdate(
+      {
+        coverArtworkSource: "card",
+        coverImage: cardImage,
+      },
+      {
+        ...game.imageMedia,
+        cover: canPreserveCrop && game.imageMedia?.cover
+          ? game.imageMedia.cover
+          : pendingImageViewport(cardImage),
+      }
+    );
+  }
+
+  if (currentSource === "custom") {
+    return { coverArtworkSource: "custom" };
+  }
+
+  return mediaUpdate(
+    {
+      coverArtworkSource: "custom",
+      coverImage: undefined,
+    },
+    {
+      ...game.imageMedia,
+      cover: undefined,
+    }
+  );
+}
+
 export async function GET(
   _request: NextRequest,
   context: { params: Promise<{ slug: string }> }
@@ -238,9 +299,10 @@ export async function GET(
       resources,
       requirements: evaluateGameMediaRequirements(item.payload),
       assignments: {
-        coverImage: item.payload.coverImage ?? null,
+        coverArtworkSource: resolveGameCoverArtworkSource(item.payload),
+        coverImage: resolveGameCoverImage(item.payload) ?? null,
         heroImage: item.payload.heroImage ?? null,
-        cardImage: item.payload.cardImage ?? null,
+        cardImage: resolveGameCardBaseImage(item.payload) ?? null,
         detailImage: item.payload.detailImage ?? null,
         backgroundImage: item.payload.backgroundImage ?? null,
         screenshots: item.payload.screenshots ?? [],
@@ -332,6 +394,23 @@ export async function POST(
 
   let update: MediaDraftUpdate | null = null;
 
+  if (target.data === "cover-source") {
+    const source = coverSourceSchema.safeParse(resource);
+    if (!source.success) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        redirectPath(slug, "solicitud")
+      );
+    }
+    update = coverSourceUpdate(current, source.data);
+    if (!update) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        redirectPath(slug, "recurso-invalido")
+      );
+    }
+  }
+
   if (
     target.data === "hero-mode" ||
     target.data === "card-mode" ||
@@ -357,10 +436,13 @@ export async function POST(
       );
     }
     update = mediaUpdate(
-      { coverImage: imageResource.src },
+      {
+        coverArtworkSource: "custom",
+        coverImage: imageResource.src,
+      },
       {
         ...current.imageMedia,
-        cover: { ...DEFAULT_GAME_IMAGE_VIEWPORT },
+        cover: pendingImageViewport(imageResource.src),
       }
     );
   }
@@ -376,7 +458,7 @@ export async function POST(
       { heroImage: imageResource.src },
       {
         ...current.imageMedia,
-        hero: { ...DEFAULT_GAME_IMAGE_VIEWPORT },
+        hero: pendingImageViewport(imageResource.src),
       }
     );
   }
@@ -388,11 +470,23 @@ export async function POST(
         redirectPath(slug, "recurso-invalido")
       );
     }
+    const sharesCover = resolveGameCoverArtworkSource(current) === "card";
     update = mediaUpdate(
-      { cardImage: imageResource.src },
+      {
+        cardImage: imageResource.src,
+        ...(sharesCover
+          ? {
+              coverArtworkSource: "card" as const,
+              coverImage: imageResource.src,
+            }
+          : {}),
+      },
       {
         ...current.imageMedia,
-        card: { ...DEFAULT_GAME_IMAGE_VIEWPORT },
+        card: pendingImageViewport(imageResource.src),
+        ...(sharesCover
+          ? { cover: pendingImageViewport(imageResource.src) }
+          : {}),
       }
     );
   }
@@ -408,7 +502,7 @@ export async function POST(
       { detailImage: imageResource.src },
       {
         ...current.imageMedia,
-        detail: { ...DEFAULT_GAME_IMAGE_VIEWPORT },
+        detail: pendingImageViewport(imageResource.src),
       }
     );
   }
@@ -508,7 +602,7 @@ export async function POST(
         gallery: {
           ...current.imageMedia?.gallery,
           [imageResource.src]: current.imageMedia?.gallery?.[imageResource.src]
-            ?? { ...DEFAULT_GAME_IMAGE_VIEWPORT },
+            ?? pendingImageViewport(imageResource.src),
         },
       }
     );
