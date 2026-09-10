@@ -49,6 +49,7 @@ type PendingTilt = {
 
 const PREVIEW_DELAY_MS = 1000;
 const REDUCED_MOTION_MEDIA = "(prefers-reduced-motion: reduce)";
+const DIRECT_DETAIL_MEDIA = "(hover: none), (pointer: coarse)";
 
 const fallbackClassBySlug: Record<string, string> = {
   "god-of-war-ragnarok": "godOfWar",
@@ -143,6 +144,7 @@ export default function UniversalGameCardBase({
   const pointerEffectsEnabled = useRef(false);
   const articleRef = useRef<HTMLElement>(null);
   const [detailVisible, setDetailVisible] = useState(false);
+  const [directDetailVisible, setDirectDetailVisible] = useState(false);
   const [previewActive, setPreviewActive] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
 
@@ -157,11 +159,19 @@ export default function UniversalGameCardBase({
   const variantClass = styles[`variant${variant[0].toUpperCase()}${variant.slice(1)}`];
 
   useEffect(() => {
-    const media = window.matchMedia(REDUCED_MOTION_MEDIA);
-    const sync = () => setReducedMotion(media.matches);
+    const motionMedia = window.matchMedia(REDUCED_MOTION_MEDIA);
+    const directDetailMedia = window.matchMedia(DIRECT_DETAIL_MEDIA);
+    const sync = () => {
+      setReducedMotion(motionMedia.matches);
+      setDirectDetailVisible(directDetailMedia.matches);
+    };
     sync();
-    media.addEventListener("change", sync);
-    return () => media.removeEventListener("change", sync);
+    motionMedia.addEventListener("change", sync);
+    directDetailMedia.addEventListener("change", sync);
+    return () => {
+      motionMedia.removeEventListener("change", sync);
+      directDetailMedia.removeEventListener("change", sync);
+    };
   }, []);
 
   function cancelTiltFrame() {
@@ -197,7 +207,7 @@ export default function UniversalGameCardBase({
   function activatePointerEffects(event: ReactPointerEvent<HTMLElement>) {
     const pointerSupportsEffects =
       event.pointerType === "mouse" || event.pointerType === "pen";
-    const motionReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const motionReduced = window.matchMedia(REDUCED_MOTION_MEDIA).matches;
 
     if (!pointerSupportsEffects || motionReduced) {
       if (pointerEffectsEnabled.current) {
@@ -278,6 +288,7 @@ export default function UniversalGameCardBase({
     if (tiltFrame.current !== null) cancelAnimationFrame(tiltFrame.current);
   }, []);
 
+  const detailPresented = detailVisible || directDetailVisible;
   const videoActive = Boolean(
     detailVisible && previewActive && !reducedMotion && preview && cardMode !== "image"
   );
@@ -287,7 +298,7 @@ export default function UniversalGameCardBase({
       ref={articleRef}
       className={`${styles.card} ${presentationStyles.shell} ${tiltStyles.tiltCard} ${variantClass}`}
       data-card-variant={variant}
-      data-detail-visible={detailVisible ? "true" : "false"}
+      data-detail-visible={detailPresented ? "true" : "false"}
       data-cover-source={presentation.cover.source}
       onPointerEnter={startCard}
       onPointerMove={scheduleTilt}
@@ -309,10 +320,10 @@ export default function UniversalGameCardBase({
         className={`${styles.link} ${presentationStyles.link} ${tiltStyles.tiltClip}`}
         aria-label={`Ver ${game.title}`}
       >
-        <div className={presentationStyles.coverFace} aria-hidden={detailVisible ? "true" : undefined}>
+        <div className={presentationStyles.coverFace} aria-hidden={detailPresented ? "true" : undefined}>
           <GameMedia
             src={presentation.cover.image}
-            alt={detailVisible ? "" : presentation.cover.alt}
+            alt={detailPresented ? "" : presentation.cover.alt}
             viewport={presentation.cover.viewport}
             sizes="(max-width: 560px) 82vw, (max-width: 900px) 48vw, (max-width: 1250px) 30vw, 20vw"
             fallbackClassName={fallbackClass ? styles[fallbackClass] : undefined}
@@ -320,11 +331,11 @@ export default function UniversalGameCardBase({
           <div className={presentationStyles.coverShade} aria-hidden="true" />
         </div>
 
-        <div className={presentationStyles.detailFace} aria-hidden={!detailVisible ? "true" : undefined}>
+        <div className={presentationStyles.detailFace} aria-hidden={!detailPresented ? "true" : undefined}>
           <div className={`${styles.media} ${presentationStyles.detailMedia} ${tiltStyles.tiltMedia}`}>
             <HoverPreviewMedia
               imageSrc={presentation.card.image}
-              imageAlt={detailVisible ? presentation.card.alt : ""}
+              imageAlt={detailPresented ? presentation.card.alt : ""}
               imageViewport={presentation.card.viewport}
               previewClip={preview?.src}
               previewViewport={preview?.viewport}
