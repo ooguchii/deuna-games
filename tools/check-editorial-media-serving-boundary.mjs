@@ -155,6 +155,11 @@ assert(
       "assertPublicImmutable",
       "redirectState",
       "expectedState",
+      "visual-lifecycle-%",
+      "public_visible = false",
+      "evaluateGamePublicationReadiness",
+      "readiness.essentialsReady",
+      "croppedReadiness.essentialsReady",
       "/media-upload",
       "/media",
       "/image-layout",
@@ -165,10 +170,25 @@ assert(
       '"publicado"',
       "/restore",
       '"publicacion-restaurada"',
+      "/hide",
+      '"oculto"',
       "crop=confirmed-private",
-      "historical-public"
+      "historical-public",
+      "cleanup=hidden"
     ),
-  "El smoke debe cubrir upload aislado, borrador, crop confirmado, preview Admin, publicación y restauración histórica, validando además el estado semántico de cada redirect crítico."
+  "El smoke debe reutilizar sólo el fixture sintético oculto y publication-ready, cubrir upload/borrador/crop/publicación/restauración y volver a ocultarlo validando cada redirect crítico."
+);
+
+const gameLifecycleIndex = packageJson.indexOf(
+  "game-publication-lifecycle-smoke.mjs"
+);
+const servingLifecycleIndex = packageJson.indexOf(
+  "editorial-media-serving-lifecycle-smoke.mjs"
+);
+assert(
+  gameLifecycleIndex >= 0 &&
+    servingLifecycleIndex > gameLifecycleIndex,
+  "El lifecycle de serving debe ejecutarse después del lifecycle de juego que crea y deja oculto su fixture publication-ready."
 );
 
 assert(
@@ -186,5 +206,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  "Frontera de serving multimedia editorial: OK (historial público compartido; ownership por slug; cache incremental; draft/biblioteca 404 anónimo + preview Admin privado; lifecycle con crop real)."
+  "Frontera de serving multimedia editorial: OK (historial público compartido; ownership por slug; cache incremental; fixture publication-ready; draft/biblioteca privados; cleanup oculto)."
 );
