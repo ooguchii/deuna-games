@@ -51,7 +51,7 @@
   flex-direction: column;
   opacity: 0;
   transform: scale(0.985);
-  background: var(--surface-card, #111820);
+  background: var(--surface);
   pointer-events: none;
 }
 
