@@ -8,6 +8,8 @@ import type {
   EditorialPayloadByType,
 } from "./content-validation-core.ts";
 
+import type { Game } from "@/types/game";
+
 export * from "./content-validation-core.ts";
 
 const bundledImagePattern =
@@ -121,6 +123,7 @@ const mediaModeSchema = z.enum([
 
 const mediaModesSchema = z
   .object({
+    // Compatibilidad de lectura para snapshots anteriores al contrato image-only.
     cover: mediaModeSchema.optional(),
     hero: mediaModeSchema.optional(),
     card: mediaModeSchema.optional(),
@@ -170,6 +173,7 @@ const cardVideoSchema = z.union([
 
 const videoMediaSchema = z
   .object({
+    // Sólo se acepta para poder interpretar historial. Se elimina al normalizar.
     cover: destinationVideoSchema.optional(),
     hero: destinationVideoSchema.optional(),
     card: cardVideoSchema.optional(),
@@ -474,7 +478,12 @@ export function parseEditorialPayload<
 >(
   type: Type,
   payload: unknown
-): EditorialPayloadByType[Type] {
+): EditorialPayloadByType[Type];
+
+export function parseEditorialPayload(
+  type: EditorialItemType,
+  payload: unknown
+): EditorialPayloadByType[EditorialItemType] {
   if (type !== "game") {
     return parseCoreEditorialPayload(
       type,
@@ -529,40 +538,47 @@ export function parseEditorialPayload<
     game.screenshots
   );
 
+  // `cover` se admite en los schemas privados sólo para validar snapshots
+  // antiguos. Desde aquí desaparecen su modo y su capa de video.
+  const activeVideoMedia = videoMedia
+    ? {
+        ...(videoMedia.hero ? { hero: videoMedia.hero } : {}),
+        ...(videoMedia.card ? { card: videoMedia.card } : {}),
+        ...(videoMedia.detail ? { detail: videoMedia.detail } : {}),
+        ...(videoMedia.background ? { background: videoMedia.background } : {}),
+      }
+    : undefined;
+  const hasActiveVideoMedia = Boolean(
+    activeVideoMedia && Object.keys(activeVideoMedia).length > 0
+  );
   const backgroundMode = inferredOptionalMode(
     mediaModes?.background,
-    videoMedia?.background,
+    activeVideoMedia?.background,
     backgroundImage
   );
   const resolvedMediaModes = {
-    cover: inferredMode(
-      mediaModes?.cover,
-      videoMedia?.cover,
-      game.coverImage,
-      "video"
-    ),
     hero: inferredMode(
       mediaModes?.hero,
-      videoMedia?.hero,
+      activeVideoMedia?.hero,
       game.heroImage,
       "hover-video"
     ),
     card: inferredMode(
       mediaModes?.card,
-      videoMedia?.card,
+      activeVideoMedia?.card,
       resolvedCardImage,
       "hover-video"
     ),
     detail: inferredMode(
       mediaModes?.detail,
-      videoMedia?.detail,
+      activeVideoMedia?.detail,
       resolvedDetailImage,
       "image"
     ),
     ...(backgroundMode ? { background: backgroundMode } : {}),
   };
 
-  return {
+  const normalizedGame: Game = {
     ...game,
     ...(resolvedCardImage ? { cardImage: resolvedCardImage } : {}),
     ...(resolvedDetailImage ? { detailImage: resolvedDetailImage } : {}),
@@ -571,10 +587,12 @@ export function parseEditorialPayload<
     ...(resolvedImageMedia ? { imageMedia: resolvedImageMedia } : {}),
     ...(resolvedMediaAccessibility ? { mediaAccessibility: resolvedMediaAccessibility } : {}),
     mediaModes: resolvedMediaModes,
-    ...(videoMedia ? { videoMedia } : {}),
+    ...(hasActiveVideoMedia ? { videoMedia: activeVideoMedia } : {}),
     ...(ageRating ? { ageRating } : {}),
     ...(compatibilityMetadata ? { compatibilityMetadata } : {}),
     ...(performanceMetadata ? { performanceMetadata } : {}),
     ...(distributionMetadata ? { distributionMetadata } : {}),
-  } as EditorialPayloadByType[Type];
+  };
+
+  return normalizedGame;
 }

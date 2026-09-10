@@ -18,6 +18,9 @@ import {
 import {
   verifyAdminSession,
 } from "@/lib/admin/session";
+import {
+  legacyGameCoverVideoReference,
+} from "@/lib/media/legacy-game-cover-video";
 
 type HistoricalPayloadRow = {
   payload: unknown;
@@ -42,6 +45,11 @@ export async function getHistoricalGameMediaReferences(
   const references = new Set<string>();
 
   for (const row of result.rows) {
+    // Portada dejó de admitir video. El parser actual elimina esa capa, pero
+    // un WebM que estuvo publicado debe seguir protegido para rollback/cache.
+    const legacyCoverVideo = legacyGameCoverVideoReference(row.payload);
+    if (legacyCoverVideo) references.add(legacyCoverVideo);
+
     let game: Game;
     try {
       game = parseEditorialPayload("game", row.payload);

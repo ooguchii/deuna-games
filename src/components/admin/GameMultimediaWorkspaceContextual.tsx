@@ -45,7 +45,6 @@ import { DEFAULT_PREVIEW_VIEWPORT } from "@/lib/media/preview-video-policy";
 import type {
   GameBackgroundVideo,
   GameCardVideo,
-  GameCoverVideo,
   GameDestinationMediaMode,
   GameDetailVideo,
   GameHeroVideo,
@@ -77,6 +76,7 @@ type ResourceVideo = {
 
 type LibraryResource = ResourceImage | ResourceVideo;
 type Destination = "cover" | "hero" | "card";
+type VideoDestination = Exclude<Destination, "cover">;
 type EditLayer = "image" | "video";
 type AddResourceKind = "image" | "video";
 
@@ -91,12 +91,10 @@ type LibraryState = {
     backgroundImage: string | null;
     screenshots: string[];
     imageMedia: GameImageMedia | null;
-    coverMode: GameDestinationMediaMode;
     heroMode: GameDestinationMediaMode;
     cardMode: GameDestinationMediaMode;
     detailMode: GameDestinationMediaMode;
     backgroundMode: GameDestinationMediaMode | null;
-    coverVideo: GameCoverVideo | null;
     heroVideo: GameHeroVideo | null;
     cardVideo: GameCardVideo | null;
     detailVideo: GameDetailVideo | null;
@@ -116,7 +114,7 @@ type Props = {
 };
 
 type VideoEditorConfig = {
-  target: Destination;
+  target: VideoDestination;
   source: "hero" | "independent";
   clip: string;
   viewport: GameVideoViewport;
@@ -231,9 +229,9 @@ function isDestinationMode(value: unknown): value is GameDestinationMediaMode {
 
 function isDestinationVideo(
   value: unknown
-): value is GameCoverVideo | GameHeroVideo | GameDetailVideo | GameBackgroundVideo {
+): value is GameHeroVideo | GameDetailVideo | GameBackgroundVideo {
   if (!value || typeof value !== "object") return false;
-  const video = value as Partial<GameCoverVideo>;
+  const video = value as Partial<GameHeroVideo>;
   return typeof video.clip === "string" && isVideoViewport(video.viewport);
 }
 
@@ -289,7 +287,6 @@ function parseLibraryState(value: unknown): LibraryState | null {
 
   const assignments = root.assignments as LibraryState["assignments"];
   if (
-    !isDestinationMode(assignments.coverMode) ||
     !isDestinationMode(assignments.heroMode) ||
     !isDestinationMode(assignments.cardMode) ||
     !isDestinationMode(assignments.detailMode) ||
@@ -298,7 +295,6 @@ function parseLibraryState(value: unknown): LibraryState | null {
       !isDestinationMode(assignments.backgroundMode)) ||
     !Array.isArray(assignments.screenshots) ||
     (assignments.imageMedia !== null && assignments.imageMedia !== undefined && !isImageMedia(assignments.imageMedia)) ||
-    (assignments.coverVideo !== null && assignments.coverVideo !== undefined && !isDestinationVideo(assignments.coverVideo)) ||
     (assignments.heroVideo !== null && assignments.heroVideo !== undefined && !isDestinationVideo(assignments.heroVideo)) ||
     (assignments.cardVideo !== null && assignments.cardVideo !== undefined && !isCardVideo(assignments.cardVideo)) ||
     (assignments.detailVideo !== null && assignments.detailVideo !== undefined && !isDestinationVideo(assignments.detailVideo)) ||
@@ -417,7 +413,7 @@ function ModeSwitch({
 }: {
   action: string;
   revision: number;
-  target: Destination;
+  target: VideoDestination;
   mode: GameDestinationMediaMode;
   disabled?: boolean;
 }) {
@@ -729,12 +725,10 @@ export default function GameMultimediaWorkspaceContextual({
   const backgroundImage = state?.assignments.backgroundImage ?? null;
   const screenshots = state?.assignments.screenshots ?? [...initialScreenshots];
   const imageMedia = state?.assignments.imageMedia ?? null;
-  const coverMode = state?.assignments.coverMode ?? "video";
   const heroMode = state?.assignments.heroMode ?? "hover-video";
   const cardMode = state?.assignments.cardMode ?? "hover-video";
   const detailMode = state?.assignments.detailMode ?? "image";
   const backgroundMode = state?.assignments.backgroundMode ?? null;
-  const coverVideo = state?.assignments.coverVideo ?? null;
   const heroVideo = state?.assignments.heroVideo ?? null;
   const detailVideo = state?.assignments.detailVideo ?? null;
   const backgroundVideo = state?.assignments.backgroundVideo ?? null;
@@ -751,7 +745,6 @@ export default function GameMultimediaWorkspaceContextual({
   const cardResource = imageBySrc(cardImage);
   const detailResource = imageBySrc(detailImage);
   const firstGalleryResource = imageBySrc(screenshots[0] ?? null);
-  const activeCoverVideo = videos.find((resource) => resource.src === coverVideo?.clip) ?? null;
   const activeHeroVideo = videos.find((resource) => resource.src === heroVideo?.clip) ?? null;
   const activeCardVideo = videos.find((resource) => resource.src === resolvedCardClip) ?? null;
   const activeDetailVideo = videos.find((resource) => resource.src === detailVideo?.clip) ?? null;
@@ -765,14 +758,7 @@ export default function GameMultimediaWorkspaceContextual({
       LEGACY_DESTINATION_IMAGE_ASPECTS.cover
     )
   );
-  const coverVideoCropReady = Boolean(
-    coverVideo &&
-    isVideoCropConfirmed(
-      coverVideo.viewport,
-      REQUIRED_DESTINATION_ASPECTS.cover
-    )
-  );
-  const coverCropReady = cropReady(coverMode, coverImageCropReady, coverVideoCropReady);
+  const coverCropReady = coverImageCropReady;
   const heroImageCropReady = Boolean(
     heroImage &&
     isImageCropConfirmed(
@@ -839,14 +825,13 @@ export default function GameMultimediaWorkspaceContextual({
   function usageLabels(resource: LibraryResource) {
     const labels: string[] = [];
     if (resource.kind === "image") {
-      if (resource.src === coverImage && coverMode !== "video") labels.push(coverMode === "hover-video" ? "Portada base" : "Portada");
+      if (resource.src === coverImage) labels.push("Portada");
       if (resource.src === heroImage && heroMode !== "video") labels.push(heroMode === "hover-video" ? "Hero base" : "Hero");
       if (resource.src === cardImage && cardMode !== "video") labels.push(cardMode === "hover-video" ? "Card base" : "Card");
       if (resource.src === detailImage && detailMode !== "video") labels.push(detailMode === "hover-video" ? "Contenedor base" : "Contenedor");
       if (resource.src === backgroundImage && backgroundMode !== "video") labels.push(backgroundMode === "hover-video" ? "Fondo base" : "Fondo");
       if (screenshots.includes(resource.src)) labels.push("Galería");
     } else {
-      if (resource.src === coverVideo?.clip && coverMode !== "image") labels.push(coverMode === "hover-video" ? "Portada hover" : "Portada");
       if (resource.src === heroVideo?.clip && heroMode !== "image") labels.push(heroMode === "hover-video" ? "Hero hover" : "Hero");
       if (resource.src === resolvedCardClip && cardMode !== "image") labels.push(cardMode === "hover-video" ? "Card hover" : "Card");
       if (resource.src === detailVideo?.clip && detailMode !== "image") labels.push(detailMode === "hover-video" ? "Contenedor hover" : "Contenedor");
@@ -856,16 +841,7 @@ export default function GameMultimediaWorkspaceContextual({
   }
 
   function videoEditorConfig(destination: Destination): VideoEditorConfig | null {
-    if (destination === "cover") {
-      if (!coverVideo) return null;
-      return {
-        target: "cover",
-        source: "independent",
-        clip: coverVideo.clip,
-        viewport: coverVideo.viewport,
-        label: coverMode === "hover-video" ? "Portada · video al hover" : "Portada del juego",
-      };
-    }
+    if (destination === "cover") return null;
     if (destination === "hero") {
       if (!heroVideo) return null;
       return {
@@ -911,7 +887,7 @@ export default function GameMultimediaWorkspaceContextual({
   const galleryEditingResource = editingGalleryImage ? imageBySrc(editingGalleryImage) : null;
 
   function openDestination(destination: Destination, layer: EditLayer) {
-    if (stale) return;
+    if (stale || (destination === "cover" && layer === "video")) return;
     const media = layer === "video"
       ? videoEditorConfig(destination)
       : imageEditorConfig(destination);
@@ -1004,7 +980,7 @@ export default function GameMultimediaWorkspaceContextual({
   }
 
   function destinationActions(
-    destination: Destination,
+    destination: VideoDestination,
     mode: GameDestinationMediaMode,
     hasImage: boolean,
     hasVideo: boolean,
@@ -1173,22 +1149,21 @@ export default function GameMultimediaWorkspaceContextual({
             <span>RESUMEN MULTIMEDIA</span>
             <h2 id="multimedia-summary-heading">Requisitos obligatorios de destinos</h2>
           </div>
-          <p>Portada, Hero, Card y Contenedor tienen recurso, modo y recorte independientes. Cada imagen de Galería elige y confirma su propia relación. Fondo permanece opcional mientras use el global.</p>
+          <p>Portada usa sólo imagen con recorte 4:5. Hero, Card y Contenedor conservan sus modos y recortes independientes. Cada imagen de Galería elige y confirma su propia relación. Fondo permanece opcional mientras use el global.</p>
         </div>
         <div className={styles.summaryGrid}>
           <article className={styles.summaryCard}>
             <DestinationThumbnailSet
-              mode={coverMode}
+              mode="image"
               imageSrc={coverResource?.src ?? null}
               imageViewport={imageMedia?.cover}
-              videoSrc={activeCoverVideo?.src ?? null}
-              videoViewport={coverVideo?.viewport}
+              videoSrc={null}
               frameAspect={4 / 5}
               label="Resumen Portada"
               summary
             />
-            {!((coverMode !== "video" && coverResource) || (coverMode !== "image" && activeCoverVideo)) && <span className={styles.summaryIcon}>{coverMode === "image" ? <ImageIcon size={22} aria-hidden="true" /> : <MonitorPlay size={22} aria-hidden="true" />}</span>}
-            <div><span>PORTADA · {REQUIRED_DESTINATION_ASPECTS.cover}</span><strong>{modeLabel(coverMode)}</strong><RequirementStatus ready={coverCropReady} pending="RECORTE PENDIENTE" /></div>
+            {!coverResource && <span className={styles.summaryIcon}><ImageIcon size={22} aria-hidden="true" /></span>}
+            <div><span>PORTADA · {REQUIRED_DESTINATION_ASPECTS.cover}</span><strong>Imagen</strong><RequirementStatus ready={coverCropReady} pending="RECORTE PENDIENTE" /></div>
           </article>
           <article className={styles.summaryCard}>
             <DestinationThumbnailSet
@@ -1253,28 +1228,49 @@ export default function GameMultimediaWorkspaceContextual({
         <div className={styles.primaryColumn}>
           <section className={styles.numberedSection} aria-labelledby="destination-assignment-heading">
             <div className={styles.sectionTitleRow}>
-              <div><span>01</span><div><h2 id="destination-assignment-heading">Asignación de destinos</h2><p>Portada, Hero, Card, Contenedor y Fondo eligen su modo y recursos de forma independiente. Fondo es opcional y puede volver al global; Galería permite elegir la relación de cada captura. Rojo indica lo que falta y verde confirma cada paso.</p></div></div>
+              <div><span>01</span><div><h2 id="destination-assignment-heading">Asignación de destinos</h2><p>Portada requiere una imagen y su recorte 4:5. Hero, Card, Contenedor y Fondo eligen sus modos y recursos de forma independiente. Fondo es opcional y puede volver al global; Galería permite elegir la relación de cada captura. Rojo indica lo que falta y verde confirma cada paso.</p></div></div>
             </div>
 
             <div className={styles.assignmentGrid}>
               <article className={styles.assignmentCard}>
-                <header id="cover-crop"><div><span>A</span><h3>Portada del juego</h3></div><small>Recorte obligatorio · 4:5</small></header>
-                <ModeSwitch action={endpoint} revision={assignmentRevision} target="cover" mode={coverMode} disabled={stale} />
+                <header id="cover-crop"><div><span>A</span><h3>Portada del juego</h3></div><small>Imagen obligatoria · recorte 4:5</small></header>
                 <div className={styles.currentResource}>
                   <DestinationThumbnailSet
-                    mode={coverMode}
+                    mode="image"
                     imageSrc={coverResource?.src ?? null}
                     imageViewport={imageMedia?.cover}
-                    videoSrc={activeCoverVideo?.src ?? null}
-                    videoViewport={coverVideo?.viewport}
+                    videoSrc={null}
                     frameAspect={4 / 5}
                     label="Portada"
                   />
-                  {!((coverMode !== "video" && coverResource) || (coverMode !== "image" && activeCoverVideo)) && <span className={styles.currentIcon}>{coverMode === "image" ? <ImageIcon size={20} aria-hidden="true" /> : <MonitorPlay size={20} aria-hidden="true" />}</span>}
-                  <div><span>Modo activo</span><strong>{modeLabel(coverMode)}</strong><small>{coverMode === "hover-video" ? `${coverImage ? shortName(coverImage) : "Imagen pendiente"} + ${activeCoverVideo ? shortName(activeCoverVideo.src) : "video pendiente"}` : coverMode === "video" ? activeCoverVideo ? shortName(activeCoverVideo.src) : "Selecciona un video" : coverImage ? shortName(coverImage) : "Selecciona una imagen"}</small></div>
+                  {!coverResource && <span className={styles.currentIcon}><ImageIcon size={20} aria-hidden="true" /></span>}
+                  <div><span>Imagen de Portada</span><strong>Imagen</strong><small>{coverImage ? shortName(coverImage) : "Selecciona una imagen"}</small></div>
                 </div>
-                {destinationActions("cover", coverMode, Boolean(coverImage), Boolean(coverVideo), coverImageCropReady, coverVideoCropReady)}
-                <RequirementStatus ready={coverCropReady} pending="COMPLETA LOS RECURSOS Y RECORTES · 4:5" />
+                <div className={styles.assignmentActions}>
+                  <ResourcePicker
+                    action={endpoint}
+                    revision={assignmentRevision}
+                    target="cover-image"
+                    resources={resources}
+                    kind="image"
+                    requirement={{
+                      complete: Boolean(coverImage),
+                      missingLabel: "Falta seleccionar imagen",
+                      completeLabel: "Imagen seleccionada",
+                    }}
+                    disabled={stale}
+                    onAddResource={openAddResource}
+                  />
+                  <CropRequirementButton
+                    complete={coverImageCropReady}
+                    hasResource={Boolean(coverImage)}
+                    mediaKind="image"
+                    aspect={REQUIRED_DESTINATION_ASPECTS.cover}
+                    disabled={stale}
+                    onClick={() => openDestination("cover", "image")}
+                  />
+                </div>
+                <RequirementStatus ready={coverCropReady} pending="SELECCIONA LA IMAGEN Y CONFIRMA EL RECORTE · 4:5" />
               </article>
 
               <article className={styles.assignmentCard}>
@@ -1431,7 +1427,7 @@ export default function GameMultimediaWorkspaceContextual({
         <aside className={styles.helpRail}>
           <section>
             <div className={styles.helpHeading}><Info size={18} aria-hidden="true" /><h2>Requisitos</h2></div>
-            <div className={styles.helpRule}><MonitorPlay size={20} aria-hidden="true" /><div><strong>Portada · 4:5</strong><span>Imagen, Video o Imagen + hover; cada capa activa confirma selección y encuadre. Esta Portada también alimenta la tarjeta pequeña Siguiente de Inicio.</span></div></div>
+            <div className={styles.helpRule}><ImageIcon size={20} aria-hidden="true" /><div><strong>Portada · 4:5</strong><span>Sólo imagen. Selecciona un recurso y confirma un único recorte 4:5. Esta Portada también alimenta la tarjeta pequeña Siguiente de Inicio.</span></div></div>
             <div className={styles.helpRule}><MonitorPlay size={20} aria-hidden="true" /><div><strong>Hero · 3:1</strong><span>Hero panorámico principal de Inicio. Imagen, Video o Imagen + hover; hover exige ambos recursos y ambos recortes 3:1.</span></div></div>
             <div className={styles.helpRule}><Clapperboard size={20} aria-hidden="true" /><div><strong>Card · 3:2</strong><span>Su imagen es independiente de Portada; selección y recorte se validan por separado.</span></div></div>
             <div className={styles.helpRule}><Sparkles size={20} aria-hidden="true" /><div><strong>Fondo · adaptable</strong><span>Es opcional. Puede usar Imagen, Video o Imagen + hover con recorte adaptable propio, o volver al fondo global.</span></div></div>

@@ -24,6 +24,9 @@ import {
   EDITORIAL_MEDIA_PUBLIC_PREFIX,
 } from "@/lib/media/editorial-media";
 import {
+  legacyGameCoverVideoReference,
+} from "@/lib/media/legacy-game-cover-video";
+import {
   SITE_BRAND_LOGO_SLUG,
 } from "@/lib/site/logo";
 
@@ -107,10 +110,13 @@ function publicationReferences(
       "game",
       payload
     );
+    const legacyCoverVideo =
+      legacyGameCoverVideoReference(payload);
 
     return [
       ...listGameImageReferences(game),
       ...listGameVideoReferences(game),
+      ...(legacyCoverVideo ? [legacyCoverVideo] : []),
     ].filter(isEditorialMediaReference);
   }
 

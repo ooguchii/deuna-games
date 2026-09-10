@@ -92,7 +92,8 @@ assert(
 assert(
   has(
     videoMedia,
-    'GameVideoTarget = "cover" | "hero" | "card" | "detail"',
+    'GameVideoTarget = "hero" | "card" | "detail"',
+    'GameMediaDestinationTarget = "cover" | GameVideoTarget',
     'detail: "image"',
     'return game.detailImage ?? game.heroImage ?? game.coverImage',
     "resolveGameDetailVideo",
@@ -100,7 +101,7 @@ assert(
     "detail: {",
     "detail: undefined"
   ),
-  "Los helpers compartidos de video deben tratar Contenedor como destino independiente con default Imagen."
+  "Los helpers compartidos deben mantener Contenedor como destino de video independiente con default Imagen, mientras Portada queda fuera de GameVideoTarget."
 );
 
 assert(
@@ -211,12 +212,12 @@ assert(
   ) &&
     has(
       videoEditor,
-      'type Target = "cover" | "hero" | "card" | "detail"',
+      'type Target = "hero" | "card" | "detail"',
       "GAME_DETAIL_VIEWPORT_ASPECT",
       'target === "detail"',
       '"Confirmar recorte adaptable"'
     ),
-  "Los adaptadores comunes deben aceptar detail=source sin habilitar recorte Libre fuera de Galería."
+  "Los adaptadores comunes deben aceptar detail=source sin habilitar video de Portada ni recorte Libre fuera de Galería."
 );
 
 assert(

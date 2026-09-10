@@ -20,8 +20,12 @@ const [
   trimEditor,
   mediaViewportEditor,
   workspace,
+  utilityRail,
+  libraryTypes,
+  mediaWorkspace,
   libraryRoute,
   viewportEditor,
+  coverRenderer,
   cardResolver,
   cardWrapper,
   cardBase,
@@ -29,11 +33,18 @@ const [
   framedVideo,
   framedLayout,
   videoMedia,
+  requirements,
+  publicationReadiness,
   validation,
   importRoute,
   uploadRoute,
   layoutRoute,
   integrity,
+  hygiene,
+  history,
+  serving,
+  legacyCover,
+  gameTypes,
 ] = await Promise.all([
   source("src/lib/media/preview-video-policy.ts"),
   source("src/lib/media/safe-webm.ts"),
@@ -42,8 +53,12 @@ const [
   source("src/components/admin/VideoTrimEditor.tsx"),
   source("src/components/admin/MediaViewportEditor.tsx"),
   source("src/components/admin/GameMultimediaWorkspaceContextual.tsx"),
+  source("src/components/admin/GameMultimediaUtilityRail.tsx"),
+  source("src/components/admin/game-multimedia-library-types.ts"),
+  source("src/lib/admin/game-media-workspace.ts"),
   source("src/app/api/admin/content/games/[slug]/media-library/route.ts"),
   source("src/components/admin/GameVideoViewportEditor.tsx"),
+  source("src/components/ui/GameCoverMedia.tsx"),
   source("src/lib/media/game-card-preview.ts"),
   source("src/components/ui/UniversalGameCard.tsx"),
   source("src/components/ui/UniversalGameCardBase.tsx"),
@@ -51,11 +66,18 @@ const [
   source("src/components/ui/FramedVideo.tsx"),
   source("src/lib/media/framed-media-layout.ts"),
   source("src/lib/media/game-video-media.ts"),
+  source("src/lib/media/game-media-requirements.ts"),
+  source("src/lib/admin/game-publication-readiness.ts"),
   source("src/lib/admin/content-validation.ts"),
   source("src/app/api/admin/content/games/[slug]/preview-import/route.ts"),
   source("src/app/api/admin/content/games/[slug]/preview-upload/route.ts"),
   source("src/app/api/admin/content/games/[slug]/preview-layout/route.ts"),
   source("src/lib/admin/game-media-integrity.ts"),
+  source("src/lib/admin/game-media-hygiene.ts"),
+  source("src/lib/admin/game-media-history.ts"),
+  source("src/lib/media/editorial-media-serving.ts"),
+  source("src/lib/media/legacy-game-cover-video.ts"),
+  source("src/types/game.ts"),
 ]);
 
 assert(
@@ -149,21 +171,73 @@ assert(
     '{ value: "image", label: "Imagen" }',
     '{ value: "video", label: "Video" }',
     '{ value: "hover-video", label: "Imagen + hover" }',
+    'type VideoDestination = Exclude<Destination, "cover">',
+    'const coverCropReady = coverImageCropReady',
+    'target="cover-image"',
+    'onClick={() => openDestination("cover", "image")}',
+    "Sólo imagen. Selecciona un recurso y confirma un único recorte 4:5.",
+    "Portada usa sólo imagen con recorte 4:5.",
+    "Portada requiere una imagen y su recorte 4:5.",
     'const cardMode = state?.assignments.cardMode ?? "hover-video"',
-    "const cardImage = state?.assignments.cardImage ?? null",
     'target="card"',
     'destinationActions("card", cardMode',
-    "Recurso independiente",
     "GameVideoViewportEditor"
   ) &&
+    !workspace.includes("coverMode") &&
+    !workspace.includes("coverVideo") &&
+    !workspace.includes('target="cover-video"') &&
+    !workspace.includes('target="cover-mode"') &&
     !workspace.includes("Igualar al Hero") &&
     !workspace.includes("card-match-hero"),
-  "Card debe tener imagen, modo y edición propios; no puede conservar el control Igualar al Hero."
+  "Portada debe ser sólo imagen/4:5 mientras Card conserva su sistema multimedia independiente."
+);
+
+assert(
+  has(
+    utilityRail,
+    '{ kind: "image", src: assignments?.coverImage }',
+    "<strong>Portada · 4:5</strong><small>Imagen</small>",
+    "<strong>Hero · 3:1</strong>",
+    "Sólo imagen. Selecciona un recurso y confirma su único recorte 4:5."
+  ) &&
+    !utilityRail.includes("assignments?.coverMode") &&
+    !utilityRail.includes("assignments?.coverVideo") &&
+    !utilityRail.includes("Hero · 16:9"),
+  "El rail multimedia debe reflejar Portada image-only y el Hero 3:1 real."
+);
+
+assert(
+  has(
+    libraryTypes,
+    'mode: "image"',
+    'aspect: "4:5"',
+    'aspect: "3:1"',
+    "heroVideo: GameHeroVideo | null"
+  ) &&
+    !libraryTypes.includes("GameCoverVideo") &&
+    !libraryTypes.includes("coverMode:") &&
+    !libraryTypes.includes("coverVideo:"),
+  "El estado compartido del workspace debe tipar Portada como image-only y conservar Hero 3:1."
+);
+
+assert(
+  has(
+    mediaWorkspace,
+    "coverImage: game.coverImage ?? null",
+    'heroMode: resolveGameDestinationMediaMode(game, "hero")',
+    "heroVideo: game.videoMedia?.hero ?? null"
+  ) &&
+    !mediaWorkspace.includes('resolveGameDestinationMediaMode(game, "cover")') &&
+    !mediaWorkspace.includes("coverMode:") &&
+    !mediaWorkspace.includes("coverVideo:") &&
+    !mediaWorkspace.includes("game.videoMedia?.cover"),
+  "El snapshot multimedia del Admin no debe volver a transportar modo/video de Portada."
 );
 
 assert(
   has(
     libraryRoute,
+    '"cover-image"',
     '"card-mode"',
     '"card-image"',
     '"card-video"',
@@ -174,8 +248,13 @@ assert(
     "previewClip: videoResource.src",
     "mediaModeUpdate"
   ) &&
+    !libraryRoute.includes('"cover-mode"') &&
+    !libraryRoute.includes('"cover-video"') &&
+    !libraryRoute.includes('requiredVideoViewport("cover")') &&
+    !libraryRoute.includes("coverVideo:") &&
+    !libraryRoute.includes("coverMode:") &&
     !libraryRoute.includes("card-match-hero"),
-  "Asignar Card desde biblioteca debe crear una referencia independiente al WebM elegido, aunque el archivo físico coincida con Hero."
+  "La API de biblioteca debe aceptar sólo imagen para Portada y conservar Card/video en sus destinos válidos."
 );
 
 assert(
@@ -183,31 +262,86 @@ assert(
     viewportEditor,
     "MediaViewportEditor",
     'kind="video"',
-    'type Target = "cover" | "hero" | "card" | "detail"',
+    'type Target = "hero" | "card" | "detail"',
     "preview-layout",
     "REQUIRED_DESTINATION_ASPECTS[target]",
     "Confirmar recorte"
   ) &&
+    !viewportEditor.includes('target === "cover"') &&
     !viewportEditor.includes("VideoTrimEditor") &&
     !viewportEditor.includes("preview-import") &&
     !viewportEditor.includes("preview-upload") &&
     !viewportEditor.includes("preview-remove") &&
     !viewportEditor.includes("Usar imagen estática"),
-  "Editar Card video debe delegar el viewport 3:2 al motor común y persistir sólo metadata; el modo vive en Asignación de destinos."
+  "El editor de viewport de video no puede volver a admitir Portada."
+);
+
+assert(
+  has(
+    coverRenderer,
+    "GameMedia",
+    "src={game.coverImage}",
+    "viewport={game.imageMedia?.cover}",
+    'aspectRatio: "4 / 5"'
+  ) &&
+    !coverRenderer.includes("FramedVideo") &&
+    !coverRenderer.includes("resolveGameCoverVideo") &&
+    !coverRenderer.includes("resolveGameDestinationMediaMode") &&
+    !coverRenderer.includes("hover-video"),
+  "El renderer público de Portada debe pintar únicamente coverImage con su viewport 4:5."
 );
 
 assert(
   has(
     videoMedia,
-    'export type GameVideoTarget = "cover" | "hero" | "card" | "detail"',
+    'export type GameVideoTarget = "hero" | "card" | "detail"',
+    'export type GameMediaDestinationTarget = "cover" | GameVideoTarget',
+    'if (target === "cover") return "image"',
     "resolveGameCardVideo",
     'card?.source === "hero"',
     'card?.source === "independent"',
     'source: "independent"',
     "withGameVideoLayout",
     "withoutGameVideoTarget"
-  ),
-  "El resolver debe mantener compatibilidad histórica con Card→Hero, admitir el destino detail compartido y conservar nuevas Cards con referencia/viewport independientes."
+  ) &&
+    !videoMedia.includes("resolveGameCoverVideo") &&
+    !videoMedia.includes("media?.cover") &&
+    !videoMedia.includes('cover: "image"'),
+  "El dominio debe forzar Portada=image sin conservar un resolver, default ni target activo de video para Portada."
+);
+
+assert(
+  has(
+    gameTypes,
+    "export type GameMediaModes",
+    "export type GameVideoMedia",
+    "Portada es siempre imagen",
+    "Portada queda fuera del contrato activo",
+    "coverImage?: string"
+  ) &&
+    !gameTypes.includes("GameCoverVideo") &&
+    !gameTypes.includes("cover?: GameDestinationMediaMode") &&
+    !gameTypes.includes("cover?: GameCoverVideo"),
+  "El contrato TypeScript Game debe excluir por completo modo y video de Portada."
+);
+
+assert(
+  has(
+    requirements,
+    "const coverAssigned = Boolean(game.coverImage)",
+    "game.imageMedia?.cover",
+    "mode: \"image\" as const",
+    "cover.cropReady"
+  ) &&
+    !requirements.includes("videoMedia?.cover") &&
+    !requirements.includes('resolveGameDestinationMediaMode(game, "cover")'),
+  "Readiness de Portada debe depender sólo de coverImage + recorte 4:5 confirmado."
+);
+
+assert(
+  publicationReadiness.includes("La Portada requiere una imagen y su recorte 4:5 confirmado.") &&
+    !publicationReadiness.includes("La Portada debe completar los recursos exigidos por su modo activo."),
+  "La revisión de publicación debe describir el mismo contrato image-only que valida el servidor."
 );
 
 assert(
@@ -216,11 +350,80 @@ assert(
     "const cardVideoSchema = z.union",
     'source: z.literal("hero")',
     'source: z.literal("independent")',
-    'playback: z.enum(["always", "hover"]).optional()',
-    "cardImage",
-    "mediaModes"
-  ),
-  "La validación debe aceptar snapshots antiguos y el nuevo contrato Card independiente con playback explícito."
+    'cover: destinationVideoSchema.optional()',
+    "activeVideoMedia",
+    "videoMedia.hero",
+    "videoMedia.card",
+    "const normalizedGame: Game",
+    "return normalizedGame"
+  ) &&
+    !validation.includes('cover: "image" as const'),
+  "La validación debe aceptar cover-video sólo como entrada histórica y eliminar modo/video de Portada del Game normalizado."
+);
+
+for (const route of [uploadRoute, importRoute]) {
+  assert(
+    has(
+      route,
+      'GameVideoTarget | "library"',
+      'normalized === "card"',
+      'normalized === "library"',
+      "storeEditorialPreviewVideoFromPath",
+      "withSavedGameVideoClip"
+    ) &&
+      !route.includes('normalized === "cover"'),
+    "Las rutas de carga/importación de video deben rechazar Portada y conservar Card/Hero/library."
+  );
+}
+
+assert(
+  has(
+    layoutRoute,
+    'value === "hero"',
+    'value === "card"',
+    'value === "detail"',
+    "withGameVideoLayout",
+    "hasExactAdminFormFields",
+    "REQUIRED_DESTINATION_ASPECTS[target]",
+    "GAME_DETAIL_VIEWPORT_ASPECT"
+  ) &&
+    !layoutRoute.includes('value === "cover"') &&
+    !layoutRoute.includes("storeEditorialPreviewVideo") &&
+    !layoutRoute.includes("FFmpeg"),
+  "Guardar layout de video debe rechazar Portada y seguir siendo metadata-only para destinos de video activos."
+);
+
+assert(
+  has(
+    legacyCover,
+    "legacyGameCoverVideoReference",
+    "videoMedia",
+    "cover",
+    "clip.trim()"
+  ) &&
+    has(history, "legacyGameCoverVideoReference(row.payload)", "references.add(legacyCoverVideo)") &&
+    has(serving, "legacyGameCoverVideoReference(payload)", "legacyCoverVideo ? [legacyCoverVideo] : []"),
+  "Los WebM históricos de Portada deben conservarse sólo en historial/serving para rollback y cache público irreversible."
+);
+
+assert(
+  has(
+    integrity,
+    "game.cardImage",
+    'game.videoMedia?.card?.source === "independent"',
+    "game.videoMedia.card.clip",
+    "game.videoMedia?.background?.clip"
+  ) &&
+    !integrity.includes("game.videoMedia?.cover"),
+  "La integridad activa debe excluir video de Portada y seguir cubriendo Card/Hero/Contenedor/Fondo/Galería."
+);
+
+assert(
+  hygiene.includes('pushUnique(labels, "Portada")') &&
+    !hygiene.includes("coverMode") &&
+    !hygiene.includes("coverClip") &&
+    !hygiene.includes("videoMedia?.cover"),
+  "La higiene debe clasificar coverImage como Portada activa sin ninguna rama de video/hover."
 );
 
 assert(
@@ -255,7 +458,7 @@ assert(
     'const hoverPreviewEnabled = cardMode === "hover-video"',
     "PREVIEW_DELAY_MS"
   ),
-  "UniversalGameCardBase debe consumir cardImage propio, reproducir Video continuo o hover según modo y mantener fallback sólo para contenido histórico."
+  "UniversalGameCardBase debe conservar Card Video/hover; el cambio image-only se limita a Portada."
 );
 
 assert(
@@ -265,47 +468,37 @@ assert(
   "El hover de Card debe cargar diferido y aplicar el recorte lógico sin crear una segunda variante física."
 );
 
-for (const route of [uploadRoute, importRoute]) {
+const activeCoverBoundarySources = [
+  workspace,
+  utilityRail,
+  libraryTypes,
+  mediaWorkspace,
+  libraryRoute,
+  viewportEditor,
+  coverRenderer,
+  importRoute,
+  uploadRoute,
+  layoutRoute,
+  videoMedia,
+  requirements,
+  publicationReadiness,
+  integrity,
+  hygiene,
+  gameTypes,
+];
+for (const forbidden of [
+  "GameCoverVideo",
+  "resolveGameCoverVideo",
+  "videoMedia?.cover",
+  "videoMedia.cover",
+  '"cover-video"',
+  '"cover-mode"',
+]) {
   assert(
-    has(
-      route,
-      'GameVideoTarget | "library"',
-      'normalized === "cover"',
-      'normalized === "card"',
-      'normalized === "library"',
-      "storeEditorialPreviewVideoFromPath",
-      "withSavedGameVideoClip"
-    ),
-    "Las rutas de carga/importación deben aceptar Card, Portada y library con validación servidor."
+    activeCoverBoundarySources.every((text) => !text.includes(forbidden)),
+    `Portada image-only no debe reintroducir ${forbidden} en el dominio activo.`
   );
 }
-
-assert(
-  has(
-    layoutRoute,
-    'value === "cover"',
-    'value === "hero"',
-    'value === "card"',
-    'value === "detail"',
-    "withGameVideoLayout",
-    "hasExactAdminFormFields",
-    "REQUIRED_DESTINATION_ASPECTS[target]",
-    "GAME_DETAIL_VIEWPORT_ASPECT"
-  ) &&
-    !layoutRoute.includes("storeEditorialPreviewVideo") &&
-    !layoutRoute.includes("FFmpeg"),
-  "Guardar el layout de Card debe seguir siendo metadata-only y exigir 3:2 aunque el endpoint compartido también admita Contenedor adaptable."
-);
-
-assert(
-  has(
-    integrity,
-    "game.cardImage",
-    'game.videoMedia?.card?.source === "independent"',
-    "game.videoMedia.card.clip"
-  ),
-  "La integridad de publicación debe incluir la imagen Card y su WebM independiente."
-);
 
 const activePreviewSources = [
   libraryEditor,
@@ -327,11 +520,11 @@ for (const legacyIdentifier of ["youtubePreview", "directPreview", "previewMode"
 }
 
 if (failures.length) {
-  console.error("\nCard preview video: ERROR\n");
+  console.error("\nCard/Portada multimedia: ERROR\n");
   failures.forEach((failure) => console.error(`- ${failure}`));
   process.exit(1);
 }
 
 console.log(
-  "Card preview video: OK (master temporal sin crop duplicado → motor único imagen/video → Card independiente 3:2 → WebM reutilizable → carga pública diferida)."
+  "Card/Portada multimedia: OK (Portada sólo imagen 4:5 en UI/API/tipos/dominio/render público/rail; video/hover sin targets activos; Card/Hero video preservados; historial de Portada aislado)."
 );

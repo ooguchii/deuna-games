@@ -97,22 +97,22 @@ export function resolveGameBackgroundMediaMode(
 }
 
 export function evaluateGameMediaRequirements(game: Game) {
-  const coverMode = resolveGameDestinationMediaMode(game, "cover");
   const heroMode = resolveGameDestinationMediaMode(game, "hero");
   const cardMode = resolveGameDestinationMediaMode(game, "card");
   const detailMode = resolveGameDestinationMediaMode(game, "detail");
   const backgroundMode = resolveGameBackgroundMediaMode(game);
 
-  const cover = destinationRequirement(
-    coverMode,
-    Boolean(game.coverImage),
-    game.imageMedia?.cover,
-    Boolean(game.videoMedia?.cover?.clip),
-    game.videoMedia?.cover?.viewport,
-    REQUIRED_DESTINATION_ASPECTS.cover,
-    REQUIRED_DESTINATION_ASPECTS.cover,
-    LEGACY_DESTINATION_IMAGE_ASPECTS.cover
-  );
+  // Portada es siempre una imagen. Los campos históricos de modo y video de
+  // Portada no participan de readiness ni pueden sustituir este recorte 4:5.
+  const coverAssigned = Boolean(game.coverImage);
+  const cover = {
+    assigned: coverAssigned,
+    cropReady: coverAssigned && isImageCropConfirmed(
+      game.imageMedia?.cover,
+      REQUIRED_DESTINATION_ASPECTS.cover,
+      LEGACY_DESTINATION_IMAGE_ASPECTS.cover
+    ),
+  };
 
   const hero = destinationRequirement(
     heroMode,
@@ -175,7 +175,7 @@ export function evaluateGameMediaRequirements(game: Game) {
   return {
     cover: {
       ...cover,
-      mode: coverMode,
+      mode: "image" as const,
       aspect: REQUIRED_DESTINATION_ASPECTS.cover,
     },
     hero: {

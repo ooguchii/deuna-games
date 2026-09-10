@@ -13,7 +13,7 @@ import type { GameVideoViewport } from "@/types/game";
 
 import dialogStyles from "./ContextualMediaDialog.module.css";
 
-type Target = "cover" | "hero" | "card" | "detail";
+type Target = "hero" | "card" | "detail";
 type Source = "hero" | "independent";
 
 type Props = {
@@ -28,7 +28,6 @@ type Props = {
 };
 
 function destinationLabel(target: Target) {
-  if (target === "cover") return "Portada";
   if (target === "hero") return "Hero";
   if (target === "detail") return "Contenedor de la ficha";
   return "Card";
