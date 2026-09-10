@@ -57,7 +57,6 @@ export function listGameVideoReferences(
   return Array.from(
     new Set(
       [
-        game.videoMedia?.cover?.clip,
         game.videoMedia?.hero?.clip,
         independentCardClip,
         game.videoMedia?.detail?.clip,
