@@ -25,11 +25,10 @@ export type ResolvedGameVideo = {
 };
 
 export const DEFAULT_GAME_MEDIA_MODES = {
-  cover: "image",
   hero: "hover-video",
   card: "hover-video",
   detail: "image",
-} as const satisfies Record<GameMediaDestinationTarget, GameDestinationMediaMode>;
+} as const satisfies Record<GameVideoTarget, GameDestinationMediaMode>;
 
 function defaultViewport(): GameVideoViewport {
   return { ...DEFAULT_PREVIEW_VIEWPORT };
@@ -37,8 +36,7 @@ function defaultViewport(): GameVideoViewport {
 
 function hasVideoMedia(media: GameVideoMedia | undefined) {
   return Boolean(
-    media?.cover ||
-      media?.hero ||
+    media?.hero ||
       media?.card ||
       media?.detail ||
       media?.background
@@ -83,9 +81,7 @@ export function resolveGameDestinationMediaMode(
   game: Game,
   target: GameMediaDestinationTarget
 ): GameDestinationMediaMode {
-  // Portada es un contrato image-only. mediaModes.cover y videoMedia.cover se
-  // aceptan únicamente al leer snapshots históricos; nunca vuelven a activar
-  // video en el runtime/editor actual.
+  // Portada es un contrato image-only y no participa de mediaModes/videoMedia.
   if (target === "cover") return "image";
 
   const explicit = game.mediaModes?.[target];
@@ -110,17 +106,6 @@ export function resolveGameHeroVideoPlayback(
   return resolveGameDestinationMediaMode(game, "hero") === "hover-video"
     ? "hover"
     : "always";
-}
-
-/**
- * Compatibilidad binaria para consumidores antiguos. Portada dejó de admitir
- * video: incluso un snapshot histórico con videoMedia.cover debe renderizar su
- * imagen estática con el runtime actual.
- */
-export function resolveGameCoverVideo(
-  _game: Game
-): undefined {
-  return undefined;
 }
 
 export function resolveGameHeroVideo(
