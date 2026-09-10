@@ -102,8 +102,8 @@ export function evaluateGameMediaRequirements(game: Game) {
   const detailMode = resolveGameDestinationMediaMode(game, "detail");
   const backgroundMode = resolveGameBackgroundMediaMode(game);
 
-  // Portada es siempre una imagen. Los campos históricos mediaModes.cover y
-  // videoMedia.cover no participan de readiness ni pueden sustituir este 4:5.
+  // Portada es siempre una imagen. Los campos históricos de modo y video de
+  // Portada no participan de readiness ni pueden sustituir este recorte 4:5.
   const coverAssigned = Boolean(game.coverImage);
   const cover = {
     assigned: coverAssigned,
