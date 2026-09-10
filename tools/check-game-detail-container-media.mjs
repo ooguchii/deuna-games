@@ -68,7 +68,8 @@ assert(
     "detail: fixedImageViewportSchema.optional()",
     "detail: mediaModeSchema.optional()",
     "detail: destinationVideoSchema.optional()",
-    "const resolvedDetailImage = detailImage ?? game.heroImage ?? game.coverImage",
+    "const resolvedCoverImage = resolvedCoverArtworkSource === \"card\"",
+    "const resolvedDetailImage = detailImage ?? game.heroImage ?? resolvedCoverImage",
     "const legacyDetailMigration = detailImage === undefined && Boolean(resolvedDetailImage)",
     "inheritedDetailViewport",
     "detail: {",
@@ -77,7 +78,7 @@ assert(
   ) &&
     !validation.includes("storeEditorialWebp") &&
     !validation.includes("storeEditorialPreviewVideo"),
-  "La compatibilidad histórica debe capturar Hero/Portada por referencia y metadata, sin copiar ni recodificar bytes."
+  "La compatibilidad histórica debe capturar Hero/Portada normalizada por referencia y metadata, sin copiar ni recodificar bytes."
 );
 
 assert(
