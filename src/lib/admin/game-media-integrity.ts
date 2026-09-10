@@ -189,10 +189,11 @@ export async function inspectGameMediaIntegrity(
     ...listGameImageReferences(game),
     ...listGameVideoReferences(game),
   ];
-  const [physical, invalidOwnership] = await Promise.all([
-    inspectLocalImageReferences(mediaPaths),
-    Promise.resolve(listInvalidGameMediaOwnership(game)),
-  ]);
+  const physical = await inspectLocalImageReferences(
+    mediaPaths
+  );
+  const invalidOwnership =
+    listInvalidGameMediaOwnership(game);
 
   return {
     ok:
