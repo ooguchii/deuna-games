@@ -39,6 +39,11 @@ import {
   type ViewMode,
 } from "@/lib/games/catalog";
 import {
+  getCatalogCapabilities,
+  resolveSupportedCatalogSort,
+  resolveSupportedCatalogStatus,
+} from "@/lib/games/catalog-capabilities";
+import {
   resolveTaxonomyVisual,
 } from "@/lib/games/taxonomy-presentation";
 import type { Game } from "@/types/game";
@@ -62,26 +67,6 @@ type GameCatalogClientProps = {
   initialView?: ViewMode;
 };
 
-function supportedSort(
-  sort: SortMode,
-  capabilities: {
-    ratings: boolean;
-    reviews: boolean;
-    releaseDates: boolean;
-  }
-): SortMode {
-  if (sort === "popular" && !capabilities.reviews) {
-    return capabilities.ratings ? "rating" : "az";
-  }
-  if (sort === "rating" && !capabilities.ratings) {
-    return capabilities.reviews ? "popular" : "az";
-  }
-  if (sort === "recientes" && !capabilities.releaseDates) {
-    return "az";
-  }
-  return sort;
-}
-
 export default function GameCatalogClient({
   games,
   categoryTerms,
@@ -97,31 +82,24 @@ export default function GameCatalogClient({
 }: GameCatalogClientProps) {
   const router = useRouter();
   const categoryRef = useRef<HTMLDivElement>(null);
-  const hasRatings = games.some(
-    (game) => game.rating !== undefined
+  const capabilities = useMemo(
+    () => getCatalogCapabilities(games),
+    [games]
   );
-  const hasReviews = games.some(
-    (game) => Boolean(game.reviews)
-  );
-  const hasReleaseDates = games.some(
-    (game) => Boolean(game.releaseDate)
-  );
-  const hasVersions = games.some(
-    (game) => Boolean(game.version)
-  );
-  const defaultSort = supportedSort(
+  const {
+    ratings: hasRatings,
+    reviews: hasReviews,
+    releaseDates: hasReleaseDates,
+    versions: hasVersions,
+  } = capabilities;
+  const defaultSort = resolveSupportedCatalogSort(
     initialSort,
-    {
-      ratings: hasRatings,
-      reviews: hasReviews,
-      releaseDates: hasReleaseDates,
-    }
+    capabilities
   );
-  const defaultStatus =
-    (initialStatus === "recent" && !hasReleaseDates) ||
-    (initialStatus === "version" && !hasVersions)
-      ? "all"
-      : initialStatus;
+  const defaultStatus = resolveSupportedCatalogStatus(
+    initialStatus,
+    capabilities
+  );
   const [query, setQuery] = useState(
     sanitizeCatalogQuery(initialQuery)
   );
