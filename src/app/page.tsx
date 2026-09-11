@@ -22,6 +22,9 @@ import {
   readAccountSession,
 } from "@/lib/accounts/session";
 import {
+  getCatalogCapabilities,
+} from "@/lib/games/catalog-capabilities";
+import {
   getPublicGames,
 } from "@/lib/games/public-catalog";
 import {
@@ -86,9 +89,8 @@ export default async function Home() {
       : undefined
   );
   const copy = homeConfig.copy;
-  const ratingsAvailable = games.some(
-    (game) => game.rating !== undefined
-  );
+  const { ratings: ratingsAvailable } =
+    getCatalogCapabilities(games);
   const websiteJsonLd = {
     "@context": "https://schema.org",
     "@type": "WebSite",
