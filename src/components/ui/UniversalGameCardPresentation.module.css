@@ -99,36 +99,36 @@
 }
 
 /*
- * Low-spec es la variante con mayor densidad. Mantiene los tres requisitos,
- * pero los organiza en una única fila compacta para que nunca se apilen fuera
- * de la cara 4:5 al revelar el detalle.
+ * Low-spec es la variante con mayor densidad. Sus hooks de datos son parte del
+ * renderer compartido para evitar que el layout dependa del orden accidental
+ * de nodos y para que el browser smoke pueda verificar el mismo contrato.
  */
-.shell[data-card-variant="lowSpec"] .detailContent {
+.shell[data-card-variant="lowSpec"] [data-card-detail-content="true"] {
   padding: 9px 11px 11px;
 }
 
-.shell[data-card-variant="lowSpec"] .detailContent > div:first-child h3 {
+.shell[data-card-variant="lowSpec"] [data-card-title-row="true"] h3 {
   min-height: 0;
   font-size: var(--font-sm);
   line-height: 1.25;
   -webkit-line-clamp: 1;
 }
 
-.shell[data-card-variant="lowSpec"] .detailContent > span {
+.shell[data-card-variant="lowSpec"] [data-card-low-spec-badge="true"] {
   min-height: 20px;
   margin-top: 4px;
   padding-inline: 6px;
   font-size: 9px;
 }
 
-.shell[data-card-variant="lowSpec"] .detailContent > div:nth-of-type(2) {
+.shell[data-card-variant="lowSpec"] [data-card-requirements="true"] {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 5px;
   margin-top: 7px;
 }
 
-.shell[data-card-variant="lowSpec"] .detailContent > div:nth-of-type(2) > div {
+.shell[data-card-variant="lowSpec"] [data-card-requirements="true"] > div {
   min-width: 0;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -136,7 +136,7 @@
   gap: 4px;
 }
 
-.shell[data-card-variant="lowSpec"] .detailContent > div:nth-of-type(2) p {
+.shell[data-card-variant="lowSpec"] [data-card-requirements="true"] p {
   min-width: 0;
   overflow: hidden;
   font-size: 9px;
@@ -145,14 +145,14 @@
   white-space: nowrap;
 }
 
-.shell[data-card-variant="lowSpec"] .detailContent > div:nth-of-type(2) p strong {
+.shell[data-card-variant="lowSpec"] [data-card-requirements="true"] p strong {
   display: block;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.shell[data-card-variant="lowSpec"] .detailContent > div:nth-of-type(3) {
+.shell[data-card-variant="lowSpec"] [data-card-rating="true"] {
   margin-top: 7px;
   padding-top: 0;
 }
@@ -185,16 +185,16 @@
 }
 
 @media (max-width: 560px) {
-  .shell[data-card-variant="lowSpec"] .detailContent {
+  .shell[data-card-variant="lowSpec"] [data-card-detail-content="true"] {
     padding: 11px 12px 12px;
   }
 
-  .shell[data-card-variant="lowSpec"] .detailContent > div:first-child h3 {
+  .shell[data-card-variant="lowSpec"] [data-card-title-row="true"] h3 {
     font-size: var(--font-base);
     -webkit-line-clamp: 2;
   }
 
-  .shell[data-card-variant="lowSpec"] .detailContent > div:nth-of-type(2) p {
+  .shell[data-card-variant="lowSpec"] [data-card-requirements="true"] p {
     font-size: var(--font-micro);
   }
 }
