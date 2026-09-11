@@ -238,7 +238,7 @@ async function waitForUniversalCardHydration(cdp) {
   }
 
   throw new Error(
-    "No se encontró una UniversalGameCard hidratada en /juegos."
+    "No se encontró una UniversalGameCard hidratada en la página actual."
   );
 }
 
@@ -306,6 +306,153 @@ async function captureActiveScreenshot(cdp) {
     screenshotPath,
     Buffer.from(capture.data, "base64")
   );
+}
+
+async function assertHomeCardDetailLayout(cdp) {
+  await navigate(cdp, `${baseUrl}/`);
+  await waitForUniversalCardHydration(cdp);
+
+  const layouts = await cdp.evaluate(`
+    (() => {
+      const variants = ["standard", "recent", "lowSpec"];
+      return variants.map((variant) => {
+        const card = document.querySelector(
+          'article[data-card-variant="' + variant + '"]'
+        );
+        if (!(card instanceof HTMLElement)) {
+          return { variant, missing: true };
+        }
+
+        const detail = card.querySelector('[data-card-face="detail"]');
+        const media = card.querySelector('[data-card-detail-media="true"]');
+        const content = card.querySelector('[data-card-detail-content="true"]');
+        const title = card.querySelector('[data-card-title-row="true"] h3');
+        if (
+          !(detail instanceof HTMLElement) ||
+          !(media instanceof HTMLElement) ||
+          !(content instanceof HTMLElement) ||
+          !(title instanceof HTMLElement)
+        ) {
+          return { variant, missingHook: true };
+        }
+
+        const cardRect = card.getBoundingClientRect();
+        const detailRect = detail.getBoundingClientRect();
+        const mediaRect = media.getBoundingClientRect();
+        const contentRect = content.getBoundingClientRect();
+        const lineHeight = Number.parseFloat(getComputedStyle(title).lineHeight) || 1;
+        const visibleChildren = Array.from(content.children).filter((child) => {
+          if (!(child instanceof HTMLElement)) return false;
+          const style = getComputedStyle(child);
+          return style.display !== "none" && style.visibility !== "hidden";
+        });
+        const outsideChildren = visibleChildren.filter((child) => {
+          const rect = child.getBoundingClientRect();
+          return (
+            rect.left < contentRect.left - 1 ||
+            rect.right > contentRect.right + 1 ||
+            rect.top < contentRect.top - 1 ||
+            rect.bottom > contentRect.bottom + 1
+          );
+        }).map((child) => child.getAttribute("data-card-title-row") ||
+          child.getAttribute("data-card-description") ||
+          child.getAttribute("data-card-low-spec-badge") ||
+          child.getAttribute("data-card-requirements") ||
+          child.getAttribute("data-card-rating") ||
+          child.getAttribute("data-card-date") ||
+          child.tagName
+        );
+
+        const requirements = card.querySelector('[data-card-requirements="true"]');
+        const description = card.querySelector('[data-card-description="true"]');
+
+        return {
+          variant,
+          missing: false,
+          detailVisible: card.getAttribute("data-detail-visible"),
+          cardWidth: cardRect.width,
+          cardHeight: cardRect.height,
+          cardClientWidth: card.clientWidth,
+          cardClientHeight: card.clientHeight,
+          detailWidth: detailRect.width,
+          detailHeight: detailRect.height,
+          mediaRatio: mediaRect.height > 0 ? mediaRect.width / mediaRect.height : 0,
+          contentOverflowY: content.scrollHeight - content.clientHeight,
+          contentOverflowX: content.scrollWidth - content.clientWidth,
+          outsideChildren,
+          titleLines: title.getBoundingClientRect().height / lineHeight,
+          hasDescription: description instanceof HTMLElement && description.textContent.trim().length > 0,
+          requirementCount:
+            requirements instanceof HTMLElement ? requirements.children.length : 0,
+          requirementsOverflowX:
+            requirements instanceof HTMLElement
+              ? requirements.scrollWidth - requirements.clientWidth
+              : 0,
+        };
+      });
+    })()
+  `);
+
+  for (const layout of layouts ?? []) {
+    if (layout.missing || layout.missingHook) {
+      throw new Error(
+        `Home Card ${layout.variant} no expone el renderer/hook esperado: ${JSON.stringify(layout)}.`
+      );
+    }
+    if (layout.detailVisible !== "true") {
+      throw new Error(
+        `Home Card ${layout.variant} no mostró su detalle en pointer coarse: ${JSON.stringify(layout)}.`
+      );
+    }
+    if (
+      Math.abs(layout.cardClientWidth - layout.detailWidth) > 1 ||
+      Math.abs(layout.cardClientHeight - layout.detailHeight) > 1
+    ) {
+      throw new Error(
+        `Home Card ${layout.variant} no cubre la geometría interna al revelar detalle: ${JSON.stringify(layout)}.`
+      );
+    }
+    if (Math.abs(layout.mediaRatio - 1.5) > 0.02) {
+      throw new Error(
+        `Home Card ${layout.variant} rompió el contrato multimedia 3:2: ${JSON.stringify(layout)}.`
+      );
+    }
+    if (
+      layout.contentOverflowY > 1 ||
+      layout.contentOverflowX > 1 ||
+      layout.outsideChildren.length > 0
+    ) {
+      throw new Error(
+        `Home Card ${layout.variant} desbordó/reordenó su detalle: ${JSON.stringify(layout)}.`
+      );
+    }
+    if (layout.titleLines > 2.15) {
+      throw new Error(
+        `Home Card ${layout.variant} dejó crecer el título más de dos líneas: ${JSON.stringify(layout)}.`
+      );
+    }
+    if (layout.variant === "standard" && !layout.hasDescription) {
+      throw new Error(
+        `Home Card estándar no expuso descripción factual en el detalle: ${JSON.stringify(layout)}.`
+      );
+    }
+    if (
+      layout.variant === "lowSpec" &&
+      (layout.requirementCount !== 3 || layout.requirementsOverflowX > 1)
+    ) {
+      throw new Error(
+        `Home Card lowSpec no mantuvo RAM/GPU/SO dentro de la grilla: ${JSON.stringify(layout)}.`
+      );
+    }
+  }
+
+  if (!layouts || layouts.length !== 3) {
+    throw new Error(
+      `No se validaron las tres variantes de Home esperadas: ${JSON.stringify(layouts)}.`
+    );
+  }
+
+  return layouts.map(({ variant }) => variant).join(",");
 }
 
 async function main() {
@@ -517,13 +664,16 @@ async function main() {
       );
     }
 
+    const homeVariants = await assertHomeCardDetailLayout(cdp);
+
     console.log(
       "Universal Game Card 3D browser smoke: OK " +
         `(primaryFineHover=${mediaState.primaryFineHover}, ` +
         `primaryCoarse=${mediaState.primaryCoarse}, ` +
         `pointer=${actualPointerType}, x=${active.tiltX}, y=${active.tiltY}, ` +
         `layout=${active.offsetWidth}x${active.offsetHeight}, ` +
-        "touch=sin tilt, reduced-motion=sin tilt)."
+        `home=${homeVariants}, ` +
+        "touch=sin tilt, reduced-motion=sin tilt, detalle Home sin overflow)."
     );
   } catch (error) {
     if (browserError.trim()) {
