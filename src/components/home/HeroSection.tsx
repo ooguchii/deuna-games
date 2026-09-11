@@ -239,10 +239,10 @@ function MainCardContent({ game }: { game: Game }) {
         </div>
       )}
 
-      <h2 className={styles.title}>
+      <h3 className={styles.title}>
         <span>{title.base}</span>
         {title.highlight && <strong>{title.highlight}</strong>}
-      </h2>
+      </h3>
 
       <p className={styles.description}>{game.description}</p>
 
@@ -615,7 +615,7 @@ export default function HeroSection({
         if (!event.relatedTarget || !event.currentTarget.contains(event.relatedTarget as Node)) setFocused(false);
       }}
     >
-      <h1 className={styles.srOnly}>Juegos destacados</h1>
+      <h2 className={styles.srOnly}>Juegos destacados</h2>
 
       <div
         className={styles.carouselViewport}
