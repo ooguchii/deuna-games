@@ -9,7 +9,6 @@ import {
   UserRound,
 } from "lucide-react";
 
-import SiteLogoMark from "@/components/brand/SiteLogoMark";
 import {
   cpuCatalog,
   gpuCatalog,
@@ -133,9 +132,8 @@ export default async function AccountPage({
             slug: game.slug,
             title: game.title,
             category: game.category,
-            coverImage: game.cardImage ?? game.coverImage,
-            imageViewport:
-              game.imageMedia?.card ?? game.imageMedia?.cover,
+            coverImage: game.coverImage,
+            imageViewport: game.imageMedia?.cover,
             rating: game.rating,
           }))}
           preferences={personalization.preferences.map((preference) => ({
@@ -162,14 +160,7 @@ export default async function AccountPage({
           }))}
           notifications={notifications}
           recommendations={recommendations.map((entry) => ({
-            slug: entry.game.slug,
-            title: entry.game.title,
-            category: entry.game.category,
-            coverImage: entry.game.cardImage ?? entry.game.coverImage,
-            imageViewport:
-              entry.game.imageMedia?.card ??
-              entry.game.imageMedia?.cover,
-            rating: entry.game.rating,
+            game: entry.game,
             reasons: entry.reasons,
             performanceEstimate: entry.estimate?.canEstimate
               ? {
@@ -193,7 +184,7 @@ export default async function AccountPage({
       <div className={`${styles.shell} ${styles.hero}`}>
         <section className={styles.intro}>
           <span className={styles.eyebrow}>
-            <SiteLogoMark size={16} />
+            <Sparkles size={16} aria-hidden="true" />
             MI DEUNA
           </span>
           <h1>Tu DeUna cambia cuando sabe lo que eliges guardar.</h1>

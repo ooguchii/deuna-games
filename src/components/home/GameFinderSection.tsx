@@ -3,15 +3,16 @@ import Link from "next/link";
 import {
   ChevronRight,
   Cpu,
-  Gamepad2,
+  Gauge,
   Monitor,
+  SlidersHorizontal,
 } from "lucide-react";
 
 import type { HomeCopy } from "@/data/home-config";
 
 import styles from "./GameFinderSection.module.css";
 
-const featureIcons = [Cpu, Monitor, Gamepad2] as const;
+const featureIcons = [Cpu, Gauge, SlidersHorizontal] as const;
 
 export default function GameFinderSection({
   copy,
@@ -19,12 +20,16 @@ export default function GameFinderSection({
   copy: HomeCopy["finder"];
 }) {
   return (
-    <section className={styles.section}>
-      <div className={styles.glow} />
+    <section
+      className={styles.section}
+      aria-labelledby="home-game-finder-title"
+    >
+      <div className={styles.glow} aria-hidden="true" />
 
       <div className={styles.content}>
-        <div className={styles.icon}>
-          <Gamepad2 size={35} strokeWidth={1.8} />
+        <div className={styles.icon} aria-hidden="true">
+          <Monitor size={34} strokeWidth={1.8} />
+          <Cpu className={styles.iconBadge} size={16} strokeWidth={2} />
         </div>
 
         <div className={styles.text}>
@@ -32,24 +37,24 @@ export default function GameFinderSection({
             {copy.eyebrow}
           </span>
 
-          <h2>
+          <h2 id="home-game-finder-title">
             {copy.title} <span>{copy.highlight}</span>
           </h2>
 
           <p>{copy.text}</p>
 
-          <div className={styles.features}>
+          <ul className={styles.features} aria-label="Cómo funciona el recomendador">
             {copy.features.map((feature, index) => {
-              const Icon = featureIcons[index];
+              const Icon = featureIcons[index] ?? Cpu;
 
               return (
-                <span key={`${index}-${feature}`}>
-                  <Icon size={16} />
-                  {feature}
-                </span>
+                <li key={`${index}-${feature}`}>
+                  <Icon size={16} aria-hidden="true" />
+                  <span>{feature}</span>
+                </li>
               );
             })}
-          </div>
+          </ul>
         </div>
       </div>
 
@@ -58,8 +63,8 @@ export default function GameFinderSection({
         className={styles.button}
         data-brand-action="true"
       >
-        {copy.cta}
-        <ChevronRight size={21} />
+        <span>{copy.cta}</span>
+        <ChevronRight size={21} aria-hidden="true" />
       </Link>
     </section>
   );

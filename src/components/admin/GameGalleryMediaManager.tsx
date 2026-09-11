@@ -69,7 +69,7 @@ function missingRequirementMessage(
 ) {
   const missing: string[] = [];
   if (!requirements.cover.cropReady) missing.push("Portada 4:5");
-  if (!requirements.hero.cropReady) missing.push("Hero 16:9");
+  if (!requirements.hero.cropReady) missing.push("Hero 3:1");
   if (!requirements.card.cropReady) missing.push("Card 3:2");
   if (!requirements.detail.cropReady) missing.push("Contenedor adaptable");
   if (requirements.background.active && !requirements.background.cropReady) {

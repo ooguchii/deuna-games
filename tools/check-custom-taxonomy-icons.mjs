@@ -29,6 +29,7 @@ const [
   uploadRoute,
   uploadStorage,
   publicMediaRoute,
+  mediaServing,
   homeClassifications,
   catalogClient,
 ] = await Promise.all([
@@ -40,6 +41,7 @@ const [
   source("src/app/api/admin/content/catalogs/icon-upload/route.ts"),
   source("src/lib/media/taxonomy-icon-upload.ts"),
   source("src/app/media/editorial/[slug]/[filename]/route.ts"),
+  source("src/lib/media/editorial-media-serving.ts"),
   source("src/components/home/FeaturedCategories.tsx"),
   source("src/components/games/GameCatalogClient.tsx"),
 ]);
@@ -110,9 +112,8 @@ assert(
 );
 
 assert(
-  publicMediaRoute.includes('const TAXONOMY_ICON_SLUG = "taxonomy-icons"') &&
-    publicMediaRoute.includes("const isTaxonomyAsset = slug === TAXONOMY_ICON_SLUG") &&
-    publicMediaRoute.includes("const isSiteLogoAsset = slug === SITE_BRAND_LOGO_SLUG") &&
+  publicMediaRoute.includes("TAXONOMY_ICON_MEDIA_SLUG") &&
+    publicMediaRoute.includes("const isTaxonomyAsset") &&
     publicMediaRoute.includes("const isRestrictedImageNamespace") &&
     publicMediaRoute.includes("isTaxonomyAsset || isSiteLogoAsset") &&
     publicMediaRoute.includes("(isSvg && !isRestrictedImageNamespace)") &&
@@ -120,8 +121,13 @@ assert(
     publicMediaRoute.includes("(isTaxonomyAsset && !isSvg && !isWebp)") &&
     publicMediaRoute.includes("inspectSafeTaxonomySvgIcon") &&
     publicMediaRoute.includes("Content-Security-Policy") &&
-    publicMediaRoute.includes('"Content-Type": "image/svg+xml; charset=utf-8"'),
-  "Los SVG deben servirse sólo desde namespaces explícitos y seguros; taxonomía debe seguir limitada a SVG/WebP, revalidada y aislada por CSP aunque el logo admita raster adicionales."
+    publicMediaRoute.includes('"Content-Type": "image/svg+xml; charset=utf-8"') &&
+    publicMediaRoute.includes("resolveEditorialMediaServingAccess") &&
+    mediaServing.includes('"game_taxonomy"') &&
+    mediaServing.includes("taxonomy.classifications") &&
+    mediaServing.includes("taxonomy.tags") &&
+    mediaServing.includes("resolveAdminSession"),
+  "Taxonomía debe seguir limitada a SVG/WebP y usar la frontera compartida publicación/preview Admin aunque el namespace del logo admita raster adicionales."
 );
 
 assert(
@@ -136,6 +142,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Iconos personalizados de taxonomía: OK (SVG/WebP seguro, recolor por máscara, borrador/publicación y superficies públicas compartidas)."
+    "Iconos personalizados de taxonomía: OK (SVG/WebP seguro, recolor por máscara, borrador privado/publicación y superficies públicas compartidas)."
   );
 }

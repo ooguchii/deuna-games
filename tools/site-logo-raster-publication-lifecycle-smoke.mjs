@@ -1046,9 +1046,23 @@ if (!sameAppIconSnapshot(appIconsRestored, appIconsBefore)) {
 }
 
 const anonymousRestoredAsset = await request(publicPath);
-if (anonymousRestoredAsset.status !== 404) {
+const anonymousRestoredCacheControl = String(
+  anonymousRestoredAsset.headers["cache-control"] ?? ""
+).toLowerCase();
+if (
+  anonymousRestoredAsset.status !== 200 ||
+  !String(
+    anonymousRestoredAsset.headers["content-type"] ?? ""
+  ).toLowerCase().startsWith("image/png") ||
+  anonymousRestoredAsset.sha256 !== pathDigest ||
+  !anonymousRestoredCacheControl.includes("public") ||
+  !anonymousRestoredCacheControl.includes("immutable") ||
+  anonymousRestoredAsset.content.includes(
+    Buffer.from(traceText, "utf8")
+  )
+) {
   throw new Error(
-    "Restaurar la identidad previa dejó públicamente accesible en origen el logo que ya no está publicado."
+    "Restaurar la identidad previa dejó de servir de forma pública e inmutable el logo que ya formó parte del historial publicado."
   );
 }
 const adminRestoredAsset = await request(publicPath, {
@@ -1060,11 +1074,13 @@ const adminRestoredCacheControl = String(
 if (
   adminRestoredAsset.status !== 200 ||
   adminRestoredAsset.sha256 !== pathDigest ||
-  !adminRestoredCacheControl.includes("private") ||
-  !adminRestoredCacheControl.includes("no-store")
+  !adminRestoredCacheControl.includes("public") ||
+  !adminRestoredCacheControl.includes("immutable") ||
+  adminRestoredCacheControl.includes("private") ||
+  adminRestoredCacheControl.includes("no-store")
 ) {
   throw new Error(
-    "Tras restaurar, el borrador raster dejó de ser previsualizable de forma privada por el Admin."
+    "Un asset raster históricamente publicado no conservó la misma política pública e inmutable al solicitarlo con sesión Admin."
   );
 }
 
@@ -1092,5 +1108,5 @@ if (
 }
 
 console.log(
-  `Site logo raster publication lifecycle smoke: OK (revisión ${beforeRevision} -> ${savedRevision}; publicación ${publicationNumberBefore} -> ${publicationNumberAfterPublish} -> ${publicationNumberAfterRestore}; PNG metadata/nombre descartados, asset draft privado, MIME por contenido, modo original forzado, favicon/PWA versionados, OG/Twitter y frontera borrador/público preservados).`
+  `Site logo raster publication lifecycle smoke: OK (revisión ${beforeRevision} -> ${savedRevision}; publicación ${publicationNumberBefore} -> ${publicationNumberAfterPublish} -> ${publicationNumberAfterRestore}; PNG metadata/nombre descartados, asset draft privado, MIME por contenido, modo original forzado, favicon/PWA versionados, OG/Twitter y assets históricos públicos e inmutables preservados).`
 );

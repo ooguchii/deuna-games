@@ -22,7 +22,7 @@ const longDescription =
   "Descripción sintética suficientemente extensa para que todas las fichas comparadas tengan exactamente las mismas señales editoriales de completitud.";
 const syntheticGames = [
   {
-    id: "source",
+    id: "source-action",
     slug: "source-action",
     title: "Origen Acción",
     description: longDescription,
@@ -35,7 +35,7 @@ const syntheticGames = [
     imageAlt: "Origen",
   },
   {
-    id: "match",
+    id: "match-action",
     slug: "match-action",
     title: "Coincidencia Acción",
     description: longDescription,
@@ -48,7 +48,7 @@ const syntheticGames = [
     imageAlt: "Coincidencia",
   },
   {
-    id: "other",
+    id: "other-puzzle",
     slug: "other-puzzle",
     title: "Otro Puzzle",
     description: longDescription,
@@ -241,15 +241,33 @@ if (cpu && gpu) {
     confidence: "high",
     updatedAt: "2026-08-31T00:00:00.000Z",
   };
-  const hardwareRanking = rankGamesForSavedHardware(
+
+  const uncalibratedRanking = rankGamesForSavedHardware(
     games,
+    hardware,
+    Date.UTC(2026, 7, 31)
+  );
+  assert(
+    uncalibratedRanking.length === 0,
+    "El catálogo factual sin calibraciones publicadas no debe fabricar recomendaciones por FPS."
+  );
+
+  const calibratedGames = syntheticGames.map((game, index) => ({
+    ...game,
+    performance: {
+      referenceFps: 80 - index * 15,
+      ramGb: 8,
+    },
+  }));
+  const hardwareRanking = rankGamesForSavedHardware(
+    calibratedGames,
     hardware,
     Date.UTC(2026, 7, 31)
   );
 
   assert(
-    hardwareRanking.length > 0,
-    "Una PC guardada debe producir una colección de juegos estimables."
+    hardwareRanking.length === calibratedGames.length,
+    "Una PC guardada sólo debe ordenar los juegos que tienen calibración publicada."
   );
   assert(
     hardwareRanking.every((entry) => entry.estimate?.canEstimate),
@@ -265,7 +283,7 @@ if (cpu && gpu) {
   );
   assert(
     hasRecommendationSignals([], hardware),
-    "Una PC guardada debe poder personalizar recomendaciones aun sin biblioteca."
+    "Una PC guardada sigue siendo una señal disponible, aunque la Home sólo debe declararla efectiva si existe una calibración utilizable."
   );
 }
 
@@ -278,5 +296,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  "Personalización de cuentas: OK (afinidad explícita, avisos compartidos con límites de seguimiento/visto, seguimiento no inferido como gusto, exclusión de Mi DeUna, razones públicas y ranking por el motor real de FPS verificados)."
+  "Personalización de cuentas: OK (afinidad explícita, avisos compartidos, ausencia de FPS inventados, señales de hardware sólo efectivas con calibración y ranking real verificados)."
 );

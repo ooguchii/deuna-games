@@ -21,29 +21,35 @@ const catalogOptions = [
   {
     href: "/juegos?equipo=lowSpec",
     icon: Cpu,
+    requiresRatings: false,
   },
   {
     href: "/requisitos",
     icon: Monitor,
+    requiresRatings: false,
   },
   {
     href: "/juegos?orden=rating",
     icon: Star,
+    requiresRatings: true,
   },
   {
-    href: "/juegos?estado=recent&orden=recientes",
+    href: "/juegos?orden=recientes",
     icon: CalendarDays,
+    requiresRatings: false,
   },
 ] as const;
 
 export default function GamesForYourPC({
   games,
   copy,
+  ratingsAvailable,
   personalized = false,
   reasons = {},
 }: {
   games: Game[];
   copy: HomeCopy["lowSpec"];
+  ratingsAvailable: boolean;
   personalized?: boolean;
   reasons?: Record<string, string[]>;
 }) {
@@ -89,13 +95,10 @@ export default function GamesForYourPC({
       <div className={styles.hardwareGrid}>
         {catalogOptions.map((option, index) => {
           const Icon = option.icon;
-
-          return (
-            <Link
-              href={option.href}
-              className={styles.hardwareCard}
-              key={option.href}
-            >
+          const unavailable =
+            option.requiresRatings && !ratingsAvailable;
+          const content = (
+            <>
               <div className={styles.hardwareIcon}>
                 <Icon size={25} aria-hidden="true" />
               </div>
@@ -105,11 +108,34 @@ export default function GamesForYourPC({
                 <p>{copy.optionSubtitles[index]}</p>
               </div>
 
-              <ChevronRight
-                size={19}
-                className={styles.hardwareArrow}
-                aria-hidden="true"
-              />
+              {!unavailable && (
+                <ChevronRight
+                  size={19}
+                  className={styles.hardwareArrow}
+                  aria-hidden="true"
+                />
+              )}
+            </>
+          );
+
+          if (unavailable) {
+            return (
+              <div
+                className={`${styles.hardwareCard} ${styles.hardwareCardUnavailable}`}
+                key={`${index}:${option.href}`}
+              >
+                {content}
+              </div>
+            );
+          }
+
+          return (
+            <Link
+              href={option.href}
+              className={styles.hardwareCard}
+              key={`${index}:${option.href}`}
+            >
+              {content}
             </Link>
           );
         })}

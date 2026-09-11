@@ -1,0 +1,690 @@
+import { spawn, spawnSync } from "node:child_process";
+import {
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  writeFile,
+} from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import { setTimeout as delay } from "node:timers/promises";
+
+const baseUrl = (
+  process.env.DEUNA_VISUAL_BASE_URL ?? "http://127.0.0.1:3000"
+).replace(/\/$/, "");
+const outputRoot = path.resolve(
+  process.env.DEUNA_VISUAL_OUTPUT_DIR ?? "artifacts/visual-smoke"
+);
+const screenshotPath = path.join(
+  outputRoot,
+  "card-3d-active-desktop.png"
+);
+
+function findChrome() {
+  const candidates = [
+    process.env.CHROME_BIN,
+    "google-chrome-stable",
+    "google-chrome",
+    "chromium",
+    "chromium-browser",
+  ].filter(Boolean);
+
+  for (const candidate of candidates) {
+    const result = spawnSync(
+      "sh",
+      ["-lc", `command -v ${JSON.stringify(candidate)}`],
+      { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }
+    );
+    const resolved = result.stdout.trim();
+    if (result.status === 0 && resolved) return resolved;
+  }
+
+  throw new Error(
+    "Universal Game Card 3D browser smoke necesita Chrome/Chromium disponible."
+  );
+}
+
+async function waitForDebugger(profileDir) {
+  const activePortPath = path.join(profileDir, "DevToolsActivePort");
+  const deadline = Date.now() + 15_000;
+  let lastError = null;
+
+  while (Date.now() < deadline) {
+    try {
+      const raw = await readFile(activePortPath, "utf8");
+      const port = Number.parseInt(raw.split(/\r?\n/, 1)[0] ?? "", 10);
+      if (!Number.isFinite(port)) {
+        throw new Error("Puerto DevTools inválido.");
+      }
+
+      const response = await fetch(`http://127.0.0.1:${port}/json/list`);
+      if (response.ok) {
+        const targets = await response.json();
+        const page = targets.find(
+          (target) =>
+            target.type === "page" && target.webSocketDebuggerUrl
+        );
+        if (page) return page;
+      }
+    } catch (error) {
+      lastError = error;
+    }
+
+    await delay(100);
+  }
+
+  throw new Error(
+    `Chrome no expuso DevTools a tiempo.${
+      lastError instanceof Error ? ` ${lastError.message}` : ""
+    }`
+  );
+}
+
+function openWebSocket(url) {
+  return new Promise((resolve, reject) => {
+    const socket = new WebSocket(url);
+    const timeout = setTimeout(() => {
+      reject(new Error("Timeout conectando con Chrome DevTools."));
+    }, 10_000);
+
+    socket.addEventListener(
+      "open",
+      () => {
+        clearTimeout(timeout);
+        resolve(socket);
+      },
+      { once: true }
+    );
+    socket.addEventListener(
+      "error",
+      () => {
+        clearTimeout(timeout);
+        reject(new Error("No se pudo abrir Chrome DevTools."));
+      },
+      { once: true }
+    );
+  });
+}
+
+class CdpSession {
+  constructor(socket) {
+    this.socket = socket;
+    this.nextId = 1;
+    this.pending = new Map();
+    this.listeners = new Map();
+
+    socket.addEventListener("message", (event) => {
+      const message = JSON.parse(String(event.data));
+      if (message.id) {
+        const pending = this.pending.get(message.id);
+        if (!pending) return;
+        this.pending.delete(message.id);
+        if (message.error) {
+          pending.reject(
+            new Error(`${pending.method}: ${message.error.message}`)
+          );
+        } else {
+          pending.resolve(message.result ?? {});
+        }
+        return;
+      }
+
+      if (!message.method) return;
+      const listeners = this.listeners.get(message.method);
+      if (!listeners) return;
+      for (const listener of [...listeners]) {
+        listener(message.params ?? {});
+      }
+    });
+  }
+
+  send(method, params = {}) {
+    const id = this.nextId++;
+    return new Promise((resolve, reject) => {
+      this.pending.set(id, { method, resolve, reject });
+      this.socket.send(JSON.stringify({ id, method, params }));
+    });
+  }
+
+  on(method, listener) {
+    const listeners = this.listeners.get(method) ?? new Set();
+    listeners.add(listener);
+    this.listeners.set(method, listeners);
+    return () => {
+      listeners.delete(listener);
+      if (listeners.size === 0) this.listeners.delete(method);
+    };
+  }
+
+  waitFor(method, timeoutMs = 15_000) {
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        unsubscribe();
+        reject(new Error(`Timeout esperando ${method}.`));
+      }, timeoutMs);
+      const unsubscribe = this.on(method, (params) => {
+        clearTimeout(timeout);
+        unsubscribe();
+        resolve(params);
+      });
+    });
+  }
+
+  async evaluate(expression) {
+    const result = await this.send("Runtime.evaluate", {
+      expression,
+      awaitPromise: true,
+      returnByValue: true,
+      userGesture: true,
+    });
+
+    if (result.exceptionDetails) {
+      throw new Error(
+        result.exceptionDetails.exception?.description ??
+          result.exceptionDetails.text ??
+          "Runtime.evaluate falló."
+      );
+    }
+
+    return result.result?.value;
+  }
+
+  close() {
+    this.socket.close();
+  }
+}
+
+async function navigate(cdp, url) {
+  const loaded = cdp.waitFor("Page.loadEventFired", 20_000);
+  const navigation = await cdp.send("Page.navigate", { url });
+  if (navigation.errorText) {
+    throw new Error(`No se pudo navegar a ${url}: ${navigation.errorText}`);
+  }
+  await loaded;
+}
+
+const cardLookup = `
+  Array.from(document.querySelectorAll("article"))
+    .find((element) =>
+      element instanceof HTMLElement &&
+      element.style.getPropertyValue("--tilt-x") !== "" &&
+      element.querySelector('a[href^="/juegos/"]')
+    )
+`;
+
+async function waitForUniversalCardHydration(cdp) {
+  const deadline = Date.now() + 15_000;
+
+  while (Date.now() < deadline) {
+    const state = await cdp.evaluate(`
+      (() => {
+        const card = ${cardLookup};
+        if (!(card instanceof HTMLElement)) return null;
+        card.scrollIntoView({ block: "center", inline: "nearest" });
+        const hydrated = Object.keys(card).some((key) =>
+          key.startsWith("__reactProps$") || key.startsWith("__reactFiber$")
+        );
+        return { hydrated, readyState: document.readyState };
+      })()
+    `);
+
+    if (state?.hydrated && state.readyState === "complete") {
+      await delay(500);
+      return;
+    }
+
+    await delay(100);
+  }
+
+  throw new Error(
+    "No se encontró una UniversalGameCard hidratada en la página actual."
+  );
+}
+
+async function readCardState(cdp) {
+  return cdp.evaluate(`
+    (() => {
+      const card = ${cardLookup};
+      if (!(card instanceof HTMLElement)) return null;
+      const rect = card.getBoundingClientRect();
+      return {
+        left: rect.left,
+        top: rect.top,
+        width: rect.width,
+        height: rect.height,
+        offsetWidth: card.offsetWidth,
+        offsetHeight: card.offsetHeight,
+        active: card.getAttribute("data-tilt-active"),
+        tiltX: card.style.getPropertyValue("--tilt-x"),
+        tiltY: card.style.getPropertyValue("--tilt-y"),
+        transform: getComputedStyle(card).transform,
+      };
+    })()
+  `);
+}
+
+async function assertProbeInsideCard(cdp, x, y) {
+  const state = await cdp.evaluate(`
+    (() => {
+      const card = ${cardLookup};
+      if (!(card instanceof HTMLElement)) return null;
+      const target = document.elementFromPoint(${JSON.stringify(x)}, ${JSON.stringify(y)});
+      return {
+        insideCard: target instanceof Element && card.contains(target),
+        targetTag: target?.tagName ?? null,
+        targetClass: target instanceof Element ? target.className : null,
+        readyState: document.readyState,
+      };
+    })()
+  `);
+
+  if (!state?.insideCard) {
+    throw new Error(
+      `El punto CDP no cae dentro de la Card hidratada: ${JSON.stringify(state)}.`
+    );
+  }
+}
+
+async function moveMouse(cdp, x, y) {
+  await cdp.send("Input.dispatchMouseEvent", {
+    type: "mouseMoved",
+    x,
+    y,
+    buttons: 0,
+    pointerType: "mouse",
+  });
+}
+
+async function captureActiveScreenshot(cdp) {
+  await mkdir(outputRoot, { recursive: true });
+  const capture = await cdp.send("Page.captureScreenshot", {
+    format: "png",
+    fromSurface: true,
+  });
+  await writeFile(
+    screenshotPath,
+    Buffer.from(capture.data, "base64")
+  );
+}
+
+async function assertHomeCardDetailLayout(cdp) {
+  await navigate(cdp, `${baseUrl}/`);
+  await waitForUniversalCardHydration(cdp);
+
+  const layouts = await cdp.evaluate(`
+    (() => {
+      const variants = ["standard", "recent", "lowSpec"];
+      return variants.map((variant) => {
+        const card = document.querySelector(
+          'article[data-card-variant="' + variant + '"]'
+        );
+        if (!(card instanceof HTMLElement)) {
+          return { variant, missing: true };
+        }
+
+        const detail = card.querySelector('[data-card-face="detail"]');
+        const media = card.querySelector('[data-card-detail-media="true"]');
+        const content = card.querySelector('[data-card-detail-content="true"]');
+        const title = card.querySelector('[data-card-title-row="true"] h3');
+        if (
+          !(detail instanceof HTMLElement) ||
+          !(media instanceof HTMLElement) ||
+          !(content instanceof HTMLElement) ||
+          !(title instanceof HTMLElement)
+        ) {
+          return { variant, missingHook: true };
+        }
+
+        const cardRect = card.getBoundingClientRect();
+        const detailRect = detail.getBoundingClientRect();
+        const mediaRect = media.getBoundingClientRect();
+        const contentRect = content.getBoundingClientRect();
+        const lineHeight = Number.parseFloat(getComputedStyle(title).lineHeight) || 1;
+        const visibleChildren = Array.from(content.children).filter((child) => {
+          if (!(child instanceof HTMLElement)) return false;
+          const style = getComputedStyle(child);
+          return style.display !== "none" && style.visibility !== "hidden";
+        });
+        const outsideChildren = visibleChildren.filter((child) => {
+          const rect = child.getBoundingClientRect();
+          return (
+            rect.left < contentRect.left - 1 ||
+            rect.right > contentRect.right + 1 ||
+            rect.top < contentRect.top - 1 ||
+            rect.bottom > contentRect.bottom + 1
+          );
+        }).map((child) => child.getAttribute("data-card-title-row") ||
+          child.getAttribute("data-card-description") ||
+          child.getAttribute("data-card-low-spec-badge") ||
+          child.getAttribute("data-card-requirements") ||
+          child.getAttribute("data-card-rating") ||
+          child.getAttribute("data-card-date") ||
+          child.tagName
+        );
+
+        const requirements = card.querySelector('[data-card-requirements="true"]');
+        const description = card.querySelector('[data-card-description="true"]');
+
+        return {
+          variant,
+          missing: false,
+          detailVisible: card.getAttribute("data-detail-visible"),
+          cardWidth: cardRect.width,
+          cardHeight: cardRect.height,
+          cardClientWidth: card.clientWidth,
+          cardClientHeight: card.clientHeight,
+          detailWidth: detailRect.width,
+          detailHeight: detailRect.height,
+          mediaRatio: mediaRect.height > 0 ? mediaRect.width / mediaRect.height : 0,
+          contentOverflowY: content.scrollHeight - content.clientHeight,
+          contentOverflowX: content.scrollWidth - content.clientWidth,
+          outsideChildren,
+          titleLines: title.getBoundingClientRect().height / lineHeight,
+          hasDescription: description instanceof HTMLElement && description.textContent.trim().length > 0,
+          requirementCount:
+            requirements instanceof HTMLElement ? requirements.children.length : 0,
+          requirementsOverflowX:
+            requirements instanceof HTMLElement
+              ? requirements.scrollWidth - requirements.clientWidth
+              : 0,
+        };
+      });
+    })()
+  `);
+
+  for (const layout of layouts ?? []) {
+    if (layout.missing || layout.missingHook) {
+      throw new Error(
+        `Home Card ${layout.variant} no expone el renderer/hook esperado: ${JSON.stringify(layout)}.`
+      );
+    }
+    if (layout.detailVisible !== "true") {
+      throw new Error(
+        `Home Card ${layout.variant} no mostró su detalle en pointer coarse: ${JSON.stringify(layout)}.`
+      );
+    }
+    if (
+      Math.abs(layout.cardClientWidth - layout.detailWidth) > 1 ||
+      Math.abs(layout.cardClientHeight - layout.detailHeight) > 1
+    ) {
+      throw new Error(
+        `Home Card ${layout.variant} no cubre la geometría interna al revelar detalle: ${JSON.stringify(layout)}.`
+      );
+    }
+    if (Math.abs(layout.mediaRatio - 1.5) > 0.02) {
+      throw new Error(
+        `Home Card ${layout.variant} rompió el contrato multimedia 3:2: ${JSON.stringify(layout)}.`
+      );
+    }
+    if (
+      layout.contentOverflowY > 1 ||
+      layout.contentOverflowX > 1 ||
+      layout.outsideChildren.length > 0
+    ) {
+      throw new Error(
+        `Home Card ${layout.variant} desbordó/reordenó su detalle: ${JSON.stringify(layout)}.`
+      );
+    }
+    if (layout.titleLines > 2.15) {
+      throw new Error(
+        `Home Card ${layout.variant} dejó crecer el título más de dos líneas: ${JSON.stringify(layout)}.`
+      );
+    }
+    if (layout.variant === "standard" && !layout.hasDescription) {
+      throw new Error(
+        `Home Card estándar no expuso descripción factual en el detalle: ${JSON.stringify(layout)}.`
+      );
+    }
+    if (
+      layout.variant === "lowSpec" &&
+      (layout.requirementCount !== 3 || layout.requirementsOverflowX > 1)
+    ) {
+      throw new Error(
+        `Home Card lowSpec no mantuvo RAM/GPU/SO dentro de la grilla: ${JSON.stringify(layout)}.`
+      );
+    }
+  }
+
+  if (!layouts || layouts.length !== 3) {
+    throw new Error(
+      `No se validaron las tres variantes de Home esperadas: ${JSON.stringify(layouts)}.`
+    );
+  }
+
+  return layouts.map(({ variant }) => variant).join(",");
+}
+
+async function main() {
+  const profileDir = await mkdtemp(
+    path.join(os.tmpdir(), "deuna-card-3d-chrome-")
+  );
+  const browser = spawn(
+    findChrome(),
+    [
+      "--headless=new",
+      "--disable-gpu",
+      "--disable-dev-shm-usage",
+      "--no-sandbox",
+      "--ignore-certificate-errors",
+      "--remote-debugging-port=0",
+      "--remote-debugging-address=127.0.0.1",
+      `--user-data-dir=${profileDir}`,
+      "--window-size=1440,1000",
+      "about:blank",
+    ],
+    { stdio: ["ignore", "ignore", "pipe"] }
+  );
+
+  let cdp = null;
+  let browserError = "";
+  browser.stderr.setEncoding("utf8");
+  browser.stderr.on("data", (chunk) => {
+    browserError += chunk;
+    if (browserError.length > 20_000) {
+      browserError = browserError.slice(-20_000);
+    }
+  });
+
+  try {
+    const target = await waitForDebugger(profileDir);
+    cdp = new CdpSession(
+      await openWebSocket(target.webSocketDebuggerUrl)
+    );
+    await Promise.all([
+      cdp.send("Page.enable"),
+      cdp.send("Runtime.enable"),
+      cdp.send("Network.enable"),
+    ]);
+
+    await cdp.send("Emulation.setDeviceMetricsOverride", {
+      width: 1440,
+      height: 1000,
+      deviceScaleFactor: 1,
+      mobile: true,
+      screenWidth: 1440,
+      screenHeight: 1000,
+    });
+    await cdp.send("Emulation.setTouchEmulationEnabled", {
+      enabled: true,
+      maxTouchPoints: 5,
+    });
+
+    await navigate(cdp, `${baseUrl}/juegos`);
+    await waitForUniversalCardHydration(cdp);
+
+    await cdp.evaluate(`
+      (() => {
+        window.__deunaCard3dPointerType = null;
+        document.addEventListener(
+          "pointermove",
+          (event) => {
+            window.__deunaCard3dPointerType = event.pointerType;
+          },
+          { capture: true }
+        );
+      })()
+    `);
+
+    const mediaState = await cdp.evaluate(`({
+      primaryFineHover: matchMedia("(hover: hover) and (pointer: fine)").matches,
+      primaryCoarse: matchMedia("(pointer: coarse)").matches,
+      reducedMotion: matchMedia("(prefers-reduced-motion: reduce)").matches,
+    })`);
+
+    if (mediaState.primaryFineHover || !mediaState.primaryCoarse) {
+      throw new Error(
+        "La prueba no reprodujo el contrato híbrido coarse/no-hover esperado."
+      );
+    }
+
+    const initial = await readCardState(cdp);
+    if (!initial) {
+      throw new Error("No se pudo leer el estado inicial de la Card.");
+    }
+
+    const probeX = initial.left + initial.width * 0.78;
+    const probeY = initial.top + initial.height * 0.28;
+    await assertProbeInsideCard(cdp, probeX, probeY);
+
+    await moveMouse(cdp, 1, 1);
+    await moveMouse(cdp, probeX, probeY);
+    await delay(160);
+
+    const active = await readCardState(cdp);
+    const actualPointerType = await cdp.evaluate(
+      "window.__deunaCard3dPointerType"
+    );
+    if (!active) {
+      throw new Error("No se pudo leer la Card después del mouse.");
+    }
+
+    const tiltChanged =
+      active.tiltX !== "0deg" || active.tiltY !== "0deg";
+    if (
+      actualPointerType !== "mouse" ||
+      active.active !== "true" ||
+      !tiltChanged ||
+      active.transform === "none"
+    ) {
+      throw new Error(
+        `Mouse híbrido no activó tilt real: pointer=${actualPointerType}, ` +
+          `active=${active.active}, x=${active.tiltX}, y=${active.tiltY}, ` +
+          `transform=${active.transform}.`
+      );
+    }
+
+    if (
+      active.offsetWidth !== initial.offsetWidth ||
+      active.offsetHeight !== initial.offsetHeight
+    ) {
+      throw new Error(
+        `El tilt alteró layout: ${initial.offsetWidth}x${initial.offsetHeight} -> ` +
+          `${active.offsetWidth}x${active.offsetHeight}.`
+      );
+    }
+
+    await captureActiveScreenshot(cdp);
+
+    await moveMouse(cdp, 1, 1);
+    await delay(160);
+    const reset = await readCardState(cdp);
+    if (
+      !reset ||
+      reset.active !== null ||
+      reset.tiltX !== "0deg" ||
+      reset.tiltY !== "0deg"
+    ) {
+      throw new Error(
+        `La Card no volvió a reposo: active=${reset?.active}, ` +
+          `x=${reset?.tiltX}, y=${reset?.tiltY}.`
+      );
+    }
+
+    const touchX = reset.left + reset.width * 0.55;
+    const touchY = reset.top + reset.height * 0.55;
+    await cdp.send("Input.dispatchTouchEvent", {
+      type: "touchStart",
+      touchPoints: [{ x: touchX, y: touchY, radiusX: 1, radiusY: 1 }],
+    });
+    await cdp.send("Input.dispatchTouchEvent", {
+      type: "touchMove",
+      touchPoints: [{
+        x: touchX + 24,
+        y: touchY + 12,
+        radiusX: 1,
+        radiusY: 1,
+      }],
+    });
+    await cdp.send("Input.dispatchTouchEvent", {
+      type: "touchCancel",
+      touchPoints: [],
+    });
+    await delay(120);
+
+    const afterTouch = await readCardState(cdp);
+    if (
+      !afterTouch ||
+      afterTouch.active !== null ||
+      afterTouch.tiltX !== "0deg" ||
+      afterTouch.tiltY !== "0deg"
+    ) {
+      throw new Error(
+        `Touch activó movimiento 3D: active=${afterTouch?.active}, ` +
+          `x=${afterTouch?.tiltX}, y=${afterTouch?.tiltY}.`
+      );
+    }
+
+    await cdp.send("Emulation.setEmulatedMedia", {
+      features: [
+        { name: "prefers-reduced-motion", value: "reduce" },
+      ],
+    });
+    await moveMouse(
+      cdp,
+      afterTouch.left + afterTouch.width * 0.72,
+      afterTouch.top + afterTouch.height * 0.34
+    );
+    await delay(120);
+
+    const reduced = await readCardState(cdp);
+    const reducedMedia = await cdp.evaluate(
+      'matchMedia("(prefers-reduced-motion: reduce)").matches'
+    );
+    if (
+      !reducedMedia ||
+      !reduced ||
+      reduced.active !== null ||
+      reduced.tiltX !== "0deg" ||
+      reduced.tiltY !== "0deg"
+    ) {
+      throw new Error(
+        `Reduced-motion no bloqueó el tilt: media=${reducedMedia}, ` +
+          `active=${reduced?.active}, x=${reduced?.tiltX}, y=${reduced?.tiltY}.`
+      );
+    }
+
+    const homeVariants = await assertHomeCardDetailLayout(cdp);
+
+    console.log(
+      "Universal Game Card 3D browser smoke: OK " +
+        `(primaryFineHover=${mediaState.primaryFineHover}, ` +
+        `primaryCoarse=${mediaState.primaryCoarse}, ` +
+        `pointer=${actualPointerType}, x=${active.tiltX}, y=${active.tiltY}, ` +
+        `layout=${active.offsetWidth}x${active.offsetHeight}, ` +
+        `home=${homeVariants}, ` +
+        "touch=sin tilt, reduced-motion=sin tilt, detalle Home sin overflow)."
+    );
+  } catch (error) {
+    if (browserError.trim()) {
+      console.error("\nChrome stderr:\n", browserError.trim());
+    }
+    throw error;
+  } finally {
+    cdp?.close();
+    browser.kill("SIGTERM");
+    await rm(profileDir, { recursive: true, force: true }).catch(() => {});
+  }
+}
+
+await main();

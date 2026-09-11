@@ -26,7 +26,6 @@ import GameCoverMedia from "@/components/ui/GameCoverMedia";
 import GameMedia from "@/components/ui/GameMedia";
 import UniversalGameCard from "@/components/ui/UniversalGameCard";
 import GamePerformanceEstimate from "@/features/game-finder/GamePerformanceEstimate";
-import { getPerformanceProfile } from "@/features/game-finder/performance-data";
 import {
   getAccountGamePreference,
 } from "@/lib/accounts/personalization-service";
@@ -226,9 +225,6 @@ export default async function GameDetailPage({
       )
     : null;
   const download = resolveGameDownload(game);
-  const performanceProfile = getPerformanceProfile(
-    game.slug
-  );
   const requirements = game.requirements;
   const minimum = requirements
     ? requirements.minimum ??
@@ -283,11 +279,9 @@ export default async function GameDetailPage({
 
   const sizeLabel = download?.sizeGb
     ? `${download.sizeGb} GB`
-    : performanceProfile.storageGb
-      ? `${performanceProfile.storageGb} GB aprox.`
-      : minimum?.storage ??
-        recommended?.storage ??
-        "A confirmar";
+    : minimum?.storage ??
+      recommended?.storage ??
+      "A confirmar";
 
   const breadcrumbJsonLd = {
     "@context": "https://schema.org",
@@ -429,7 +423,7 @@ export default async function GameDetailPage({
               {(game.rating || game.reviews) && (
                 <div
                   className={styles.heroRating}
-                  aria-label="Valoración de demostración"
+                  aria-label="Valoración registrada"
                 >
                   <Star
                     size={18}
@@ -533,7 +527,7 @@ export default async function GameDetailPage({
                 <HardDrive size={18} aria-hidden="true" />
               </span>
               <div>
-                <dt>Espacio estimado</dt>
+                <dt>Almacenamiento</dt>
                 <dd>{sizeLabel}</dd>
               </div>
             </div>

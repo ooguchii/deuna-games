@@ -446,10 +446,9 @@ export default function GameMultimediaUtilityRail({
           <div className={railStyles.statusRows}>
             <div data-ready={requirements.cover.cropReady}>
               {statusPreview([
-                { kind: "image", src: assignments?.coverMode !== "video" ? assignments?.coverImage : null },
-                { kind: "video", src: assignments?.coverMode !== "image" ? assignments?.coverVideo?.clip : null },
+                { kind: "image", src: assignments?.coverImage },
               ])}
-              <span><strong>Portada · 4:5</strong><small>{modeLabel(assignments?.coverMode)}</small></span>
+              <span><strong>Portada · 4:5</strong><small>Imagen</small></span>
               {requirements.cover.cropReady ? <CheckCircle2 size={15} /> : <TriangleAlert size={15} />}
             </div>
             <div data-ready={requirements.hero.cropReady}>
@@ -457,12 +456,12 @@ export default function GameMultimediaUtilityRail({
                 { kind: "image", src: assignments?.heroMode !== "video" ? assignments?.heroImage : null },
                 { kind: "video", src: assignments?.heroMode !== "image" ? assignments?.heroVideo?.clip : null },
               ])}
-              <span><strong>Hero · 16:9</strong><small>{modeLabel(assignments?.heroMode)}</small></span>
+              <span><strong>Hero · 3:1</strong><small>{modeLabel(assignments?.heroMode)}</small></span>
               {requirements.hero.cropReady ? <CheckCircle2 size={15} /> : <TriangleAlert size={15} />}
             </div>
             <div data-ready={requirements.card.cropReady}>
               {statusPreview([
-                { kind: "image", src: assignments?.cardMode !== "video" ? assignments?.cardImage : null },
+                { kind: "image", src: assignments?.cardImage },
                 { kind: "video", src: assignments?.cardMode !== "image" ? cardClip : null },
               ])}
               <span><strong>Card · 3:2</strong><small>{modeLabel(assignments?.cardMode)}</small></span>
@@ -552,9 +551,9 @@ export default function GameMultimediaUtilityRail({
           onClose={() => setHelpOpen(false)}
         >
           <div className={shellStyles.helpRules}>
-            <div><MonitorPlay size={18} aria-hidden="true" /><p><strong>Portada · 4:5</strong><span>Imagen, Video o Imagen + hover. Cada capa activa confirma selección y encuadre.</span></p></div>
-            <div><MonitorPlay size={18} aria-hidden="true" /><p><strong>Hero · 16:9</strong><span>Imagen, Video o Imagen + hover. Hover exige ambos recursos y sus recortes.</span></p></div>
-            <div><Clapperboard size={18} aria-hidden="true" /><p><strong>Card · 3:2</strong><span>Su imagen y video pueden ser independientes y se validan por separado.</span></p></div>
+            <div><ImageIcon size={18} aria-hidden="true" /><p><strong>Portada · 4:5</strong><span>Sólo imagen. Selecciona un recurso y confirma su único recorte 4:5.</span></p></div>
+            <div><MonitorPlay size={18} aria-hidden="true" /><p><strong>Hero · 3:1</strong><span>Imagen, Video o Imagen + hover. Hover exige ambos recursos y sus recortes.</span></p></div>
+            <div><Clapperboard size={18} aria-hidden="true" /><p><strong>Card · 3:2</strong><span>La imagen base 3:2 es obligatoria en todos los modos. Video e Imagen + hover agregan un WebM con recorte 3:2 propio.</span></p></div>
             <div><Sparkles size={18} aria-hidden="true" /><p><strong>Fondo · adaptable</strong><span>Es opcional. Puede usar Imagen, Video o Imagen + hover, o volver al fondo global.</span></p></div>
             <div><MonitorPlay size={18} aria-hidden="true" /><p><strong>Contenedor · adaptable</strong><span>Es obligatorio e independiente del Hero; adapta foco y zoom al tamaño real de la ficha.</span></p></div>
             <div><Images size={18} aria-hidden="true" /><p><strong>Galería · mínimo 1 recurso</strong><span>Admite hasta 8 imágenes y videos combinados. Cada elemento confirma su propio recorte y conserva su orden editorial.</span></p></div>

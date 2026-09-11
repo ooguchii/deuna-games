@@ -23,6 +23,9 @@ const files = {
     "src/app/admin/(protected)/actualizaciones/[id]/page.tsx",
   publicUpdates: "src/lib/updates/public-updates.ts",
   publicGame: "src/app/juegos/[slug]/page.tsx",
+  sourceUpdates: "src/data/update-records.ts",
+  demoRetirement:
+    "database/migrations/014_retire_demo_game_updates.sql",
 };
 
 const entries = Object.fromEntries(
@@ -120,6 +123,33 @@ expect(
   "La página pública de Actualizaciones y el historial del juego deben conservarse."
 );
 
+const retiredDemoIds = [
+  "elden-ring-v1-10-1",
+  "palworld-v0-3-2",
+  "stellar-blade-v1-3-1",
+  "enshrouded-v0-8-5",
+  "helldivers-2-v1-000-302",
+  "talos-principle-2-v1-2-0",
+  "god-of-war-ragnarok-v1-5-3",
+];
+
+expect(
+  /export const gameUpdates: GameUpdate\[\] = \[\s*\];/.test(
+    entries.sourceUpdates
+  ),
+  "El fixture bundled no debe volver a publicar actualizaciones de demostración como si fueran datos reales."
+);
+expect(
+  retiredDemoIds.every((id) =>
+    entries.demoRetirement.includes(`'${id}'`)
+  ) &&
+    entries.demoRetirement.includes("public_visible = false") &&
+    entries.demoRetirement.includes("published_checksum = source_checksum") &&
+    entries.demoRetirement.includes("published_payload = source_payload") &&
+    !/\bDELETE\s+FROM\b/i.test(entries.demoRetirement),
+  "La migración debe retirar las siete publicaciones demo sólo cuando siguen idénticas a su fuente original, sin borrar historial ni tocar versiones editoriales modificadas."
+);
+
 if (failures.length > 0) {
   console.error("Actualizaciones integradas: REGRESIÓN\n");
   for (const failure of failures) {
@@ -129,5 +159,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  "Actualizaciones integradas: OK (URL estable, nueva versión + descargas + canal/SHA + aviso atómicos, mantenimiento de mirrors separado, duplicados bloqueados, historial público preservado y navegación administrativa simplificada)."
+  "Actualizaciones integradas: OK (publicación atómica real, fixtures demo retirados sin borrar historial, mantenimiento de mirrors separado y navegación administrativa coherente)."
 );

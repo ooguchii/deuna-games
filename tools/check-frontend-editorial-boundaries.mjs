@@ -39,6 +39,10 @@ const [
   publicHomeReader,
   homeComponents,
   gamesPage,
+  gameCatalogClient,
+  catalogCapabilities,
+  popularGamesRoute,
+  recentGamesRoute,
   updatesPage,
   requirementsPage,
   publicPagesConfig,
@@ -57,6 +61,10 @@ const [
   source("src/lib/home/public-home-config.ts"),
   joinSources("src/components/home"),
   source("src/app/juegos/page.tsx"),
+  source("src/components/games/GameCatalogClient.tsx"),
+  source("src/lib/games/catalog-capabilities.ts"),
+  source("src/app/juegos/populares/page.tsx"),
+  source("src/app/juegos/nuevos/page.tsx"),
   source("src/app/actualizaciones/page.tsx"),
   source("src/app/requisitos/page.tsx"),
   source("src/data/public-pages-config.ts"),
@@ -85,8 +93,8 @@ assert(
 for (const phrase of [
   "COMPATIBILIDAD DE JUEGOS",
   "Ver todas las actualizaciones",
-  "RECOMENDADOS PARA EQUIPOS",
-  "Una selección de juegos que creemos que vale la pena conocer.",
+  "JUEGOS CON REQUISITOS",
+  "Una selección editorial para explorar el catálogo sin presentar métricas que no estén respaldadas.",
   "Versiones identificadas",
 ]) {
   assert(
@@ -94,6 +102,58 @@ for (const phrase of [
     `El copy editorial de Inicio debe vivir en home-config y no quedar fijo en componentes: ${phrase}`
   );
 }
+
+assert(
+  catalogCapabilities.includes("export function getCatalogCapabilities") &&
+    catalogCapabilities.includes("reviewScore(game.reviews) > 0") &&
+    catalogCapabilities.includes("parseGameDate(game.releaseDate) !== 0") &&
+    catalogCapabilities.includes("Number.isFinite(game.rating)") &&
+    catalogCapabilities.includes("game.version?.trim()") &&
+    catalogCapabilities.includes("export function resolveSupportedCatalogSort") &&
+    catalogCapabilities.includes("export function resolveSupportedCatalogStatus") &&
+    gameCatalogClient.includes("getCatalogCapabilities") &&
+    gameCatalogClient.includes("resolveSupportedCatalogSort") &&
+    gameCatalogClient.includes("resolveSupportedCatalogStatus") &&
+    !gameCatalogClient.includes("function supportedSort(") &&
+    !gameCatalogClient.includes("const hasRatings = games.some(") &&
+    homePage.includes("getCatalogCapabilities") &&
+    homePage.includes("ratings: ratingsAvailable") &&
+    homePage.includes("ratingsAvailable={ratingsAvailable}") &&
+    homeComponents.includes('href: "/juegos?orden=rating"') &&
+    homeComponents.includes("requiresRatings: true") &&
+    homeComponents.includes("option.requiresRatings && !ratingsAvailable") &&
+    homeComponents.includes("hardwareCardUnavailable"),
+  "Home y catálogo deben compartir una única detección de capacidades públicas y no habilitar ratings, popularidad, fechas o versiones sin datos utilizables."
+);
+
+assert(
+  footer.includes("getPublicSiteConfig") &&
+    footer.includes("getPublicGames") &&
+    footer.includes("getCatalogCapabilities") &&
+    footer.includes("capabilities.reviews &&") &&
+    footer.includes("capabilities.releaseDates &&") &&
+    footer.includes("capabilities.ratings &&") &&
+    footer.includes("Lanzamientos recientes") &&
+    !footer.includes("Añadidos recientemente") &&
+    footer.includes("config.description") &&
+    footer.includes("config.footerTagline") &&
+    !footer.includes("Hecho para encontrar tu próximo juego."),
+  "El Footer debe reutilizar identidad publicada y exponer sólo accesos respaldados por capacidades reales del catálogo."
+);
+
+assert(
+  popularGamesRoute.includes("getPublicGames") &&
+    popularGamesRoute.includes("getCatalogCapabilities") &&
+    popularGamesRoute.includes("capabilities.reviews") &&
+    popularGamesRoute.includes('"/juegos?orden=popular"') &&
+    popularGamesRoute.includes(': "/juegos"') &&
+    recentGamesRoute.includes("getPublicGames") &&
+    recentGamesRoute.includes("getCatalogCapabilities") &&
+    recentGamesRoute.includes("capabilities.releaseDates") &&
+    recentGamesRoute.includes('"/juegos?estado=recent&orden=recientes"') &&
+    recentGamesRoute.includes(': "/juegos"'),
+  "Los redirects de Populares y Lanzamientos recientes deben degradar al catálogo general cuando la capacidad publicada no existe."
+);
 
 assert(
   rootLayout.includes("getPublicHomeConfig") &&
@@ -109,10 +169,10 @@ assert(
     manifest.includes("name: config.name") &&
     manifest.includes("short_name: config.shortName") &&
     manifest.includes("description: config.description") &&
-    manifest.includes("const themeColor = safeThemeBackground(config.themeColor)") &&
+    manifest.includes("safeThemeBackground(config.themeColor)") &&
     manifest.includes("background_color: themeColor") &&
     manifest.includes("theme_color: themeColor"),
-  "El manifest debe reutilizar la identidad pública publicada y aplicar el mismo fondo seguro de la web, sin duplicar marca, descripción ni color PWA."
+  "El manifest debe reutilizar la identidad pública publicada y normalizar el color PWA con el mismo contrato seguro de la web."
 );
 
 for (const [name, image] of [
@@ -188,20 +248,12 @@ for (const phrase of [
   );
 }
 
-assert(
-  footer.includes("getPublicSiteConfig") &&
-    footer.includes("config.description") &&
-    footer.includes("config.footerTagline") &&
-    !footer.includes("Hecho para encontrar tu próximo juego."),
-  "El Footer debe reutilizar identidad y lema publicados en vez de mantener copy de marca fijo."
-);
-
 if (failures.length > 0) {
   console.error("\nFronteras editoriales del frontend: REGRESIÓN\n");
   failures.forEach((failure) => console.error(`- ${failure}`));
   process.exitCode = 1;
 } else {
   console.log(
-    "Fronteras editoriales del frontend: OK (contenido administrable centralizado; metadata, social y sitemap coherentes con snapshots públicos; UI técnica permanece en código)."
+    "Fronteras editoriales del frontend: OK (contenido administrable centralizado; capacidades públicas coherentes; metadata, social y sitemap alineados con snapshots publicados; UI técnica permanece en código)."
   );
 }
