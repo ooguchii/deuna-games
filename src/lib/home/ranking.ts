@@ -152,6 +152,10 @@ function ageSignal(
   const referenceDay = homeRankingDay(now);
   const eventDay = homeRankingDay(timestamp);
 
+  /*
+   * Una fecha futura no debe otorgar actualidad máxima por un error de carga.
+   * Los eventos del día actual sí reciben la señal completa.
+   */
   if (eventDay > referenceDay) return 0;
 
   const ageDays =
@@ -164,6 +168,10 @@ function popularitySignal(game: Game) {
   const reviews = reviewScore(game.reviews);
   if (reviews <= 0) return 0;
 
+  /*
+   * Escala logarítmica: evita que un título gigantesco aplaste por completo
+   * al resto del catálogo. 1 M de reseñas alcanza el techo de esta señal.
+   */
   return clamp01(
     Math.log10(reviews + 1) / 6
   );
