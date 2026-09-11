@@ -20,14 +20,14 @@
 
 .heading > span {
   color: var(--brand);
-  font-size: 9px;
+  font-size: var(--font-micro);
   font-weight: 850;
   letter-spacing: 0.12em;
 }
 
 .heading small {
   color: var(--text-soft);
-  font-size: 10px;
+  font-size: var(--font-micro);
 }
 
 .ratingRow {
@@ -44,14 +44,14 @@
 
 .ratingRow > span {
   color: var(--text-soft);
-  font-size: 10px;
+  font-size: var(--font-micro);
   font-weight: 800;
 }
 
 .ratingRow > small {
   margin-left: auto;
   color: var(--text-soft);
-  font-size: 10px;
+  font-size: var(--font-micro);
   font-weight: 750;
 }
 
@@ -124,7 +124,7 @@
   gap: 7px;
   padding: 0 5px 0 10px;
   color: var(--text-soft);
-  font-size: 10px;
+  font-size: var(--font-micro);
   font-weight: 750;
 }
 
