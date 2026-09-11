@@ -73,7 +73,10 @@
   pointer-events: none;
 }
 
-/* Card mantiene el contrato editorial 3:2; el orden se resuelve en contenido. */
+/*
+ * Contrato compartido Admin/público: shell 4:5 y multimedia Card 3:2.
+ * La densidad variable se resuelve en el contenido, sin deformar el recurso.
+ */
 .detailMedia {
   position: relative;
   flex: 0 0 auto;
