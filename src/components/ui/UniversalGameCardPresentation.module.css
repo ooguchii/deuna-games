@@ -73,34 +73,14 @@
   pointer-events: none;
 }
 
-/*
- * La cara de detalle vive siempre dentro de la misma geometría 4:5 de la card.
- * El contenido cambia por variante, por lo que una relación fija 3:2 para la
- * imagen dejaba demasiado poco alto para fecha/requisitos y terminaba
- * recortando o amontonando información al hacer hover.
- */
+/* Card mantiene el contrato editorial 3:2; el orden se resuelve en contenido. */
 .detailMedia {
   position: relative;
-  flex: 0 0 50%;
+  flex: 0 0 auto;
   width: 100%;
-  height: 50% !important;
-  aspect-ratio: auto;
+  height: auto !important;
+  aspect-ratio: 3 / 2;
   min-height: 0 !important;
-}
-
-.shell[data-card-variant="recent"] .detailMedia {
-  flex-basis: 40%;
-  height: 40% !important;
-}
-
-.shell[data-card-variant="lowSpec"] .detailMedia {
-  flex-basis: 30%;
-  height: 30% !important;
-}
-
-.shell[data-card-variant="catalog"] .detailMedia {
-  flex-basis: 44%;
-  height: 44% !important;
 }
 
 .detailContent {
@@ -109,7 +89,7 @@
   overflow: hidden;
 }
 
-/* Evita que títulos editoriales largos desplacen el resto del detalle. */
+/* Los títulos editoriales variables no desplazan metadata ni acciones. */
 .shell h3 {
   min-width: 0;
   overflow: hidden;
@@ -118,8 +98,63 @@
   -webkit-line-clamp: 2;
 }
 
-.shell[data-card-variant="lowSpec"] h3 {
+/*
+ * Low-spec es la variante con mayor densidad. Mantiene los tres requisitos,
+ * pero los organiza en una única fila compacta para que nunca se apilen fuera
+ * de la cara 4:5 al revelar el detalle.
+ */
+.shell[data-card-variant="lowSpec"] .detailContent {
+  padding: 9px 11px 11px;
+}
+
+.shell[data-card-variant="lowSpec"] .detailContent > div:first-child h3 {
+  min-height: 0;
+  font-size: var(--font-sm);
+  line-height: 1.25;
   -webkit-line-clamp: 1;
+}
+
+.shell[data-card-variant="lowSpec"] .detailContent > span {
+  min-height: 20px;
+  margin-top: 4px;
+  padding-inline: 6px;
+  font-size: 9px;
+}
+
+.shell[data-card-variant="lowSpec"] .detailContent > div:nth-of-type(2) {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+  margin-top: 7px;
+}
+
+.shell[data-card-variant="lowSpec"] .detailContent > div:nth-of-type(2) > div {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 4px;
+}
+
+.shell[data-card-variant="lowSpec"] .detailContent > div:nth-of-type(2) p {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 9px;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shell[data-card-variant="lowSpec"] .detailContent > div:nth-of-type(2) p strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shell[data-card-variant="lowSpec"] .detailContent > div:nth-of-type(3) {
+  margin-top: 7px;
+  padding-top: 0;
 }
 
 .shell[data-detail-visible="true"] .coverFace {
@@ -135,28 +170,6 @@
   pointer-events: auto;
 }
 
-@media (max-width: 560px) {
-  .detailMedia {
-    flex-basis: 52%;
-    height: 52% !important;
-  }
-
-  .shell[data-card-variant="recent"] .detailMedia {
-    flex-basis: 42%;
-    height: 42% !important;
-  }
-
-  .shell[data-card-variant="lowSpec"] .detailMedia {
-    flex-basis: 32%;
-    height: 32% !important;
-  }
-
-  .shell[data-card-variant="catalog"] .detailMedia {
-    flex-basis: 46%;
-    height: 46% !important;
-  }
-}
-
 @media (hover: none), (pointer: coarse) {
   .coverFace {
     opacity: 0;
@@ -168,6 +181,21 @@
     opacity: 1;
     transform: none;
     pointer-events: auto;
+  }
+}
+
+@media (max-width: 560px) {
+  .shell[data-card-variant="lowSpec"] .detailContent {
+    padding: 11px 12px 12px;
+  }
+
+  .shell[data-card-variant="lowSpec"] .detailContent > div:first-child h3 {
+    font-size: var(--font-base);
+    -webkit-line-clamp: 2;
+  }
+
+  .shell[data-card-variant="lowSpec"] .detailContent > div:nth-of-type(2) p {
+    font-size: var(--font-micro);
   }
 }
 
