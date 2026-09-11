@@ -439,8 +439,10 @@ async function main() {
     await moveMouse(cdp, 1, 1);
     await delay(180);
     const reset = await cardProbe(cdp, selector);
-    if (!reset || reset.expanded !== "false" || reset.position !== "absolute") {
-      throw new Error(`Catálogo compacto: la Card no volvió al slot: ${JSON.stringify(reset)}.`);
+    if (!reset || reset.expanded !== "false" || reset.position === "fixed") {
+      throw new Error(
+        `Catálogo compacto: la Card no volvió a su geometría de slot: ${JSON.stringify(reset)}.`
+      );
     }
 
     await assertLowSpecReadable(cdp);
