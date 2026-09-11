@@ -86,6 +86,9 @@ export default async function Home() {
       : undefined
   );
   const copy = homeConfig.copy;
+  const ratingsAvailable = games.some(
+    (game) => game.rating !== undefined
+  );
   const websiteJsonLd = {
     "@context": "https://schema.org",
     "@type": "WebSite",
@@ -167,6 +170,7 @@ export default async function Home() {
             key={section.id}
             games={collections.lowSpecGames}
             copy={copy.lowSpec}
+            ratingsAvailable={ratingsAvailable}
             personalized={collections.pcPersonalized}
             reasons={collections.pcReasons}
           />
