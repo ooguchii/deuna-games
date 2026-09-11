@@ -143,12 +143,9 @@ function buildGameTaxonomy(
 }
 
 function buildSourceItems(): SourceItem[] {
-  if (
-    games.length === 0 ||
-    gameUpdates.length === 0
-  ) {
+  if (games.length === 0) {
     throw new Error(
-      "La fuente editorial no puede importarse vacía."
+      "La fuente editorial debe conservar al menos un juego."
     );
   }
 

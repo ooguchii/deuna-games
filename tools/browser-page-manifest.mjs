@@ -1,5 +1,6 @@
 export const representativeGameSlug = "elden-ring";
 export const representativeUpdateId = "elden-ring-v1-10-1";
+const representativeGameTitle = "ELDEN RING";
 
 export const browserViewports = [
   { id: "desktop", width: 1440, height: 1000, mobile: false },
@@ -56,7 +57,7 @@ export const publicVisualPages = [
   {
     id: "public-game-detail",
     pathname: `/juegos/${representativeGameSlug}`,
-    expectedText: "Elden Ring",
+    expectedText: representativeGameTitle,
   },
   {
     id: "public-not-found",
@@ -129,7 +130,7 @@ export const adminVisualPages = [
   ...gameEditorSections.map(([section, id]) => ({
     id: `admin-${id}`,
     pathname: `/admin/juegos/${representativeGameSlug}?seccion=${section}`,
-    expectedText: "Elden Ring",
+    expectedText: representativeGameTitle,
   })),
   {
     id: "admin-game-preview",
@@ -139,7 +140,7 @@ export const adminVisualPages = [
   {
     id: "admin-game-publication",
     pathname: `/admin/juegos/${representativeGameSlug}/publicacion`,
-    expectedText: "Elden Ring",
+    expectedText: representativeGameTitle,
   },
   {
     id: "admin-game-update",
@@ -196,7 +197,7 @@ export const redirectChecks = [
     pathname: "/juegos/populares",
     authenticated: false,
     finalPathname: "/juegos",
-    finalSearch: { orden: "popular" },
+    finalSearch: {},
   },
   {
     id: "public-low-spec-games-alias",

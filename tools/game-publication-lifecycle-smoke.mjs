@@ -508,7 +508,40 @@ for (const target of ["card-image", "detail-image"]) {
   revision = media.revision;
 }
 
-for (const target of ["cover", "hero", "card", "detail"]) {
+const revisionBeforeRejectedCoverMode = revision;
+const rejectedCoverMode = await postAdminForm(
+  `/api/admin/content/games/${encodeURIComponent(slug)}/media-library`,
+  `${editorPath}?seccion=multimedia`,
+  cookie,
+  {
+    expectedRevision: String(revision),
+    target: "cover-mode",
+    resource: "image",
+  },
+  "El target legacy de modo de Portada"
+);
+assertRedirectState(
+  rejectedCoverMode,
+  "solicitud",
+  "Rechazo de cover-mode"
+);
+media = await mediaSnapshot(slug, cookie);
+if (media.revision !== revisionBeforeRejectedCoverMode) {
+  throw new Error(
+    `Rechazar cover-mode avanzó la revisión (${revisionBeforeRejectedCoverMode} -> ${media.revision}).`
+  );
+}
+if (
+  media.assignments &&
+  ("coverMode" in media.assignments || "coverVideo" in media.assignments)
+) {
+  throw new Error(
+    "La Biblioteca multimedia volvió a exponer modo o video activo para Portada."
+  );
+}
+revision = media.revision;
+
+for (const target of ["hero", "card", "detail"]) {
   const mode = await postAdminForm(
     `/api/admin/content/games/${encodeURIComponent(slug)}/media-library`,
     `${editorPath}?seccion=multimedia`,
@@ -570,6 +603,18 @@ await confirmCrop("gallery", "16:9", sourceImage);
 
 media = await mediaSnapshot(slug, cookie);
 revision = media.revision;
+if (
+  media.assignments?.coverImage !== sourceImage ||
+  media.requirements?.cover?.mode !== "image" ||
+  media.requirements?.cover?.cropReady !== true
+) {
+  throw new Error(
+    `Portada no quedó como imagen 4:5 confirmada: ${JSON.stringify({
+      coverImage: media.assignments?.coverImage,
+      cover: media.requirements?.cover,
+    })}.`
+  );
+}
 if (media.requirements?.ready !== true) {
   throw new Error(
     `El juego sintético no quedó listo en Multimedia: ${JSON.stringify(media.requirements)}.`
@@ -932,5 +977,5 @@ if (visibleText(updatesAfterHide.body).includes(updateSummary)) {
 }
 
 console.log(
-  `Game publication lifecycle smoke: OK (revisión ${createdRevision} -> ${revisionB} -> ${revisionAfterUpdate}; publicación ${publicationA} -> ${publicationB} -> ${publicationRestoredA} -> ${publicationResyncedB} -> ${publicationAfterUpdate}; preview, separación draft/público, restauración, update integrada y ocultamiento verificados).`
+  `Game publication lifecycle smoke: OK (revisión ${createdRevision} -> ${revisionB} -> ${revisionAfterUpdate}; publicación ${publicationA} -> ${publicationB} -> ${publicationRestoredA} -> ${publicationResyncedB} -> ${publicationAfterUpdate}; Portada image-only, preview, separación draft/público, restauración, update integrada y ocultamiento verificados).`
 );

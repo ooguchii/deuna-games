@@ -111,6 +111,12 @@ export function homeRankingDescription(
       `${signalLabels[key]} ${weight}%`
   );
 
+  if (target === "popular") {
+    parts.push(
+      "Automático: sólo juegos con volumen de reseñas registrado"
+    );
+  }
+
   if (target === "lowSpec") {
     parts.push(
       `Automático: RAM mínima conocida de hasta ${HOME_LOW_SPEC_MAX_RAM_GB} GB`
@@ -203,9 +209,9 @@ function completenessSignal(game: Game) {
   const signals = [
     Boolean(game.coverImage),
     Boolean(game.heroImage),
-    Boolean(game.version),
     hasRequirements(game),
     game.description.trim().length >= 120,
+    Boolean(game.developer?.trim() || game.publisher?.trim()),
   ];
   const present = signals.filter(Boolean).length;
   return present / signals.length;
@@ -255,6 +261,10 @@ export function isHomeRankingEligible(
 ) {
   if (target === "hero") {
     return Boolean(game.heroImage || game.coverImage);
+  }
+
+  if (target === "popular") {
+    return reviewScore(game.reviews) > 0;
   }
 
   if (target !== "lowSpec") return true;

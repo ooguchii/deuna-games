@@ -12,6 +12,10 @@ import {
 } from "@/lib/admin/content-service";
 import { hasExactAdminFormFields } from "@/lib/admin/request-security";
 import {
+  resolveGameCardBaseImage,
+  resolveGameCoverImage,
+} from "@/lib/media/game-card-presentation";
+import {
   REQUIRED_DESTINATION_ASPECTS,
 } from "@/lib/media/game-media-requirements";
 import {
@@ -60,24 +64,29 @@ function isFixedImageTarget(
   return fixedImageTargets.includes(target as (typeof fixedImageTargets)[number]);
 }
 
-function hasImageForTarget(
+function imageForTarget(
   game: Game,
   target: Exclude<z.infer<typeof targetSchema>, "gallery">
 ) {
+  if (target === "cover") return resolveGameCoverImage(game);
+  if (target === "card") return resolveGameCardBaseImage(game);
+
   if (resolveGameDestinationMediaMode(game, target) === "video") {
-    return false;
+    return undefined;
   }
 
-  if (target === "cover") return Boolean(game.coverImage);
-  if (target === "hero") return Boolean(game.heroImage);
-  if (target === "card") return Boolean(game.cardImage);
-  if (target === "detail") return Boolean(game.detailImage);
-  return false;
+  if (target === "hero") return game.heroImage;
+  if (target === "detail") return game.detailImage;
+  return undefined;
 }
 
-function confirmedViewport(viewport: GameImageViewport): GameImageViewport {
+function confirmedViewport(
+  viewport: GameImageViewport,
+  source: string
+): GameImageViewport {
   return {
     ...viewport,
+    source,
     confirmed: true,
   };
 }
@@ -170,6 +179,7 @@ export async function POST(
     );
   }
 
+  let source: string;
   if (target.data === "gallery") {
     if (!resource || !(item.payload.screenshots ?? []).includes(resource)) {
       return adminRedirect(
@@ -177,14 +187,19 @@ export async function POST(
         redirectPath(slug, "recurso-invalido")
       );
     }
-  } else if (!hasImageForTarget(item.payload, target.data)) {
-    return adminRedirect(
-      authorized.adminOrigin,
-      redirectPath(slug, "recurso-invalido")
-    );
+    source = resource;
+  } else {
+    const targetImage = imageForTarget(item.payload, target.data);
+    if (!targetImage) {
+      return adminRedirect(
+        authorized.adminOrigin,
+        redirectPath(slug, "recurso-invalido")
+      );
+    }
+    source = targetImage;
   }
 
-  const savedViewport = confirmedViewport(viewport);
+  const savedViewport = confirmedViewport(viewport, source);
   const imageMedia: GameImageMedia = target.data === "gallery"
     ? {
         ...item.payload.imageMedia,

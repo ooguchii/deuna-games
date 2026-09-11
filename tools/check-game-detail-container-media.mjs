@@ -20,7 +20,9 @@ const [
   libraryRoute,
   imageLayoutRoute,
   videoLayoutRoute,
-  workspace,
+  assignmentsWorkspace,
+  utilityRail,
+  galleryManager,
   detailEditor,
   imageEditor,
   videoEditor,
@@ -37,7 +39,9 @@ const [
   source("src/app/api/admin/content/games/[slug]/media-library/route.ts"),
   source("src/app/api/admin/content/games/[slug]/image-layout/route.ts"),
   source("src/app/api/admin/content/games/[slug]/preview-layout/route.ts"),
-  source("src/components/admin/GameMultimediaWorkspaceContextual.tsx"),
+  source("src/components/admin/GameMediaAssignmentsWorkspace.tsx"),
+  source("src/components/admin/GameMultimediaUtilityRail.tsx"),
+  source("src/components/admin/GameGalleryMediaManager.tsx"),
   source("src/components/admin/GameDetailMediaEditor.tsx"),
   source("src/components/admin/ImageViewportEditor.tsx"),
   source("src/components/admin/GameVideoViewportEditor.tsx"),
@@ -64,7 +68,8 @@ assert(
     "detail: fixedImageViewportSchema.optional()",
     "detail: mediaModeSchema.optional()",
     "detail: destinationVideoSchema.optional()",
-    "const resolvedDetailImage = detailImage ?? game.heroImage ?? game.coverImage",
+    "const resolvedCoverImage = resolvedCoverArtworkSource === \"card\"",
+    "const resolvedDetailImage = detailImage ?? game.heroImage ?? resolvedCoverImage",
     "const legacyDetailMigration = detailImage === undefined && Boolean(resolvedDetailImage)",
     "inheritedDetailViewport",
     "detail: {",
@@ -73,7 +78,7 @@ assert(
   ) &&
     !validation.includes("storeEditorialWebp") &&
     !validation.includes("storeEditorialPreviewVideo"),
-  "La compatibilidad histórica debe capturar Hero/Portada por referencia y metadata, sin copiar ni recodificar bytes."
+  "La compatibilidad histórica debe capturar Hero/Portada normalizada por referencia y metadata, sin copiar ni recodificar bytes."
 );
 
 assert(
@@ -92,7 +97,8 @@ assert(
 assert(
   has(
     videoMedia,
-    'GameVideoTarget = "cover" | "hero" | "card" | "detail"',
+    'GameVideoTarget = "hero" | "card" | "detail"',
+    'GameMediaDestinationTarget = "cover" | GameVideoTarget',
     'detail: "image"',
     'return game.detailImage ?? game.heroImage ?? game.coverImage',
     "resolveGameDetailVideo",
@@ -100,7 +106,7 @@ assert(
     "detail: {",
     "detail: undefined"
   ),
-  "Los helpers compartidos de video deben tratar Contenedor como destino independiente con default Imagen."
+  "Los helpers compartidos deben mantener Contenedor como destino de video independiente con default Imagen, mientras Portada queda fuera de GameVideoTarget."
 );
 
 assert(
@@ -151,9 +157,10 @@ assert(
 assert(
   has(
     imageLayoutRoute,
-    '"detail"',
     'target === "detail"',
-    "Boolean(game.detailImage)",
+    "return game.detailImage",
+    "const savedViewport = confirmedViewport(viewport, source)",
+    "[target.data]: savedViewport",
     "saveGameMediaDraft"
   ) &&
     has(
@@ -161,26 +168,36 @@ assert(
       'target === "detail"',
       "GAME_DETAIL_VIEWPORT_ASPECT",
       'source !== "independent"',
-      "withGameVideoLayout"
+      "withGameVideoLayout",
+      "saveGameMediaDraft"
     ),
-  "Imagen y video de Contenedor deben persistir X/Y/zoom mediante los endpoints compartidos."
+  "Imagen y video de Contenedor deben persistir X/Y/zoom ligados al master seleccionado mediante los endpoints compartidos."
 );
 
 assert(
   has(
-    workspace,
+    assignmentsWorkspace,
     'import GameDetailMediaEditor from "@/components/admin/GameDetailMediaEditor"',
-    "detailImage: string | null",
-    "detailMode: GameDestinationMediaMode",
-    "detailVideo: GameDetailVideo | null",
-    "const detailCropReady = cropReady(",
-    "coverCropReady && heroCropReady && cardCropReady && detailCropReady && galleryReady",
-    'labels.push(detailMode === "hover-video" ? "Contenedor base" : "Contenedor")',
-    'labels.push(detailMode === "hover-video" ? "Contenedor hover" : "Contenedor")',
-    "<GameDetailMediaEditor",
-    "<span>F</span><h3>Galería del juego</h3>"
-  ),
-  "Workspace debe incluir Contenedor en resumen/gate/Biblioteca y conservar Galería como destino F."
+    "assignments.detailMode",
+    "assignments.detailImage",
+    "assignments.imageMedia?.detail",
+    "assignments.detailVideo",
+    "<GameDetailMediaEditor"
+  ) &&
+    has(
+      utilityRail,
+      "requirements.detail.cropReady",
+      "assignments?.detailMode",
+      "assignments?.detailImage",
+      "assignments?.detailVideo?.clip",
+      "<strong>Contenedor</strong>"
+    ) &&
+    has(
+      galleryManager,
+      "if (!requirements.detail.cropReady)",
+      'missing.push("Contenedor adaptable")'
+    ),
+  "Asignaciones debe integrar Contenedor y tanto el resumen como el gate de continuidad deben usar su estado real."
 );
 
 assert(
@@ -211,12 +228,12 @@ assert(
   ) &&
     has(
       videoEditor,
-      'type Target = "cover" | "hero" | "card" | "detail"',
+      'type Target = "hero" | "card" | "detail"',
       "GAME_DETAIL_VIEWPORT_ASPECT",
       'target === "detail"',
       '"Confirmar recorte adaptable"'
     ),
-  "Los adaptadores comunes deben aceptar detail=source sin habilitar recorte Libre fuera de Galería."
+  "Los adaptadores comunes deben aceptar detail=source sin habilitar video de Portada ni recorte Libre fuera de Galería."
 );
 
 assert(

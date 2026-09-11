@@ -403,8 +403,7 @@
 .compactCover,
 .alertCover,
 .libraryCover,
-.alertLargeCover,
-.recommendationMedia {
+.alertLargeCover {
   position: relative;
   overflow: hidden;
   background: #111927;
@@ -627,28 +626,6 @@
   grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
-.recommendationCard {
-  min-width: 0;
-  overflow: hidden;
-  border: 1px solid #273247;
-  border-radius: 10px;
-  background: #0b121d;
-  color: inherit;
-  text-decoration: none;
-  transition: transform 160ms ease, border-color 160ms ease;
-}
-
-.recommendationCard:hover,
-.recommendationCard:focus-visible {
-  border-color: color-mix(in srgb, var(--brand) 52%, #536173);
-  outline: none;
-  transform: translateY(-2px);
-}
-
-.recommendationMedia {
-  height: 116px;
-}
-
 .recommendationHeart {
   position: absolute;
   top: 9px;
@@ -662,27 +639,6 @@
   background: rgba(4, 7, 12, 0.6);
   color: #ffffff;
   backdrop-filter: blur(8px);
-}
-
-.recommendationBody {
-  display: grid;
-  gap: 5px;
-  padding: 12px;
-}
-
-.recommendationBody strong {
-  overflow: hidden;
-  color: #ffffff;
-  font-size: 14px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.recommendationBody > span,
-.recommendationBody small {
-  color: #8d98aa;
-  font-size: 12px;
-  line-height: 1.4;
 }
 
 .recommendationMeta {
@@ -1429,7 +1385,6 @@
 @media (prefers-reduced-motion: reduce) {
   .backHome,
   .sidebarNav button,
-  .recommendationCard,
   .field input,
   .field textarea {
     transition: none;

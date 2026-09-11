@@ -621,17 +621,19 @@ async function checkApplicationState(pool: Pool) {
   const counts = new Map(
     content.rows.map((row) => [row.item_type, row.count])
   );
+  const importedCount = (itemType: string) =>
+    counts.get(itemType) ?? 0;
 
   assert(
-    counts.get("game") === games.length,
+    importedCount("game") === games.length,
     `La base debe contener ${games.length} juegos activos importados.`
   );
   assert(
-    counts.get("game_update") === gameUpdates.length,
+    importedCount("game_update") === gameUpdates.length,
     `La base debe contener ${gameUpdates.length} actualizaciones activas importadas.`
   );
   assert(
-    counts.get("site_config") === 1,
+    importedCount("site_config") === 1,
     "La base debe contener una configuración pública importada."
   );
 }

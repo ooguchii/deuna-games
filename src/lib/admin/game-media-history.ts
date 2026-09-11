@@ -13,8 +13,14 @@ import {
   listGameVideoReferences,
 } from "@/lib/admin/game-media-integrity";
 import {
+  PUBLIC_EXPOSURE_PUBLICATION_SQL,
+} from "@/lib/admin/publication-history";
+import {
   verifyAdminSession,
 } from "@/lib/admin/session";
+import {
+  legacyGameCoverVideoReference,
+} from "@/lib/media/legacy-game-cover-video";
 
 type HistoricalPayloadRow = {
   payload: unknown;
@@ -32,25 +38,18 @@ export async function getHistoricalGameMediaReferences(
          ON item.id = publication.item_id
       WHERE item.item_type = 'game'
         AND item.item_key = $1
-        AND (
-          publication.action IN ('published', 'rollback')
-          OR (
-            publication.action = 'bootstrap'
-            AND NOT EXISTS (
-              SELECT 1
-                FROM deuna_admin.editorial_revisions AS revision
-               WHERE revision.item_id = item.id
-                 AND revision.revision = 1
-                 AND revision.action = 'draft_saved'
-            )
-          )
-        )`,
+        AND ${PUBLIC_EXPOSURE_PUBLICATION_SQL}`,
     [slug]
   );
 
   const references = new Set<string>();
 
   for (const row of result.rows) {
+    // Portada dejó de admitir video. El parser actual elimina esa capa, pero
+    // un WebM que estuvo publicado debe seguir protegido para rollback/cache.
+    const legacyCoverVideo = legacyGameCoverVideoReference(row.payload);
+    if (legacyCoverVideo) references.add(legacyCoverVideo);
+
     let game: Game;
     try {
       game = parseEditorialPayload("game", row.payload);

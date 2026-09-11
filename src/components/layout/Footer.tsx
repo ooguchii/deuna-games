@@ -3,13 +3,23 @@ import Link from "next/link";
 import SiteLogoMark from "@/components/brand/SiteLogoMark";
 
 import {
+  getCatalogCapabilities,
+} from "@/lib/games/catalog-capabilities";
+import {
+  getPublicGames,
+} from "@/lib/games/public-catalog";
+import {
   getPublicSiteConfig,
 } from "@/lib/site/public-site-config";
 
 import styles from "./Footer.module.css";
 
 export default async function Footer() {
-  const config = await getPublicSiteConfig();
+  const [config, games] = await Promise.all([
+    getPublicSiteConfig(),
+    getPublicGames(),
+  ]);
+  const capabilities = getCatalogCapabilities(games);
   const year = new Date().getUTCFullYear();
 
   return (
@@ -33,8 +43,12 @@ export default async function Footer() {
           <h3>Juegos</h3>
 
           <Link href="/juegos">Todos los juegos</Link>
-          <Link href="/juegos/populares">Populares</Link>
-          <Link href="/juegos/nuevos">Añadidos recientemente</Link>
+          {capabilities.reviews && (
+            <Link href="/juegos/populares">Populares</Link>
+          )}
+          {capabilities.releaseDates && (
+            <Link href="/juegos/nuevos">Lanzamientos recientes</Link>
+          )}
           <Link href="/juegos/bajos-recursos">Bajos recursos</Link>
         </div>
 
@@ -44,9 +58,11 @@ export default async function Footer() {
           <Link href="/requisitos">
             Por requisitos
           </Link>
-          <Link href="/juegos?orden=rating">
-            Mejor puntuados
-          </Link>
+          {capabilities.ratings && (
+            <Link href="/juegos?orden=rating">
+              Mejor puntuados
+            </Link>
+          )}
           <Link href="/actualizaciones">Actualizaciones</Link>
         </div>
 

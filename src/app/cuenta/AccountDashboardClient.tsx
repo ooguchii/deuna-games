@@ -40,13 +40,14 @@ import { clearStoredHardwareProfile, storeExplicitHardwareProfile } from "@/feat
 import SiteBrand from "@/components/layout/SiteBrand";
 import GameFavoriteButton from "@/components/ui/GameFavoriteButton";
 import GameMedia from "@/components/ui/GameMedia";
+import UniversalGameCardBase from "@/components/ui/UniversalGameCardBase";
 import {
   accountDashboardDestinations,
   accountDashboardViewHref,
   resolveAccountDashboardView,
   type AccountDashboardView,
 } from "@/lib/accounts/dashboard-view";
-import type { GameImageViewport } from "@/types/game";
+import type { Game, GameImageViewport } from "@/types/game";
 
 import AccountAvatarEditor from "./AccountAvatarEditor";
 import {
@@ -170,12 +171,7 @@ type PerformanceEstimate = {
 };
 
 type Recommendation = {
-  slug: string;
-  title: string;
-  category: string;
-  coverImage?: string;
-  imageViewport?: GameImageViewport;
-  rating?: number;
+  game: Game;
   reasons: string[];
   performanceEstimate: PerformanceEstimate | null;
 };
@@ -320,65 +316,50 @@ function RecommendationCard({
   recommendation: Recommendation;
   onFavoriteChange: () => void;
 }) {
+  const { game } = recommendation;
   const estimate = recommendation.performanceEstimate;
 
   return (
-    <article style={{ position: "relative", minWidth: 0 }}>
-      <Link
-        href={`/juegos/${recommendation.slug}`}
-        className={styles.recommendationCard}
-        style={{ display: "block", height: "100%" }}
-      >
-        <div className={styles.recommendationMedia}>
-          <GameMedia
-            src={recommendation.coverImage}
-            alt=""
-            sizes="(max-width: 720px) 90vw, 280px"
-            viewport={recommendation.imageViewport}
-            fallbackClassName={styles.mediaFallback}
-          />
-        </div>
-        <div className={styles.recommendationBody}>
-          <strong>{recommendation.title}</strong>
-          <span>{recommendation.category}</span>
+    <UniversalGameCardBase
+      game={game}
+      supplementalContent={(
+        <>
           <div className={styles.recommendationMeta}>
-            <span>
-              {recommendation.rating
-                ? `★ ${recommendation.rating.toFixed(1)}/5`
-                : "Selección DeUna"}
-            </span>
+            <span>{game.category}</span>
             {estimate && (
               <b>
                 {estimate.minFps}–{estimate.maxFps} FPS estimados
               </b>
             )}
           </div>
-          <small>
+          <small style={{ color: "var(--text-muted)" }}>
             {estimate
               ? `${performanceTierLabels[estimate.tier]} · confianza ${confidenceLabels[estimate.confidence]}`
               : recommendation.reasons[0] ?? "Recomendado para ti"}
           </small>
-        </div>
-      </Link>
-      <GameFavoriteButton
-        gameSlug={recommendation.slug}
-        gameTitle={recommendation.title}
-        className={styles.recommendationHeart}
-        onFavoriteChange={onFavoriteChange}
-        style={{
-          position: "absolute",
-          top: 5,
-          right: 5,
-          zIndex: 2,
-          width: 44,
-          height: 44,
-          border: 0,
-          borderRadius: "50%",
-          background: "transparent",
-          backdropFilter: "none",
-        }}
-      />
-    </article>
+        </>
+      )}
+      overlayAction={(
+        <GameFavoriteButton
+          gameSlug={game.slug}
+          gameTitle={game.title}
+          className={styles.recommendationHeart}
+          onFavoriteChange={onFavoriteChange}
+          style={{
+            position: "absolute",
+            top: 5,
+            right: 5,
+            zIndex: 2,
+            width: 44,
+            height: 44,
+            border: 0,
+            borderRadius: "50%",
+            background: "transparent",
+            backdropFilter: "none",
+          }}
+        />
+      )}
+    />
   );
 }
 
@@ -876,7 +857,7 @@ export default function AccountDashboardClient({
             {recommendations.length > 0 ? (
               recommendations.slice(0, 5).map((recommendation) => (
                 <RecommendationCard
-                  key={recommendation.slug}
+                  key={recommendation.game.slug}
                   recommendation={recommendation}
                   onFavoriteChange={() => router.refresh()}
                 />
@@ -1167,7 +1148,7 @@ export default function AccountDashboardClient({
         <div className={styles.discoveryGrid}>
           {recommendations.map((recommendation) => (
             <RecommendationCard
-              key={recommendation.slug}
+              key={recommendation.game.slug}
               recommendation={recommendation}
               onFavoriteChange={() => router.refresh()}
             />

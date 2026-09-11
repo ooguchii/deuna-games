@@ -149,6 +149,8 @@ export type GameDirectPreview = {
   endSeconds: number;
 };
 
+export type GameCoverArtworkSource = "card" | "custom";
+
 export type GameImageViewportAspect =
   | "16:9"
   | "3:1"
@@ -172,6 +174,12 @@ export type GameImageViewport = {
   aspect?: GameImageViewportAspect;
   /* Relación ancho/alto exacta cuando aspect="free". */
   aspectRatio?: number;
+  /*
+   * Recurso que estaba activo cuando se confirmó el recorte. Es opcional para
+   * poder leer snapshots históricos, pero los guardados nuevos lo escriben
+   * desde el servidor y permiten detectar crops obsoletos tras reemplazar media.
+   */
+  source?: string;
   /* Sólo true significa que el editor confirmó explícitamente este recorte. */
   confirmed?: true;
 };
@@ -246,8 +254,7 @@ export type GameDestinationMediaMode =
   | "hover-video";
 
 export type GameMediaModes = {
-  /* Defaults editoriales: Portada=video, Hero/Card=hover-video, Contenedor=imagen. */
-  cover?: GameDestinationMediaMode;
+  /* Portada es siempre imagen; los modos sólo aplican a destinos multimedia. */
   hero?: GameDestinationMediaMode;
   card?: GameDestinationMediaMode;
   detail?: GameDestinationMediaMode;
@@ -265,7 +272,6 @@ export type GameDestinationVideo = {
   playback?: GameVideoPlayback;
 };
 
-export type GameCoverVideo = GameDestinationVideo;
 export type GameHeroVideo = GameDestinationVideo;
 export type GameDetailVideo = GameDestinationVideo;
 export type GameBackgroundVideo = GameDestinationVideo;
@@ -286,7 +292,6 @@ export type GameCardVideo =
     };
 
 export type GameVideoMedia = {
-  cover?: GameCoverVideo;
   hero?: GameHeroVideo;
   card?: GameCardVideo;
   detail?: GameDetailVideo;
@@ -323,7 +328,13 @@ export type Game = {
   developer?: string;
   publisher?: string;
 
+  /* Portada pública/editorial: siempre una imagen con viewport 4:5 propio. */
   coverImage?: string;
+  /*
+   * Intención editorial explícita. Ausente sólo existe en snapshots históricos
+   * y se resuelve por compatibilidad sin reescribirlos.
+   */
+  coverArtworkSource?: GameCoverArtworkSource;
   heroImage?: string;
   /* La Card tiene recurso base propio; nunca depende de cambios posteriores de Portada. */
   cardImage?: string;
@@ -351,16 +362,15 @@ export type Game = {
   mediaAccessibility?: GameMediaAccessibility;
 
   /*
-   * mediaModes expresa de forma explícita qué capa usa cada destino. Así se
-   * puede conservar una imagen base y un video simultáneamente para hover sin
-   * inferir el modo por la mera existencia del recurso.
+   * mediaModes expresa el modo de los destinos que sí pueden alternar entre
+   * imagen y video. Portada no participa: su contrato es siempre imagen 4:5.
    */
   mediaModes?: GameMediaModes;
 
   /*
-   * videoMedia conserva masters editoriales por destino. Compartir el mismo
-   * archivo físico sigue siendo posible seleccionando el mismo recurso desde
-   * la biblioteca; los encuadres permanecen independientes como metadata.
+   * videoMedia conserva masters editoriales sólo para destinos que admiten
+   * video. Portada queda fuera del contrato activo y se conserva únicamente
+   * al interpretar snapshots históricos en la capa de compatibilidad.
    */
   videoMedia?: GameVideoMedia;
 

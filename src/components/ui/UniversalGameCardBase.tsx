@@ -1,16 +1,15 @@
 "use client";
 
 import Link from "next/link";
-
 import {
   CalendarDays,
   ChevronRight,
   Monitor,
   Star,
 } from "lucide-react";
-
 import type {
   CSSProperties,
+  FocusEvent as ReactFocusEvent,
   PointerEvent as ReactPointerEvent,
   ReactNode,
 } from "react";
@@ -20,16 +19,16 @@ import {
   useState,
 } from "react";
 
+import GameMedia from "@/components/ui/GameMedia";
 import HoverPreviewMedia from "@/components/ui/HoverPreviewMedia";
 import {
-  resolveGameCardPreview,
-} from "@/lib/media/game-card-preview";
-import {
-  resolveGameDestinationMediaMode,
-} from "@/lib/media/game-video-media";
+  formatGameReleaseDate,
+} from "@/lib/games/game-date";
+import { resolveGameCardPresentation } from "@/lib/media/game-card-presentation";
 import type { Game } from "@/types/game";
 
 import styles from "./UniversalGameCard.module.css";
+import presentationStyles from "./UniversalGameCardPresentation.module.css";
 import tiltStyles from "./UniversalGameCardTilt.module.css";
 
 export type UniversalGameCardVariant =
@@ -38,10 +37,26 @@ export type UniversalGameCardVariant =
   | "lowSpec"
   | "catalog";
 
-type UniversalGameCardProps = {
+export type UniversalGameCardPrimaryAction =
+  | {
+      kind?: "link";
+      href?: string;
+      ariaLabel?: string;
+    }
+  | {
+      kind: "button";
+      ariaLabel: string;
+      onClick: () => void;
+      pressed?: boolean;
+      disabled?: boolean;
+    };
+
+export type UniversalGameCardProps = {
   game: Game;
   variant?: UniversalGameCardVariant;
   overlayAction?: ReactNode;
+  supplementalContent?: ReactNode;
+  primaryAction?: UniversalGameCardPrimaryAction;
 };
 
 type PendingTilt = {
@@ -50,7 +65,9 @@ type PendingTilt = {
   clientY: number;
 };
 
-const PREVIEW_DELAY_MS = 1_000;
+const PREVIEW_DELAY_MS = 1000;
+const REDUCED_MOTION_MEDIA = "(prefers-reduced-motion: reduce)";
+const DIRECT_DETAIL_MEDIA = "(hover: none), (pointer: coarse)";
 
 const fallbackClassBySlug: Record<string, string> = {
   "god-of-war-ragnarok": "godOfWar",
@@ -77,24 +94,13 @@ const fallbackClassBySlug: Record<string, string> = {
   "stardew-valley": "stardew",
 };
 
-function getMediaBadge(
-  game: Game,
-  variant: UniversalGameCardVariant
-) {
+function getMediaBadge(game: Game, variant: UniversalGameCardVariant) {
   if (variant === "recent") {
-    return {
-      label: "NUEVO",
-      tone: "brand" as const,
-    };
+    return game.releaseDate
+      ? { label: "LANZAMIENTO", tone: "brand" as const }
+      : null;
   }
-
-  if (variant === "catalog") {
-    return {
-      label: game.category,
-      tone: "brand" as const,
-    };
-  }
-
+  if (variant === "catalog") return { label: game.category, tone: "brand" as const };
   return null;
 }
 
@@ -107,62 +113,27 @@ function resetTilt(node: HTMLElement) {
   node.style.setProperty("--image-y", "0px");
 }
 
-function applyTilt(
-  node: HTMLElement,
-  clientX: number,
-  clientY: number,
-  rect: DOMRect
-) {
-  const x = Math.min(
-    Math.max((clientX - rect.left) / rect.width, 0),
-    1
-  );
-  const y = Math.min(
-    Math.max((clientY - rect.top) / rect.height, 0),
-    1
-  );
-
-  const rotateY = (x - 0.5) * 8;
-  const rotateX = (0.5 - y) * 7;
-
-  node.style.setProperty(
-    "--tilt-x",
-    `${rotateX.toFixed(2)}deg`
-  );
-  node.style.setProperty(
-    "--tilt-y",
-    `${rotateY.toFixed(2)}deg`
-  );
-  node.style.setProperty(
-    "--pointer-x",
-    `${(x * 100).toFixed(1)}%`
-  );
-  node.style.setProperty(
-    "--pointer-y",
-    `${(y * 100).toFixed(1)}%`
-  );
-  node.style.setProperty(
-    "--image-x",
-    `${((x - 0.5) * -8).toFixed(2)}px`
-  );
-  node.style.setProperty(
-    "--image-y",
-    `${((y - 0.5) * -6).toFixed(2)}px`
-  );
+function applyTilt(node: HTMLElement, clientX: number, clientY: number, rect: DOMRect) {
+  const x = Math.min(Math.max((clientX - rect.left) / rect.width, 0), 1);
+  const y = Math.min(Math.max((clientY - rect.top) / rect.height, 0), 1);
+  node.style.setProperty("--tilt-x", `${((0.5 - y) * 7).toFixed(2)}deg`);
+  node.style.setProperty("--tilt-y", `${((x - 0.5) * 8).toFixed(2)}deg`);
+  node.style.setProperty("--pointer-x", `${(x * 100).toFixed(1)}%`);
+  node.style.setProperty("--pointer-y", `${(y * 100).toFixed(1)}%`);
+  node.style.setProperty("--image-x", `${((x - 0.5) * -8).toFixed(2)}px`);
+  node.style.setProperty("--image-y", `${((y - 0.5) * -6).toFixed(2)}px`);
 }
 
 function Rating({ game }: { game: Game }) {
+  if (game.rating === undefined && !game.reviews) {
+    return null;
+  }
+
   return (
-    <div className={styles.rating}>
-      <Star
-        size={17}
-        fill="currentColor"
-        aria-hidden="true"
-      />
-      <strong>{game.rating ?? "—"}</strong>
-      {game.reviews && (
-        <span>({game.reviews})</span>
-      )}
+    <div className={styles.rating} data-card-rating="true">
+      <Star size={17} fill="currentColor" aria-hidden="true" />
+      {game.rating !== undefined && <strong>{game.rating}</strong>}
+      {game.reviews && <span>({game.reviews})</span>}
     </div>
   );
 }
@@ -170,76 +141,68 @@ function Rating({ game }: { game: Game }) {
 function LowSpecDetails({ game }: { game: Game }) {
   const requirements = game.requirements;
   const minimum = requirements?.minimum;
-  const ram =
-    requirements?.ram ?? minimum?.ram ?? "—";
-  const graphics =
-    requirements?.graphics ??
-    minimum?.graphics ??
-    "—";
-  const system =
-    requirements?.system ?? minimum?.system ?? "—";
+  const ram = requirements?.ram ?? minimum?.ram ?? "—";
+  const graphics = requirements?.graphics ?? minimum?.graphics ?? "—";
+  const system = requirements?.system ?? minimum?.system ?? "—";
 
   return (
     <>
-      <span className={styles.lowSpecBadge}>
+      <span className={styles.lowSpecBadge} data-card-low-spec-badge="true">
         BAJOS RECURSOS
       </span>
-      <div className={styles.requirements}>
-        <div>
-          <span className={styles.requirementIcon}>R</span>
-          <p>
-            RAM: <strong>{ram}</strong>
-          </p>
-        </div>
-        <div>
-          <span className={styles.requirementIcon}>G</span>
-          <p>
-            Gráfica: <strong>{graphics}</strong>
-          </p>
-        </div>
-        <div>
-          <span className={styles.requirementIcon}>SO</span>
-          <p>
-            Sistema: <strong>{system}</strong>
-          </p>
-        </div>
+      <div className={styles.requirements} data-card-requirements="true">
+        <div><span className={styles.requirementIcon}>R</span><p>RAM: <strong>{ram}</strong></p></div>
+        <div><span className={styles.requirementIcon}>G</span><p>Gráfica: <strong>{graphics}</strong></p></div>
+        <div><span className={styles.requirementIcon}>SO</span><p>Sistema: <strong>{system}</strong></p></div>
       </div>
     </>
   );
 }
 
-export default function UniversalGameCard({
+export default function UniversalGameCardBase({
   game,
   variant = "standard",
   overlayAction,
+  supplementalContent,
+  primaryAction,
 }: UniversalGameCardProps) {
-  const previewTimer = useRef<
-    ReturnType<typeof setTimeout> | null
-  >(null);
+  const previewTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const tiltFrame = useRef<number | null>(null);
   const pendingTilt = useRef<PendingTilt | null>(null);
   const cardRect = useRef<DOMRect | null>(null);
   const pointerEffectsEnabled = useRef(false);
   const articleRef = useRef<HTMLElement>(null);
-  const [previewActive, setPreviewActive] =
-    useState(false);
+  const [detailVisible, setDetailVisible] = useState(false);
+  const [directDetailVisible, setDirectDetailVisible] = useState(false);
+  const [previewActive, setPreviewActive] = useState(false);
+  const [reducedMotion, setReducedMotion] = useState(false);
 
+  const presentation = resolveGameCardPresentation(game);
+  const cardMode = presentation.card.mode;
+  const preview = presentation.card.preview;
+  const fallbackClass = fallbackClassBySlug[game.slug];
   const mediaBadge = getMediaBadge(game, variant);
-  const fallbackClass =
-    fallbackClassBySlug[game.slug];
+  const isStandard = variant === "standard";
   const isCatalog = variant === "catalog";
   const isRecent = variant === "recent";
   const isLowSpec = variant === "lowSpec";
-  const variantClass =
-    styles[
-      `variant${variant[0].toUpperCase()}${variant.slice(1)}`
-    ];
-  const cardMode = resolveGameDestinationMediaMode(game, "card");
-  const resolvedPreview = resolveGameCardPreview(game);
-  const cardImage = game.cardImage ?? game.coverImage;
-  const imageViewport = game.imageMedia?.card;
-  const videoAlwaysActive = cardMode === "video";
-  const hoverPreviewEnabled = cardMode === "hover-video";
+  const variantClass = styles[`variant${variant[0].toUpperCase()}${variant.slice(1)}`];
+
+  useEffect(() => {
+    const motionMedia = window.matchMedia(REDUCED_MOTION_MEDIA);
+    const directDetailMedia = window.matchMedia(DIRECT_DETAIL_MEDIA);
+    const sync = () => {
+      setReducedMotion(motionMedia.matches);
+      setDirectDetailVisible(directDetailMedia.matches);
+    };
+    sync();
+    motionMedia.addEventListener("change", sync);
+    directDetailMedia.addEventListener("change", sync);
+    return () => {
+      motionMedia.removeEventListener("change", sync);
+      directDetailMedia.removeEventListener("change", sync);
+    };
+  }, []);
 
   function cancelTiltFrame() {
     if (tiltFrame.current !== null) {
@@ -254,221 +217,226 @@ export default function UniversalGameCard({
       clearTimeout(previewTimer.current);
       previewTimer.current = null;
     }
-
     setPreviewActive(false);
-    articleRef.current?.style.removeProperty(
-      "--tilt-transition-duration"
-    );
   }
 
-  function startCard(
-    event: ReactPointerEvent<HTMLElement>
-  ) {
-    const pointerIsFine =
-      event.pointerType !== "touch" &&
-      window.matchMedia(
-        "(hover: hover) and (pointer: fine)"
-      ).matches;
-    const reducedMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)"
-    ).matches;
-
-    pointerEffectsEnabled.current =
-      pointerIsFine && !reducedMotion;
-    if (!pointerEffectsEnabled.current) return;
-
-    cardRect.current =
-      event.currentTarget.getBoundingClientRect();
-
-    if (
-      !hoverPreviewEnabled ||
-      !resolvedPreview ||
-      previewTimer.current ||
-      previewActive
-    ) {
+  function schedulePreview() {
+    if (!preview || reducedMotion || cardMode === "image" || previewTimer.current || previewActive) {
       return;
     }
-
+    if (cardMode === "video") {
+      setPreviewActive(true);
+      return;
+    }
     previewTimer.current = setTimeout(() => {
       previewTimer.current = null;
       setPreviewActive(true);
     }, PREVIEW_DELAY_MS);
   }
 
-  function scheduleTilt(
-    event: ReactPointerEvent<HTMLElement>
-  ) {
-    if (!pointerEffectsEnabled.current) {
-      return;
+  function activatePointerEffects(event: ReactPointerEvent<HTMLElement>) {
+    const pointerSupportsEffects =
+      event.pointerType === "mouse" || event.pointerType === "pen";
+    const motionReduced = window.matchMedia(REDUCED_MOTION_MEDIA).matches;
+
+    if (!pointerSupportsEffects || motionReduced) {
+      if (pointerEffectsEnabled.current) {
+        cancelTiltFrame();
+        cardRect.current = null;
+        resetTilt(event.currentTarget);
+      }
+      pointerEffectsEnabled.current = false;
+      event.currentTarget.removeAttribute("data-tilt-active");
+      return false;
     }
 
+    pointerEffectsEnabled.current = true;
+    event.currentTarget.setAttribute("data-tilt-active", "true");
+    if (!cardRect.current) cardRect.current = event.currentTarget.getBoundingClientRect();
+    return true;
+  }
+
+  function startCard(event: ReactPointerEvent<HTMLElement>) {
+    const pointerSupportsReveal =
+      event.pointerType === "mouse" || event.pointerType === "pen";
+    if (pointerSupportsReveal) {
+      setDetailVisible(true);
+      schedulePreview();
+    }
+    if (!activatePointerEffects(event)) return;
+    cardRect.current = event.currentTarget.getBoundingClientRect();
+  }
+
+  function scheduleTilt(event: ReactPointerEvent<HTMLElement>) {
+    const pointerSupportsReveal =
+      event.pointerType === "mouse" || event.pointerType === "pen";
+    if (pointerSupportsReveal && !detailVisible) {
+      setDetailVisible(true);
+      schedulePreview();
+    }
+    if (!activatePointerEffects(event)) return;
+    schedulePreview();
     pendingTilt.current = {
       node: event.currentTarget,
       clientX: event.clientX,
       clientY: event.clientY,
     };
-
     if (tiltFrame.current !== null) return;
-
     tiltFrame.current = requestAnimationFrame(() => {
       tiltFrame.current = null;
       const pending = pendingTilt.current;
       const rect = cardRect.current;
       pendingTilt.current = null;
-      if (!pending || !rect) return;
-
-      applyTilt(
-        pending.node,
-        pending.clientX,
-        pending.clientY,
-        rect
-      );
+      if (pending && rect) applyTilt(pending.node, pending.clientX, pending.clientY, rect);
     });
   }
 
-  function stopCard(
-    event: ReactPointerEvent<HTMLElement>
-  ) {
+  function stopCard(event: ReactPointerEvent<HTMLElement>) {
     cancelTiltFrame();
     cardRect.current = null;
     pointerEffectsEnabled.current = false;
+    event.currentTarget.removeAttribute("data-tilt-active");
     resetTilt(event.currentTarget);
-    if (hoverPreviewEnabled) cancelPreview();
+    setDetailVisible(false);
+    cancelPreview();
   }
 
-  useEffect(() => {
-    return () => {
-      if (previewTimer.current) {
-        clearTimeout(previewTimer.current);
-      }
-      if (tiltFrame.current !== null) {
-        cancelAnimationFrame(tiltFrame.current);
-      }
-    };
+  function focusCard() {
+    setDetailVisible(true);
+    if (preview && !reducedMotion && cardMode === "video") setPreviewActive(true);
+    else schedulePreview();
+  }
+
+  function blurCard(event: ReactFocusEvent<HTMLElement>) {
+    if (event.relatedTarget instanceof Node && event.currentTarget.contains(event.relatedTarget)) return;
+    setDetailVisible(false);
+    cancelPreview();
+  }
+
+  useEffect(() => () => {
+    if (previewTimer.current) clearTimeout(previewTimer.current);
+    if (tiltFrame.current !== null) cancelAnimationFrame(tiltFrame.current);
   }, []);
+
+  const detailPresented = detailVisible || directDetailVisible;
+  const videoActive = Boolean(
+    detailVisible && previewActive && !reducedMotion && preview && cardMode !== "image"
+  );
+  const primaryClassName = `${styles.link} ${presentationStyles.link} ${tiltStyles.tiltClip}`;
+  const cardContent = (
+    <>
+      <div className={presentationStyles.coverFace} aria-hidden={detailPresented ? "true" : undefined}>
+        <GameMedia
+          src={presentation.cover.image}
+          alt={detailPresented ? "" : presentation.cover.alt}
+          viewport={presentation.cover.viewport}
+          sizes="(max-width: 560px) 82vw, (max-width: 900px) 48vw, (max-width: 1250px) 30vw, 20vw"
+          fallbackClassName={fallbackClass ? styles[fallbackClass] : undefined}
+        />
+        <div className={presentationStyles.coverShade} aria-hidden="true" />
+      </div>
+
+      <div
+        className={presentationStyles.detailFace}
+        data-card-face="detail"
+        aria-hidden={!detailPresented ? "true" : undefined}
+      >
+        <div
+          className={`${styles.media} ${presentationStyles.detailMedia} ${tiltStyles.tiltMedia}`}
+          data-card-detail-media="true"
+        >
+          <HoverPreviewMedia
+            imageSrc={presentation.card.image}
+            imageAlt={detailPresented ? presentation.card.alt : ""}
+            imageViewport={presentation.card.viewport}
+            previewClip={preview?.src}
+            previewViewport={preview?.viewport}
+            active={videoActive}
+            sizes="(max-width: 560px) 82vw, (max-width: 900px) 48vw, (max-width: 1250px) 30vw, 20vw"
+            fallbackClassName={fallbackClass ? styles[fallbackClass] : undefined}
+          />
+          <div className={styles.mediaOverlay} aria-hidden="true" />
+          <div className={tiltStyles.spotlight} aria-hidden="true" />
+          {mediaBadge && (
+            <span className={`${styles.mediaBadge} ${mediaBadge.tone === "brand" ? styles.mediaBadgeBrand : ""}`}>
+              {mediaBadge.label}
+            </span>
+          )}
+          <Monitor size={18} className={styles.platform} aria-hidden="true" />
+        </div>
+
+        <div
+          className={`${styles.content} ${presentationStyles.detailContent}`}
+          data-card-detail-content="true"
+        >
+          <div className={styles.titleRow} data-card-title-row="true">
+            <h3>{game.title}</h3>
+            {isRecent && game.version && <span className={styles.version}>{game.version}</span>}
+            {isCatalog && <ChevronRight size={17} aria-hidden="true" />}
+          </div>
+          {(isStandard || isCatalog) && (
+            <p className={styles.description} data-card-description="true">
+              {game.description}
+            </p>
+          )}
+          {isLowSpec && <LowSpecDetails game={game} />}
+          <Rating game={game} />
+          {isRecent && game.releaseDate && (
+            <div className={styles.date} data-card-date="true">
+              <CalendarDays size={15} aria-hidden="true" />
+              <span>Lanzamiento: {formatGameReleaseDate(game.releaseDate)}</span>
+            </div>
+          )}
+          {supplementalContent}
+        </div>
+      </div>
+    </>
+  );
+
+  const primaryControl = primaryAction?.kind === "button" ? (
+    <button
+      type="button"
+      className={`${primaryClassName} ${presentationStyles.actionButton}`}
+      aria-label={primaryAction.ariaLabel}
+      aria-pressed={primaryAction.pressed}
+      disabled={primaryAction.disabled}
+      onClick={primaryAction.onClick}
+    >
+      {cardContent}
+    </button>
+  ) : (
+    <Link
+      href={primaryAction?.href ?? `/juegos/${game.slug}`}
+      className={primaryClassName}
+      aria-label={primaryAction?.ariaLabel ?? `Ver ${game.title}`}
+    >
+      {cardContent}
+    </Link>
+  );
 
   return (
     <article
       ref={articleRef}
-      className={`${styles.card} ${tiltStyles.tiltCard} ${variantClass}`}
+      className={`${styles.card} ${presentationStyles.shell} ${tiltStyles.tiltCard} ${variantClass}`}
+      data-card-variant={variant}
+      data-detail-visible={detailPresented ? "true" : "false"}
+      data-cover-source={presentation.cover.source}
       onPointerEnter={startCard}
       onPointerMove={scheduleTilt}
       onPointerLeave={stopCard}
       onPointerCancel={stopCard}
-      style={
-        {
-          "--tilt-x": "0deg",
-          "--tilt-y": "0deg",
-          "--pointer-x": "50%",
-          "--pointer-y": "50%",
-          "--image-x": "0px",
-          "--image-y": "0px",
-        } as CSSProperties
-      }
+      onFocusCapture={focusCard}
+      onBlurCapture={blurCard}
+      style={{
+        "--tilt-x": "0deg",
+        "--tilt-y": "0deg",
+        "--pointer-x": "50%",
+        "--pointer-y": "50%",
+        "--image-x": "0px",
+        "--image-y": "0px",
+      } as CSSProperties}
     >
-      <Link
-        href={`/juegos/${game.slug}`}
-        className={`${styles.link} ${tiltStyles.tiltClip}`}
-        aria-label={`Ver ${game.title}`}
-      >
-        <div
-          className={`${styles.media} ${tiltStyles.tiltMedia}`}
-          style={{
-            width: "100%",
-            height: "auto",
-            aspectRatio: "3 / 2",
-          }}
-        >
-          <HoverPreviewMedia
-            imageSrc={cardMode === "video" ? undefined : cardImage}
-            imageAlt={game.mediaAccessibility?.card ?? game.imageAlt}
-            imageViewport={imageViewport}
-            previewClip={resolvedPreview?.src}
-            previewViewport={resolvedPreview?.viewport}
-            active={videoAlwaysActive || (hoverPreviewEnabled && previewActive)}
-            sizes="(max-width: 560px) 82vw, (max-width: 900px) 48vw, (max-width: 1250px) 30vw, 20vw"
-            fallbackClassName={
-              fallbackClass
-                ? styles[fallbackClass]
-                : undefined
-            }
-          />
-
-          <div
-            className={styles.mediaOverlay}
-            aria-hidden="true"
-          />
-          <div
-            className={tiltStyles.spotlight}
-            aria-hidden="true"
-          />
-
-          {mediaBadge && (
-            <span
-              className={`${styles.mediaBadge} ${
-                mediaBadge.tone === "brand"
-                  ? styles.mediaBadgeBrand
-                  : ""
-              }`}
-              data-brand-badge={
-                mediaBadge.tone === "brand"
-                  ? "true"
-                  : undefined
-              }
-            >
-              {mediaBadge.label}
-            </span>
-          )}
-
-          <Monitor
-            size={18}
-            className={styles.platform}
-            aria-hidden="true"
-          />
-        </div>
-
-        <div className={styles.content}>
-          <div className={styles.titleRow}>
-            <h3>{game.title}</h3>
-
-            {isRecent && game.version && (
-              <span className={styles.version}>
-                {game.version}
-              </span>
-            )}
-
-            {isCatalog && (
-              <ChevronRight
-                size={17}
-                aria-hidden="true"
-              />
-            )}
-          </div>
-
-          {isCatalog && (
-            <p className={styles.description}>
-              {game.description}
-            </p>
-          )}
-
-          {isLowSpec && (
-            <LowSpecDetails game={game} />
-          )}
-
-          <Rating game={game} />
-
-          {isRecent && game.addedAt && (
-            <div className={styles.date}>
-              <CalendarDays
-                size={15}
-                aria-hidden="true"
-              />
-              <span>Añadido el {game.addedAt}</span>
-            </div>
-          )}
-        </div>
-      </Link>
-
+      {primaryControl}
       {overlayAction}
     </article>
   );

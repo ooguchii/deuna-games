@@ -13,7 +13,9 @@ import {
 } from "lucide-react";
 import { notFound } from "next/navigation";
 
+import GameCoverMedia from "@/components/ui/GameCoverMedia";
 import GameMedia from "@/components/ui/GameMedia";
+import UniversalGameCardBase from "@/components/ui/UniversalGameCardBase";
 import GamePerformanceEstimate from "@/features/game-finder/GamePerformanceEstimate";
 import {
   getEditorialItem,
@@ -172,6 +174,7 @@ export default async function AdminGamePreviewPage({
   const sources = download?.sources ?? [];
   const publicationHref =
     `/admin/juegos/${encodeURIComponent(slug)}/publicacion`;
+  const publicGameHref = `/juegos/${encodeURIComponent(slug)}`;
 
   return (
     <>
@@ -186,7 +189,7 @@ export default async function AdminGamePreviewPage({
 
         {publicationState?.publicVisible ? (
           <Link
-            href={`/juegos/${encodeURIComponent(slug)}`}
+            href={publicGameHref}
             className={styles.publicLink}
             target="_blank"
             rel="noreferrer"
@@ -246,12 +249,7 @@ export default async function AdminGamePreviewPage({
 
         <div className={styles.heroInner}>
           <div className={styles.cover}>
-            <GameMedia
-              src={game.coverImage}
-              alt={game.mediaAccessibility?.cover ?? game.imageAlt}
-              sizes="220px"
-              viewport={game.imageMedia?.cover}
-            />
+            <GameCoverMedia game={game} sizes="220px" />
           </div>
 
           <div className={styles.heroCopy}>
@@ -321,6 +319,38 @@ export default async function AdminGamePreviewPage({
           <span>Canal</span>
           <strong>{distributionChannelLabel}</strong>
         </article>
+      </section>
+
+      <section
+        className={`${styles.panel} ${styles.cardPreviewPanel}`}
+        aria-labelledby="public-card-preview-title"
+      >
+        <div className={styles.sectionHeading}>
+          <span>CARD PÚBLICA · BORRADOR</span>
+          <h2 id="public-card-preview-title">
+            Renderer real antes de publicar
+          </h2>
+        </div>
+        <div className={styles.cardPreviewLayout}>
+          <div className={styles.cardPreviewCopy}>
+            <p>
+              Esta previsualización monta el mismo renderer base que usan las Cards públicas. Portada 4:5, Card 3:2, hover, foco, touch, recortes y video se resuelven desde este borrador sin modificar el snapshot publicado.
+            </p>
+            <p>
+              El enlace de la Card conserva el destino público real; si ya existe una publicación, al abrirlo verás el snapshot público actual, no estos cambios de borrador.
+            </p>
+          </div>
+          <div className={styles.cardPreviewFrame}>
+            <UniversalGameCardBase
+              game={game}
+              variant="standard"
+              primaryAction={{
+                href: publicGameHref,
+                ariaLabel: `Abrir la ficha pública actual de ${game.title}`,
+              }}
+            />
+          </div>
+        </div>
       </section>
 
       <section className={styles.panel}>

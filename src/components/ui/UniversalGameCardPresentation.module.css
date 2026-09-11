@@ -1,0 +1,220 @@
+.shell {
+  position: relative;
+  aspect-ratio: 4 / 5;
+  min-height: 0;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.link {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.actionButton {
+  margin: 0;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.actionButton:disabled {
+  cursor: not-allowed;
+}
+
+.coverFace,
+.detailFace {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  transition:
+    opacity 180ms ease,
+    transform 220ms ease;
+}
+
+.coverFace {
+  z-index: 2;
+  opacity: 1;
+  transform: scale(1);
+  background: #0b1017;
+}
+
+.coverFace > img,
+.coverFace > span,
+.coverFace > div:first-child {
+  width: 100%;
+  height: 100%;
+}
+
+.coverShade {
+  position: absolute;
+  inset: auto 0 0;
+  height: 26%;
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent, rgba(4, 8, 13, 0.46));
+}
+
+.detailFace {
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  opacity: 0;
+  transform: scale(0.988);
+  background: var(--surface);
+  pointer-events: none;
+}
+
+/*
+ * Contrato compartido Admin/público: shell 4:5 y multimedia Card 3:2.
+ * La densidad variable se resuelve en el contenido, sin deformar el recurso.
+ */
+.detailMedia {
+  position: relative;
+  flex: 0 0 auto;
+  width: 100%;
+  height: auto !important;
+  aspect-ratio: 3 / 2;
+  min-height: 0 !important;
+}
+
+.detailContent {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Los títulos editoriales variables no desplazan metadata ni acciones. */
+.shell h3 {
+  min-width: 0;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+/* La variante estándar usa el espacio de detalle para contexto, no para vacío. */
+.shell[data-card-variant="standard"] [data-card-description="true"] {
+  margin-top: 6px;
+  -webkit-line-clamp: 2;
+}
+
+/*
+ * Low-spec es la variante con mayor densidad. Sus hooks de datos son parte del
+ * renderer compartido para evitar que el layout dependa del orden accidental
+ * de nodos y para que el browser smoke pueda verificar el mismo contrato.
+ */
+.shell[data-card-variant="lowSpec"] [data-card-detail-content="true"] {
+  padding: 9px 11px 11px;
+}
+
+.shell[data-card-variant="lowSpec"] [data-card-title-row="true"] h3 {
+  min-height: 0;
+  font-size: var(--font-sm);
+  line-height: 1.25;
+  -webkit-line-clamp: 1;
+}
+
+.shell[data-card-variant="lowSpec"] [data-card-low-spec-badge="true"] {
+  min-height: 20px;
+  margin-top: 4px;
+  padding-inline: 6px;
+  font-size: 9px;
+}
+
+.shell[data-card-variant="lowSpec"] [data-card-requirements="true"] {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+  margin-top: 7px;
+}
+
+.shell[data-card-variant="lowSpec"] [data-card-requirements="true"] > div {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 4px;
+}
+
+.shell[data-card-variant="lowSpec"] [data-card-requirements="true"] p {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 9px;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shell[data-card-variant="lowSpec"] [data-card-requirements="true"] p strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shell[data-card-variant="lowSpec"] [data-card-rating="true"] {
+  margin-top: 7px;
+  padding-top: 0;
+}
+
+.shell[data-detail-visible="true"] .coverFace {
+  opacity: 0;
+  transform: scale(1.018);
+  pointer-events: none;
+}
+
+.shell[data-detail-visible="true"] .detailFace {
+  z-index: 3;
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+}
+
+@media (hover: none), (pointer: coarse) {
+  .coverFace {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .detailFace {
+    z-index: 3;
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+  }
+}
+
+@media (max-width: 560px) {
+  .shell[data-card-variant="lowSpec"] [data-card-detail-content="true"] {
+    padding: 11px 12px 12px;
+  }
+
+  .shell[data-card-variant="lowSpec"] [data-card-title-row="true"] h3 {
+    font-size: var(--font-base);
+    -webkit-line-clamp: 2;
+  }
+
+  .shell[data-card-variant="lowSpec"] [data-card-requirements="true"] p {
+    font-size: var(--font-micro);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .coverFace,
+  .detailFace {
+    transition: none;
+  }
+
+  .shell {
+    transform: none !important;
+  }
+}

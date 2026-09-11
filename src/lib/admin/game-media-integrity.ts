@@ -6,6 +6,7 @@ import path from "node:path";
 import type { Game } from "@/types/game";
 
 import {
+  EDITORIAL_MEDIA_PUBLIC_PREFIX,
   resolveEditorialMediaDiskPath,
 } from "@/lib/media/editorial-media";
 import {
@@ -17,6 +18,7 @@ import {
 export type GameMediaIntegrityResult = {
   ok: boolean;
   missing: string[];
+  invalidOwnership: string[];
 };
 
 export function listGameImageReferences(
@@ -55,7 +57,6 @@ export function listGameVideoReferences(
   return Array.from(
     new Set(
       [
-        game.videoMedia?.cover?.clip,
         game.videoMedia?.hero?.clip,
         independentCardClip,
         game.videoMedia?.detail?.clip,
@@ -64,6 +65,29 @@ export function listGameVideoReferences(
         game.previewClip,
       ].filter(
         (value): value is string => Boolean(value)
+      )
+    )
+  );
+}
+
+export function listInvalidGameMediaOwnership(
+  game: Game
+) {
+  const editorialPrefix =
+    `${EDITORIAL_MEDIA_PUBLIC_PREFIX}/`;
+  const ownedPrefix =
+    `${EDITORIAL_MEDIA_PUBLIC_PREFIX}/${game.slug}/`;
+  const references = [
+    ...listGameImageReferences(game),
+    ...listGameVideoReferences(game),
+  ];
+
+  return Array.from(
+    new Set(
+      references.filter(
+        (reference) =>
+          reference.startsWith(editorialPrefix) &&
+          !reference.startsWith(ownedPrefix)
       )
     )
   );
@@ -153,6 +177,7 @@ export async function inspectLocalImageReferences(
   return {
     ok: missing.length === 0,
     missing,
+    invalidOwnership: [],
   };
 }
 
@@ -163,6 +188,17 @@ export async function inspectGameMediaIntegrity(
     ...listGameImageReferences(game),
     ...listGameVideoReferences(game),
   ];
+  const physical = await inspectLocalImageReferences(
+    mediaPaths
+  );
+  const invalidOwnership =
+    listInvalidGameMediaOwnership(game);
 
-  return inspectLocalImageReferences(mediaPaths);
+  return {
+    ok:
+      physical.ok &&
+      invalidOwnership.length === 0,
+    missing: physical.missing,
+    invalidOwnership,
+  };
 }

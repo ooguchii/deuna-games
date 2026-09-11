@@ -44,8 +44,7 @@ const targetViewportFpsFields = [...viewportFields, "fps", "target"] as const;
 function previewTarget(value: string | null): PreviewSaveTarget | null {
   if (value === null || value.trim() === "") return "card";
   const normalized = value.trim().toLowerCase();
-  return normalized === "cover" ||
-    normalized === "hero" ||
+  return normalized === "hero" ||
     normalized === "card" ||
     normalized === "library"
     ? normalized

@@ -1,4 +1,4 @@
-.tiltCard {
+.tiltCard.tiltCard {
   --tilt-x: 0deg;
   --tilt-y: 0deg;
   --pointer-x: 50%;
@@ -9,11 +9,11 @@
   position: relative;
 
   /*
-   * El tilt sigue moviendo la tarjeta, pero todo el pintado interno
-   * (halo, spotlight e imagen) queda recortado por su propio borde.
-   * Esto evita que el glow aparezca por debajo de la card vecina.
+   * El borde sigue recortando la Card sin convertirla en un
+   * contenedor de scroll ni aplanar la escena tridimensional.
+   * La especificidad doble gana sobre el overflow base de .card.
    */
-  overflow: hidden;
+  overflow: clip;
 
   transform:
     perspective(900px)
@@ -32,41 +32,37 @@
 
 .tiltCard::before {
   content: "";
-
   position: absolute;
   inset: 0;
   z-index: -1;
-
   border-radius: inherit;
-
   background:
     radial-gradient(
       320px circle at var(--pointer-x) var(--pointer-y),
       color-mix(in srgb, var(--brand) 22%, transparent),
       transparent 58%
     );
-
   opacity: 0;
   filter: blur(8px);
-
   transition: opacity 180ms ease;
   pointer-events: none;
 }
 
 .tiltClip {
-  overflow: hidden;
+  overflow: clip;
   border-radius: inherit;
+  transform-style: preserve-3d;
 }
 
 .tiltMedia {
   transform: translateZ(14px);
+  transform-style: preserve-3d;
 }
 
 .tiltCard .tiltMedia img {
   transform:
     translate3d(var(--image-x), var(--image-y), 0)
     scale(1.015);
-
   transition:
     transform 210ms ease-out,
     filter 220ms ease;
@@ -76,70 +72,69 @@
   position: absolute;
   inset: 0;
   z-index: 3;
-
   background:
     radial-gradient(
       190px circle at var(--pointer-x) var(--pointer-y),
       rgba(255, 255, 255, 0.17),
       transparent 60%
     );
-
   opacity: 0;
   mix-blend-mode: screen;
-
   transition: opacity 180ms ease;
   pointer-events: none;
 }
 
-@media (hover: hover) and (pointer: fine) {
-  .tiltCard:hover::before {
-    opacity: 1;
-  }
-
-  .tiltCard:hover .tiltMedia img {
-    transform:
-      translate3d(var(--image-x), var(--image-y), 0)
-      scale(1.075);
-
-    filter:
-      brightness(1.035)
-      saturate(1.07)
-      contrast(1.015);
-  }
-
-  .tiltCard:hover .spotlight {
-    opacity: 0.64;
-  }
+.tiltCard[data-tilt-active="true"] {
+  z-index: 2;
 }
 
-@media (hover: none), (pointer: coarse) {
-  .tiltCard {
+.tiltCard[data-tilt-active="true"]::before {
+  opacity: 1;
+}
+
+.tiltCard[data-tilt-active="true"] .tiltMedia img {
+  transform:
+    translate3d(var(--image-x), var(--image-y), 0)
+    scale(1.075);
+  filter:
+    brightness(1.035)
+    saturate(1.07)
+    contrast(1.015);
+}
+
+.tiltCard[data-tilt-active="true"] .spotlight {
+  opacity: 0.64;
+}
+
+@media (any-hover: none) {
+  .tiltCard:not([data-tilt-active="true"]) {
     transform: none;
   }
 
-  .tiltCard::before,
-  .spotlight {
+  .tiltCard:not([data-tilt-active="true"])::before,
+  .tiltCard:not([data-tilt-active="true"]) .spotlight {
     display: none;
   }
 
-  .tiltCard .tiltMedia img {
+  .tiltCard:not([data-tilt-active="true"]) .tiltMedia img {
     transform: none;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .tiltCard {
+  .tiltCard.tiltCard {
     transform: none;
     transition: none;
   }
 
-  .tiltCard::before,
-  .spotlight {
+  .tiltCard.tiltCard::before,
+  .tiltCard.tiltCard .spotlight {
     display: none;
   }
 
-  .tiltCard .tiltMedia img {
+  .tiltCard.tiltCard .tiltMedia img {
     transform: none;
+    filter: none;
     transition: none;
   }
 }

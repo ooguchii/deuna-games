@@ -204,7 +204,7 @@ export function evaluateGamePublicationReadiness(
     {
       id: "cover-crop",
       label: `Portada · recorte ${REQUIRED_DESTINATION_ASPECTS.cover}`,
-      detail: "La Portada debe completar los recursos exigidos por su modo activo.",
+      detail: "La Portada requiere una imagen y su recorte 4:5 confirmado.",
       section: "multimedia",
       complete: media.cover.cropReady,
       priority: "essential",

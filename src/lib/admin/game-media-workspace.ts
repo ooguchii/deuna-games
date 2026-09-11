@@ -26,6 +26,11 @@ import {
   reconcileEditorialMediaDeletions,
 } from "@/lib/media/editorial-media-library";
 import {
+  resolveGameCardBaseImage,
+  resolveGameCoverArtworkSource,
+  resolveGameCoverImage,
+} from "@/lib/media/game-card-presentation";
+import {
   resolveGameGalleryItems,
 } from "@/lib/media/game-gallery-media";
 import {
@@ -99,19 +104,18 @@ export async function getGameMediaWorkspaceSnapshot(slug: string) {
     gallery: resolveGameGalleryItems(game),
     accessibility: game.mediaAccessibility ?? null,
     assignments: {
-      coverImage: game.coverImage ?? null,
+      coverArtworkSource: resolveGameCoverArtworkSource(game),
+      coverImage: resolveGameCoverImage(game) ?? null,
       heroImage: game.heroImage ?? null,
-      cardImage: game.cardImage ?? null,
+      cardImage: resolveGameCardBaseImage(game) ?? null,
       detailImage: game.detailImage ?? null,
       backgroundImage: game.backgroundImage ?? null,
       screenshots: game.screenshots ?? [],
       imageMedia: game.imageMedia ?? null,
-      coverMode: resolveGameDestinationMediaMode(game, "cover"),
       heroMode: resolveGameDestinationMediaMode(game, "hero"),
       cardMode: resolveGameDestinationMediaMode(game, "card"),
       detailMode: resolveGameDestinationMediaMode(game, "detail"),
       backgroundMode: resolveGameBackgroundMediaMode(game),
-      coverVideo: game.videoMedia?.cover ?? null,
       heroVideo: game.videoMedia?.hero ?? null,
       cardVideo: game.videoMedia?.card ?? null,
       detailVideo: game.videoMedia?.detail ?? null,

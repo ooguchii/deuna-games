@@ -14,6 +14,7 @@ const has = (text, ...needles) =>
 
 const [
   history,
+  publicationHistory,
   hygiene,
   workspace,
   workspaceRoute,
@@ -23,6 +24,7 @@ const [
   publicationWorkspace,
 ] = await Promise.all([
   source("src/lib/admin/game-media-history.ts"),
+  source("src/lib/admin/publication-history.ts"),
   source("src/lib/admin/game-media-hygiene.ts"),
   source("src/lib/admin/game-media-workspace.ts"),
   source("src/app/api/admin/content/games/[slug]/media-workspace/route.ts"),
@@ -37,15 +39,19 @@ assert(
     history,
     "editorial_publications",
     "publication.payload",
-    "publication.action IN ('published', 'rollback')",
-    "publication.action = 'bootstrap'",
-    "editorial_revisions",
-    "revision.action = 'draft_saved'",
-    "NOT EXISTS",
+    "PUBLIC_EXPOSURE_PUBLICATION_SQL",
     "listGameImageReferences",
     "listGameVideoReferences"
-  ),
-  "La higiene debe proteger publicaciones/restauraciones y bootstrap de origen, sin retener la base privada no restaurable creada desde el panel."
+  ) &&
+    has(
+      publicationHistory,
+      "publication.action IN ('published', 'rollback')",
+      "publication.action = 'bootstrap'",
+      "editorial_revisions",
+      "revision.action = 'draft_saved'",
+      "NOT EXISTS"
+    ),
+  "La higiene debe usar la fuente compartida que protege publicaciones/restauraciones y bootstrap de origen, sin retener la base privada no restaurable creada desde el panel."
 );
 
 assert(

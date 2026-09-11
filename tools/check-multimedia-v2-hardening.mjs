@@ -4,13 +4,11 @@ import process from "node:process";
 
 const root = process.cwd();
 const failures = [];
-const source = (relativePath) =>
-  readFile(path.join(root, relativePath), "utf8");
+const source = (relativePath) => readFile(path.join(root, relativePath), "utf8");
 const assert = (condition, message) => {
   if (!condition) failures.push(message);
 };
-const has = (text, ...needles) =>
-  needles.every((needle) => text.includes(needle));
+const has = (text, ...needles) => needles.every((needle) => text.includes(needle));
 
 const [
   policy,
@@ -20,7 +18,9 @@ const [
   importRoute,
   multimediaPage,
   multimediaEditor,
-  workspace,
+  assignmentsWorkspace,
+  galleryManager,
+  utilityRail,
 ] = await Promise.all([
   source("src/lib/media/preview-video-policy.ts"),
   source("src/lib/media/editorial-video.ts"),
@@ -29,7 +29,9 @@ const [
   source("src/app/api/admin/content/games/[slug]/preview-import/route.ts"),
   source("src/app/admin/(protected)/juegos/[slug]/page.tsx"),
   source("src/components/admin/GameMultimediaEditor.tsx"),
-  source("src/components/admin/GameMultimediaWorkspaceContextual.tsx"),
+  source("src/components/admin/GameMediaAssignmentsWorkspace.tsx"),
+  source("src/components/admin/GameGalleryMediaManager.tsx"),
+  source("src/components/admin/GameMultimediaUtilityRail.tsx"),
 ]);
 
 assert(
@@ -41,8 +43,7 @@ assert(
     "DEFAULT_PREVIEW_FPS: PreviewFps = 50",
     "MAX_PREVIEW_FPS: PreviewFps = 60",
     "parsePreviewFps"
-  ) &&
-    !policy.includes('"performance",\n  "balanced",\n  "high"'),
+  ) && !policy.includes('"performance",\n  "balanced",\n  "high"'),
   "La política activa debe ser 720p/1080p con 1080p50 por defecto y máximo 60 FPS."
 );
 
@@ -85,40 +86,68 @@ assert(
   !multimediaPage.includes("GamePreviewClipUploadForm") &&
     !multimediaPage.includes("mediaAction") &&
     !multimediaEditor.includes("mediaAction") &&
-    has(multimediaEditor, "GameVideoLibraryEditor", "GameMultimediaWorkspaceContextual"),
-  "La pantalla multimedia no debe conservar el wrapper temporal ni el plumbing del formulario manual antiguo."
+    has(
+      multimediaEditor,
+      "GameMediaAssignmentsWorkspace",
+      "GameGalleryMediaManager",
+      "GameMediaAccessibilityEditor",
+      "GameMultimediaUtilityRail"
+    ) &&
+    !multimediaEditor.includes("GameMultimediaWorkspaceContextual"),
+  "La pantalla multimedia debe usar la arquitectura dividida vigente sin wrapper/plumbing temporales."
 );
 
-const galleryStart = workspace.indexOf("function renderGalleryAssignedItems");
-const galleryEnd = workspace.indexOf("\n  function destinationActions", galleryStart);
-const galleryRenderer = galleryStart >= 0 && galleryEnd > galleryStart
-  ? workspace.slice(galleryStart, galleryEnd)
-  : "";
-const libraryRendererStart = workspace.indexOf("function renderLibraryGroup");
-const libraryRendererEnd = workspace.indexOf("\n  const galleryPendingLabel", libraryRendererStart);
-const libraryRenderer = libraryRendererStart >= 0 && libraryRendererEnd > libraryRendererStart
-  ? workspace.slice(libraryRendererStart, libraryRendererEnd)
-  : "";
+assert(
+  has(
+    galleryManager,
+    'operation: "gallery-add" | "gallery-remove" | "gallery-move"',
+    'action={`/api/admin/content/games/${encodeURIComponent(slug)}/gallery-media`}',
+    "Editar recorte",
+    "Confirmar recorte",
+    'operation === "gallery-remove"',
+    "Quitar"
+  ) &&
+    !galleryManager.includes("media-resource-delete") &&
+    !galleryManager.includes('value="image-delete"') &&
+    !galleryManager.includes('value="video-delete"'),
+  "Galería debe limitarse a agregar/reordenar/quitar asignaciones y editar crops, sin borrado físico."
+);
 
 assert(
-  galleryRenderer.includes('value="gallery-remove"') &&
-    galleryRenderer.includes("Editar") &&
-    galleryRenderer.includes("Quitar") &&
-    !galleryRenderer.includes("DeleteResourceForm") &&
-    !galleryRenderer.includes('value="image-delete"') &&
-    !galleryRenderer.includes('value="video-delete"') &&
-    workspace.includes("function DeleteResourceForm") &&
-    libraryRenderer.includes("<DeleteResourceForm") &&
-    libraryRenderer.includes("usages={labels}"),
-  "Galería debe ofrecer Editar/Quitar sin eliminación destructiva; la Biblioteca conserva su × segura para imágenes y videos."
+  has(
+    utilityRail,
+    'resource.hygiene?.status !== "unused"',
+    'action={`/api/admin/content/games/${encodeURIComponent(slug)}/media-resource-delete`}',
+    'value={resource.kind === "image" ? "image-delete" : "video-delete"}',
+    "Protegido",
+    "Eliminar master sin uso"
+  ),
+  "El borrado destructivo debe permanecer en Biblioteca y sólo exponerse a masters realmente huérfanos."
+);
+
+assert(
+  has(
+    assignmentsWorkspace,
+    "Card conserva siempre una imagen base 3:2",
+    "Comparte el master, no el recorte",
+    'target="card-image"',
+    'target="card-video"',
+    'target="cover-image"'
+  ),
+  "Asignaciones debe mantener master único reutilizable con crops independientes y Card 3:2 estable."
 );
 
 try {
-  await access(
-    path.join(root, "src/components/admin/GamePreviewClipUploadForm.tsx")
-  );
+  await access(path.join(root, "src/components/admin/GamePreviewClipUploadForm.tsx"));
   failures.push(
     "GamePreviewClipUploadForm.tsx volvió a aparecer aunque el editor ya usa GameVideoLibraryEditor directamente."
+  );
+} catch {}
+
+try {
+  await access(path.join(root, "src/components/admin/GameMultimediaWorkspaceContextual.tsx"));
+  failures.push(
+    "GameMultimediaWorkspaceContextual.tsx volvió a aparecer aunque la arquitectura vigente separa asignaciones, Galería y Biblioteca."
   );
 } catch {}
 
@@ -129,5 +158,5 @@ if (failures.length) {
 }
 
 console.log(
-  "Multimedia v2 hardening: OK (1080p50 default · 60 FPS máximo · sin FPS inventados · master único · Galería no destructiva · Biblioteca con borrado seguro · wrapper temporal eliminado)."
+  "Multimedia v2 hardening: OK (1080p50 default · 60 FPS máximo · master único · Galería no destructiva · Biblioteca con borrado seguro · workspace legacy eliminado)."
 );

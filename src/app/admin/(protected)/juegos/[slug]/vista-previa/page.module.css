@@ -137,7 +137,7 @@
 .cover {
   position: relative;
   width: 190px;
-  aspect-ratio: 3 / 4;
+  aspect-ratio: 4 / 5;
   overflow: hidden;
   border: 1px solid #3a4858;
   border-radius: 12px;
@@ -284,6 +284,38 @@
   margin-top: 5px;
   color: #e9edf3;
   font-size: 19px;
+}
+
+.cardPreviewPanel {
+  overflow: hidden;
+}
+
+.cardPreviewLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 320px);
+  align-items: center;
+  gap: 28px;
+  margin-top: 18px;
+}
+
+.cardPreviewCopy {
+  max-width: 650px;
+}
+
+.cardPreviewCopy p {
+  color: #9eabb8;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.cardPreviewCopy p + p {
+  margin-top: 10px;
+}
+
+.cardPreviewFrame {
+  width: min(100%, 320px);
+  min-width: 0;
+  justify-self: end;
 }
 
 .details {
@@ -505,6 +537,14 @@
 
   .cover {
     width: min(190px, 55vw);
+  }
+
+  .cardPreviewLayout {
+    grid-template-columns: 1fr;
+  }
+
+  .cardPreviewFrame {
+    justify-self: start;
   }
 
   .twoColumns {
