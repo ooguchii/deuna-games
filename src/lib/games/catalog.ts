@@ -262,6 +262,16 @@ export function matchesCatalogSearch(
   );
 }
 
+function titleOrder(a: Game, b: Game) {
+  return a.title.localeCompare(
+    b.title,
+    "es",
+    {
+      sensitivity: "base",
+    }
+  );
+}
+
 export function filterAndSortGames(
   games: readonly Game[],
   lowSpecSlugs: readonly string[],
@@ -289,8 +299,11 @@ export function filterAndSortGames(
           );
 
         const ratingOk =
-          (game.rating ?? 0) >=
-          filters.minRating;
+          filters.minRating <= 0 ||
+          (
+            game.rating !== undefined &&
+            game.rating >= filters.minRating
+          );
 
         const equipmentOk =
           filters.equipment ===
@@ -312,7 +325,7 @@ export function filterAndSortGames(
           (filters.status ===
             "recent" &&
             Boolean(
-              game.addedAt
+              game.releaseDate
             )) ||
           (filters.status ===
             "version" &&
@@ -338,15 +351,7 @@ export function filterAndSortGames(
         filters.sort ===
         "az"
       ) {
-        return a.title
-          .localeCompare(
-            b.title,
-            "es",
-            {
-              sensitivity:
-                "base",
-            }
-          );
+        return titleOrder(a, b);
       }
 
       if (
@@ -355,7 +360,8 @@ export function filterAndSortGames(
       ) {
         return (
           (b.rating ?? 0) -
-          (a.rating ?? 0)
+            (a.rating ?? 0) ||
+          titleOrder(a, b)
         );
       }
 
@@ -365,15 +371,12 @@ export function filterAndSortGames(
       ) {
         return (
           parseGameDate(
-            b.addedAt
+            b.releaseDate
           ) -
             parseGameDate(
-              a.addedAt
+              a.releaseDate
             ) ||
-          a.title.localeCompare(
-            b.title,
-            "es"
-          )
+          titleOrder(a, b)
         );
       }
 
@@ -385,7 +388,8 @@ export function filterAndSortGames(
             a.reviews
           ) ||
         (b.rating ?? 0) -
-          (a.rating ?? 0)
+          (a.rating ?? 0) ||
+        titleOrder(a, b)
       );
     }
   );
@@ -496,6 +500,7 @@ export function parseSortMode(
   value?: string
 ): SortMode {
   if (
+    value === "popular" ||
     value === "rating" ||
     value === "recientes" ||
     value === "az"
@@ -503,7 +508,7 @@ export function parseSortMode(
     return value;
   }
 
-  return "popular";
+  return "az";
 }
 
 export function parseSearchScope(
