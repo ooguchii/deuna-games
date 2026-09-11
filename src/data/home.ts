@@ -118,11 +118,11 @@ export function buildHomeGameCollections(
       7
     ),
     recentGames: [
-      ...catalog.filter((game) => Boolean(game.addedAt)),
+      ...catalog.filter((game) => Boolean(game.releaseDate)),
     ].sort(
       (a, b) =>
-        parseGameDate(b.addedAt) -
-          parseGameDate(a.addedAt) ||
+        parseGameDate(b.releaseDate) -
+          parseGameDate(a.releaseDate) ||
         a.title.localeCompare(b.title, "es")
     ),
     lowSpecGames: fillUniqueGames(
