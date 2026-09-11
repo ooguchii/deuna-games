@@ -6,12 +6,16 @@ import {
 } from "../src/features/game-finder/performance-data.ts";
 
 const slug = "dragon-ball-sparking-zero";
-const serverProfile = getPerformanceProfile(slug);
 
 assert.equal(
-  serverProfile.storageGb,
-  29,
-  "El metadato estable de espacio debe existir en el perfil base."
+  getPerformanceProfile(slug),
+  null,
+  "El fixture bundled no debe fabricar un perfil FPS ni almacenamiento auxiliar."
+);
+assert.equal(
+  resolvePerformanceProfile(slug),
+  null,
+  "Sin calibración publicada el motor debe representar la ausencia de benchmark con null."
 );
 
 const previousDocument = globalThis.document;
@@ -44,16 +48,10 @@ try {
     "La calibración publicada debe seguir alimentando el motor de rendimiento."
   );
 
-  const hydratedProfile = getPerformanceProfile(slug);
   assert.equal(
-    hydratedProfile.storageGb,
-    serverProfile.storageGb,
-    "El espacio estimado debe ser idéntico entre SSR y la primera hidratación."
-  );
-  assert.equal(
-    hydratedProfile.referenceFps,
-    serverProfile.referenceFps,
-    "Los metadatos auxiliares no deben cambiar de fuente durante la hidratación."
+    getPerformanceProfile(slug),
+    null,
+    "La hidratación no debe convertir una calibración pública en un fallback bundled persistente."
   );
 } finally {
   if (previousDocument === undefined) {
@@ -64,5 +62,5 @@ try {
 }
 
 console.log(
-  "Hidratación de rendimiento: OK (metadatos estables en SSR/cliente; calibración publicada reservada al motor de FPS)."
+  "Hidratación de rendimiento: OK (sin FPS bundled; calibración publicada validada y aislada del fallback estático)."
 );
