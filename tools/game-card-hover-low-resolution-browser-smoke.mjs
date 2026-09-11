@@ -64,9 +64,8 @@ async function waitForDebugger(profileDir) {
         if (page) return page.webSocketDebuggerUrl;
       }
     } catch {
-      // Chrome puede tardar unos milisegundos en publicar DevToolsActivePort.
+      // Chrome tarda unos milisegundos en publicar DevToolsActivePort.
     }
-
     await delay(100);
   }
 
@@ -134,7 +133,6 @@ class CdpSession {
       returnByValue: true,
       userGesture: true,
     });
-
     if (result.exceptionDetails) {
       throw new Error(
         result.exceptionDetails.exception?.description ??
@@ -142,7 +140,6 @@ class CdpSession {
           "Runtime.evaluate falló."
       );
     }
-
     return result.result?.value;
   }
 
@@ -165,7 +162,6 @@ async function navigate(cdp, url) {
     }
     await delay(100);
   }
-
   throw new Error(`La página no terminó de cargar: ${url}.`);
 }
 
@@ -186,7 +182,7 @@ async function waitForCard(cdp, selector) {
       })()
     `);
     if (ready) {
-      await delay(250);
+      await delay(300);
       return;
     }
     await delay(100);
@@ -215,8 +211,8 @@ async function cardProbe(cdp, selector) {
       const cardRect = card.getBoundingClientRect();
       const detailRect = detail.getBoundingClientRect();
       const detailCenter = document.elementFromPoint(
-        detailRect.left + detailRect.width / 2,
-        detailRect.top + detailRect.height / 2
+        Math.min(window.innerWidth - 1, Math.max(0, detailRect.left + detailRect.width / 2)),
+        Math.min(window.innerHeight - 1, Math.max(0, detailRect.top + detailRect.height / 2))
       );
       const contentStyle = getComputedStyle(content);
       const descriptionStyle = description instanceof HTMLElement
@@ -225,6 +221,7 @@ async function cardProbe(cdp, selector) {
       const titleStyle = getComputedStyle(title);
 
       return {
+        detailVisible: card.getAttribute("data-detail-visible"),
         expanded: card.getAttribute("data-card-expanded"),
         scale: Number(card.getAttribute("data-card-expansion-scale")),
         position: getComputedStyle(card).position,
@@ -265,6 +262,38 @@ async function cardProbe(cdp, selector) {
   `);
 }
 
+async function findHoverPoint(cdp, selector) {
+  return cdp.evaluate(`
+    (() => {
+      const card = document.querySelector(${JSON.stringify(selector)});
+      if (!(card instanceof HTMLElement)) return null;
+      const rect = card.getBoundingClientRect();
+      const xs = [0.5, 0.3, 0.7, 0.15, 0.85];
+      const ys = [0.5, 0.35, 0.65, 0.2, 0.8];
+
+      for (const yFraction of ys) {
+        for (const xFraction of xs) {
+          const x = rect.left + rect.width * xFraction;
+          const y = rect.top + rect.height * yFraction;
+          if (x < 0 || y < 0 || x >= window.innerWidth || y >= window.innerHeight) {
+            continue;
+          }
+          const target = document.elementFromPoint(x, y);
+          if (target instanceof Element && card.contains(target)) {
+            return {
+              x,
+              y,
+              targetTag: target.tagName,
+              targetClass: typeof target.className === "string" ? target.className : "",
+            };
+          }
+        }
+      }
+      return null;
+    })()
+  `);
+}
+
 async function moveMouse(cdp, x, y) {
   await cdp.send("Input.dispatchMouseEvent", {
     type: "mouseMoved",
@@ -279,19 +308,36 @@ async function activateCard(cdp, selector) {
   const initial = await cardProbe(cdp, selector);
   if (!initial) throw new Error(`No se pudo medir ${selector}.`);
 
-  const x = initial.cardRect.left + initial.cardRect.width / 2;
-  const y = initial.cardRect.top + initial.cardRect.height / 2;
-  await moveMouse(cdp, 1, 1);
-  await moveMouse(cdp, x, y);
-  await delay(300);
+  const hoverPoint = await findHoverPoint(cdp, selector);
+  if (!hoverPoint) {
+    throw new Error(
+      `No existe un punto visible e interactuable dentro de ${selector}: ${JSON.stringify(initial)}.`
+    );
+  }
 
-  return { initial, active: await cardProbe(cdp, selector) };
+  await moveMouse(cdp, 1, 1);
+  await delay(80);
+  await moveMouse(cdp, hoverPoint.x, hoverPoint.y);
+  await delay(350);
+
+  return {
+    initial,
+    hoverPoint,
+    active: await cardProbe(cdp, selector),
+  };
 }
 
-function assertExpanded({ initial, active }, label) {
+function assertExpanded({ initial, hoverPoint, active }, label) {
   if (!active) throw new Error(`${label}: la Card desapareció tras hover.`);
-  if (active.expanded !== "true" || active.position !== "fixed") {
-    throw new Error(`${label}: no activó expansión fixed: ${JSON.stringify(active)}.`);
+  if (
+    active.detailVisible !== "true" ||
+    active.expanded !== "true" ||
+    active.position !== "fixed"
+  ) {
+    throw new Error(
+      `${label}: no activó el detalle expandido desde ${JSON.stringify(hoverPoint)}: ` +
+        `${JSON.stringify(active)}.`
+    );
   }
   if (active.scale < 1.35 || active.scale > 1.46) {
     throw new Error(`${label}: escala fuera del contrato 1.35..1.46: ${active.scale}.`);
@@ -350,6 +396,15 @@ async function capture(cdp) {
   await writeFile(screenshotPath, Buffer.from(screenshot.data, "base64"));
 }
 
+async function assertCollapsed(cdp, selector, label) {
+  await moveMouse(cdp, 1, 1);
+  await delay(200);
+  const state = await cardProbe(cdp, selector);
+  if (!state || state.expanded !== "false" || state.position === "fixed") {
+    throw new Error(`${label}: la Card no volvió a su geometría de slot: ${JSON.stringify(state)}.`);
+  }
+}
+
 async function assertLowSpecReadable(cdp) {
   const selector = 'article[data-card-variant="lowSpec"]';
   await navigate(cdp, `${baseUrl}/`);
@@ -380,8 +435,7 @@ async function assertLowSpecReadable(cdp) {
     );
   }
 
-  await moveMouse(cdp, 1, 1);
-  await delay(180);
+  await assertCollapsed(cdp, selector, "Home lowSpec");
 }
 
 async function main() {
@@ -435,15 +489,7 @@ async function main() {
     const catalogState = await activateCard(cdp, selector);
     assertExpanded(catalogState, "Catálogo compacto 1024x640");
     await capture(cdp);
-
-    await moveMouse(cdp, 1, 1);
-    await delay(180);
-    const reset = await cardProbe(cdp, selector);
-    if (!reset || reset.expanded !== "false" || reset.position === "fixed") {
-      throw new Error(
-        `Catálogo compacto: la Card no volvió a su geometría de slot: ${JSON.stringify(reset)}.`
-      );
-    }
+    await assertCollapsed(cdp, selector, "Catálogo compacto");
 
     await assertLowSpecReadable(cdp);
 
