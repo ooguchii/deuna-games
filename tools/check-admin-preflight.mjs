@@ -118,6 +118,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Preflight administrativo: OK (actualización local segura, local y producción separados; workspace editorial completo y chequeo local de sólo lectura protegidos)."
+    "Preflight administrativo: OK (actualización local segura, colecciones fuente vacías soportadas, local y producción separados; workspace editorial completo y chequeo local de sólo lectura protegidos)."
   );
 }
