@@ -3,6 +3,10 @@ import path from "node:path";
 import process from "node:process";
 import ts from "typescript";
 
+// El manifiesto se inspecciona como AST más abajo; este import declara además
+// la dependencia real para el grafo de mantenimiento de tools.
+import "./data/game-source-records.ts";
+
 const root = process.cwd();
 const gameFinderRoot = path.join(
   root,
