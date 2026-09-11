@@ -372,6 +372,8 @@ async function assertHomeCardDetailLayout(cdp) {
           detailVisible: card.getAttribute("data-detail-visible"),
           cardWidth: cardRect.width,
           cardHeight: cardRect.height,
+          cardClientWidth: card.clientWidth,
+          cardClientHeight: card.clientHeight,
           detailWidth: detailRect.width,
           detailHeight: detailRect.height,
           mediaRatio: mediaRect.height > 0 ? mediaRect.width / mediaRect.height : 0,
@@ -403,11 +405,11 @@ async function assertHomeCardDetailLayout(cdp) {
       );
     }
     if (
-      Math.abs(layout.cardWidth - layout.detailWidth) > 1 ||
-      Math.abs(layout.cardHeight - layout.detailHeight) > 1
+      Math.abs(layout.cardClientWidth - layout.detailWidth) > 1 ||
+      Math.abs(layout.cardClientHeight - layout.detailHeight) > 1
     ) {
       throw new Error(
-        `Home Card ${layout.variant} alteró la geometría 4:5 al revelar detalle: ${JSON.stringify(layout)}.`
+        `Home Card ${layout.variant} no cubre la geometría interna al revelar detalle: ${JSON.stringify(layout)}.`
       );
     }
     if (Math.abs(layout.mediaRatio - 1.5) > 0.02) {
