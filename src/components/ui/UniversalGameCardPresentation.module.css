@@ -101,7 +101,7 @@
 /* La variante estándar usa el espacio de detalle para contexto, no para vacío. */
 .shell[data-card-variant="standard"] [data-card-description="true"] {
   margin-top: 6px;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 2;
 }
 
 /*
@@ -191,10 +191,6 @@
 }
 
 @media (max-width: 560px) {
-  .shell[data-card-variant="standard"] [data-card-description="true"] {
-    -webkit-line-clamp: 2;
-  }
-
   .shell[data-card-variant="lowSpec"] [data-card-detail-content="true"] {
     padding: 11px 12px 12px;
   }
