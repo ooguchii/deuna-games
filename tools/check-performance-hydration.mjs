@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 
 import {
   getPerformanceProfile,
@@ -6,7 +7,19 @@ import {
 } from "../src/features/game-finder/performance-data.ts";
 
 const slug = "dragon-ball-sparking-zero";
+const performanceSource = await readFile(
+  new URL(
+    "../src/features/game-finder/performance-data.ts",
+    import.meta.url
+  ),
+  "utf8"
+);
 
+assert.match(
+  performanceSource,
+  /const profiles: GamePerformanceProfile\[\] = \[\];/,
+  "No debe reaparecer un catálogo bundled de FPS sin procedencia y metodología editorial."
+);
 assert.equal(
   getPerformanceProfile(slug),
   null,
