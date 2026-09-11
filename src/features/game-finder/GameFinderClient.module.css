@@ -100,7 +100,7 @@
 .filterField > span,
 .sortControl > span {
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--font-micro);
   font-weight: 780;
 }
 
@@ -133,7 +133,7 @@
 
 .configFieldLabel {
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--font-micro);
   font-weight: 780;
 }
 
@@ -252,7 +252,7 @@
   top: 50%;
   transform: translateY(-50%);
   color: var(--brand-light);
-  font-size: 9px;
+  font-size: var(--font-micro);
   font-weight: 850;
   pointer-events: none;
 }
@@ -318,7 +318,7 @@
   color: #7f8b9b;
   border-top: 1px solid var(--finder-line);
   background: rgba(255, 255, 255, 0.012);
-  font-size: 9px;
+  font-size: var(--font-micro);
 }
 
 .configFooter {
@@ -548,12 +548,12 @@
 
 .tierFilter small {
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--font-micro);
 }
 
 .tierFilter b {
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--font-micro);
   font-weight: 780;
 }
 
@@ -629,14 +629,14 @@
 .privacyBox strong {
   display: block;
   color: var(--text-soft);
-  font-size: 10px;
+  font-size: var(--font-micro);
   font-weight: 800;
 }
 
 .privacyBox p {
   margin-top: 4px;
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: var(--font-micro);
   line-height: 1.45;
 }
 
@@ -663,7 +663,7 @@
   gap: 4px;
   flex: 0 0 auto;
   color: var(--brand-light);
-  font-size: 9px;
+  font-size: var(--font-micro);
   font-weight: 800;
 }
 
@@ -682,12 +682,12 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 10px;
+  font-size: var(--font-micro);
   font-weight: 800;
 }
 
 .performanceBar strong {
-  font-size: 10px;
+  font-size: var(--font-micro);
   font-weight: 900;
   white-space: nowrap;
 }
@@ -703,7 +703,7 @@
   justify-content: space-between;
   gap: 12px;
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: var(--font-micro);
 }
 
 .gameCardMeta span {
@@ -861,7 +861,7 @@
   color: var(--text-muted);
   border: 1px solid var(--finder-line);
   border-radius: 5px;
-  font-size: 9px;
+  font-size: var(--font-micro);
   font-weight: 720;
 }
 
@@ -880,20 +880,20 @@
 
 .detailEstimate > span {
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--font-micro);
 }
 
 .detailEstimate > strong {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 10px;
+  font-size: var(--font-micro);
   font-weight: 850;
 }
 
 .detailEstimate b {
   color: var(--text);
-  font-size: 10px;
+  font-size: var(--font-micro);
   font-weight: 850;
   white-space: nowrap;
 }
@@ -932,7 +932,7 @@
 
 .quickInfo dt,
 .quickInfo dd {
-  font-size: 10px;
+  font-size: var(--font-micro);
 }
 
 .quickInfo dt {
@@ -995,7 +995,7 @@
   gap: 11px;
   margin-top: 12px;
   color: var(--success);
-  font-size: 8px;
+  font-size: var(--font-micro);
   font-weight: 680;
 }
 
