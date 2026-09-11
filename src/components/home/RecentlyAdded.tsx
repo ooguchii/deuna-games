@@ -24,7 +24,10 @@ export default function RecentlyAdded({
           {copy.title} <span>{copy.highlight}</span>
         </h2>
 
-        <Link href="/juegos/nuevos" className={touchStyles.hitArea}>
+        <Link
+          href="/juegos?orden=recientes"
+          className={touchStyles.hitArea}
+        >
           {copy.linkLabel}
           <ChevronRight size={18} aria-hidden="true" />
         </Link>
