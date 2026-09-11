@@ -337,7 +337,10 @@ export const sourceHomeConfig: ResolvedHomeConfig = {
     "god-of-war-ragnarok",
     "elden-ring",
   ],
-  curation: structuredClone(defaultHomeCuration),
+  curation: {
+    ...structuredClone(defaultHomeCuration),
+    popular: { mode: "manual" },
+  },
   heroPresentation: structuredClone(defaultHeroPresentation),
   sections: homeSectionIds.map((id) => ({
     id,
@@ -351,18 +354,18 @@ export const sourceHomeConfig: ResolvedHomeConfig = {
     },
     popular: {
       title: "JUEGOS",
-      highlight: "POPULARES",
-      linkLabel: "Ver todos",
+      highlight: "SELECCIONADOS",
+      linkLabel: "Ver catálogo",
     },
     finder: {
       eyebrow: "COMPATIBILIDAD DE JUEGOS",
       title: "¿Buscas algo que",
       highlight: "funcione en tu PC?",
       text:
-        "Detectamos lo que tu navegador permita identificar y, si falta algún dato, completas CPU, GPU y RAM para obtener FPS orientativos según resolución y calidad.",
+        "Detectamos lo que tu navegador permita identificar y, si falta algún dato, completas CPU, GPU y RAM. Sólo mostramos FPS cuando el juego tiene una calibración publicada.",
       features: [
         "Detección local",
-        "FPS orientativos",
+        "FPS con calibración",
         "Configuración manual",
       ],
       cta: "Descubrir qué puedo jugar",
@@ -373,9 +376,9 @@ export const sourceHomeConfig: ResolvedHomeConfig = {
       linkLabel: "Ver todo el catálogo",
     },
     recent: {
-      title: "AÑADIDOS",
-      highlight: "RECIENTEMENTE",
-      linkLabel: "Ver todos los añadidos",
+      title: "LANZAMIENTOS",
+      highlight: "MÁS RECIENTES",
+      linkLabel: "Ver por fecha",
     },
     updates: {
       title: "ÚLTIMAS",
@@ -389,21 +392,21 @@ export const sourceHomeConfig: ResolvedHomeConfig = {
       title: "Encuentra juegos para",
       highlight: "tu PC",
       text:
-        "Explora el catálogo usando los requisitos disponibles, el rendimiento esperado y filtros que ya funcionan hoy.",
+        "Explora el catálogo usando requisitos publicados y, cuando exista una calibración del juego, estimaciones orientativas de rendimiento.",
       cta: "Probar recomendador",
       optionTitles: [
         "Bajos recursos",
         "Con requisitos cargados",
         "Mejor puntuados",
-        "Añadidos recientemente",
+        "Lanzamientos recientes",
       ],
       optionSubtitles: [
-        "Juegos pensados para equipos modestos",
+        "Según la RAM mínima publicada",
         "Compara memoria, gráficos y sistema",
-        "Ordenados por valoración",
-        "Los últimos títulos incorporados",
+        "Disponible cuando existen valoraciones",
+        "Ordenados por fecha de lanzamiento",
       ],
-      listTitle: "RECOMENDADOS PARA EQUIPOS",
+      listTitle: "JUEGOS CON REQUISITOS",
       listHighlight: "DE BAJOS RECURSOS",
       listLinkLabel: "Ver todos",
     },
@@ -412,7 +415,7 @@ export const sourceHomeConfig: ResolvedHomeConfig = {
       title: "JUEGOS",
       highlight: "RECOMENDADOS",
       text:
-        "Una selección de juegos que creemos que vale la pena conocer.",
+        "Una selección editorial para explorar el catálogo sin presentar métricas que no estén respaldadas.",
       linkLabel: "Ver catálogo",
     },
     trust: {
