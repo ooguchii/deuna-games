@@ -65,9 +65,40 @@ type PendingTilt = {
   clientY: number;
 };
 
+type ExpandedCardGeometry = {
+  articleLeft: number;
+  articleTop: number;
+  articleWidth: number;
+  articleHeight: number;
+  detailLeft: number;
+  detailTop: number;
+  detailWidth: number;
+  detailHeight: number;
+  scale: number;
+};
+
+type UniversalCardStyle = CSSProperties & {
+  "--tilt-x": string;
+  "--tilt-y": string;
+  "--pointer-x": string;
+  "--pointer-y": string;
+  "--image-x": string;
+  "--image-y": string;
+  "--card-detail-left"?: string;
+  "--card-detail-top"?: string;
+  "--card-detail-width"?: string;
+  "--card-detail-height"?: string;
+  "--card-transform-origin-x"?: string;
+  "--card-transform-origin-y"?: string;
+};
+
 const PREVIEW_DELAY_MS = 1000;
 const REDUCED_MOTION_MEDIA = "(prefers-reduced-motion: reduce)";
 const DIRECT_DETAIL_MEDIA = "(hover: none), (pointer: coarse)";
+const CARD_EXPANSION_SCALE = 1.45;
+const CARD_EXPANSION_MAX_WIDTH = 440;
+const CARD_VIEWPORT_MARGIN = 24;
+const CARD_ASPECT_HEIGHT = 5 / 4;
 
 const fallbackClassBySlug: Record<string, string> = {
   "god-of-war-ragnarok": "godOfWar",
@@ -124,6 +155,28 @@ function applyTilt(node: HTMLElement, clientX: number, clientY: number, rect: DO
   node.style.setProperty("--image-y", `${((y - 0.5) * -6).toFixed(2)}px`);
 }
 
+function clamp(value: number, minimum: number, maximum: number) {
+  return Math.min(Math.max(value, minimum), Math.max(minimum, maximum));
+}
+
+function stickyHeaderBottom() {
+  const header = document.querySelector("header");
+
+  if (!(header instanceof HTMLElement)) return CARD_VIEWPORT_MARGIN;
+
+  const style = window.getComputedStyle(header);
+  if (style.position !== "fixed" && style.position !== "sticky") {
+    return CARD_VIEWPORT_MARGIN;
+  }
+
+  const rect = header.getBoundingClientRect();
+  if (rect.bottom <= 0 || rect.top >= window.innerHeight) {
+    return CARD_VIEWPORT_MARGIN;
+  }
+
+  return Math.max(CARD_VIEWPORT_MARGIN, rect.bottom + 10);
+}
+
 function Rating({ game }: { game: Game }) {
   if (game.rating === undefined && !game.reviews) {
     return null;
@@ -171,11 +224,14 @@ export default function UniversalGameCardBase({
   const pendingTilt = useRef<PendingTilt | null>(null);
   const cardRect = useRef<DOMRect | null>(null);
   const pointerEffectsEnabled = useRef(false);
+  const slotRef = useRef<HTMLDivElement>(null);
   const articleRef = useRef<HTMLElement>(null);
   const [detailVisible, setDetailVisible] = useState(false);
   const [directDetailVisible, setDirectDetailVisible] = useState(false);
   const [previewActive, setPreviewActive] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
+  const [expandedGeometry, setExpandedGeometry] =
+    useState<ExpandedCardGeometry | null>(null);
 
   const presentation = resolveGameCardPresentation(game);
   const cardMode = presentation.card.mode;
@@ -203,6 +259,16 @@ export default function UniversalGameCardBase({
       directDetailMedia.removeEventListener("change", sync);
     };
   }, []);
+
+  useEffect(() => {
+    if (!expandedGeometry) return;
+
+    const detail = articleRef.current?.querySelector('[data-card-face="detail"]');
+    cardRect.current =
+      detail instanceof HTMLElement
+        ? detail.getBoundingClientRect()
+        : articleRef.current?.getBoundingClientRect() ?? null;
+  }, [expandedGeometry]);
 
   function cancelTiltFrame() {
     if (tiltFrame.current !== null) {
@@ -234,6 +300,63 @@ export default function UniversalGameCardBase({
     }, PREVIEW_DELAY_MS);
   }
 
+  function expandCard() {
+    const slot = slotRef.current;
+    if (!slot) return;
+
+    const rect = slot.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return;
+
+    const viewportWidth = document.documentElement.clientWidth;
+    const viewportHeight = window.innerHeight;
+    const safeTop = stickyHeaderBottom();
+    const safeBottom = CARD_VIEWPORT_MARGIN;
+    const availableWidth = Math.max(
+      rect.width,
+      viewportWidth - CARD_VIEWPORT_MARGIN * 2
+    );
+    const availableHeight = Math.max(
+      rect.height,
+      viewportHeight - safeTop - safeBottom
+    );
+    const detailWidth = Math.max(
+      rect.width,
+      Math.min(
+        rect.width * CARD_EXPANSION_SCALE,
+        CARD_EXPANSION_MAX_WIDTH,
+        availableWidth,
+        availableHeight / CARD_ASPECT_HEIGHT
+      )
+    );
+    const detailHeight = detailWidth * CARD_ASPECT_HEIGHT;
+    const detailViewportLeft = clamp(
+      rect.left - (detailWidth - rect.width) / 2,
+      CARD_VIEWPORT_MARGIN,
+      viewportWidth - CARD_VIEWPORT_MARGIN - detailWidth
+    );
+    const detailViewportTop = clamp(
+      rect.top - (detailHeight - rect.height) / 2,
+      safeTop,
+      viewportHeight - safeBottom - detailHeight
+    );
+
+    setExpandedGeometry({
+      articleLeft: rect.left,
+      articleTop: rect.top,
+      articleWidth: rect.width,
+      articleHeight: rect.height,
+      detailLeft: detailViewportLeft - rect.left,
+      detailTop: detailViewportTop - rect.top,
+      detailWidth,
+      detailHeight,
+      scale: detailWidth / rect.width,
+    });
+  }
+
+  function collapseCard() {
+    setExpandedGeometry(null);
+  }
+
   function activatePointerEffects(event: ReactPointerEvent<HTMLElement>) {
     const pointerSupportsEffects =
       event.pointerType === "mouse" || event.pointerType === "pen";
@@ -261,10 +384,11 @@ export default function UniversalGameCardBase({
       event.pointerType === "mouse" || event.pointerType === "pen";
     if (pointerSupportsReveal) {
       setDetailVisible(true);
+      expandCard();
       schedulePreview();
     }
     if (!activatePointerEffects(event)) return;
-    cardRect.current = event.currentTarget.getBoundingClientRect();
+    cardRect.current = null;
   }
 
   function scheduleTilt(event: ReactPointerEvent<HTMLElement>) {
@@ -272,6 +396,7 @@ export default function UniversalGameCardBase({
       event.pointerType === "mouse" || event.pointerType === "pen";
     if (pointerSupportsReveal && !detailVisible) {
       setDetailVisible(true);
+      expandCard();
       schedulePreview();
     }
     if (!activatePointerEffects(event)) return;
@@ -298,11 +423,15 @@ export default function UniversalGameCardBase({
     event.currentTarget.removeAttribute("data-tilt-active");
     resetTilt(event.currentTarget);
     setDetailVisible(false);
+    collapseCard();
     cancelPreview();
   }
 
   function focusCard() {
     setDetailVisible(true);
+    if (!window.matchMedia(DIRECT_DETAIL_MEDIA).matches) {
+      expandCard();
+    }
     if (preview && !reducedMotion && cardMode === "video") setPreviewActive(true);
     else schedulePreview();
   }
@@ -310,6 +439,7 @@ export default function UniversalGameCardBase({
   function blurCard(event: ReactFocusEvent<HTMLElement>) {
     if (event.relatedTarget instanceof Node && event.currentTarget.contains(event.relatedTarget)) return;
     setDetailVisible(false);
+    collapseCard();
     cancelPreview();
   }
 
@@ -414,30 +544,64 @@ export default function UniversalGameCardBase({
     </Link>
   );
 
+  const cardStyle: UniversalCardStyle = {
+    "--tilt-x": "0deg",
+    "--tilt-y": "0deg",
+    "--pointer-x": "50%",
+    "--pointer-y": "50%",
+    "--image-x": "0px",
+    "--image-y": "0px",
+  };
+
+  if (expandedGeometry) {
+    cardStyle.position = "fixed";
+    cardStyle.left = expandedGeometry.articleLeft;
+    cardStyle.top = expandedGeometry.articleTop;
+    cardStyle.right = "auto";
+    cardStyle.bottom = "auto";
+    cardStyle.width = expandedGeometry.articleWidth;
+    cardStyle.height = expandedGeometry.articleHeight;
+    cardStyle["--card-detail-left"] = `${expandedGeometry.detailLeft}px`;
+    cardStyle["--card-detail-top"] = `${expandedGeometry.detailTop}px`;
+    cardStyle["--card-detail-width"] = `${expandedGeometry.detailWidth}px`;
+    cardStyle["--card-detail-height"] = `${expandedGeometry.detailHeight}px`;
+    cardStyle["--card-transform-origin-x"] = `${
+      expandedGeometry.detailLeft + expandedGeometry.detailWidth / 2
+    }px`;
+    cardStyle["--card-transform-origin-y"] = `${
+      expandedGeometry.detailTop + expandedGeometry.detailHeight / 2
+    }px`;
+  }
+
   return (
-    <article
-      ref={articleRef}
-      className={`${styles.card} ${presentationStyles.shell} ${tiltStyles.tiltCard} ${variantClass}`}
-      data-card-variant={variant}
-      data-detail-visible={detailPresented ? "true" : "false"}
-      data-cover-source={presentation.cover.source}
-      onPointerEnter={startCard}
-      onPointerMove={scheduleTilt}
-      onPointerLeave={stopCard}
-      onPointerCancel={stopCard}
-      onFocusCapture={focusCard}
-      onBlurCapture={blurCard}
-      style={{
-        "--tilt-x": "0deg",
-        "--tilt-y": "0deg",
-        "--pointer-x": "50%",
-        "--pointer-y": "50%",
-        "--image-x": "0px",
-        "--image-y": "0px",
-      } as CSSProperties}
+    <div
+      ref={slotRef}
+      className={`${styles.slot} ${expandedGeometry ? styles.slotExpanded : ""}`}
+      data-game-card-slot="true"
     >
-      {primaryControl}
-      {overlayAction}
-    </article>
+      <article
+        ref={articleRef}
+        className={`${styles.card} ${presentationStyles.shell} ${tiltStyles.tiltCard} ${variantClass}`}
+        data-card-variant={variant}
+        data-detail-visible={detailPresented ? "true" : "false"}
+        data-card-expanded={expandedGeometry ? "true" : "false"}
+        data-card-expansion-scale={expandedGeometry?.scale.toFixed(3) ?? "1.000"}
+        data-cover-source={presentation.cover.source}
+        onPointerEnter={startCard}
+        onPointerMove={scheduleTilt}
+        onPointerLeave={stopCard}
+        onPointerCancel={stopCard}
+        onFocusCapture={focusCard}
+        onBlurCapture={blurCard}
+        style={cardStyle}
+      >
+        {primaryControl}
+        {overlayAction && (
+          <div className={styles.overlayAction} data-card-overlay-action="true">
+            {overlayAction}
+          </div>
+        )}
+      </article>
+    </div>
   );
 }
