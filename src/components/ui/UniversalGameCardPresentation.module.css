@@ -127,7 +127,7 @@
   min-height: 20px;
   margin-top: 4px;
   padding-inline: 6px;
-  font-size: 9px;
+  font-size: var(--font-micro);
 }
 
 .shell[data-card-variant="lowSpec"] [data-card-requirements="true"] {
@@ -148,7 +148,7 @@
 .shell[data-card-variant="lowSpec"] [data-card-requirements="true"] p {
   min-width: 0;
   overflow: hidden;
-  font-size: 9px;
+  font-size: var(--font-micro);
   line-height: 1.15;
   text-overflow: ellipsis;
   white-space: nowrap;
