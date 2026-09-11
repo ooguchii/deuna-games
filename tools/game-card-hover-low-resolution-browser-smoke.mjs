@@ -349,26 +349,39 @@ async function moveMouse(cdp, x, y) {
 }
 
 async function activateCard(cdp, selector) {
-  const initial = await cardProbe(cdp, selector);
+  await moveMouse(cdp, 1, 1);
+  await delay(100);
+  await waitForCard(cdp, selector);
+
+  let initial = await cardProbe(cdp, selector);
   if (!initial) throw new Error(`No se pudo medir ${selector}.`);
 
-  const hoverPoint = await findHoverPoint(cdp, selector);
+  let hoverPoint = await findHoverPoint(cdp, selector);
   if (!hoverPoint) {
     throw new Error(
       `No existe un punto visible e interactuable dentro de ${selector}: ${JSON.stringify(initial)}.`
     );
   }
 
-  await moveMouse(cdp, 1, 1);
-  await delay(80);
   await moveMouse(cdp, hoverPoint.x, hoverPoint.y);
-  await delay(350);
+  await delay(400);
+  let active = await cardProbe(cdp, selector);
 
-  return {
-    initial,
-    hoverPoint,
-    active: await cardProbe(cdp, selector),
-  };
+  if (!active || active.expanded !== "true") {
+    await moveMouse(cdp, 1, 1);
+    await delay(100);
+    await waitForCard(cdp, selector);
+    initial = await cardProbe(cdp, selector);
+    hoverPoint = await findHoverPoint(cdp, selector);
+    if (!initial || !hoverPoint) {
+      throw new Error(`No se pudo estabilizar ${selector} para el segundo intento de hover.`);
+    }
+    await moveMouse(cdp, hoverPoint.x, hoverPoint.y);
+    await delay(400);
+    active = await cardProbe(cdp, selector);
+  }
+
+  return { initial, hoverPoint, active };
 }
 
 function assertExpanded({ initial, hoverPoint, active }, label) {
