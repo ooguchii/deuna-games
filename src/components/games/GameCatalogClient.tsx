@@ -62,12 +62,32 @@ type GameCatalogClientProps = {
   initialView?: ViewMode;
 };
 
+function supportedSort(
+  sort: SortMode,
+  capabilities: {
+    ratings: boolean;
+    reviews: boolean;
+    releaseDates: boolean;
+  }
+): SortMode {
+  if (sort === "popular" && !capabilities.reviews) {
+    return capabilities.ratings ? "rating" : "az";
+  }
+  if (sort === "rating" && !capabilities.ratings) {
+    return capabilities.reviews ? "popular" : "az";
+  }
+  if (sort === "recientes" && !capabilities.releaseDates) {
+    return "az";
+  }
+  return sort;
+}
+
 export default function GameCatalogClient({
   games,
   categoryTerms,
   lowSpecSlugs,
   initialCategory = "todos",
-  initialSort = "popular",
+  initialSort = "az",
   initialQuery = "",
   initialSearchScope = "all",
   initialRating = 0,
@@ -77,19 +97,46 @@ export default function GameCatalogClient({
 }: GameCatalogClientProps) {
   const router = useRouter();
   const categoryRef = useRef<HTMLDivElement>(null);
+  const hasRatings = games.some(
+    (game) => game.rating !== undefined
+  );
+  const hasReviews = games.some(
+    (game) => Boolean(game.reviews)
+  );
+  const hasReleaseDates = games.some(
+    (game) => Boolean(game.releaseDate)
+  );
+  const hasVersions = games.some(
+    (game) => Boolean(game.version)
+  );
+  const defaultSort = supportedSort(
+    initialSort,
+    {
+      ratings: hasRatings,
+      reviews: hasReviews,
+      releaseDates: hasReleaseDates,
+    }
+  );
+  const defaultStatus =
+    (initialStatus === "recent" && !hasReleaseDates) ||
+    (initialStatus === "version" && !hasVersions)
+      ? "all"
+      : initialStatus;
   const [query, setQuery] = useState(
     sanitizeCatalogQuery(initialQuery)
   );
   const deferredQuery = useDeferredValue(query);
   const [category, setCategory] = useState(initialCategory);
-  const [sort, setSort] = useState<SortMode>(initialSort);
+  const [sort, setSort] = useState<SortMode>(defaultSort);
   const [scope, setScope] =
     useState<SearchScope>(initialSearchScope);
-  const [minRating, setMinRating] = useState(initialRating);
+  const [minRating, setMinRating] = useState(
+    hasRatings ? initialRating : 0
+  );
   const [equipment, setEquipment] =
     useState<EquipmentFilter>(initialEquipment);
   const [status, setStatus] =
-    useState<StatusFilter>(initialStatus);
+    useState<StatusFilter>(defaultStatus);
   const [view, setView] = useState<ViewMode>(initialView);
 
   const categoryStats = useMemo(
@@ -144,7 +191,7 @@ export default function GameCatalogClient({
     if (nextCategory !== "todos") {
       params.set("categoria", nextCategory);
     }
-    if (nextSort !== "popular") {
+    if (nextSort !== "az") {
       params.set("orden", nextSort);
     }
     if (nextQuery) {
@@ -153,7 +200,7 @@ export default function GameCatalogClient({
     if (nextScope !== "all") {
       params.set("buscarEn", nextScope);
     }
-    if (nextRating > 0) {
+    if (hasRatings && nextRating > 0) {
       params.set("puntuacion", String(nextRating));
     }
     if (nextEquipment !== "all") {
@@ -181,7 +228,7 @@ export default function GameCatalogClient({
   function clearAll() {
     setQuery("");
     setCategory("todos");
-    setSort("popular");
+    setSort("az");
     setScope("all");
     setMinRating(0);
     setEquipment("all");
@@ -200,7 +247,7 @@ export default function GameCatalogClient({
   const activeFilterCount = [
     Boolean(query),
     category !== "todos",
-    sort !== "popular",
+    sort !== "az",
     scope !== "all",
     minRating > 0,
     equipment !== "all",
@@ -392,25 +439,27 @@ export default function GameCatalogClient({
             Rápidos
           </span>
 
-          <button
-            type="button"
-            className={
-              minRating === 4.8 ? styles.quickActive : ""
-            }
-            onClick={() => {
-              const value = minRating === 4.8 ? 0 : 4.8;
-              setMinRating(value);
-              replaceUrl({ rating: value });
-            }}
-            aria-pressed={minRating === 4.8}
-          >
-            <Star
-              size={14}
-              fill="currentColor"
-              aria-hidden="true"
-            />
-            4.8+
-          </button>
+          {hasRatings && (
+            <button
+              type="button"
+              className={
+                minRating === 4.8 ? styles.quickActive : ""
+              }
+              onClick={() => {
+                const value = minRating === 4.8 ? 0 : 4.8;
+                setMinRating(value);
+                replaceUrl({ rating: value });
+              }}
+              aria-pressed={minRating === 4.8}
+            >
+              <Star
+                size={14}
+                fill="currentColor"
+                aria-hidden="true"
+              />
+              4.8+
+            </button>
+          )}
 
           <button
             type="button"
@@ -431,59 +480,65 @@ export default function GameCatalogClient({
             Bajos recursos
           </button>
 
-          <button
-            type="button"
-            className={
-              status === "recent" ? styles.quickActive : ""
-            }
-            onClick={() => {
-              const value =
-                status === "recent" ? "all" : "recent";
-              setStatus(value);
-              replaceUrl({ status: value });
-            }}
-            aria-pressed={status === "recent"}
-          >
-            <Sparkles size={14} aria-hidden="true" />
-            Recientes
-          </button>
+          {hasReleaseDates && (
+            <button
+              type="button"
+              className={
+                status === "recent" ? styles.quickActive : ""
+              }
+              onClick={() => {
+                const value =
+                  status === "recent" ? "all" : "recent";
+                setStatus(value);
+                replaceUrl({ status: value });
+              }}
+              aria-pressed={status === "recent"}
+            >
+              <Sparkles size={14} aria-hidden="true" />
+              Con fecha
+            </button>
+          )}
 
-          <button
-            type="button"
-            className={
-              status === "version" ? styles.quickActive : ""
-            }
-            onClick={() => {
-              const value =
-                status === "version" ? "all" : "version";
-              setStatus(value);
-              replaceUrl({ status: value });
-            }}
-            aria-pressed={status === "version"}
-          >
-            <MonitorCheck size={14} aria-hidden="true" />
-            Con versión
-          </button>
+          {hasVersions && (
+            <button
+              type="button"
+              className={
+                status === "version" ? styles.quickActive : ""
+              }
+              onClick={() => {
+                const value =
+                  status === "version" ? "all" : "version";
+                setStatus(value);
+                replaceUrl({ status: value });
+              }}
+              aria-pressed={status === "version"}
+            >
+              <MonitorCheck size={14} aria-hidden="true" />
+              Con versión
+            </button>
+          )}
         </div>
 
         <div className={styles.advancedFilters}>
-          <label className={styles.field}>
-            <span>Puntuación</span>
-            <select
-              value={minRating}
-              onChange={(event) => {
-                const value = Number(event.target.value);
-                setMinRating(value);
-                replaceUrl({ rating: value });
-              }}
-            >
-              <option value="0">Todas</option>
-              <option value="4.5">4.5+</option>
-              <option value="4.7">4.7+</option>
-              <option value="4.8">4.8+</option>
-              <option value="4.9">4.9</option>
-            </select>
-          </label>
+          {hasRatings && (
+            <label className={styles.field}>
+              <span>Puntuación</span>
+              <select
+                value={minRating}
+                onChange={(event) => {
+                  const value = Number(event.target.value);
+                  setMinRating(value);
+                  replaceUrl({ rating: value });
+                }}
+              >
+                <option value="0">Todas</option>
+                <option value="4.5">4.5+</option>
+                <option value="4.7">4.7+</option>
+                <option value="4.8">4.8+</option>
+                <option value="4.9">4.9</option>
+              </select>
+            </label>
+          )}
 
           <label className={styles.field}>
             <span>Equipo</span>
@@ -502,22 +557,28 @@ export default function GameCatalogClient({
             </select>
           </label>
 
-          <label className={styles.field}>
-            <span>Estado</span>
-            <select
-              value={status}
-              onChange={(event) => {
-                const value =
-                  event.target.value as StatusFilter;
-                setStatus(value);
-                replaceUrl({ status: value });
-              }}
-            >
-              <option value="all">Todos</option>
-              <option value="recent">Añadidos recientemente</option>
-              <option value="version">Con versión registrada</option>
-            </select>
-          </label>
+          {(hasReleaseDates || hasVersions) && (
+            <label className={styles.field}>
+              <span>Estado</span>
+              <select
+                value={status}
+                onChange={(event) => {
+                  const value =
+                    event.target.value as StatusFilter;
+                  setStatus(value);
+                  replaceUrl({ status: value });
+                }}
+              >
+                <option value="all">Todos</option>
+                {hasReleaseDates && (
+                  <option value="recent">Con fecha de lanzamiento</option>
+                )}
+                {hasVersions && (
+                  <option value="version">Con versión registrada</option>
+                )}
+              </select>
+            </label>
+          )}
 
           <label className={styles.field}>
             <span>Ordenar</span>
@@ -529,9 +590,15 @@ export default function GameCatalogClient({
                 replaceUrl({ sort: value });
               }}
             >
-              <option value="popular">Más populares</option>
-              <option value="rating">Mejor puntuados</option>
-              <option value="recientes">Más recientes</option>
+              {hasReviews && (
+                <option value="popular">Más populares</option>
+              )}
+              {hasRatings && (
+                <option value="rating">Mejor puntuados</option>
+              )}
+              {hasReleaseDates && (
+                <option value="recientes">Lanzamientos más recientes</option>
+              )}
               <option value="az">A — Z</option>
             </select>
           </label>
@@ -611,7 +678,7 @@ export default function GameCatalogClient({
           <Search size={30} aria-hidden="true" />
           <h2>No encontramos juegos</h2>
           <p>
-            Prueba con otro nombre, clasificación, puntuación o combinación de filtros.
+            Prueba con otro nombre, clasificación o combinación de filtros.
           </p>
           <button type="button" onClick={clearAll}>
             Ver todo el catálogo
