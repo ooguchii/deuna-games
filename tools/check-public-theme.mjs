@@ -4,6 +4,7 @@ import process from "node:process";
 
 const root = process.cwd();
 const failures = [];
+const minimumPublicTextSizePx = 11;
 
 const read = async (relativePath) =>
   readFile(path.join(root, relativePath), "utf8");
@@ -189,13 +190,42 @@ const forbiddenHeroAmbientMarkers = [
   "ambientOpacity",
 ];
 
-for (const file of await sourceFiles("src")) {
+const allSourceFiles = await sourceFiles("src");
+
+for (const file of allSourceFiles) {
   const content = await read(file);
   for (const marker of forbiddenHeroAmbientMarkers) {
     requireExcludes(
       content,
       marker,
       `${file}: quedó un resto de la capa ambiental eliminada (${marker}).`
+    );
+  }
+}
+
+/*
+ * La escala tipográfica pública define 11px como `--font-micro`, su mínimo.
+ * Los literales menores eluden el sistema y en capturas mobile/low-resolution
+ * pierden legibilidad. Se excluye Admin porque tiene su contrato visual propio.
+ */
+const publicStyleFiles = allSourceFiles.filter(
+  (file) =>
+    file.endsWith(".css") &&
+    !file.startsWith("src/components/admin/") &&
+    !file.includes("/admin/")
+);
+const literalFontSizePattern = /font-size\s*:\s*([0-9]+(?:\.[0-9]+)?)px\s*;/g;
+
+for (const file of publicStyleFiles) {
+  const content = await read(file);
+  for (const match of content.matchAll(literalFontSizePattern)) {
+    const size = Number.parseFloat(match[1]);
+    if (size <= 0 || size >= minimumPublicTextSizePx) continue;
+
+    const line = content.slice(0, match.index).split("\n").length;
+    failures.push(
+      `${file}:${line}: font-size ${size}px queda por debajo de ` +
+      `--font-micro (${minimumPublicTextSizePx}px). Usa la escala tipográfica pública.`
     );
   }
 }
@@ -238,6 +268,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Tema público: OK (marca/fondo dinámicos, contraste adaptable, Hero sin capa ambiental ni restos heredados y contratos protegidos)."
+    "Tema público: OK (marca/fondo dinámicos, contraste adaptable, tipografía pública >= --font-micro, Hero sin capa ambiental ni restos heredados y contratos protegidos)."
   );
 }
