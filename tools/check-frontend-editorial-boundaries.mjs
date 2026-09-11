@@ -169,8 +169,10 @@ assert(
     manifest.includes("name: config.name") &&
     manifest.includes("short_name: config.shortName") &&
     manifest.includes("description: config.description") &&
-    manifest.includes("theme_color: config.themeColor"),
-  "El manifest debe reutilizar la identidad pública publicada en vez de duplicar marca o descripción."
+    manifest.includes("safeThemeBackground(config.themeColor)") &&
+    manifest.includes("background_color: themeColor") &&
+    manifest.includes("theme_color: themeColor"),
+  "El manifest debe reutilizar la identidad pública publicada y normalizar el color PWA con el mismo contrato seguro de la web."
 );
 
 for (const [name, image] of [
