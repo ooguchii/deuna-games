@@ -17,7 +17,6 @@ async function source(relativePath) {
 }
 
 const [
-  accountPage,
   accountDashboard,
   adminLogin,
   adminLoginStyles,
@@ -31,8 +30,8 @@ const [
   logoImageResolver,
   socialImage,
   mediaRoute,
+  mediaServing,
 ] = await Promise.all([
-  source("src/app/cuenta/page.tsx"),
   source("src/app/cuenta/AccountDashboardClient.tsx"),
   source("src/app/admin/login/page.tsx"),
   source("src/app/admin/login/login.module.css"),
@@ -46,13 +45,8 @@ const [
   source("src/lib/site-logo-image.ts"),
   source("src/lib/social-image.tsx"),
   source("src/app/media/editorial/[slug]/[filename]/route.ts"),
+  source("src/lib/media/editorial-media-serving.ts"),
 ]);
-
-assert(
-  accountPage.includes('from "@/components/brand/SiteLogoMark"') &&
-    accountPage.includes("<SiteLogoMark size={16}"),
-  "Mi DeUna sin sesión debe mostrar el renderer canónico del logo publicado."
-);
 
 assert(
   accountDashboard.includes("<SiteBrand") &&
@@ -155,15 +149,15 @@ assert(
 );
 
 assert(
-  mediaRoute.includes("resolveSiteLogoServingAccess") &&
-    mediaRoute.includes("getPublicSiteConfig") &&
-    mediaRoute.includes("published.logoAsset === publicPath") &&
-    mediaRoute.includes("resolveAdminSession") &&
-    mediaRoute.includes("readAdminSessionToken") &&
-    mediaRoute.includes('return session ? "admin" : null') &&
+  mediaRoute.includes("resolveEditorialMediaServingAccess") &&
+    mediaRoute.includes('servingAccess === "admin"') &&
     mediaRoute.includes('"private, no-store, max-age=0"') &&
-    mediaRoute.includes('"public, max-age=31536000, immutable"'),
-  "Un logo aún no publicado debe quedar fuera del serving anónimo y sólo poder previsualizarse con sesión Admin y cache privada."
+    mediaRoute.includes('"public, max-age=31536000, immutable"') &&
+    mediaServing.includes('"site_config"') &&
+    mediaServing.includes("site.logoAsset") &&
+    mediaServing.includes("PUBLIC_EXPOSURE_PUBLICATION_SQL") &&
+    mediaServing.includes("wasEverPublished"),
+  "El logo debe usar la autoridad compartida de multimedia: borradores sólo para Admin y cualquier referencia de una publicación inmutable permanece pública para restauraciones históricas."
 );
 
 let staticFaviconExists = true;
@@ -184,6 +178,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Superficies del logo global: OK (Header/Footer/404, Mi DeUna, Admin, metadata, PWA, social y serving draft/público convergen en identidad publicada)."
+    "Superficies del logo global: OK (web, Admin, Cuenta, metadata, PWA, social y serving histórico convergen en la identidad editorial)."
   );
 }
