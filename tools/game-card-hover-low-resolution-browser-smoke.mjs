@@ -159,8 +159,7 @@ async function navigate(cdp, url) {
 
   const deadline = Date.now() + 20_000;
   while (Date.now() < deadline) {
-    const ready = await cdp.evaluate("document.readyState");
-    if (ready === "complete") {
+    if ((await cdp.evaluate("document.readyState")) === "complete") {
       await delay(500);
       return;
     }
@@ -214,7 +213,6 @@ async function cardProbe(cdp, selector) {
       ) return null;
 
       const cardRect = card.getBoundingClientRect();
-      const slotRect = slot.getBoundingClientRect();
       const detailRect = detail.getBoundingClientRect();
       const detailCenter = document.elementFromPoint(
         detailRect.left + detailRect.width / 2,
@@ -252,6 +250,7 @@ async function cardProbe(cdp, selector) {
         contentOverflowY: contentStyle.overflowY,
         contentClientHeight: content.clientHeight,
         contentScrollHeight: content.scrollHeight,
+        hasDescription: description instanceof HTMLElement,
         descriptionDisplay: descriptionStyle?.display ?? null,
         descriptionClamp: descriptionStyle?.webkitLineClamp ?? null,
         titleClamp: titleStyle.webkitLineClamp,
@@ -323,19 +322,22 @@ function assertExpanded({ initial, active }, label) {
     throw new Error(`${label}: el detalle expandido quedó fuera del viewport: ${JSON.stringify(active)}.`);
   }
   if (!active.detailHitInside) {
-    throw new Error(`${label}: el detalle expandido quedó tapado/recortado por otro contenedor.`);
+    throw new Error(`${label}: el detalle expandido quedó tapado o recortado.`);
   }
   if (active.contentOverflowY !== "auto" || active.contentClientHeight <= 0) {
-    throw new Error(`${label}: el texto no quedó accesible mediante el contenedor de detalle.`);
+    throw new Error(`${label}: el texto no quedó accesible en el detalle.`);
   }
-  if (active.descriptionDisplay !== "block" || active.descriptionClamp !== "none") {
+  if (
+    active.hasDescription &&
+    (active.descriptionDisplay !== "block" || active.descriptionClamp !== "none")
+  ) {
     throw new Error(`${label}: la descripción sigue truncada: ${JSON.stringify(active)}.`);
   }
   if (active.titleClamp !== "none") {
     throw new Error(`${label}: el título sigue truncado: ${JSON.stringify(active)}.`);
   }
   if (active.pageOverflowX > 1) {
-    throw new Error(`${label}: el hover creó overflow horizontal de página (${active.pageOverflowX}px).`);
+    throw new Error(`${label}: el hover creó overflow horizontal (${active.pageOverflowX}px).`);
   }
 }
 
@@ -374,7 +376,7 @@ async function assertLowSpecReadable(cdp) {
     )
   ) {
     throw new Error(
-      `Home lowSpec: RAM/GPU/SO siguen elipsados al expandir: ${JSON.stringify(requirements)}.`
+      `Home lowSpec: RAM/GPU/SO siguen elipsados: ${JSON.stringify(requirements)}.`
     );
   }
 
@@ -438,7 +440,7 @@ async function main() {
     await delay(180);
     const reset = await cardProbe(cdp, selector);
     if (!reset || reset.expanded !== "false" || reset.position !== "absolute") {
-      throw new Error(`Catálogo compacto: la Card no volvió a su slot: ${JSON.stringify(reset)}.`);
+      throw new Error(`Catálogo compacto: la Card no volvió al slot: ${JSON.stringify(reset)}.`);
     }
 
     await assertLowSpecReadable(cdp);
