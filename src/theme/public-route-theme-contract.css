@@ -1,8 +1,9 @@
 /*
  * Ajustes finales de identidad para rutas públicas que todavía conservan
  * overrides históricos. Esta hoja se carga después de módulos y del contrato
- * general y sólo cambia colores decorativos/de marca; rating, estados de
- * rendimiento, warning, éxito y error mantienen sus colores semánticos.
+ * general. Además de color de marca, concentra mínimos de legibilidad para
+ * módulos legacy densos cuya geometría no conviene duplicar ni parchear por
+ * breakpoint: el estilo efectivo final nunca baja de --font-micro.
  */
 
 /* /juegos — el número de títulos es identidad de la cabecera, no rating. */
@@ -22,4 +23,39 @@ section[aria-labelledby="overview-title"] dl > div > span:first-child {
     color-mix(in srgb, var(--brand) 24%, transparent) !important;
   background:
     color-mix(in srgb, var(--brand) 6%, transparent) !important;
+}
+
+/* ================================================================
+   LEGIBILIDAD PÚBLICA MÍNIMA
+
+   Dos módulos públicos muy densos conservan tamaños históricos por debajo de
+   la escala para no duplicar su lógica responsive. Como este contrato se carga
+   después de CSS Modules, estas reglas son la autoridad visual efectiva y
+   garantizan que ningún texto relevante quede por debajo de --font-micro.
+================================================================ */
+
+/* /requisitos — flujo, privacidad y perfil detectado. */
+section[aria-labelledby="finder-unified-title"]
+  [aria-label="Resumen del proceso"],
+section[aria-labelledby="finder-unified-title"]
+  > div:nth-of-type(2)
+  > div:last-child,
+article[aria-label="Perfil actual del equipo"]
+  > div:first-child
+  :is(span, small, p),
+article[aria-label="Perfil actual del equipo"] > dl dt,
+article[aria-label="Perfil actual del equipo"] > dl dd,
+article[aria-label="Perfil actual del equipo"] > div > button,
+section[aria-labelledby="finder-unified-title"]
+  article:has(button[aria-label^="Ver análisis de "])
+  :is(span, strong, button) {
+  font-size: var(--font-micro) !important;
+}
+
+/* /juegos/[slug] — compatibilidad/FPS y badge de versión actual. */
+aside[aria-labelledby="compatibility-title"] span,
+aside[aria-labelledby="compatibility-title"] dt,
+aside[aria-labelledby="compatibility-title"] ol > li::before,
+section[aria-labelledby="versions-title"] article > div:first-child > span {
+  font-size: var(--font-micro) !important;
 }
