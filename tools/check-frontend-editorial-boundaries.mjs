@@ -96,6 +96,16 @@ for (const phrase of [
 }
 
 assert(
+  homePage.includes("const ratingsAvailable = games.some(") &&
+    homePage.includes("ratingsAvailable={ratingsAvailable}") &&
+    homeComponents.includes('href: "/juegos?orden=rating"') &&
+    homeComponents.includes("requiresRatings: true") &&
+    homeComponents.includes("option.requiresRatings && !ratingsAvailable") &&
+    homeComponents.includes("hardwareCardUnavailable"),
+  "El acceso de Inicio a Mejor puntuados debe depender de ratings públicos reales y quedar no interactivo cuando esa capacidad no existe."
+);
+
+assert(
   rootLayout.includes("getPublicHomeConfig") &&
     rootLayout.includes("homeConfig.copy.hero.accessibleTitle") &&
     homePage.includes("homeConfig.copy.hero.accessibleTitle") &&
