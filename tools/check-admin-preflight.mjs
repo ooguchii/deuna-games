@@ -75,6 +75,14 @@ for (const required of [
   );
 }
 
+assert(
+  localPreflight.includes("counts.get(type) ?? 0") &&
+    localPreflight.includes(
+      'countFor("game_update") === gameUpdates.length'
+    ),
+  "El preflight local debe tratar como cero los tipos sin filas agrupadas para soportar colecciones fuente vacías sin falsos bloqueos."
+);
+
 const sqlQueries = [
   ...localPreflight.matchAll(
     /pool\.query(?:<[\s\S]*?>)?\(\s*`([\s\S]*?)`/g
