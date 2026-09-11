@@ -109,6 +109,19 @@
   overflow: hidden;
 }
 
+/* Evita que títulos editoriales largos desplacen el resto del detalle. */
+.shell h3 {
+  min-width: 0;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.shell[data-card-variant="lowSpec"] h3 {
+  -webkit-line-clamp: 1;
+}
+
 .shell[data-detail-visible="true"] .coverFace {
   opacity: 0;
   transform: scale(1.018);
