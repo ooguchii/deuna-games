@@ -202,9 +202,12 @@ const updateId =
     .replace(/[^a-z0-9._-]/g, "-")
     .slice(0, 160);
 const version = `avisos-e2e-${suffix}`.slice(0, 80);
-const publishedAt = new Date(
-  Date.now() + 60_000
-).toISOString().slice(0, 16);
+/*
+ * El formulario editorial guarda precisión de minutos. El minuto UTC actual
+ * mantiene este único update de CI como el más reciente sin colocarlo después
+ * de markAccountUpdatesSeen(), que persiste el límite con now().
+ */
+const publishedAt = new Date().toISOString().slice(0, 16);
 const summary =
   `Actualización sintética aislada para validar avisos de cuenta (${suffix}).`;
 
