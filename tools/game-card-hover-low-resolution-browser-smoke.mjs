@@ -177,18 +177,45 @@ async function waitForCard(cdp, selector) {
           key.startsWith("__reactProps$") || key.startsWith("__reactFiber$")
         );
         if (!hydrated) return false;
-        card.scrollIntoView({ block: "center", inline: "center" });
+
+        const rect = card.getBoundingClientRect();
+        const absoluteTop = window.scrollY + rect.top;
+        const centeredTop = absoluteTop - Math.max(
+          0,
+          (window.innerHeight - rect.height) / 2
+        );
+        window.scrollTo({
+          top: Math.max(0, centeredTop),
+          behavior: "auto",
+        });
         return true;
       })()
     `);
+
     if (ready) {
       await delay(300);
-      return;
+      const visible = await cdp.evaluate(`
+        (() => {
+          const card = document.querySelector(${JSON.stringify(selector)});
+          if (!(card instanceof HTMLElement)) return false;
+          const rect = card.getBoundingClientRect();
+          return (
+            rect.bottom > 0 &&
+            rect.top < window.innerHeight &&
+            rect.right > 0 &&
+            rect.left < window.innerWidth
+          );
+        })()
+      `);
+      if (visible) return;
     }
+
     await delay(100);
   }
 
-  throw new Error(`No apareció una Card hidratada para ${selector}.`);
+  throw new Error(
+    `No apareció una Card hidratada y visible para ${selector}.`
+  );
 }
 
 async function cardProbe(cdp, selector) {
