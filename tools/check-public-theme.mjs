@@ -40,6 +40,21 @@ function requireExcludes(content, marker, message) {
   }
 }
 
+function selectorForDeclaration(content, declarationIndex) {
+  const blockStart = content.lastIndexOf("{", declarationIndex);
+  if (blockStart < 0) return "";
+
+  const previousClose = content.lastIndexOf("}", blockStart - 1);
+  const previousOpen = content.lastIndexOf("{", blockStart - 1);
+  const selectorStart = Math.max(previousClose, previousOpen) + 1;
+
+  return content
+    .slice(selectorStart, blockStart)
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 const legacyBrandMarkers = [
   "#ff0847",
   "#ff2d68",
@@ -233,21 +248,47 @@ for (const file of allSourceFiles) {
  * Los literales menores eluden el sistema y en capturas mobile/low-resolution
  * pierden legibilidad. Se excluye Admin porque tiene su contrato visual propio.
  *
- * Sólo dos módulos legacy densos quedan fuera del escaneo literal. Su estilo
- * efectivo se fuerza después de CSS Modules desde public-route-theme-contract
- * y los selectores necesarios se validan arriba; así la excepción no puede
- * crecer silenciosamente ni convertirse en una vía para texto ilegible.
+ * Dos módulos legacy densos aún declaran tamaños históricos, pero sólo se
+ * toleran los selectores exactos cubiertos por el contrato efectivo anterior.
+ * Cualquier selector nuevo por debajo del mínimo vuelve a bloquear CI.
  */
-const legacyTypographyContractFiles = new Set([
-  "src/app/juegos/[slug]/page.module.css",
-  "src/features/game-finder/GameFinderUnifiedHero.module.css",
+const legacyTypographyCoveredSelectors = new Map([
+  [
+    "src/app/juegos/[slug]/page.module.css",
+    new Set([
+      ".compatibilityEyebrow",
+      ".compatibilityStatus",
+      ".compatibilitySteps li::before",
+      ".compatibilityResult > div span",
+      ".compatibilityResult > p span",
+      ".compatibilityMeta dt",
+      ".versionRow > div span",
+    ]),
+  ],
+  [
+    "src/features/game-finder/GameFinderUnifiedHero.module.css",
+    new Set([
+      ".microFlow",
+      ".trust",
+      ".profileIdentityTop > span",
+      ".profileTitleLine small",
+      ".profileStateLabel",
+      ".profileHint",
+      ".specLabel",
+      ".specItem dd",
+      ".profileActions button",
+      ".recommendationsHeader > span",
+      ".recommendationsHeader button",
+      ".recommendationMeta strong",
+      ".recommendationFooter > span",
+    ]),
+  ],
 ]);
 const publicStyleFiles = allSourceFiles.filter(
   (file) =>
     file.endsWith(".css") &&
     !file.startsWith("src/components/admin/") &&
-    !file.includes("/admin/") &&
-    !legacyTypographyContractFiles.has(file)
+    !file.includes("/admin/")
 );
 const literalFontSizePattern = /font-size\s*:\s*([0-9]+(?:\.[0-9]+)?)px\s*;/g;
 
@@ -257,9 +298,14 @@ for (const file of publicStyleFiles) {
     const size = Number.parseFloat(match[1]);
     if (size <= 0 || size >= minimumPublicTextSizePx) continue;
 
+    const selector = selectorForDeclaration(content, match.index);
+    const coveredSelectors = legacyTypographyCoveredSelectors.get(file);
+    if (coveredSelectors?.has(selector)) continue;
+
     const line = content.slice(0, match.index).split("\n").length;
+    const selectorDetail = selector ? ` en ${selector}` : "";
     failures.push(
-      `${file}:${line}: font-size ${size}px queda por debajo de ` +
+      `${file}:${line}: font-size ${size}px${selectorDetail} queda por debajo de ` +
       `--font-micro (${minimumPublicTextSizePx}px). Usa la escala tipográfica pública.`
     );
   }
