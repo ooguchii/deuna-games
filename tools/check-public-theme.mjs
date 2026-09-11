@@ -177,6 +177,31 @@ requireIncludes(
 );
 
 /*
+ * Finder unificado y ficha de juego conservan CSS legacy compacto, pero el
+ * contrato por ruta es la última autoridad visual. Estas marcas son parte de
+ * la excepción: si una desaparece, no se permite ocultar los literales chicos
+ * del módulo fuente sin una cobertura efectiva equivalente.
+ */
+for (const marker of [
+  'section[aria-labelledby="finder-unified-title"]\n  [aria-label="Resumen del proceso"]',
+  'article[aria-label="Perfil actual del equipo"]',
+  'article:has(button[aria-label^="Ver análisis de "])',
+  'aside[aria-labelledby="compatibility-title"]',
+  'section[aria-labelledby="versions-title"]',
+]) {
+  requireIncludes(
+    routeContract,
+    marker,
+    `src/theme/public-route-theme-contract.css: falta cobertura de legibilidad para ${marker}.`
+  );
+}
+requireIncludes(
+  routeContract,
+  "font-size: var(--font-micro) !important;",
+  "src/theme/public-route-theme-contract.css: la cobertura legacy debe imponer --font-micro como mínimo efectivo."
+);
+
+/*
  * El Hero no puede volver a crear una segunda escena ambiental ni conservar
  * parámetros de esa implementación retirada. La comprobación recorre todo
  * `src/` para que tampoco sobrevivan restos en schemas, tipos o editores.
@@ -207,12 +232,22 @@ for (const file of allSourceFiles) {
  * La escala tipográfica pública define 11px como `--font-micro`, su mínimo.
  * Los literales menores eluden el sistema y en capturas mobile/low-resolution
  * pierden legibilidad. Se excluye Admin porque tiene su contrato visual propio.
+ *
+ * Sólo dos módulos legacy densos quedan fuera del escaneo literal. Su estilo
+ * efectivo se fuerza después de CSS Modules desde public-route-theme-contract
+ * y los selectores necesarios se validan arriba; así la excepción no puede
+ * crecer silenciosamente ni convertirse en una vía para texto ilegible.
  */
+const legacyTypographyContractFiles = new Set([
+  "src/app/juegos/[slug]/page.module.css",
+  "src/features/game-finder/GameFinderUnifiedHero.module.css",
+]);
 const publicStyleFiles = allSourceFiles.filter(
   (file) =>
     file.endsWith(".css") &&
     !file.startsWith("src/components/admin/") &&
-    !file.includes("/admin/")
+    !file.includes("/admin/") &&
+    !legacyTypographyContractFiles.has(file)
 );
 const literalFontSizePattern = /font-size\s*:\s*([0-9]+(?:\.[0-9]+)?)px\s*;/g;
 
