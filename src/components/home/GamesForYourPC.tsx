@@ -31,7 +31,7 @@ const catalogOptions = [
     icon: Star,
   },
   {
-    href: "/juegos?estado=recent&orden=recientes",
+    href: "/juegos?orden=recientes",
     icon: CalendarDays,
   },
 ] as const;
@@ -53,6 +53,9 @@ export default function GamesForYourPC({
       values.indexOf(reason) === index
     )
     .slice(0, 2);
+  const hasRatings = games.some(
+    (game) => game.rating !== undefined
+  );
 
   return (
     <section className={styles.section}>
@@ -88,21 +91,31 @@ export default function GamesForYourPC({
 
       <div className={styles.hardwareGrid}>
         {catalogOptions.map((option, index) => {
-          const Icon = option.icon;
+          const fallbackMetric = index === 2 && !hasRatings;
+          const Icon = fallbackMetric ? Sparkles : option.icon;
+          const href = fallbackMetric
+            ? "/juegos"
+            : option.href;
+          const title = fallbackMetric
+            ? "Explorar catálogo"
+            : copy.optionTitles[index];
+          const subtitle = fallbackMetric
+            ? "Descubre juegos sin inventar una puntuación"
+            : copy.optionSubtitles[index];
 
           return (
             <Link
-              href={option.href}
+              href={href}
               className={styles.hardwareCard}
-              key={option.href}
+              key={`${index}:${href}`}
             >
               <div className={styles.hardwareIcon}>
                 <Icon size={25} aria-hidden="true" />
               </div>
 
               <div>
-                <h3>{copy.optionTitles[index]}</h3>
-                <p>{copy.optionSubtitles[index]}</p>
+                <h3>{title}</h3>
+                <p>{subtitle}</p>
               </div>
 
               <ChevronRight
