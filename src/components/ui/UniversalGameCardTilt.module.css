@@ -5,6 +5,10 @@
   --pointer-y: 50%;
   --image-x: 0px;
   --image-y: 0px;
+  --card-detail-left: 0px;
+  --card-detail-top: 0px;
+  --card-detail-width: 100%;
+  --card-detail-height: 100%;
   --card-transform-origin-x: 50%;
   --card-transform-origin-y: 50%;
 
