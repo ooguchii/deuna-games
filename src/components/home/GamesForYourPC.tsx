@@ -6,7 +6,6 @@ import {
   Cpu,
   Monitor,
   Sparkles,
-  Star,
 } from "lucide-react";
 
 import CardCarousel from "@/components/ui/CardCarousel";
@@ -27,8 +26,8 @@ const catalogOptions = [
     icon: Monitor,
   },
   {
-    href: "/juegos?orden=rating",
-    icon: Star,
+    href: "/juegos",
+    icon: Sparkles,
   },
   {
     href: "/juegos?orden=recientes",
@@ -53,9 +52,6 @@ export default function GamesForYourPC({
       values.indexOf(reason) === index
     )
     .slice(0, 2);
-  const hasRatings = games.some(
-    (game) => game.rating !== undefined
-  );
 
   return (
     <section className={styles.section}>
@@ -91,31 +87,21 @@ export default function GamesForYourPC({
 
       <div className={styles.hardwareGrid}>
         {catalogOptions.map((option, index) => {
-          const fallbackMetric = index === 2 && !hasRatings;
-          const Icon = fallbackMetric ? Sparkles : option.icon;
-          const href = fallbackMetric
-            ? "/juegos"
-            : option.href;
-          const title = fallbackMetric
-            ? "Explorar catálogo"
-            : copy.optionTitles[index];
-          const subtitle = fallbackMetric
-            ? "Descubre juegos sin inventar una puntuación"
-            : copy.optionSubtitles[index];
+          const Icon = option.icon;
 
           return (
             <Link
-              href={href}
+              href={option.href}
               className={styles.hardwareCard}
-              key={`${index}:${href}`}
+              key={`${index}:${option.href}`}
             >
               <div className={styles.hardwareIcon}>
                 <Icon size={25} aria-hidden="true" />
               </div>
 
               <div>
-                <h3>{title}</h3>
-                <p>{subtitle}</p>
+                <h3>{copy.optionTitles[index]}</h3>
+                <p>{copy.optionSubtitles[index]}</p>
               </div>
 
               <ChevronRight
