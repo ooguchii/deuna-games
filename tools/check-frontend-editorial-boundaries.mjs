@@ -85,8 +85,8 @@ assert(
 for (const phrase of [
   "COMPATIBILIDAD DE JUEGOS",
   "Ver todas las actualizaciones",
-  "RECOMENDADOS PARA EQUIPOS",
-  "Una selección de juegos que creemos que vale la pena conocer.",
+  "JUEGOS CON REQUISITOS",
+  "Una selección editorial para explorar el catálogo sin presentar métricas que no estén respaldadas.",
   "Versiones identificadas",
 ]) {
   assert(
