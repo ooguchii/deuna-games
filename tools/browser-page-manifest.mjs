@@ -197,7 +197,7 @@ export const redirectChecks = [
     pathname: "/juegos/populares",
     authenticated: false,
     finalPathname: "/juegos",
-    finalSearch: { orden: "popular" },
+    finalSearch: {},
   },
   {
     id: "public-low-spec-games-alias",
