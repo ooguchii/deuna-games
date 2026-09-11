@@ -571,7 +571,7 @@
 
    El slot mantiene la geometría de la página. Al revelar detalle la article
    pasa a fixed con su tamaño base, mientras la cara de detalle crece hasta
-   ~45 % (limitada por viewport) y escapa de overflow de grids/carruseles.
+   ~18 % (limitada por viewport) y escapa de overflow de grids/carruseles.
 ================================================== */
 
 .card.card[data-card-expanded="true"] {
