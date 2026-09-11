@@ -15,10 +15,20 @@ import {
   resolveEditorialMediaDiskPath,
 } from "./editorial-media";
 import {
-  inspectSafeSiteBrandLogoSvg,
+  inspectSafeSiteBrandLogoRaster,
+  siteBrandRasterContentType,
+  type SiteBrandRasterFormat,
+} from "./safe-site-logo-raster";
+import {
+  inspectPrivacySafeSiteBrandLogoSvg,
+} from "./safe-site-logo-svg";
+import {
   MAX_TAXONOMY_SVG_ICON_BYTES,
   recolorSafeSiteBrandLogoSvg,
 } from "./safe-svg-icon";
+import {
+  MAX_EDITORIAL_IMAGE_BYTES,
+} from "./safe-webp";
 
 function isMissingFileError(error: unknown) {
   return (
@@ -27,6 +37,17 @@ function isMissingFileError(error: unknown) {
     "code" in error &&
     (error as { code?: unknown }).code === "ENOENT"
   );
+}
+
+function storedLogoFormat(filename: string) {
+  const match = filename.match(
+    /\.(svg|png|jpg|webp|gif)$/
+  );
+
+  return match?.[1] as
+    | "svg"
+    | SiteBrandRasterFormat
+    | undefined;
 }
 
 async function readStoredSiteBrandLogoUncached(
@@ -45,16 +66,22 @@ async function readStoredSiteBrandLogoUncached(
     return null;
   }
 
+  const format = storedLogoFormat(resolved.filename);
+  if (!format) return null;
+
   try {
     const stats = await lstat(
       /* turbopackIgnore: true */ resolved.filePath
     );
+    const maximumBytes = format === "svg"
+      ? MAX_TAXONOMY_SVG_ICON_BYTES
+      : MAX_EDITORIAL_IMAGE_BYTES;
 
     if (
       !stats.isFile() ||
       stats.isSymbolicLink() ||
       stats.size <= 0 ||
-      stats.size > MAX_TAXONOMY_SVG_ICON_BYTES
+      stats.size > maximumBytes
     ) {
       return null;
     }
@@ -62,10 +89,36 @@ async function readStoredSiteBrandLogoUncached(
     const content = await readFile(
       /* turbopackIgnore: true */ resolved.filePath
     );
-    const inspection = inspectSafeSiteBrandLogoSvg(content);
     const expectedDigest = resolved.filename.slice(
       0,
-      -".svg".length
+      -(format.length + 1)
+    );
+
+    if (format === "svg") {
+      const inspection =
+        inspectPrivacySafeSiteBrandLogoSvg(content);
+
+      if (
+        !inspection ||
+        inspection.digest !== expectedDigest
+      ) {
+        return null;
+      }
+
+      return {
+        publicPath,
+        content,
+        format: "svg" as const,
+        digest: inspection.digest,
+        bytes: inspection.bytes,
+        width: null,
+        height: null,
+      };
+    }
+
+    const inspection = inspectSafeSiteBrandLogoRaster(
+      content,
+      format
     );
 
     if (
@@ -78,8 +131,11 @@ async function readStoredSiteBrandLogoUncached(
     return {
       publicPath,
       content,
+      format,
       digest: inspection.digest,
       bytes: inspection.bytes,
+      width: inspection.width,
+      height: inspection.height,
     };
   } catch (error) {
     if (isMissingFileError(error)) {
@@ -101,14 +157,22 @@ export async function buildSiteBrandLogoDataUri(
 
   if (!stored) return null;
 
-  const rendered = color
-    ? recolorSafeSiteBrandLogoSvg(
-        stored.content,
-        color
-      )
-    : stored.content;
+  if (stored.format === "svg") {
+    const rendered = color
+      ? recolorSafeSiteBrandLogoSvg(
+          stored.content,
+          color
+        )
+      : stored.content;
 
-  if (!rendered) return null;
+    if (!rendered) return null;
 
-  return `data:image/svg+xml;base64,${rendered.toString("base64")}`;
+    return `data:image/svg+xml;base64,${rendered.toString("base64")}`;
+  }
+
+  // Los raster conservan sus colores originales. Recolorearlos con una
+  // máscara alpha puede convertir logos opacos en un rectángulo sólido y no
+  // existe un decoder de píxeles en este contrato para distinguir fondo de
+  // figura de forma segura.
+  return `data:${siteBrandRasterContentType(stored.format)};base64,${stored.content.toString("base64")}`;
 }

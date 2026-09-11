@@ -10,9 +10,9 @@ export const EDITORIAL_MEDIA_PUBLIC_PREFIX =
 const slugPattern =
   /^[a-z0-9][a-z0-9._-]{0,159}$/;
 const filenamePattern =
-  /^[a-f0-9]{64}\.(?:webp|svg|webm)$/;
+  /^[a-f0-9]{64}\.(?:webp|svg|webm|png|jpg|gif)$/;
 const publicPathPattern =
-  /^\/media\/editorial\/([a-z0-9][a-z0-9._-]{0,159})\/([a-f0-9]{64}\.(?:webp|svg|webm))$/;
+  /^\/media\/editorial\/([a-z0-9][a-z0-9._-]{0,159})\/([a-f0-9]{64}\.(?:webp|svg|webm|png|jpg|gif))$/;
 
 function isContainedBy(
   parent: string,

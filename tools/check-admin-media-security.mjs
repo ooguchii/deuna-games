@@ -318,11 +318,18 @@ assert(
 );
 assert(
   publicRoute.includes(
-    '"Content-Type": "image/webp"'
+    "const isSiteLogoAsset = slug === SITE_BRAND_LOGO_SLUG"
   ) &&
+    publicRoute.includes(
+      "siteBrandRasterContentType"
+    ) &&
+    publicRoute.includes(
+      "!isSvg && !isWebm && !isWebp && !isSiteLogoAsset"
+    ) &&
+    publicRoute.includes(': "image/webp"') &&
     publicRoute.includes("immutable") &&
     publicRoute.includes("isSymbolicLink"),
-  "La ruta pública multimedia debe seguir sirviendo WebP inmutable y seguro aunque también admita otros formatos editoriales validados."
+  "La ruta pública debe mantener WebP como formato normal, permitir MIME raster adicional sólo dentro del namespace validado del logo y seguir sirviendo assets inmutables sin symlinks."
 );
 assert(
   systemd.includes(

@@ -18,6 +18,9 @@ import {
 import {
   readStoredSiteBrandLogo,
 } from "@/lib/media/site-brand-logo";
+import {
+  resolveSiteLogoColorMode,
+} from "@/lib/site/logo";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -101,11 +104,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const normalizedInput = {
+      ...input,
+      logoColorMode: resolveSiteLogoColorMode(
+        input.logoAsset,
+        input.logoColorMode
+      ),
+    };
+
     const result = await saveSiteConfigDraft(
       expectedRevision,
       authorized.session.userId,
       {
-        ...input,
+        ...normalizedInput,
         backgroundLibrary:
           current.payload.backgroundLibrary,
         pageBackgrounds:

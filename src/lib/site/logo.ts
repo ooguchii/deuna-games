@@ -1,7 +1,7 @@
 export const SITE_BRAND_LOGO_SLUG = "site-brand-logo";
 
 export const siteBrandLogoAssetPattern =
-  /^\/media\/editorial\/site-brand-logo\/[a-f0-9]{64}\.svg$/;
+  /^\/media\/editorial\/site-brand-logo\/[a-f0-9]{64}\.(?:svg|png|jpg|webp|gif)$/;
 
 export const siteLogoColorModes = [
   "original",
@@ -24,6 +24,23 @@ export function isSiteBrandLogoAsset(
   value: string
 ) {
   return siteBrandLogoAssetPattern.test(value);
+}
+
+export function siteBrandLogoSupportsRecolor(
+  asset?: string | null
+) {
+  return !asset || asset.endsWith(".svg");
+}
+
+export function resolveSiteLogoColorMode(
+  asset: string | null | undefined,
+  colorMode: SiteLogoColorMode | undefined
+): SiteLogoColorMode {
+  if (!siteBrandLogoSupportsRecolor(asset)) {
+    return "original";
+  }
+
+  return colorMode ?? "brand";
 }
 
 export function resolveSiteLogoColor(

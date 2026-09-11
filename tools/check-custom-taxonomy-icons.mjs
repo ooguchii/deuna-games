@@ -114,8 +114,11 @@ assert(
 assert(
   publicMediaRoute.includes("TAXONOMY_ICON_MEDIA_SLUG") &&
     publicMediaRoute.includes("const isTaxonomyAsset") &&
-    publicMediaRoute.includes("const isSvgNamespace = isTaxonomyAsset || isSiteLogoAsset") &&
-    publicMediaRoute.includes("(isSvg && !isSvgNamespace)") &&
+    publicMediaRoute.includes("const isRestrictedImageNamespace") &&
+    publicMediaRoute.includes("isTaxonomyAsset || isSiteLogoAsset") &&
+    publicMediaRoute.includes("(isSvg && !isRestrictedImageNamespace)") &&
+    publicMediaRoute.includes("(isWebm && isRestrictedImageNamespace)") &&
+    publicMediaRoute.includes("(isTaxonomyAsset && !isSvg && !isWebp)") &&
     publicMediaRoute.includes("inspectSafeTaxonomySvgIcon") &&
     publicMediaRoute.includes("Content-Security-Policy") &&
     publicMediaRoute.includes('"Content-Type": "image/svg+xml; charset=utf-8"') &&
@@ -124,7 +127,7 @@ assert(
     mediaServing.includes("taxonomy.classifications") &&
     mediaServing.includes("taxonomy.tags") &&
     mediaServing.includes("resolveAdminSession"),
-  "Los SVG deben servirse sólo desde namespaces seguros y su acceso debe depender de publicación o sesión Admin, conservando revalidación y CSP."
+  "Taxonomía debe seguir limitada a SVG/WebP y usar la frontera compartida publicación/preview Admin aunque el namespace del logo admita raster adicionales."
 );
 
 assert(

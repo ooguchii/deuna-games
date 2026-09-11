@@ -12,11 +12,15 @@ import {
   siteUrl,
 } from "@/lib/site";
 import {
+  siteAppIconVersion,
+} from "@/lib/site/app-icon";
+import {
   brandForeground,
   safeThemeBackground,
 } from "@/lib/site/brand-foreground";
 import {
   resolveSiteLogoColor,
+  resolveSiteLogoColorMode,
 } from "@/lib/site/logo";
 import {
   getPublicSiteConfig,
@@ -38,6 +42,7 @@ export async function generateMetadata(): Promise<Metadata> {
   ]);
   const homeTitle =
     `${config.name} | ${homeConfig.copy.hero.accessibleTitle}`;
+  const iconVersion = siteAppIconVersion(config);
 
   return {
     metadataBase: new URL(siteUrl),
@@ -50,6 +55,28 @@ export async function generateMetadata(): Promise<Metadata> {
     description: config.description,
 
     applicationName: config.name,
+
+    icons: {
+      icon: [
+        {
+          url: `/app-icon/32?v=${iconVersion}`,
+          type: "image/png",
+          sizes: "32x32",
+        },
+        {
+          url: `/app-icon/64?v=${iconVersion}`,
+          type: "image/png",
+          sizes: "64x64",
+        },
+      ],
+      apple: [
+        {
+          url: `/app-icon/180?v=${iconVersion}`,
+          type: "image/png",
+          sizes: "180x180",
+        },
+      ],
+    },
 
     openGraph: {
       type: "website",
@@ -112,12 +139,17 @@ export default async function RootLayout({
     }
   }
 
+  const logoColorMode = resolveSiteLogoColorMode(
+    logoAsset,
+    config.logoColorMode
+  );
+
   return (
     <html
       lang={config.language}
       data-scroll-behavior="smooth"
       data-site-logo={logoAsset ? "custom" : "default"}
-      data-site-logo-color-mode={config.logoColorMode}
+      data-site-logo-color-mode={logoColorMode}
       style={{
         "--theme-bg": readableThemeBackground,
         "--theme-brand": config.brandColor,

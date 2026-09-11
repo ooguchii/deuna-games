@@ -16,6 +16,8 @@ import {
 import SiteLogoMark from "@/components/brand/SiteLogoMark";
 import {
   resolveSiteLogoColor,
+  resolveSiteLogoColorMode,
+  siteBrandLogoSupportsRecolor,
   type SiteLogoColorMode,
 } from "@/lib/site/logo";
 
@@ -32,6 +34,7 @@ type SiteBrandLogoEditorProps = {
 
 type UploadPayload = {
   publicPath?: string;
+  format?: "svg" | "png" | "jpg" | "webp" | "gif";
   error?: string;
 };
 
@@ -48,14 +51,26 @@ export default function SiteBrandLogoEditor({
   const [scale, setScale] = useState(initialScale);
   const [asset, setAsset] = useState(initialAsset ?? "");
   const [colorMode, setColorMode] =
-    useState<SiteLogoColorMode>(initialColorMode);
+    useState<SiteLogoColorMode>(() =>
+      resolveSiteLogoColorMode(
+        initialAsset,
+        initialColorMode
+      )
+    );
   const [customColor, setCustomColor] =
     useState(initialCustomColor);
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const supportsRecolor = siteBrandLogoSupportsRecolor(
+    asset || null
+  );
+  const effectiveColorMode = resolveSiteLogoColorMode(
+    asset || null,
+    colorMode
+  );
   const logoColor = resolveSiteLogoColor({
     brandColor,
-    logoColorMode: colorMode,
+    logoColorMode: effectiveColorMode,
     logoCustomColor: customColor,
   });
 
@@ -127,7 +142,9 @@ export default function SiteBrandLogoEditor({
       setAsset(payload.publicPath);
       setColorMode("original");
       setMessage(
-        "Logo validado. Se conservarán los colores del SVG; guarda el borrador para incorporarlo a la identidad."
+        payload.format === "svg"
+          ? "Logo SVG validado y saneado. Se eliminó metadata del archivo y no se conserva su nombre original; guarda el borrador para incorporarlo a la identidad."
+          : "Logo raster validado y saneado. Se eliminó metadata, perfiles incrustados y el nombre original; el raster se muestra sin recolor. Guarda el borrador para incorporarlo a la identidad."
       );
     } catch {
       setMessage(
@@ -182,7 +199,7 @@ export default function SiteBrandLogoEditor({
                 strokeWidth={1.9}
                 asset={asset || null}
                 color={logoColor}
-                colorMode={colorMode}
+                colorMode={effectiveColorMode}
               />
             </span>
             <div>
@@ -200,8 +217,8 @@ export default function SiteBrandLogoEditor({
             className={styles.fileInput}
             type="file"
             hidden
-            accept=".svg,image/svg+xml"
-            aria-label="Archivo SVG del logo"
+            accept=".svg,.png,.jpg,.jpeg,.webp,.gif,image/svg+xml,image/png,image/jpeg,image/webp,image/gif"
+            aria-label="Archivo de imagen del logo"
             onChange={(event) => {
               const file = event.currentTarget.files?.[0];
               if (file) void uploadLogo(file);
@@ -215,7 +232,7 @@ export default function SiteBrandLogoEditor({
               onClick={() => inputRef.current?.click()}
             >
               <ImagePlus size={17} aria-hidden="true" />
-              {uploading ? "Validando…" : asset ? "Cambiar SVG" : "Subir SVG"}
+              {uploading ? "Validando…" : asset ? "Cambiar logo" : "Subir logo"}
             </button>
             {asset && (
               <button
@@ -258,7 +275,7 @@ export default function SiteBrandLogoEditor({
           </div>
 
           <p className={styles.fileHint}>
-            SVG estático de hasta 256 KB. Se admiten degradados, defs, máscaras, filtros, texto, estilos inline seguros, referencias internas y PNG/JPEG/WebP embebidos. Se bloquean scripts, HTML embebido, animaciones y recursos o enlaces externos.
+            SVG estático de hasta 256 KB o PNG, JPEG, WebP y GIF estático de hasta 6 MB. El formato se detecta por contenido, no por extensión. Antes de guardar se eliminan metadata, perfiles ICC, EXIF/XMP, comentarios y bloques auxiliares; no se persiste el nombre original del archivo.
           </p>
         </div>
 
@@ -276,15 +293,17 @@ export default function SiteBrandLogoEditor({
                 type="radio"
                 name="logoColorMode"
                 value="original"
-                checked={colorMode === "original"}
+                checked={effectiveColorMode === "original"}
                 onChange={() => setColorMode("original")}
               />
               <span className={styles.radioMark} aria-hidden="true" />
             </span>
             <label htmlFor="site-logo-color-original">
-              <strong>Colores originales del SVG</strong>
+              <strong>Usar colores del archivo</strong>
               <small>
-                En un SVG personalizado conserva degradados y colores tal como vienen en el archivo.
+                {supportsRecolor
+                  ? "Mantiene las pinturas del SVG saneado sin aplicar el color de marca."
+                  : "Muestra el raster saneado sin recolor; los perfiles ICC se eliminan por privacidad."}
               </small>
             </label>
             <i aria-hidden="true" />
@@ -298,7 +317,8 @@ export default function SiteBrandLogoEditor({
                 type="radio"
                 name="logoColorMode"
                 value="brand"
-                checked={colorMode === "brand"}
+                checked={effectiveColorMode === "brand"}
+                disabled={!supportsRecolor}
                 onChange={() => setColorMode("brand")}
               />
               <span className={styles.radioMark} aria-hidden="true" />
@@ -306,7 +326,9 @@ export default function SiteBrandLogoEditor({
             <label htmlFor="site-logo-color-brand">
               <strong>Seguir color de marca</strong>
               <small>
-                Si cambias la marca, el logo cambia con ella.
+                {supportsRecolor
+                  ? "Si cambias la marca, el logo cambia con ella."
+                  : "Disponible para el símbolo original y logos SVG; los raster se muestran sin recolor."}
               </small>
             </label>
             <i style={{ background: brandColor }} aria-hidden="true" />
@@ -320,7 +342,8 @@ export default function SiteBrandLogoEditor({
                 type="radio"
                 name="logoColorMode"
                 value="custom"
-                checked={colorMode === "custom"}
+                checked={effectiveColorMode === "custom"}
+                disabled={!supportsRecolor}
                 onChange={() => setColorMode("custom")}
               />
               <span className={styles.radioMark} aria-hidden="true" />
@@ -328,14 +351,16 @@ export default function SiteBrandLogoEditor({
             <label htmlFor="site-logo-color-custom">
               <strong>Color personalizado</strong>
               <small>
-                Mantiene el logo independiente del color principal del sitio.
+                {supportsRecolor
+                  ? "Mantiene el logo independiente del color principal del sitio."
+                  : "Disponible sólo para el símbolo original y logos SVG."}
               </small>
             </label>
             <input
               className={styles.colorInput}
               type="color"
               value={customColor}
-              disabled={colorMode !== "custom"}
+              disabled={effectiveColorMode !== "custom" || !supportsRecolor}
               aria-label="Color personalizado del logo"
               onChange={(event) =>
                 setCustomColor(event.target.value)
@@ -346,7 +371,7 @@ export default function SiteBrandLogoEditor({
           <div className={styles.securityNote}>
             <ShieldCheck size={17} aria-hidden="true" />
             <span>
-              El SVG se sanea como recurso estático e inmutable. Subirlo no publica ni modifica el sitio hasta guardar y publicar la identidad.
+              El archivo se sanea como recurso estático e inmutable y se vuelve a validar cada vez que se lee o sirve. Subirlo no publica ni modifica el sitio hasta guardar y publicar la identidad.
             </span>
           </div>
         </fieldset>

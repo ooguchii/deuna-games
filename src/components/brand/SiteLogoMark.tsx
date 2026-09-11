@@ -3,6 +3,7 @@ import { Gamepad2 } from "lucide-react";
 
 import {
   isSiteBrandLogoAsset,
+  resolveSiteLogoColorMode,
   type SiteLogoColorMode,
 } from "@/lib/site/logo";
 
@@ -38,6 +39,10 @@ export default function SiteLogoMark({
   const safeAsset = asset && isSiteBrandLogoAsset(asset)
     ? asset
     : null;
+  const effectiveColorMode = resolveSiteLogoColorMode(
+    safeAsset,
+    colorMode
+  );
   const style = {
     "--site-logo-size": `${size}px`,
     ...(scale !== undefined ? { "--site-logo-scale": scale / 100 } : {}),
@@ -60,7 +65,7 @@ export default function SiteLogoMark({
       }
       data-logo-color-mode={
         hasOverride && safeAsset
-          ? colorMode ?? "brand"
+          ? effectiveColorMode
           : undefined
       }
       aria-hidden="true"
