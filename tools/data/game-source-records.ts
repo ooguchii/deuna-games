@@ -25,7 +25,7 @@ export const gameSourceRecords: GameSourceRecord[] = [
     verifiedAt: "2026-09-10",
     sources: [
       "https://www.playstation.com/es-ar/games/god-of-war-ragnarok/pc/",
-      "https://store.steampowered.com/app/2322010/God_of_War_Ragnark/",
+      "https://store.steampowered.com/app/2322010/God_of_War_Ragnarok/",
     ],
   },
   {
