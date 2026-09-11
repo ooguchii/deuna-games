@@ -5,6 +5,8 @@
   --pointer-y: 50%;
   --image-x: 0px;
   --image-y: 0px;
+  --card-transform-origin-x: 50%;
+  --card-transform-origin-y: 50%;
 
   position: relative;
 
@@ -20,6 +22,10 @@
     rotateX(var(--tilt-x))
     rotateY(var(--tilt-y))
     translateZ(0);
+
+  transform-origin:
+    var(--card-transform-origin-x)
+    var(--card-transform-origin-y);
 
   transform-style: preserve-3d;
 
