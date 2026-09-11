@@ -182,33 +182,35 @@ async function checkSourceContent(pool: Pool) {
       row.count,
     ])
   );
+  const countFor = (type: EditorialItemType) =>
+    counts.get(type) ?? 0;
 
   assert(
-    counts.get("game") === games.length,
+    countFor("game") === games.length,
     `La base debe contener ${games.length} juegos fuente importados.`
   );
   assert(
-    counts.get("game_update") === gameUpdates.length,
+    countFor("game_update") === gameUpdates.length,
     `La base debe contener ${gameUpdates.length} actualizaciones fuente importadas.`
   );
   assert(
-    counts.get("site_config") === 1,
+    countFor("site_config") === 1,
     "Falta la configuración pública importada."
   );
   assert(
-    counts.get("home_config") === 1,
+    countFor("home_config") === 1,
     "Falta la configuración editorial de Portada."
   );
   assert(
-    counts.get("about_config") === 1,
+    countFor("about_config") === 1,
     "Falta la configuración editorial de Quiénes somos."
   );
   assert(
-    counts.get("game_taxonomy") === 1,
+    countFor("game_taxonomy") === 1,
     "Falta el catálogo maestro de juegos."
   );
   assert(
-    counts.get("public_pages_config") === 1,
+    countFor("public_pages_config") === 1,
     "Falta la configuración editorial de superficies públicas."
   );
 }
