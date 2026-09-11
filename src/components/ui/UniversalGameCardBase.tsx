@@ -130,7 +130,7 @@ function Rating({ game }: { game: Game }) {
   }
 
   return (
-    <div className={styles.rating}>
+    <div className={styles.rating} data-card-rating="true">
       <Star size={17} fill="currentColor" aria-hidden="true" />
       {game.rating !== undefined && <strong>{game.rating}</strong>}
       {game.reviews && <span>({game.reviews})</span>}
@@ -147,8 +147,10 @@ function LowSpecDetails({ game }: { game: Game }) {
 
   return (
     <>
-      <span className={styles.lowSpecBadge}>BAJOS RECURSOS</span>
-      <div className={styles.requirements}>
+      <span className={styles.lowSpecBadge} data-card-low-spec-badge="true">
+        BAJOS RECURSOS
+      </span>
+      <div className={styles.requirements} data-card-requirements="true">
         <div><span className={styles.requirementIcon}>R</span><p>RAM: <strong>{ram}</strong></p></div>
         <div><span className={styles.requirementIcon}>G</span><p>Gráfica: <strong>{graphics}</strong></p></div>
         <div><span className={styles.requirementIcon}>SO</span><p>Sistema: <strong>{system}</strong></p></div>
@@ -180,6 +182,7 @@ export default function UniversalGameCardBase({
   const preview = presentation.card.preview;
   const fallbackClass = fallbackClassBySlug[game.slug];
   const mediaBadge = getMediaBadge(game, variant);
+  const isStandard = variant === "standard";
   const isCatalog = variant === "catalog";
   const isRecent = variant === "recent";
   const isLowSpec = variant === "lowSpec";
@@ -333,8 +336,15 @@ export default function UniversalGameCardBase({
         <div className={presentationStyles.coverShade} aria-hidden="true" />
       </div>
 
-      <div className={presentationStyles.detailFace} aria-hidden={!detailPresented ? "true" : undefined}>
-        <div className={`${styles.media} ${presentationStyles.detailMedia} ${tiltStyles.tiltMedia}`}>
+      <div
+        className={presentationStyles.detailFace}
+        data-card-face="detail"
+        aria-hidden={!detailPresented ? "true" : undefined}
+      >
+        <div
+          className={`${styles.media} ${presentationStyles.detailMedia} ${tiltStyles.tiltMedia}`}
+          data-card-detail-media="true"
+        >
           <HoverPreviewMedia
             imageSrc={presentation.card.image}
             imageAlt={detailPresented ? presentation.card.alt : ""}
@@ -355,17 +365,24 @@ export default function UniversalGameCardBase({
           <Monitor size={18} className={styles.platform} aria-hidden="true" />
         </div>
 
-        <div className={`${styles.content} ${presentationStyles.detailContent}`}>
-          <div className={styles.titleRow}>
+        <div
+          className={`${styles.content} ${presentationStyles.detailContent}`}
+          data-card-detail-content="true"
+        >
+          <div className={styles.titleRow} data-card-title-row="true">
             <h3>{game.title}</h3>
             {isRecent && game.version && <span className={styles.version}>{game.version}</span>}
             {isCatalog && <ChevronRight size={17} aria-hidden="true" />}
           </div>
-          {isCatalog && <p className={styles.description}>{game.description}</p>}
+          {(isStandard || isCatalog) && (
+            <p className={styles.description} data-card-description="true">
+              {game.description}
+            </p>
+          )}
           {isLowSpec && <LowSpecDetails game={game} />}
           <Rating game={game} />
           {isRecent && game.releaseDate && (
-            <div className={styles.date}>
+            <div className={styles.date} data-card-date="true">
               <CalendarDays size={15} aria-hidden="true" />
               <span>Lanzamiento: {formatGameReleaseDate(game.releaseDate)}</span>
             </div>
