@@ -142,16 +142,22 @@ const estimatedProfile = {
   source: "browser",
   confidence: "low",
 };
+const syntheticCalibration = {
+  referenceFps: 72,
+  ramGb: 8,
+};
 
 const exactEstimate = estimateGamePerformance(
-  "minecraft-java-edition",
+  "synthetic-hardware-detection",
   exactProfile,
-  { resolution: "1080p", quality: "medium" }
+  { resolution: "1080p", quality: "medium" },
+  syntheticCalibration
 );
 const uncertainEstimate = estimateGamePerformance(
-  "minecraft-java-edition",
+  "synthetic-hardware-detection",
   estimatedProfile,
-  { resolution: "1080p", quality: "medium" }
+  { resolution: "1080p", quality: "medium" },
+  syntheticCalibration
 );
 
 assert.equal(exactEstimate.canEstimate, true);

@@ -3,6 +3,10 @@ import path from "node:path";
 import process from "node:process";
 import ts from "typescript";
 
+// El manifiesto se inspecciona como AST más abajo; este import declara además
+// la dependencia real para el grafo de mantenimiento de tools.
+import "./data/game-source-records.ts";
+
 const root = process.cwd();
 const gameFinderRoot = path.join(
   root,
@@ -13,6 +17,12 @@ const gameFinderRoot = path.join(
 
 const files = {
   games: path.join(root, "src", "data", "games.ts"),
+  sources: path.join(
+    root,
+    "tools",
+    "data",
+    "game-source-records.ts"
+  ),
   updates: path.join(
     root,
     "src",
@@ -39,7 +49,14 @@ const allowedUpdateTypes = new Set([
   "fix",
   "improvement",
 ]);
-
+const volatileBundledGameFields = [
+  "rating",
+  "reviews",
+  "version",
+  "addedAt",
+  "performance",
+  "performanceMetadata",
+];
 const slugPattern =
   /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const reviewsPattern =
@@ -53,7 +70,7 @@ function fail(errors) {
   }
 
   console.error(
-    "\nCorregí el catálogo, las actualizaciones o los datos del recomendador antes de integrar el cambio.\n"
+    "\nCorregí el catálogo, sus fuentes, las actualizaciones o los datos del recomendador antes de integrar el cambio.\n"
   );
 
   process.exit(1);
@@ -253,6 +270,33 @@ function isValidCalendarDate(value) {
   );
 }
 
+function isValidIsoCalendarDate(value) {
+  if (typeof value !== "string") {
+    return false;
+  }
+
+  const match = value.match(
+    /^(\d{4})-(\d{2})-(\d{2})$/
+  );
+
+  if (!match) {
+    return false;
+  }
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(
+    Date.UTC(year, month - 1, day)
+  );
+
+  return (
+    date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day
+  );
+}
+
 function isValidPublishedAt(value) {
   if (
     typeof value !== "string" ||
@@ -264,6 +308,41 @@ function isValidPublishedAt(value) {
   }
 
   return Number.isFinite(Date.parse(value));
+}
+
+function validateHttpsUrl(
+  href,
+  label,
+  errors
+) {
+  if (!isNonEmptyString(href)) {
+    errors.push(
+      `${label} debe ser un string no vacío.`
+    );
+    return false;
+  }
+
+  try {
+    const url = new URL(href.trim());
+
+    if (
+      url.protocol !== "https:" ||
+      url.username ||
+      url.password
+    ) {
+      errors.push(
+        `${label} debe ser HTTPS y no contener credenciales.`
+      );
+      return false;
+    }
+
+    return true;
+  } catch {
+    errors.push(
+      `${label} no es una URL válida.`
+    );
+    return false;
+  }
 }
 
 function validateDownloadHref(
@@ -294,27 +373,7 @@ function validateDownloadHref(
     return true;
   }
 
-  try {
-    const url = new URL(trimmed);
-
-    if (
-      url.protocol !== "https:" ||
-      url.username ||
-      url.password
-    ) {
-      errors.push(
-        `${label} externo debe ser HTTPS y no contener credenciales.`
-      );
-      return false;
-    }
-
-    return true;
-  } catch {
-    errors.push(
-      `${label} no es una URL válida.`
-    );
-    return false;
-  }
+  return validateHttpsUrl(trimmed, label, errors);
 }
 
 function validateDownload(game, errors) {
@@ -713,6 +772,7 @@ function mergeHardwareCatalog(
 
 const [
   games,
+  sourceRecords,
   updates,
   performanceProfiles,
   baseCpuCatalog,
@@ -721,6 +781,7 @@ const [
   gpuSpecs,
 ] = await Promise.all([
   readArray(files.games, "games"),
+  readArray(files.sources, "gameSourceRecords"),
   readArray(files.updates, "gameUpdates"),
   readArray(files.performance, "profiles"),
   readArray(files.hardwareBase, "cpuCatalog"),
@@ -811,6 +872,33 @@ for (const [index, game] of
   }
 
   if (
+    isNonEmptyString(game.id) &&
+    isNonEmptyString(game.slug) &&
+    game.id !== game.slug
+  ) {
+    errors.push(
+      `${label}: id y slug deben coincidir.`
+    );
+  }
+
+  if (
+    !Array.isArray(game.platforms) ||
+    !game.platforms.includes("PC")
+  ) {
+    errors.push(
+      `${label}: el fixture bundled de juegos debe identificar explícitamente PC como plataforma.`
+    );
+  }
+
+  for (const field of volatileBundledGameFields) {
+    if (game[field] !== undefined) {
+      errors.push(
+        `${label}: ${field} es un dato volátil y no puede quedar hardcodeado en el fixture factual. Debe llegar por el flujo editorial con procedencia/metodología.`
+      );
+    }
+  }
+
+  if (
     game.rating !== undefined &&
     (
       typeof game.rating !== "number" ||
@@ -837,20 +925,11 @@ for (const [index, game] of
   }
 
   if (
-    (game.rating === undefined) !==
-    (game.reviews === undefined)
+    game.releaseDate !== undefined &&
+    !isValidCalendarDate(game.releaseDate)
   ) {
     errors.push(
-      `${label}: rating y reviews deben declararse juntos o ambos omitirse.`
-    );
-  }
-
-  if (
-    game.addedAt !== undefined &&
-    !isValidCalendarDate(game.addedAt)
-  ) {
-    errors.push(
-      `${label}: addedAt debe ser una fecha real DD/MM/YYYY.`
+      `${label}: releaseDate debe ser una fecha real DD/MM/YYYY.`
     );
   }
 
@@ -897,6 +976,74 @@ for (const [index, game] of
     errors
   );
   validateDownload(game, errors);
+}
+
+const sourceSlugs = new Set();
+
+for (const [index, record] of sourceRecords.entries()) {
+  const label = isNonEmptyString(record?.slug)
+    ? `fuentes.${record.slug}`
+    : `gameSourceRecords[${index}]`;
+
+  if (!record || typeof record !== "object") {
+    errors.push(`${label}: registro de fuentes inválido.`);
+    continue;
+  }
+
+  if (!isNonEmptyString(record.slug)) {
+    errors.push(`${label}: slug es obligatorio.`);
+  } else if (sourceSlugs.has(record.slug)) {
+    errors.push(`${label}: registro de fuentes duplicado.`);
+  } else {
+    sourceSlugs.add(record.slug);
+
+    if (!gameSlugs.has(record.slug)) {
+      errors.push(
+        `${label}: referencia un juego que no existe en games.ts.`
+      );
+    }
+  }
+
+  if (!isValidIsoCalendarDate(record.verifiedAt)) {
+    errors.push(
+      `${label}: verifiedAt debe ser una fecha real YYYY-MM-DD.`
+    );
+  }
+
+  if (
+    !Array.isArray(record.sources) ||
+    record.sources.length === 0
+  ) {
+    errors.push(
+      `${label}: debe declarar al menos una fuente HTTPS.`
+    );
+  } else {
+    const uniqueSources = new Set();
+
+    for (const [sourceIndex, source] of
+      record.sources.entries()) {
+      validateHttpsUrl(
+        source,
+        `${label}.sources[${sourceIndex}]`,
+        errors
+      );
+
+      if (uniqueSources.has(source)) {
+        errors.push(
+          `${label}: una misma fuente no puede repetirse.`
+        );
+      }
+      uniqueSources.add(source);
+    }
+  }
+}
+
+for (const slug of gameSlugs) {
+  if (!sourceSlugs.has(slug)) {
+    errors.push(
+      `${slug}: falta un registro 1:1 en game-source-records.ts.`
+    );
+  }
 }
 
 const performanceSlugs = new Set();
@@ -1006,14 +1153,6 @@ for (const [index, profile] of
   ) {
     errors.push(
       `${label}: optimization debe estar entre 0.5 y 1.5.`
-    );
-  }
-}
-
-for (const slug of gameSlugs) {
-  if (!performanceSlugs.has(slug)) {
-    errors.push(
-      `${slug}: falta un perfil de rendimiento en performance-data.ts.`
     );
   }
 }
@@ -1174,10 +1313,11 @@ for (const [slug, gameUpdates] of
 
   if (
     latest &&
+    game.version !== undefined &&
     game.version !== latest.version
   ) {
     errors.push(
-      `${slug}: game.version (${game.version ?? "sin versión"}) no coincide con la actualización más reciente (${latest.version}).`
+      `${slug}: game.version (${game.version}) no coincide con la actualización más reciente (${latest.version}).`
     );
   }
 }
@@ -1187,5 +1327,5 @@ if (errors.length > 0) {
 }
 
 console.log(
-  `Datos: OK (${games.length} juegos, ${updates.length} actualizaciones, ${performanceProfiles.length} perfiles de rendimiento, ${cpuCatalog.length} CPU y ${gpuCatalog.length} GPU consolidadas; expansión incluida).`
+  `Datos: OK (${games.length} juegos con ${sourceRecords.length} registros de procedencia, ${updates.length} actualizaciones bundled, ${performanceProfiles.length} perfiles FPS estáticos, ${cpuCatalog.length} CPU y ${gpuCatalog.length} GPU consolidadas; expansión incluida).`
 );

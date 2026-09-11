@@ -71,24 +71,31 @@ export function buildHomeGameCollections(
     resolved.recommendedSlugs,
     7
   );
-  const personalizedRecommendations =
-    personalization &&
-    hasRecommendationSignals(
-      personalization.preferences,
-      personalization.hardware
-    )
-      ? rankPersonalizedRecommendations(
-          catalog,
-          personalization.preferences,
-          personalization.hardware
-        )
-      : [];
   const personalizedPc = personalization?.hardware
     ? rankGamesForSavedHardware(
         catalog,
         personalization.hardware
       )
     : [];
+  const hasPreferenceSignal = Boolean(
+    personalization &&
+      hasRecommendationSignals(
+        personalization.preferences,
+        null
+      )
+  );
+  const hasHardwareSignal = personalizedPc.length > 0;
+  const personalizedRecommendations =
+    personalization &&
+    (hasPreferenceSignal || hasHardwareSignal)
+      ? rankPersonalizedRecommendations(
+          catalog,
+          personalization.preferences,
+          hasHardwareSignal
+            ? personalization.hardware
+            : null
+        )
+      : [];
   const recommendationReasons = Object.fromEntries(
     personalizedRecommendations.map((entry) => [
       entry.game.slug,
@@ -118,13 +125,15 @@ export function buildHomeGameCollections(
       7
     ),
     recentGames: [
-      ...catalog.filter((game) => Boolean(game.addedAt)),
-    ].sort(
-      (a, b) =>
-        parseGameDate(b.addedAt) -
-          parseGameDate(a.addedAt) ||
-        a.title.localeCompare(b.title, "es")
-    ),
+      ...catalog.filter((game) => Boolean(game.releaseDate)),
+    ]
+      .sort(
+        (a, b) =>
+          parseGameDate(b.releaseDate) -
+            parseGameDate(a.releaseDate) ||
+          a.title.localeCompare(b.title, "es")
+      )
+      .slice(0, 7),
     lowSpecGames: fillUniqueGames(
       personalizedPc.map((entry) => entry.game),
       genericLowSpec,
@@ -136,8 +145,8 @@ export function buildHomeGameCollections(
       7
     ),
     recommendedPersonalized:
-      personalizedRecommendations.length > 0,
-    pcPersonalized: personalizedPc.length > 0,
+      hasPreferenceSignal || hasHardwareSignal,
+    pcPersonalized: hasHardwareSignal,
     recommendationReasons,
     pcReasons,
   };

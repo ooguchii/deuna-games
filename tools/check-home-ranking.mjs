@@ -426,6 +426,21 @@ assert.deepEqual(
   "Los empates deben resolverse de forma determinista."
 );
 
+const noPopularityEvidence = game("no-popularity", {
+  reviews: undefined,
+  rating: 5,
+  releaseDate: "2026-08-30",
+});
+assert.deepEqual(
+  rankHomeGames(
+    [noPopularityEvidence],
+    "popular",
+    reference
+  ),
+  [],
+  "Popular automático no debe inferirse a partir de rating o actualidad cuando falta una señal real de popularidad."
+);
+
 const sourcePopular = rankHomeGames(
   sourceGames,
   "popular",
@@ -433,23 +448,9 @@ const sourcePopular = rankHomeGames(
 );
 assert.equal(
   sourcePopular.length,
-  sourceGames.length,
-  "Todos los juegos fuente deben ser candidatos de Populares."
+  0,
+  "El fixture factual sin métricas de popularidad no debe fabricar candidatos automáticos de Populares."
 );
-assert.equal(
-  new Set(
-    sourcePopular.map((entry) => entry.game.slug)
-  ).size,
-  sourcePopular.length,
-  "El ranking del catálogo real no debe duplicar juegos."
-);
-for (let index = 1; index < sourcePopular.length; index += 1) {
-  assert.ok(
-    sourcePopular[index - 1].score >=
-      sourcePopular[index].score,
-    "El catálogo real debe quedar ordenado por score descendente."
-  );
-}
 
 const sourceLowSpec = rankHomeGames(
   sourceGames,
@@ -481,5 +482,5 @@ assert.ok(
 );
 
 console.log(
-  `Ranking de Portada: OK (${sourceGames.length} juegos reales + casos sintéticos; perfiles al 100%, fechas civiles UTC/ICU-independent, estabilidad diaria, fama, rating, actualidad, RAM, Hero, explicación, Manual, Automático e Híbrido verificados).`
+  `Ranking de Portada: OK (${sourceGames.length} juegos factuales + casos sintéticos; popularidad exige evidencia, fechas civiles, RAM, Hero, explicación y curaduría verificadas).`
 );

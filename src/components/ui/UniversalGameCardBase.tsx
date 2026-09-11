@@ -21,6 +21,9 @@ import {
 
 import GameMedia from "@/components/ui/GameMedia";
 import HoverPreviewMedia from "@/components/ui/HoverPreviewMedia";
+import {
+  formatGameReleaseDate,
+} from "@/lib/games/game-date";
 import { resolveGameCardPresentation } from "@/lib/media/game-card-presentation";
 import type { Game } from "@/types/game";
 
@@ -92,7 +95,11 @@ const fallbackClassBySlug: Record<string, string> = {
 };
 
 function getMediaBadge(game: Game, variant: UniversalGameCardVariant) {
-  if (variant === "recent") return { label: "NUEVO", tone: "brand" as const };
+  if (variant === "recent") {
+    return game.releaseDate
+      ? { label: "LANZAMIENTO", tone: "brand" as const }
+      : null;
+  }
   if (variant === "catalog") return { label: game.category, tone: "brand" as const };
   return null;
 }
@@ -118,10 +125,14 @@ function applyTilt(node: HTMLElement, clientX: number, clientY: number, rect: DO
 }
 
 function Rating({ game }: { game: Game }) {
+  if (game.rating === undefined && !game.reviews) {
+    return null;
+  }
+
   return (
     <div className={styles.rating}>
       <Star size={17} fill="currentColor" aria-hidden="true" />
-      <strong>{game.rating ?? "—"}</strong>
+      {game.rating !== undefined && <strong>{game.rating}</strong>}
       {game.reviews && <span>({game.reviews})</span>}
     </div>
   );
@@ -353,10 +364,10 @@ export default function UniversalGameCardBase({
           {isCatalog && <p className={styles.description}>{game.description}</p>}
           {isLowSpec && <LowSpecDetails game={game} />}
           <Rating game={game} />
-          {isRecent && game.addedAt && (
+          {isRecent && game.releaseDate && (
             <div className={styles.date}>
               <CalendarDays size={15} aria-hidden="true" />
-              <span>Añadido el {game.addedAt}</span>
+              <span>Lanzamiento: {formatGameReleaseDate(game.releaseDate)}</span>
             </div>
           )}
           {supplementalContent}
