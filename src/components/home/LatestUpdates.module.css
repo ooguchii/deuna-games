@@ -174,7 +174,7 @@
 
   background: rgba(13, 18, 26, 0.9);
 
-  font-size: 9px;
+  font-size: var(--font-micro);
   font-weight: 800;
 
   letter-spacing: 0.03em;
@@ -239,7 +239,7 @@
 
   background: color-mix(in srgb, var(--brand) 4%, transparent);
 
-  font-size: 10px;
+  font-size: var(--font-micro);
   font-weight: 700;
 }
 

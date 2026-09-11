@@ -4,6 +4,7 @@ import process from "node:process";
 
 const root = process.cwd();
 const failures = [];
+const minimumPublicTextSizePx = 11;
 
 const read = async (relativePath) =>
   readFile(path.join(root, relativePath), "utf8");
@@ -37,6 +38,21 @@ function requireExcludes(content, marker, message) {
   if (content.includes(marker)) {
     failures.push(message);
   }
+}
+
+function selectorForDeclaration(content, declarationIndex) {
+  const blockStart = content.lastIndexOf("{", declarationIndex);
+  if (blockStart < 0) return "";
+
+  const previousClose = content.lastIndexOf("}", blockStart - 1);
+  const previousOpen = content.lastIndexOf("{", blockStart - 1);
+  const selectorStart = Math.max(previousClose, previousOpen) + 1;
+
+  return content
+    .slice(selectorStart, blockStart)
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 const legacyBrandMarkers = [
@@ -176,6 +192,31 @@ requireIncludes(
 );
 
 /*
+ * Finder unificado y ficha de juego conservan CSS legacy compacto, pero el
+ * contrato por ruta es la última autoridad visual. Estas marcas son parte de
+ * la excepción: si una desaparece, no se permite ocultar los literales chicos
+ * del módulo fuente sin una cobertura efectiva equivalente.
+ */
+for (const marker of [
+  'section[aria-labelledby="finder-unified-title"]\n  [aria-label="Resumen del proceso"]',
+  'article[aria-label="Perfil actual del equipo"]',
+  'article:has(button[aria-label^="Ver análisis de "])',
+  'aside[aria-labelledby="compatibility-title"]',
+  'section[aria-labelledby="versions-title"]',
+]) {
+  requireIncludes(
+    routeContract,
+    marker,
+    `src/theme/public-route-theme-contract.css: falta cobertura de legibilidad para ${marker}.`
+  );
+}
+requireIncludes(
+  routeContract,
+  "font-size: var(--font-micro) !important;",
+  "src/theme/public-route-theme-contract.css: la cobertura legacy debe imponer --font-micro como mínimo efectivo."
+);
+
+/*
  * El Hero no puede volver a crear una segunda escena ambiental ni conservar
  * parámetros de esa implementación retirada. La comprobación recorre todo
  * `src/` para que tampoco sobrevivan restos en schemas, tipos o editores.
@@ -189,13 +230,83 @@ const forbiddenHeroAmbientMarkers = [
   "ambientOpacity",
 ];
 
-for (const file of await sourceFiles("src")) {
+const allSourceFiles = await sourceFiles("src");
+
+for (const file of allSourceFiles) {
   const content = await read(file);
   for (const marker of forbiddenHeroAmbientMarkers) {
     requireExcludes(
       content,
       marker,
       `${file}: quedó un resto de la capa ambiental eliminada (${marker}).`
+    );
+  }
+}
+
+/*
+ * La escala tipográfica pública define 11px como `--font-micro`, su mínimo.
+ * Los literales menores eluden el sistema y en capturas mobile/low-resolution
+ * pierden legibilidad. Se excluye Admin porque tiene su contrato visual propio.
+ *
+ * Dos módulos legacy densos aún declaran tamaños históricos, pero sólo se
+ * toleran los selectores exactos cubiertos por el contrato efectivo anterior.
+ * Cualquier selector nuevo por debajo del mínimo vuelve a bloquear CI.
+ */
+const legacyTypographyCoveredSelectors = new Map([
+  [
+    "src/app/juegos/[slug]/page.module.css",
+    new Set([
+      ".compatibilityEyebrow",
+      ".compatibilityStatus",
+      ".compatibilitySteps li::before",
+      ".compatibilityResult > div span",
+      ".compatibilityResult > p span",
+      ".compatibilityMeta dt",
+      ".versionRow > div span",
+    ]),
+  ],
+  [
+    "src/features/game-finder/GameFinderUnifiedHero.module.css",
+    new Set([
+      ".microFlow",
+      ".trust",
+      ".profileIdentityTop > span",
+      ".profileTitleLine small",
+      ".profileStateLabel",
+      ".profileHint",
+      ".specLabel",
+      ".specItem dd",
+      ".profileActions button",
+      ".recommendationsHeader > span",
+      ".recommendationsHeader button",
+      ".recommendationMeta strong",
+      ".recommendationFooter > span",
+    ]),
+  ],
+]);
+const publicStyleFiles = allSourceFiles.filter(
+  (file) =>
+    file.endsWith(".css") &&
+    !file.startsWith("src/components/admin/") &&
+    !file.includes("/admin/")
+);
+const literalFontSizePattern = /font-size\s*:\s*([0-9]+(?:\.[0-9]+)?)px\s*;/g;
+
+for (const file of publicStyleFiles) {
+  const content = await read(file);
+  for (const match of content.matchAll(literalFontSizePattern)) {
+    const size = Number.parseFloat(match[1]);
+    if (size <= 0 || size >= minimumPublicTextSizePx) continue;
+
+    const selector = selectorForDeclaration(content, match.index);
+    const coveredSelectors = legacyTypographyCoveredSelectors.get(file);
+    if (coveredSelectors?.has(selector)) continue;
+
+    const line = content.slice(0, match.index).split("\n").length;
+    const selectorDetail = selector ? ` en ${selector}` : "";
+    failures.push(
+      `${file}:${line}: font-size ${size}px${selectorDetail} queda por debajo de ` +
+      `--font-micro (${minimumPublicTextSizePx}px). Usa la escala tipográfica pública.`
     );
   }
 }
@@ -238,6 +349,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Tema público: OK (marca/fondo dinámicos, contraste adaptable, Hero sin capa ambiental ni restos heredados y contratos protegidos)."
+    "Tema público: OK (marca/fondo dinámicos, contraste adaptable, tipografía pública >= --font-micro, Hero sin capa ambiental ni restos heredados y contratos protegidos)."
   );
 }
