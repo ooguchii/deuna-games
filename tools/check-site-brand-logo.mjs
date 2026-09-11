@@ -31,6 +31,7 @@ const [
   safeRaster,
   editorialMedia,
   publicMediaRoute,
+  mediaServing,
   nextConfig,
   publicConfig,
   rootLayout,
@@ -61,6 +62,7 @@ const [
   source("src/lib/media/safe-site-logo-raster.ts"),
   source("src/lib/media/editorial-media.ts"),
   source("src/app/media/editorial/[slug]/[filename]/route.ts"),
+  source("src/lib/media/editorial-media-serving.ts"),
   source("next.config.ts"),
   source("src/lib/site/public-site-config.ts"),
   source("src/app/layout.tsx"),
@@ -217,18 +219,19 @@ assert(
     publicMediaRoute.includes("siteBrandRasterContentType") &&
     publicMediaRoute.includes("!isSvg && !isWebm && !isWebp && !isSiteLogoAsset") &&
     publicMediaRoute.includes("safe.digest !== expectedDigest") &&
-    publicMediaRoute.includes("getPublicSiteConfig") &&
-    publicMediaRoute.includes("resolveAdminSession") &&
-    publicMediaRoute.includes("readAdminSessionToken") &&
-    publicMediaRoute.includes("published.logoAsset === publicPath") &&
-    publicMediaRoute.includes("if (isSiteLogoAsset && !siteLogoAccess)") &&
-    publicMediaRoute.includes('siteLogoAccess === "admin"') &&
+    publicMediaRoute.includes("resolveEditorialMediaServingAccess") &&
+    publicMediaRoute.includes('servingAccess === "admin"') &&
     publicMediaRoute.includes('"private, no-store, max-age=0"') &&
+    publicMediaRoute.includes('"public, max-age=31536000, immutable"') &&
     publicMediaRoute.includes("Content-Security-Policy") &&
     publicMediaRoute.includes("img-src data:") &&
     publicMediaRoute.includes("style-src 'unsafe-inline'") &&
-    publicMediaRoute.includes("sandbox"),
-  "El namespace del logo debe servir sólo snapshots publicados de forma pública; los borradores requieren sesión Admin y cache privada, sin ampliar PNG/JPEG/GIF al resto de multimedia."
+    publicMediaRoute.includes("sandbox") &&
+    mediaServing.includes('"site_config"') &&
+    mediaServing.includes("site.logoAsset") &&
+    mediaServing.includes("PUBLIC_EXPOSURE_PUBLICATION_SQL") &&
+    mediaServing.includes("wasEverPublished"),
+  "El namespace del logo debe validar SVG/raster por contenido y usar la frontera multimedia compartida: draft privado, publicación histórica pública e inmutable."
 );
 
 const globalSecurityHeadersIndex =
@@ -315,6 +318,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Logo global de marca: OK (contrato editorial, SVG/PNG/JPEG/WebP/GIF saneados, privacidad de metadata, modo raster original, serving content-addressed y salida social coherente)."
+    "Logo global de marca: OK (SVG/PNG/JPEG/WebP/GIF saneados, privacidad, publicación histórica, renderer único, app-icons y salida social coherentes)."
   );
 }
