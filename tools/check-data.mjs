@@ -15,7 +15,7 @@ const files = {
   games: path.join(root, "src", "data", "games.ts"),
   sources: path.join(
     root,
-    "src",
+    "tools",
     "data",
     "game-source-records.ts"
   ),
