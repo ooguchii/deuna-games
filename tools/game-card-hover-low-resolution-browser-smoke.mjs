@@ -16,10 +16,16 @@ const baseUrl = (
 const outputRoot = path.resolve(
   process.env.DEUNA_VISUAL_OUTPUT_DIR ?? "artifacts/visual-smoke"
 );
-const screenshotPath = path.join(
+const lowResolutionScreenshotPath = path.join(
   outputRoot,
   "card-hover-low-resolution.png"
 );
+const desktopScreenshotPath = path.join(
+  outputRoot,
+  "card-hover-home-desktop.png"
+);
+const CARD_SCALE_MIN = 1.1;
+const CARD_SCALE_MAX = 1.19;
 
 function findChrome() {
   const candidates = [
@@ -163,6 +169,17 @@ async function navigate(cdp, url) {
     await delay(100);
   }
   throw new Error(`La página no terminó de cargar: ${url}.`);
+}
+
+async function setViewport(cdp, width, height) {
+  await cdp.send("Emulation.setDeviceMetricsOverride", {
+    width,
+    height,
+    deviceScaleFactor: 1,
+    mobile: false,
+    screenWidth: width,
+    screenHeight: height,
+  });
 }
 
 async function waitForCard(cdp, selector) {
@@ -332,26 +349,39 @@ async function moveMouse(cdp, x, y) {
 }
 
 async function activateCard(cdp, selector) {
-  const initial = await cardProbe(cdp, selector);
+  await moveMouse(cdp, 1, 1);
+  await delay(100);
+  await waitForCard(cdp, selector);
+
+  let initial = await cardProbe(cdp, selector);
   if (!initial) throw new Error(`No se pudo medir ${selector}.`);
 
-  const hoverPoint = await findHoverPoint(cdp, selector);
+  let hoverPoint = await findHoverPoint(cdp, selector);
   if (!hoverPoint) {
     throw new Error(
       `No existe un punto visible e interactuable dentro de ${selector}: ${JSON.stringify(initial)}.`
     );
   }
 
-  await moveMouse(cdp, 1, 1);
-  await delay(80);
   await moveMouse(cdp, hoverPoint.x, hoverPoint.y);
-  await delay(350);
+  await delay(400);
+  let active = await cardProbe(cdp, selector);
 
-  return {
-    initial,
-    hoverPoint,
-    active: await cardProbe(cdp, selector),
-  };
+  if (!active || active.expanded !== "true") {
+    await moveMouse(cdp, 1, 1);
+    await delay(100);
+    await waitForCard(cdp, selector);
+    initial = await cardProbe(cdp, selector);
+    hoverPoint = await findHoverPoint(cdp, selector);
+    if (!initial || !hoverPoint) {
+      throw new Error(`No se pudo estabilizar ${selector} para el segundo intento de hover.`);
+    }
+    await moveMouse(cdp, hoverPoint.x, hoverPoint.y);
+    await delay(400);
+    active = await cardProbe(cdp, selector);
+  }
+
+  return { initial, hoverPoint, active };
 }
 
 function assertExpanded({ initial, hoverPoint, active }, label) {
@@ -366,8 +396,10 @@ function assertExpanded({ initial, hoverPoint, active }, label) {
         `${JSON.stringify(active)}.`
     );
   }
-  if (active.scale < 1.35 || active.scale > 1.46) {
-    throw new Error(`${label}: escala fuera del contrato 1.35..1.46: ${active.scale}.`);
+  if (active.scale < CARD_SCALE_MIN || active.scale > CARD_SCALE_MAX) {
+    throw new Error(
+      `${label}: escala fuera del contrato ${CARD_SCALE_MIN}..${CARD_SCALE_MAX}: ${active.scale}.`
+    );
   }
   if (
     active.slotWidth !== initial.slotWidth ||
@@ -383,8 +415,11 @@ function assertExpanded({ initial, hoverPoint, active }, label) {
         `${active.cardOffsetWidth}x${active.cardOffsetHeight}.`
     );
   }
-  if (active.detailRect.width < initial.slotWidth * 1.35) {
-    throw new Error(`${label}: el detalle no creció de forma sustancial: ${JSON.stringify(active)}.`);
+  if (active.detailRect.width < initial.slotWidth * CARD_SCALE_MIN) {
+    throw new Error(`${label}: el detalle no creció de forma perceptible: ${JSON.stringify(active)}.`);
+  }
+  if (active.detailRect.width > initial.slotWidth * (CARD_SCALE_MAX + 0.01)) {
+    throw new Error(`${label}: el detalle creció más de lo permitido: ${JSON.stringify(active)}.`);
   }
   if (
     active.detailRect.left < -1 ||
@@ -414,7 +449,7 @@ function assertExpanded({ initial, hoverPoint, active }, label) {
   }
 }
 
-async function capture(cdp) {
+async function capture(cdp, screenshotPath) {
   await mkdir(outputRoot, { recursive: true });
   const screenshot = await cdp.send("Page.captureScreenshot", {
     format: "png",
@@ -465,6 +500,18 @@ async function assertLowSpecReadable(cdp) {
   await assertCollapsed(cdp, selector, "Home lowSpec");
 }
 
+async function assertDesktopHomeBalanced(cdp) {
+  const selector = 'article[data-card-variant="standard"]';
+  await setViewport(cdp, 1440, 900);
+  await navigate(cdp, `${baseUrl}/`);
+  await waitForCard(cdp, selector);
+  const state = await activateCard(cdp, selector);
+  assertExpanded(state, "Home desktop 1440x900");
+  await capture(cdp, desktopScreenshotPath);
+  await assertCollapsed(cdp, selector, "Home desktop");
+  return state;
+}
+
 async function main() {
   const profileDir = await mkdtemp(
     path.join(os.tmpdir(), "deuna-card-hover-lowres-")
@@ -480,7 +527,7 @@ async function main() {
       "--remote-debugging-port=0",
       "--remote-debugging-address=127.0.0.1",
       `--user-data-dir=${profileDir}`,
-      "--window-size=1024,640",
+      "--window-size=1440,900",
       "about:blank",
     ],
     { stdio: ["ignore", "ignore", "pipe"] }
@@ -500,29 +547,24 @@ async function main() {
       cdp.send("Page.enable"),
       cdp.send("Runtime.enable"),
     ]);
-    await cdp.send("Emulation.setDeviceMetricsOverride", {
-      width: 1024,
-      height: 640,
-      deviceScaleFactor: 1,
-      mobile: false,
-      screenWidth: 1024,
-      screenHeight: 640,
-    });
     await cdp.send("Emulation.setTouchEmulationEnabled", { enabled: false });
 
+    await setViewport(cdp, 1024, 640);
     const selector = 'article[data-card-variant="standard"]';
     await navigate(cdp, `${baseUrl}/juegos?vista=compact`);
     await waitForCard(cdp, selector);
     const catalogState = await activateCard(cdp, selector);
     assertExpanded(catalogState, "Catálogo compacto 1024x640");
-    await capture(cdp);
+    await capture(cdp, lowResolutionScreenshotPath);
     await assertCollapsed(cdp, selector, "Catálogo compacto");
 
     await assertLowSpecReadable(cdp);
+    const desktopState = await assertDesktopHomeBalanced(cdp);
 
     console.log(
-      "Game Card hover low-resolution browser smoke: OK " +
-        `(viewport=1024x640, scale=${catalogState.active.scale.toFixed(3)}, ` +
+      "Game Card hover browser smoke: OK " +
+        `(lowres=1024x640 scale=${catalogState.active.scale.toFixed(3)}, ` +
+        `desktop=1440x900 scale=${desktopState.active.scale.toFixed(3)}, ` +
         "catálogo=legible/sin clipping, Home lowSpec=RAM-GPU-SO legibles, layout estable)."
     );
   } catch (error) {

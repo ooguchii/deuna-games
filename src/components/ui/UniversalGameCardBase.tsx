@@ -95,8 +95,8 @@ type UniversalCardStyle = CSSProperties & {
 const PREVIEW_DELAY_MS = 1000;
 const REDUCED_MOTION_MEDIA = "(prefers-reduced-motion: reduce)";
 const DIRECT_DETAIL_MEDIA = "(hover: none), (pointer: coarse)";
-const CARD_EXPANSION_SCALE = 1.45;
-const CARD_EXPANSION_MAX_WIDTH = 440;
+const CARD_EXPANSION_SCALE = 1.18;
+const CARD_EXPANSION_MAX_WIDTH = 360;
 const CARD_VIEWPORT_MARGIN = 24;
 const CARD_ASPECT_HEIGHT = 5 / 4;
 
