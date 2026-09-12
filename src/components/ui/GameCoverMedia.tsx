@@ -7,9 +7,16 @@ import type { Game } from "@/types/game";
 type Props = {
   game: Game;
   sizes: string;
+  alt?: string;
+  fallbackClassName?: string;
 };
 
-export default function GameCoverMedia({ game, sizes }: Props) {
+export default function GameCoverMedia({
+  game,
+  sizes,
+  alt,
+  fallbackClassName,
+}: Props) {
   const coverImage = resolveGameCoverImage(game);
 
   return (
@@ -34,9 +41,10 @@ export default function GameCoverMedia({ game, sizes }: Props) {
       >
         <GameMedia
           src={coverImage}
-          alt={game.mediaAccessibility?.cover ?? game.imageAlt}
+          alt={alt ?? game.mediaAccessibility?.cover ?? game.imageAlt}
           sizes={sizes}
           viewport={game.imageMedia?.cover}
+          fallbackClassName={fallbackClassName}
         />
       </div>
     </div>

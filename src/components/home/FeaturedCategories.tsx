@@ -3,6 +3,7 @@ import { ChevronRight } from "lucide-react";
 import type { CSSProperties } from "react";
 
 import TaxonomyIcon from "@/components/taxonomy/TaxonomyIcon";
+import CardCarousel from "@/components/ui/CardCarousel";
 import touchStyles from "@/components/ui/TouchTarget.module.css";
 import type { HomeCopy } from "@/data/home-config";
 import {
@@ -46,7 +47,10 @@ export default async function FeaturedCategories({
         </Link>
       </div>
 
-      <div className={styles.categories}>
+      <CardCarousel
+        ariaLabel={`${copy.title} ${copy.highlight}`}
+        itemsDesktop={6}
+      >
         {classifications.map(
           ({ term, label, count }, index) => {
             const visual = resolveTaxonomyVisual(term, index);
@@ -80,7 +84,7 @@ export default async function FeaturedCategories({
             );
           }
         )}
-      </div>
+      </CardCarousel>
     </section>
   );
 }
