@@ -256,8 +256,10 @@ export default function HomeHeroLivePreview({
       return;
     }
 
+    const originalHeroJson = heroInput.value;
+
     try {
-      const payload = JSON.parse(heroInput.value) as HeroEditorPayload;
+      const payload = JSON.parse(originalHeroJson) as HeroEditorPayload;
       if (!payload.presentation) {
         throw new Error("missing-presentation");
       }
@@ -278,8 +280,17 @@ export default function HomeHeroLivePreview({
       };
       heroInput.value = JSON.stringify(payload);
       setEngineNotice(null);
-      form.requestSubmit();
+
+      try {
+        // SaveBoundary captures FormData synchronously before its async request.
+        // Restore the controlled hidden input immediately afterwards so a
+        // network/server failure cannot leave React state and DOM disagreeing.
+        form.requestSubmit();
+      } finally {
+        heroInput.value = originalHeroJson;
+      }
     } catch {
+      heroInput.value = originalHeroJson;
       setEngineNotice(
         "No se pudo preparar el cambio de motor. El borrador actual no fue modificado."
       );
@@ -469,13 +480,18 @@ export default function HomeHeroLivePreview({
                 : "Motor clásico preservado. Probar funcionamiento simula V2 sin cambiar el borrador."}
           </span>
           {playing && games.length > 1 && (
-            <button type="button" onClick={replayTransition}>
+            <button
+              type="button"
+              className={styles.breakpoint}
+              onClick={replayTransition}
+            >
               Repetir transición ahora
             </button>
           )}
           {presentation.motionEngine === "physical" ? (
             <button
               type="button"
+              className={styles.breakpoint}
               onClick={() => saveMotionEngine("legacy")}
             >
               Volver al motor clásico y guardar borrador
@@ -483,6 +499,7 @@ export default function HomeHeroLivePreview({
           ) : (
             <button
               type="button"
+              className={styles.breakpoint}
               onClick={() => saveMotionEngine("physical")}
             >
               Activar motor físico V2 y guardar borrador
