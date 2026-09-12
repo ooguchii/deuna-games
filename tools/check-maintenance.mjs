@@ -244,6 +244,20 @@ assert(
   "El smoke visual debe validar el formulario real de login antes de iniciar la espera de navegación, evitando timeouts huérfanos y diagnósticos duplicados."
 );
 
+const gamesPageStyles = await read(
+  "src/app/juegos/page.module.css"
+);
+const gamesHeroBlock =
+  gamesPageStyles.match(/\.hero\s*\{([\s\S]*?)\}/)?.[1] ?? "";
+assert(
+  gamesHeroBlock.includes("background:\n    transparent;") &&
+    !gamesPageStyles.includes("var(--background)") &&
+    !gamesHeroBlock.includes("border-") &&
+    !gamesHeroBlock.includes("isolation:") &&
+    !gamesHeroBlock.includes("overflow:"),
+  "La cabecera visual retirada de /juegos no debe volver como una superficie opaca que tape el fondo general configurado."
+);
+
 const workflow = await read(
   ".github/workflows/ci.yml"
 );

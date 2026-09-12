@@ -22,24 +22,8 @@
 
   min-height: 330px;
 
-  overflow: hidden;
-
-  border-right:
-    1px solid
-    color-mix(in srgb, var(--text-soft) 8%, transparent);
-
-  border-bottom:
-    1px solid
-    color-mix(in srgb, var(--text-soft) 11%, transparent);
-
-  border-left:
-    1px solid
-    color-mix(in srgb, var(--text-soft) 8%, transparent);
-
   background:
-    var(--background);
-
-  isolation: isolate;
+    transparent;
 }
 
 .breadcrumb {
@@ -234,5 +218,4 @@
 }
 
 /* THEME V2 — JUEGOS HERO */
-.hero { background: var(--background); }
 .heroMeta strong { color: var(--accent-gold); }
