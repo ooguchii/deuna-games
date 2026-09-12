@@ -98,6 +98,9 @@ const layout = await read("src/app/layout.tsx");
 const theme = await read("src/theme/deuna-theme.css");
 const contract = await read("src/theme/public-theme-contract.css");
 const routeContract = await read("src/theme/public-route-theme-contract.css");
+const cardHoverContract = await read(
+  "src/theme/universal-game-card-hover-contract.css"
+);
 const hero = await read("src/components/home/HeroSection.module.css");
 const heroComponent = await read("src/components/home/HeroSection.tsx");
 const gamesHero = await read("src/app/juegos/page.module.css");
@@ -127,12 +130,20 @@ requireIncludes(
   'import "@/theme/public-route-theme-contract.css";',
   "src/app/layout.tsx: falta el contrato visual por ruta."
 );
+requireIncludes(
+  layout,
+  'import "@/theme/universal-game-card-hover-contract.css";',
+  "src/app/layout.tsx: falta el contrato visual del hover de UniversalGameCard."
+);
 
 const generalContractIndex = layout.indexOf(
   'import "@/theme/public-theme-contract.css";'
 );
 const routeContractIndex = layout.indexOf(
   'import "@/theme/public-route-theme-contract.css";'
+);
+const cardHoverContractIndex = layout.indexOf(
+  'import "@/theme/universal-game-card-hover-contract.css";'
 );
 if (
   generalContractIndex < 0 ||
@@ -141,6 +152,14 @@ if (
 ) {
   failures.push(
     "src/app/layout.tsx: el contrato por ruta debe cargarse después del contrato público general."
+  );
+}
+if (
+  cardHoverContractIndex < 0 ||
+  cardHoverContractIndex < routeContractIndex
+) {
+  failures.push(
+    "src/app/layout.tsx: el contrato de hover de UniversalGameCard debe cargarse después de los contratos públicos base."
   );
 }
 
@@ -190,6 +209,29 @@ requireIncludes(
   'section[aria-labelledby="overview-title"]',
   "src/theme/public-route-theme-contract.css: falta tematizar la barra informativa de la ficha de juego."
 );
+
+/*
+ * El shell expandido de UniversalGameCard es transparente por diseño. La cara
+ * de detalle es la superficie visual real y debe conservar el hover histórico
+ * de marca allí, no volver a pintar la `article` fixed ni romper su anclaje.
+ */
+for (const marker of [
+  '[data-game-card-slot="true"]',
+  'article[data-card-expanded="true"]',
+  '[data-card-face="detail"]',
+  "border-color: var(--panel-border-hover);",
+  "background: var(--gradient-card-hover);",
+  "0 0 30px color-mix(in srgb, var(--accent-violet) 7%, transparent);",
+  "color-mix(in srgb, var(--brand-light) 15%, transparent),",
+  "left 620ms cubic-bezier(0.22, 1, 0.36, 1),",
+  'article[data-card-expanded="true"][data-tilt-active="true"]',
+]) {
+  requireIncludes(
+    cardHoverContract,
+    marker,
+    `src/theme/universal-game-card-hover-contract.css: falta preservar ${marker} del hover histórico de UniversalGameCard.`
+  );
+}
 
 /*
  * Finder unificado y ficha de juego conservan CSS legacy compacto, pero el
@@ -349,6 +391,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Tema público: OK (marca/fondo dinámicos, contraste adaptable, tipografía pública >= --font-micro, Hero sin capa ambiental ni restos heredados y contratos protegidos)."
+    "Tema público: OK (marca/fondo dinámicos, contraste adaptable, tipografía pública >= --font-micro, Hero sin capa ambiental ni restos heredados, hover histórico de UniversalGameCard preservado y contratos protegidos)."
   );
 }
