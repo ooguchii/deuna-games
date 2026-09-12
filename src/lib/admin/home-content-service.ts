@@ -4,7 +4,6 @@ import {
   resolveHomeConfig,
   type HomeCopy,
   type HomeCurationMode,
-  type HomeHeroMotionEngine,
   type HomeHeroPresentation,
   type HomeSectionConfig,
 } from "@/data/home-config";
@@ -194,39 +193,6 @@ export async function saveHomeHeroDraft(
         hero: { mode: input.mode },
       },
       heroPresentation: input.presentation,
-      sections: current.sections,
-      copy: current.copy,
-    }
-  );
-}
-
-/**
- * Switching motion engines is an explicit editorial draft mutation. Historical
- * publications remain on legacy semantics until this new revision is published.
- */
-export async function saveHomeHeroMotionEngineDraft(
-  expectedRevision: number,
-  actorUserId: string,
-  motionEngine: HomeHeroMotionEngine
-): Promise<EditorialMutationResult> {
-  const resolved = await getResolvedHomeDraft();
-  if (!resolved) return { outcome: "not_found" };
-
-  const { current } = resolved;
-
-  return saveHomeConfigDraft(
-    expectedRevision,
-    actorUserId,
-    {
-      heroSlugs: current.heroSlugs,
-      popularSlugs: current.popularSlugs,
-      lowSpecSlugs: current.lowSpecSlugs,
-      recommendedSlugs: current.recommendedSlugs,
-      curation: current.curation,
-      heroPresentation: {
-        ...current.heroPresentation,
-        motionEngine,
-      },
       sections: current.sections,
       copy: current.copy,
     }
