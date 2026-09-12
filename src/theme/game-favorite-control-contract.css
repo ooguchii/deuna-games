@@ -1,0 +1,95 @@
+/*
+ * FAVORITOS PÚBLICOS — CONTRATO VISUAL CANÓNICO
+ *
+ * `data-game-favorite` es el selector estable compartido por el botón
+ * canónico y por las superficies legacy de Finder. La referencia visual es
+ * el favorito de Por requisitos: 44px, cuadrado con esquinas de 8px, fondo
+ * oscuro translúcido y acento de marca. Mantenerlo aquí evita que Inicio,
+ * Juegos, Finder y Mi DeUna vuelvan a divergir por CSS local.
+ */
+
+:root {
+  --favorite-control-size: 44px;
+  --favorite-control-radius: 8px;
+}
+
+button[data-game-favorite] {
+  width: var(--favorite-control-size) !important;
+  height: var(--favorite-control-size) !important;
+  min-width: var(--favorite-control-size) !important;
+  min-height: var(--favorite-control-size) !important;
+  display: grid !important;
+  place-items: center !important;
+  padding: 0 !important;
+  color: var(--brand-light) !important;
+  border: 1px solid color-mix(in srgb, var(--brand) 24%, transparent) !important;
+  border-radius: var(--favorite-control-radius) !important;
+  background: rgba(6, 9, 13, 0.78) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  backdrop-filter: blur(12px) !important;
+  box-shadow: none !important;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    color 150ms ease,
+    border-color 150ms ease,
+    background 150ms ease,
+    transform 150ms ease,
+    box-shadow 150ms ease !important;
+}
+
+/* GameFavoriteButton conserva un span para aislar el icono. La superficie
+ * real es el botón de 44px; el span no debe volver a dibujar un círculo. */
+button[data-game-favorite] > span[aria-hidden="true"] {
+  width: 100% !important;
+  height: 100% !important;
+  display: grid !important;
+  place-items: center !important;
+  color: inherit !important;
+  border: 0 !important;
+  border-radius: inherit !important;
+  background: transparent !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+button[data-game-favorite]:hover:not(:disabled) {
+  color: var(--brand-light) !important;
+  border-color: color-mix(in srgb, var(--brand) 48%, transparent) !important;
+  background: color-mix(in srgb, var(--brand) 12%, transparent) !important;
+  transform: translateY(-1px) scale(1.04) !important;
+}
+
+button[data-game-favorite][aria-pressed="true"] {
+  color: var(--brand-light) !important;
+  border-color: color-mix(in srgb, var(--brand) 50%, transparent) !important;
+  background: color-mix(in srgb, var(--brand) 12%, transparent) !important;
+  box-shadow: 0 0 18px color-mix(in srgb, var(--brand) 10%, transparent) !important;
+}
+
+button[data-game-favorite]:active:not(:disabled) {
+  transform: scale(0.96) !important;
+}
+
+button[data-game-favorite]:focus-visible {
+  outline: 2px solid var(--brand) !important;
+  outline-offset: 2px !important;
+}
+
+button[data-game-favorite]:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button[data-game-favorite] {
+    transition: none !important;
+  }
+
+  button[data-game-favorite]:hover:not(:disabled),
+  button[data-game-favorite]:active:not(:disabled) {
+    transform: none !important;
+  }
+}
