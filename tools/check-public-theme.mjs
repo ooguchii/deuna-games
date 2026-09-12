@@ -104,6 +104,7 @@ const cardHoverContract = await read(
 const hero = await read("src/components/home/HeroSection.module.css");
 const heroComponent = await read("src/components/home/HeroSection.tsx");
 const gamesHero = await read("src/app/juegos/page.module.css");
+const siteBackgrounds = await read("src/lib/site/backgrounds.ts");
 
 requireIncludes(
   layout,
@@ -369,20 +370,33 @@ requireIncludes(
   "HeroSection: sus controles y acentos deben seguir respondiendo a la marca configurada."
 );
 
-requireIncludes(
-  gamesHero,
-  ".heroImage::after",
-  "Juegos Hero: falta la capa de recoloración de la imagen."
-);
-requireIncludes(
-  gamesHero,
-  "background:\n    var(--brand);",
-  "Juegos Hero: el tono de la imagen debe derivarse directamente de la marca configurada."
-);
-requireIncludes(
-  gamesHero,
+/*
+ * /juegos ya no tiene una imagen Hero propia ni una capa de recoloración. El
+ * fondo ambiental general sigue siendo el único sistema de imagen de página y
+ * debe conservar la entrada específica de Juegos.
+ */
+for (const marker of [
+  ".heroImage",
+  ".heroShade",
+  ".heroGlow",
   "mix-blend-mode: hue",
-  "Juegos Hero: la recoloración debe preservar luminosidad y detalle de la imagen."
+  "juegos-reference-hero-v2.webp",
+]) {
+  requireExcludes(
+    gamesHero,
+    marker,
+    `Juegos Hero: reapareció un resto del Hero gráfico retirado (${marker}).`
+  );
+}
+requireIncludes(
+  siteBackgrounds,
+  '{ key: "games", label: "Juegos" }',
+  "Fondos públicos: Juegos debe seguir disponible como destino de fondo general."
+);
+requireIncludes(
+  siteBackgrounds,
+  'return "games";',
+  "Fondos públicos: /juegos debe seguir resolviendo el fondo general configurado para Juegos."
 );
 
 if (failures.length > 0) {
@@ -391,6 +405,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Tema público: OK (marca/fondo dinámicos, contraste adaptable, tipografía pública >= --font-micro, Hero sin capa ambiental ni restos heredados, hover histórico de UniversalGameCard preservado y contratos protegidos)."
+    "Tema público: OK (marca/fondo dinámicos, contraste adaptable, tipografía pública >= --font-micro, Hero de Inicio sin capa ambiental, /juegos sin Hero gráfico propio y con fondo general preservado, hover histórico de UniversalGameCard protegido)."
   );
 }
