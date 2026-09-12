@@ -497,21 +497,45 @@ async function assertRowAnchoredDuringPageScroll(cdp, selector, before) {
           : before >= ${ROW_ANCHOR_SCROLL_PX}
             ? -${ROW_ANCHOR_SCROLL_PX}
             : 0;
-      window.scrollBy({ top: requested, left: 0, behavior: "auto" });
-      return { before, after: window.scrollY, maxScroll, requested };
+      return { before, maxScroll, requested };
     })()
   `);
-  await delay(250);
+
+  if (scroll.requested === 0) {
+    throw new Error(
+      `Home desktop: no existe recorrido suficiente para probar el anclaje: ${JSON.stringify(scroll)}.`
+    );
+  }
+
+  const wheelX = Math.min(
+    before.viewport.width - 1,
+    Math.max(1, before.cardRect.left + before.cardRect.width / 2)
+  );
+  const wheelY = Math.min(
+    before.viewport.height - 1,
+    Math.max(1, before.cardRect.top + before.cardRect.height / 2)
+  );
+
+  await cdp.send("Input.dispatchMouseEvent", {
+    type: "mouseWheel",
+    x: wheelX,
+    y: wheelY,
+    deltaX: 0,
+    deltaY: scroll.requested,
+    buttons: 0,
+    pointerType: "mouse",
+  });
+  await delay(350);
 
   const after = await cardProbe(cdp, selector);
   if (!after) {
     throw new Error("Home desktop: la Card desapareció durante el scroll de anclaje.");
   }
 
-  const scrollDelta = scroll.after - scroll.before;
-  if (scroll.requested === 0 || Math.abs(scrollDelta) < ROW_ANCHOR_SCROLL_PX * 0.75) {
+  const scrollDelta = after.scrollY - scroll.before;
+  if (Math.abs(scrollDelta) < ROW_ANCHOR_SCROLL_PX * 0.75) {
     throw new Error(
-      `Home desktop: el documento no se desplazó lo suficiente: ${JSON.stringify(scroll)}.`
+      `Home desktop: la rueda no desplazó el documento lo suficiente: ${JSON.stringify({ ...scroll, after: after.scrollY, scrollDelta })}.`
     );
   }
 
