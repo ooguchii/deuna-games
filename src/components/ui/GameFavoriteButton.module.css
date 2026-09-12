@@ -4,24 +4,31 @@
   display: grid;
   place-items: center;
   padding: 0;
-  color: #ffffff;
+  color: var(--brand-light);
   border: 0;
-  border-radius: 50%;
+  border-radius: 8px !important;
   background: transparent;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
 
+/*
+ * El Finder ya estableció el lenguaje visual aprobado para favoritos: un
+ * control compacto cuadrado con esquinas redondeadas. La superficie canónica
+ * ocupa el target completo de 44px para que Inicio, Juegos, Mi DeUna y las
+ * demás cards compartan exactamente esa silueta sin perder accesibilidad.
+ */
 .surface {
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   display: grid;
   place-items: center;
-  border: 1px solid color-mix(in srgb, var(--text-soft) 20%, transparent);
-  border-radius: 50%;
-  background: rgba(4, 7, 11, 0.68);
-  box-shadow: 0 7px 18px rgba(0, 0, 0, 0.22);
-  backdrop-filter: blur(8px);
+  color: var(--brand-light);
+  border: 1px solid color-mix(in srgb, var(--brand) 24%, transparent);
+  border-radius: 8px;
+  background: rgba(6, 9, 13, 0.78);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
   transition:
     transform 150ms ease,
     color 150ms ease,
@@ -33,21 +40,19 @@
 .button:hover:not(:disabled) .surface {
   transform: translateY(-1px) scale(1.04);
   border-color: color-mix(in srgb, var(--brand) 48%, transparent);
-  background: color-mix(in srgb, var(--brand) 12%, rgba(4, 7, 11, 0.76));
+  background: color-mix(in srgb, var(--brand) 12%, transparent);
 }
 
 .active .surface {
   color: var(--brand-light);
   border-color: color-mix(in srgb, var(--brand) 50%, transparent);
-  background: color-mix(in srgb, var(--brand) 12%, rgba(4, 7, 11, 0.78));
-  box-shadow:
-    0 7px 18px rgba(0, 0, 0, 0.22),
-    0 0 18px color-mix(in srgb, var(--brand) 10%, transparent);
+  background: color-mix(in srgb, var(--brand) 12%, transparent);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--brand) 10%, transparent);
 }
 
 .button:focus-visible {
   outline: 2px solid var(--brand);
-  outline-offset: 1px;
+  outline-offset: 2px;
 }
 
 .button:disabled {
