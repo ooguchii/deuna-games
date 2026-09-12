@@ -215,7 +215,12 @@ assert.match(
 );
 assert.match(
   livePreview,
-  /previewPhysicalMotion && presentation\.motionEngine !== "physical"[\s\S]*?motionEngine:\s*"physical"/,
+  /const simulatingPhysicalMotion =\s*playing && presentation\.motionEngine !== "physical";/,
+  'Admin preview must derive local V2 simulation from explicit preview mode without effect-driven state.'
+);
+assert.match(
+  livePreview,
+  /simulatingPhysicalMotion[\s\S]*?motionEngine:\s*"physical"/,
   'Admin preview must be able to simulate V2 locally before changing the draft.'
 );
 assert.match(
