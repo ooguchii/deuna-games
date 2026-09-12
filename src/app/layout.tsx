@@ -32,6 +32,7 @@ import "@/theme/public-theme-contract.css";
 import "@/theme/public-route-theme-contract.css";
 import "@/theme/public-touch-contract.css";
 import "@/theme/mobile-interaction-contract.css";
+import "@/theme/universal-game-card-hover-contract.css";
 
 export const dynamic = "force-dynamic";
 
