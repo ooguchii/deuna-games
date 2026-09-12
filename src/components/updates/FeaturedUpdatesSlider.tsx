@@ -17,10 +17,11 @@ import {
   useState,
 } from "react";
 
+import GameMedia from "@/components/ui/GameMedia";
+import { resolveGameCoverImage } from "@/lib/media/game-card-presentation";
 import {
   formatUpdateDate,
 } from "@/lib/updates/catalog";
-import GameMedia from "@/components/ui/GameMedia";
 
 import type {
   ResolvedGameUpdate,
@@ -246,8 +247,9 @@ export default function FeaturedUpdatesSlider({
                 .heroImage;
 
             const coverSrc =
-              update.game
-                .coverImage;
+              resolveGameCoverImage(
+                update.game
+              );
 
             const backdropSrc =
               heroSrc ??
@@ -259,9 +261,6 @@ export default function FeaturedUpdatesSlider({
                     .imageMedia
                     ?.hero
                 : update.game
-                    .imageMedia
-                    ?.card ??
-                  update.game
                     .imageMedia
                     ?.cover;
 
