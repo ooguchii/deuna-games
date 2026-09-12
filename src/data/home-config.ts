@@ -116,6 +116,11 @@ export const homeHeroPresetIds = [
   "perspective", "minimal", "spotlight", "cards", "custom",
 ] as const;
 
+export const homeHeroMotionEngineIds = [
+  "legacy",
+  "physical",
+] as const;
+
 export const homeHeroNavigationStyleIds = [
   "segmented-pro",
   "integrated",
@@ -129,6 +134,7 @@ export const homeHeroNavigationStyleIds = [
 
 export type HomeHeroDevice = "desktop" | "tablet" | "mobile";
 export type HomeHeroPosition = "all" | "main" | "left1" | "left2" | "right1" | "right2";
+export type HomeHeroMotionEngine = (typeof homeHeroMotionEngineIds)[number];
 export type HomeHeroNavigationStyle = (typeof homeHeroNavigationStyleIds)[number];
 
 export type HomeHeroPositionStyle = {
@@ -177,6 +183,7 @@ export type HomeHeroBasePresentation = {
   composition: (typeof homeHeroCompositionIds)[number];
   previewCount: 1 | 2 | 3;
   motion: "depth" | "slide" | "fade";
+  motionEngine: HomeHeroMotionEngine;
   autoplayMs: 0 | 4000 | 6500 | 8000;
   preset: (typeof homeHeroPresetIds)[number];
   transition: "slide" | "coverflow" | "fade" | "3d" | "stack" | "perspective" | "custom";
@@ -258,6 +265,9 @@ const defaultHeroPresentation: HomeHeroPresentation = {
   composition: "studio",
   previewCount: 2,
   motion: "depth",
+  // Publicaciones anteriores al motor físico deben conservar exactamente su
+  // semántica de movimiento hasta que el editor cree y publique otro snapshot.
+  motionEngine: "legacy",
   autoplayMs: 6500,
   preset: "cinema",
   transition: "3d",
