@@ -24,7 +24,6 @@ const fields = [
   "title",
   "description",
   "platformLabel",
-  "heroImage",
 ] as const;
 
 export async function POST(request: NextRequest) {
