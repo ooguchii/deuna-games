@@ -25,7 +25,7 @@ import {
   useRouter,
 } from "next/navigation";
 
-import GameMedia from "@/components/ui/GameMedia";
+import GameCoverMedia from "@/components/ui/GameCoverMedia";
 
 import {
   filterAndSortUpdates,
@@ -811,27 +811,10 @@ export default function UpdatesCatalogClient({
                         styles.updateImage
                       }
                     >
-                      {update.game.coverImage && (
-                        <GameMedia
-                          src={
-                            update.game
-                              .coverImage
-                          }
-                          alt={
-                            update.game
-                              .imageAlt
-                          }
-                          sizes="(max-width: 720px) 100vw, 270px"
-                          viewport={
-                            update.game
-                              .imageMedia
-                              ?.card ??
-                            update.game
-                              .imageMedia
-                              ?.cover
-                          }
-                        />
-                      )}
+                      <GameCoverMedia
+                        game={update.game}
+                        sizes="(max-width: 720px) 100vw, 270px"
+                      />
 
                       <div
                         className={
@@ -1041,24 +1024,11 @@ export default function UpdatesCatalogClient({
                         styles.recentThumb
                       }
                     >
-                      {update.game.coverImage && (
-                        <GameMedia
-                          src={
-                            update.game
-                              .coverImage
-                          }
-                          alt=""
-                          sizes="46px"
-                          viewport={
-                            update.game
-                              .imageMedia
-                              ?.card ??
-                            update.game
-                              .imageMedia
-                              ?.cover
-                          }
-                        />
-                      )}
+                      <GameCoverMedia
+                        game={update.game}
+                        alt=""
+                        sizes="46px"
+                      />
                     </span>
 
                     <span
