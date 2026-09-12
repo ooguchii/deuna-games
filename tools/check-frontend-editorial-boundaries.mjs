@@ -39,6 +39,7 @@ const [
   publicHomeReader,
   homeComponents,
   gamesPage,
+  gamesStyles,
   gameCatalogClient,
   catalogCapabilities,
   popularGamesRoute,
@@ -47,6 +48,9 @@ const [
   requirementsPage,
   publicPagesConfig,
   publicPagesReader,
+  adminPresentationPage,
+  publicGamesAdminRoute,
+  siteBackgrounds,
   footer,
 ] = await Promise.all([
   source("src/app/layout.tsx"),
@@ -61,6 +65,7 @@ const [
   source("src/lib/home/public-home-config.ts"),
   joinSources("src/components/home"),
   source("src/app/juegos/page.tsx"),
+  source("src/app/juegos/page.module.css"),
   source("src/components/games/GameCatalogClient.tsx"),
   source("src/lib/games/catalog-capabilities.ts"),
   source("src/app/juegos/populares/page.tsx"),
@@ -69,6 +74,9 @@ const [
   source("src/app/requisitos/page.tsx"),
   source("src/data/public-pages-config.ts"),
   source("src/lib/site/public-pages-config.ts"),
+  source("src/app/admin/(protected)/paginas/presentacion/page.tsx"),
+  source("src/app/api/admin/content/public-pages/games/route.ts"),
+  source("src/lib/site/backgrounds.ts"),
   source("src/components/layout/Footer.tsx"),
 ]);
 
@@ -234,6 +242,22 @@ assert(
   "Las superficies públicas deben compartir una configuración estructurada, cacheada y basada sólo en snapshots publicados."
 );
 
+assert(
+  !gamesPage.includes("heroImage") &&
+    !gamesPage.includes("heroShade") &&
+    !gamesPage.includes("heroGlow") &&
+    !gamesStyles.includes(".heroImage") &&
+    !gamesStyles.includes(".heroShade") &&
+    !gamesStyles.includes(".heroGlow") &&
+    !gamesStyles.includes("juegos-reference-hero-v2.webp") &&
+    !publicPagesConfig.includes("heroImage") &&
+    !adminPresentationPage.includes('name="heroImage"') &&
+    !publicGamesAdminRoute.includes('"heroImage"') &&
+    siteBackgrounds.includes('{ key: "games", label: "Juegos" }') &&
+    siteBackgrounds.includes('return "games";'),
+  "Juegos no debe reintroducir un Hero gráfico propio ni su campo editorial; el fondo general configurable de la página debe seguir disponible."
+);
+
 for (const phrase of [
   "Explora nuestro catálogo, filtra por clasificación",
   "Sigue las nuevas versiones de los juegos disponibles.",
@@ -254,6 +278,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Fronteras editoriales del frontend: OK (contenido administrable centralizado; capacidades públicas coherentes; metadata, social y sitemap alineados con snapshots publicados; UI técnica permanece en código)."
+    "Fronteras editoriales del frontend: OK (contenido administrable centralizado; Hero gráfico propio de Juegos ausente; fondo general de Juegos preservado; capacidades públicas coherentes; metadata, social y sitemap alineados con snapshots publicados; UI técnica permanece en código)."
   );
 }
