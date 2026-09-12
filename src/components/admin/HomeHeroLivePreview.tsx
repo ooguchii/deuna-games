@@ -1,7 +1,9 @@
 "use client";
 
 import {
+  useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   useSyncExternalStore,
@@ -14,6 +16,7 @@ import PublicPageBackground, {
 } from "@/components/site/PublicPageBackground";
 import type {
   HomeHeroDevice,
+  HomeHeroMotionEngine,
   HomeHeroPresentation,
 } from "@/data/home-config";
 import {
@@ -32,6 +35,11 @@ import styles from "./HomeHeroEditor.module.css";
 
 type ViewportOverrides = Record<HomeHeroDevice, HomeHeroViewport>;
 type ViewportCustomization = Record<HomeHeroDevice, boolean>;
+
+type HeroEditorPayload = {
+  presentation?: HomeHeroPresentation;
+  [key: string]: unknown;
+};
 
 const initialCustomization: ViewportCustomization = {
   desktop: false,
@@ -99,6 +107,7 @@ export default function HomeHeroLivePreview({
   onNavigationPositionChange?: (x: number, y: number) => void;
 }) {
   const container = useRef<HTMLDivElement>(null);
+  const wasPlaying = useRef(false);
   const [previewEnd, setPreviewEnd] =
     useState<HTMLDivElement | null>(null);
   const [contentEnd, setContentEnd] = useState<number | null>(null);
@@ -111,6 +120,10 @@ export default function HomeHeroLivePreview({
     );
   const [customized, setCustomized] =
     useState<ViewportCustomization>(initialCustomization);
+  const [previewPhysicalMotion, setPreviewPhysicalMotion] =
+    useState(false);
+  const [engineNotice, setEngineNotice] =
+    useState<string | null>(null);
   const browserSnapshot = useSyncExternalStore(
     subscribeBrowserViewport,
     browserViewportSnapshot,
@@ -132,6 +145,13 @@ export default function HomeHeroLivePreview({
       : manualSizes[device];
   const { width, height } = selectedViewport;
   const scale = Math.min(1, availableWidth / width);
+  const effectivePresentation = useMemo<HomeHeroPresentation>(
+    () =>
+      previewPhysicalMotion && presentation.motionEngine !== "physical"
+        ? { ...presentation, motionEngine: "physical" }
+        : presentation,
+    [presentation, previewPhysicalMotion]
+  );
 
   useEffect(() => {
     const node = container.current;
@@ -142,6 +162,11 @@ export default function HomeHeroLivePreview({
     observer.observe(node);
     return () => observer.disconnect();
   }, []);
+
+  useEffect(() => {
+    setPreviewPhysicalMotion(false);
+    setEngineNotice(null);
+  }, [presentation.motionEngine]);
 
   useEffect(() => {
     const marker = previewEnd;
@@ -175,11 +200,108 @@ export default function HomeHeroLivePreview({
   }, [
     games.length,
     height,
-    presentation,
+    effectivePresentation,
     previewEnd,
     showSpacingGuide,
     width,
   ]);
+
+  const replayTransition = useCallback(() => {
+    const previewRoot = previewEnd?.parentElement;
+    if (!previewRoot) return false;
+    const next = previewRoot.querySelector<HTMLButtonElement>(
+      'button[aria-label="Juego siguiente"]:not(:disabled)'
+    );
+    const previous = previewRoot.querySelector<HTMLButtonElement>(
+      'button[aria-label="Juego anterior"]:not(:disabled)'
+    );
+    const target = next ?? previous;
+    if (!target) return false;
+    target.click();
+    return true;
+  }, [previewEnd]);
+
+  useEffect(() => {
+    if (!playing) {
+      wasPlaying.current = false;
+      if (presentation.motionEngine !== "physical") {
+        setPreviewPhysicalMotion(false);
+      }
+      return;
+    }
+    if (!previewEnd || wasPlaying.current) return;
+
+    wasPlaying.current = true;
+    if (presentation.motionEngine !== "physical") {
+      setPreviewPhysicalMotion(true);
+    }
+
+    const view = previewEnd.ownerDocument.defaultView;
+    if (!view) return;
+    let firstFrame = 0;
+    let secondFrame = 0;
+    firstFrame = view.requestAnimationFrame(() => {
+      secondFrame = view.requestAnimationFrame(() => {
+        replayTransition();
+      });
+    });
+
+    return () => {
+      view.cancelAnimationFrame(firstFrame);
+      view.cancelAnimationFrame(secondFrame);
+    };
+  }, [playing, presentation.motionEngine, previewEnd, replayTransition]);
+
+  const saveMotionEngine = (motionEngine: HomeHeroMotionEngine) => {
+    const doc = container.current?.ownerDocument;
+    const form = doc?.querySelector<HTMLFormElement>(
+      'form[action="/api/admin/content/home/hero"]'
+    );
+    const heroInput = form?.querySelector<HTMLInputElement>(
+      'input[name="heroJson"]'
+    );
+
+    if (!form || !heroInput) {
+      setEngineNotice(
+        "No se encontró el guardado canónico del Hero. Recarga el panel antes de cambiar el motor."
+      );
+      return;
+    }
+
+    try {
+      const payload = JSON.parse(heroInput.value) as HeroEditorPayload;
+      if (!payload.presentation) {
+        throw new Error("missing-presentation");
+      }
+
+      if (
+        JSON.stringify(payload.presentation) !==
+        JSON.stringify(presentation)
+      ) {
+        setEngineNotice(
+          "Sal de «Comparar con guardado» antes de cambiar el motor. No se modificó el borrador."
+        );
+        return;
+      }
+
+      payload.presentation = {
+        ...payload.presentation,
+        motionEngine,
+      };
+      heroInput.value = JSON.stringify(payload);
+      setPreviewPhysicalMotion(motionEngine === "physical");
+      setEngineNotice(
+        motionEngine === "physical"
+          ? "Activando el motor físico mediante el guardado normal del Hero…"
+          : "Restaurando el motor clásico mediante el guardado normal del Hero…"
+      );
+      form.requestSubmit();
+    } catch {
+      setEngineNotice(
+        "No se pudo preparar el cambio de motor. El borrador actual no fue modificado."
+      );
+    }
+  };
 
   const setManualViewportDimension = (
     key: keyof HomeHeroViewport,
@@ -198,7 +320,10 @@ export default function HomeHeroLivePreview({
     }));
   };
 
-  const responsive = resolveHeroDeviceDesign(presentation, device).responsive[device];
+  const responsive = resolveHeroDeviceDesign(
+    effectivePresentation,
+    device
+  ).responsive[device];
   const visiblePreviewHeight =
     contentEnd !== null
       ? Math.min(height, contentEnd)
@@ -209,7 +334,7 @@ export default function HomeHeroLivePreview({
         <>
           <HeroSection
             games={games}
-            presentation={presentation}
+            presentation={effectivePresentation}
             autoplaySuspended={!playing}
             onSelectPosition={playing ? undefined : onSelectPosition}
             navigationEditor={
@@ -268,6 +393,8 @@ export default function HomeHeroLivePreview({
     HOME_HERO_VIEWPORT_HEIGHT_LIMITS;
   const [minWidth, maxWidth] =
     HOME_HERO_VIEWPORT_WIDTH_LIMITS[device];
+  const simulatingPhysicalMotion =
+    presentation.motionEngine !== "physical" && previewPhysicalMotion;
 
   return (
     <div ref={container} className={styles.livePreview}>
@@ -351,6 +478,36 @@ export default function HomeHeroLivePreview({
           {followsBrowserViewport && (
             <span>Vista sincronizada con la ventana actual</span>
           )}
+        </div>
+        <div>
+          <span role="status">
+            {presentation.motionEngine === "physical"
+              ? "Motor físico V2 activo en este borrador. La web pública cambia sólo al publicar Inicio."
+              : simulatingPhysicalMotion
+                ? "Simulación V2 activa sólo en esta prueba; todavía no está guardada."
+                : "Motor clásico preservado. Probar funcionamiento simula V2 sin cambiar el borrador."}
+          </span>
+          {playing && games.length > 1 && (
+            <button type="button" onClick={replayTransition}>
+              Repetir transición ahora
+            </button>
+          )}
+          {presentation.motionEngine === "physical" ? (
+            <button
+              type="button"
+              onClick={() => saveMotionEngine("legacy")}
+            >
+              Volver al motor clásico y guardar borrador
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => saveMotionEngine("physical")}
+            >
+              Activar motor físico V2 y guardar borrador
+            </button>
+          )}
+          {engineNotice && <span role="status">{engineNotice}</span>}
         </div>
       </div>
       <div
