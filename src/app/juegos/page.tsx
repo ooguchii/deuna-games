@@ -205,35 +205,6 @@ export default async function GamesPage({
           }
           aria-labelledby="games-title"
         >
-          <div
-            className={
-              styles.heroImage
-            }
-            style={
-              page.heroImage
-                ? {
-                    backgroundImage:
-                      `url(${JSON.stringify(page.heroImage)})`,
-                  }
-                : undefined
-            }
-            aria-hidden="true"
-          />
-
-          <div
-            className={
-              styles.heroShade
-            }
-            aria-hidden="true"
-          />
-
-          <div
-            className={
-              styles.heroGlow
-            }
-            aria-hidden="true"
-          />
-
           <PublicBreadcrumb
             className={styles.breadcrumb}
             currentLabel={page.title}
