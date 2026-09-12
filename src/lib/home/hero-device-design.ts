@@ -22,6 +22,10 @@ function heroBasePresentation(
  * responsive slots inside the stored snapshot are only historical copies from
  * the moment the override was created. Resolve those cross-device slots from
  * their effective owners so editor operations never read stale baseline data.
+ *
+ * `motionEngine` is intentionally global. A historical device snapshot must
+ * never be able to downgrade or upgrade the runtime engine independently from
+ * the presentation revision that was explicitly saved and published.
  */
 export function resolveHeroDeviceDesign(
   presentation: HomeHeroPresentation,
@@ -32,6 +36,7 @@ export function resolveHeroDeviceDesign(
 
   return {
     ...selected,
+    motionEngine: base.motionEngine,
     responsive: {
       desktop:
         presentation.deviceOverrides?.desktop?.responsive.desktop ??
