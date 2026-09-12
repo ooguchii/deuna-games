@@ -406,6 +406,19 @@ export default function HeroSection({
   }, []);
 
   const moveBy = useCallback((delta: number) => {
+    if (!physicalMotion) {
+      setActiveIndex((current) => {
+        if (!games.length) return 0;
+        const normalized = ((current % games.length) + games.length) % games.length;
+        const next = normalized + delta;
+        if (!presentation.loop) {
+          return Math.max(0, Math.min(games.length - 1, next));
+        }
+        return (next + games.length) % games.length;
+      });
+      return;
+    }
+
     if (!games.length) return;
     const current = ((activeIndex % games.length) + games.length) % games.length;
     const requested = current + delta;
@@ -415,19 +428,23 @@ export default function HeroSection({
     if (target === current) return;
     startMotion(delta);
     setActiveIndex(target);
-  }, [activeIndex, games.length, presentation.loop, startMotion]);
+  }, [activeIndex, games.length, physicalMotion, presentation.loop, startMotion]);
 
   const selectSlide = useCallback((targetIndex: number) => {
     if (!games.length) return;
     const target = ((targetIndex % games.length) + games.length) % games.length;
     if (target === normalizedActiveIndex) return;
+    if (!physicalMotion) {
+      setActiveIndex(target);
+      return;
+    }
     let delta = target - normalizedActiveIndex;
     if (presentation.loop && Math.abs(delta) > games.length / 2) {
       delta += delta > 0 ? -games.length : games.length;
     }
     startMotion(delta);
     setActiveIndex(target);
-  }, [games.length, normalizedActiveIndex, presentation.loop, startMotion]);
+  }, [games.length, normalizedActiveIndex, physicalMotion, presentation.loop, startMotion]);
 
   const nextSlide = useCallback(() => moveBy(direction), [direction, moveBy]);
   const previousSlide = useCallback(() => moveBy(-direction), [direction, moveBy]);
