@@ -486,8 +486,19 @@ async function assertRowAnchoredDuringPageScroll(cdp, selector, before) {
   const scroll = await cdp.evaluate(`
     (() => {
       const before = window.scrollY;
-      window.scrollBy({ top: ${ROW_ANCHOR_SCROLL_PX}, left: 0, behavior: "auto" });
-      return { before, after: window.scrollY };
+      const maxScroll = Math.max(
+        0,
+        document.documentElement.scrollHeight - window.innerHeight
+      );
+      const roomBelow = maxScroll - before;
+      const requested =
+        roomBelow >= ${ROW_ANCHOR_SCROLL_PX}
+          ? ${ROW_ANCHOR_SCROLL_PX}
+          : before >= ${ROW_ANCHOR_SCROLL_PX}
+            ? -${ROW_ANCHOR_SCROLL_PX}
+            : 0;
+      window.scrollBy({ top: requested, left: 0, behavior: "auto" });
+      return { before, after: window.scrollY, maxScroll, requested };
     })()
   `);
   await delay(250);
@@ -498,9 +509,9 @@ async function assertRowAnchoredDuringPageScroll(cdp, selector, before) {
   }
 
   const scrollDelta = scroll.after - scroll.before;
-  if (Math.abs(scrollDelta) < ROW_ANCHOR_SCROLL_PX * 0.75) {
+  if (scroll.requested === 0 || Math.abs(scrollDelta) < ROW_ANCHOR_SCROLL_PX * 0.75) {
     throw new Error(
-      `Home desktop: el documento no se desplazó lo suficiente (${scrollDelta}px).`
+      `Home desktop: el documento no se desplazó lo suficiente: ${JSON.stringify(scroll)}.`
     );
   }
 
