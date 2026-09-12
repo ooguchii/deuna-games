@@ -5,7 +5,7 @@ import {
   RefreshCcw,
 } from "lucide-react";
 
-import GameMedia from "@/components/ui/GameMedia";
+import GameCoverMedia from "@/components/ui/GameCoverMedia";
 import touchStyles from "@/components/ui/TouchTarget.module.css";
 import type { HomeCopy } from "@/data/home-config";
 import {
@@ -71,9 +71,6 @@ export default function LatestUpdates({
               fallbackClassBySlug[
                 update.game.slug
               ];
-            const cardImage =
-              update.game.cardImage ??
-              update.game.coverImage;
 
             return (
               <article
@@ -95,21 +92,9 @@ export default function LatestUpdates({
                       styles.image
                     }
                   >
-                    <GameMedia
-                      src={cardImage}
-                      alt={
-                        update.game
-                          .imageAlt
-                      }
+                    <GameCoverMedia
+                      game={update.game}
                       sizes="(max-width: 650px) 100vw, (max-width: 1150px) 240px, 13vw"
-                      viewport={
-                        update.game
-                          .imageMedia
-                          ?.card ??
-                        update.game
-                          .imageMedia
-                          ?.cover
-                      }
                       fallbackClassName={
                         fallbackClass
                           ? styles[
