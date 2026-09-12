@@ -50,6 +50,29 @@ assert.equal(editorialHomeConfigSchema.safeParse({
 }).success, false);
 console.log('Hero editorial persistence: OK (device designs survive Home validation and reload; nested overrides rejected).');
 
+// `motionEngine` is a revision-level runtime contract, not a device style. A
+// copied historical override must never be able to downgrade the engine on one
+// breakpoint after the editor explicitly opts the draft into V2.
+const mixedEngine = structuredClone(original);
+mixedEngine.motionEngine = 'physical';
+mixedEngine.deviceOverrides = {
+  mobile: {
+    ...structuredClone(original),
+    motionEngine: 'legacy',
+  },
+};
+assert.equal(resolveHeroDeviceDesign(mixedEngine, 'desktop').motionEngine, 'physical');
+assert.equal(resolveHeroDeviceDesign(mixedEngine, 'tablet').motionEngine, 'physical');
+assert.equal(resolveHeroDeviceDesign(mixedEngine, 'mobile').motionEngine, 'physical');
+const mobileVisualEdit = updateHeroDeviceDesign(mixedEngine, 'mobile', design => {
+  design.radius = 29;
+  return design;
+});
+assert.equal(mobileVisualEdit.motionEngine, 'physical');
+assert.equal(resolveHeroDeviceDesign(mobileVisualEdit, 'mobile').motionEngine, 'physical');
+assert.equal(resolveHeroDeviceDesign(mobileVisualEdit, 'mobile').radius, 29);
+console.log('Hero motion engine scope: OK (runtime engine remains global even with historical device snapshots).');
+
 // Reproduce a subtle shared-edit case: an override can already have the requested
 // source-device value in its copied desktop slot while its own slot is divergent.
 // A later "all devices" edit must still propagate the source change to that slot.

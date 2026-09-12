@@ -317,7 +317,8 @@ assert(
 );
 
 assert(
-  heroSection.includes("HOME_HERO_VISUAL_POSITIONS.map") &&
+  heroSection.includes("homeHeroVisiblePositions(") &&
+    heroSection.includes("renderedCards.map") &&
     heroSection.includes("presentation.positions[position]") &&
     heroSection.includes("homeHeroPositionTransform(positionStyle)") &&
     heroSection.includes("homeHeroPositionDisplay") &&
@@ -325,7 +326,7 @@ assert(
     heroSection.includes("--hero-editor-easing") &&
     heroSection.includes("--hero-editor-overlay") &&
     heroSection.includes("--hero-editor-border"),
-  "El renderer público debe consumir geometría, responsive, easing, overlay y borde desde HomeHeroPresentation."
+  "El renderer público debe consumir la visibilidad y geometría canónicas, responsive, easing, overlay y borde desde HomeHeroPresentation."
 );
 
 assert(

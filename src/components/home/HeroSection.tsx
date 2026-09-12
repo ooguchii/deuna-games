@@ -42,6 +42,7 @@ import {
   homeHeroPositionOffset,
   homeHeroPositionTransform,
   homeHeroSlotCSS,
+  homeHeroVisiblePositions,
   fitHomeHeroBounds,
   type HomeHeroVisualPosition,
 } from "@/lib/home/hero-layout";
@@ -56,6 +57,7 @@ import {
 import type { Game } from "@/types/game";
 
 import artworkStyles from "./HeroArtwork.module.css";
+import motionStyles from "./HeroMotion.module.css";
 import styles from "./HeroSection.module.css";
 
 const FINE_HOVER_MEDIA = "(hover: hover) and (pointer: fine)";
@@ -67,6 +69,9 @@ type HeroFact = {
   kind: "rating" | "developer" | "release" | "platforms" | "version";
   label: string;
 };
+
+type HeroMotionDirection = "forward" | "backward";
+type HeroMotionSequence = "a" | "b";
 
 type ResponsiveArtworkProps = {
   game: Game;
@@ -224,13 +229,19 @@ function HeroVideoLayer({ game, enabled }: { game: Game; enabled: boolean }) {
   );
 }
 
-function MainCardContent({ game }: { game: Game }) {
+function MainCardContent({
+  game,
+  motionEnabled,
+}: {
+  game: Game;
+  motionEnabled: boolean;
+}) {
   const classifications = classificationLine(game);
   const facts = heroFacts(game);
   const title = heroTitleParts(game);
 
   return (
-    <div className={styles.content}>
+    <div className={`${styles.content} ${motionEnabled ? motionStyles.contentReveal : ""}`}>
       {classifications.length > 0 && (
         <div className={styles.classificationLine} aria-label="Clasificación del juego">
           {classifications.map((item) => (
@@ -343,11 +354,13 @@ export default function HeroSection({
     return () => view.removeEventListener("resize", update);
   }, []);
   const presentation = useMemo(() => resolveHeroDeviceDesign(sourcePresentation, designDevice), [sourcePresentation, designDevice]);
+  const physicalMotion = presentation.motionEngine === "physical";
   const fitRef = useRef<HTMLDivElement>(null);
   const pointerStart = useRef<{ x: number; y: number; id: number } | null>(null);
   const suppressClick = useRef(false);
   const lastWheel = useRef(0);
   const autoplayClock = useRef({ key: "", remaining: 0 });
+  const motionSequenceRef = useRef<HeroMotionSequence>("b");
   const [activeIndex, setActiveIndex] = useState(0);
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
@@ -355,6 +368,8 @@ export default function HeroSection({
   const [manualPaused, setManualPaused] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
   const [hoverPreviewActive, setHoverPreviewActive] = useState(false);
+  const [motionDirection, setMotionDirection] = useState<HeroMotionDirection>("forward");
+  const [motionSequence, setMotionSequence] = useState<HeroMotionSequence | null>(null);
 
   const resolvedTuning = useMemo(
     () => resolveHeroImageTuning(imageTuning),
@@ -382,15 +397,54 @@ export default function HeroSection({
     [games.length, presentation]
   );
 
+  const startMotion = useCallback((delta: number) => {
+    if (!delta) return;
+    setMotionDirection(delta > 0 ? "forward" : "backward");
+    const next = motionSequenceRef.current === "a" ? "b" : "a";
+    motionSequenceRef.current = next;
+    setMotionSequence(next);
+  }, []);
+
   const moveBy = useCallback((delta: number) => {
-    setActiveIndex((current) => {
-      if (!games.length) return 0;
-      const normalized = ((current % games.length) + games.length) % games.length;
-      const next = normalized + delta;
-      if (!presentation.loop) return Math.max(0, Math.min(games.length - 1, next));
-      return (next + games.length) % games.length;
-    });
-  }, [games.length, presentation.loop]);
+    if (!physicalMotion) {
+      setActiveIndex((current) => {
+        if (!games.length) return 0;
+        const normalized = ((current % games.length) + games.length) % games.length;
+        const next = normalized + delta;
+        if (!presentation.loop) {
+          return Math.max(0, Math.min(games.length - 1, next));
+        }
+        return (next + games.length) % games.length;
+      });
+      return;
+    }
+
+    if (!games.length) return;
+    const current = ((activeIndex % games.length) + games.length) % games.length;
+    const requested = current + delta;
+    const target = presentation.loop
+      ? (requested + games.length) % games.length
+      : Math.max(0, Math.min(games.length - 1, requested));
+    if (target === current) return;
+    startMotion(delta);
+    setActiveIndex(target);
+  }, [activeIndex, games.length, physicalMotion, presentation.loop, startMotion]);
+
+  const selectSlide = useCallback((targetIndex: number) => {
+    if (!games.length) return;
+    const target = ((targetIndex % games.length) + games.length) % games.length;
+    if (target === normalizedActiveIndex) return;
+    if (!physicalMotion) {
+      setActiveIndex(target);
+      return;
+    }
+    let delta = target - normalizedActiveIndex;
+    if (presentation.loop && Math.abs(delta) > games.length / 2) {
+      delta += delta > 0 ? -games.length : games.length;
+    }
+    startMotion(delta);
+    setActiveIndex(target);
+  }, [games.length, normalizedActiveIndex, physicalMotion, presentation.loop, startMotion]);
 
   const nextSlide = useCallback(() => moveBy(direction), [direction, moveBy]);
   const previousSlide = useCallback(() => moveBy(-direction), [direction, moveBy]);
@@ -528,16 +582,28 @@ export default function HeroSection({
     !reducedMotion &&
     heroMode !== "image" &&
     (!hoverPlayback || hoverPreviewActive);
-
-  function cardAt(position: HomeHeroVisualPosition) {
+  const visiblePositions = homeHeroVisiblePositions(
+    presentation.responsive[designDevice],
+    presentation.direction,
+    games.length
+  );
+  const renderPositions = physicalMotion
+    ? visiblePositions
+    : HOME_HERO_VISUAL_POSITIONS;
+  const seenGames = new Set<string>();
+  const renderedCards = renderPositions.flatMap((position) => {
     const offset = homeHeroPositionOffset(position);
     const rawIndex = normalizedActiveIndex + offset;
     if (!presentation.loop && (rawIndex < 0 || rawIndex >= games.length)) {
-      return null;
+      return [];
     }
     const index = ((rawIndex % games.length) + games.length) % games.length;
-    return { game: games[index], index };
-  }
+    const game = games[index];
+    if (!game) return [];
+    if (physicalMotion && seenGames.has(String(game.id))) return [];
+    if (physicalMotion) seenGames.add(String(game.id));
+    return [{ position, game, index }];
+  });
 
   function handleKeyDown(event: KeyboardEvent<HTMLElement>) {
     if (!presentation.keyboard) return;
@@ -600,9 +666,12 @@ export default function HeroSection({
   return (
     <section
       ref={rootRef}
-      className={styles.heroSection}
+      className={`${styles.heroSection} ${physicalMotion ? motionStyles.motionRoot : ""}`}
       data-composition={presentation.composition}
       data-transition={presentation.transition}
+      data-motion-engine={presentation.motionEngine}
+      data-motion-direction={physicalMotion ? motionDirection : undefined}
+      data-motion-sequence={physicalMotion ? motionSequence ?? undefined : undefined}
       aria-label="Juegos destacados"
       aria-roledescription="carrusel"
       tabIndex={0}
@@ -631,20 +700,17 @@ export default function HeroSection({
       >
         <div ref={fitRef} className={styles.stageFit}>
         <div className={styles.stage}>
-          {HOME_HERO_VISUAL_POSITIONS.map((position) => {
-            const entry = cardAt(position);
-            if (!entry) return null;
-            const { game, index } = entry;
+          {renderedCards.map(({ position, game, index }) => {
             const positionStyle = presentation.positions[position];
             const isMain = position === "main";
 
             return (
               <article
-                key={`${normalizedActiveIndex}-${position}-${game.id}`}
-                className={styles.heroCard}
+                key={physicalMotion ? game.id : `${normalizedActiveIndex}-${position}-${game.id}`}
+                className={`${styles.heroCard} ${physicalMotion ? motionStyles.motionCard : ""}`}
                 data-position={position}
                 data-main={isMain || undefined}
-                onClick={() => onSelectPosition?.(position)}
+                onClick={onSelectPosition ? () => onSelectPosition(position) : undefined}
                 role="group"
                 aria-roledescription="slide"
                 aria-label={`${index + 1} de ${games.length}: ${game.title}`}
@@ -654,7 +720,8 @@ export default function HeroSection({
                   transform: homeHeroPositionTransform(positionStyle),
                 }}
               >
-                <div className={styles.cardSurface}>
+                <div className={motionStyles.motionFrame}>
+                <div className={styles.cardSurface} style={physicalMotion ? { animation: "none" } : undefined}>
                   <div className={styles.media}>
                     {game.heroImage || game.coverImage ? (
                       <ResponsiveArtwork
@@ -683,14 +750,21 @@ export default function HeroSection({
                   {isMain ? (
                     <>
                       {game.badge && <span className={styles.featuredBadge}>{game.badge}</span>}
-                      <MainCardContent game={game} />
+                      <MainCardContent game={game} motionEnabled={physicalMotion} />
                     </>
                   ) : (
                     <button
                       type="button"
                       className={styles.sideSelect}
-                      aria-label={`Mostrar ${game.title}`}
-                      onClick={() => setActiveIndex(index)}
+                      aria-label={onSelectPosition ? `Editar posición de ${game.title}` : `Mostrar ${game.title}`}
+                      onClick={(event) => {
+                        if (onSelectPosition) {
+                          event.stopPropagation();
+                          onSelectPosition(position);
+                          return;
+                        }
+                        selectSlide(index);
+                      }}
                     >
                       <span>
                         <strong>{game.shortTitle ?? game.title}</strong>
@@ -698,6 +772,7 @@ export default function HeroSection({
                       </span>
                     </button>
                   )}
+                </div>
                 </div>
               </article>
             );
@@ -737,7 +812,7 @@ export default function HeroSection({
             isPaused={isPaused}
             manualPaused={manualPaused}
             atAutoplayEnd={atAutoplayEnd}
-            onSelect={setActiveIndex}
+            onSelect={selectSlide}
             onTogglePause={() => setManualPaused((current) => !current)}
             editor={navigationEditor}
           />

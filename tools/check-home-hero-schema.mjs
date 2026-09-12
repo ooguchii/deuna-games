@@ -2,7 +2,10 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 
-import { sourceHomeConfig } from "../src/data/home-config.ts";
+import {
+  resolveHomeConfig,
+  sourceHomeConfig,
+} from "../src/data/home-config.ts";
 import {
   homeHeroPresentationEditorSchema,
   homeHeroPresentationInputSchema,
@@ -21,6 +24,10 @@ function clone(value) {
 
 const current = clone(sourceHomeConfig.heroPresentation);
 assert(
+  current.motionEngine === "legacy",
+  "La presentación fuente debe conservar el motor legacy para no reinterpretar publicaciones históricas al desplegar código nuevo."
+);
+assert(
   homeHeroPresentationEditorSchema.safeParse(current).success,
   "La presentación fuente del Hero debe cumplir el contrato completo del editor."
 );
@@ -38,6 +45,39 @@ const legacy = {
 assert(
   homeHeroPresentationInputSchema.safeParse(legacy).success,
   "El contrato persistido debe seguir aceptando revisiones anteriores a los controles visuales nuevos."
+);
+
+const beforeMotionEngine = clone(current);
+delete beforeMotionEngine.motionEngine;
+const normalizedBeforeMotionEngine =
+  homeHeroPresentationEditorSchema.safeParse(beforeMotionEngine);
+assert(
+  normalizedBeforeMotionEngine.success &&
+    normalizedBeforeMotionEngine.data.motionEngine === "legacy",
+  "Borradores anteriores a motionEngine deben migrar al motor legacy, nunca activar movimiento físico implícitamente."
+);
+const resolvedBeforeMotionEngine = resolveHomeConfig({
+  ...sourceHomeConfig,
+  heroPresentation: beforeMotionEngine,
+}).heroPresentation;
+assert(
+  resolvedBeforeMotionEngine.motionEngine === "legacy",
+  "Snapshots publicados sin motionEngine deben resolver al motor legacy."
+);
+
+const physicalMotion = clone(current);
+physicalMotion.motionEngine = "physical";
+assert(
+  homeHeroPresentationEditorSchema.safeParse(physicalMotion).success &&
+    homeHeroPresentationInputSchema.safeParse(physicalMotion).success,
+  "El motor físico debe poder persistirse explícitamente en una revisión editorial válida."
+);
+const invalidMotionEngine = clone(current);
+invalidMotionEngine.motionEngine = "automatic";
+assert(
+  !homeHeroPresentationEditorSchema.safeParse(invalidMotionEngine).success &&
+    !homeHeroPresentationInputSchema.safeParse(invalidMotionEngine).success,
+  "Motores desconocidos deben rechazarse en editor y snapshots persistidos."
 );
 
 const oldEditorDraft = clone(current);
@@ -172,6 +212,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    "Hero schema: OK (contrato actual único, autoplay con pausa normalizada, límites compartidos y compatibilidad de borradores antiguos)."
+    "Hero schema: OK (contrato único, motor físico opt-in con fallback legacy, autoplay con pausa normalizada, límites compartidos y compatibilidad de borradores antiguos)."
   );
 }

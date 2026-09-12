@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import {
   homeHeroCompositionIds,
+  homeHeroMotionEngineIds,
   homeHeroNavigationStyleIds,
   homeHeroPresetIds,
 } from "../../data/home-config.ts";
@@ -250,6 +251,7 @@ const commonRequiredFields = {
 } as const;
 
 const optionalPresentationFields = {
+  motionEngine: z.enum(homeHeroMotionEngineIds).optional(),
   preset: z.enum(homeHeroPresetIds).optional(),
   transition: transitionSchema.optional(),
   durationMs: z.number().int().min(150).max(2000).optional(),
@@ -292,6 +294,7 @@ const basePresentationInputSchema = z
 const basePresentationEditorSchema = z
   .object({
     ...commonRequiredFields,
+    motionEngine: z.enum(homeHeroMotionEngineIds).default("legacy"),
     preset: z.enum(homeHeroPresetIds),
     transition: transitionSchema,
     durationMs: z.number().int().min(150).max(2000),
