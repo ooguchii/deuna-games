@@ -120,8 +120,6 @@ export default function HomeHeroLivePreview({
     );
   const [customized, setCustomized] =
     useState<ViewportCustomization>(initialCustomization);
-  const [previewPhysicalMotion, setPreviewPhysicalMotion] =
-    useState(false);
   const [engineNotice, setEngineNotice] =
     useState<string | null>(null);
   const browserSnapshot = useSyncExternalStore(
@@ -145,12 +143,14 @@ export default function HomeHeroLivePreview({
       : manualSizes[device];
   const { width, height } = selectedViewport;
   const scale = Math.min(1, availableWidth / width);
+  const simulatingPhysicalMotion =
+    playing && presentation.motionEngine !== "physical";
   const effectivePresentation = useMemo<HomeHeroPresentation>(
     () =>
-      previewPhysicalMotion && presentation.motionEngine !== "physical"
+      simulatingPhysicalMotion
         ? { ...presentation, motionEngine: "physical" }
         : presentation,
-    [presentation, previewPhysicalMotion]
+    [presentation, simulatingPhysicalMotion]
   );
 
   useEffect(() => {
@@ -162,11 +162,6 @@ export default function HomeHeroLivePreview({
     observer.observe(node);
     return () => observer.disconnect();
   }, []);
-
-  useEffect(() => {
-    setPreviewPhysicalMotion(false);
-    setEngineNotice(null);
-  }, [presentation.motionEngine]);
 
   useEffect(() => {
     const marker = previewEnd;
@@ -224,18 +219,11 @@ export default function HomeHeroLivePreview({
   useEffect(() => {
     if (!playing) {
       wasPlaying.current = false;
-      if (presentation.motionEngine !== "physical") {
-        setPreviewPhysicalMotion(false);
-      }
       return;
     }
     if (!previewEnd || wasPlaying.current) return;
 
     wasPlaying.current = true;
-    if (presentation.motionEngine !== "physical") {
-      setPreviewPhysicalMotion(true);
-    }
-
     const view = previewEnd.ownerDocument.defaultView;
     if (!view) return;
     let firstFrame = 0;
@@ -250,7 +238,7 @@ export default function HomeHeroLivePreview({
       view.cancelAnimationFrame(firstFrame);
       view.cancelAnimationFrame(secondFrame);
     };
-  }, [playing, presentation.motionEngine, previewEnd, replayTransition]);
+  }, [playing, previewEnd, replayTransition]);
 
   const saveMotionEngine = (motionEngine: HomeHeroMotionEngine) => {
     const doc = container.current?.ownerDocument;
@@ -289,12 +277,7 @@ export default function HomeHeroLivePreview({
         motionEngine,
       };
       heroInput.value = JSON.stringify(payload);
-      setPreviewPhysicalMotion(motionEngine === "physical");
-      setEngineNotice(
-        motionEngine === "physical"
-          ? "Activando el motor físico mediante el guardado normal del Hero…"
-          : "Restaurando el motor clásico mediante el guardado normal del Hero…"
-      );
+      setEngineNotice(null);
       form.requestSubmit();
     } catch {
       setEngineNotice(
@@ -393,8 +376,6 @@ export default function HomeHeroLivePreview({
     HOME_HERO_VIEWPORT_HEIGHT_LIMITS;
   const [minWidth, maxWidth] =
     HOME_HERO_VIEWPORT_WIDTH_LIMITS[device];
-  const simulatingPhysicalMotion =
-    presentation.motionEngine !== "physical" && previewPhysicalMotion;
 
   return (
     <div ref={container} className={styles.livePreview}>
