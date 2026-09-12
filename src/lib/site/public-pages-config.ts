@@ -22,7 +22,7 @@ function sourceFallback(): PublicPagesConfig {
   return structuredClone(sourcePublicPagesConfig);
 }
 
-async function readPublishedPublicPagesConfig() {
+async function readPublishedPublicPagesConfig(): Promise<PublicPagesConfig | null> {
   const result =
     await adminQuery<PublishedPublicPagesRow>(
       `SELECT published_payload
@@ -37,10 +37,20 @@ async function readPublishedPublicPagesConfig() {
 
   if (!row) return null;
 
-  return parseEditorialPayload(
+  const parsed = parseEditorialPayload(
     "public_pages_config",
     row.published_payload
   );
+
+  return {
+    ...parsed,
+    games: {
+      eyebrow: parsed.games.eyebrow,
+      title: parsed.games.title,
+      description: parsed.games.description,
+      platformLabel: parsed.games.platformLabel,
+    },
+  };
 }
 
 export const getPublicPagesConfig = cache(
