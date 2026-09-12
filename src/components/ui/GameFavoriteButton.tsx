@@ -13,7 +13,6 @@ import {
 } from "@/features/favorites/favorite-store";
 
 import ScreenReaderStatus from "./ScreenReaderStatus";
-import styles from "./GameFavoriteButton.module.css";
 
 export default function GameFavoriteButton({
   gameSlug,
@@ -58,7 +57,7 @@ export default function GameFavoriteButton({
     <>
       <button
         type="button"
-        className={`${styles.button} ${favorite ? styles.active : ""} ${className ?? ""}`}
+        className={className}
         style={style}
         aria-label={
           favorite
@@ -71,7 +70,7 @@ export default function GameFavoriteButton({
         onClick={() => void handleToggle()}
         data-game-favorite={gameSlug}
       >
-        <span className={styles.surface} aria-hidden="true">
+        <span aria-hidden="true">
           <Heart
             size={19}
             fill={favorite ? "currentColor" : "none"}
