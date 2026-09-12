@@ -24,8 +24,13 @@ const desktopScreenshotPath = path.join(
   outputRoot,
   "card-hover-home-desktop.png"
 );
+const rowAnchorScreenshotPath = path.join(
+  outputRoot,
+  "card-hover-row-anchor.png"
+);
 const CARD_SCALE_MIN = 1.1;
 const CARD_SCALE_MAX = 1.19;
+const ROW_ANCHOR_SCROLL_PX = 96;
 
 function findChrome() {
   const candidates = [
@@ -252,6 +257,7 @@ async function cardProbe(cdp, selector) {
         !(title instanceof HTMLElement)
       ) return null;
 
+      const slotRect = slot.getBoundingClientRect();
       const cardRect = card.getBoundingClientRect();
       const detailRect = detail.getBoundingClientRect();
       const detailCenter = document.elementFromPoint(
@@ -273,6 +279,14 @@ async function cardProbe(cdp, selector) {
         slotHeight: slot.offsetHeight,
         cardOffsetWidth: card.offsetWidth,
         cardOffsetHeight: card.offsetHeight,
+        slotRect: {
+          left: slotRect.left,
+          top: slotRect.top,
+          right: slotRect.right,
+          bottom: slotRect.bottom,
+          width: slotRect.width,
+          height: slotRect.height,
+        },
         cardRect: {
           left: cardRect.left,
           top: cardRect.top,
@@ -297,6 +311,7 @@ async function cardProbe(cdp, selector) {
         titleClamp: titleStyle.webkitLineClamp,
         pageOverflowX:
           document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        scrollY: window.scrollY,
         viewport: {
           width: document.documentElement.clientWidth,
           height: window.innerHeight,
@@ -467,6 +482,101 @@ async function assertCollapsed(cdp, selector, label) {
   }
 }
 
+async function assertRowAnchoredDuringPageScroll(cdp, selector, before) {
+  const scroll = await cdp.evaluate(`
+    (() => {
+      const before = window.scrollY;
+      const maxScroll = Math.max(
+        0,
+        document.documentElement.scrollHeight - window.innerHeight
+      );
+      const roomBelow = maxScroll - before;
+      const requested =
+        roomBelow >= ${ROW_ANCHOR_SCROLL_PX}
+          ? ${ROW_ANCHOR_SCROLL_PX}
+          : before >= ${ROW_ANCHOR_SCROLL_PX}
+            ? -${ROW_ANCHOR_SCROLL_PX}
+            : 0;
+      return { before, maxScroll, requested };
+    })()
+  `);
+
+  if (scroll.requested === 0) {
+    throw new Error(
+      `Home desktop: no existe recorrido suficiente para probar el anclaje: ${JSON.stringify(scroll)}.`
+    );
+  }
+
+  const wheelX = Math.min(
+    before.viewport.width - 1,
+    Math.max(1, before.cardRect.left + before.cardRect.width / 2)
+  );
+  const wheelY = Math.min(
+    before.viewport.height - 1,
+    Math.max(1, before.cardRect.top + before.cardRect.height / 2)
+  );
+
+  await cdp.send("Input.dispatchMouseEvent", {
+    type: "mouseWheel",
+    x: wheelX,
+    y: wheelY,
+    deltaX: 0,
+    deltaY: scroll.requested,
+    buttons: 0,
+    pointerType: "mouse",
+  });
+  await delay(350);
+
+  const after = await cardProbe(cdp, selector);
+  if (!after) {
+    throw new Error("Home desktop: la Card desapareció durante el scroll de anclaje.");
+  }
+
+  const scrollDelta = after.scrollY - scroll.before;
+  if (Math.abs(scrollDelta) < ROW_ANCHOR_SCROLL_PX * 0.75) {
+    throw new Error(
+      `Home desktop: la rueda no desplazó el documento lo suficiente: ${JSON.stringify({ ...scroll, after: after.scrollY, scrollDelta })}.`
+    );
+  }
+
+  if (after.expanded !== "true") {
+    if (after.position === "fixed") {
+      throw new Error(
+        `Home desktop: la Card colapsó pero quedó desacoplada como fixed: ${JSON.stringify(after)}.`
+      );
+    }
+    return "collapsed";
+  }
+
+  const slotDelta = after.slotRect.top - before.slotRect.top;
+  const articleDelta = after.cardRect.top - before.cardRect.top;
+  const detailDelta = after.detailRect.top - before.detailRect.top;
+  const tolerance = 3;
+
+  if (Math.abs(slotDelta + scrollDelta) > tolerance) {
+    throw new Error(
+      `Home desktop: el slot no acompañó el scroll esperado: ${JSON.stringify({ scrollDelta, slotDelta })}.`
+    );
+  }
+  if (
+    Math.abs(articleDelta - slotDelta) > tolerance ||
+    Math.abs(detailDelta - slotDelta) > tolerance ||
+    Math.abs(after.cardRect.top - after.slotRect.top) > tolerance
+  ) {
+    throw new Error(
+      "Home desktop: la Card expandida se desprendió de su fila durante scroll: " +
+        JSON.stringify({ scrollDelta, slotDelta, articleDelta, detailDelta, before, after })
+    );
+  }
+  if (Math.abs(articleDelta) < Math.abs(scrollDelta) * 0.75) {
+    throw new Error(
+      `Home desktop: la Card permaneció pegada al viewport en vez de a su fila: ${JSON.stringify({ scrollDelta, articleDelta })}.`
+    );
+  }
+
+  return "anchored";
+}
+
 async function assertLowSpecReadable(cdp) {
   const selector = 'article[data-card-variant="lowSpec"]';
   await navigate(cdp, `${baseUrl}/`);
@@ -508,8 +618,10 @@ async function assertDesktopHomeBalanced(cdp) {
   const state = await activateCard(cdp, selector);
   assertExpanded(state, "Home desktop 1440x900");
   await capture(cdp, desktopScreenshotPath);
+  const rowAnchorMode = await assertRowAnchoredDuringPageScroll(cdp, selector, state.active);
+  await capture(cdp, rowAnchorScreenshotPath);
   await assertCollapsed(cdp, selector, "Home desktop");
-  return state;
+  return { state, rowAnchorMode };
 }
 
 async function main() {
@@ -559,12 +671,13 @@ async function main() {
     await assertCollapsed(cdp, selector, "Catálogo compacto");
 
     await assertLowSpecReadable(cdp);
-    const desktopState = await assertDesktopHomeBalanced(cdp);
+    const desktopResult = await assertDesktopHomeBalanced(cdp);
 
     console.log(
       "Game Card hover browser smoke: OK " +
         `(lowres=1024x640 scale=${catalogState.active.scale.toFixed(3)}, ` +
-        `desktop=1440x900 scale=${desktopState.active.scale.toFixed(3)}, ` +
+        `desktop=1440x900 scale=${desktopResult.state.active.scale.toFixed(3)}, ` +
+        `row-anchor=${desktopResult.rowAnchorMode}, ` +
         "catálogo=legible/sin clipping, Home lowSpec=RAM-GPU-SO legibles, layout estable)."
     );
   } catch (error) {

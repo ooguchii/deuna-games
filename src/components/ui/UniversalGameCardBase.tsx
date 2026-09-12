@@ -221,6 +221,7 @@ export default function UniversalGameCardBase({
 }: UniversalGameCardProps) {
   const previewTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const tiltFrame = useRef<number | null>(null);
+  const anchorFrame = useRef<number | null>(null);
   const pendingTilt = useRef<PendingTilt | null>(null);
   const cardRect = useRef<DOMRect | null>(null);
   const pointerEffectsEnabled = useRef(false);
@@ -232,6 +233,7 @@ export default function UniversalGameCardBase({
   const [reducedMotion, setReducedMotion] = useState(false);
   const [expandedGeometry, setExpandedGeometry] =
     useState<ExpandedCardGeometry | null>(null);
+  const cardExpanded = expandedGeometry !== null;
 
   const presentation = resolveGameCardPresentation(game);
   const cardMode = presentation.card.mode;
@@ -269,6 +271,48 @@ export default function UniversalGameCardBase({
         ? detail.getBoundingClientRect()
         : articleRef.current?.getBoundingClientRect() ?? null;
   }, [expandedGeometry]);
+
+  useEffect(() => {
+    if (!cardExpanded) return;
+
+    const syncExpandedCardToSlot = () => {
+      if (anchorFrame.current !== null) return;
+
+      anchorFrame.current = requestAnimationFrame(() => {
+        anchorFrame.current = null;
+        const slot = slotRef.current;
+        if (!slot) return;
+
+        const rect = slot.getBoundingClientRect();
+        if (rect.width <= 0 || rect.height <= 0) return;
+
+        setExpandedGeometry((current) => {
+          if (!current) return current;
+          if (
+            Math.abs(current.articleLeft - rect.left) < 0.5 &&
+            Math.abs(current.articleTop - rect.top) < 0.5
+          ) {
+            return current;
+          }
+
+          return {
+            ...current,
+            articleLeft: rect.left,
+            articleTop: rect.top,
+          };
+        });
+      });
+    };
+
+    window.addEventListener("scroll", syncExpandedCardToSlot, true);
+    return () => {
+      window.removeEventListener("scroll", syncExpandedCardToSlot, true);
+      if (anchorFrame.current !== null) {
+        cancelAnimationFrame(anchorFrame.current);
+        anchorFrame.current = null;
+      }
+    };
+  }, [cardExpanded]);
 
   function cancelTiltFrame() {
     if (tiltFrame.current !== null) {
