@@ -6,7 +6,6 @@ export type PublicPagesConfig = {
     title: string;
     description: string;
     platformLabel: string;
-    heroImage?: string;
   };
   updates: {
     eyebrow: string;
@@ -36,7 +35,6 @@ export const sourcePublicPagesConfig: PublicPagesConfig = {
     description:
       "Explora nuestro catálogo, filtra por clasificación, puntuación, requisitos o popularidad y encuentra exactamente lo que quieres jugar.",
     platformLabel: "PC",
-    heroImage: "/images/catalog/juegos-reference-hero-v2.webp",
   },
   updates: {
     eyebrow: "VERSIONES Y MEJORAS",

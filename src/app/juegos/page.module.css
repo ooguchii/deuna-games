@@ -42,154 +42,10 @@
   isolation: isolate;
 }
 
-.heroImage {
-  position: absolute;
-
-  z-index: 0;
-
-  inset: 0;
-
-  overflow: hidden;
-
-  background-image:
-    url(
-      "/images/catalog/juegos-reference-hero-v2.webp"
-    );
-
-  background-size:
-    cover;
-
-  background-position:
-    center right;
-
-  filter:
-    brightness(0.84)
-    saturate(1.09)
-    contrast(1.045);
-
-  transform:
-    scale(1.012);
-
-  isolation: isolate;
-}
-
-.heroImage::after {
-  content: "";
-
-  position: absolute;
-  inset: 0;
-
-  background:
-    var(--brand);
-
-  mix-blend-mode: hue;
-  opacity: 0.92;
-
-  pointer-events: none;
-}
-
-.heroShade {
-  position: absolute;
-
-  z-index: 1;
-
-  inset: 0;
-
-  background:
-    linear-gradient(
-      90deg,
-      rgba(
-        4,
-        7,
-        11,
-        0.995
-      ) 0%,
-      rgba(
-        4,
-        7,
-        11,
-        0.97
-      ) 21%,
-      rgba(
-        4,
-        7,
-        11,
-        0.82
-      ) 37%,
-      rgba(
-        4,
-        7,
-        11,
-        0.44
-      ) 54%,
-      rgba(
-        4,
-        7,
-        11,
-        0.09
-      ) 73%,
-      rgba(
-        4,
-        7,
-        11,
-        0.02
-      ) 100%
-    ),
-    linear-gradient(
-      180deg,
-      rgba(
-        4,
-        7,
-        11,
-        0.08
-      ),
-      rgba(
-        4,
-        7,
-        11,
-        0.11
-      ) 55%,
-      rgba(
-        4,
-        7,
-        11,
-        0.48
-      ) 100%
-    );
-}
-
-.heroGlow {
-  position: absolute;
-
-  z-index: 2;
-
-  right: 7%;
-  bottom: -46%;
-
-  width: 46%;
-  aspect-ratio:
-    1 / 1;
-
-  border-radius: 50%;
-
-  background:
-    radial-gradient(
-      circle,
-      color-mix(in srgb, var(--brand) 11%, transparent),
-      transparent 68%
-    );
-
-  filter:
-    blur(24px);
-
-  pointer-events:
-    none;
-}
-
 .breadcrumb {
   position: relative;
 
-  z-index: 4;
+  z-index: 1;
 
   min-height: 58px;
 
@@ -230,7 +86,7 @@
 .heroContent {
   position: relative;
 
-  z-index: 4;
+  z-index: 1;
 
   width:
     min(
@@ -328,11 +184,6 @@
   .heroContent {
     width: 60%;
   }
-
-  .heroImage {
-    background-position:
-      60% center;
-  }
 }
 
 @media (
@@ -349,59 +200,6 @@
   .hero {
     min-height:
       340px;
-  }
-
-  .heroImage {
-    background-size:
-      auto 100%;
-
-    background-position:
-      64% center;
-
-    opacity: 0.84;
-
-    transform:
-      scale(1.08);
-  }
-
-  .heroShade {
-    background:
-      linear-gradient(
-        90deg,
-        rgba(
-          4,
-          7,
-          11,
-          0.99
-        ) 0%,
-        rgba(
-          4,
-          7,
-          11,
-          0.91
-        ) 55%,
-        rgba(
-          4,
-          7,
-          11,
-          0.48
-        ) 100%
-      ),
-      linear-gradient(
-        180deg,
-        rgba(
-          4,
-          7,
-          11,
-          0.12
-        ),
-        rgba(
-          4,
-          7,
-          11,
-          0.80
-        ) 100%
-      );
   }
 
   .breadcrumb {
@@ -437,5 +235,4 @@
 
 /* THEME V2 — JUEGOS HERO */
 .hero { background: var(--background); }
-.heroGlow { background: radial-gradient(circle, color-mix(in srgb, var(--accent-violet) 15%, transparent), color-mix(in srgb, var(--brand) 7%, transparent) 44%, transparent 70%); }
 .heroMeta strong { color: var(--accent-gold); }

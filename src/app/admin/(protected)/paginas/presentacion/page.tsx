@@ -155,19 +155,9 @@ export default async function AdminPublicPresentationPage({
               <input name="platformLabel" defaultValue={config.games.platformLabel} maxLength={100} required />
             </label>
 
-            <label>
-              <span>Imagen Hero local</span>
-              <input
-                name="heroImage"
-                defaultValue={config.games.heroImage ?? ""}
-                maxLength={400}
-                placeholder="/images/catalog/juegos-reference-hero-v2.webp"
-              />
-            </label>
-
             <div className={styles.formActions}>
               <p>
-                La imagen sólo admite rutas locales validadas. La composición visual y los filtros del catálogo permanecen protegidos en código.
+                La cabecera de Juegos conserva sólo contenido textual. El fondo general de la página se administra desde Configuración → Apariencia → Fondos.
               </p>
               <button type="submit">Guardar borrador</button>
             </div>

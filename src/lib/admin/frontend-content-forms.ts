@@ -115,7 +115,6 @@ export const publicGamesFormSchema = z
     title: headingField,
     description: paragraphField,
     platformLabel: labelField,
-    heroImage: z.string().trim().max(400),
   })
   .transform((value, context) => {
     const page =
@@ -124,7 +123,6 @@ export const publicGamesFormSchema = z
         title: value.title,
         description: value.description,
         platformLabel: value.platformLabel,
-        heroImage: value.heroImage || undefined,
       });
 
     if (!page.success) {
