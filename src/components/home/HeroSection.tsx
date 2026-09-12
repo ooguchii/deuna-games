@@ -229,13 +229,19 @@ function HeroVideoLayer({ game, enabled }: { game: Game; enabled: boolean }) {
   );
 }
 
-function MainCardContent({ game }: { game: Game }) {
+function MainCardContent({
+  game,
+  motionEnabled,
+}: {
+  game: Game;
+  motionEnabled: boolean;
+}) {
   const classifications = classificationLine(game);
   const facts = heroFacts(game);
   const title = heroTitleParts(game);
 
   return (
-    <div className={`${styles.content} ${motionStyles.contentReveal}`}>
+    <div className={`${styles.content} ${motionEnabled ? motionStyles.contentReveal : ""}`}>
       {classifications.length > 0 && (
         <div className={styles.classificationLine} aria-label="Clasificación del juego">
           {classifications.map((item) => (
@@ -348,6 +354,7 @@ export default function HeroSection({
     return () => view.removeEventListener("resize", update);
   }, []);
   const presentation = useMemo(() => resolveHeroDeviceDesign(sourcePresentation, designDevice), [sourcePresentation, designDevice]);
+  const physicalMotion = presentation.motionEngine === "physical";
   const fitRef = useRef<HTMLDivElement>(null);
   const pointerStart = useRef<{ x: number; y: number; id: number } | null>(null);
   const suppressClick = useRef(false);
@@ -563,8 +570,11 @@ export default function HeroSection({
     presentation.direction,
     games.length
   );
+  const renderPositions = physicalMotion
+    ? visiblePositions
+    : HOME_HERO_VISUAL_POSITIONS;
   const seenGames = new Set<string>();
-  const renderedCards = visiblePositions.flatMap((position) => {
+  const renderedCards = renderPositions.flatMap((position) => {
     const offset = homeHeroPositionOffset(position);
     const rawIndex = normalizedActiveIndex + offset;
     if (!presentation.loop && (rawIndex < 0 || rawIndex >= games.length)) {
@@ -572,8 +582,9 @@ export default function HeroSection({
     }
     const index = ((rawIndex % games.length) + games.length) % games.length;
     const game = games[index];
-    if (!game || seenGames.has(String(game.id))) return [];
-    seenGames.add(String(game.id));
+    if (!game) return [];
+    if (physicalMotion && seenGames.has(String(game.id))) return [];
+    if (physicalMotion) seenGames.add(String(game.id));
     return [{ position, game, index }];
   });
 
@@ -638,11 +649,12 @@ export default function HeroSection({
   return (
     <section
       ref={rootRef}
-      className={`${styles.heroSection} ${motionStyles.motionRoot}`}
+      className={`${styles.heroSection} ${physicalMotion ? motionStyles.motionRoot : ""}`}
       data-composition={presentation.composition}
       data-transition={presentation.transition}
-      data-motion-direction={motionDirection}
-      data-motion-sequence={motionSequence ?? undefined}
+      data-motion-engine={presentation.motionEngine}
+      data-motion-direction={physicalMotion ? motionDirection : undefined}
+      data-motion-sequence={physicalMotion ? motionSequence ?? undefined : undefined}
       aria-label="Juegos destacados"
       aria-roledescription="carrusel"
       tabIndex={0}
@@ -677,8 +689,8 @@ export default function HeroSection({
 
             return (
               <article
-                key={game.id}
-                className={`${styles.heroCard} ${motionStyles.motionCard}`}
+                key={physicalMotion ? game.id : `${normalizedActiveIndex}-${position}-${game.id}`}
+                className={`${styles.heroCard} ${physicalMotion ? motionStyles.motionCard : ""}`}
                 data-position={position}
                 data-main={isMain || undefined}
                 onClick={onSelectPosition ? () => onSelectPosition(position) : undefined}
@@ -692,7 +704,7 @@ export default function HeroSection({
                 }}
               >
                 <div className={motionStyles.motionFrame}>
-                <div className={styles.cardSurface} style={{ animation: "none" }}>
+                <div className={styles.cardSurface} style={physicalMotion ? { animation: "none" } : undefined}>
                   <div className={styles.media}>
                     {game.heroImage || game.coverImage ? (
                       <ResponsiveArtwork
@@ -721,7 +733,7 @@ export default function HeroSection({
                   {isMain ? (
                     <>
                       {game.badge && <span className={styles.featuredBadge}>{game.badge}</span>}
-                      <MainCardContent game={game} />
+                      <MainCardContent game={game} motionEnabled={physicalMotion} />
                     </>
                   ) : (
                     <button
