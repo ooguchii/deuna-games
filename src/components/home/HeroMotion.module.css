@@ -108,24 +108,6 @@
   --hero-motion-opacity: .82;
 }
 
-.motionRoot[data-transition="slide"] .motionCard {
-  transition-timing-function: cubic-bezier(.2,.76,.24,1);
-}
-
-.motionRoot[data-transition="coverflow"] .motionCard,
-.motionRoot[data-transition="perspective"] .motionCard {
-  transition-timing-function: cubic-bezier(.16,.78,.2,1);
-}
-
-.motionRoot[data-transition="3d"] .motionCard,
-.motionRoot[data-transition="stack"] .motionCard {
-  transition-timing-function: cubic-bezier(.18,.72,.2,1);
-}
-
-.motionRoot[data-transition="fade"] .motionCard {
-  transition-timing-function: ease-out;
-}
-
 .motionRoot[data-motion-sequence="a"] .motionFrame {
   animation: heroMotionAccentA var(--hero-editor-duration) var(--hero-editor-easing) both;
 }
@@ -135,7 +117,7 @@
 }
 
 .contentReveal > * {
-  animation: heroContentReveal var(--hero-editor-duration) cubic-bezier(.2,.76,.24,1) both;
+  animation: heroContentReveal var(--hero-editor-duration) var(--hero-editor-easing) both;
 }
 
 .contentReveal > :nth-child(2) {
