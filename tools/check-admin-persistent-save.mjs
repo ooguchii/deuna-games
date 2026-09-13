@@ -134,12 +134,15 @@ assert(
     heroSaveBoundary.includes("readPreparedFormFields(form)") &&
     heroSaveBoundary.includes("persistHeroRecoveryFields(fields)") &&
     heroSaveBoundary.includes("submitPreparedFields(fields)") &&
+    heroSaveBoundary.includes("motionEngineOverride") &&
+    heroSaveBoundary.includes('window.addEventListener("beforeunload", warnOnUnload)') &&
+    heroSaveBoundary.includes('window.removeEventListener("beforeunload", warnOnUnload)') &&
     heroSaveBoundary.includes("response.status === 409") &&
     heroSaveBoundary.includes("clearStoredHeroDrafts()") &&
     heroSaveBoundary.includes("router.refresh()") &&
     homePage.includes("<HomeHeroSaveBoundary revision={item.revision}>") &&
     homePage.includes("key={item.revision}"),
-  "Inicio · Hero debe conservar el guardado protegido: payload capturado, recuperación local del mismo payload, errores sin desmontar el editor y remonte sólo después de una revisión confirmada."
+  "Inicio · Hero debe conservar el guardado protegido: payload capturado, recuperación local del mismo payload, aviso de salida para cambios de motor pendientes, errores sin desmontar el editor y remonte sólo después de una revisión confirmada."
 );
 
 assert(
@@ -165,5 +168,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  "Guardado persistente administrativo: OK (editores de borrador cubiertos; Resto de Inicio coordinado sin barras fijas superpuestas; Hero con recovery del payload capturado; publicación, acciones operativas y cargas auxiliares separadas)."
+  "Guardado persistente administrativo: OK (editores de borrador cubiertos; Resto de Inicio coordinado sin barras fijas superpuestas; Hero con recovery del payload capturado y protección de salida; publicación, acciones operativas y cargas auxiliares separadas)."
 );
