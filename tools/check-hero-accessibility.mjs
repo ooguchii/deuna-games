@@ -244,6 +244,21 @@ assert.doesNotMatch(
   'The preview must not parse, mutate or submit the editor form directly.'
 );
 assert.match(
+  livePreview,
+  /presentation\.motionEngine === "physical" \? \(/,
+  'The motor action must be chosen from the confirmed draft, not from an unconfirmed local override, so a failed save remains retryable.'
+);
+assert.match(
+  livePreview,
+  /Reintentar guardar motor físico V2/,
+  'A failed physical-engine save must expose an explicit retry action.'
+);
+assert.match(
+  livePreview,
+  /Reintentar guardar motor clásico/,
+  'A failed legacy-engine save must expose an explicit retry action.'
+);
+assert.match(
   saveBoundary,
   /const HeroDraftSaveContext =/,
   'The save boundary must expose the typed save contract consumed by the live preview.'
@@ -293,4 +308,4 @@ for (const scale of [50, 92, 100, 180]) {
   );
 }
 
-console.log('Hero accessibility/motion: OK (autoplay accessibility, reduced motion, legacy compatibility, physical opt-in, stable slot motion, canonical save ownership, captured-payload recovery and deterministic Admin replay are guarded).');
+console.log('Hero accessibility/motion: OK (autoplay accessibility, reduced motion, legacy compatibility, physical opt-in, stable slot motion, canonical save ownership, retryable captured-payload recovery and deterministic Admin replay are guarded).');
