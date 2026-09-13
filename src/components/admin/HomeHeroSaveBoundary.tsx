@@ -2,13 +2,22 @@
 
 import { useRouter } from "next/navigation";
 import {
+  createContext,
+  useCallback,
+  useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
   useSyncExternalStore,
   type FormEvent,
   type ReactNode,
 } from "react";
+
+import type {
+  HomeHeroMotionEngine,
+  HomeHeroPresentation,
+} from "@/data/home-config";
 
 import styles from "./HomeHeroEditor.module.css";
 
@@ -33,9 +42,36 @@ type HeroSaveFields = {
   heroJson: string;
 };
 
+type HeroSaveState = {
+  mode: unknown;
+  slugs: unknown;
+  presentation: unknown;
+};
+
 type BlockedRecovery = {
   revision: number | null;
 };
+
+type HeroDraftSaveContextValue = {
+  motionEngineOverride: HomeHeroMotionEngine | null;
+  requestMotionEngineSave: (
+    motionEngine: HomeHeroMotionEngine,
+    expectedPresentation: HomeHeroPresentation
+  ) => void;
+};
+
+const HeroDraftSaveContext =
+  createContext<HeroDraftSaveContextValue | null>(null);
+
+export function useHomeHeroDraftSave() {
+  const context = useContext(HeroDraftSaveContext);
+  if (!context) {
+    throw new Error(
+      "HomeHeroLivePreview debe renderizarse dentro de HomeHeroSaveBoundary."
+    );
+  }
+  return context;
+}
 
 function clearStoredHeroDrafts() {
   try {
@@ -147,7 +183,7 @@ function readHeroSaveFields(form: HTMLFormElement): HeroSaveFields | null {
   return { expectedRevision, heroJson };
 }
 
-function readHeroState(fields: HeroSaveFields) {
+function readHeroState(fields: HeroSaveFields): HeroSaveState | null {
   try {
     const parsed = JSON.parse(fields.heroJson) as unknown;
     if (typeof parsed !== "object" || parsed === null) return null;
@@ -173,10 +209,32 @@ function normalizedHeroSaveFields(fields: HeroSaveFields): HeroSaveFields | null
   };
 }
 
-function persistHeroRecovery(form: HTMLFormElement) {
-  const fields = readHeroSaveFields(form);
-  if (!fields) return;
+function fieldsWithMotionEngine(
+  fields: HeroSaveFields,
+  motionEngine: HomeHeroMotionEngine
+): HeroSaveFields | null {
+  const state = readHeroState(fields);
+  if (
+    !state ||
+    typeof state.presentation !== "object" ||
+    state.presentation === null
+  ) {
+    return null;
+  }
 
+  return {
+    expectedRevision: fields.expectedRevision,
+    heroJson: JSON.stringify({
+      ...state,
+      presentation: {
+        ...(state.presentation as Record<string, unknown>),
+        motionEngine,
+      },
+    }),
+  };
+}
+
+function persistHeroRecoveryFields(fields: HeroSaveFields) {
   try {
     const revision = Number(fields.expectedRevision);
     if (!Number.isInteger(revision) || revision < 1) return;
@@ -226,6 +284,10 @@ export default function HomeHeroSaveBoundary({
   const rootRef = useRef<HTMLDivElement>(null);
   const saving = useRef(false);
   const backupFrame = useRef<number | null>(null);
+  const motionEngineOverrideRef =
+    useRef<HomeHeroMotionEngine | null>(null);
+  const [motionEngineOverrideState, setMotionEngineOverrideState] =
+    useState<HomeHeroMotionEngine | null>(null);
   const [savePending, setSavePending] = useState(false);
   const [savedRevision, setSavedRevision] = useState<number | null>(null);
   const [notice, setNotice] = useState<SaveNotice | null>(null);
@@ -240,11 +302,35 @@ export default function HomeHeroSaveBoundary({
   );
   const waitingForRefresh = savedRevision !== null && revision < savedRevision;
   const busy = savePending || waitingForRefresh;
+  const motionEngineOverride =
+    savedRevision !== null && revision >= savedRevision
+      ? null
+      : motionEngineOverrideState;
 
-  const findHeroForm = () =>
-    rootRef.current?.querySelector<HTMLFormElement>(
-      `form[action="${HERO_SAVE_ACTION}"]`
-    ) ?? null;
+  const findHeroForm = useCallback(
+    () =>
+      rootRef.current?.querySelector<HTMLFormElement>(
+        `form[action="${HERO_SAVE_ACTION}"]`
+      ) ?? null,
+    []
+  );
+
+  const prepareFields = useCallback((fields: HeroSaveFields) => {
+    const normalized = normalizedHeroSaveFields(fields);
+    if (!normalized) return null;
+    const override = motionEngineOverrideRef.current;
+    return override
+      ? fieldsWithMotionEngine(normalized, override)
+      : normalized;
+  }, []);
+
+  const readPreparedFormFields = useCallback(
+    (form: HTMLFormElement) => {
+      const raw = readHeroSaveFields(form);
+      return raw ? prepareFields(raw) : null;
+    },
+    [prepareFields]
+  );
 
   const scheduleRecoverySnapshot = () => {
     if (saving.current || blockedRecovery) return;
@@ -259,11 +345,12 @@ export default function HomeHeroSaveBoundary({
       const submit = form.querySelector<HTMLButtonElement>(
         'button[type="submit"], button:not([type])'
       );
-      if (submit?.disabled) {
+      if (submit?.disabled && !motionEngineOverrideRef.current) {
         clearStoredHeroDrafts();
         return;
       }
-      persistHeroRecovery(form);
+      const fields = readPreparedFormFields(form);
+      if (fields) persistHeroRecoveryFields(fields);
     });
   };
 
@@ -276,8 +363,19 @@ export default function HomeHeroSaveBoundary({
   }, []);
 
   useEffect(() => {
+    if (!motionEngineOverride) return;
+    const warnOnUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warnOnUnload);
+    return () => window.removeEventListener("beforeunload", warnOnUnload);
+  }, [motionEngineOverride]);
+
+  useEffect(() => {
     if (savedRevision === null || revision < savedRevision) return;
     saving.current = false;
+    motionEngineOverrideRef.current = null;
   }, [revision, savedRevision]);
 
   useEffect(() => {
@@ -297,7 +395,78 @@ export default function HomeHeroSaveBoundary({
     return () => window.clearTimeout(timeout);
   }, [waitingForRefresh, savedRevision]);
 
-  const saveHero = async (event: FormEvent<HTMLDivElement>) => {
+  const submitPreparedFields = useCallback(
+    async (fields: HeroSaveFields) => {
+      if (saving.current || blockedRecovery) return;
+
+      persistHeroRecoveryFields(fields);
+      saving.current = true;
+      setSavedRevision(null);
+      setSavePending(true);
+      setNotice(null);
+
+      let waitForRefresh = false;
+
+      try {
+        const response = await fetch(HERO_SAVE_ACTION, {
+          method: "POST",
+          headers: { Accept: "application/json" },
+          body: new URLSearchParams(fields),
+        });
+
+        if (response.redirected) {
+          throw new Error(
+            "La sesión administrativa expiró. Inicia sesión en otra pestaña y vuelve a guardar; tus cambios siguen aquí."
+          );
+        }
+
+        const result = response.headers
+          .get("content-type")
+          ?.includes("application/json")
+          ? (await response.json()) as SaveResponse
+          : null;
+
+        if (
+          !response.ok ||
+          result?.state !== "guardado" ||
+          !Number.isInteger(result.revision)
+        ) {
+          throw new Error(errorMessage(response, result));
+        }
+
+        const nextRevision = result.revision as number;
+        clearStoredHeroDrafts();
+        setSavePending(false);
+        setSavedRevision(nextRevision);
+        setNotice({
+          error: false,
+          message: `Borrador guardado correctamente · revisión ${nextRevision}.`,
+        });
+        waitForRefresh = true;
+        router.refresh();
+      } catch (error) {
+        // Conservar exactamente el payload que intentó guardarse. Esto es
+        // importante para acciones coordinadas (como cambiar el motor) que no
+        // deben perderse si el formulario controlado vuelve a renderizar.
+        persistHeroRecoveryFields(fields);
+        setNotice({
+          error: true,
+          message:
+            error instanceof Error && error.name !== "TypeError"
+              ? error.message
+              : "No se pudo conectar con el servidor. Tus cambios siguen aquí y en la copia local; vuelve a intentarlo.",
+        });
+      } finally {
+        if (!waitForRefresh) {
+          saving.current = false;
+          setSavePending(false);
+        }
+      }
+    },
+    [blockedRecovery, router]
+  );
+
+  const saveHero = (event: FormEvent<HTMLDivElement>) => {
     const form = event.target;
     if (
       !(form instanceof HTMLFormElement) ||
@@ -310,8 +479,7 @@ export default function HomeHeroSaveBoundary({
     event.stopPropagation();
     if (saving.current || blockedRecovery) return;
 
-    const rawFields = readHeroSaveFields(form);
-    const fields = rawFields ? normalizedHeroSaveFields(rawFields) : null;
+    const fields = readPreparedFormFields(form);
     if (!fields) {
       setNotice({
         error: true,
@@ -320,66 +488,65 @@ export default function HomeHeroSaveBoundary({
       return;
     }
 
-    persistHeroRecovery(form);
-    saving.current = true;
-    setSavePending(true);
-    setNotice(null);
+    void submitPreparedFields(fields);
+  };
 
-    let waitForRefresh = false;
+  const requestMotionEngineSave = useCallback(
+    (
+      motionEngine: HomeHeroMotionEngine,
+      expectedPresentation: HomeHeroPresentation
+    ) => {
+      if (saving.current || blockedRecovery) return;
 
-    try {
-      const response = await fetch(HERO_SAVE_ACTION, {
-        method: "POST",
-        headers: { Accept: "application/json" },
-        body: new URLSearchParams(fields),
-      });
-
-      if (response.redirected) {
-        throw new Error(
-          "La sesión administrativa expiró. Inicia sesión en otra pestaña y vuelve a guardar; tus cambios siguen aquí."
-        );
+      const form = findHeroForm();
+      if (!form) {
+        setNotice({
+          error: true,
+          message: "No se encontró el guardado canónico del Hero. Recarga el panel antes de cambiar el motor.",
+        });
+        return;
       }
 
-      const result = response.headers
-        .get("content-type")
-        ?.includes("application/json")
-        ? (await response.json()) as SaveResponse
+      const rawFields = readHeroSaveFields(form);
+      const normalized = rawFields
+        ? normalizedHeroSaveFields(rawFields)
+        : null;
+      const currentState = normalized
+        ? readHeroState(normalized)
         : null;
 
       if (
-        !response.ok ||
-        result?.state !== "guardado" ||
-        !Number.isInteger(result.revision)
+        !normalized ||
+        !currentState ||
+        JSON.stringify(currentState.presentation) !==
+          JSON.stringify(expectedPresentation)
       ) {
-        throw new Error(errorMessage(response, result));
+        setNotice({
+          error: true,
+          message: "Sal de «Comparar con guardado» antes de cambiar el motor. No se modificó el borrador.",
+        });
+        return;
       }
 
-      const nextRevision = result.revision as number;
-      clearStoredHeroDrafts();
-      setSavePending(false);
-      setSavedRevision(nextRevision);
-      setNotice({
-        error: false,
-        message: `Borrador guardado correctamente · revisión ${nextRevision}.`,
-      });
-      waitForRefresh = true;
-      router.refresh();
-    } catch (error) {
-      persistHeroRecovery(form);
-      setNotice({
-        error: true,
-        message:
-          error instanceof Error && error.name !== "TypeError"
-            ? error.message
-            : "No se pudo conectar con el servidor. Tus cambios siguen aquí y en la copia local; vuelve a intentarlo.",
-      });
-    } finally {
-      if (!waitForRefresh) {
-        saving.current = false;
-        setSavePending(false);
+      const nextFields = fieldsWithMotionEngine(
+        normalized,
+        motionEngine
+      );
+      if (!nextFields) {
+        setNotice({
+          error: true,
+          message: "No se pudo preparar el cambio de motor. El borrador actual no fue modificado.",
+        });
+        return;
       }
-    }
-  };
+
+      motionEngineOverrideRef.current = motionEngine;
+      setMotionEngineOverrideState(motionEngine);
+      setNotice(null);
+      void submitPreparedFields(nextFields);
+    },
+    [blockedRecovery, findHeroForm, submitPreparedFields]
+  );
 
   const discardBlockedRecovery = () => {
     if (backupFrame.current !== null) {
@@ -387,46 +554,58 @@ export default function HomeHeroSaveBoundary({
       backupFrame.current = null;
     }
     clearStoredHeroDrafts();
+    motionEngineOverrideRef.current = null;
+    setMotionEngineOverrideState(null);
     setRecoveryEpoch((current) => current + 1);
   };
 
+  const saveContext = useMemo<HeroDraftSaveContextValue>(
+    () => ({
+      motionEngineOverride,
+      requestMotionEngineSave,
+    }),
+    [motionEngineOverride, requestMotionEngineSave]
+  );
+
   return (
-    <div
-      ref={rootRef}
-      aria-busy={busy}
-      onSubmitCapture={saveHero}
-      onClickCapture={scheduleRecoverySnapshot}
-      onChangeCapture={scheduleRecoverySnapshot}
-      onInputCapture={scheduleRecoverySnapshot}
-      onPointerUpCapture={scheduleRecoverySnapshot}
-      onKeyUpCapture={scheduleRecoverySnapshot}
-    >
-      {notice && (
-        <p
-          className={styles.workspaceNote}
-          role={notice.error ? "alert" : "status"}
-        >
-          {notice.message}
-        </p>
-      )}
-      {blockedRecovery && (
-        <div className={styles.workspaceNote} role="alert">
-          <strong>Copia local de otra revisión bloqueada.</strong>{" "}
-          {blockedRecovery.revision === null
-            ? "No se pudo verificar de qué revisión proviene. Por seguridad no puede recuperarse sobre el borrador actual."
-            : `La copia pertenece a la revisión ${blockedRecovery.revision} y el servidor está en la revisión ${revision}. Por seguridad no puede recuperarse sobre una revisión distinta.`}{" "}
-          Descarta esa copia para desbloquear el Hero actual.
-          <button type="button" onClick={discardBlockedRecovery}>
-            Descartar copia obsoleta
-          </button>
-        </div>
-      )}
+    <HeroDraftSaveContext.Provider value={saveContext}>
       <div
-        key={recoveryEpoch}
-        inert={busy || blockedRecovery !== null || undefined}
+        ref={rootRef}
+        aria-busy={busy}
+        onSubmitCapture={saveHero}
+        onClickCapture={scheduleRecoverySnapshot}
+        onChangeCapture={scheduleRecoverySnapshot}
+        onInputCapture={scheduleRecoverySnapshot}
+        onPointerUpCapture={scheduleRecoverySnapshot}
+        onKeyUpCapture={scheduleRecoverySnapshot}
       >
-        {children}
+        {notice && (
+          <p
+            className={styles.workspaceNote}
+            role={notice.error ? "alert" : "status"}
+          >
+            {notice.message}
+          </p>
+        )}
+        {blockedRecovery && (
+          <div className={styles.workspaceNote} role="alert">
+            <strong>Copia local de otra revisión bloqueada.</strong>{" "}
+            {blockedRecovery.revision === null
+              ? "No se pudo verificar de qué revisión proviene. Por seguridad no puede recuperarse sobre el borrador actual."
+              : `La copia pertenece a la revisión ${blockedRecovery.revision} y el servidor está en la revisión ${revision}. Por seguridad no puede recuperarse sobre una revisión distinta.`}{" "}
+            Descarta esa copia para desbloquear el Hero actual.
+            <button type="button" onClick={discardBlockedRecovery}>
+              Descartar copia obsoleta
+            </button>
+          </div>
+        )}
+        <div
+          key={recoveryEpoch}
+          inert={busy || blockedRecovery !== null || undefined}
+        >
+          {children}
+        </div>
       </div>
-    </div>
+    </HeroDraftSaveContext.Provider>
   );
 }
