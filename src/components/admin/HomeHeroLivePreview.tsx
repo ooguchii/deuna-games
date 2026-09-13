@@ -10,13 +10,13 @@ import {
 } from "react";
 
 import IsolatedPublicPreviewFrame from "@/components/admin/IsolatedPublicPreviewFrame";
+import { useHomeHeroDraftSave } from "@/components/admin/HomeHeroSaveBoundary";
 import HeroSection from "@/components/home/HeroSection";
 import PublicPageBackground, {
   type PublicPageBackgroundProps,
 } from "@/components/site/PublicPageBackground";
 import type {
   HomeHeroDevice,
-  HomeHeroMotionEngine,
   HomeHeroPresentation,
 } from "@/data/home-config";
 import {
@@ -35,11 +35,6 @@ import styles from "./HomeHeroEditor.module.css";
 
 type ViewportOverrides = Record<HomeHeroDevice, HomeHeroViewport>;
 type ViewportCustomization = Record<HomeHeroDevice, boolean>;
-
-type HeroEditorPayload = {
-  presentation?: HomeHeroPresentation;
-  [key: string]: unknown;
-};
 
 const initialCustomization: ViewportCustomization = {
   desktop: false,
@@ -120,8 +115,10 @@ export default function HomeHeroLivePreview({
     );
   const [customized, setCustomized] =
     useState<ViewportCustomization>(initialCustomization);
-  const [engineNotice, setEngineNotice] =
-    useState<string | null>(null);
+  const {
+    motionEngineOverride,
+    requestMotionEngineSave,
+  } = useHomeHeroDraftSave();
   const browserSnapshot = useSyncExternalStore(
     subscribeBrowserViewport,
     browserViewportSnapshot,
@@ -143,14 +140,21 @@ export default function HomeHeroLivePreview({
       : manualSizes[device];
   const { width, height } = selectedViewport;
   const scale = Math.min(1, availableWidth / width);
+  const draftPresentation = useMemo<HomeHeroPresentation>(
+    () =>
+      motionEngineOverride
+        ? { ...presentation, motionEngine: motionEngineOverride }
+        : presentation,
+    [motionEngineOverride, presentation]
+  );
   const simulatingPhysicalMotion =
-    playing && presentation.motionEngine !== "physical";
+    playing && draftPresentation.motionEngine !== "physical";
   const effectivePresentation = useMemo<HomeHeroPresentation>(
     () =>
       simulatingPhysicalMotion
-        ? { ...presentation, motionEngine: "physical" }
-        : presentation,
-    [presentation, simulatingPhysicalMotion]
+        ? { ...draftPresentation, motionEngine: "physical" }
+        : draftPresentation,
+    [draftPresentation, simulatingPhysicalMotion]
   );
 
   useEffect(() => {
@@ -239,63 +243,6 @@ export default function HomeHeroLivePreview({
       view.cancelAnimationFrame(secondFrame);
     };
   }, [playing, previewEnd, replayTransition]);
-
-  const saveMotionEngine = (motionEngine: HomeHeroMotionEngine) => {
-    const doc = container.current?.ownerDocument;
-    const form = doc?.querySelector<HTMLFormElement>(
-      'form[action="/api/admin/content/home/hero"]'
-    );
-    const heroInput = form?.querySelector<HTMLInputElement>(
-      'input[name="heroJson"]'
-    );
-
-    if (!form || !heroInput) {
-      setEngineNotice(
-        "No se encontró el guardado canónico del Hero. Recarga el panel antes de cambiar el motor."
-      );
-      return;
-    }
-
-    const originalHeroJson = heroInput.value;
-
-    try {
-      const payload = JSON.parse(originalHeroJson) as HeroEditorPayload;
-      if (!payload.presentation) {
-        throw new Error("missing-presentation");
-      }
-
-      if (
-        JSON.stringify(payload.presentation) !==
-        JSON.stringify(presentation)
-      ) {
-        setEngineNotice(
-          "Sal de «Comparar con guardado» antes de cambiar el motor. No se modificó el borrador."
-        );
-        return;
-      }
-
-      payload.presentation = {
-        ...payload.presentation,
-        motionEngine,
-      };
-      heroInput.value = JSON.stringify(payload);
-      setEngineNotice(null);
-
-      try {
-        // SaveBoundary captures FormData synchronously before its async request.
-        // Restore the controlled hidden input immediately afterwards so a
-        // network/server failure cannot leave React state and DOM disagreeing.
-        form.requestSubmit();
-      } finally {
-        heroInput.value = originalHeroJson;
-      }
-    } catch {
-      heroInput.value = originalHeroJson;
-      setEngineNotice(
-        "No se pudo preparar el cambio de motor. El borrador actual no fue modificado."
-      );
-    }
-  };
 
   const setManualViewportDimension = (
     key: keyof HomeHeroViewport,
@@ -387,6 +334,7 @@ export default function HomeHeroLivePreview({
     HOME_HERO_VIEWPORT_HEIGHT_LIMITS;
   const [minWidth, maxWidth] =
     HOME_HERO_VIEWPORT_WIDTH_LIMITS[device];
+  const draftMotionEngine = draftPresentation.motionEngine;
 
   return (
     <div ref={container} className={styles.livePreview}>
@@ -473,11 +421,13 @@ export default function HomeHeroLivePreview({
         </div>
         <div>
           <span role="status">
-            {presentation.motionEngine === "physical"
-              ? "Motor físico V2 activo en este borrador. La web pública cambia sólo al publicar Inicio."
-              : simulatingPhysicalMotion
-                ? "Simulación V2 activa sólo en esta prueba; todavía no está guardada."
-                : "Motor clásico preservado. Probar funcionamiento simula V2 sin cambiar el borrador."}
+            {motionEngineOverride
+              ? `${draftMotionEngine === "physical" ? "Motor físico V2" : "Motor clásico"} pendiente en esta pestaña. El guardado canónico conserva esta elección hasta confirmarla.`
+              : presentation.motionEngine === "physical"
+                ? "Motor físico V2 activo en este borrador. La web pública cambia sólo al publicar Inicio."
+                : simulatingPhysicalMotion
+                  ? "Simulación V2 activa sólo en esta prueba; todavía no está guardada."
+                  : "Motor clásico preservado. Probar funcionamiento simula V2 sin cambiar el borrador."}
           </span>
           {playing && games.length > 1 && (
             <button
@@ -488,11 +438,13 @@ export default function HomeHeroLivePreview({
               Repetir transición ahora
             </button>
           )}
-          {presentation.motionEngine === "physical" ? (
+          {draftMotionEngine === "physical" ? (
             <button
               type="button"
               className={styles.breakpoint}
-              onClick={() => saveMotionEngine("legacy")}
+              onClick={() =>
+                requestMotionEngineSave("legacy", presentation)
+              }
             >
               Volver al motor clásico y guardar borrador
             </button>
@@ -500,12 +452,13 @@ export default function HomeHeroLivePreview({
             <button
               type="button"
               className={styles.breakpoint}
-              onClick={() => saveMotionEngine("physical")}
+              onClick={() =>
+                requestMotionEngineSave("physical", presentation)
+              }
             >
               Activar motor físico V2 y guardar borrador
             </button>
           )}
-          {engineNotice && <span role="status">{engineNotice}</span>}
         </div>
       </div>
       <div
