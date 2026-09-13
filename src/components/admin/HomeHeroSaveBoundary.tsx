@@ -363,6 +363,16 @@ export default function HomeHeroSaveBoundary({
   }, []);
 
   useEffect(() => {
+    if (!motionEngineOverride) return;
+    const warnOnUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warnOnUnload);
+    return () => window.removeEventListener("beforeunload", warnOnUnload);
+  }, [motionEngineOverride]);
+
+  useEffect(() => {
     if (savedRevision === null || revision < savedRevision) return;
     saving.current = false;
     motionEngineOverrideRef.current = null;
