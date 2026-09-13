@@ -1,5 +1,6 @@
 import https from "node:https";
 import process from "node:process";
+import { isDeepStrictEqual } from "node:util";
 
 const baseUrl = new URL(
   process.env.DEUNA_VISUAL_BASE_URL ?? "https://127.0.0.1:3443"
@@ -206,7 +207,7 @@ async function loadHeroDraft(cookie) {
     throw new Error("heroJson no expone presentation.motionEngine.");
   }
 
-  return { expectedRevision, heroJson, state };
+  return { expectedRevision, state };
 }
 
 async function saveHeroDraft(cookie, revision, state, label) {
@@ -250,7 +251,6 @@ if (original.state.presentation.motionEngine !== "legacy") {
 }
 
 let activeRevision = original.expectedRevision;
-let changedDraft = false;
 let primaryError = null;
 
 try {
@@ -262,7 +262,6 @@ try {
     physicalState,
     "Guardar motor físico V2"
   );
-  changedDraft = true;
 
   const physicalDraft = await loadHeroDraft(cookie);
   if (physicalDraft.expectedRevision !== activeRevision) {
@@ -289,32 +288,31 @@ try {
 } catch (error) {
   primaryError = error;
 } finally {
-  if (changedDraft) {
-    try {
+  try {
+    const current = await loadHeroDraft(cookie);
+    activeRevision = current.expectedRevision;
+    if (!isDeepStrictEqual(current.state, original.state)) {
       activeRevision = await saveHeroDraft(
         cookie,
-        activeRevision,
+        current.expectedRevision,
         original.state,
         "Restaurar borrador Hero original"
       );
-      const restored = await loadHeroDraft(cookie);
-      if (restored.expectedRevision !== activeRevision) {
-        throw new Error(
-          `La restauración dejó revisión ${restored.expectedRevision}; se esperaba ${activeRevision}.`
-        );
-      }
-      if (JSON.stringify(restored.state) !== JSON.stringify(original.state)) {
-        throw new Error("La restauración no recuperó exactamente el payload Hero inicial.");
-      }
-    } catch (restoreError) {
-      if (primaryError) {
-        throw new AggregateError(
-          [primaryError, restoreError],
-          "El smoke falló y además no pudo restaurar el borrador Hero inicial."
-        );
-      }
-      throw restoreError;
     }
+
+    const restored = await loadHeroDraft(cookie);
+    activeRevision = restored.expectedRevision;
+    if (!isDeepStrictEqual(restored.state, original.state)) {
+      throw new Error("La restauración no recuperó exactamente el payload Hero inicial.");
+    }
+  } catch (restoreError) {
+    if (primaryError) {
+      throw new AggregateError(
+        [primaryError, restoreError],
+        "El smoke falló y además no pudo restaurar el borrador Hero inicial."
+      );
+    }
+    throw restoreError;
   }
 }
 
