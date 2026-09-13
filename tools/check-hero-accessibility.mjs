@@ -9,6 +9,7 @@ const [
   heroSource,
   motionCss,
   livePreview,
+  saveBoundary,
   deviceDesign,
   homeContentService,
 ] = await Promise.all([
@@ -38,6 +39,10 @@ const [
   ),
   readFile(
     new URL('../src/components/admin/HomeHeroLivePreview.tsx', import.meta.url),
+    'utf8'
+  ),
+  readFile(
+    new URL('../src/components/admin/HomeHeroSaveBoundary.tsx', import.meta.url),
     'utf8'
   ),
   readFile(
@@ -215,7 +220,7 @@ assert.match(
 );
 assert.match(
   livePreview,
-  /const simulatingPhysicalMotion =\s*playing && presentation\.motionEngine !== "physical";/,
+  /const simulatingPhysicalMotion =\s*playing && draftPresentation\.motionEngine !== "physical";/,
   'Admin preview must derive local V2 simulation from explicit preview mode without effect-driven state.'
 );
 assert.match(
@@ -225,13 +230,38 @@ assert.match(
 );
 assert.match(
   livePreview,
-  /form\[action=\\?"\/api\/admin\/content\/home\/hero\\?"\]/,
-  'Changing motion engines must reuse the canonical Hero draft form instead of a parallel endpoint.'
+  /useHomeHeroDraftSave\(\)/,
+  'The preview must request editorial saves through the Hero save boundary instead of discovering form internals.'
 );
 assert.match(
   livePreview,
-  /form\.requestSubmit\(\);/,
-  'Motion engine activation must pass through the existing revision-aware save boundary.'
+  /requestMotionEngineSave\("physical", presentation\)/,
+  'Physical-engine activation must be expressed as a typed save intent with the presentation being previewed.'
+);
+assert.doesNotMatch(
+  livePreview,
+  /form\[action=|input\[name="heroJson"\]|requestSubmit\(|JSON\.parse\(/,
+  'The preview must not parse, mutate or submit the editor form directly.'
+);
+assert.match(
+  saveBoundary,
+  /const HeroDraftSaveContext =/,
+  'The save boundary must expose the typed save contract consumed by the live preview.'
+);
+assert.match(
+  saveBoundary,
+  /function fieldsWithMotionEngine\(/,
+  'Motion-engine changes must be applied to a normalized captured payload at the canonical save boundary.'
+);
+assert.match(
+  saveBoundary,
+  /persistHeroRecoveryFields\(fields\);[\s\S]*?catch \(error\) \{[\s\S]*?persistHeroRecoveryFields\(fields\);/,
+  'A failed save must preserve the exact captured payload instead of rereading a controlled form that may have changed.'
+);
+assert.match(
+  saveBoundary,
+  /motionEngineOverrideRef\.current/,
+  'A pending motion-engine choice must survive subsequent form/recovery snapshots until the revision refresh confirms it.'
 );
 assert.match(
   livePreview,
@@ -263,4 +293,4 @@ for (const scale of [50, 92, 100, 180]) {
   );
 }
 
-console.log('Hero accessibility/motion: OK (autoplay accessibility, reduced motion, legacy compatibility, physical opt-in, stable slot motion, canonical draft activation and deterministic Admin replay are guarded).');
+console.log('Hero accessibility/motion: OK (autoplay accessibility, reduced motion, legacy compatibility, physical opt-in, stable slot motion, canonical save ownership, captured-payload recovery and deterministic Admin replay are guarded).');
