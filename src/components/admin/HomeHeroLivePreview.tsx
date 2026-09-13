@@ -438,7 +438,7 @@ export default function HomeHeroLivePreview({
               Repetir transición ahora
             </button>
           )}
-          {draftMotionEngine === "physical" ? (
+          {presentation.motionEngine === "physical" ? (
             <button
               type="button"
               className={styles.breakpoint}
@@ -446,7 +446,9 @@ export default function HomeHeroLivePreview({
                 requestMotionEngineSave("legacy", presentation)
               }
             >
-              Volver al motor clásico y guardar borrador
+              {motionEngineOverride === "legacy"
+                ? "Reintentar guardar motor clásico"
+                : "Volver al motor clásico y guardar borrador"}
             </button>
           ) : (
             <button
@@ -456,7 +458,9 @@ export default function HomeHeroLivePreview({
                 requestMotionEngineSave("physical", presentation)
               }
             >
-              Activar motor físico V2 y guardar borrador
+              {motionEngineOverride === "physical"
+                ? "Reintentar guardar motor físico V2"
+                : "Activar motor físico V2 y guardar borrador"}
             </button>
           )}
         </div>
