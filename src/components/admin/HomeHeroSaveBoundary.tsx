@@ -286,7 +286,7 @@ export default function HomeHeroSaveBoundary({
   const backupFrame = useRef<number | null>(null);
   const motionEngineOverrideRef =
     useRef<HomeHeroMotionEngine | null>(null);
-  const [motionEngineOverride, setMotionEngineOverride] =
+  const [motionEngineOverrideState, setMotionEngineOverrideState] =
     useState<HomeHeroMotionEngine | null>(null);
   const [savePending, setSavePending] = useState(false);
   const [savedRevision, setSavedRevision] = useState<number | null>(null);
@@ -302,6 +302,10 @@ export default function HomeHeroSaveBoundary({
   );
   const waitingForRefresh = savedRevision !== null && revision < savedRevision;
   const busy = savePending || waitingForRefresh;
+  const motionEngineOverride =
+    savedRevision !== null && revision >= savedRevision
+      ? null
+      : motionEngineOverrideState;
 
   const findHeroForm = useCallback(
     () =>
@@ -362,7 +366,6 @@ export default function HomeHeroSaveBoundary({
     if (savedRevision === null || revision < savedRevision) return;
     saving.current = false;
     motionEngineOverrideRef.current = null;
-    setMotionEngineOverride(null);
   }, [revision, savedRevision]);
 
   useEffect(() => {
@@ -388,6 +391,7 @@ export default function HomeHeroSaveBoundary({
 
       persistHeroRecoveryFields(fields);
       saving.current = true;
+      setSavedRevision(null);
       setSavePending(true);
       setNotice(null);
 
@@ -527,7 +531,7 @@ export default function HomeHeroSaveBoundary({
       }
 
       motionEngineOverrideRef.current = motionEngine;
-      setMotionEngineOverride(motionEngine);
+      setMotionEngineOverrideState(motionEngine);
       setNotice(null);
       void submitPreparedFields(nextFields);
     },
@@ -541,7 +545,7 @@ export default function HomeHeroSaveBoundary({
     }
     clearStoredHeroDrafts();
     motionEngineOverrideRef.current = null;
-    setMotionEngineOverride(null);
+    setMotionEngineOverrideState(null);
     setRecoveryEpoch((current) => current + 1);
   };
 
