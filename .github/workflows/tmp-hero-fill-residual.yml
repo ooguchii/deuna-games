@@ -1,0 +1,62 @@
+name: Temporary Hero fill residual fix
+
+on:
+  push:
+    branches:
+      - tmp/hero-fill-residual
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: tmp/hero-fill-residual
+      - name: Apply focused Hero fill correction
+        shell: bash
+        run: |
+          python <<'PY'
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              file = Path(path)
+              text = file.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{path}: expected one match, got {count}: {old[:100]!r}")
+              file.write_text(text.replace(old, new, 1))
+
+          hero = "src/components/home/HeroSection.tsx"
+          replace_once(
+              hero,
+              '''            const roundedWidth = Math.round(best * 100) / 100;\n            const filledBounds = measure(roundedWidth);\n            const currentAnchor = Number.parseFloat(getComputedStyle(mainCard).left);\n            const centerOffset =\n              (targetLeft + targetRight - filledBounds.left - filledBounds.right) / 2;\n            if (Number.isFinite(currentAnchor) && Number.isFinite(centerOffset)) {\n              root.style.setProperty(\n                "--hero-anchor",\n                `${Math.round((currentAnchor + centerOffset) * 100) / 100}px`\n              );\n            }\n''',
+              '''            const roundedWidth = Math.round(best * 100) / 100;\n            const filledBounds = measure(roundedWidth);\n            const currentAnchor = Number.parseFloat(getComputedStyle(mainCard).left);\n            const targetCenter = (targetLeft + targetRight) / 2;\n            const centerOffset =\n              targetCenter - (filledBounds.left + filledBounds.right) / 2;\n            if (Number.isFinite(currentAnchor) && Number.isFinite(centerOffset)) {\n              const adjustedAnchor =\n                Math.round((currentAnchor + centerOffset) * 100) / 100;\n              root.style.setProperty("--hero-anchor", `${adjustedAnchor}px`);\n\n              // Perspective/rotation makes the projected footprint slightly non-linear\n              // when the anchor moves. Measure once more after the real browser layout\n              // and correct the remaining projected-center error instead of widening a\n              // visual-test tolerance around an actually off-center composition.\n              const adjustedBounds = horizontalBounds(footprintCards);\n              const residualCenterOffset =\n                targetCenter - (adjustedBounds.left + adjustedBounds.right) / 2;\n              if (Number.isFinite(residualCenterOffset)) {\n                root.style.setProperty(\n                  "--hero-anchor",\n                  `${Math.round((adjustedAnchor + residualCenterOffset) * 100) / 100}px`\n                );\n              }\n            }\n'''
+          )
+
+          smoke_path = Path("tools/hero-motion-browser-smoke.mjs")
+          smoke = smoke_path.read_text()
+          diagnostics_start = smoke.index("      const positioningProperties = [")
+          diagnostics_end = smoke.index("      const rr = root.getBoundingClientRect();", diagnostics_start)
+          smoke = smoke[:diagnostics_start] + smoke[diagnostics_end:]
+          fields_start = smoke.index("        rootCount: roots.length,")
+          fields_end_marker = "        animations,\n"
+          fields_end = smoke.index(fields_end_marker, fields_start) + len(fields_end_marker)
+          smoke = smoke[:fields_start] + smoke[fields_end:]
+          smoke_path.write_text(smoke)
+
+          check = "tools/check-hero-admin-state.mjs"
+          replace_once(
+              check,
+              '''  /root\\.style\\.setProperty\\([\\s\\S]*?"--hero-anchor"/,\n]) {''',
+              '''  /root\\.style\\.setProperty\\([\\s\\S]*?"--hero-anchor"/,\n  /const adjustedBounds = horizontalBounds\\(footprintCards\\);/,\n  /const residualCenterOffset =[\\s\\S]*?adjustedBounds\\.left[\\s\\S]*?adjustedBounds\\.right/,\n]) {'''
+          )
+          PY
+
+          git config user.name "deuna-games-ci"
+          git config user.email "actions@users.noreply.github.com"
+          git add src/components/home/HeroSection.tsx tools/hero-motion-browser-smoke.mjs tools/check-hero-admin-state.mjs
+          git commit -m "fix: recenter projected hero fill footprint"
+          git push origin HEAD:tmp/hero-fill-residual
