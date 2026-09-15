@@ -1,0 +1,79 @@
+name: Temporary Hero arrow source fix
+
+on:
+  push:
+    branches:
+      - tmp/hero-arrow-source-fix
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: tmp/hero-arrow-source-fix
+      - name: Apply focused source fix
+        shell: bash
+        run: |
+          python <<'PY'
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              file = Path(path)
+              text = file.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{path}: expected one match, got {count}: {old[:90]!r}")
+              file.write_text(text.replace(old, new, 1))
+
+          artwork = Path("src/components/home/HeroArtwork.module.css")
+          text = artwork.read_text()
+          for stale in ("  left: 0 !important;\n", "  right: 0 !important;\n"):
+              if text.count(stale) != 1:
+                  raise SystemExit(f"HeroArtwork: expected exactly one stale positional pin: {stale!r}")
+              text = text.replace(stale, "", 1)
+          artwork.write_text(text)
+
+          hero = "src/components/home/HeroSection.tsx"
+          replace_once(hero, 'import arrowStyles from "./HeroArrowOverrides.module.css";\n', '')
+          replace_once(
+              hero,
+              '''  const arrowPlacement = presentation.navigation.arrowResponsive[designDevice];\n  const arrowControlStyle = {\n    top: `${arrowPlacement.y}%`,\n    "--hero-arrow-scale": arrowPlacement.scale / 100,\n    "--hero-arrow-hover-scale": (arrowPlacement.scale * 1.06) / 100,\n  } as CSSProperties;\n  const previousArrowStyle = {\n    ...arrowControlStyle,\n    left: `${arrowPlacement.inset}px`,\n  } as CSSProperties;\n  const nextArrowStyle = {\n    ...arrowControlStyle,\n    right: `${arrowPlacement.inset}px`,\n  } as CSSProperties;\n''',
+              ''
+          )
+          replace_once(
+              hero,
+              'className={`${styles.heroSection} ${motionStyles.motionRoot} ${arrowStyles.arrowBridge}`}',
+              'className={`${styles.heroSection} ${motionStyles.motionRoot}`}'
+          )
+          replace_once(hero, ' style={previousArrowStyle}', '')
+          replace_once(hero, ' style={nextArrowStyle}', '')
+
+          check = "tools/check-hero-admin-state.mjs"
+          replace_once(
+              check,
+              '''  heroSource,\n  heroStyles,\n] = await Promise.all([''',
+              '''  heroSource,\n  heroStyles,\n  heroArtworkStyles,\n] = await Promise.all(['''
+          )
+          replace_once(
+              check,
+              '''  readFile(\n    new URL("../src/components/home/HeroSection.module.css", import.meta.url),\n    "utf8"\n  ),\n]);''',
+              '''  readFile(\n    new URL("../src/components/home/HeroSection.module.css", import.meta.url),\n    "utf8"\n  ),\n  readFile(\n    new URL("../src/components/home/HeroArtwork.module.css", import.meta.url),\n    "utf8"\n  ),\n]);'''
+          )
+          marker = '''assert.match(\n  heroStyles,\n  /\\.arrowRight\\{right:var\\(--hero-arrow-inset\\)\\}/,\n  "The next Hero arrow must consume the canonical inset."\n);\n'''
+          addition = marker + '''assert.doesNotMatch(\n  heroArtworkStyles,\n  /aria-label="Juego anterior"\\]\\)\\s*\\{[^}]*\\bleft\\s*:/,\n  "Hero artwork styling must not pin the previous arrow outside the canonical HeroSection contract."\n);\nassert.doesNotMatch(\n  heroArtworkStyles,\n  /aria-label="Juego siguiente"\\]\\)\\s*\\{[^}]*\\bright\\s*:/,\n  "Hero artwork styling must not pin the next arrow outside the canonical HeroSection contract."\n);\nassert.doesNotMatch(\n  heroSource,\n  /arrowStyles|previousArrowStyle|nextArrowStyle|style=\\{previousArrowStyle\\}|style=\\{nextArrowStyle\\}/,\n  "HeroSection must keep arrow position and scale in the canonical per-device CSS-variable contract, not duplicate them inline."\n);\n'''
+          replace_once(check, marker, addition)
+          PY
+
+          if git diff --quiet; then
+            echo "No source changes required."
+            exit 0
+          fi
+          git config user.name "deuna-games-ci"
+          git config user.email "actions@users.noreply.github.com"
+          git add src/components/home/HeroArtwork.module.css src/components/home/HeroSection.tsx tools/check-hero-admin-state.mjs
+          git commit -m "fix: release hero arrows from legacy global pins"
+          git push origin HEAD:tmp/hero-arrow-source-fix
